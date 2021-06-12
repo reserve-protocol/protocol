@@ -1,6 +1,6 @@
 pragma solidity 0.8.4;
 
-interface ISettings is Ownable {
+interface IConfiguration is Ownable {
 
     function upgradeBasket(Settings.CollateralToken[] calldata _basket) external onlyOwner {
         basket = _basket;

@@ -1,10 +1,6 @@
 pragma solidity 0.8.4;
 
-import "../zeppelin/access/Ownable.sol";
-import "../zeppelin/token/IERC20.sol";
-
-// Owned by TimelockController
-contract Base is Ownable {
+contract Configuration {
 
     /// ==== Constants ====
 
@@ -77,30 +73,19 @@ contract Base is Ownable {
         address rsrTokenAddress;
         address circuitBreakerAddress;
         address txFeeAddress;
-        address rsrStakingAddress;
+        address insurancePoolAddress;
         address batchAuctionAddress;
         address outgoingExpendituresAddress;
     }
 
     /// ==== State ====
 
-    Parameters public override parameters;
+    Parameters public override params;
     CollateralToken[] public override basket;
 
 
-    constructor(CollateralToken[] calldata _basket, Parameters calldata _parameters) {
+    constructor(CollateralToken[] calldata _basket, Parameters calldata _params) {
         basket = _basket;
-        parameters = _parameters;
+        params = _params;
     }
-
-    /// ==== Externals ====
-
-    function upgradeParameters(Parameters calldata _parameters) external override onlyOwner {
-        parameters = _parameters;
-    }
-
-    function upgradeBasket(CollateralToken[] calldata _basket) external override onlyOwner {
-        basket = _basket;
-    }
-
 }
