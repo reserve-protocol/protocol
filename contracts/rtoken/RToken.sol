@@ -6,7 +6,7 @@ import "../zeppelin/access/Ownable.sol";
 import "../interfaces/ITXFee.sol";
 import "../interfaces/IAuctionManager.sol";
 import "../interfaces/IInsurancePool.sol";
-import "../interfaces/IConfiguration.sol";
+import "../interfaces/Configuration.sol";
 import "./ERC20SlowMint.sol";
     
 
@@ -88,7 +88,7 @@ contract RToken is ERC20SlowMint, Ownable {
 
     /// Configuration changes, only callable by Owner.
     function changeConfiguration(address newConf) external override alive expandSupply onlyOwner {
-        conf = IConfiguration(newConf);
+        conf = Configuration(newConf);
     }
 
     /// Adaptation function, callable by anyone
