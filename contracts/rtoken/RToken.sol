@@ -6,7 +6,7 @@ import "../zeppelin/math/SafeMath.sol";
 import "../zeppelin/access/AccessControlEnumerable.sol";
 import "../interfaces/ITXFee.sol";
 import "../interfaces/IAuctionManager.sol";
-import "../interfaces/IRSRStaking.sol";
+import "../interfaces/IInsurancePool.sol";
 import "./Settings.sol";
 
 
@@ -16,16 +16,13 @@ import "./Settings.sol";
  * 
  * Based on OpenZeppelin's [implementation](https://github.com/OpenZeppelin/openzeppelin-solidity/blob/41aa39afbc13f0585634061701c883fe512a5469/contracts/token/ERC20/ERC20.sol).
  */
-contract RToken is ERC20 {
+contract RToken is ERC20, Base {
     using SafeERC20 for IERC20;
 
-    Settings public immutable override settings;
     IAuctionManager public immutable override auctionManager;
 
-    /// Max Fee on transfers
-    uint256 constant MAX_FEE = 5e16; // 5%
-    uint256 constant SCALE = 1e18;
-
+    /// Max Fee on transfers, ever
+    uint256 public constant override MAX_FEE = 5e16; // 5%
 
     /// ==== Mutable State ====
 
@@ -36,37 +33,36 @@ contract RToken is ERC20 {
     /// Global settlement state
     bool public override dead = false;
 
-    /// Expects Settings to be deployed already.
     constructor(
         string calldata _name, 
         string calldata _symbol, 
-        Settings calldata _settings
-    ) ERC20(_name, _symbol) public {
-        settings = _settings;
+        Base.CollateralToken[] calldata _basket, 
+        Base.Parameters calldata _parameters
+    ) ERC20(_name, _symbol) Base(_basket, _parameters) public {
         auctionManager = new AuctionManager();
     }
 
     modifier expandSupply() {
         // 31536000 = seconds in a year
-        uint256 toExpand = _totalSupply * settings.parameters.supplyExpansionRate * (block.timestamp - lastSupplyExpansion) / 31536000 / SCALE;
+        uint256 toExpand = _totalSupply * parameters.supplyExpansionRate * (block.timestamp - lastSupplyExpansion) / 31536000 / 10**decimals();
         lastSupplyExpansion = block.timestamp;
 
         // Expenditure outflow
-        if (settings.parameters.expenditureFactor > 0) {
+        if (parameters.expenditureFactor > 0) {
             uint256 e = toExpand * min(SCALE, expenditureFactor) / SCALE;
-            _mint(settings.parameters.outgoingExpendituresAddress, e);
+            _mint(parameters.outgoingExpendituresAddress, e);
         }
 
         // Profit outflow, batched
-        if (settings.parameters.expenditureFactor < SCALE) {
-            uint256 p = toExpand * (SCALE - settings.parameters.expenditureFactor) / SCALE;
+        if (parameters.expenditureFactor < SCALE) {
+            uint256 p = toExpand * (SCALE - parameters.expenditureFactor) / SCALE;
             _mint(address(this), p);
 
             // Batch transfers in order to save on gas.
             uint256 bal = balanceOf(address(this));
-            if (bal > _totalSupply * revenueBatchSize / SCALE) {
-                _transfer(address(this), settings.parameters.rsrStakingAddress, bal)
-                IRSRStaking(settings.parameters.rsrStakingAddress).saveRevenueEvent(bal);
+            if (bal > _totalSupply * revenueBatchSize / 10**decimals()) {
+                _transfer(address(this), parameters.rsrStakingAddress, bal)
+                IInsurancePool(parameters.rsrStakingAddress).saveRevenueEvent(bal);
             }
         }
 
@@ -74,13 +70,13 @@ contract RToken is ERC20 {
     }
 
     modifier circuitBreakerUnpaused() {
-        bool tripped = ICircuitBreaker(settings.parameters.circuitBreakerAddress).check();
+        bool tripped = ICircuitBreaker(parameters.circuitBreakerAddress).check();
         require(!tripped, "circuit breaker tripped");
         _;
     }
     
     modifier alive() {
-        require(dead, "global settlement has occurred, please redeem");
+        require(!dead, "global settlement has occurred, please redeem");
         _;
     }
 
@@ -88,8 +84,8 @@ contract RToken is ERC20 {
 
 
     /// Adaptation function
-    function act() external override alive expandSupply {
-        require(lastAuction + settings.parameters.auctionSpacing > block.timestamp, "too soon");
+    function launchAuction() external override alive expandSupply {
+        require(lastAuction + parameters.auctionSpacing > block.timestamp, "too soon");
         lastAuction = block.timestamp;
 
         int32 indexLowest = leastCollateralized();
@@ -97,13 +93,13 @@ contract RToken is ERC20 {
 
         if (indexLowest >= 0 && indexHighest >= 0) {
             _recapitalizationAuctionWithCollateral(
-                settings.basket[indexHighest]
-                settings.basket[indexLowest], 
+                basket[indexHighest]
+                basket[indexLowest], 
             );
         } else if (indexLowest >= 0) {
-            _recapitalizationAuctionWithoutCollateral(settings.basket[indexLowest]);
+            _recapitalizationAuctionWithoutCollateral(basket[indexLowest]);
         } else if (indexHighest >= 0) {
-            _profitAuction(settings.basket[indexHighest]);
+            _profitAuction(basket[indexHighest]);
         } else {
             require(false, "nothing to do");
         }
@@ -112,12 +108,12 @@ contract RToken is ERC20 {
     /// Handles issuance.
     function issue(uint256 amount) external override alive expandSupply circuitBreakerUnpaused {
         require(amount > 0, "cannot issue zero RToken");
-        require(amount < settings.parameters.maxSupply, "at max supply");
-        require(settings.basket.length > 0, "basket cannot be empty");
+        require(amount < parameters.maxSupply, "at max supply");
+        require(basket.length > 0, "basket cannot be empty");
 
         uint256[] memory amounts = issueAmounts(amount);
-        for (uint32 i = 0; i < settings.basket.length; i++) {
-            IERC20(settings.basket[i].address).safeTransferFrom(
+        for (uint32 i = 0; i < basket.length; i++) {
+            IERC20(basket[i].address).safeTransferFrom(
                 _msgSender(),
                 address(this),
                 amounts[i]
@@ -131,13 +127,13 @@ contract RToken is ERC20 {
     /// Handles redemption.
     function redeem(uint256 amount) external override expandSupply {
         require(amount > 0, "cannot redeem 0 RToken");
-        require(settings.basket.length > 0, "basket cannot be empty");
+        require(basket.length > 0, "basket cannot be empty");
 
         _burnFrom(_msgSender(), amount);
 
         uint256[] memory amounts = redemptionAmounts(amount);
-        for (uint32 i = 0; i < settings.basket.length; i++) {
-            IERC20(settings.basket[i].address).safeTransferFrom(
+        for (uint32 i = 0; i < basket.length; i++) {
+            IERC20(basket[i].address).safeTransferFrom(
                 address(this),
                 _msgSender(),
                 amounts[i]
@@ -149,10 +145,10 @@ contract RToken is ERC20 {
 
     /// Global Settlement
     function kill() external override alive expandSupply {
-        IERC20(settings.parameters.rsrTokenAddress).safeTransferFrom(
+        IERC20(parameters.rsrTokenAddress).safeTransferFrom(
             _msgSender(),
             address(0),
-            settings.parameters.globalSettlement
+            parameters.globalSettlementCost
         );
         dead = true;
         emit Killed(_msgSender())
@@ -166,12 +162,12 @@ contract RToken is ERC20 {
         uint256 largestDeficit;
         int32 index = -1;
 
-        for (uint32 i = 0; i < settings.basket.length; i++) {
-            uint256 bal = IERC20(settings.basket[i].address).balanceOf(address(this));
-            uint256 expected = _totalSupply * settings.basket[i].quantity / SCALE;
+        for (uint32 i = 0; i < basket.length; i++) {
+            uint256 bal = IERC20(basket[i].address).balanceOf(address(this));
+            uint256 expected = _totalSupply * basket[i].quantity / 10**decimals();
 
             if (bal < expected) {
-                uint256 deficit = (expected - bal) / settings.basket[i].quantity;
+                uint256 deficit = (expected - bal) / basket[i].quantity;
                 if (deficit > largestDeficit) {
                     largestDeficit = deficit;
                     index = i;
@@ -186,13 +182,13 @@ contract RToken is ERC20 {
         uint256 largestSurplus;
         int32 index = -1;
 
-        for (uint32 i = 0; i < settings.basket.length; i++) {
-            uint256 bal = IERC20(settings.basket[i].address).balanceOf(address(this));
-            uint256 expected = _totalSupply * settings.basket[i].quantity / SCALE;
-            expected += settings.basket[i].auctionLimits.lower;
+        for (uint32 i = 0; i < basket.length; i++) {
+            uint256 bal = IERC20(basket[i].address).balanceOf(address(this));
+            uint256 expected = _totalSupply * basket[i].quantity / 10**decimals();
+            expected += basket[i].auctionLimits.lower;
 
             if (bal > expected) {
-                uint256 surplus = (bal - expected) / settings.basket[i].quantity;
+                uint256 surplus = (bal - expected) / basket[i].quantity;
                 if (surplus > largestSurplus) {
                     largestSurplus = surplus;
                     index = i;
@@ -204,11 +200,11 @@ contract RToken is ERC20 {
 
     /// The returned array will be in the same order as the current basket.
     function issueAmounts(uint256 amount) public view returns (uint256[] memory) {
-        uint256[] memory parts = new uint256[](settings.basket.length);
+        uint256[] memory parts = new uint256[](basket.length);
 
-        for (uint32 i = 0; i < settings.basket.length; i++) {
-            parts[i] = amount * settings.basket[i].quantity / SCALE;
-            parts[i] = parts[i] * (SCALE + settings.parameters.spread) / SCALE;
+        for (uint32 i = 0; i < basket.length; i++) {
+            parts[i] = amount * basket[i].quantity / 10**decimals();
+            parts[i] = parts[i] * (SCALE + parameters.spread) / SCALE;
         }
 
         return parts;
@@ -217,13 +213,13 @@ contract RToken is ERC20 {
 
     /// The returned array will be in the same order as the current basket.
     function redemptionAmounts(uint256 amount) public view returns (uint256[] memory) {
-        uint256[] memory parts = new uint256[](settings.basket.length);
+        uint256[] memory parts = new uint256[](basket.length);
 
         bool fullyCollateralized = fullyCollateralized();
-        for (uint32 i = 0; i < settings.basket.length; i++) {
-            uint256 bal = IERC20(settings.basket[i].address).balanceOf(address(this));
+        for (uint32 i = 0; i < basket.length; i++) {
+            uint256 bal = IERC20(basket[i].address).balanceOf(address(this));
             if (fullyCollateralized) {
-                parts[i] = settings.basket[i].quantity * amount / SCALE;
+                parts[i] = basket[i].quantity * amount / 10**decimals();
             } else {
                 parts[i] = bal * amount / _totalSupply;
             }
@@ -257,9 +253,9 @@ contract RToken is ERC20 {
         if (
             from != address(0) && 
             to != address(0) && 
-            address(settings.parameters.txFeeAddress) != address(0)
+            address(parameters.txFeeAddress) != address(0)
         ) {
-            fee = ITXFee(settings.parameters.txFeeAddress).calculateFee(sender, recipient, amount);
+            fee = ITXFee(parameters.txFeeAddress).calculateFee(sender, recipient, amount);
             require(fee <= amount * MAX_FEE / SCALE, "transaction fee above maximum allowed");
 
             _balances[from] = _balances[from] - fee;
@@ -273,7 +269,7 @@ contract RToken is ERC20 {
         Settings.CollateralToken storage buying
     ) internal override {
         uint256 bal = IERC20(selling.address).balanceOf(address(this));
-        uint256 excess = bal - _totalSupply * collateral.quantity / SCALE;
+        uint256 excess = bal - _totalSupply * collateral.quantity / 10**decimals();
 
         if (excess > selling.auctionLimits.lower) {
             // TODO: Issue an AuctionToken and handle exchange at end of auction
@@ -285,7 +281,7 @@ contract RToken is ERC20 {
         Settings.CollateralToken storage buying
     ) internal override {
         auctionManager.launchAuction(
-            settings.parameters.rsrTokenAddress, 
+            parameters.rsrTokenAddress, 
             buying.address, 
             settings.rsrAuctionLimits.upper
         );
@@ -293,12 +289,12 @@ contract RToken is ERC20 {
 
     function _profitAuction(Settings.CollateralToken storage selling) internal override {
         uint256 bal = IERC20(selling.address).balanceOf(address(this));
-        uint256 excess = bal - _totalSupply * selling.quantity / SCALE;
+        uint256 excess = bal - _totalSupply * selling.quantity / 10**decimals();
 
         if (excess > selling.auctionLimits.lower) {
             auctionManager.launchAuction(
                 address(selling), 
-                settings.parameters.rsrTokenAddress,
+                parameters.rsrTokenAddress,
                 excess            
             );   
         }

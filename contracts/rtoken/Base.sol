@@ -4,7 +4,12 @@ import "../zeppelin/access/Ownable.sol";
 import "../zeppelin/token/IERC20.sol";
 
 // Owned by TimelockController
-contract Settings is Ownable {
+contract Base is Ownable {
+
+    /// ==== Constants ====
+
+    /// All percentage values are relative to SCALE.
+    uint256 public constant override SCALE = 1e18;
 
     /// ==== Structs ====
 
@@ -63,7 +68,7 @@ contract Settings is Ownable {
 
         /// Global Settlement (in RSR)
         /// e.g. 100_000_000e18 => 100M RSR
-        uint256 globalSettlement;
+        uint256 globalSettlementCost;
 
         /// RSR auction limits
         AuctionLimits rsrAuctionLimits;
@@ -79,8 +84,9 @@ contract Settings is Ownable {
 
     /// ==== State ====
 
-    CollateralToken[] public override basket;
     Parameters public override parameters;
+    CollateralToken[] public override basket;
+
 
     constructor(CollateralToken[] calldata _basket, Parameters calldata _parameters) {
         basket = _basket;
@@ -89,12 +95,12 @@ contract Settings is Ownable {
 
     /// ==== Externals ====
 
-    function upgradeBasket(CollateralToken[] calldata _basket) external override onlyOwner {
-        basket = _basket;
-    }
-
     function upgradeParameters(Parameters calldata _parameters) external override onlyOwner {
         parameters = _parameters;
+    }
+
+    function upgradeBasket(CollateralToken[] calldata _basket) external override onlyOwner {
+        basket = _basket;
     }
 
 }

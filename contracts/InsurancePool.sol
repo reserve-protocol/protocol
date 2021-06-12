@@ -110,13 +110,11 @@ contract InsurancePool is IInsurancePool {
     modifier update(address account) {
         hasUpdated = true;
         if (_balances[account] > 0) {
-            uint256 total;
             for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
                 RevenueEvent storage re = revenueEvents[i];
-                total += re.revenue * _balances[account] / re.totalStaked;
+                earned[account] += re.revenue * _balances[account] / re.totalStaked;
             }
 
-            earned[account] += total;
             lastFloor[account] = revenueEvents.length;
         }
 
