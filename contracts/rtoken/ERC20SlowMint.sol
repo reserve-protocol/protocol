@@ -29,36 +29,38 @@ contract ERC20SlowMint is ERC20 {
 
 
     modifier update() {
-        if (!ICiruictBreaker(conf.params.circuitBreakerAddress).check()) {
-            processMintings(mintings.length - lastMinting);
-        }
+        processMintings(mintings.length - lastMinting);
         _;
     }
 
 
+    /// Tries to process `count` mintings. Called before most actions.
+    /// Can also be called directly if we get to the block gas limit. 
     function processMintings(uint32 count) public override {
-        uint32 blocksToVest = block.number - m.blockStart;
-        uint32 i = lastMinting;
-        while (i < min(mintings.length, lastMinting + count)) {
-            Minting storage m = mintings[i];
-            if (m.amount > conf.params.issuanceBlockLimit * (blocksToVest)) {
-                break
+        if (!ICiruictBreaker(conf.params.circuitBreakerAddress).check()) {
+            uint32 blocksToVest = block.number - m.blockStart;
+            uint32 i = lastMinting;
+            while (i < min(mintings.length, lastMinting + count)) {
+                Minting storage m = mintings[i];
+                if (m.amount > conf.params.issuanceBlockLimit * (blocksToVest)) {
+                    break
+                }
+
+                uint256 blocksUsed = m.amount / conf.params.issuanceBlockLimit;
+                if (blocksUsed * conf.params.issuanceBlockLimit > m.amount) {
+                    blocksUsed = blocksUsed + 1;
+                }
+
+                _balances[account] += m.amount;
+                _totalSupply += m.amount;
+                emit MintingComplete(m.account, m.amount);
+                blocksToVest = blocksToVest - blocksUsed;
+                i++;
+                delete m;
             }
 
-            uint256 blocksUsed = m.amount / conf.params.issuanceBlockLimit;
-            if (blocksUsed * conf.params.issuanceBlockLimit > m.amount) {
-                blocksUsed = blocksUsed + 1;
-            }
-
-            _balances[account] += m.amount;
-            _totalSupply += m.amount;
-            emit MintingComplete(m.account, m.amount);
-            blocksToVest = blocksToVest - blocksUsed;
-            i++;
-            delete m;
+            lastMinting = i;
         }
-
-        lastMinting = i;
     }
 
     /**
