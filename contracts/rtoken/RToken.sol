@@ -1,6 +1,5 @@
 pragma solidity 0.8.4;
 
-import "../zeppelin/token/ERC20/ERC20.sol";
 import "../zeppelin/token/ERC20/utils/SafeERC20.sol";
 import "../zeppelin/math/SafeMath.sol";
 import "../zeppelin/access/Ownable.sol";
@@ -8,7 +7,8 @@ import "../interfaces/ITXFee.sol";
 import "../interfaces/IAuctionManager.sol";
 import "../interfaces/IInsurancePool.sol";
 import "../interfaces/IConfiguration.sol";
-
+import "./ERC20SlowMint.sol";
+    
 
 /**
  * @title RToken
@@ -16,12 +16,11 @@ import "../interfaces/IConfiguration.sol";
  * 
  * Based on OpenZeppelin's [implementation](https://github.com/OpenZeppelin/openzeppelin-solidity/blob/41aa39afbc13f0585634061701c883fe512a5469/contracts/token/ERC20/ERC20.sol).
  */
-contract RToken is ERC20, Ownable {
+contract RToken is ERC20SlowMint, Ownable {
     using SafeERC20 for IERC20;
 
     /// ==== Immutable State ====
 
-    IConfiguration public immutable override conf;
     IAuctionManager public immutable override auctionManager;
 
     /// Max Fee on transfers, ever
@@ -40,8 +39,7 @@ contract RToken is ERC20, Ownable {
         string calldata _name, 
         string calldata _symbol, 
         address calldata _conf,
-    ) ERC20(_name, _symbol) public {
-        conf = IConfiguration(_conf);
+    ) ERC20SlowMint(_name, _symbol, _conf) public {
         auctionManager = new AuctionManager();
     }
 
@@ -142,7 +140,7 @@ contract RToken is ERC20, Ownable {
 
 
         uint256[] memory amounts = redemptionAmounts(amount);
-        _burnFrom(_msgSender(), amount);
+        _burn(_msgSender(), amount);
         for (uint32 i = 0; i < conf.basket.length; i++) {
             IERC20(conf.basket[i].address).safeTransfer(
                 _msgSender(),
