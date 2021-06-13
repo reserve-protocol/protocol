@@ -31,10 +31,11 @@ contract InsurancePool is IInsurancePool {
     struct StakingEvent {
         uint256 timestamp;
         uint256 amount;
+        address account;
     }
 
-    mapping(address => StakingEvent[]) public override deposits;
-    mapping(address => StakingEvent[]) public override withdrawals;
+    StakingEvent[] public override deposits;
+    StakingEvent[] public override withdrawals;
 
 
     constructor(address _rToken, address _stakingToken) public {
@@ -52,20 +53,19 @@ contract InsurancePool is IInsurancePool {
 
     /* ========== External ========== */
     
-    // TODO: This might be fundamentally broken...
     modifier update(address account) {
-        // Process withdrawals
+        // Process withdrawals for everyone
         uint256 ago = block.timestamp - conf.params.rsrWithdrawalDelay;
-        while (withdrawals[account].length > 0) {
-            if (withdrawals[account][0].timestamp > ago) {
+        while (withdrawals.length > 0) {
+            if (withdrawals[0].timestamp > ago) {
                 break;
             }
 
-            settleTopWithdrawal(account);
+            settleTopWithdrawal();
         }       
         
-        // Scale floors to sum RevenueEvents
-        if (_balances[account] > 0) {
+        // Scale floors for just this account to sum RevenueEvents
+        if (address(account) != address(0) && _balances[account] > 0) {
             for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
                 RevenueEvent storage re = revenueEvents[i];
                 earned[account] += re.revenue * _balances[account] / re.totalStaked;
@@ -79,24 +79,24 @@ contract InsurancePool is IInsurancePool {
 
     function amountBeingWithdrawn(address account) public view override returns(uint256) {
         uint256 total;
-        for (uint32 i = 0; i < withdrawals[account].length; i++) {
-            total += withdrawals[account][i].amount;
+        for (uint32 i = 0; i < withdrawals.length; i++) {
+            total += withdrawals[i].amount;
         }
         return total;
     }
 
-    function settleTopWithdrawal(address account) public override {
-        StakingEvent storage withdrawal = withdrawals[account][0];
-        uint256 amount = min(_balances[account], withdrawal.amount);
+    function settleTopWithdrawal() public override {
+        StakingEvent storage withdrawal = withdrawals[0];
+        uint256 amount = min(_balances[withdrawal.account], withdrawal.amount);
 
-        _balances[account] = _balances[account] - amount;
+        _balances[withdrawal.account] = _balances[withdrawal.account] - amount;
         _totalSupply = _totalSupply - amount;
 
         // Shift elements of withdrawals array
         delete withdrawal;
-        for (uint32 i = 1; i < withdrawals[account].length; i++) {
-            withdrawals[account][i-1] = withdrawals[account][i];
-            withdrawals[account].length -= 1;
+        for (uint32 i = 1; i < withdrawals.length; i++) {
+            withdrawals[i-1] = withdrawals[i];
+            withdrawals.length -= 1;
         }
     }
 
@@ -105,7 +105,7 @@ contract InsurancePool is IInsurancePool {
         _totalSupply = _totalSupply + amount;
         _balances[_msgSender()] = _balances[_msgSender()] + amount;
         stakingToken.safeTransferFrom(_msgSender(), address(this), amount);
-        deposits[_msgSender()].push(StakingEvent(block.timestamp, amount));
+        deposits.push(StakingEvent(block.timestamp, amount, _msgSender()));
         emit Staked(_msgSender(), amount);
     }
 
@@ -113,8 +113,8 @@ contract InsurancePool is IInsurancePool {
     function initiateWithdrawal(uint256 amount) public override update(_msgSender()) {
         uint256 beingWithdrawn = amountBeingWithdrawn(_msgSender());
         require(amount > 0, "Cannot withdraw 0");
-        require(amount < _balances[_msgSender()] - beingWithdrawn, "withdrawing too mucch");
-        withdrawals[_msgSender()].push(StakingEvent(block.timestamp, amount));
+        require(amount < _balances[_msgSender()] - beingWithdrawn, "withdrawing too much...wait");
+        withdrawals.push(StakingEvent(block.timestamp, amount, _msgSender()));
         emit WithdrawalInitiated(_msgSender(), amount);
     }
 
