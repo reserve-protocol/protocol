@@ -3,6 +3,10 @@ pragma solidity 0.8.4;
 import "./zeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "./zeppelin/contracts/token/ERC20/SafeERC20.sol";
 
+/*
+ * @title InsurancePool
+ * @dev This might have major problems.
+ */
 contract InsurancePool is IInsurancePool {
     using SafeERC20 for IERC20;
 
@@ -10,20 +14,27 @@ contract InsurancePool is IInsurancePool {
     IERC20 public immutable override stakingToken;
 
     struct RevenueEvent {
+        uint256 timestamp;
         uint256 totalStaked;
         uint256 revenue;
     }
 
     // The index of this array is a "floor"
     RevenueEvent[] public override revenueEvents;
-    bool public override hasUpdated = false;
 
     mapping(address => uint256) public override lastFloor;
     mapping(address => uint256) public override earned;
 
-
     uint256 private override _totalSupply;
     mapping(address => uint256) private override _balances;
+
+    struct StakingEvent {
+        uint256 timestamp;
+        uint256 amount;
+    }
+
+    mapping(address => StakingEvent[]) public override deposits;
+    mapping(address => StakingEvent[]) public override withdrawals;
 
 
     constructor(address _rToken, address _stakingToken) public {
@@ -31,32 +42,80 @@ contract InsurancePool is IInsurancePool {
         stakingToken = IERC20(_stakingToken);
     }
 
-    /* ========== VIEWS ========== */
-
     function totalSupply() external view returns (uint256) {
         return _totalSupply;
     }
 
-    function balanceOf(address account) external view returns (uint256) {
+    function balanceOf(address account) external view update(account) returns (uint256) {
         return _balances[account];
     }
 
-    /* ========== MUTATIVE FUNCTIONS ========== */
+    /* ========== External ========== */
+    
+    // TODO: This might be fundamentally broken...
+    modifier update(address account) {
+        // Process withdrawals
+        uint256 ago = block.timestamp - conf.params.rsrWithdrawalDelay;
+        while (withdrawals[account].length > 0) {
+            if (withdrawals[account][0].timestamp > ago) {
+                break;
+            }
+
+            settleTopWithdrawal(account);
+        }       
+        
+        // Scale floors to sum RevenueEvents
+        if (_balances[account] > 0) {
+            for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
+                RevenueEvent storage re = revenueEvents[i];
+                earned[account] += re.revenue * _balances[account] / re.totalStaked;
+            }
+
+            lastFloor[account] = revenueEvents.length;
+        }
+
+        _;
+    }
+
+    function amountBeingWithdrawn(address account) public view override returns(uint256) {
+        uint256 total;
+        for (uint32 i = 0; i < withdrawals[account].length; i++) {
+            total += withdrawals[account][i].amount;
+        }
+        return total;
+    }
+
+    function settleTopWithdrawal(address account) public override {
+        StakingEvent storage withdrawal = withdrawals[account][0];
+        uint256 amount = min(_balances[account], withdrawal.amount);
+
+        _balances[account] = _balances[account] - amount;
+        _totalSupply = _totalSupply - amount;
+
+        // Shift elements of withdrawals array
+        delete withdrawal;
+        for (uint32 i = 1; i < withdrawals[account].length; i++) {
+            withdrawals[account][i-1] = withdrawals[account][i];
+            withdrawals[account].length -= 1;
+        }
+    }
 
     function stake(uint256 amount) external override update(_msgSender()) {
         require(amount > 0, "Cannot stake 0");
         _totalSupply = _totalSupply + amount;
         _balances[_msgSender()] = _balances[_msgSender()] + amount;
         stakingToken.safeTransferFrom(_msgSender(), address(this), amount);
+        deposits[_msgSender()].push(StakingEvent(block.timestamp, amount));
         emit Staked(_msgSender(), amount);
     }
 
-    function unstake(uint256 amount) public override update(_msgSender()) {
-        require(amount > 0, "Cannot unstake 0");
-        _totalSupply = _totalSupply - amount;
-        _balances[_msgSender()] = _balances[_msgSender()] - amount;
-        stakingToken.safeTransfer(_msgSender(), amount);
-        emit Withdrawn(_msgSender(), amount);
+
+    function initiateWithdrawal(uint256 amount) public override update(_msgSender()) {
+        uint256 beingWithdrawn = amountBeingWithdrawn(_msgSender());
+        require(amount > 0, "Cannot withdraw 0");
+        require(amount < _balances[_msgSender()] - beingWithdrawn, "withdrawing too mucch");
+        withdrawals[_msgSender()].push(StakingEvent(block.timestamp, amount));
+        emit WithdrawalInitiated(_msgSender(), amount);
     }
 
     function claimRevenue() external override update(_msgSender()) {
@@ -68,8 +127,9 @@ contract InsurancePool is IInsurancePool {
         }
     }
 
-    function exit() external override {
-        unstake(_balances[_msgSender()]);
+    function completeExit() external override {
+        // TODO: require(withdrawals[_msgSender()])
+        initiateWithdrawal(_balances[_msgSender()]);
         claimRevenue();
     }
 
@@ -83,7 +143,6 @@ contract InsurancePool is IInsurancePool {
         }
 
         lastFloor[account] = limit;
-        hasUpdated = true;
     }
 
     /// Callable only by RToken address
@@ -91,40 +150,18 @@ contract InsurancePool is IInsurancePool {
     function saveRevenueEvent(uint256 amount) external override {
         require(_msgSender() == address(rToken), "only RToken can save revenue events");
 
-        // If nothing has changed in terms of stakers, we can combine events to save on gas.
-        if (!hasUpdated && revenueEvents.length > 0) {
-            RevenueEvent storage last = revenueEvents[revenueEvents.length-1];
-            last.totalStaked = _totalSupply;
-            last.revenue += amount;
-        } else {
-            RevenueEvent storage next = RevenueEvent(_totalSupply, amount);
-            revenueEvents.push(next);
-        }
+        RevenueEvent storage next = RevenueEvent(block.timestamp, _totalSupply, amount);
+        revenueEvents.push(next);
 
-        hasUpdated = false;
         emit RevenueEventSaved(revenueEvents.length-1, amount);
     }
 
-    /* ========== MODIFIERS ========== */
 
-    modifier update(address account) {
-        hasUpdated = true;
-        if (_balances[account] > 0) {
-            for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
-                RevenueEvent storage re = revenueEvents[i];
-                earned[account] += re.revenue * _balances[account] / re.totalStaked;
-            }
 
-            lastFloor[account] = revenueEvents.length;
-        }
-
-        _;
-    }
-
-    /* ========== EVENTS ========== */
 
     event Staked(address indexed user, uint256 amount);
-    event Withdrawn(address indexed user, uint256 amount);
+    event WithdrawalInitiated(address indexed user, uint256 amount);
+    event WithdrawalCompleted(address indexed user, uint256 amount);
     event RevenueClaimed(address indexed user, uint256 reward);
     event RevenueEventSaved(uint256 index, uint256 amount)
 }
