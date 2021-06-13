@@ -1,11 +1,6 @@
 pragma solidity 0.8.4;
 
-contract Configuration {
-
-    /// ==== Constants ====
-
-    /// All percentage values are relative to SCALE.
-    uint256 public constant override SCALE = 1e18;
+interface IConfiguration {
 
     /// ==== Structs ====
 
@@ -21,6 +16,8 @@ contract Configuration {
     }
 
     struct Parameters {
+        /// See SCALE, first.
+
 
         /// Auction length (s)
         /// e.g. 86_400 => An auction lasts 24 hours
@@ -32,6 +29,7 @@ contract Configuration {
 
         /// RSR staking deposit delay (s)
         /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to earn the right to vote.
+        /// TODO: usage not implemented
         uint32 rsrDepositDelay;
 
         /// RSR staking withdrawal delay (s)
@@ -78,11 +76,23 @@ contract Configuration {
         address outgoingExpendituresAddress;
     }
 
-    /// ==== State ====
+}
 
-    Parameters public override params;
-    CollateralToken[] public override basket;
 
+/*
+ * @title Configuration 
+ * @dev This contract holds everything configurable by governance about the RToken. 
+ * It is immutable once deployed, offering "read-only" functionality.
+ */ 
+contract Configuration is IConfiguration {
+    /// ==== Immutable Constants ====
+
+    /// All percentage values are relative to SCALE.
+    /// For example, a 5% interest rate would be 5e16.
+    uint256 public constant override SCALE = 1e18;
+
+    Parameters public immutable override params;
+    CollateralToken[] public immutable override basket;
 
     constructor(CollateralToken[] calldata _basket, Parameters calldata _params) {
         basket = _basket;

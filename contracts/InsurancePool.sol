@@ -31,23 +31,6 @@ contract InsurancePool is IInsurancePool {
         stakingToken = IERC20(_stakingToken);
     }
 
-    /// Modifier that goes through revenueEvents and accumulates profit for accounts.
-    modifier update(address account) {
-        hasUpdated = true;
-        if (_balances[account] > 0) {
-            for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
-                RevenueEvent storage re = revenueEvents[i];
-                earned[account] += re.revenue * _balances[account] / re.totalStaked;
-            }
-
-            earned[account] += total;
-            lastFloor[account] = revenueEvents.length;
-        }
-
-        _;
-    }
-
-
     /* ========== VIEWS ========== */
 
     function totalSupply() external view returns (uint256) {
@@ -122,6 +105,23 @@ contract InsurancePool is IInsurancePool {
         emit RevenueEventSaved(revenueEvents.length-1, amount);
     }
 
+    /* ========== MODIFIERS ========== */
+
+    modifier update(address account) {
+        hasUpdated = true;
+        if (_balances[account] > 0) {
+            for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
+                RevenueEvent storage re = revenueEvents[i];
+                earned[account] += re.revenue * _balances[account] / re.totalStaked;
+            }
+
+            lastFloor[account] = revenueEvents.length;
+        }
+
+        _;
+    }
+
+    /* ========== EVENTS ========== */
 
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);

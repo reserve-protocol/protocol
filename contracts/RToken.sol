@@ -1,27 +1,33 @@
 pragma solidity 0.8.4;
 
 import "../zeppelin/token/ERC20/utils/SafeERC20.sol";
-import "../zeppelin/math/SafeMath.sol";
+import "../zeppelin/token/IERC20.sol";
 import "../zeppelin/access/Ownable.sol";
+import "../interfaces/IConfiguration.sol";
 import "../interfaces/ITXFee.sol";
 import "../interfaces/IAuctionManager.sol";
 import "../interfaces/IInsurancePool.sol";
-import "../interfaces/Configuration.sol";
-import "./ERC20SlowMint.sol";
+import "./SlowMintingERC20.sol";
     
 
 /**
  * @title RToken
- * @dev An ERC-20 token with built-in rules for expanding and contracting supply.
+ * @dev An ERC-20 token with built-in rules for price stabilization centered around a basket. 
  * 
- * Based on OpenZeppelin's [implementation](https://github.com/OpenZeppelin/openzeppelin-solidity/blob/41aa39afbc13f0585634061701c883fe512a5469/contracts/token/ERC20/ERC20.sol).
+ * RTokens can:
+ *    - scale up or down in supply (nearly) completely elastically
+ *    - change their backing while maintaining price
+ *    - and, recover from collateral defaults through insurance
+ * 
+ * Only the owner (which should be set to a TimelockController) can change the Configuration.
  */
-contract RToken is ERC20SlowMint, Ownable {
+contract RToken is SlowMintingERC20, Ownable {
     using SafeERC20 for IERC20;
 
     /// ==== Immutable State ====
 
     IAuctionManager public immutable override auctionManager;
+    IConfiguration public immutable override conf;
 
     /// Max Fee on transfers, ever
     uint256 public constant override MAX_FEE = 5e16; // 5%
@@ -43,7 +49,9 @@ contract RToken is ERC20SlowMint, Ownable {
         auctionManager = new AuctionManager();
     }
 
+    /// Called at the start of every external
     modifier expandSupply() {
+        // Expands the supply to 2 parties based on how much time has passed. 
         if (!dead) {
             // 31536000 = seconds in a year
             uint256 toExpand = _totalSupply * conf.params.supplyExpansionRate * (block.timestamp - lastSupplyExpansion) / 31536000 / 10**decimals();
@@ -88,7 +96,7 @@ contract RToken is ERC20SlowMint, Ownable {
 
     /// Configuration changes, only callable by Owner.
     function changeConfiguration(address newConf) external override alive expandSupply onlyOwner {
-        conf = Configuration(newConf);
+        conf = IConfiguration(newConf);
     }
 
     /// Adaptation function, callable by anyone

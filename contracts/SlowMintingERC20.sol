@@ -4,7 +4,20 @@ import "../interfaces/IConfiguration.sol";
 import "../interfaces/ICircuitBreaker.sol";
 import "../zeppelin/token/ERC20.sol";
 
-contract ERC20SlowMint is ERC20 {
+/*
+ * @title SlowMintingERC20 
+ * @dev An ERC20 that time-delays minting events, causing the internal balance mapping 
+ * of the contract to update only after an appropriate delay. 
+ * 
+ * The delay is determined using a FIFO minting queue. The queue stores the block of the initial 
+ * minting event. As the block number increases, mintings are taken off the queue and paid out. 
+ *
+ * *Contract Invariant*
+ * At any reasonable setting of values this algorithm should not result in the queue growing 
+ * unboundedly. In the worst case this does occur, portions of the queue can be processed 
+ * manually by calling `processMintings` directly. 
+ */ 
+contract SlowMintingERC20 is ERC20 {
 
     IConfiguration public immutable override conf;
 
@@ -42,6 +55,7 @@ contract ERC20SlowMint is ERC20 {
             uint32 i = lastMinting;
             while (i < min(mintings.length, lastMinting + count)) {
                 Minting storage m = mintings[i];
+                // Break if the next minting is too big.
                 if (m.amount > conf.params.issuanceBlockLimit * (blocksToVest)) {
                     break
                 }
@@ -50,13 +64,15 @@ contract ERC20SlowMint is ERC20 {
                 if (blocksUsed * conf.params.issuanceBlockLimit > m.amount) {
                     blocksUsed = blocksUsed + 1;
                 }
+                blocksToVest = blocksToVest - blocksUsed;
 
+                // Time-delayed balance/supply changes
                 _balances[account] += m.amount;
                 _totalSupply += m.amount;
                 emit MintingComplete(m.account, m.amount);
-                blocksToVest = blocksToVest - blocksUsed;
+
                 i++;
-                delete m;
+                delete m; // gas saving
             }
 
             lastMinting = i;
