@@ -38,9 +38,9 @@ contract InsurancePool is IInsurancePool {
     StakingEvent[] public override withdrawals;
 
 
-    constructor(address _rToken, address _stakingToken) public {
-        rToken = IERC20(_rToken);
-        stakingToken = IERC20(_stakingToken);
+    constructor(address rToken_, address stakingToken_) public {
+        rToken = IERC20(rToken_);
+        stakingToken = IERC20(stakingToken_);
     }
 
     function totalSupply() external view returns (uint256) {
@@ -54,6 +54,17 @@ contract InsurancePool is IInsurancePool {
     /* ========== External ========== */
     
     modifier update(address account) {
+        // Scale floors for just this account to sum RevenueEvents
+        // I think this goes before withdrawals but not entirely sure yet.
+        if (address(account) != address(0) && _balances[account] > 0) {
+            for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
+                RevenueEvent storage re = revenueEvents[i];
+                earned[account] += re.revenue * _balances[account] / re.totalStaked;
+            }
+
+            lastFloor[account] = revenueEvents.length;
+        }
+
         // Process withdrawals for everyone
         uint256 ago = block.timestamp - conf.params.rsrWithdrawalDelay;
         while (withdrawals.length > 0) {
@@ -64,16 +75,6 @@ contract InsurancePool is IInsurancePool {
             settleTopWithdrawal();
         }       
         
-        // Scale floors for just this account to sum RevenueEvents
-        if (address(account) != address(0) && _balances[account] > 0) {
-            for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
-                RevenueEvent storage re = revenueEvents[i];
-                earned[account] += re.revenue * _balances[account] / re.totalStaked;
-            }
-
-            lastFloor[account] = revenueEvents.length;
-        }
-
         _;
     }
 
@@ -147,7 +148,7 @@ contract InsurancePool is IInsurancePool {
 
     /// Callable only by RToken address
 
-    function saveRevenueEvent(uint256 amount) external override {
+    function saveRevenueEvent(uint256 amount) external override update(address(0)) {
         require(_msgSender() == address(rToken), "only RToken can save revenue events");
 
         RevenueEvent storage next = RevenueEvent(block.timestamp, _totalSupply, amount);

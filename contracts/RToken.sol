@@ -42,10 +42,12 @@ contract RToken is SlowMintingERC20, Ownable {
     bool public override dead = false;
 
     constructor(
-        string calldata _name, 
-        string calldata _symbol, 
-        address calldata _conf,
-    ) ERC20SlowMint(_name, _symbol, _conf) public {
+        address calldata owner_,
+        string calldata name_, 
+        string calldata symbol_, 
+        address calldata conf_,
+    ) ERC20SlowMint(name_, symbol_, conf_) public {
+        _owner = owner_;
         auctionManager = new AuctionManager();
     }
 

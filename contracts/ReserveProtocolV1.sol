@@ -12,14 +12,27 @@ import "./RToken.sol";
  */
 contract ReserveProtocolV1 {
     function deploy(
-        string calldata _name, 
-        string calldata _symbol, 
-        IConfiguration.CollateralToken[] calldata _basket, 
-        IConfiguration.Parameters calldata _params
-    ) public returns (address rToken, address insurancePool, address configuration) {
-        Configuration c = new Configuration(_basket, _params);
-        RToken r = new RToken(_name, _symbol, c);
-        InsurancePool ip = new InsurancePool(address(r), c.params.rsrTokenAddress);
-        return (address(r), address(ip), address(c));
+        address calldata owner_,
+        string calldata name_, 
+        string calldata symbol_, 
+        IConfiguration.CollateralToken[] calldata basket_, 
+        IConfiguration.Parameters calldata params_
+    ) public returns (
+        address rToken, 
+        address insurancePool, 
+        address configuration, 
+        address timelockController
+    ) {
+        // Deploy static configuration
+        Configuration c = new Configuration(_basket, params_);
+
+        // Launch TimelockController with initial delay of 0s
+        address[] memory controllers = [owner_];
+        TimelockController tc = new TimelockController(0, controllers, controllers);
+
+        // Create RToken and InsurancePool
+        RToken rtoken = new RToken(address(tc), name_, symbol_, c);
+        InsurancePool ip = new InsurancePool(address(rtoken), c.params.rsrTokenAddress);
+        return (address(rtoken), address(ip), address(c), address(tc));
     }
 }

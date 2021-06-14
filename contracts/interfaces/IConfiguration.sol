@@ -18,7 +18,6 @@ interface IConfiguration {
     struct Parameters {
         /// See SCALE, first.
 
-
         /// Auction length (s)
         /// e.g. 86_400 => An auction lasts 24 hours
         uint32 auctionLength;

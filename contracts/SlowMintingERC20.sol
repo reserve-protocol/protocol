@@ -33,11 +33,11 @@ contract SlowMintingERC20 is ERC20 {
     event MintingComplete(address account, uint256 amount);
 
     constructor(
-        string calldata _name, 
-        string calldata _symbol, 
-        address calldata _conf,
-    ) ERC20(_name, _symbol) public {
-        conf = IConfiguration(_conf);
+        string calldata name_, 
+        string calldata symbol_, 
+        address calldata conf_,
+    ) ERC20(name_, symbol_) public {
+        conf = IConfiguration(conf_);
     }
 
 
