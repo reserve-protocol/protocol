@@ -5,6 +5,7 @@ import "../zeppelin/token/IERC20.sol";
 import "../zeppelin/access/Ownable.sol";
 import "../interfaces/IConfiguration.sol";
 import "../interfaces/ITXFee.sol";
+import "../interfaces/IRToken.sol";
 import "../interfaces/IAuctionManager.sol";
 import "../interfaces/IInsurancePool.sol";
 import "./SlowMintingERC20.sol";
@@ -21,7 +22,7 @@ import "./SlowMintingERC20.sol";
  * 
  * Only the owner (which should be set to a TimelockController) can change the Configuration.
  */
-contract RToken is SlowMintingERC20, Ownable {
+contract RToken is IRToken, SlowMintingERC20, Ownable {
     using SafeERC20 for IERC20;
 
     /// ==== Immutable State ====
@@ -102,7 +103,7 @@ contract RToken is SlowMintingERC20, Ownable {
     }
 
     /// Adaptation function, callable by anyone
-    function launchAuction() external override alive expandSupply {
+    function act() external override alive expandSupply {
         require(lastAuction + conf.params.auctionSpacing > block.timestamp, "too soon");
         lastAuction = block.timestamp;
 

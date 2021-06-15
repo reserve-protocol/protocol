@@ -36,6 +36,7 @@ contract InsurancePool is IInsurancePool {
 
     StakingEvent[] public override deposits;
     StakingEvent[] public override withdrawals;
+    uint256 public override withdrawalIndex;
 
 
     constructor(address rToken_, address stakingToken_) public {
@@ -55,7 +56,6 @@ contract InsurancePool is IInsurancePool {
     
     modifier update(address account) {
         // Scale floors for just this account to sum RevenueEvents
-        // I think this goes before withdrawals but not entirely sure yet.
         if (address(account) != address(0) && _balances[account] > 0) {
             for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
                 RevenueEvent storage re = revenueEvents[i];
@@ -65,14 +65,14 @@ contract InsurancePool is IInsurancePool {
             lastFloor[account] = revenueEvents.length;
         }
 
-        // Process withdrawals for everyone
+        // Process withdrawals
         uint256 ago = block.timestamp - conf.params.rsrWithdrawalDelay;
-        while (withdrawals.length > 0) {
-            if (withdrawals[0].timestamp > ago) {
+        while (withdrawalIndex < withdrawals.length) {
+            if (withdrawals[withdrawalIndex].timestamp > ago) {
                 break;
             }
 
-            settleTopWithdrawal();
+            settleNextWithdrawal();
         }       
         
         _;
@@ -81,24 +81,25 @@ contract InsurancePool is IInsurancePool {
     function amountBeingWithdrawn(address account) public view override returns(uint256) {
         uint256 total;
         for (uint32 i = 0; i < withdrawals.length; i++) {
-            total += withdrawals[i].amount;
+            if (withdrawals[i].account == account) {
+                total += withdrawals[i].amount;
+            }
         }
         return total;
     }
 
-    function settleTopWithdrawal() public override {
-        StakingEvent storage withdrawal = withdrawals[0];
-        uint256 amount = min(_balances[withdrawal.account], withdrawal.amount);
+    function settleNextWithdrawal() public override {
+        StakingEvent storage withdrawal = withdrawals[withdrawalIndex];
+        uint256 ago = block.timestamp - conf.params.rsrWithdrawalDelay;
+        require(withdrawal.timestamp > ago, "too soon");
 
+        uint256 amount = min(_balances[withdrawal.account], withdrawal.amount);
         _balances[withdrawal.account] = _balances[withdrawal.account] - amount;
         _totalSupply = _totalSupply - amount;
 
-        // Shift elements of withdrawals array
-        delete withdrawal;
-        for (uint32 i = 1; i < withdrawals.length; i++) {
-            withdrawals[i-1] = withdrawals[i];
-            withdrawals.length -= 1;
-        }
+        emit WithdrawalCompleted(withdrawal.account, amount);
+        delete withdrawals[withdrawalIndex];
+        withdrawalIndex += 1;
     }
 
     function stake(uint256 amount) external override update(_msgSender()) {
@@ -126,12 +127,6 @@ contract InsurancePool is IInsurancePool {
             rToken.safeTransfer(_msgSender(), revenue);
             emit RevenueClaimed(_msgSender(), revenue);
         }
-    }
-
-    function completeExit() external override {
-        // TODO: require(withdrawals[_msgSender()])
-        initiateWithdrawal(_balances[_msgSender()]);
-        claimRevenue();
     }
 
     // Call if the lastFloor was _so_ far below that he hit the block gas limit.
