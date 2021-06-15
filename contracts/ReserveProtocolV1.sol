@@ -24,7 +24,7 @@ contract ReserveProtocolV1 {
         address timelockController
     ) {
         // Deploy static configuration
-        Configuration c = new Configuration(_basket, params_);
+        Configuration c = new Configuration(basket_, params_);
 
         // Launch TimelockController with initial delay of 0s
         address[] memory controllers = [owner_];

@@ -1,6 +1,8 @@
 pragma solidity 0.8.4;
 
-interface IRToken {
+import "../zeppelin/tokens/ERC20/IERC20.sol";
+
+interface IRToken is IERC20 {
 
     /// Configuration changes, only callable by Owner.
     function changeConfiguration(address newConf);
