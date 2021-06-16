@@ -19,7 +19,7 @@ import "../zeppelin/token/ERC20.sol";
  */ 
 contract SlowMintingERC20 is ERC20 {
 
-    IConfiguration public immutable override conf;
+    IConfiguration public override conf;
 
     struct Minting {
         uint256 blockStart;

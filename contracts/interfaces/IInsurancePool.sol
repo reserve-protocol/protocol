@@ -12,6 +12,9 @@ interface IInsurancePool {
 
     /// Callable only by the RToken
     function saveRevenueEvent(uint256 amount) external;
+    function seizeRSR(uint256 amount) external;
+
+    // =================================
 
     /// Transfers RSR into the contract and locks it
     function stake(uint256 amount) external;

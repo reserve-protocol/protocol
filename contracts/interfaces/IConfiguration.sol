@@ -1,79 +1,61 @@
 pragma solidity 0.8.4;
 
+import "../libraries/Basket.sol";
+
 interface IConfiguration {
 
-    /// ==== Structs ====
+    /// RSR staking deposit delay (s)
+    /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to earn the right to vote.
+    /// TODO: usage not implemented
+    uint32 public immutable override rsrDepositDelaySeconds;
 
-    struct AuctionLimits {
-        uint256 upper;
-        uint256 lower;
-    }
+    /// RSR staking withdrawal delay (s)
+    /// e.g. 2_592_000 => Currently staking RSR tokens take 1 month to withdraw
+    uint32 public immutable override rsrWithdrawalDelaySeconds;
 
-    struct CollateralToken {
-        address address;
-        uint256 quantity;
-        AuctionLimits auctionLimits;
-    }
+    /// RToken max supply
+    /// e.g. 1_000_000e18 => 1M max supply
+    uint256 public immutable override maxSupply;
 
-    struct Parameters {
-        /// See SCALE, first.
+    /// RToken annual supply-expansion rate, scaled
+    /// e.g. 1.23e16 => 1.23% annually
+    uint256 public immutable override supplyExpansionRateScaled;
 
-        /// Auction length (s)
-        /// e.g. 86_400 => An auction lasts 24 hours
-        uint32 auctionLength;
+    /// RToken revenue batch sizes
+    /// e.g. 1e15 => 0.1% of the RToken supply
+    uint256 public immutable override revenueBatchSizeScaled;
 
-        /// Auction spacing (s)
-        /// e.g. 21_600 => Auctions can be up to 6h from each other
-        uint32 auctionSpacing;
+    /// Protocol expenditure factor
+    /// e.g. 1e16 => 1% of the RToken supply expansion goes to expenditures
+    uint256 public immutable override expenditureFactorScaled;
 
-        /// RSR staking deposit delay (s)
-        /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to earn the right to vote.
-        /// TODO: usage not implemented
-        uint32 rsrDepositDelay;
+    /// Issuance/Redemption spread
+    /// e.g. 1e14 => 0.01% spread
+    uint256 public immutable override spreadScaled; 
 
-        /// RSR staking withdrawal delay (s)
-        /// e.g. 2_592_000 => Currently staking RSR tokens take 1 month to withdraw
-        uint32 rsrWithdrawalDelay;
+    /// RToken issuance blocklimit
+    /// e.g. 25_000e18 => 25_000e18 (atto)RToken can be issued per block
+    uint256 public immutable override issuanceBlockLimit;
 
-        /// RToken max supply
-        /// e.g. 1_000_000e18 => 1M max supply
-        uint256 maxSupply;
+    /// Global Settlement (in RSR)
+    /// e.g. 100_000_000e18 => 100M RSR
+    uint256 public immutable override globalSettlementCost;
 
-        /// RToken supply-expansion rate
-        /// e.g. 1.23e16 => 1.23% annually
-        uint256 supplyExpansionRate;
+    /// RSR sell rate per block (in RSR) 
+    /// e.g. 1_000_000e18 => 1M RSR per block
+    uint256 public immutable override rsrSellRate;
 
-        /// RToken revenue batch sizes
-        /// e.g. 1e15 => 0.1% of the RToken supply
-        uint256 revenueBatchSize;
+    /// RSR minimum rate of intake per block (in RSR) 
+    /// e.g. 10_000e18 => 10k RSR per block
+    uint256 public immutable override rsrMinBuyRate;
 
-        /// Protocol expenditure factor
-        /// e.g. 1e16 => 1% of the RToken supply expansion goes to expenditures
-        uint256 expenditureFactor;
-
-        /// Issuance/Redemption spread
-        /// e.g. 1e14 => 0.01% spread
-        uint256 spread; 
-
-        /// RToken issuance blocklimit
-        /// e.g. 25_000e18 => 25_000e18 (atto)RToken can be issued per block
-        uint256 issuanceBlockLimit;
-
-        /// Global Settlement (in RSR)
-        /// e.g. 100_000_000e18 => 100M RSR
-        uint256 globalSettlementCost;
-
-        /// RSR auction limits
-        AuctionLimits rsrAuctionLimits;
-
-        /// Addresses
-        address rsrTokenAddress;
-        address circuitBreakerAddress;
-        address txFeeAddress;
-        address insurancePoolAddress;
-        address batchAuctionAddress;
-        address outgoingExpendituresAddress;
-    }
+    /// Addresses
+    address public immutable override rsrTokenAddress;
+    address public immutable override circuitBreakerAddress;
+    address public immutable override txFeeAddress;
+    address public immutable override insurancePoolAddress;
+    address public immutable override batchAuctionAddress;
+    address public immutable override protocolFundAddress;
 
 }
 
@@ -86,15 +68,55 @@ interface IConfiguration {
 contract Configuration is IConfiguration {
     /// ==== Immutable Constants ====
 
-    /// All percentage values are relative to SCALE.
-    /// For example, a 5% interest rate would be 5e16.
+    /// "*scaled" vars are relative to SCALE.
     uint256 public constant override SCALE = 1e18;
+    /// For example, a 5% interest rate would be 5e16.
 
-    Parameters public immutable override params;
-    CollateralToken[] public immutable override basket;
+    Basket.Info public immutable override basket;
 
-    constructor(CollateralToken[] calldata _basket, Parameters calldata _params) {
-        basket = _basket;
-        params = _params;
+    constructor(
+        Basket.Info calldata basket_,
+        uint32 auctionLengthSeconds_,
+        uint32 auctionSpacingSeconds_,
+        uint32 rsrDepositDelaySeconds_,
+        uint32 rsrWithdrawalDelaySeconds_,
+        uint256 maxSupply_,
+        uint256 supplyExpansionRateScaled_,
+        uint256 revenueBatchSizeScaled_,
+        uint256 expenditureFactorScaled_,
+        uint256 spreadScaled_, 
+        uint256 issuanceBlockLimit_,
+        uint256 globalSettlementCost_,
+        uint256 rsrSellRate_,
+        uint256 rsrMinBuyRate_,
+        address rsrTokenAddress_,
+        address circuitBreakerAddress_,
+        address txFeeAddress_,
+        address insurancePoolAddress_,
+        address batchAuctionAddress_,
+        address protocolFundAddress_
+    ) {
+        basket_.timestampInitialized = block.timestamp;
+        basket_.update();
+        basket = basket_;
+        auctionLengthSeconds = auctionLengthSeconds_;
+        auctionSpacingSeconds = auctionSpacingSeconds_;
+        rsrDepositDelaySeconds = rsrDepositDelaySeconds_;
+        rsrWithdrawalDelaySeconds = rsrWithdrawalDelaySeconds_;
+        maxSupply = maxSupply_;
+        supplyExpansionRateScaled = supplyExpansionRateScaled_;
+        revenueBatchSizeScaled = revenueBatchSizeScaled_;
+        expenditureFactorScaled = expenditureFactorScaled_;
+        spreadScaled = spreadScaled_;
+        issuanceBlockLimit = issuanceBlockLimit_;
+        globalSettlementCost = globalSettlementCost_;
+        rsrSellRate = rsrSellRate_;
+        rsrMinBuyRate = rsrMinBuyRate_;
+        rsrTokenAddress = rsrTokenAddress_;
+        circuitBreakerAddress = circuitBreakerAddress_;
+        txFeeAddress = txFeeAddress_;
+        insurancePoolAddress = insurancePoolAddress_;
+        batchAuctionAddress = batchAuctionAddress_;
+        protocolFundAddress = protocolFundAddress_;
     }
 }
