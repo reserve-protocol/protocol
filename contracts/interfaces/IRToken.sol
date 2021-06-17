@@ -33,4 +33,10 @@ interface IRToken is IERC20 {
 
     /// Returns the amounts of collateral tokens to be paid during a redemption
     function redemptionAmounts(uint256 amount) public view returns (uint256[] memory);
+
+
+    event ConfigurationChanged(address indexed old, address indexed new);
+    event TradingFrozen(address indexed account);
+    event TradingUnfrozen(address indexed account);
+
 }

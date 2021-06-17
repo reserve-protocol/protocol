@@ -1,23 +1,15 @@
 pragma solidity 0.8.4;
 
 import "./RToken.sol";
-import "./interfaces/IAuctionManager.sol";
+import "./interfaces/IAtomicExchange.sol";
 
 import "./zeppelin/token/ERC20/IERC20.sol";
 import "./zeppelin/token/ERC20/SafeERC20.sol";
 
 import "./libraries/AuctionPair.sol";
 
-contract StreamingAuctions {
+contract SimpleOrderbookExchange is IAtomicExchange {
     using SafeERC20 for IERC20;
-
-    RToken public override immutable RTOKEN;
-
-    mapping(bytes32 => AuctionPair.Info) public pairs;
-
-    constructor(address rToken_) {
-        tToken = RToken(rToken_);
-    }
 
     // Requires allowance set on `buyingToken`
     function depositQuantity(
@@ -41,10 +33,10 @@ contract StreamingAuctions {
     function trade(
         address sellingToken, 
         address buyingToken, 
-        uint256 sellingAmount
+        uint256 sellingAmount,
+        uint256 minBuyingAmountWouldAccept
     ) external override {
         AuctionPair.Info storage pair = pairs.get(sellingToken, buyingToken);
-        require(_msgSender() == address(RTOKEN), "only rToken can trade");
 
     }
 }

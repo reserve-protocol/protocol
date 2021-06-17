@@ -6,9 +6,10 @@ import "../zeppelin/access/Ownable.sol";
 import "../interfaces/IConfiguration.sol";
 import "../interfaces/ITXFee.sol";
 import "../interfaces/IRToken.sol";
-import "../interfaces/IAuctionManager.sol";
+import "../interfaces/IAtomicExchange.sol";
 import "../interfaces/IInsurancePool.sol";
 import "./SlowMintingERC20.sol";
+import "./SimpleOrderbookExchange.sol";
     
 
 /**
@@ -25,11 +26,7 @@ import "./SlowMintingERC20.sol";
 contract RToken is IRToken, SlowMintingERC20, Ownable {
     using SafeERC20 for IERC20;
 
-    /// ==== Immutable State ====
-
-    IAuctionManager public immutable override auctionManager;
-
-    /// Max Fee on transfers, ever
+    /// Max Fee on transfers, ever. 
     uint256 public constant override MAX_FEE = 5e16; // 5%
 
     /// ==== Mutable State ====
@@ -40,8 +37,8 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
     uint128 private override lastTimestamp;
     uint128 private override lastBlock;
 
-    /// Global settlement state
-    bool public override dead = false;
+    /// Set to 0 address when not frozen
+    address public override freezer;
 
     constructor(
         address calldata owner_,
@@ -50,131 +47,23 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
         address calldata conf_,
     ) ERC20SlowMint(name_, symbol_, conf_) public {
         _owner = owner_;
-        auctionManager = new AuctionManager();
     }
 
-    modifier circuitBreakerUnpaused() {
-        bool tripped = ICircuitBreaker(conf.circuitBreakerAddress).check();
-        require(!tripped, "circuit breaker tripped");
-        _;
-    }
-    
-    modifier isAlive() {
-        require(!dead, "global settlement has occurred, please redeem");
+    modifier canTrade() {
+        require(!tradingFrozen() , "tradingFrozen is frozen, but you can transfer or redeem");
         _;
     }
 
-    modifier update() {
-        if (!dead) {
-            _update();
-        }
+    modifier doPerBlockUpdates() {
+        _perBlockUpdates();
         _;
     }
 
-
-    /// =========================== External =================================
-
-
-    /// Configuration changes, only callable by Owner.
-    function changeConfiguration(address newConf) external override isAlive onlyOwner {
-        conf = IConfiguration(newConf);
-    }
-
-    /// Adaptation function, callable by anyone
-    function act() external override isAlive update {
-        return;
-    }
-
-    /// Handles issuance.
-    /// Requires approvals to be in place beforehand.
-    function issue(uint256 amount) external override isAlive circuitBreakerUnpaused update {
-        require(amount > 0, "cannot issue zero RToken");
-        require(amount < conf.maxSupply, "at max supply");
-        require(conf.basket.length > 0, "basket cannot be empty");
-
-        uint256[] memory amounts = issueAmounts(amount);
-        for (uint32 i = 0; i < conf.basket.length; i++) {
-            IERC20(conf.basket.tokens[i].address).safeTransferFrom(
-                _msgSender(),
-                address(this),
-                amounts[i]
-            );
-        }
-
-        _mint(_msgSender(), amount);
-        emit Issuance(_msgSender(), amount);
-    }
-
-    /// Handles redemption.
-    function redeem(uint256 amount) external override update {
-        require(amount > 0, "cannot redeem 0 RToken");
-        require(conf.basket.length > 0, "basket cannot be empty");
-
-
-        uint256[] memory amounts = redemptionAmounts(amount);
-        _burn(_msgSender(), amount);
-        for (uint32 i = 0; i < conf.basket.length; i++) {
-            IERC20(conf.basket.tokens[i].address).safeTransfer(
-                _msgSender(),
-                amounts[i]
-            );
-        }
-
-        emit Redemption(_msgSender(), amount);
-    }
-
-    /// Global Settlement
-    function kill() external override isAlive update {
-        IERC20(conf.rsrTokenAddress).safeTransferFrom(
-            _msgSender(),
-            address(0),
-            conf.globalSettlementCost
-        );
-        dead = true;
-        emit Killed(_msgSender());
-    }
 
     /// =========================== Views =================================
 
-    /// Returns index of least collateralized token, or -1 if fully collateralized.
-    function leastCollateralized() public view returns (int32) {
-        uint256 largestDeficitNormed;
-        int32 index = -1;
-
-        for (uint32 i = 0; i < conf.basket.length; i++) {
-            uint256 bal = IERC20(conf.basket.tokens[i].address).balanceOf(address(this));
-            uint256 expected = _totalSupply * conf.basket.tokens[i].quantity / 10**decimals();
-
-            if (bal < expected) {
-                uint256 deficitNormed = (expected - bal) / conf.basket.tokens[i].quantity;
-                if (deficitNormed > largestDeficit)Normed {
-                    largestDeficitNormed = deficitNormed;
-                    index = i;
-                }
-            }
-        }
-        return index;
-    }
-
-    /// Returns the index of the most collateralized token, or -1.
-    function mostCollateralized() public view returns (int32) {
-        uint256 largestSurplusNormed;
-        int32 index = -1;
-
-        for (uint32 i = 0; i < conf.basket.length; i++) {
-            uint256 bal = IERC20(conf.basket.tokens[i].address).balanceOf(address(this));
-            uint256 expected = _totalSupply * conf.basket.tokens[i].quantity / 10**decimals();
-            expected += conf.basket.tokens[i].sellRatePerBlock;
-
-            if (bal > expected) {
-                uint256 surplusNormed = (bal - expected) / conf.basket.tokens[i].quantity;
-                if (surplusNormed > largestSurplusNormed) {
-                    largestSurplusNormed = surplusNormed;
-                    index = i;
-                }
-            }
-        }
-        return index;
+    function tradingFrozen() public view returns (bool) {
+        return freezer != address(0);
     }
 
     /// The returned array will be in the same order as the current basket.
@@ -207,17 +96,143 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
         return parts;
     }
 
-    /// =========================== Internal =================================
+    /// Returns index of least collateralized token, or -1 if fully collateralized.
+    function leastCollateralized() public pure view returns (int32) {
+        uint256 largestDeficitNormed;
+        int32 index = -1;
 
-    /// Holds all the update actions in one place.
-    /// This should be idempotent.
-    function _update() internal override {
-        conf.basket.update(); 
-        _expandSupply();
-        _rebalance();
+        for (uint32 i = 0; i < conf.basket.length; i++) {
+            uint256 bal = IERC20(conf.basket.tokens[i].address).balanceOf(address(this));
+            uint256 expected = _totalSupply * conf.basket.tokens[i].quantity / 10**decimals();
+
+            if (bal < expected) {
+                uint256 deficitNormed = (expected - bal) / conf.basket.tokens[i].quantity;
+                if (deficitNormed > largestDeficit)Normed {
+                    largestDeficitNormed = deficitNormed;
+                    index = i;
+                }
+            }
+        }
+        return index;
     }
 
-    /// Expands the supply and gives the new mintings to the protocol fund and the insurance pool.
+    /// Returns the index of the most collateralized token, or -1.
+    function mostCollateralized() public pure view returns (int32) {
+        uint256 largestSurplusNormed;
+        int32 index = -1;
+
+        for (uint32 i = 0; i < conf.basket.length; i++) {
+            uint256 bal = IERC20(conf.basket.tokens[i].address).balanceOf(address(this));
+            uint256 expected = _totalSupply * conf.basket.tokens[i].quantity / 10**decimals();
+            expected += conf.basket.tokens[i].sellRatePerBlock;
+
+            if (bal > expected) {
+                uint256 surplusNormed = (bal - expected) / conf.basket.tokens[i].quantity;
+                if (surplusNormed > largestSurplusNormed) {
+                    largestSurplusNormed = surplusNormed;
+                    index = i;
+                }
+            }
+        }
+        return index;
+    }
+
+    /// Can be used in conjuction with `transfer` methods to account for fees.
+    function adjustedAmountForFee(address from, address to, uint256 amount) public pure view returns (uint256) {
+        return ITXFee(conf.txFeeAddress).calculateAdjustedAmountToIncludeFee(from, to, amount);
+    }
+
+    /// =========================== External =================================
+
+
+    /// Configuration changes, only callable by Owner.
+    function changeConfiguration(address newConf) external override onlyOwner {
+        emit ConfigurationChanged(address(conf), newConf);
+        conf = IConfiguration(newConf);
+    }
+
+    /// Callable by anyone, runs all the perBlockUpdates
+    function act() external override doPerBlockUpdates {
+        return;
+    }
+
+    /// Handles issuance.
+    /// Requires approvals to be in place beforehand.
+    function issue(uint256 amount) external override doPerBlockUpdates {
+        require(amount > 0, "cannot issue zero RToken");
+        require(amount < conf.maxSupply, "at max supply");
+        require(conf.basket.length > 0, "basket cannot be empty");
+        require(!ICircuitBreaker(conf.circuitBreakerAddress).check(), "circuit breaker tripped");
+
+        uint256[] memory amounts = issueAmounts(amount);
+        for (uint32 i = 0; i < conf.basket.length; i++) {
+            IERC20(conf.basket.tokens[i].address).safeTransferFrom(
+                _msgSender(),
+                address(this),
+                amounts[i]
+            );
+        }
+
+        _mint(_msgSender(), amount);
+        emit Issuance(_msgSender(), amount);
+    }
+
+    /// Handles redemption.
+    function redeem(uint256 amount) external override doPerBlockUpdates {
+        require(amount > 0, "cannot redeem 0 RToken");
+        require(conf.basket.length > 0, "basket cannot be empty");
+
+        uint256[] memory amounts = redemptionAmounts(amount);
+        _burn(_msgSender(), amount);
+        for (uint32 i = 0; i < conf.basket.length; i++) {
+            IERC20(conf.basket.tokens[i].address).safeTransfer(
+                _msgSender(),
+                amounts[i]
+            );
+        }
+
+        emit Redemption(_msgSender(), amount);
+    }
+
+    /// Trading freeze
+    function freeze() external override canTrade doPerBlockUpdates {
+        IERC20(conf.rsrTokenAddress).safeTransferFrom(
+            _msgSender(),
+            address(this),
+            conf.tradingFreezeCost
+        );
+        freezer = _msgSender();
+        emit TradingFrozen(_msgSender());
+    }
+
+    /// Trading unfreeze
+    function unfreeze() external override doPerBlockUpdates {
+        require(tradingFrozen(), "already unfrozen");
+        require(_msgSender() == freezer, "only freezer can unfreeze");
+        IERC20(conf.rsrTokenAddress).safeTransfer(
+            freezer,
+            conf.tradingFreezeCost
+        );
+        freezer = address(0);
+        emit TradingUnfrozen(_msgSender());
+    }
+
+    /// =========================== Internal =================================
+
+    /// This (and everything in it) should be idempotent if run twice in the same block.
+    function _perBlockUpdates() internal override {
+        // update basket quantities based on blocknumber
+        conf.basket.doPerBlockUpdates(); 
+
+        // expand RToken supply
+        _expandSupply(); 
+
+        // trade out collateral for other collateral or insurance RSR
+        _rebalance(); 
+    }
+
+    /// Expands the RToken supply and gives the new mintings to the protocol fund and 
+    /// the insurance pool.
     function _expandSupply() internal override {
         // 31536000 = seconds in a year
         uint256 toExpand = _totalSupply * conf.supplyExpansionRate * (block.timestamp - lastTimestamp) / 31536000 / conf.SCALE;
@@ -245,33 +260,34 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
         }
     }
 
-    /// Trades tokens against the AuctionPairs based on per-block limits
+    /// Trades tokens against the IAtomicExchange with per-block rate limiting
     function _rebalance() internal override {
         uint256 numBlocks = block.number - lastBlock;
         lastBlock = block.number;
-        if (numBlocks == 0) { 
+        if (tradingFrozen() || numBlocks == 0) { 
             return; 
         }
 
         int32 indexLowest = leastCollateralized();
         int32 indexHighest = mostCollateralized();
+        IAtomicExchange exchange = IAtomicExchange(conf.exchangeAddress);
 
         if (indexLowest >= 0 && indexHighest >= 0) {
             Basket.CollateralToken storage ctLow = conf.basket.tokens[indexLowest];
             Basket.CollateralToken storage ctHigh = conf.basket.tokens[indexHighest];
             uint256 sellAmount = min(numBlocks * ctHigh.sellRatePerBlock, IERC20(ctHigh.address).balanceOf(address(this)) - _totalSupply * ctHigh.quantity / 10**(decimals()));
-            auctionManager.trade(ctHigh.address, ctLow.address, sellAmount);
+            exchange.trade(ctHigh.address, ctLow.address, sellAmount);
         } else if (indexLowest >= 0) {
             Basket.CollateralToken storage ctLow = conf.basket.tokens[indexLowest];
             uint256 sellAmount = numBlocks * conf.rsrSellRate;
             uint256 seized = insurancePool.seizeRSR(sellAmount);
-            IERC20(conf.rsrTokenAddress).safeApprove(address(auctionManager), seized);
-            auctionManager.trade(conf.rsrTokenAddress, ctLow.address, seized);
+            IERC20(conf.rsrTokenAddress).safeApprove(conf.exchangeAddress, seized);
+            exchange.trade(conf.rsrTokenAddress, ctLow.address, seized);
         } else if (indexHighest >= 0) {
             Basket.CollateralToken storage ctHigh = conf.basket.tokens[indexHighest];
             uint256 sellAmount = min(numBlocks * ctHigh.sellRatePerBlock, IERC20(ctHigh.address).balanceOf(address(this)) - _totalSupply * ctHigh.quantity / 10**(decimals()));
-            IERC20(ctHigh.address).safeApprove(address(auctionManager), sellAmount);
-            auctionManager.trade(ctHigh.address, conf.rsrTokenAddress, sellAmount);
+            IERC20(ctHigh.address).safeApprove(conf.exchangeAddress, sellAmount);
+            exchange.trade(ctHigh.address, conf.rsrTokenAddress, sellAmount);
         }
 
     }
@@ -289,6 +305,7 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
      * - `from` and `to` are never both zero.
      *
      * Implements an optional tx fee on transfers, capped.
+     * The fee is _in addition_ to the transfer amount.
      */
     function _beforeTokenTransfer(
         address from,
@@ -306,42 +323,6 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
             _balances[from] = _balances[from] - fee;
             _balances[conf.feeRecipient] += fee;
             emit Transfer(from, feeRecipient, fee);
-        }
-    }
-
-    function _recapitalizationAuctionWithCollateral(
-        Settings.CollateralToken storage selling,
-        Settings.CollateralToken storage buying
-    ) internal override {
-        uint256 bal = IERC20(selling.address).balanceOf(address(this));
-        uint256 excess = bal - _totalSupply * collateral.quantity / 10**decimals();
-
-        if (excess > selling.auctionLimits.lower) {
-            // TODO: Issue an AuctionToken and handle exchange at end of auction
-            auctionManager.launchAuction(selling.address, buying.address, excess);
-        }
-    }
-
-    function _recapitalizationAuctionWithoutCollateral(
-        Settings.CollateralToken storage buying
-    ) internal override {
-        auctionManager.launchAuction(
-            conf.rsrTokenAddress, 
-            buying.address, 
-            conf.rsrAuctionLimits.upper
-        );
-    }
-
-    function _profitAuction(Settings.CollateralToken storage selling) internal override {
-        uint256 bal = IERC20(selling.address).balanceOf(address(this));
-        uint256 excess = bal - _totalSupply * selling.quantity / 10**decimals();
-
-        if (excess > selling.auctionLimits.lower) {
-            auctionManager.launchAuction(
-                address(selling), 
-                conf.rsrTokenAddress,
-                excess            
-            );   
         }
     }
 }

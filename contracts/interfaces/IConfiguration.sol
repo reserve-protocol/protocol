@@ -37,9 +37,9 @@ interface IConfiguration {
     /// e.g. 25_000e18 => 25_000e18 (atto)RToken can be issued per block
     uint256 public immutable override issuanceBlockLimit;
 
-    /// Global Settlement (in RSR)
+    /// Cost of freezing trading (in RSR)
     /// e.g. 100_000_000e18 => 100M RSR
-    uint256 public immutable override globalSettlementCost;
+    uint256 public immutable override tradingFreezeCost;
 
     /// RSR sell rate per block (in RSR) 
     /// e.g. 1_000_000e18 => 1M RSR per block
@@ -56,6 +56,7 @@ interface IConfiguration {
     address public immutable override insurancePoolAddress;
     address public immutable override batchAuctionAddress;
     address public immutable override protocolFundAddress;
+    address public immutable override exchangeAddress;
 
 }
 
@@ -86,7 +87,7 @@ contract Configuration is IConfiguration {
         uint256 expenditureFactorScaled_,
         uint256 spreadScaled_, 
         uint256 issuanceBlockLimit_,
-        uint256 globalSettlementCost_,
+        uint256 freezeTradingCost_,
         uint256 rsrSellRate_,
         uint256 rsrMinBuyRate_,
         address rsrTokenAddress_,
@@ -94,7 +95,8 @@ contract Configuration is IConfiguration {
         address txFeeAddress_,
         address insurancePoolAddress_,
         address batchAuctionAddress_,
-        address protocolFundAddress_
+        address protocolFundAddress_,
+        address exchangeAddress_
     ) {
         basket = basket_;
         basket.timestampInitialized = block.timestamp;
@@ -110,7 +112,7 @@ contract Configuration is IConfiguration {
         expenditureFactorScaled = expenditureFactorScaled_;
         spreadScaled = spreadScaled_;
         issuanceBlockLimit = issuanceBlockLimit_;
-        globalSettlementCost = globalSettlementCost_;
+        freezeTradingCost = freezeTradingCost_;
         rsrSellRate = rsrSellRate_;
         rsrMinBuyRate = rsrMinBuyRate_;
         rsrTokenAddress = rsrTokenAddress_;
@@ -119,5 +121,6 @@ contract Configuration is IConfiguration {
         insurancePoolAddress = insurancePoolAddress_;
         batchAuctionAddress = batchAuctionAddress_;
         protocolFundAddress = protocolFundAddress_;
+        exchangeAddress = exchangeAddress_;
     }
 }
