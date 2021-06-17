@@ -54,15 +54,6 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
     }
 
     /// Called at the start of every public view and external
-    modifier update() {
-        conf.basket.update(); 
-
-        _expandSupply();
-
-        _rebalance();
-
-        _;
-    }
 
     modifier circuitBreakerUnpaused() {
         bool tripped = ICircuitBreaker(conf.circuitBreakerAddress).check();
@@ -77,6 +68,12 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
 
     /// =========================== External =================================
 
+
+    /// Callable only by the auction manager
+    function update() external override {
+        require(_msgSender() == address(auctionManager), "must be auction manager");
+        _update();
+    }
 
     /// Configuration changes, only callable by Owner.
     function changeConfiguration(address newConf) external override isAlive expandSupply onlyOwner {
@@ -212,9 +209,15 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
 
     /// =========================== Internal =================================
 
+    /// Holds all the update actions in one place
+    function _update() internal override {
+        conf.basket.update(); 
+        _expandSupply();
+        _rebalance();
+    }
 
     /// Expands the supply and gives the new mintings to the protocol fund and the insurance pool
-    function _expandSupply() internal override isAlive {
+    function _expandSupply() internal override {
         // 31536000 = seconds in a year
         uint256 toExpand = _totalSupply * conf.supplyExpansionRate * (block.timestamp - lastTimestamp) / 31536000 / conf.SCALE;
         lastTimestamp = block.timestamp;
@@ -239,7 +242,7 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
     }
 
     /// Trades tokens against the AuctionPairs based on per-block limits
-    function _rebalance() internal override isAlive {
+    function _rebalance() internal override {
         int32 indexLowest = leastCollateralized();
         int32 indexHighest = mostCollateralized();
 

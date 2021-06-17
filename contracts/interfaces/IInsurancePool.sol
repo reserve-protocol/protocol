@@ -6,15 +6,18 @@ interface IInsurancePool {
 
     function earned(address account) external view returns (uint256);
 
+    function lastFloor(address account) external view returns (uint256);
+
     function totalSupply() external view returns (uint256);
 
-    // =================================
 
-    /// Callable only by the RToken
+    // ==== Callable only by the RToken ====
+
     function saveRevenueEvent(uint256 amount) external;
+    
     function seizeRSR(uint256 amount) external;
 
-    // =================================
+    // ==== Callable by anyone ====
 
     /// Transfers RSR into the contract and locks it
     function stake(uint256 amount) external;

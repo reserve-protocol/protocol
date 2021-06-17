@@ -96,9 +96,10 @@ contract Configuration is IConfiguration {
         address batchAuctionAddress_,
         address protocolFundAddress_
     ) {
-        basket_.timestampInitialized = block.timestamp;
-        basket_.update();
         basket = basket_;
+        basket.timestampInitialized = block.timestamp;
+        basket.update();
+
         auctionLengthSeconds = auctionLengthSeconds_;
         auctionSpacingSeconds = auctionSpacingSeconds_;
         rsrDepositDelaySeconds = rsrDepositDelaySeconds_;
