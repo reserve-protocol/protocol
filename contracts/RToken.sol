@@ -66,28 +66,30 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
         _;
     }
 
+    modifier update() {
+        if (!dead) {
+            _update();
+        }
+        _;
+    }
+
+
     /// =========================== External =================================
 
 
-    /// Callable only by the auction manager
-    function update() external override {
-        require(_msgSender() == address(auctionManager), "must be auction manager");
-        _update();
-    }
-
     /// Configuration changes, only callable by Owner.
-    function changeConfiguration(address newConf) external override isAlive expandSupply onlyOwner {
+    function changeConfiguration(address newConf) external override isAlive onlyOwner {
         conf = IConfiguration(newConf);
     }
 
     /// Adaptation function, callable by anyone
-    function act() external override isAlive expandSupply rebalance {
-
+    function act() external override isAlive update {
+        return;
     }
 
     /// Handles issuance.
     /// Requires approvals to be in place beforehand.
-    function issue(uint256 amount) external override isAlive expandSupply circuitBreakerUnpaused {
+    function issue(uint256 amount) external override isAlive circuitBreakerUnpaused update {
         require(amount > 0, "cannot issue zero RToken");
         require(amount < conf.maxSupply, "at max supply");
         require(conf.basket.length > 0, "basket cannot be empty");
@@ -106,7 +108,7 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
     }
 
     /// Handles redemption.
-    function redeem(uint256 amount) external override expandSupply {
+    function redeem(uint256 amount) external override update {
         require(amount > 0, "cannot redeem 0 RToken");
         require(conf.basket.length > 0, "basket cannot be empty");
 
@@ -124,7 +126,7 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
     }
 
     /// Global Settlement
-    function kill() external override isAlive expandSupply {
+    function kill() external override isAlive update {
         IERC20(conf.rsrTokenAddress).safeTransferFrom(
             _msgSender(),
             address(0),
@@ -209,14 +211,15 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
 
     /// =========================== Internal =================================
 
-    /// Holds all the update actions in one place
+    /// Holds all the update actions in one place.
+    /// This should be idempotent.
     function _update() internal override {
         conf.basket.update(); 
         _expandSupply();
         _rebalance();
     }
 
-    /// Expands the supply and gives the new mintings to the protocol fund and the insurance pool
+    /// Expands the supply and gives the new mintings to the protocol fund and the insurance pool.
     function _expandSupply() internal override {
         // 31536000 = seconds in a year
         uint256 toExpand = _totalSupply * conf.supplyExpansionRate * (block.timestamp - lastTimestamp) / 31536000 / conf.SCALE;
@@ -243,28 +246,30 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
 
     /// Trades tokens against the AuctionPairs based on per-block limits
     function _rebalance() internal override {
+        uint256 numBlocks = block.number - lastBlock;
+        lastBlock = block.number;
+
         int32 indexLowest = leastCollateralized();
         int32 indexHighest = mostCollateralized();
 
         if (indexLowest >= 0 && indexHighest >= 0) {
             Basket.CollateralToken storage ctLow = conf.basket.tokens[indexLowest];
             Basket.CollateralToken storage ctHigh = conf.basket.tokens[indexHighest];
-            uint256 sellAmount = min((block.number - lastBlock) * ctHigh.sellRatePerBlock, IERC20(ctHigh.address).balanceOf(address(this)) - _totalSupply * ctHigh.quantity / 10**(decimals()));
+            uint256 sellAmount = min(numBlocks * ctHigh.sellRatePerBlock, IERC20(ctHigh.address).balanceOf(address(this)) - _totalSupply * ctHigh.quantity / 10**(decimals()));
             auctionManager.trade(ctHigh.address, ctLow.address, sellAmount);
         } else if (indexLowest >= 0) {
             Basket.CollateralToken storage ctLow = conf.basket.tokens[indexLowest];
-            uint256 sellAmount = (block.number - lastBlock) * conf.rsrSellRate;
+            uint256 sellAmount = numBlocks * conf.rsrSellRate;
             uint256 seized = insurancePool.seizeRSR(sellAmount);
             IERC20(conf.rsrTokenAddress).safeApprove(address(auctionManager), seized);
             auctionManager.trade(conf.rsrTokenAddress, ctLow.address, seized);
         } else if (indexHighest >= 0) {
             Basket.CollateralToken storage ctHigh = conf.basket.tokens[indexHighest];
-            uint256 sellAmount = min((block.number - lastBlock) * ctHigh.sellRatePerBlock, IERC20(ctHigh.address).balanceOf(address(this)) - _totalSupply * ctHigh.quantity / 10**(decimals()));
+            uint256 sellAmount = min(numBlocks * ctHigh.sellRatePerBlock, IERC20(ctHigh.address).balanceOf(address(this)) - _totalSupply * ctHigh.quantity / 10**(decimals()));
             IERC20(ctHigh.address).safeApprove(address(auctionManager), sellAmount);
             auctionManager.trade(ctHigh.address, conf.rsrTokenAddress, sellAmount);
         }
 
-        lastBlock = block.number;
     }
 
     /**
