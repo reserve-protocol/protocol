@@ -19,16 +19,12 @@ contract StreamingAuctions {
         tToken = RToken(rToken_);
     }
 
-    modifier updateRToken() {
-        RTOKEN.update();
-    }
-
     // Requires allowance set on `buyingToken`
     function depositQuantity(
         address sellingToken, 
         address buyingToken, 
         uint256 amount
-    ) external override updateRToken {
+    ) external override {
         AuctionPair.Info storage pair = pairs.get(sellingToken, buyingToken);
         IERC20(pair.buyingToken).safeTransferFrom(_msgSender(), address(this), amount);
         pair.balances[_msgSender()] += amount;

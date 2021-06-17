@@ -15,7 +15,7 @@ library Basket {
         CollateralToken[] tokens;
     }
 
-    /// Adjusts the quantities downwards based on how much supply expansion should have happened
+    /// Adjusts the quantities based on supply expansion
     function update(Basket.Info storage self) internal {
         uint256 scaledRate = SCALE + supplyExpansionRateScaled * (block.timestamp - self.timestampInitialized) / 31536000;
         for (uint32 i = 0; i < self.tokens.length; i++) {

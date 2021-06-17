@@ -53,8 +53,6 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
         auctionManager = new AuctionManager();
     }
 
-    /// Called at the start of every public view and external
-
     modifier circuitBreakerUnpaused() {
         bool tripped = ICircuitBreaker(conf.circuitBreakerAddress).check();
         require(!tripped, "circuit breaker tripped");
@@ -224,6 +222,9 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
         // 31536000 = seconds in a year
         uint256 toExpand = _totalSupply * conf.supplyExpansionRate * (block.timestamp - lastTimestamp) / 31536000 / conf.SCALE;
         lastTimestamp = block.timestamp;
+        if (toExpand == 0) {
+            return;
+        }
 
         // Mint to protocol fund
         if (conf.expenditureFactor > 0) {
@@ -248,6 +249,9 @@ contract RToken is IRToken, SlowMintingERC20, Ownable {
     function _rebalance() internal override {
         uint256 numBlocks = block.number - lastBlock;
         lastBlock = block.number;
+        if (numBlocks == 0) { 
+            return; 
+        }
 
         int32 indexLowest = leastCollateralized();
         int32 indexHighest = mostCollateralized();
