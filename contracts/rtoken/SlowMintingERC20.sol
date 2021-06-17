@@ -1,8 +1,9 @@
 pragma solidity 0.8.4;
 
-import "../interfaces/IConfiguration.sol";
 import "../interfaces/ICircuitBreaker.sol";
 import "../zeppelin/token/ERC20.sol";
+
+import "../Configuration.sol";
 
 /*
  * @title SlowMintingERC20 
@@ -19,7 +20,7 @@ import "../zeppelin/token/ERC20.sol";
  */ 
 contract SlowMintingERC20 is ERC20 {
 
-    IConfiguration public override conf;
+    Configuration public conf;
 
     struct Minting {
         uint256 blockStart;
@@ -37,7 +38,7 @@ contract SlowMintingERC20 is ERC20 {
         string calldata symbol_, 
         address calldata conf_,
     ) ERC20(name_, symbol_) public {
-        conf = IConfiguration(conf_);
+        conf = Configuration(conf_);
     }
 
 

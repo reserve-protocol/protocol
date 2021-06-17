@@ -9,6 +9,6 @@ interface IAtomicExchange {
         address buyingToken, 
         uint256 sellingAmount,
         uint256 minBuyingAmountWouldAccept
-    ) external ;
+    ) external;
 
 }

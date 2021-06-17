@@ -1,11 +1,11 @@
 pragma solidity 0.8.4;
 
-import "../zeppelin/tokens/ERC20/IERC20.sol";
+import "../zeppelin/token/ERC20/IERC20.sol";
 
 interface IRToken is IERC20 {
 
     /// Configuration changes, only callable by Owner.
-    function changeConfiguration(address newConf);
+    function changeConfiguration(address newConf) external;
 
     /// Adaptation function, callable by anyone
     function act() external;
@@ -23,19 +23,19 @@ interface IRToken is IERC20 {
     /// =========================== Views =================================
 
     /// Returns index of least collateralized token, or -1 if fully collateralized.
-    function leastCollateralized() public view returns (int32);
+    function leastCollateralized() external view returns (int32);
 
     /// Returns the index of the most collateralized token, or -1.
-    function mostCollateralized() public view returns (int32);
+    function mostCollateralized() external view returns (int32);
 
     /// Returns the amounts of collateral tokens required to issue `amount` quantity
-    function issueAmounts(uint256 amount) public view returns (uint256[] memory);
+    function issueAmounts(uint256 amount) external view returns (uint256[] memory);
 
     /// Returns the amounts of collateral tokens to be paid during a redemption
-    function redemptionAmounts(uint256 amount) public view returns (uint256[] memory);
+    function redemptionAmounts(uint256 amount) external view returns (uint256[] memory);
 
 
-    event ConfigurationChanged(address indexed old, address indexed new);
+    event ConfigurationChanged(address indexed oldConfiguration, address indexed newConfiguration);
     event TradingFrozen(address indexed account);
     event TradingUnfrozen(address indexed account);
 

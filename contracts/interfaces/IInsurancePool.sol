@@ -14,7 +14,7 @@ interface IInsurancePool {
     // ==== Callable only by the RToken ====
 
     function saveRevenueEvent(uint256 amount) external;
-    
+
     function seizeRSR(uint256 amount) external;
 
     // ==== Callable by anyone ====
@@ -23,7 +23,7 @@ interface IInsurancePool {
     function stake(uint256 amount) external;
 
     /// Begins a withdrawal of RSR. Caller earns during the withdrawal period.
-    function initiateWithdrawal(uint256 amount) public;
+    function initiateWithdrawal(uint256 amount) external;
 
     /// Returns all earned RToken. Can call as second half of withdraw process.
     function claimRevenue() external;

@@ -1,6 +1,5 @@
 pragma solidity 0.8.4;
 
-import './interfaces/IRTokenV1Deployer.sol';
 import "./interfaces/IConfiguration.sol";
 import "./rtoken/InsurancePool.sol";
 import "./SimpleOrderbookExchange.sol";
