@@ -11,7 +11,6 @@ import "./interfaces/IAtomicExchange.sol";
 import "./interfaces/IInsurancePool.sol";
 import "./interfaces/IConfiguration.sol";
 import "./rtoken/SlowMintingERC20.sol";
-import "./libraries/Basket.sol";
 import "./SimpleOrderbookExchange.sol";
 
 /**
@@ -30,6 +29,18 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
 
     /// Max Fee on transfers, ever. 
     uint256 public constant MAX_FEE = 5e16; // 5%
+
+    struct CollateralToken {
+        address tokenAddress;
+        uint256 quantity;
+        uint256 perBlockRateLimit;
+    }
+
+    struct Basket {
+        mapping(uint256 => CollateralToken) tokens;
+        uint256 size;
+    }
+
 
     /// ==== Mutable State ====
 

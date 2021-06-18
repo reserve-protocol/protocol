@@ -2,8 +2,9 @@
 pragma solidity 0.8.4;
 
 import "./deps/zeppelin/governance/TimelockController.sol";
-import "./libraries/Basket.sol";
 import "./rtoken/InsurancePool.sol";
+import "./interfaces/IConfiguration.sol";
+import "./Configuration.sol";
 import "./SimpleOrderbookExchange.sol";
 import "./RToken.sol";
 
@@ -23,8 +24,10 @@ contract ReserveProtocolV1 {
     function deploy(
         address owner,
         string calldata name, 
-        string calldata symbol, 
-        CollateralToken[] memory tokens, 
+        string calldata symbol,
+        address[] memory tokenAddresses, 
+        uint256[] memory tokenQuantities, 
+        uint256[] memory tokenRateLimits, 
         uint256 auctionLengthSeconds,
         uint256 auctionSpacingSeconds,
         uint256 rsrDepositDelaySeconds,
@@ -50,9 +53,18 @@ contract ReserveProtocolV1 {
         address configuration, 
         address timelockController
     ) {
+        RToken.CollateralToken[] tokens = new RToken.CollateralToken[](tokenAddresses.length);
+        for (uint i = 0; i < tokenAddresses.length; i++) {
+            tokens[i] = RToken.CollateralToken(
+                tokenAddresses[i], 
+                tokenQuantities[i], 
+                tokenRateLimits[i]
+            );
+        }
+
         // Deploy static configuration
         Configuration c = new Configuration(
-            tokens, 
+            tokens,
             rsrDepositDelaySeconds,
             rsrWithdrawalDelaySeconds,
             maxSupply,

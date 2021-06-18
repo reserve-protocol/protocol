@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../RToken.sol";
-import "../libraries/Basket.sol";
-
 interface IConfiguration {
 
     function getBasketSize() external view returns (uint256);
