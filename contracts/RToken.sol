@@ -198,7 +198,7 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
             );
         }
 
-        _mint(_msgSender(), amount);
+        mint(_msgSender(), amount);
         emit Issuance(_msgSender(), amount);
     }
 

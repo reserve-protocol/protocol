@@ -32,13 +32,13 @@ contract SlowMintingERC20 is ERC20 {
     Configuration public conf;
 
     struct Minting {
-        uint256 blockStart;
         uint256 amount;
         address account;
     }
 
-    Minting[] public override mintings;
-    uint256 public override currentMinting;
+    Minting[] private mintings;
+    uint256 private currentMinting;
+    uint256 private lastBlockChecked;
 
     event MintingInitiated(address account, uint256 amount);
     event MintingComplete(address account, uint256 amount);
@@ -49,6 +49,7 @@ contract SlowMintingERC20 is ERC20 {
         address conf_
     ) ERC20(name_, symbol_) {
         conf = Configuration(conf_);
+        lastBlockChecked = block.number;
     }
 
 
@@ -62,13 +63,12 @@ contract SlowMintingERC20 is ERC20 {
     /// Can also be called directly if we get to the block gas limit. 
     function tryProcessMintings(uint256 count) public override {
         if (!ICircuitBreaker(conf.circuitBreakerAddress()).check()) {
-            uint256 numBlocks = block.number - m.blockStart;
-            uint256 i = currentMinting;
-            while (i < mintings.length && i < currentMinting + count) {
-                Minting storage m = mintings[i];
+            uint256 blocksSince = block.number - lastBlockChecked;
+            while (currentMinting < mintings.length && i < currentMinting + count) {
+                Minting storage m = mintings[currentMinting];
 
                 // Break if the next minting is too big.
-                if (m.amount > conf.issuanceBlockLimit() * (numBlocks)) {
+                if (m.amount > conf.issuanceBlockLimit() * (blocksSince)) {
                     break;
                 }
                 _mint(m.account, m.amount);
@@ -78,13 +78,12 @@ contract SlowMintingERC20 is ERC20 {
                 if (blocksUsed * conf.issuanceBlockLimit() > m.amount) {
                     blocksUsed = blocksUsed + 1;
                 }
-                numBlocks = numBlocks - blocksUsed;
-                delete mintings[i]; // gas saving
-                i++;
+                blocksSince = blocksSince - blocksUsed;
+                delete mintings[currentMinting]; // gas saving
+                currentMinting++;
             }
-
-            currentMinting = i;
         }
+        lastBlockChecked = block.number;
     }
 
     /**
@@ -144,9 +143,9 @@ contract SlowMintingERC20 is ERC20 {
     }
 
     /** @dev Creates `amount` tokens and assigns them to `account`, increasing
-     * the total supply.
+     * the total supply, but only after a delay.
      *
-     * Emits a {Transfer} event with `from` set to the zero address.
+     * Emits a {MintingInitiated} event with `from` set to the zero address.
      *
      * Requirements:
      *
@@ -156,9 +155,10 @@ contract SlowMintingERC20 is ERC20 {
      * the future based on conf.issuanceBlockLimit().
      */
     function mint(address account, uint256 amount) external override {
+        require(_msgSender() == address(this), "ERC20: mint is only callable by self");
         require(account != address(0), "ERC20: mint to the zero address");
 
-        Minting memory m = Minting(block.number, amount, account);
+        Minting memory m = Minting(amount, account);
         mintings.push(m);
         emit MintingInitiated(account, amount);
     }
