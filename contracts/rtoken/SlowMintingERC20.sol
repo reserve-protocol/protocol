@@ -61,7 +61,7 @@ contract SlowMintingERC20 is ERC20 {
 
     /// Tries to process `count` mintings. Called before most actions.
     /// Can also be called directly if we get to the block gas limit. 
-    function tryProcessMintings(uint256 count) public override {
+    function tryProcessMintings(uint256 count) public {
         if (!ICircuitBreaker(conf.circuitBreakerAddress()).check()) {
             uint256 blocksSince = block.number - lastBlockChecked;
             while (currentMinting < mintings.length && i < currentMinting + count) {

@@ -66,8 +66,20 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
         _;
     }
 
+
     modifier doPerBlockUpdates() {
-        _perBlockUpdates();
+        // TODO: Confirm this is the right order
+
+        tryProcessMintings() // SlowMintingERC20 update step
+
+        // set basket quantities based on blocknumber
+        basket = conf.getBasketForCurrentBlock();
+
+        // expand RToken supply
+        _expandSupply(); 
+
+        // trade out collateral for other collateral or insurance RSR
+        _rebalance(); 
         _;
     }
 
@@ -198,6 +210,7 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
             );
         }
 
+        // mint() puts it on the queue
         mint(_msgSender(), amount);
         emit Issuance(_msgSender(), amount);
     }
@@ -243,18 +256,6 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
     }
 
     /// =========================== Internal =================================
-
-    /// This (and everything in it) should be idempotent if run twice in the same block.
-    function _perBlockUpdates() internal override {
-        // set basket quantities based on blocknumber
-        basket = conf.getBasketForCurrentBlock();
-
-        // expand RToken supply
-        _expandSupply(); 
-
-        // trade out collateral for other collateral or insurance RSR
-        _rebalance(); 
-    }
 
     /// Expands the RToken supply and gives the new mintings to the protocol fund and 
     /// the insurance pool.
