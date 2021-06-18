@@ -2,6 +2,7 @@
 pragma solidity 0.8.4;
 
 import "./interfaces/IConfiguration.sol";
+import "./libraries/Basket.sol";
 import "./RToken.sol";
 
 /*
@@ -11,70 +12,70 @@ import "./RToken.sol";
  */ 
 contract Configuration is IConfiguration {
 
-    CollateralToken[] public basket;
+    Basket public immutable basket;
 
     /// "*scaled" vars are relative to SCALE.
-    uint256 public constant SCALE = 1e18;
+    uint256 public constant override SCALE = 1e18;
     /// For example, a 5% interest rate would be 5e16.
 
     /// RSR staking deposit delay (s)
     /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to earn the right to vote.
     /// TODO: usage not implemented
-    uint32 public immutable rsrDepositDelaySeconds;
+    uint256 public immutable override rsrDepositDelaySeconds;
 
     /// RSR staking withdrawal delay (s)
     /// e.g. 2_592_000 => Currently staking RSR tokens take 1 month to withdraw
-    uint32 public immutable rsrWithdrawalDelaySeconds;
+    uint256 public immutable override rsrWithdrawalDelaySeconds;
 
     /// RToken max supply
     /// e.g. 1_000_000e18 => 1M max supply
-    uint256 public immutable maxSupply;
+    uint256 public immutable override maxSupply;
 
     /// RToken annual supply-expansion rate, scaled
     /// e.g. 1.23e16 => 1.23% annually
-    uint256 public immutable supplyExpansionRateScaled;
+    uint256 public immutable override supplyExpansionRateScaled;
 
     /// RToken revenue batch sizes
     /// e.g. 1e15 => 0.1% of the RToken supply
-    uint256 public immutable revenueBatchSizeScaled;
+    uint256 public immutable override revenueBatchSizeScaled;
 
     /// Protocol expenditure factor
     /// e.g. 1e16 => 1% of the RToken supply expansion goes to expenditures
-    uint256 public immutable expenditureFactorScaled;
+    uint256 public immutable override expenditureFactorScaled;
 
     /// Issuance/Redemption spread
     /// e.g. 1e14 => 0.01% spread
-    uint256 public immutable spreadScaled; 
+    uint256 public immutable override spreadScaled; 
 
     /// RToken issuance blocklimit
     /// e.g. 25_000e18 => 25_000e18 (atto)RToken can be issued per block
-    uint256 public immutable issuanceBlockLimit;
+    uint256 public immutable override issuanceBlockLimit;
 
     /// Cost of freezing trading (in RSR)
     /// e.g. 100_000_000e18 => 100M RSR
-    uint256 public immutable tradingFreezeCost;
+    uint256 public immutable override tradingFreezeCost;
 
     /// RSR sell rate per block (in RSR) 
     /// e.g. 1_000_000e18 => 1M RSR per block
-    uint256 public immutable rsrSellRate;
+    uint256 public immutable override rsrSellRate;
 
     /// Addresses
-    address public immutable rsrTokenAddress;
-    address public immutable circuitBreakerAddress;
-    address public immutable txFeeAddress;
-    address public immutable insurancePoolAddress;
-    address public immutable batchAuctionAddress;
-    address public immutable protocolFundAddress;
-    address public immutable exchangeAddress;
+    address public immutable override rsrTokenAddress;
+    address public immutable override circuitBreakerAddress;
+    address public immutable override txFeeAddress;
+    address public immutable override insurancePoolAddress;
+    address public immutable override batchAuctionAddress;
+    address public immutable override protocolFundAddress;
+    address public immutable override exchangeAddress;
 
 
     /// Generated
-    uint256 public immutable initializedTimestamp;
+    uint256 public immutable override initializedTimestamp;
 
     constructor(
-        CollateralToken[] memory basket_,
-        uint32 rsrDepositDelaySeconds_,
-        uint32 rsrWithdrawalDelaySeconds_,
+        CollateralToken[] memory tokens_,
+        uint256 rsrDepositDelaySeconds_,
+        uint256 rsrWithdrawalDelaySeconds_,
         uint256 maxSupply_,
         uint256 supplyExpansionRateScaled_,
         uint256 revenueBatchSizeScaled_,
@@ -91,7 +92,10 @@ contract Configuration is IConfiguration {
         address protocolFundAddress_,
         address exchangeAddress_
     ) {
-        basket = basket_;
+        basket.size = tokens_.length;
+        for (uint256 i = 0; i < basket.size; i++) {
+            basket.tokens[i] = tokens_[i];
+        }
         rsrDepositDelaySeconds = rsrDepositDelaySeconds_;
         rsrWithdrawalDelaySeconds = rsrWithdrawalDelaySeconds_;
         maxSupply = maxSupply_;
@@ -113,16 +117,14 @@ contract Configuration is IConfiguration {
         initializedTimestamp = block.timestamp;
     }
 
-    function getBasketForCurrentBlock() external view returns(CollateralToken[] memory) { 
-        CollateralToken[] memory newBasket = new CollateralToken[](basket.length);
-        uint256 scaledRate = SCALE + supplyExpansionRateScaled * (block.timestamp - initializedTimestamp) / 31536000;
-        for (uint32 i = 0; i < basket.length; i++) {
-            newBasket[i] = CollateralToken(
-                basket[i].tokenAddress,
-                basket[i].quantity * SCALE / scaledRate,
-                basket[i].perBlockRateLimit
-            );
-        }
-        return newBasket;
+    function getBasketSize() external view override returns (uint256) {
+        return basket.size;
+    }
+
+    function getBasketTokenAdjusted(uint256 i) external view override returns(address, uint256, uint256) { 
+        uint256 scaledRate = SCALE + supplyExpansionRateScaled * 
+            (block.timestamp - initializedTimestamp) / 31536000;
+        CollateralToken storage ct = basket.tokens[i];
+        return (ct.tokenAddress, ct.quantity * SCALE / scaledRate, ct.perBlockRateLimit);
     }
 }

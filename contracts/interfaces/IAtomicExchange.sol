@@ -8,8 +8,13 @@ interface IAtomicExchange {
     function trade(
         address sellingToken, 
         address buyingToken, 
+        uint256 sellingAmount
+    ) external;
+
+    function trade(
+        address sellingToken, 
+        address buyingToken, 
         uint256 sellingAmount,
         uint256 minBuyingAmountWouldAccept
     ) external;
-
 }

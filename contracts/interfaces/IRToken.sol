@@ -2,8 +2,9 @@
 pragma solidity 0.8.4;
 
 import "../deps/zeppelin/token/ERC20/IERC20.sol";
+import "./ISlowMintingERC20.sol";
 
-interface IRToken is IERC20 {
+interface IRToken is ISlowMintingERC20 {
 
     /// Configuration changes, only callable by Owner.
     function changeConfiguration(address newConf) external;
@@ -18,16 +19,21 @@ interface IRToken is IERC20 {
     /// Handles redemption.
     function redeem(uint256 amount) external;
 
-    /// Global Settlement, callable by anyone
-    function kill() external; 
+    /// Global trading freeze, callable by anyone
+    function freezeTrading() external; 
+    function unfreezeTrading() external;
 
     /// =========================== Views =================================
 
+    function tradingFrozen() external view returns (bool);
+
+    function isFullyCollateralized() external view returns (bool);
+
     /// Returns index of least collateralized token, or -1 if fully collateralized.
-    function leastCollateralized() external view returns (int32);
+    function leastCollateralized() external view returns (int256);
 
     /// Returns the index of the most collateralized token, or -1.
-    function mostCollateralized() external view returns (int32);
+    function mostCollateralized() external view returns (int256);
 
     /// Returns the amounts of collateral tokens required to issue `amount` quantity
     function issueAmounts(uint256 amount) external view returns (uint256[] memory);
@@ -35,6 +41,7 @@ interface IRToken is IERC20 {
     /// Returns the amounts of collateral tokens to be paid during a redemption
     function redemptionAmounts(uint256 amount) external view returns (uint256[] memory);
 
+    function adjustedAmountForFee(address from, address to, uint256 amount) external returns (uint256);
 
     event Issuance(address indexed issuer, uint256 indexed amount);
     event Redemption(address indexed redeemer, uint256 indexed amount);

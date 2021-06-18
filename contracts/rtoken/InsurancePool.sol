@@ -49,7 +49,7 @@ contract InsurancePool is Context, IInsurancePool {
     uint256 public withdrawalIndex;
 
 
-    constructor(address rToken_, address rsr_) public {
+    constructor(address rToken_, address rsr_) {
         RTOKEN = IERC20(rToken_);
         RSR = IERC20(rsr_);
     }
@@ -59,14 +59,14 @@ contract InsurancePool is Context, IInsurancePool {
         if (address(account) != address(0) && _balanceOf(account) > 0) {
             for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
                 RevenueEvent storage re = revenueEvents[i];
-                earned[account] += re.revenue * _balanceOf[account] / re.totalStaked;
+                earned[account] += re.revenue * _balanceOf(account) / re.totalStaked;
             }
 
             lastFloor[account] = revenueEvents.length;
         }
 
         // Process withdrawals
-        uint256 ago = block.timestamp - conf.rsrWithdrawalDelay;
+        uint256 ago = block.timestamp - conf.rsrWithdrawalDelaySeconds();
         while (withdrawalIndex < withdrawals.length) {
             if (withdrawals[withdrawalIndex].timestamp > ago) {
                 break;
@@ -80,17 +80,17 @@ contract InsurancePool is Context, IInsurancePool {
 
     /* ========== External ========== */
 
-    function totalSupply() external view update(0) returns (uint256) {
+    function totalSupply() external override update(address(0)) returns (uint256) {
         return _totalSupply - _seized;
     }
 
-    function balanceOf(address account) public view update(account) returns (uint256) {
+    function balanceOf(address account) external override update(account) returns (uint256) {
         return _balanceOf(account);
     }
     
     function settleNextWithdrawal() public override {
         StakingEvent storage withdrawal = withdrawals[withdrawalIndex];
-        uint256 ago = block.timestamp - conf.rsrWithdrawalDelay;
+        uint256 ago = block.timestamp - conf.rsrWithdrawalDelaySeconds();
         require(withdrawal.timestamp > ago, "too soon");
 
         uint256 amount = Math.min(_balanceOf(_msgSender()), withdrawal.amount);
@@ -145,13 +145,13 @@ contract InsurancePool is Context, IInsurancePool {
         require(_msgSender() == address(RTOKEN), "only RToken can save revenue events");
 
         RTOKEN.safeTransferFrom(address(RTOKEN), address(this), amount);
-        RevenueEvent storage next = RevenueEvent(block.timestamp, _totalSupply, amount);
+        RevenueEvent memory next = RevenueEvent(block.timestamp, _totalSupply, amount);
         revenueEvents.push(next);
 
         emit RevenueEventSaved(revenueEvents.length - 1, amount);
     }
 
-    function seizeRSR(uint256 amount) external override update(address(0)) {
+    function seizeRSR(uint256 amount) external override update(address(0)) returns(uint256) {
         require(_msgSender() == address(RTOKEN), "only RToken can save revenue events");
         amount = Math.min(RSR.balanceOf(address(this)), amount);
         RSR.safeTransfer(address(RTOKEN), amount);
@@ -163,7 +163,7 @@ contract InsurancePool is Context, IInsurancePool {
 
     /// ================= Internal =====================
     
-    function _balanceOf(address account) internal pure returns (uint256) {
+    function _balanceOf(address account) internal view returns (uint256) {
         return (_totalSupply - _seized) * _balances[account] / _totalSupply;
     }
 }

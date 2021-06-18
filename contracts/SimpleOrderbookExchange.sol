@@ -37,10 +37,18 @@ contract SimpleOrderbookExchange is Context, IAtomicExchange {
     function trade(
         address sellingToken, 
         address buyingToken, 
-        uint256 sellingAmount,
-        uint256 minBuyingAmountWouldAccept
-    ) external {
+        uint256 sellingAmount
+    ) external override {
         AuctionPair.Info storage pair = pairs.get(sellingToken, buyingToken);
 
+    }
+    function trade(
+        address sellingToken, 
+        address buyingToken, 
+        uint256 sellingAmount,
+        uint256 minBuyingAmountWouldAccept
+    ) external override {
+        AuctionPair.Info storage pair = pairs.get(sellingToken, buyingToken);
+        //TODO
     }
 }

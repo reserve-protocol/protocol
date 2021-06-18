@@ -3,20 +3,20 @@ pragma solidity 0.8.4;
 
 interface IInsurancePool {
 
-    function balanceOf(address account) external view returns (uint256);
+    function balanceOf(address account) external returns(uint256);
 
-    function earned(address account) external view returns (uint256);
+    function earned(address account) external view returns(uint256);
 
-    function lastFloor(address account) external view returns (uint256);
+    function lastFloor(address account) external view returns(uint256);
 
-    function totalSupply() external view returns (uint256);
+    function totalSupply() external returns(uint256);
 
 
     // ==== Callable only by the RToken ====
 
     function notifyRevenue(uint256 amount) external;
 
-    function seizeRSR(uint256 amount) external;
+    function seizeRSR(uint256 amount) external returns(uint256);
 
     // ==== Callable by anyone ====
 

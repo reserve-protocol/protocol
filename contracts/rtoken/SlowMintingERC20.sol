@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../interfaces/ICircuitBreaker.sol";
 import "../deps/zeppelin/token/ERC20/ERC20.sol";
-
-import "../Configuration.sol";
+import "../deps/zeppelin/token/ERC20/IERC20.sol";
+import "../interfaces/IConfiguration.sol";
+import "../interfaces/ICircuitBreaker.sol";
+import "../interfaces/ISlowMintingERC20.sol";
+import "../rtoken/RelayERC20.sol";
 
 /*
  * @title SlowMintingERC20 
@@ -19,17 +21,9 @@ import "../Configuration.sol";
  * unboundedly. In the worst case this does occur, portions of the queue can be processed 
  * manually by calling `tryProcessMintings` directly. 
  */ 
-contract SlowMintingERC20 is ERC20 {
+abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
 
-    /// Override ERC20 vars for visibility
-
-    mapping(address => uint256) public override _balances;
-    mapping(address => mapping(address => uint256)) public override _allowances;
-    uint256 public override _totalSupply;
-
-    /// SlowMinting-specific
-
-    Configuration public conf;
+    IConfiguration public conf;
 
     struct Minting {
         uint256 amount;
@@ -40,31 +34,32 @@ contract SlowMintingERC20 is ERC20 {
     uint256 private currentMinting;
     uint256 private lastBlockChecked;
 
-    event MintingInitiated(address account, uint256 amount);
-    event MintingComplete(address account, uint256 amount);
-
     constructor(
         string memory name_, 
         string memory symbol_, 
         address conf_
     ) ERC20(name_, symbol_) {
-        conf = Configuration(conf_);
+        conf = IConfiguration(conf_);
         lastBlockChecked = block.number;
     }
 
 
     modifier update() {
-        tryProcessMintings(mintings.length - currentMinting);
+        tryProcessMintings();
         _;
     }
 
+    function tryProcessMintings() public {
+        tryProcessMintings(mintings.length - currentMinting);
+    }
 
     /// Tries to process `count` mintings. Called before most actions.
     /// Can also be called directly if we get to the block gas limit. 
     function tryProcessMintings(uint256 count) public {
         if (!ICircuitBreaker(conf.circuitBreakerAddress()).check()) {
+            uint256 start = currentMinting;
             uint256 blocksSince = block.number - lastBlockChecked;
-            while (currentMinting < mintings.length && i < currentMinting + count) {
+            while (currentMinting < mintings.length && currentMinting < start + count) {
                 Minting storage m = mintings[currentMinting];
 
                 // Break if the next minting is too big.
@@ -86,75 +81,33 @@ contract SlowMintingERC20 is ERC20 {
         lastBlockChecked = block.number;
     }
 
-    /**
-     * @dev See {IERC20-totalSupply}.
-     */
-    function totalSupply() public view override update returns (uint256) {
-        return _totalSupply;
+
+    /// ==== Super functions /w update ====
+
+    function transfer(address recipient, uint256 amount) public override(IERC20) update returns (bool) {
+        return super.transfer(recipient, amount);
     }
 
-    /**
-     * @dev See {IERC20-balanceOf}.
-     */
-    function balanceOf(address account) public view override update returns (uint256) {
-        return _balances[account];
+    function relayedTransfer(
+        bytes calldata sig,
+        address from,
+        address to,
+        uint256 amount,
+        uint256 fee
+    ) public override(IRelayERC20, RelayERC20) update {
+        super.relayedTransfer(sig, from, to, amount, fee);
     }
 
-    /**
-     * @dev See {IERC20-transfer}.
-     *
-     * Requirements:
-     *
-     * - `recipient` cannot be the zero address.
-     * - the caller must have a balance of at least `amount`.
-     */
-    function transfer(address recipient, uint256 amount) public override update returns (bool) {
-        _transfer(_msgSender(), recipient, amount);
-        return true;
-    }
-
-    /**
-     * @dev See {IERC20-transferFrom}.
-     *
-     * Emits an {Approval} event indicating the updated allowance. This is not
-     * required by the EIP. See the note at the beginning of {ERC20}.
-     *
-     * Requirements:
-     *
-     * - `sender` and `recipient` cannot be the zero address.
-     * - `sender` must have a balance of at least `amount`.
-     * - the caller must have allowance for ``sender``'s tokens of at least
-     * `amount`.
-     */
     function transferFrom(
         address sender,
         address recipient,
         uint256 amount
-    ) public override update returns (bool) {
-        _transfer(sender, recipient, amount);
-
-        uint256 currentAllowance = _allowances[sender][_msgSender()];
-        require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
-        unchecked {
-            _approve(sender, _msgSender(), currentAllowance - amount);
-        }
-
-        return true;
+    ) public override(IERC20) update returns (bool) {
+        return super.transferFrom(sender, recipient, amount);
     }
 
-    /** @dev Creates `amount` tokens and assigns them to `account`, increasing
-     * the total supply, but only after a delay.
-     *
-     * Emits a {MintingInitiated} event with `from` set to the zero address.
-     *
-     * Requirements:
-     *
-     * - `account` cannot be the zero address.
-     * 
-     * Instead of immediately crediting balances, balances increase in 
-     * the future based on conf.issuanceBlockLimit().
-     */
-    function mint(address account, uint256 amount) external override {
+    /// ==== Callable only by self ====
+    function startMinting(address account, uint256 amount) public override {
         require(_msgSender() == address(this), "ERC20: mint is only callable by self");
         require(account != address(0), "ERC20: mint to the zero address");
 

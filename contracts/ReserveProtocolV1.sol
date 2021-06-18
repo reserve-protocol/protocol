@@ -2,6 +2,7 @@
 pragma solidity 0.8.4;
 
 import "./deps/zeppelin/governance/TimelockController.sol";
+import "./libraries/Basket.sol";
 import "./rtoken/InsurancePool.sol";
 import "./SimpleOrderbookExchange.sol";
 import "./RToken.sol";
@@ -23,11 +24,11 @@ contract ReserveProtocolV1 {
         address owner,
         string calldata name, 
         string calldata symbol, 
-        CollateralToken[] calldata basket, 
-        uint32 auctionLengthSeconds,
-        uint32 auctionSpacingSeconds,
-        uint32 rsrDepositDelaySeconds,
-        uint32 rsrWithdrawalDelaySeconds,
+        CollateralToken[] memory tokens, 
+        uint256 auctionLengthSeconds,
+        uint256 auctionSpacingSeconds,
+        uint256 rsrDepositDelaySeconds,
+        uint256 rsrWithdrawalDelaySeconds,
         uint256 maxSupply,
         uint256 supplyExpansionRateScaled,
         uint256 revenueBatchSizeScaled,
@@ -51,9 +52,7 @@ contract ReserveProtocolV1 {
     ) {
         // Deploy static configuration
         Configuration c = new Configuration(
-            basket, 
-            auctionLengthSeconds,
-            auctionSpacingSeconds,
+            tokens, 
             rsrDepositDelaySeconds,
             rsrWithdrawalDelaySeconds,
             maxSupply,
@@ -64,7 +63,6 @@ contract ReserveProtocolV1 {
             issuanceBlockLimit,
             freezeTradingCost,
             rsrSellRate,
-            rsrMinBuyRate,
             rsrTokenAddress,
             circuitBreakerAddress,
             txFeeAddress,
@@ -75,12 +73,13 @@ contract ReserveProtocolV1 {
         );
 
         // Launch TimelockController with initial delay of 0s
-        address[] memory controllers = [owner];
+        address[] memory controllers = new address[](1);
+        controllers[0] = owner;
         TimelockController tc = new TimelockController(0, controllers, controllers);
 
         // Create RToken and InsurancePool
-        RToken rtoken = new RToken(address(tc), name, symbol, c);
-        InsurancePool ip = new InsurancePool(address(rtoken), c.rsrTokenAddress);
+        RToken rtoken = new RToken(address(tc), name, symbol, address(c));
+        InsurancePool ip = new InsurancePool(address(rtoken), c.rsrTokenAddress());
         return (address(rtoken), address(ip), address(c), address(tc));
     }
 }
