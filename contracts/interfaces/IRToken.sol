@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../zeppelin/token/ERC20/IERC20.sol";
+import "../deps/zeppelin/token/ERC20/IERC20.sol";
 
 interface IRToken is IERC20 {
 
@@ -35,6 +36,8 @@ interface IRToken is IERC20 {
     function redemptionAmounts(uint256 amount) external view returns (uint256[] memory);
 
 
+    event Issuance(address indexed issuer, uint256 indexed amount);
+    event Redemption(address indexed redeemer, uint256 indexed amount);
     event ConfigurationChanged(address indexed oldConfiguration, address indexed newConfiguration);
     event TradingFrozen(address indexed account);
     event TradingUnfrozen(address indexed account);

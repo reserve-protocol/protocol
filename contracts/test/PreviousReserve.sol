@@ -5,8 +5,8 @@
 
 pragma solidity 0.5.7;
 
-import "../zeppelin/token/ERC20/IERC20.sol";
-import "../zeppelin/math/SafeMath.sol";
+import "../deps/zeppelin/token/ERC20/IERC20.sol";
+import "../deps/zeppelin/math/SafeMath.sol";
 import "../ownership/Ownable.sol";
 import "../rsv/ReserveEternalStorage.sol";
 import "../rsv/Reserve.sol";

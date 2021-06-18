@@ -1,6 +1,6 @@
 pragma solidity 0.5.7;
 
-import "../zeppelin/token/ERC20/ERC20.sol";
+import "../deps/zeppelin/token/ERC20/ERC20.sol";
 
 /**
  * Simple ERC20 for testing. 

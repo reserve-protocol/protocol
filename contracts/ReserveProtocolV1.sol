@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./interfaces/IConfiguration.sol";
+import "./deps/zeppelin/governance/TimelockController.sol";
 import "./rtoken/InsurancePool.sol";
 import "./SimpleOrderbookExchange.sol";
 import "./RToken.sol";
@@ -19,10 +20,10 @@ contract ReserveProtocolV1 {
     }
 
     function deploy(
-        address calldata owner,
+        address owner,
         string calldata name, 
         string calldata symbol, 
-        Basket.Info calldata basket, 
+        CollateralToken[] calldata basket, 
         uint32 auctionLengthSeconds,
         uint32 auctionSpacingSeconds,
         uint32 rsrDepositDelaySeconds,
@@ -41,7 +42,7 @@ contract ReserveProtocolV1 {
         address txFeeAddress,
         address insurancePoolAddress,
         address batchAuctionAddress,
-        address protocolFundAddress,
+        address protocolFundAddress
     ) public returns (
         address rToken, 
         address insurancePool, 
@@ -79,7 +80,7 @@ contract ReserveProtocolV1 {
 
         // Create RToken and InsurancePool
         RToken rtoken = new RToken(address(tc), name, symbol, c);
-        InsurancePool ip = new InsurancePool(address(rtoken), c.params.rsrTokenAddress);
+        InsurancePool ip = new InsurancePool(address(rtoken), c.rsrTokenAddress);
         return (address(rtoken), address(ip), address(c), address(tc));
     }
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
 interface IInsurancePool {
@@ -13,7 +14,7 @@ interface IInsurancePool {
 
     // ==== Callable only by the RToken ====
 
-    function saveRevenueEvent(uint256 amount) external;
+    function notifyRevenue(uint256 amount) external;
 
     function seizeRSR(uint256 amount) external;
 
@@ -25,9 +26,19 @@ interface IInsurancePool {
     /// Begins a withdrawal of RSR. Caller earns during the withdrawal period.
     function initiateWithdrawal(uint256 amount) external;
 
+    // Settles the next withdrawal, if enough time has passed.
+    function settleNextWithdrawal() external;
+
     /// Returns all earned RToken. Can call as second half of withdraw process.
     function claimRevenue() external;
 
     /// Escape hatch for dynamic programming failurecase
     function climb(address account, uint256 floors) external;
+
+    event Staked(address indexed user, uint256 amount);
+    event WithdrawalInitiated(address indexed user, uint256 amount);
+    event WithdrawalCompleted(address indexed user, uint256 amount);
+    event RevenueClaimed(address indexed user, uint256 reward);
+    event RevenueEventSaved(uint256 index, uint256 amount);
+    event RSRSeized(uint256 amount);
 }

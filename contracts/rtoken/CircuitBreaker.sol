@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./interfaces/ICircuitBreaker.sol";
-import "./zeppelin/access/AccessControlEnumerable.sol";
+import "../interfaces/ICircuitBreaker.sol";
+import "../deps/zeppelin/access/AccessControlEnumerable.sol";
 
 contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
 
@@ -11,7 +12,7 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
 
     /// ==== Mutable state ====
 
-    bool public override triggered = false;
+    bool public triggered = false;
 
     constructor (address _admin) {
         grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -23,15 +24,15 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
         _;
     }
 
-    function check() public view returns (bool) {
+    function check() public view override returns (bool) {
         return triggered;
     }
 
-    function pause() external override onlyRole(PAUSER_ROLE) {
+    function pause() external onlyRole(PAUSER_ROLE) {
         triggered = true;
     }
 
-    function unpause() external override onlyRole(PAUSER_ROLE) {
+    function unpause() external onlyRole(PAUSER_ROLE) {
         triggered = false;
     }
 }

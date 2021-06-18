@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
 library AuctionPair {
@@ -13,8 +14,8 @@ library AuctionPair {
     function get(
         mapping(bytes32 => Info) storage self,
         address sellingToken,
-        address buyingToken,
+        address buyingToken
     ) internal view returns (AuctionPair.Info storage pair) {
-        pair = self[keccak256(abi.encodePacked(sellingToken, auctionToken))];
+        pair = self[keccak256(abi.encodePacked(sellingToken, buyingToken))];
     }
 }

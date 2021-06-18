@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
 import "../interfaces/ICircuitBreaker.sol";
-import "../zeppelin/token/ERC20.sol";
+import "../deps/zeppelin/token/ERC20/ERC20.sol";
 
 import "../Configuration.sol";
 
@@ -20,6 +21,14 @@ import "../Configuration.sol";
  */ 
 contract SlowMintingERC20 is ERC20 {
 
+    /// Override ERC20 vars for visibility
+
+    mapping(address => uint256) public override _balances;
+    mapping(address => mapping(address => uint256)) public override _allowances;
+    uint256 public override _totalSupply;
+
+    /// SlowMinting-specific
+
     Configuration public conf;
 
     struct Minting {
@@ -34,46 +43,47 @@ contract SlowMintingERC20 is ERC20 {
     event MintingComplete(address account, uint256 amount);
 
     constructor(
-        string calldata name_, 
-        string calldata symbol_, 
-        address calldata conf_,
-    ) ERC20(name_, symbol_) public {
+        string memory name_, 
+        string memory symbol_, 
+        address conf_
+    ) ERC20(name_, symbol_) {
         conf = Configuration(conf_);
     }
 
 
     modifier update() {
-        processMintings(mintings.length - lastMinting);
+        processMintings(mintings.length - uint256(lastMinting));
         _;
     }
 
 
     /// Tries to process `count` mintings. Called before most actions.
     /// Can also be called directly if we get to the block gas limit. 
-    function processMintings(uint32 count) public override {
-        if (!ICircuitBreaker(conf.params.circuitBreakerAddress).check()) {
-            uint32 blocksToVest = block.number - m.blockStart;
-            uint32 i = lastMinting;
-            while (i < min(mintings.length, lastMinting + count)) {
+    function processMintings(uint256 count) public override {
+        if (!ICircuitBreaker(conf.circuitBreakerAddress()).check()) {
+            uint256 i = lastMinting;
+            while (i < mintings.length && i < lastMinting + count) {
                 Minting storage m = mintings[i];
+                uint256 blocksToVest = block.number - m.blockStart;
+
                 // Break if the next minting is too big.
-                if (m.amount > conf.params.issuanceBlockLimit * (blocksToVest)) {
-                    break
+                if (m.amount > conf.issuanceBlockLimit() * (blocksToVest)) {
+                    break;
                 }
 
-                uint256 blocksUsed = m.amount / conf.params.issuanceBlockLimit;
-                if (blocksUsed * conf.params.issuanceBlockLimit > m.amount) {
+                uint256 blocksUsed = m.amount / conf.issuanceBlockLimit();
+                if (blocksUsed * conf.issuanceBlockLimit() > m.amount) {
                     blocksUsed = blocksUsed + 1;
                 }
                 blocksToVest = blocksToVest - blocksUsed;
 
                 // Time-delayed balance/supply changes
-                _balances[account] += m.amount;
+                _balances[m.account] += m.amount;
                 _totalSupply += m.amount;
                 emit MintingComplete(m.account, m.amount);
 
+                delete mintings[i]; // gas saving
                 i++;
-                delete m; // gas saving
             }
 
             lastMinting = i;
@@ -83,14 +93,14 @@ contract SlowMintingERC20 is ERC20 {
     /**
      * @dev See {IERC20-totalSupply}.
      */
-    function totalSupply() public view virtual override update returns (uint256) {
+    function totalSupply() public view override update returns (uint256) {
         return _totalSupply;
     }
 
     /**
      * @dev See {IERC20-balanceOf}.
      */
-    function balanceOf(address account) public view virtual override update returns (uint256) {
+    function balanceOf(address account) public view override update returns (uint256) {
         return _balances[account];
     }
 
@@ -146,14 +156,14 @@ contract SlowMintingERC20 is ERC20 {
      * - `account` cannot be the zero address.
      * 
      * Instead of immediately crediting balances, balances increase in 
-     * the future based on conf.params.issuanceBlockLimit.
+     * the future based on conf.issuanceBlockLimit().
      */
     function _mint(address account, uint256 amount) internal virtual override {
         require(account != address(0), "ERC20: mint to the zero address");
 
         _beforeTokenTransfer(address(0), account, amount);
 
-        Minting storage m = Minting(block.number, amount);
+        Minting memory m = Minting(block.number, amount, account);
         mintings.push(m);
     }
 }

@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: BlueOak-1.0.0
+pragma solidity 0.8.4;
+
+import "./interfaces/IConfiguration.sol";
+import "./RToken.sol";
+
 /*
  * @title Configuration 
  * @dev This contract holds everything configurable by governance about the RToken. 
@@ -5,12 +11,11 @@
  */ 
 contract Configuration is IConfiguration {
 
-    struct CollateralToken {
-        address tokenAddress;
-        uint256 genesisQuantity;
-        uint256 quantity;
-        uint256 sellQuantityPerBlock;
-    }
+    CollateralToken[] public basket;
+
+    /// "*scaled" vars are relative to SCALE.
+    uint256 public constant SCALE = 1e18;
+    /// For example, a 5% interest rate would be 5e16.
 
     /// RSR staking deposit delay (s)
     /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to earn the right to vote.
@@ -64,13 +69,7 @@ contract Configuration is IConfiguration {
 
 
     /// Generated
-    uint256 public immutable timestampInitialized;
-
-    /// "*scaled" vars are relative to SCALE.
-    uint256 public constant SCALE = 1e18;
-    /// For example, a 5% interest rate would be 5e16.
-
-    CollateralToken[] public basket;
+    uint256 public immutable initializedTimestamp;
 
     constructor(
         CollateralToken[] memory basket_,
@@ -111,15 +110,19 @@ contract Configuration is IConfiguration {
         protocolFundAddress = protocolFundAddress_;
         exchangeAddress = exchangeAddress_;
 
-        timestampInitialized = block.timestamp;
+        initializedTimestamp = block.timestamp;
     }
 
-    /// Adjusts the quantities based on supply expansion
-    function updateBasketQuantities() external {
-        uint256 scaledRate = SCALE + supplyExpansionRateScaled * (block.timestamp - timestampInitialized) / 31536000;
+    function getBasketForCurrentBlock() external view returns(CollateralToken[] memory) { 
+        CollateralToken[] memory newBasket = new CollateralToken[](basket.length);
+        uint256 scaledRate = SCALE + supplyExpansionRateScaled * (block.timestamp - initializedTimestamp) / 31536000;
         for (uint32 i = 0; i < basket.length; i++) {
-            basket[i].quantity = basket[i].genesisQuantity * SCALE / scaledRate;
+            newBasket[i] = CollateralToken(
+                basket[i].tokenAddress,
+                basket[i].quantity * SCALE / scaledRate,
+                basket[i].perBlockRateLimit
+            );
         }
+        return newBasket;
     }
-
 }
