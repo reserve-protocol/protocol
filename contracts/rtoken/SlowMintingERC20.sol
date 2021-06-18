@@ -17,7 +17,7 @@ import "../Configuration.sol";
  * *Contract Invariant*
  * At any reasonable setting of values this algorithm should not result in the queue growing 
  * unboundedly. In the worst case this does occur, portions of the queue can be processed 
- * manually by calling `processMintings` directly. 
+ * manually by calling `tryProcessMintings` directly. 
  */ 
 contract SlowMintingERC20 is ERC20 {
 
@@ -38,8 +38,9 @@ contract SlowMintingERC20 is ERC20 {
     }
 
     Minting[] public override mintings;
-    uint256 public override lastMinting;
+    uint256 public override currentMinting;
 
+    event MintingInitiated(address account, uint256 amount);
     event MintingComplete(address account, uint256 amount);
 
     constructor(
@@ -52,41 +53,37 @@ contract SlowMintingERC20 is ERC20 {
 
 
     modifier update() {
-        processMintings(mintings.length - uint256(lastMinting));
+        tryProcessMintings(mintings.length - currentMinting);
         _;
     }
 
 
     /// Tries to process `count` mintings. Called before most actions.
     /// Can also be called directly if we get to the block gas limit. 
-    function processMintings(uint256 count) public override {
+    function tryProcessMintings(uint256 count) public override {
         if (!ICircuitBreaker(conf.circuitBreakerAddress()).check()) {
-            uint256 i = lastMinting;
-            while (i < mintings.length && i < lastMinting + count) {
+            uint256 numBlocks = block.number - m.blockStart;
+            uint256 i = currentMinting;
+            while (i < mintings.length && i < currentMinting + count) {
                 Minting storage m = mintings[i];
-                uint256 blocksToVest = block.number - m.blockStart;
 
                 // Break if the next minting is too big.
-                if (m.amount > conf.issuanceBlockLimit() * (blocksToVest)) {
+                if (m.amount > conf.issuanceBlockLimit() * (numBlocks)) {
                     break;
                 }
+                _mint(m.account, m.amount);
+                emit MintingComplete(m.account, m.amount);
 
                 uint256 blocksUsed = m.amount / conf.issuanceBlockLimit();
                 if (blocksUsed * conf.issuanceBlockLimit() > m.amount) {
                     blocksUsed = blocksUsed + 1;
                 }
-                blocksToVest = blocksToVest - blocksUsed;
-
-                // Time-delayed balance/supply changes
-                _balances[m.account] += m.amount;
-                _totalSupply += m.amount;
-                emit MintingComplete(m.account, m.amount);
-
+                numBlocks = numBlocks - blocksUsed;
                 delete mintings[i]; // gas saving
                 i++;
             }
 
-            lastMinting = i;
+            currentMinting = i;
         }
     }
 
@@ -112,7 +109,7 @@ contract SlowMintingERC20 is ERC20 {
      * - `recipient` cannot be the zero address.
      * - the caller must have a balance of at least `amount`.
      */
-    function transfer(address recipient, uint256 amount) public virtual override update returns (bool) {
+    function transfer(address recipient, uint256 amount) public override update returns (bool) {
         _transfer(_msgSender(), recipient, amount);
         return true;
     }
@@ -134,7 +131,7 @@ contract SlowMintingERC20 is ERC20 {
         address sender,
         address recipient,
         uint256 amount
-    ) public virtual override update returns (bool) {
+    ) public override update returns (bool) {
         _transfer(sender, recipient, amount);
 
         uint256 currentAllowance = _allowances[sender][_msgSender()];
@@ -158,12 +155,11 @@ contract SlowMintingERC20 is ERC20 {
      * Instead of immediately crediting balances, balances increase in 
      * the future based on conf.issuanceBlockLimit().
      */
-    function _mint(address account, uint256 amount) internal virtual override {
+    function mint(address account, uint256 amount) external override {
         require(account != address(0), "ERC20: mint to the zero address");
-
-        _beforeTokenTransfer(address(0), account, amount);
 
         Minting memory m = Minting(block.number, amount, account);
         mintings.push(m);
+        emit MintingInitiated(account, amount);
     }
 }
