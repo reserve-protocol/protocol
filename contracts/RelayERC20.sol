@@ -30,6 +30,7 @@ abstract contract RelayERC20 is IRelayERC20, ERC20 {
         public virtual override
     {
         bytes32 hash = keccak256(abi.encodePacked(
+            "relayedTransfer",
             address(this),
             from,
             to,
