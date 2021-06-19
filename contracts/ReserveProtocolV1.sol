@@ -22,6 +22,7 @@ contract ReserveProtocolV1 {
     }
 
     function deploy(
+        bool timelockGovernance,
         address owner,
         string calldata name, 
         string calldata symbol,
@@ -82,14 +83,18 @@ contract ReserveProtocolV1 {
             exchangeAddress
         );
 
-        // Launch TimelockController with initial delay of 0s
-        address[] memory controllers = new address[](1);
-        controllers[0] = owner;
-        TimelockController tc = new TimelockController(0, controllers, controllers);
+        address govAddress = owner;
+        if (timelockGovernance) {
+            // Launch TimelockController with initial delay of 0s
+            address[] memory controllers = new address[](1);
+            controllers[0] = owner;
+            TimelockController tc = new TimelockController(0, controllers, controllers);
+            govAddress = address(tc);
+        }
 
         // Create RToken and InsurancePool
-        RToken rtoken = new RToken(address(tc), name, symbol, address(c));
+        RToken rtoken = new RToken(govAddress, name, symbol, address(c));
         InsurancePool ip = new InsurancePool(address(rtoken), c.rsrTokenAddress());
-        return (address(rtoken), address(ip), address(c), address(tc));
+        return (address(rtoken), address(ip), address(c), govAddress);
     }
 }
