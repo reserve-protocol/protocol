@@ -21,7 +21,6 @@ interface IConfiguration {
     function circuitBreakerAddress() external view returns (address);
     function txFeeAddress() external view returns (address);
     function insurancePoolAddress() external view returns (address);
-    function batchAuctionAddress() external view returns (address);
     function protocolFundAddress() external view returns (address);
     function exchangeAddress() external view returns (address);
     function initializedTimestamp() external view returns (uint256);

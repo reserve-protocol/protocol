@@ -45,7 +45,6 @@ contract ReserveProtocolV1 {
         address circuitBreakerAddress,
         address txFeeAddress,
         address insurancePoolAddress,
-        address batchAuctionAddress,
         address protocolFundAddress
     ) public returns (
         address rToken, 
@@ -79,7 +78,6 @@ contract ReserveProtocolV1 {
             circuitBreakerAddress,
             txFeeAddress,
             insurancePoolAddress,
-            batchAuctionAddress,
             protocolFundAddress,
             exchangeAddress
         );

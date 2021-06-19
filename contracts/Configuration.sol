@@ -63,7 +63,6 @@ contract Configuration is IConfiguration {
     address public immutable override circuitBreakerAddress;
     address public immutable override txFeeAddress;
     address public immutable override insurancePoolAddress;
-    address public immutable override batchAuctionAddress;
     address public immutable override protocolFundAddress;
     address public immutable override exchangeAddress;
 
@@ -87,7 +86,6 @@ contract Configuration is IConfiguration {
         address circuitBreakerAddress_,
         address txFeeAddress_,
         address insurancePoolAddress_,
-        address batchAuctionAddress_,
         address protocolFundAddress_,
         address exchangeAddress_
     ) {
@@ -109,7 +107,6 @@ contract Configuration is IConfiguration {
         circuitBreakerAddress = circuitBreakerAddress_;
         txFeeAddress = txFeeAddress_;
         insurancePoolAddress = insurancePoolAddress_;
-        batchAuctionAddress = batchAuctionAddress_;
         protocolFundAddress = protocolFundAddress_;
         exchangeAddress = exchangeAddress_;
 
