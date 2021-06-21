@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../deps/zeppelin/token/ERC20/IERC20.sol";
+import "../zeppelin/token/ERC20/IERC20.sol";
 
 interface IRelayERC20 is IERC20 {
 

@@ -1,17 +1,28 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./deps/zeppelin/token/ERC20/utils/SafeERC20.sol";
-import "./deps/zeppelin/token/ERC20/IERC20.sol";
-import "./deps/zeppelin/access/Ownable.sol";
-import "./deps/zeppelin/utils/math/Math.sol";
+import "./zeppelin/token/ERC20/utils/SafeERC20.sol";
+import "./zeppelin/token/ERC20/IERC20.sol";
+import "./zeppelin/access/Ownable.sol";
+import "./zeppelin/utils/math/Math.sol";
 import "./interfaces/ITXFee.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IAtomicExchange.sol";
 import "./interfaces/IInsurancePool.sol";
 import "./interfaces/IConfiguration.sol";
-import "./rtoken/SlowMintingERC20.sol";
-import "./SimpleOrderbookExchange.sol";
+import "./upgradeable/SimpleOrderbookExchange.sol";
+import "./SlowMintingERC20.sol";
+
+struct CollateralToken {
+    address tokenAddress;
+    uint256 quantity;
+    uint256 perBlockRateLimit;
+}
+
+struct Basket {
+    mapping(uint256 => CollateralToken) tokens;
+    uint256 size;
+}
 
 /**
  * @title RToken
@@ -29,18 +40,6 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
 
     /// Max Fee on transfers, ever. 
     uint256 public constant MAX_FEE = 5e16; // 5%
-
-    struct CollateralToken {
-        address tokenAddress;
-        uint256 quantity;
-        uint256 perBlockRateLimit;
-    }
-
-    struct Basket {
-        mapping(uint256 => CollateralToken) tokens;
-        uint256 size;
-    }
-
 
     /// ==== Mutable State ====
 

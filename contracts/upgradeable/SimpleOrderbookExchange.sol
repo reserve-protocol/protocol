@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./interfaces/IAtomicExchange.sol";
+import "../interfaces/IAtomicExchange.sol";
 
-import "./deps/zeppelin/utils/Context.sol";
-import "./deps/zeppelin/token/ERC20/IERC20.sol";
-import "./deps/zeppelin/token/ERC20/utils/SafeERC20.sol";
+import "../zeppelin/utils/Context.sol";
+import "../zeppelin/token/ERC20/IERC20.sol";
+import "../zeppelin/token/ERC20/utils/SafeERC20.sol";
 
-import "./libraries/AuctionPair.sol";
+import "../libraries/AuctionPair.sol";
 
 contract SimpleOrderbookExchange is Context, IAtomicExchange {
     using AuctionPair for mapping(bytes32 => AuctionPair.Info);

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./interfaces/IConfiguration.sol";
-import "./RToken.sol";
+import "../interfaces/IConfiguration.sol";
+import "../RToken.sol";
 
 /*
  * @title Configuration 
@@ -11,7 +11,7 @@ import "./RToken.sol";
  */ 
 contract Configuration is IConfiguration {
 
-    RToken.Basket public immutable basket;
+    Basket public immutable basket;
 
     /// "*scaled" vars are relative to SCALE.
     uint256 public constant override SCALE = 1e18;
@@ -71,7 +71,7 @@ contract Configuration is IConfiguration {
     uint256 public immutable override initializedTimestamp;
 
     constructor(
-        RToken.CollateralToken[] memory tokens_,
+        CollateralToken[] memory tokens_,
         uint256 rsrDepositDelaySeconds_,
         uint256 rsrWithdrawalDelaySeconds_,
         uint256 maxSupply_,
@@ -120,7 +120,7 @@ contract Configuration is IConfiguration {
     function getBasketTokenAdjusted(uint256 i) external view override returns(address, uint256, uint256) { 
         uint256 scaledRate = SCALE + supplyExpansionRateScaled * 
             (block.timestamp - initializedTimestamp) / 31536000;
-        RToken.CollateralToken storage ct = basket.tokens[i];
+        CollateralToken storage ct = basket.tokens[i];
         return (ct.tokenAddress, ct.quantity * SCALE / scaledRate, ct.perBlockRateLimit);
     }
 }

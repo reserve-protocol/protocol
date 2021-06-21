@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./deps/zeppelin/governance/TimelockController.sol";
-import "./rtoken/InsurancePool.sol";
 import "./interfaces/IConfiguration.sol";
-import "./Configuration.sol";
-import "./SimpleOrderbookExchange.sol";
+import "./zeppelin/governance/TimelockController.sol";
+import "./upgradeable/SimpleOrderbookExchange.sol";
+import "./upgradeable/InsurancePool.sol";
+import "./upgradeable/Configuration.sol";
 import "./RToken.sol";
 
 /*
@@ -53,9 +53,9 @@ contract ReserveProtocolV1 {
         address configuration, 
         address timelockController
     ) {
-        RToken.CollateralToken[] tokens = new RToken.CollateralToken[](tokenAddresses.length);
+        CollateralToken[] tokens = new CollateralToken[](tokenAddresses.length);
         for (uint i = 0; i < tokenAddresses.length; i++) {
-            tokens[i] = RToken.CollateralToken(
+            tokens[i] = CollateralToken(
                 tokenAddresses[i], 
                 tokenQuantities[i], 
                 tokenRateLimits[i]
