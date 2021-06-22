@@ -53,9 +53,9 @@ contract ReserveProtocolV1 {
         address configuration, 
         address timelockController
     ) {
-        CollateralToken[] tokens = new CollateralToken[](tokenAddresses.length);
+        Token[] tokens = new Token[](tokenAddresses.length);
         for (uint i = 0; i < tokenAddresses.length; i++) {
-            tokens[i] = CollateralToken(
+            tokens[i] = Token(
                 tokenAddresses[i], 
                 tokenQuantities[i], 
                 tokenRateLimits[i]
