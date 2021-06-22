@@ -22,7 +22,6 @@ contract Configuration is IConfiguration, Ownable {
 
     Basket public immutable basket;
 
-    /// Definition of insurance token address + block rates
     Token public immutable insuranceToken;
 
     // ========= Mutable ==========
@@ -73,7 +72,7 @@ contract Configuration is IConfiguration, Ownable {
 
     constructor(
         Token[] memory tokens_,
-        Token memory rsr_,
+        Token memory insuranceToken_,
         uint256 stakingDepositDelay_,
         uint256 stakingWithdrawalDelay_,
         uint256 maxSupply_,
@@ -94,7 +93,7 @@ contract Configuration is IConfiguration, Ownable {
         for (uint256 i = 0; i < basket.size; i++) {
             basket.tokens[i] = tokens_[i];
         }
-        insuranceToken = rsr_;
+        insuranceToken = insuranceToken_;
         stakingDepositDelay = stakingDepositDelay_;
         stakingWithdrawalDelay = stakingWithdrawalDelay_;
         maxSupply = maxSupply_;
@@ -117,10 +116,12 @@ contract Configuration is IConfiguration, Ownable {
         return basket.size;
     }
 
-    function getBasketTokenAdjusted(uint256 i) external view override returns(address, uint256, uint256) { 
+    function getBasketTokenAdjusted(
+        uint256 i
+    ) external view override returns(address, uint256, uint256, uint256, uint256) { 
         uint256 rate = SCALE + supplyExpansionRate * (block.timestamp - deployedAt) / 31536000;
-        Token storage ct = basket.tokens[i];
-        return (ct.token, ct.quantity * SCALE / rate, ct.rateLimit);
+        Token storage t = basket.tokens[i];
+        return (t.token, t.quantity * SCALE / rate, t.rateLimit, t.rTokenEquivalentQuantity, t.slippageTolerance);
     }
 
     // ==================== Setters ========================
@@ -134,9 +135,23 @@ contract Configuration is IConfiguration, Ownable {
         basket.tokens[i].rateLimit = newLimit;
     }
 
+    function setBasketTokenPriceInRToken(uint256 i, uint256 price) external override onlyOwner {
+        emit ConfigurationUpdated(
+            "basket.tokens[" + i + "].priceInRToken", 
+            basket.tokens[i].priceInRToken, 
+            price
+        );
+        basket.tokens[i].priceInRToken = price;
+    }
+
     function setInsuranceTokenRateLimit(uint256 newLimit) external override onlyOwner {
         emit ConfigurationUpdated("insuranceToken.rateLimit", insuranceToken.rateLimit, newLimit);
         insuranceToken.rateLimit = newLimit;
+    }
+
+    function setInsuranceTokenPriceInRToken(uint256 newPrice) external override onlyOwner {
+        emit ConfigurationUpdated("insuranceToken.priceInRToken", insuranceToken.priceInRToken, newPrice);
+        insuranceToken.priceInRToken = newPrice;
     }
 
     // Simple vars

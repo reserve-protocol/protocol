@@ -5,16 +5,17 @@ pragma solidity 0.8.4;
 /// Uniswap, 1inch, and any exchange provider could be an IAtomicExchange
 interface IAtomicExchange {
 
-    function trade(
-        address sellingToken, 
-        address buyingToken, 
-        uint256 sellingAmount
+    function tradeFixedSell(
+        address sellToken, 
+        address buyToken, 
+        uint256 sellAmount,
+        uint256 minBuyAmount
     ) external;
 
-    function trade(
-        address sellingToken, 
-        address buyingToken, 
-        uint256 sellingAmount,
-        uint256 minBuyingAmountWouldAccept
+    function tradeFixedBuy(
+        address sellToken, 
+        address buyToken, 
+        uint256 buyAmount,
+        uint256 maxSellAmount
     ) external;
 }

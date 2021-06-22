@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
+import "./zeppelin/token/ERC20/extensions/ERC20Snapshot.sol";
 import "./zeppelin/token/ERC20/utils/SafeERC20.sol";
 import "./zeppelin/token/ERC20/IERC20.sol";
 import "./zeppelin/access/Ownable.sol";
@@ -15,8 +16,20 @@ import "./SlowMintingERC20.sol";
 
 struct Token {
     address tokenAddress;
+
+    // How many tokens for each 1e18 RTokens 
     uint256 quantity;
-    uint256 rateLimit; // per-block basis
+
+    // How many tokens to sell per each block
+    uint256 rateLimit;
+
+    // How many tokens are equal in value to 1e18 RTokens (will always be a little stale)
+    uint256 priceInRToken;
+
+    // A number <=1e18 that indicates how much price movement to allow. 
+    // E.g., 5e17 means up to a 50% price movement before the RToken halts trading. 
+    // The slippage for a pair is the combination of two `slippageTolerance` 
+    uint256 slippageTolerance;
 }
 
 struct Basket {
@@ -35,7 +48,7 @@ struct Basket {
  * 
  * Only the owner (which should be set to a TimelockController) can change the Configuration.
  */
-contract RToken is IRToken, Ownable, SlowMintingERC20 {
+contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     using SafeERC20 for IERC20;
 
     /// Max Fee on transfers, ever. 
@@ -87,6 +100,93 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
         _;
     }
 
+
+    /// ========================= External =============================
+
+    /// Configuration changes, only callable by Owner.
+    function changeConfiguration(address newConf) external override onlyOwner {
+        emit ConfigurationChanged(address(conf), newConf);
+        conf = IConfiguration(newConf);
+        _updateBasket();
+    }
+
+    function takeSnapshot() external override onlyOwner returns(uint256) {
+        return _snapshot();
+    }
+
+    /// Callable by anyone, runs all the perBlockUpdates
+    function act() external override everyBlock {
+        return;
+    }
+
+    /// Handles issuance.
+    /// Requires approvals to be in place beforehand.
+    function issue(uint256 amount) external override everyBlock {
+        require(amount > 0, "cannot issue zero RToken");
+        require(amount < conf.maxSupply(), "at max supply");
+        require(basket.size > 0, "basket cannot be empty");
+        require(!ICircuitBreaker(conf.circuitBreaker()).check(), "circuit breaker tripped");
+
+        uint256[] memory amounts = issueAmounts(amount);
+        for (uint256 i = 0; i < basket.size; i++) {
+            IERC20(basket.tokens[i].tokenAddress).safeTransferFrom(
+                _msgSender(),
+                address(this),
+                amounts[i]
+            );
+        }
+
+        // startMinting() puts it on the queue
+        startMinting(_msgSender(), amount);
+        emit Issuance(_msgSender(), amount);
+    }
+
+    /// Handles redemption.
+    function redeem(uint256 amount) external override everyBlock {
+        require(amount > 0, "cannot redeem 0 RToken");
+        require(basket.size > 0, "basket cannot be empty");
+
+        uint256[] memory amounts = redemptionAmounts(amount);
+        _burn(_msgSender(), amount);
+        for (uint256 i = 0; i < basket.size; i++) {
+            IERC20(basket.tokens[i].tokenAddress).safeTransfer(
+                _msgSender(),
+                amounts[i]
+            );
+        }
+
+        emit Redemption(_msgSender(), amount);
+    }
+
+    /// Trading freeze
+    function freezeTrading() external override everyBlock {
+        if (freezer != address(0)) {
+            IERC20(conf.rsrToken()).safeTransfer(
+                freezer,
+                conf.tradingFreezeCost()
+            );
+        }
+
+        IERC20(conf.rsrToken()).safeTransferFrom(
+            _msgSender(),
+            address(this),
+            conf.tradingFreezeCost()
+        );
+        freezer = _msgSender();
+        emit TradingFrozen(_msgSender());
+    }
+
+    /// Trading unfreeze
+    function unfreezeTrading() external override everyBlock {
+        require(tradingFrozen(), "already unfrozen");
+        require(_msgSender() == freezer, "only freezer can unfreeze");
+        IERC20(conf.rsrToken()).safeTransfer(
+            freezer,
+            conf.tradingFreezeCost()
+        );
+        freezer = address(0);
+        emit TradingUnfrozen(_msgSender());
+    }
 
     /// =========================== Views =================================
 
@@ -177,95 +277,11 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
 
     /// Can be used in conjuction with `transfer` methods to account for fees.
     function adjustedAmountForFee(address from, address to, uint256 amount) public override returns (uint256) {
-        if (conf.txFeeAddress() == address(0)) {
+        if (conf.txFee() == address(0)) {
             return 0;
         }
 
-        return ITXFee(conf.txFeeAddress()).calculateAdjustedAmountToIncludeFee(from, to, amount);
-    }
-
-    /// =========================== External =================================
-
-
-    /// Configuration changes, only callable by Owner.
-    function changeConfiguration(address newConf) external override onlyOwner {
-        emit ConfigurationChanged(address(conf), newConf);
-        conf = IConfiguration(newConf);
-        _updateBasket();
-    }
-
-    /// Callable by anyone, runs all the perBlockUpdates
-    function act() external override everyBlock {
-        return;
-    }
-
-    /// Handles issuance.
-    /// Requires approvals to be in place beforehand.
-    function issue(uint256 amount) external override everyBlock {
-        require(amount > 0, "cannot issue zero RToken");
-        require(amount < conf.maxSupply(), "at max supply");
-        require(basket.size > 0, "basket cannot be empty");
-        require(!ICircuitBreaker(conf.circuitBreakerAddress()).check(), "circuit breaker tripped");
-
-        uint256[] memory amounts = issueAmounts(amount);
-        for (uint256 i = 0; i < basket.size; i++) {
-            IERC20(basket.tokens[i].tokenAddress).safeTransferFrom(
-                _msgSender(),
-                address(this),
-                amounts[i]
-            );
-        }
-
-        // startMinting() puts it on the queue
-        startMinting(_msgSender(), amount);
-        emit Issuance(_msgSender(), amount);
-    }
-
-    /// Handles redemption.
-    function redeem(uint256 amount) external override everyBlock {
-        require(amount > 0, "cannot redeem 0 RToken");
-        require(basket.size > 0, "basket cannot be empty");
-
-        uint256[] memory amounts = redemptionAmounts(amount);
-        _burn(_msgSender(), amount);
-        for (uint256 i = 0; i < basket.size; i++) {
-            IERC20(basket.tokens[i].tokenAddress).safeTransfer(
-                _msgSender(),
-                amounts[i]
-            );
-        }
-
-        emit Redemption(_msgSender(), amount);
-    }
-
-    /// Trading freeze
-    function freezeTrading() external override everyBlock {
-        if (freezer != address(0)) {
-            IERC20(conf.rsrTokenAddress()).safeTransfer(
-                freezer,
-                conf.tradingFreezeCost()
-            );
-        }
-
-        IERC20(conf.rsrTokenAddress()).safeTransferFrom(
-            _msgSender(),
-            address(this),
-            conf.tradingFreezeCost()
-        );
-        freezer = _msgSender();
-        emit TradingFrozen(_msgSender());
-    }
-
-    /// Trading unfreeze
-    function unfreezeTrading() external override everyBlock {
-        require(tradingFrozen(), "already unfrozen");
-        require(_msgSender() == freezer, "only freezer can unfreeze");
-        IERC20(conf.rsrTokenAddress()).safeTransfer(
-            freezer,
-            conf.tradingFreezeCost()
-        );
-        freezer = address(0);
-        emit TradingUnfrozen(_msgSender());
+        return ITXFee(conf.txFee()).calculateAdjustedAmountToIncludeFee(from, to, amount);
     }
 
     /// =========================== Internal =================================
@@ -274,9 +290,9 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
     function _updateBasket() internal {
         basket.size = conf.getBasketSize();
         for (uint256 i = 0; i < conf.getBasketSize(); i++) {
-            Token memory ct;
-            (ct.tokenAddress, ct.quantity, ct.rateLimit) = conf.getBasketTokenAdjusted(i);
-            basket.tokens[i] = ct;
+            Token memory t;
+            (t.tokenAddress, t.quantity, t.rateLimit, t.priceInRToken, t.slippageTolerance) = conf.getBasketTokenAdjusted(i);
+            basket.tokens[i] = t;
         }
     }
 
@@ -293,7 +309,7 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
         // Mint to protocol fund
         if (conf.expenditureFactorScaled() > 0) {
             uint256 e = toExpand * Math.min(conf.SCALE(), conf.expenditureFactorScaled()) / conf.SCALE();
-            _mint(conf.protocolFundAddress(), e);
+            _mint(conf.protocolFund(), e);
         }
 
         // Mint to self
@@ -304,8 +320,8 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
 
         // Batch transfers from self to InsurancePool
         if (balanceOf(address(this)) > totalSupply() * conf.revenueBatchSizeScaled() / conf.SCALE()) {
-            _approve(address(this), conf.insurancePoolAddress(), balanceOf(address(this)));
-            IInsurancePool(conf.insurancePoolAddress()).notifyRevenue(balanceOf(address(this)));
+            _approve(address(this), conf.insurancePool(), balanceOf(address(this)));
+            IInsurancePool(conf.insurancePool()).notifyRevenue(false, balanceOf(address(this)));
         }
     }
 
@@ -319,36 +335,81 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
 
         int256 indexLowest = leastCollateralized();
         int256 indexHighest = mostCollateralized();
-        IAtomicExchange exchange = IAtomicExchange(conf.exchangeAddress());
 
+        /// Three cases:
+        /// 1. Sideways: Trade collateral for collateral
+        /// 2. Sell RSR: Trade RSR for collateral
+        /// 3. Buyback RSR: Trade collateral for RSR
         if (indexLowest >= 0 && indexHighest >= 0) {
-            Token storage ctLow = basket.tokens[uint256(indexLowest)];
-            Token storage ctHigh = basket.tokens[uint256(indexHighest)];
-            uint256 sellAmount = Math.min(numBlocks * ctHigh.rateLimit, IERC20(ctHigh.tokenAddress).balanceOf(address(this)) - totalSupply() * ctHigh.quantity / 10**(decimals()));
-            _trade(ctHigh.tokenAddress, ctLow.tokenAddress, sellAmount);
+            Token storage lowToken = basket.tokens[uint256(indexLowest)];
+            Token storage highToken = basket.tokens[uint256(indexHighest)];
+            uint256 buyNeeded = totalSupply() * lowToken.quantity / 10**decimals() - IERC20(lowToken.tokenAddress).balanceOf(address(this));
+            uint256 maxSell = Math.min(numBlocks * highToken.rateLimit, IERC20(highToken.tokenAddress).balanceOf(address(this)) - totalSupply() * highToken.quantity / 10**decimals());
+            _tradeWithFixedBuyAmount(highToken.tokenAddress, lowToken.tokenAddress, buyNeeded, maxSell);
         } else if (indexLowest >= 0) {
-            Token storage ctLow = basket.tokens[uint256(indexLowest)];
-            uint256 sellAmount = numBlocks * conf.rsrSellRate();
-            uint256 seized = IInsurancePool(conf.insurancePoolAddress()).seizeRSR(sellAmount);
-            IERC20(conf.rsrTokenAddress()).safeApprove(conf.exchangeAddress(), seized);
-            _trade(conf.rsrTokenAddress(), ctLow.tokenAddress, seized);
+            Token storage lowToken = basket.tokens[uint256(indexLowest)];
+            uint256 needed = totalSupply() * lowToken.quantity / 10**decimals() - IERC20(lowToken.tokenAddress).balanceOf(address(this));
+            (   
+                address rsrAddress,
+                ,
+                uint256 rsrRateLimit, 
+                uint256 rsrPriceInRToken, 
+                uint256 rsrSlippageTolerance
+            ) = conf.insuranceToken();
+            uint256 maxSellAmount = numBlocks * rsrRateLimit;
+            maxSellAmount = IInsurancePool(conf.insurancePool()).seizeRSR(maxSellAmount);
+            _tradeWithFixedBuyAmount(rsrAddress, lowToken.tokenAddress, needed, maxSellAmount);
+
+            // Clean up any leftover RSR
+            uint256 rsrBalance = IERC20(rsrAddress).balanceOf(address(this));
+            if (rsrBalance > 0) {
+                IERC20(rsrAddress).safeApprove(conf.insurancePool(), rsrBalance);
+                IInsurancePool(conf.insurancePool()).notifyRevenue(true, rsrBalance);
+            }
         } else if (indexHighest >= 0) {
-            Token storage ctHigh = basket.tokens[uint256(indexHighest)];
-            uint256 sellAmount = Math.min(numBlocks * ctHigh.rateLimit, IERC20(ctHigh.tokenAddress).balanceOf(address(this)) - totalSupply() * ctHigh.quantity / 10**(decimals()));
-            IERC20(ctHigh.tokenAddress).safeApprove(conf.exchangeAddress(), sellAmount);
-            _trade(ctHigh.tokenAddress, conf.rsrTokenAddress(), sellAmount);
+            Token storage highToken = basket.tokens[uint256(indexHighest)];
+            (   
+                address rsrAddress,
+                ,
+                uint256 rsrRateLimit, 
+                uint256 rsrPriceInRToken, 
+                uint256 rsrSlippageTolerance
+            ) = conf.insuranceToken();
+            uint256 sellAmount = Math.min(numBlocks * highToken.rateLimit, IERC20(highToken.tokenAddress).balanceOf(address(this)) - totalSupply() * highToken.quantity / 10**decimals());
+            uint256 minBuyAmount = sellAmount * rsrPriceInRToken / highToken.priceInRToken * Math.min(conf.SCALE(), rsrSlippageTolerance) / conf.SCALE() * Math.min(conf.SCALE(), highToken.slippageTolerance) / conf.SCALE();
+            _tradeWithFixedSellAmount(highToken.tokenAddress, rsrAddress, sellAmount, minBuyAmount);
         }
 
     }
 
-    function _trade(
+    function _tradeWithFixedSellAmount(
         address sellToken, 
         address buyToken, 
-        uint256 sellAmount
+        uint256 sellAmount,
+        uint256 minBuyAmount,
     ) internal {
-        // uint256 initialBal = IERC20(buyToken).balanceOf(address(this));
-        IAtomicExchange(conf.exchangeAddress()).trade(sellToken, buyToken, sellAmount);
-        // require(IERC20(buyToken).balanceOf(address(this)) - initialBal >= minBuy, "bad trade");
+        uint256 initialSellBal = IERC20(sellToken).balanceOf(address(this));
+        uint256 initialBuyBal = IERC20(buyToken).balanceOf(address(this));
+        IERC20(sellToken).safeApprove(conf.exchange(), sellAmount);
+        IAtomicExchange(conf.exchange()).tradeFixedSell(sellToken, buyToken, sellAmount, minBuyAmount);
+        require(IERC20(sellToken).balanceOf(address(this)) - initialSellBal == sellAmount, "bad trade");
+        require(IERC20(buyToken).balanceOf(address(this)) - initialBuyBal >= minBuyAmount, "bad trade");
+        IERC20(sellToken).safeApprove(conf.exchange(), 0);
+    }
+
+    function _tradeWithFixedBuyAmount(
+        address sellToken,
+        address buyToken,
+        uint256 buyAmount,
+        uint256 maxSellAmount
+    ) internal {
+        uint256 initialSellBal = IERC20(sellToken).balanceOf(address(this));
+        uint256 initialBuyBal = IERC20(buyToken).balanceOf(address(this));
+        IERC20(sellToken).safeApprove(conf.exchange(), maxSellAmount);
+        IAtomicExchange(conf.exchange()).tradeFixedBuy(sellToken, buyToken, buyAmount, maxSellAmount);
+        require(IERC20(sellToken).balanceOf(address(this)) - initialSellBal <= maxSellAmount, "bad trade");
+        require(IERC20(buyToken).balanceOf(address(this)) - initialBuyBal == buyAmount, "bad trade");
+        IERC20(sellToken).safeApprove(conf.exchange(), 0);
     }
 
     /**
@@ -374,9 +435,9 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
         if (
             from != address(0) && 
             to != address(0) && 
-            address(conf.txFeeAddress()) != address(0)
+            address(conf.txFee()) != address(0)
         ) {
-            uint256 fee = ITXFee(conf.txFeeAddress()).calculateFee(from, to, amount);
+            uint256 fee = ITXFee(conf.txFee()).calculateFee(from, to, amount);
             fee = Math.min(fee, amount * MAX_FEE / conf.SCALE());
 
             // Cheeky way of doing the fee without needing access to underlying _balances array
@@ -384,4 +445,5 @@ contract RToken is IRToken, Ownable, SlowMintingERC20 {
             _mint(address(this), fee);
         }
     }
+
 }

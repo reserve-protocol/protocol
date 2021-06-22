@@ -21,16 +21,15 @@ contract InsurancePool is Context, IInsurancePool {
     IERC20 public RSR;
 
     struct RevenueEvent {
-        uint256 timestamp;
+        bool isRSR; // Two options, either RToken or RSR
+        uint256 amount;
         uint256 totalStaked;
-        uint256 revenue;
     }
 
     // The index of this array is a "floor"
     RevenueEvent[] public revenueEvents;
-
     mapping(address => uint256) public override lastFloor;
-    mapping(address => uint256) public override earned;
+    mapping(address => uint256) public override rTokenRevenues;
 
     ///
 
@@ -59,7 +58,12 @@ contract InsurancePool is Context, IInsurancePool {
         if (address(account) != address(0) && _balanceOf(account) > 0) {
             for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
                 RevenueEvent storage re = revenueEvents[i];
-                earned[account] += re.revenue * _balanceOf(account) / re.totalStaked;
+                if (re.isRSR) {
+                    _balances[account] += re.amount * _balanceOf(account) / re.totalStaked;
+
+                } else {
+                    rTokenRevenues[account] += re.amount * _balanceOf(account) / re.totalStaked;
+                }
             }
 
             lastFloor[account] = revenueEvents.length;
@@ -119,9 +123,9 @@ contract InsurancePool is Context, IInsurancePool {
     }
 
     function claimRevenue() external override update(_msgSender()) {
-        uint256 revenue = earned[_msgSender()];
+        uint256 revenue = rTokenRevenues[_msgSender()];
         if (revenue > 0) {
-            earned[_msgSender()] = 0;
+            rTokenRevenues[_msgSender()] = 0;
             RTOKEN.safeTransfer(_msgSender(), revenue);
             emit RevenueClaimed(_msgSender(), revenue);
         }
@@ -133,7 +137,7 @@ contract InsurancePool is Context, IInsurancePool {
         uint256 limit = Math.min(lastFloor[account] + floors, revenueEvents.length);
         for (uint256 i = lastFloor[account]; i < limit; i++) {
             RevenueEvent storage re = revenueEvents[i];
-            earned[account] += re.revenue * _balanceOf(account) / re.totalStaked;
+            rTokenRevenues[account] += re.amount * _balanceOf(account) / re.totalStaked;
         }
 
         lastFloor[account] = limit;
@@ -141,25 +145,29 @@ contract InsurancePool is Context, IInsurancePool {
 
     /// Callable only by RToken address
 
-    function notifyRevenue(uint256 amount) external override update(address(0)) {
+    function notifyRevenue(bool isRSR, uint256 amount) external override update(address(0)) {
         require(_msgSender() == address(RTOKEN), "only RToken can save revenue events");
 
-        RTOKEN.safeTransferFrom(address(RTOKEN), address(this), amount);
-        RevenueEvent memory next = RevenueEvent(block.timestamp, _totalSupply, amount);
+        RevenueEvent memory next = RevenueEvent(isRSR, amount, _totalSupply);
         revenueEvents.push(next);
+        if (isRSR) {
+            RSR.safeTransferFrom(address(RTOKEN), address(this), amount);
+            _totalSupply += amount;
+        } else {
+            RTOKEN.safeTransferFrom(address(RTOKEN), address(this), amount);
+        }
 
-        emit RevenueEventSaved(revenueEvents.length - 1, amount);
+        emit RevenueEventSaved(isRSR, revenueEvents.length - 1, amount);
     }
 
     function seizeRSR(uint256 amount) external override update(address(0)) returns(uint256) {
-        require(_msgSender() == address(RTOKEN), "only RToken can save revenue events");
+        require(_msgSender() == address(RTOKEN), "only RToken can seize RSR");
         amount = Math.min(RSR.balanceOf(address(this)), amount);
         RSR.safeTransfer(address(RTOKEN), amount);
         _seized += amount;
         emit RSRSeized(amount);
         return amount;
     }
-
 
     /// ================= Internal =====================
     

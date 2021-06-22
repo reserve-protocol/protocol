@@ -4,8 +4,9 @@ pragma solidity 0.8.4;
 interface IConfiguration {
 
     // Getters
+    function insuranceToken() external view returns (address, uint256, uint256, uint256, uint256);
     function getBasketSize() external view returns (uint256);
-    function getBasketTokenAdjusted(uint256 index) external view returns(address, uint256, uint256);
+    function getBasketTokenAdjusted(uint256 index) external view returns(address, uint256, uint256, uint256, uint256);
 
     function SCALE() external view returns (uint256);
     function stakingDepositDelay() external view returns (uint256);
@@ -24,11 +25,12 @@ interface IConfiguration {
     function exchange() external view returns (address);
     function deployedAt() external view returns (uint256);
 
-
     // Setters
     function setBasketTokenRateLimit(uint256 i, uint256 newLimit) external;
+    function setBasketTokenPriceInRToken(uint256 i, uint256 newLimit) external;
     function setInsuranceTokenRateLimit(uint256 newLimit) external;
-    
+    function setInsuranceTokenPriceInRToken(uint256 newLimit) external;
+
     function setStakingDepositDelay(uint256 newDelay) external;
     function setStakingWithdrawalDelay(uint256 newDelay) external;
     function setMaxSupply(uint256 newSupply) external;

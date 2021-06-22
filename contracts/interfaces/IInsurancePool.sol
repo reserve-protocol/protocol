@@ -14,7 +14,7 @@ interface IInsurancePool {
 
     // ==== Callable only by the RToken ====
 
-    function notifyRevenue(uint256 amount) external;
+    function notifyRevenue(bool isRSR, uint256 amount) external;
 
     function seizeRSR(uint256 amount) external returns(uint256);
 
@@ -39,6 +39,6 @@ interface IInsurancePool {
     event WithdrawalInitiated(address indexed user, uint256 amount);
     event WithdrawalCompleted(address indexed user, uint256 amount);
     event RevenueClaimed(address indexed user, uint256 reward);
-    event RevenueEventSaved(uint256 index, uint256 amount);
+    event RevenueEventSaved(bool isRSR, uint256 index, uint256 amount);
     event RSRSeized(uint256 amount);
 }

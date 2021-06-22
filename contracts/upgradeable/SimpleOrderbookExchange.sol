@@ -15,40 +15,43 @@ contract SimpleOrderbookExchange is Context, IAtomicExchange {
 
     mapping(bytes32 => AuctionPair.Info) public pairs;
 
-    // Requires allowance set on `buyingToken`
+    // Requires allowance set on `buyToken`
     function depositQuantity(
-        address sellingToken, 
-        address buyingToken, 
+        address sellToken, 
+        address buyToken, 
         uint256 amount
     ) external {
-        AuctionPair.Info storage pair = pairs.get(sellingToken, buyingToken);
-        IERC20(pair.buyingToken).safeTransferFrom(_msgSender(), address(this), amount);
+        AuctionPair.Info storage pair = pairs.get(sellToken, buyToken);
+        IERC20(pair.buyToken).safeTransferFrom(_msgSender(), address(this), amount);
         pair.balances[_msgSender()] += amount;
     }
 
     function setOffer(
-        address sellingToken, 
-        address buyingToken,
+        address sellToken, 
+        address buyToken,
         uint256 offer
     ) external {
-        pairs.get(sellingToken, buyingToken).offers[_msgSender()] = offer;
+        pairs.get(sellToken, buyToken).offers[_msgSender()] = offer;
     }
 
-    function trade(
-        address sellingToken, 
-        address buyingToken, 
-        uint256 sellingAmount
+    function tradeFixedSell(
+        address sellToken, 
+        address buyToken, 
+        uint256 sellAmount,
+        uint256 minBuyAmount
     ) external override {
-        AuctionPair.Info storage pair = pairs.get(sellingToken, buyingToken);
-
-    }
-    function trade(
-        address sellingToken, 
-        address buyingToken, 
-        uint256 sellingAmount,
-        uint256 minBuyingAmountWouldAccept
-    ) external override {
-        AuctionPair.Info storage pair = pairs.get(sellingToken, buyingToken);
+        AuctionPair.Info storage pair = pairs.get(sellToken, buyToken);
         //TODO
     }
+
+    function tradeFixedBuy(
+        address sellToken, 
+        address buyToken, 
+        uint256 buyAmount,
+        uint256 maxSellAmount
+    ) external override {
+        AuctionPair.Info storage pair = pairs.get(sellToken, buyToken);
+        //TODO
+    }
+
 }
