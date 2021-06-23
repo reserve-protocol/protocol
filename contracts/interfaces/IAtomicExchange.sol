@@ -12,10 +12,11 @@ interface IAtomicExchange {
         uint256 minBuyAmount
     ) external;
 
-    function tradeFixedBuy(
-        address sellToken, 
-        address buyToken, 
-        uint256 buyAmount,
-        uint256 maxSellAmount
-    ) external;
+    // function tradeFixedBuy(
+    //     address sellToken, 
+    //     address buyToken, 
+    //     uint256 buyAmount,
+    //     uint256 maxSellAmount
+    // ) external;
+
 }

@@ -301,10 +301,10 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     function _expandSupply() internal {
         // 31536000 = seconds in a year
         uint256 toExpand = totalSupply() * conf.supplyExpansionRateScaled() * (block.timestamp - lastTimestamp) / 31536000 / conf.SCALE() ;
+        lastTimestamp = block.timestamp;
         if (toExpand == 0) {
             return;
         }
-        lastTimestamp = block.timestamp;
 
         // Mint to protocol fund
         if (conf.expenditureFactorScaled() > 0) {
@@ -328,10 +328,10 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     /// Trades tokens against the IAtomicExchange with per-block rate limiting
     function _rebalance() internal {
         uint256 numBlocks = block.number - lastBlock;
+        lastBlock = block.number;
         if (tradingFrozen() || numBlocks == 0) { 
             return; 
         }
-        lastBlock = block.number;
 
         int256 indexLowest = leastCollateralized();
         int256 indexHighest = mostCollateralized();
@@ -341,14 +341,22 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         /// 2. Sell RSR: Trade RSR for collateral
         /// 3. Buyback RSR: Trade collateral for RSR
         if (indexLowest >= 0 && indexHighest >= 0) {
-            Token storage lowToken = basket.tokens[uint256(indexLowest)];
-            Token storage highToken = basket.tokens[uint256(indexHighest)];
-            uint256 buyNeeded = totalSupply() * lowToken.quantity / 10**decimals() - IERC20(lowToken.tokenAddress).balanceOf(address(this));
-            uint256 maxSell = Math.min(numBlocks * highToken.rateLimit, IERC20(highToken.tokenAddress).balanceOf(address(this)) - totalSupply() * highToken.quantity / 10**decimals());
-            _tradeWithFixedBuyAmount(highToken.tokenAddress, lowToken.tokenAddress, buyNeeded, maxSell);
+            // Sell as much excess collateral as possible for missing collateral
+
+            Token storage lowToken = basket.tokens[indexLowest];
+            Token storage highToken = basket.tokens[indexHighest];
+            uint256 sell = Math.min(numBlocks * highToken.rateLimit, IERC20(highToken.tokenAddress).balanceOf(address(this)) - totalSupply() * highToken.quantity / 10**decimals());
+            uint256 minBuy = sell * lowToken.priceInRToken / highToken.priceInRToken;
+            minBuy = minBuy * Math.min(lowToken.slippageTolerance, conf.SCALE()) / conf.SCALE();
+            minBuy = minBuy * Math.min(highToken.slippageTolerance, conf.SCALE()) / conf.SCALE();
+            _tradeWithFixedSellAmount(highToken.tokenAddress, lowToken.tokenAddress, sell, minBuy);
+
         } else if (indexLowest >= 0) {
-            Token storage lowToken = basket.tokens[uint256(indexLowest)];
-            uint256 needed = totalSupply() * lowToken.quantity / 10**decimals() - IERC20(lowToken.tokenAddress).balanceOf(address(this));
+            // 1. Seize RSR from the insurance pool
+            // 2. Trade some-to-all of the seized RSR for missing collateral
+            // 3. Return any leftover RSR
+
+            Token storage lowToken = basket.tokens[indexLowest];
             (   
                 address rsrAddress,
                 ,
@@ -356,9 +364,12 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
                 uint256 rsrPriceInRToken, 
                 uint256 rsrSlippageTolerance
             ) = conf.insuranceToken();
-            uint256 maxSellAmount = numBlocks * rsrRateLimit;
-            maxSellAmount = IInsurancePool(conf.insurancePool()).seizeRSR(maxSellAmount);
-            _tradeWithFixedBuyAmount(rsrAddress, lowToken.tokenAddress, needed, maxSellAmount);
+            uint256 sell = numBlocks * rsrRateLimit;
+            sell = IInsurancePool(conf.insurancePool()).seizeRSR(sell);
+            uint256 minBuy = sell * lowToken.priceInRToken / rsrPriceInRToken;
+            minBuy = minBuy * Math.min(lowToken.slippageTolerance, conf.SCALE() ) / conf.SCALE();
+            minBuy = minBuy * Math.min(rsrSlippageTolerance, conf.SCALE()) / conf.SCALE();
+            _tradeWithFixedSellAmount(rsrAddress, lowToken.tokenAddress, sell, minBuy);
 
             // Clean up any leftover RSR
             uint256 rsrBalance = IERC20(rsrAddress).balanceOf(address(this));
@@ -366,8 +377,11 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
                 IERC20(rsrAddress).safeApprove(conf.insurancePool(), rsrBalance);
                 IInsurancePool(conf.insurancePool()).notifyRevenue(true, rsrBalance);
             }
+
         } else if (indexHighest >= 0) {
-            Token storage highToken = basket.tokens[uint256(indexHighest)];
+            // Sell as much excess collateral as possible for RSR
+
+            Token storage highToken = basket.tokens[indexHighest];
             (   
                 address rsrAddress,
                 ,
@@ -375,9 +389,12 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
                 uint256 rsrPriceInRToken, 
                 uint256 rsrSlippageTolerance
             ) = conf.insuranceToken();
-            uint256 sellAmount = Math.min(numBlocks * highToken.rateLimit, IERC20(highToken.tokenAddress).balanceOf(address(this)) - totalSupply() * highToken.quantity / 10**decimals());
-            uint256 minBuyAmount = sellAmount * rsrPriceInRToken / highToken.priceInRToken * Math.min(conf.SCALE(), rsrSlippageTolerance) / conf.SCALE() * Math.min(conf.SCALE(), highToken.slippageTolerance) / conf.SCALE();
-            _tradeWithFixedSellAmount(highToken.tokenAddress, rsrAddress, sellAmount, minBuyAmount);
+            uint256 sell = numBlocks * highToken.rateLimit;
+            uint256 minBuy = sell * rsrPriceInRToken / highToken.priceInRToken;
+            minBuy = minBuy * Math.min(highToken.slippageTolerance, conf.SCALE() ) / conf.SCALE();
+            minBuy = minBuy * Math.min(rsrSlippageTolerance, conf.SCALE()) / conf.SCALE();
+            _tradeWithFixedSellAmount(highToken.tokenAddress, rsrAddress, sell, minBuy);
+
         }
 
     }
@@ -397,20 +414,20 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         IERC20(sellToken).safeApprove(conf.exchange(), 0);
     }
 
-    function _tradeWithFixedBuyAmount(
-        address sellToken,
-        address buyToken,
-        uint256 buyAmount,
-        uint256 maxSellAmount
-    ) internal {
-        uint256 initialSellBal = IERC20(sellToken).balanceOf(address(this));
-        uint256 initialBuyBal = IERC20(buyToken).balanceOf(address(this));
-        IERC20(sellToken).safeApprove(conf.exchange(), maxSellAmount);
-        IAtomicExchange(conf.exchange()).tradeFixedBuy(sellToken, buyToken, buyAmount, maxSellAmount);
-        require(IERC20(sellToken).balanceOf(address(this)) - initialSellBal <= maxSellAmount, "bad trade");
-        require(IERC20(buyToken).balanceOf(address(this)) - initialBuyBal == buyAmount, "bad trade");
-        IERC20(sellToken).safeApprove(conf.exchange(), 0);
-    }
+    // function _tradeWithFixedBuyAmount(
+    //     address sellToken,
+    //     address buyToken,
+    //     uint256 buyAmount,
+    //     uint256 maxSellAmount
+    // ) internal {
+    //     uint256 initialSellBal = IERC20(sellToken).balanceOf(address(this));
+    //     uint256 initialBuyBal = IERC20(buyToken).balanceOf(address(this));
+    //     IERC20(sellToken).safeApprove(conf.exchange(), maxSellAmount);
+    //     IAtomicExchange(conf.exchange()).tradeFixedBuy(sellToken, buyToken, buyAmount, maxSellAmount);
+    //     require(IERC20(sellToken).balanceOf(address(this)) - initialSellBal <= maxSellAmount, "bad trade");
+    //     require(IERC20(buyToken).balanceOf(address(this)) - initialBuyBal == buyAmount, "bad trade");
+    //     IERC20(sellToken).safeApprove(conf.exchange(), 0);
+    // }
 
     /**
      * @dev Hook that is called before any transfer of tokens. This includes
