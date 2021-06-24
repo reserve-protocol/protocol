@@ -409,8 +409,8 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         uint256 initialBuyBal = IERC20(buyToken).balanceOf(address(this));
         IERC20(sellToken).safeApprove(conf.exchange(), sellAmount);
         IAtomicExchange(conf.exchange()).tradeFixedSell(sellToken, buyToken, sellAmount, minBuyAmount);
-        require(IERC20(sellToken).balanceOf(address(this)) - initialSellBal == sellAmount, "bad trade");
-        require(IERC20(buyToken).balanceOf(address(this)) - initialBuyBal >= minBuyAmount, "bad trade");
+        require(IERC20(sellToken).balanceOf(address(this)) - initialSellBal == sellAmount, "bad sell");
+        require(IERC20(buyToken).balanceOf(address(this)) - initialBuyBal >= minBuyAmount, "bad buy");
         IERC20(sellToken).safeApprove(conf.exchange(), 0);
     }
 

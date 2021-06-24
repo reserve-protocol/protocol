@@ -27,8 +27,7 @@ contract Configuration is IConfiguration, Ownable {
     // ========= Mutable ==========
 
     /// RSR staking deposit delay (s)
-    /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to earn the right to vote.
-    /// TODO: usage not implemented
+    /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to enter the insurance pool
     uint256 public override stakingDepositDelay;
 
     /// RSR staking withdrawal delay (s)

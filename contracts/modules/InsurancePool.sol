@@ -38,12 +38,13 @@ contract InsurancePool is Context, IInsurancePool {
     mapping(address => uint256) private _balances;
 
     struct StakingEvent {
+        address account;
         uint256 timestamp;
         uint256 amount;
-        address account;
     }
 
     StakingEvent[] public deposits;
+    uint256 public depositIndex;
     StakingEvent[] public withdrawals;
     uint256 public withdrawalIndex;
 
@@ -54,6 +55,8 @@ contract InsurancePool is Context, IInsurancePool {
     }
 
     modifier update(address account) {
+        // TODO: Think hard about ordering
+
         // Scale floors for just this account to sum RevenueEvents
         if (address(account) != address(0) && _balanceOf(account) > 0) {
             for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
@@ -70,14 +73,16 @@ contract InsurancePool is Context, IInsurancePool {
         }
 
         // Process withdrawals
-        uint256 ago = block.timestamp - conf.rsrWithdrawalDelaySeconds();
-        while (withdrawalIndex < withdrawals.length) {
-            if (withdrawals[withdrawalIndex].timestamp > ago) {
-                break;
-            }
+        bool success = true;
+        while (success && withdrawalIndex < withdrawals.length) {
+            success = trySettleNextWithdrawal();
+        }
 
-            settleNextWithdrawal();
-        }       
+        // Process deposits
+        success = true;
+        while (success && depositIndex < deposits.length) {
+            success = trySettleNextDeposit();
+        }
         
         _;
     }
@@ -92,34 +97,49 @@ contract InsurancePool is Context, IInsurancePool {
         return _balanceOf(account);
     }
     
-    function settleNextWithdrawal() public override {
+    function trySettleNextWithdrawal() public override returns(bool) {
         StakingEvent storage withdrawal = withdrawals[withdrawalIndex];
-        uint256 ago = block.timestamp - conf.rsrWithdrawalDelaySeconds();
-        require(withdrawal.timestamp > ago, "too soon");
+        if (block.timestamp - conf.rsrWithdrawalDelaySeconds() < withdrawal.timestamp) {
+            return false;
+        }
 
-        uint256 amount = Math.min(_balanceOf(_msgSender()), withdrawal.amount);
+        uint256 amount = Math.min(_balanceOf(withdrawal.account), withdrawal.amount);
         _balances[withdrawal.account] = _balances[withdrawal.account] - amount;
         _totalSupply = _totalSupply - amount;
 
         emit WithdrawalCompleted(withdrawal.account, amount);
         delete withdrawals[withdrawalIndex];
         withdrawalIndex += 1;
+        return true;
+    }
+
+    function trySettleNextDeposit() public override returns(bool) {
+        StakingEvent storage deposit = deposits[depositIndex];
+        if (block.timestamp - conf.rsrDepositDelaySeconds() < deposit.timestamp) {
+            return false;
+        }
+
+        _balances[deposit.account] += deposit.amount;
+        _totalSupply += deposit.amount;
+
+        emit DepositCompleted(deposit.account, amount);
+        delete deposits[depositIndex];
+        depositIndex += 1;
+        return true;
     }
 
     function stake(uint256 amount) external override update(_msgSender()) {
         require(amount > 0, "Cannot stake 0");
-        _totalSupply = _totalSupply + amount;
-        _balances[_msgSender()] = _balances[_msgSender()] + amount;
         RSR.safeTransferFrom(_msgSender(), address(this), amount);
-        deposits.push(StakingEvent(block.timestamp, amount, _msgSender()));
-        emit Staked(_msgSender(), amount);
+        deposits.push(StakingEvent(_msgSender(), block.timestamp, amount));
+        emit DepositInitiated(_msgSender(), block.timestamp, amount);
     }
 
 
     function initiateWithdrawal(uint256 amount) public override update(_msgSender()) {
         require(amount > 0, "Cannot withdraw 0");
-        withdrawals.push(StakingEvent(block.timestamp, amount, _msgSender()));
-        emit WithdrawalInitiated(_msgSender(), amount);
+        withdrawals.push(StakingEvent(_msgSender(), block.timestamp, amount));
+        emit WithdrawalInitiated(_msgSender(), block.timestamp, amount);
     }
 
     function claimRevenue() external override update(_msgSender()) {

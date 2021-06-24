@@ -35,8 +35,9 @@ interface IInsurancePool {
     /// Escape hatch for dynamic programming failurecase
     function climb(address account, uint256 floors) external;
 
-    event Staked(address indexed user, uint256 amount);
-    event WithdrawalInitiated(address indexed user, uint256 amount);
+    event DepositInitiated(address indexed user, uint256 indexed timestamp,uint256 amount);
+    event DepositCompleted(address indexed user, uint256 amount);
+    event WithdrawalInitiated(address indexed user, uint256 indexed timestamp, uint256 amount);
     event WithdrawalCompleted(address indexed user, uint256 amount);
     event RevenueClaimed(address indexed user, uint256 reward);
     event RevenueEventSaved(bool isRSR, uint256 index, uint256 amount);
