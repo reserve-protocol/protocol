@@ -20,14 +20,14 @@ interface IPrevRSR {
  */
 contract RSR is ERC20Pausable {
 
-    // ==== Immutable ====
+    /// ==== Immutable ====
 
     IPrevRSR public immutable prevRSR;
 
     address public immutable slowWallet;
     address public immutable multisigWallet;
 
-    // ==== Mutable ====
+    /// ==== Mutable ====
 
     mapping(address => bool) public crossed;
     uint256 public tokensToCross;
@@ -55,7 +55,7 @@ contract RSR is ERC20Pausable {
         _;
     }
 
-    // ==== Views ====
+    /// ==== Views ====
 
     function totalSupply() public view override returns (uint256) {
         return fixedSupply;
@@ -68,7 +68,7 @@ contract RSR is ERC20Pausable {
         return super.balanceOf(account);
     }
 
-    // ==== External ====
+    /// ==== External ====
 
     function transfer(
         address recipient, 
