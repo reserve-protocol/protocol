@@ -47,7 +47,7 @@ contract Configuration is IConfiguration, Ownable {
     uint256 public override revenueBatchSize;
 
     /// Protocol expenditure factor
-    /// e.g. 1e16 => 1% of the RToken supply expansion goes to expenditures
+    /// e.g. 1e16 => 1% of the RToken supply expansion goes to protocol fund
     uint256 public override expenditureFactor;
 
     /// Issuance/Redemption spread

@@ -110,6 +110,7 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
     function startMinting(address account, uint256 amount) public override {
         require(_msgSender() == address(this), "ERC20: mint is only callable by self");
         require(account != address(0), "ERC20: mint to the zero address");
+        require(amount > 0, "cannot mint 0");
 
         Minting memory m = Minting(amount, account);
         mintings.push(m);

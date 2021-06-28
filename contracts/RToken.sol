@@ -123,8 +123,8 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     /// Requires approvals to be in place beforehand.
     function issue(uint256 amount) external override everyBlock {
         require(amount > 0, "cannot issue zero RToken");
-        require(amount < conf.maxSupply(), "at max supply");
         require(basket.size > 0, "basket cannot be empty");
+        require(totalSupply() + amount < conf.maxSupply(), "at max supply");
         require(!ICircuitBreaker(conf.circuitBreaker()).check(), "circuit breaker tripped");
 
         uint256[] memory amounts = issueAmounts(amount);
@@ -136,7 +136,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
             );
         }
 
-        // startMinting() puts it on the queue
+        // puts minting on the queue
         startMinting(_msgSender(), amount);
         emit Issuance(_msgSender(), amount);
     }
@@ -207,11 +207,10 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     /// The returned array will be in the same order as the current basket.
     function issueAmounts(uint256 amount) public view override returns (uint256[] memory) {
         uint256[] memory parts = new uint256[](basket.size);
-        uint256 quantity;
-        for (uint256 i = 0; i < basket.size; i++) {
+        uint256 quantity;        for (uint256 i = 0; i < basket.size; i++) {
             Token memory ct = basket.tokens[i];
             parts[i] = amount * ct.quantity / 10**decimals();
-            parts[i] = parts[i] * (conf.SCALE() + conf.spreadScaled()) / conf.SCALE();
+            parts[i] = parts[i] * (conf.SCALE() + conf.spread()) / conf.SCALE();
         }
 
         return parts;
@@ -300,26 +299,26 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     /// the insurance pool.
     function _expandSupply() internal {
         // 31536000 = seconds in a year
-        uint256 toExpand = totalSupply() * conf.supplyExpansionRateScaled() * (block.timestamp - lastTimestamp) / 31536000 / conf.SCALE() ;
+        uint256 toExpand = totalSupply() * conf.supplyExpansionRate() * (block.timestamp - lastTimestamp) / 31536000 / conf.SCALE() ;
         lastTimestamp = block.timestamp;
         if (toExpand == 0) {
             return;
         }
 
         // Mint to protocol fund
-        if (conf.expenditureFactorScaled() > 0) {
-            uint256 e = toExpand * Math.min(conf.SCALE(), conf.expenditureFactorScaled()) / conf.SCALE();
+        if (conf.expenditureFactor() > 0) {
+            uint256 e = toExpand * Math.min(conf.SCALE(), conf.expenditureFactor()) / conf.SCALE();
             _mint(conf.protocolFund(), e);
         }
 
         // Mint to self
-        if (conf.expenditureFactorScaled() < conf.SCALE()) {
-            uint256 p = toExpand * (conf.SCALE() - conf.expenditureFactorScaled()) / conf.SCALE();
+        if (conf.expenditureFactor() < conf.SCALE()) {
+            uint256 p = toExpand * (conf.SCALE() - conf.expenditureFactor()) / conf.SCALE();
             _mint(address(this), p);
         }
 
         // Batch transfers from self to InsurancePool
-        if (balanceOf(address(this)) > totalSupply() * conf.revenueBatchSizeScaled() / conf.SCALE()) {
+        if (balanceOf(address(this)) > totalSupply() * conf.revenueBatchSize() / conf.SCALE()) {
             _approve(address(this), conf.insurancePool(), balanceOf(address(this)));
             IInsurancePool(conf.insurancePool()).notifyRevenue(false, balanceOf(address(this)));
         }
