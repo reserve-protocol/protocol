@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./zeppelin/token/ERC20/extensions/ERC20Pausable.sol";
+import "./zeppelin/token/ERC20/ERC20.sol";
 
 interface IPrevRSR {
     function paused() public view returns(bool);
@@ -18,7 +18,7 @@ interface IPrevRSR {
  *
  * The SlowWallet crossover logic gets special-cased, since otherwise funds would get lost. 
  */
-contract RSR is ERC20Pausable {
+contract RSR is ERC20 {
 
     /// ==== Immutable ====
 
