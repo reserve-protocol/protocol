@@ -41,18 +41,16 @@ contract RSR is ERC20 {
         prevRSR = prevRSR_;
         slowWallet = slowWallet_;
         multisigWallet = multisigWallet_;
+
+        // TODO: Crossover now for all Treasury + Team Member + Investor accounts
+        // Important: Only crossover the frozen accounts from old RSR.
+        //
+        // _crossover(some_account);
     }
 
     modifier crossover(address account) {
         if (!crossed[account] && prevRSR.paused()) {
-            crossed[account] = true;
-
-            // The multisig inherits the slow wallet balance in addition to its own.
-            if (account == multisigWallet && slowWallet != multisigWallet) {
-                _mint(account, prevRSR.balanceOf(slowWallet));
-            }
-            _mint(account, prevRSR.balanceOf(account));
-            tokensToCross = tokensToCross - balanceOf(account);
+            _crossover(account);
         }
         _;
     }
@@ -113,5 +111,19 @@ contract RSR is ERC20 {
         uint256 subtractedValue
     ) external crossover(spender) returns (bool) {
         return super.decreaseAllowance(spender, subtractedValue);
+    }
+
+    /// ==== Internal ====
+
+    function _crossover(address account) internal {
+        crossed[account] = true;
+
+        // The multisig inherits the slow wallet balance in addition to its own.
+        uint256 amount = prevRSR.balanceOf(account);
+        if (account == multisigWallet && slowWallet != multisigWallet) {
+            amount += prevRSR.balanceOf(slowWallet);
+        }
+        _mint(account, amount);
+        tokensToCross = tokensToCross - amount;
     }
 }
