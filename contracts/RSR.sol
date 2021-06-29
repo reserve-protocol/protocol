@@ -47,7 +47,7 @@ contract RSR is ERC20Snapshot {
 
         // TODO: Crossover now for all Treasury + Team Member + Investor accounts
         // Important: Only crossover the frozen accounts from old RSR.
-        //
+        // e.g.
         // _crossover(some_account);
     }
 
