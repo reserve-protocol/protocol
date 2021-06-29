@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./zeppelin/token/ERC20/ERC20.sol";
+import "./zeppelin/token/ERC20/extensions/ERC20Snapshot.sol";
 
 interface IPrevRSR {
     function paused() public view returns(bool);
@@ -18,7 +18,7 @@ interface IPrevRSR {
  *
  * The SlowWallet crossover logic gets special-cased, since otherwise funds would get lost. 
  */
-contract RSR is ERC20 {
+contract RSR is ERC20Snapshot {
 
     /// ==== Immutable ====
 
@@ -32,9 +32,12 @@ contract RSR is ERC20 {
 
     mapping(address => bool) public crossed;
     uint256 public tokensToCross;
+    address public snapshotter;
 
+    event SnapshotterChanged(address indexed oldSnapshotter, address indexed newSnapshotter);
 
     constructor (address prevRSR_, address slowWallet_, address multisigWallet_) {
+        snapshotter = _msgSender();
         fixedSupply = prevRSR.totalSupply();
         tokensToCross = fixedSupply;
         
@@ -52,6 +55,11 @@ contract RSR is ERC20 {
         if (!crossed[account] && prevRSR.paused()) {
             _crossover(account);
         }
+        _;
+    }
+
+    modifier snapshotterOnly() {
+        require(_msgSender() == snapshotter, "only snapshotter can snapshot");
         _;
     }
 
@@ -113,9 +121,19 @@ contract RSR is ERC20 {
         return super.decreaseAllowance(spender, subtractedValue);
     }
 
+    function snapshot() external snapshotterOnly returns (uint256) {
+        _snapshot();
+    }
+
+    function transferSnapshotter(address newSnapshotter) external snapshotterOnly {
+        emit SnapshotterChanged(snapshotter, newSnapshotter);
+        snapshotter = newSnapshotter;
+    }
+
     /// ==== Internal ====
 
     function _crossover(address account) internal {
+        require(!crossed[account], "can only cross once");
         crossed[account] = true;
 
         // The multisig inherits the slow wallet balance in addition to its own.
