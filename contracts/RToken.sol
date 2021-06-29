@@ -11,7 +11,7 @@ import "./interfaces/IRToken.sol";
 import "./interfaces/IAtomicExchange.sol";
 import "./interfaces/IInsurancePool.sol";
 import "./interfaces/IConfiguration.sol";
-import "./upgradeable/SimpleOrderbookExchange.sol";
+import "./modules/SimpleOrderbookExchange.sol";
 import "./SlowMintingERC20.sol";
 
 struct Token {
@@ -402,7 +402,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         address sellToken, 
         address buyToken, 
         uint256 sellAmount,
-        uint256 minBuyAmount,
+        uint256 minBuyAmount
     ) internal {
         uint256 initialSellBal = IERC20(sellToken).balanceOf(address(this));
         uint256 initialBuyBal = IERC20(buyToken).balanceOf(address(this));
