@@ -35,8 +35,8 @@ contract RSR is ERC20 {
 
 
     constructor (address prevRSR_, address slowWallet_, address multisigWallet_) {
-        tokensToCross = prevRSR.totalSupply();
-        fixedSupply = tokensToCross;
+        fixedSupply = prevRSR.totalSupply();
+        tokensToCross = fixedSupply;
         
         prevRSR = prevRSR_;
         slowWallet = slowWallet_;
