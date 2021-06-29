@@ -26,6 +26,7 @@ contract RSR is ERC20 {
 
     address public immutable slowWallet;
     address public immutable multisigWallet;
+    uint256 public immutable fixedSupply;
 
     /// ==== Mutable ====
 
@@ -35,7 +36,8 @@ contract RSR is ERC20 {
 
     constructor (address prevRSR_, address slowWallet_, address multisigWallet_) {
         tokensToCross = prevRSR.totalSupply();
-
+        fixedSupply = tokensToCross;
+        
         prevRSR = prevRSR_;
         slowWallet = slowWallet_;
         multisigWallet = multisigWallet_;
