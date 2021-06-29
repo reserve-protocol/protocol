@@ -102,8 +102,6 @@ contract Configuration is IConfiguration, Ownable {
         spread = spread_;
         issuanceRate = issuanceRate_;
         tradingFreezeCost = tradingFreezeCost_;
-        rsrSellRate = rsrSellRate_;
-        rsrToken = rsrToken_;
         circuitBreaker = circuitBreaker_;
         txFeeCalculator = txFeeCalculator_;
         insurancePool = insurancePool_;
@@ -177,7 +175,7 @@ contract Configuration is IConfiguration, Ownable {
 
     function setRevenueBatchSize(uint256 newSize) external override onlyOwner {
         emit ConfigurationUpdated("revenueBatchSize", revenueBatchSize, newSize);
-        revenueBatchSize = newSupply;
+        revenueBatchSize = newSize;
     }
 
     function setExpenditureFactor(uint256 newFactor) external override onlyOwner {

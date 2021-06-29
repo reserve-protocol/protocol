@@ -122,7 +122,7 @@ contract InsurancePool is Context, IInsurancePool {
         _balances[deposit.account] += deposit.amount;
         _totalSupply += deposit.amount;
 
-        emit DepositCompleted(deposit.account, amount);
+        emit DepositCompleted(deposit.account, deposit.amount);
         delete deposits[depositIndex];
         depositIndex += 1;
         return true;
