@@ -3,9 +3,9 @@ pragma solidity 0.8.4;
 
 import "./interfaces/IConfiguration.sol";
 import "./zeppelin/governance/TimelockController.sol";
-import "./upgradeable/SimpleOrderbookExchange.sol";
-import "./upgradeable/InsurancePool.sol";
-import "./upgradeable/Configuration.sol";
+import "./modules/SimpleOrderbookExchange.sol";
+import "./modules/InsurancePool.sol";
+import "./modules/Configuration.sol";
 import "./RToken.sol";
 
 /*
