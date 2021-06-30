@@ -431,21 +431,6 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         IERC20(sellToken).safeApprove(conf.exchange(), 0);
     }
 
-    // function _tradeWithFixedBuyAmount(
-    //     address sellToken,
-    //     address buyToken,
-    //     uint256 buyAmount,
-    //     uint256 maxSellAmount
-    // ) internal {
-    //     uint256 initialSellBal = IERC20(sellToken).balanceOf(address(this));
-    //     uint256 initialBuyBal = IERC20(buyToken).balanceOf(address(this));
-    //     IERC20(sellToken).safeApprove(conf.exchange(), maxSellAmount);
-    //     IAtomicExchange(conf.exchange()).tradeFixedBuy(sellToken, buyToken, buyAmount, maxSellAmount);
-    //     require(IERC20(sellToken).balanceOf(address(this)) - initialSellBal <= maxSellAmount, "bad trade");
-    //     require(IERC20(buyToken).balanceOf(address(this)) - initialBuyBal == buyAmount, "bad trade");
-    //     IERC20(sellToken).safeApprove(conf.exchange(), 0);
-    // }
-
     /**
      * @dev Hook that is called before any transfer of tokens. This includes
      * minting and burning.
