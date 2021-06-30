@@ -5,7 +5,7 @@ interface IInsurancePool {
 
     function balanceOf(address account) external returns(uint256);
 
-    function earned(address account) external view returns(uint256);
+    //function earned(address account) external view returns(uint256);
 
     function lastFloor(address account) external view returns(uint256);
 

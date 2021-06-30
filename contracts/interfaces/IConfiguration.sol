@@ -19,7 +19,7 @@ interface IConfiguration {
     function issuanceRate() external view returns (uint256);
     function tradingFreezeCost() external view returns (uint256);
     function circuitBreaker() external view returns (address);
-    function txFee() external view returns (address);
+    function txFeeCalculator() external view returns (address);
     function insurancePool() external view returns (address);
     function protocolFund() external view returns (address);
     function exchange() external view returns (address);
@@ -47,7 +47,8 @@ interface IConfiguration {
     function setExchange(address newExchange) external;
 
     // Events
-    event ConfigurationUpdated(string variable, uint256 oldVal, uint256 newVal);   
+    event ConfigurationUpdated(string variable, uint256 oldVal, uint256 newVal);
+     
 }
 
 
