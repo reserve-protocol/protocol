@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../zeppelin/access/AccessControlEnumerable.sol";
 import "../zeppelin/governance/TimelockController.sol";
 import "./Configuration.sol";
 
-contract Owner is AccessControlEnumerable, TimelockController {
+contract Owner is TimelockController {
     bytes32 public constant PRICES_ROLE = keccak256("PRICES_ROLE");
     bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
 
     Configuration public conf;
 
-    constructor (address admin_) TimelockController(0, [], []) {
+    constructor (address admin_) TimelockController(0, new address[](0), new address[](0)) {
         grantRole(PRICES_ROLE, admin_);
         grantRole(SNAPSHOT_ROLE, admin_);
     }
@@ -29,7 +28,8 @@ contract Owner is AccessControlEnumerable, TimelockController {
     }
 
     function takeSnapshot() external onlyRoleOrOpenRole(SNAPSHOT_ROLE) {
-        conf.takeSnapshot();
+        //TODO: Should it use the Rtoken directly?
+        //conf.takeSnapshot();
     }
 
 }

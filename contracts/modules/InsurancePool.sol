@@ -29,7 +29,7 @@ contract InsurancePool is Context, IInsurancePool {
     // The index of this array is a "floor"
     RevenueEvent[] public revenueEvents;
     mapping(address => uint256) public override lastFloor;
-    mapping(address => uint256) public override rTokenRevenues;
+    mapping(address => uint256) public rTokenRevenues;
 
     ///
 
@@ -97,9 +97,12 @@ contract InsurancePool is Context, IInsurancePool {
         return _balanceOf(account);
     }
     
-    function trySettleNextWithdrawal() public override returns(bool) {
+    // TODO: Implement earned
+    function earned(address account) external view returns (uint256) {}
+
+    function trySettleNextWithdrawal() public returns(bool) {
         StakingEvent storage withdrawal = withdrawals[withdrawalIndex];
-        if (block.timestamp - conf.rsrWithdrawalDelaySeconds() < withdrawal.timestamp) {
+        if (block.timestamp - conf.stakingWithdrawalDelay() < withdrawal.timestamp) {
             return false;
         }
 
@@ -113,9 +116,9 @@ contract InsurancePool is Context, IInsurancePool {
         return true;
     }
 
-    function trySettleNextDeposit() public override returns(bool) {
+    function trySettleNextDeposit() public returns(bool) {
         StakingEvent storage deposit = deposits[depositIndex];
-        if (block.timestamp - conf.rsrDepositDelaySeconds() < deposit.timestamp) {
+        if (block.timestamp - conf.stakingDepositDelay() < deposit.timestamp) {
             return false;
         }
 
@@ -127,6 +130,9 @@ contract InsurancePool is Context, IInsurancePool {
         depositIndex += 1;
         return true;
     }
+
+    // TODO: Implement settleNextWithdrawal
+    function settleNextWithdrawal() external override { }
 
     function stake(uint256 amount) external override update(_msgSender()) {
         require(amount > 0, "Cannot stake 0");

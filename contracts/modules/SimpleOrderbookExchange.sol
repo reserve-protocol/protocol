@@ -22,7 +22,7 @@ contract SimpleOrderbookExchange is Context, IAtomicExchange {
         uint256 amount
     ) external {
         AuctionPair.Info storage pair = pairs.get(sellToken, buyToken);
-        IERC20(pair.buyToken).safeTransferFrom(_msgSender(), address(this), amount);
+        IERC20(pair.buyingToken).safeTransferFrom(_msgSender(), address(this), amount);
         pair.balances[_msgSender()] += amount;
     }
 
@@ -36,12 +36,15 @@ contract SimpleOrderbookExchange is Context, IAtomicExchange {
 
     function tradeFixedSell(
         address sellToken, 
-        address buyToken, 
+        address buyToken,
         uint256 sellAmount,
         uint256 minBuyAmount
     ) external override {
         AuctionPair.Info storage pair = pairs.get(sellToken, buyToken);
-        //TODO
+        //TODO: silence warnings for now
+        sellAmount;
+        minBuyAmount;
+        pair;
     }
 
     // function tradeFixedBuy(

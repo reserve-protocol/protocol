@@ -20,11 +20,11 @@ contract Configuration is IConfiguration, Ownable {
     /// Generated
     uint256 public override immutable deployedAt;
 
-    Basket public immutable basket;
-
-    Token public immutable insuranceToken;
-
     // ========= Mutable ==========
+
+    Basket public basket;
+
+    Token public override insuranceToken;
 
     /// RSR staking deposit delay (s)
     /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to enter the insurance pool
@@ -118,14 +118,14 @@ contract Configuration is IConfiguration, Ownable {
     ) external view override returns(address, uint256, uint256, uint256, uint256) { 
         uint256 rate = SCALE + supplyExpansionRate * (block.timestamp - deployedAt) / 31536000;
         Token storage t = basket.tokens[i];
-        return (t.token, t.quantity * SCALE / rate, t.rateLimit, t.rTokenEquivalentQuantity, t.slippageTolerance);
+        return (t.tokenAddress, t.quantity * SCALE / rate, t.rateLimit, t.priceInRToken, t.slippageTolerance);
     }
 
     // ==================== Setters ========================
 
     function setBasketTokenRateLimit(uint256 i, uint256 newLimit) external override onlyOwner {
         emit ConfigurationUpdated(
-            "basket.tokens[" + i + "].rateLimit", 
+            "basket.tokens.rateLimit", 
             basket.tokens[i].rateLimit, 
             newLimit
         );
@@ -134,7 +134,7 @@ contract Configuration is IConfiguration, Ownable {
 
     function setBasketTokenPriceInRToken(uint256 i, uint256 price) external override onlyOwner {
         emit ConfigurationUpdated(
-            "basket.tokens[" + i + "].priceInRToken", 
+            "basket.tokens.rateLimit", 
             basket.tokens[i].priceInRToken, 
             price
         );
@@ -202,27 +202,27 @@ contract Configuration is IConfiguration, Ownable {
     // Addresses/contracts
 
     function setCircuitBreaker(address newCircuitBreaker) external override onlyOwner {
-        emit ConfigurationUpdated("circuitBreaker", circuitBreaker, newCircuitBreaker);
+        emit ConfigurationUpdated("circuitBreaker", uint256(uint160(circuitBreaker)), uint256(uint160(newCircuitBreaker)));
         circuitBreaker = newCircuitBreaker;
     }
 
     function setTxFeeCalculator(address newCalculator) external override onlyOwner {
-        emit ConfigurationUpdated("txFeeCalculator", txFeeCalculator, newCalculator);
+        emit ConfigurationUpdated("txFeeCalculator", uint256(uint160(txFeeCalculator)), uint256(uint160(newCalculator)));
         txFeeCalculator = newCalculator;
     }
 
     function setInsurancePool(address newPool) external override onlyOwner {
-        emit ConfigurationUpdated("insurancePool", insurancePool, newPool);
+        emit ConfigurationUpdated("insurancePool", uint256(uint160(insurancePool)), uint256(uint160(newPool)));
         insurancePool = newPool;
     }
 
     function setProtocolFund(address newFund) external override onlyOwner {
-        emit ConfigurationUpdated("protocolFund", protocolFund, newFund);
+        emit ConfigurationUpdated("protocolFund", uint256(uint160(protocolFund)), uint256(uint160(newFund)));
         protocolFund = newFund;
     }
 
     function setExchange(address newExchange) external override onlyOwner {
-        emit ConfigurationUpdated("exchange", exchange, newExchange);
+        emit ConfigurationUpdated("exchange", uint256(uint160(exchange)), uint256(uint160(newExchange)));
         exchange = newExchange;
     }
 }
