@@ -4,9 +4,10 @@ pragma solidity 0.8.4;
 import "./zeppelin/token/ERC20/extensions/ERC20Snapshot.sol";
 
 interface IPrevRSR {
-    function paused() public view returns(bool);
-    function totalSupply() public view returns(uint256);
-    function balanceOf() public view returns(uint256);
+    function paused() external view returns(bool);
+    function totalSupply() external view returns(uint256);
+    function balanceOf(address) external view returns(uint256);
+    function allowance(address, address) external view returns(uint256);
 }
 
 /*
@@ -36,12 +37,13 @@ contract RSR is ERC20Snapshot {
 
     event SnapshotterChanged(address indexed oldSnapshotter, address indexed newSnapshotter);
 
-    constructor (address prevRSR_, address slowWallet_, address multisigWallet_) {
+    constructor (address prevRSR_, address slowWallet_, address multisigWallet_, string memory name_, string memory symbol_) ERC20(name_, symbol_) {
         snapshotter = _msgSender();
-        fixedSupply = prevRSR.totalSupply();
-        tokensToCross = fixedSupply;
+        prevRSR = IPrevRSR(prevRSR_);
+        uint256 _totalSupply = IPrevRSR(prevRSR_).totalSupply();
+        fixedSupply = _totalSupply;
+        tokensToCross = _totalSupply;
         
-        prevRSR = prevRSR_;
         slowWallet = slowWallet_;
         multisigWallet = multisigWallet_;
 
@@ -81,21 +83,24 @@ contract RSR is ERC20Snapshot {
     function transfer(
         address recipient, 
         uint256 amount
-    ) external override crossover(recipient) returns (bool) {
+    ) public override crossover(recipient) returns (bool) {
         return super.transfer(recipient, amount);
     }
 
     function allowance(
         address owner, 
         address spender
-    ) external view override crossover(owner) returns (uint256) {
+    ) public view override returns (uint256) {
+        if (!crossed[owner]) {
+            return prevRSR.allowance(owner, spender);
+        }
         return super.allowance(owner, spender);
     }
 
     function approve(
         address spender, 
         uint256 amount
-    ) external override crossover(spender) returns (bool) {
+    ) public override crossover(spender) returns (bool) {
         return super.approve(spender, amount);
     }
 
@@ -103,26 +108,26 @@ contract RSR is ERC20Snapshot {
         address sender,
         address recipient,
         uint256 amount
-    ) external override crossover(sender) returns (bool) {
+    ) public override crossover(sender) returns (bool) {
         return super.transferFrom(sender, recipient, amount);
     }
 
     function increaseAllowance(
         address spender, 
         uint256 addedValue
-    ) external crossover(spender) returns (bool) {
+    ) public override crossover(spender) returns (bool) {
         return super.increaseAllowance(spender, addedValue);
     }
 
     function decreaseAllowance(
         address spender, 
         uint256 subtractedValue
-    ) external crossover(spender) returns (bool) {
+    ) public override crossover(spender) returns (bool) {
         return super.decreaseAllowance(spender, subtractedValue);
     }
 
     function snapshot() external snapshotterOnly returns (uint256) {
-        _snapshot();
+        return _snapshot();
     }
 
     function transferSnapshotter(address newSnapshotter) external snapshotterOnly {

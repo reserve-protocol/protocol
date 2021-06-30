@@ -29,6 +29,8 @@ contract ReserveProtocolV1 {
         address[] memory tokenAddresses, 
         uint256[] memory tokenQuantities, 
         uint256[] memory tokenRateLimits, 
+        uint256[] memory tokenPricesInRToken, 
+        uint256[] memory tokenSlippageTolerances, 
         uint256 auctionLengthSeconds,
         uint256 auctionSpacingSeconds,
         uint256 rsrDepositDelaySeconds,
@@ -40,9 +42,10 @@ contract ReserveProtocolV1 {
         uint256 spreadScaled, 
         uint256 issuanceBlockLimit,
         uint256 freezeTradingCost,
-        uint256 rsrSellRate,
-        uint256 rsrMinBuyRate,
         address rsrTokenAddress,
+        uint256 rsrSellRate,
+        uint256 rsrPriceInRToken,
+        uint256 rsrSlippageTolerance,
         address circuitBreakerAddress,
         address txFeeAddress,
         address insurancePoolAddress,
@@ -53,18 +56,28 @@ contract ReserveProtocolV1 {
         address configuration, 
         address timelockController
     ) {
-        Token[] tokens = new Token[](tokenAddresses.length);
+        Token[] memory tokens = new Token[](tokenAddresses.length);
         for (uint i = 0; i < tokenAddresses.length; i++) {
             tokens[i] = Token(
                 tokenAddresses[i], 
                 tokenQuantities[i], 
-                tokenRateLimits[i]
+                tokenRateLimits[i],
+                tokenPricesInRToken[i],
+                tokenSlippageTolerances[i]
             );
         }
+
+        Token memory insuranceToken = Token(
+                rsrTokenAddress, 
+                0, 
+                rsrSellRate,
+                rsrPriceInRToken,
+                rsrSlippageTolerance);
 
         // Deploy static configuration
         Configuration c = new Configuration(
             tokens,
+            insuranceToken,
             rsrDepositDelaySeconds,
             rsrWithdrawalDelaySeconds,
             maxSupply,
@@ -74,8 +87,6 @@ contract ReserveProtocolV1 {
             spreadScaled, 
             issuanceBlockLimit,
             freezeTradingCost,
-            rsrSellRate,
-            rsrTokenAddress,
             circuitBreakerAddress,
             txFeeAddress,
             insurancePoolAddress,
@@ -94,7 +105,8 @@ contract ReserveProtocolV1 {
 
         // Create RToken and InsurancePool
         RToken rtoken = new RToken(govAddress, name, symbol, address(c));
-        InsurancePool ip = new InsurancePool(address(rtoken), c.rsrTokenAddress());
+        (address rsrAddress,,,,) = c.insuranceToken();   
+        InsurancePool ip = new InsurancePool(address(rtoken), rsrAddress);
         return (address(rtoken), address(ip), address(c), govAddress);
     }
 }

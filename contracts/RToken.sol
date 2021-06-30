@@ -101,6 +101,20 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     }
 
 
+    /// ==== Super functions /w update ====
+    function transfer(address recipient, uint256 amount) public override(IERC20, ERC20, SlowMintingERC20) update returns (bool) {
+        return super.transfer(recipient, amount);
+    }
+
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) public override(IERC20, ERC20, SlowMintingERC20) update returns (bool) {
+        return super.transferFrom(sender, recipient, amount);
+    }
+
+
     /// ========================= External =============================
 
     /// Configuration changes, only callable by Owner.
@@ -110,7 +124,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         _updateBasket();
     }
 
-    function takeSnapshot() external override onlyOwner returns(uint256) {
+    function takeSnapshot() external onlyOwner returns(uint256) {
         return _snapshot();
     }
 
@@ -160,14 +174,16 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
 
     /// Trading freeze
     function freezeTrading() external override everyBlock {
+        (address rsrAddress,,,,) = conf.insuranceToken();   
+        
         if (freezer != address(0)) {
-            IERC20(conf.rsrToken()).safeTransfer(
+             IERC20(rsrAddress).safeTransfer(
                 freezer,
                 conf.tradingFreezeCost()
             );
         }
 
-        IERC20(conf.rsrToken()).safeTransferFrom(
+        IERC20(rsrAddress).safeTransferFrom(
             _msgSender(),
             address(this),
             conf.tradingFreezeCost()
@@ -180,7 +196,9 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     function unfreezeTrading() external override everyBlock {
         require(tradingFrozen(), "already unfrozen");
         require(_msgSender() == freezer, "only freezer can unfreeze");
-        IERC20(conf.rsrToken()).safeTransfer(
+        (address rsrAddress,,,,) = conf.insuranceToken();
+       
+        IERC20(rsrAddress).safeTransfer(
             freezer,
             conf.tradingFreezeCost()
         );
@@ -276,11 +294,11 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
 
     /// Can be used in conjuction with `transfer` methods to account for fees.
     function adjustedAmountForFee(address from, address to, uint256 amount) public override returns (uint256) {
-        if (conf.txFee() == address(0)) {
+        if (conf.txFeeCalculator() == address(0)) {
             return 0;
         }
 
-        return ITXFee(conf.txFee()).calculateAdjustedAmountToIncludeFee(from, to, amount);
+        return ITXFee(conf.txFeeCalculator()).calculateAdjustedAmountToIncludeFee(from, to, amount);
     }
 
     /// =========================== Internal =================================
@@ -342,8 +360,8 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         if (indexLowest >= 0 && indexHighest >= 0) {
             // Sell as much excess collateral as possible for missing collateral
 
-            Token storage lowToken = basket.tokens[indexLowest];
-            Token storage highToken = basket.tokens[indexHighest];
+            Token storage lowToken = basket.tokens[uint(indexLowest)];
+            Token storage highToken = basket.tokens[uint(indexHighest)];
             uint256 sell = Math.min(numBlocks * highToken.rateLimit, IERC20(highToken.tokenAddress).balanceOf(address(this)) - totalSupply() * highToken.quantity / 10**decimals());
             uint256 minBuy = sell * lowToken.priceInRToken / highToken.priceInRToken;
             minBuy = minBuy * Math.min(lowToken.slippageTolerance, conf.SCALE()) / conf.SCALE();
@@ -355,7 +373,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
             // 2. Trade some-to-all of the seized RSR for missing collateral
             // 3. Return any leftover RSR
 
-            Token storage lowToken = basket.tokens[indexLowest];
+            Token storage lowToken = basket.tokens[uint(indexLowest)];
             (   
                 address rsrAddress,
                 ,
@@ -380,7 +398,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         } else if (indexHighest >= 0) {
             // Sell as much excess collateral as possible for RSR
 
-            Token storage highToken = basket.tokens[indexHighest];
+            Token storage highToken = basket.tokens[uint(indexHighest)];
             (   
                 address rsrAddress,
                 ,
@@ -447,13 +465,13 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         address from,
         address to,
         uint256 amount
-    ) internal override {
+    ) internal override(ERC20, ERC20Snapshot) {
         if (
             from != address(0) && 
             to != address(0) && 
-            address(conf.txFee()) != address(0)
+            address(conf.txFeeCalculator()) != address(0)
         ) {
-            uint256 fee = ITXFee(conf.txFee()).calculateFee(from, to, amount);
+            uint256 fee = ITXFee(conf.txFeeCalculator()).calculateFee(from, to, amount);
             fee = Math.min(fee, amount * MAX_FEE / conf.SCALE());
 
             // Cheeky way of doing the fee without needing access to underlying _balances array
