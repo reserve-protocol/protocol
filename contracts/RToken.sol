@@ -124,7 +124,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         _updateBasket();
     }
 
-    function takeSnapshot() external onlyOwner returns(uint256) {
+    function takeSnapshot() external override onlyOwner returns(uint256) {
         return _snapshot();
     }
 

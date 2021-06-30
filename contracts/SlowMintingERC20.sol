@@ -23,7 +23,7 @@ import "./RelayERC20.sol";
  */ 
 abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
 
-    IConfiguration public conf;
+    IConfiguration public override conf;
 
     struct Minting {
         uint256 amount;

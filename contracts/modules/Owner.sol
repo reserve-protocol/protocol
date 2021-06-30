@@ -2,13 +2,13 @@
 pragma solidity 0.8.4;
 
 import "../zeppelin/governance/TimelockController.sol";
-import "./Configuration.sol";
+import "../interfaces/IConfiguration.sol";
+import "../interfaces/IOwner.sol";
+import "../interfaces/IRToken.sol";
 
-contract Owner is TimelockController {
+contract Owner is IOwner, TimelockController {
     bytes32 public constant PRICES_ROLE = keccak256("PRICES_ROLE");
     bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
-
-    Configuration public conf;
 
     constructor (address admin_) TimelockController(0, new address[](0), new address[](0)) {
         grantRole(PRICES_ROLE, admin_);
@@ -17,19 +17,25 @@ contract Owner is TimelockController {
 
     /// Quantities collateral token necessary to have 1e18 RToken in value
     function updatePrices(
+        address rTokenAddress,
         uint256 insuranceTokenPrice, 
         uint256[] calldata collateralTokenPrices
-    ) external onlyRoleOrOpenRole(PRICES_ROLE) {
+    ) external override onlyRoleOrOpenRole(PRICES_ROLE) {
+        IRToken rtoken = IRToken(rTokenAddress);
+        IConfiguration conf = rtoken.conf();
         require(collateralTokenPrices.length == conf.getBasketSize(), "mismatch to basket");
+
         for (uint256 i = 0; i < collateralTokenPrices.length; i++) {
             conf.setBasketTokenPriceInRToken(i, collateralTokenPrices[i]);
         }
         conf.setInsuranceTokenPriceInRToken(insuranceTokenPrice);
     }
 
-    function takeSnapshot() external onlyRoleOrOpenRole(SNAPSHOT_ROLE) {
-        //TODO: Should it use the Rtoken directly?
-        //conf.takeSnapshot();
+    function takeSnapshot(
+        address rTokenAddress
+    ) external override onlyRoleOrOpenRole(SNAPSHOT_ROLE) returns (uint256) {
+        IRToken rtoken = IRToken(rTokenAddress);
+        return rtoken.takeSnapshot();
     }
 
 }
