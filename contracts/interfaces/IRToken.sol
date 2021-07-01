@@ -6,8 +6,9 @@ import "./ISlowMintingERC20.sol";
 
 interface IRToken is ISlowMintingERC20 {
 
-    /// Configuration changes, only callable by Owner.
+    /// Only callable by Owner.
     function changeConfiguration(address newConf) external;
+    function takeSnapshot() external returns (uint256);
 
     /// Adaptation function, callable by anyone
     function act() external;

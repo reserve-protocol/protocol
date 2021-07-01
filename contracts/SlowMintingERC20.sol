@@ -23,7 +23,7 @@ import "./RelayERC20.sol";
  */ 
 abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
 
-    IConfiguration public conf;
+    IConfiguration public override conf;
 
     struct Minting {
         uint256 amount;
@@ -56,21 +56,21 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
     /// Tries to process `count` mintings. Called before most actions.
     /// Can also be called directly if we get to the block gas limit. 
     function tryProcessMintings(uint256 count) public {
-        if (!ICircuitBreaker(conf.circuitBreakerAddress()).check()) {
+        if (!ICircuitBreaker(conf.circuitBreaker()).check()) {
             uint256 start = currentMinting;
             uint256 blocksSince = block.number - lastBlockChecked;
             while (currentMinting < mintings.length && currentMinting < start + count) {
                 Minting storage m = mintings[currentMinting];
 
                 // Break if the next minting is too big.
-                if (m.amount > conf.issuanceBlockLimit() * (blocksSince)) {
+                if (m.amount > conf.issuanceRate() * (blocksSince)) {
                     break;
                 }
                 _mint(m.account, m.amount);
                 emit MintingComplete(m.account, m.amount);
 
-                uint256 blocksUsed = m.amount / conf.issuanceBlockLimit();
-                if (blocksUsed * conf.issuanceBlockLimit() > m.amount) {
+                uint256 blocksUsed = m.amount / conf.issuanceRate();
+                if (blocksUsed * conf.issuanceRate() > m.amount) {
                     blocksUsed = blocksUsed + 1;
                 }
                 blocksSince = blocksSince - blocksUsed;
@@ -84,7 +84,7 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
 
     /// ==== Super functions /w update ====
 
-    function transfer(address recipient, uint256 amount) public override(IERC20) update returns (bool) {
+    function transfer(address recipient, uint256 amount) public override(IERC20) virtual update returns (bool) {
         return super.transfer(recipient, amount);
     }
 
@@ -102,7 +102,7 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
         address sender,
         address recipient,
         uint256 amount
-    ) public override(IERC20) update returns (bool) {
+    ) public override(IERC20) virtual update returns (bool) {
         return super.transferFrom(sender, recipient, amount);
     }
 

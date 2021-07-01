@@ -20,11 +20,11 @@ contract Configuration is IConfiguration, Ownable {
     /// Generated
     uint256 public override immutable deployedAt;
 
-    Basket public immutable basket;
-
-    Token public immutable insuranceToken;
-
     // ========= Mutable ==========
+
+    Basket public basket;
+
+    Token public override insuranceToken;
 
     /// RSR staking deposit delay (s)
     /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to enter the insurance pool
@@ -72,20 +72,7 @@ contract Configuration is IConfiguration, Ownable {
     constructor(
         Token[] memory tokens_,
         Token memory insuranceToken_,
-        uint256 stakingDepositDelay_,
-        uint256 stakingWithdrawalDelay_,
-        uint256 maxSupply_,
-        uint256 supplyExpansionRate_,
-        uint256 revenueBatchSize_,
-        uint256 expenditureFactor_,
-        uint256 spread_, 
-        uint256 issuanceRate_,
-        uint256 tradingFreezeCost_,
-        address circuitBreaker_,
-        address txFeeCalculator_,
-        address insurancePool_,
-        address protocolFund_,
-        address exchange_
+        ConfigurationParams memory configParams_
     ) {
         deployedAt = block.timestamp;
         basket.size = tokens_.length;
@@ -93,20 +80,20 @@ contract Configuration is IConfiguration, Ownable {
             basket.tokens[i] = tokens_[i];
         }
         insuranceToken = insuranceToken_;
-        stakingDepositDelay = stakingDepositDelay_;
-        stakingWithdrawalDelay = stakingWithdrawalDelay_;
-        maxSupply = maxSupply_;
-        supplyExpansionRate = supplyExpansionRate_;
-        revenueBatchSize = revenueBatchSize_;
-        expenditureFactor = expenditureFactor_;
-        spread = spread_;
-        issuanceRate = issuanceRate_;
-        tradingFreezeCost = tradingFreezeCost_;
-        circuitBreaker = circuitBreaker_;
-        txFeeCalculator = txFeeCalculator_;
-        insurancePool = insurancePool_;
-        protocolFund = protocolFund_;
-        exchange = exchange_;
+        stakingDepositDelay = configParams_.stakingDepositDelay;
+        stakingWithdrawalDelay = configParams_.stakingWithdrawalDelay;
+        maxSupply = configParams_.maxSupply;
+        supplyExpansionRate = configParams_.supplyExpansionRate;
+        revenueBatchSize = configParams_.revenueBatchSize;
+        expenditureFactor = configParams_.expenditureFactor;
+        spread = configParams_.spread;
+        issuanceRate = configParams_.issuanceRate;
+        tradingFreezeCost = configParams_.tradingFreezeCost;
+        circuitBreaker = configParams_.circuitBreaker;
+        txFeeCalculator = configParams_.txFeeCalculator;
+        insurancePool = configParams_.insurancePool;
+        protocolFund = configParams_.protocolFund;
+        exchange = configParams_.exchange;
     }
 
     function getBasketSize() external view override returns (uint256) {
@@ -118,14 +105,14 @@ contract Configuration is IConfiguration, Ownable {
     ) external view override returns(address, uint256, uint256, uint256, uint256) { 
         uint256 rate = SCALE + supplyExpansionRate * (block.timestamp - deployedAt) / 31536000;
         Token storage t = basket.tokens[i];
-        return (t.token, t.quantity * SCALE / rate, t.rateLimit, t.rTokenEquivalentQuantity, t.slippageTolerance);
+        return (t.tokenAddress, t.quantity * SCALE / rate, t.rateLimit, t.priceInRToken, t.slippageTolerance);
     }
 
     // ==================== Setters ========================
 
     function setBasketTokenRateLimit(uint256 i, uint256 newLimit) external override onlyOwner {
         emit ConfigurationUpdated(
-            "basket.tokens[" + i + "].rateLimit", 
+            "basket.tokens.rateLimit", 
             basket.tokens[i].rateLimit, 
             newLimit
         );
@@ -134,7 +121,7 @@ contract Configuration is IConfiguration, Ownable {
 
     function setBasketTokenPriceInRToken(uint256 i, uint256 price) external override onlyOwner {
         emit ConfigurationUpdated(
-            "basket.tokens[" + i + "].priceInRToken", 
+            "basket.tokens.rateLimit", 
             basket.tokens[i].priceInRToken, 
             price
         );
@@ -202,27 +189,27 @@ contract Configuration is IConfiguration, Ownable {
     // Addresses/contracts
 
     function setCircuitBreaker(address newCircuitBreaker) external override onlyOwner {
-        emit ConfigurationUpdated("circuitBreaker", circuitBreaker, newCircuitBreaker);
+        emit ConfigurationUpdated("circuitBreaker", uint256(uint160(circuitBreaker)), uint256(uint160(newCircuitBreaker)));
         circuitBreaker = newCircuitBreaker;
     }
 
     function setTxFeeCalculator(address newCalculator) external override onlyOwner {
-        emit ConfigurationUpdated("txFeeCalculator", txFeeCalculator, newCalculator);
+        emit ConfigurationUpdated("txFeeCalculator", uint256(uint160(txFeeCalculator)), uint256(uint160(newCalculator)));
         txFeeCalculator = newCalculator;
     }
 
     function setInsurancePool(address newPool) external override onlyOwner {
-        emit ConfigurationUpdated("insurancePool", insurancePool, newPool);
+        emit ConfigurationUpdated("insurancePool", uint256(uint160(insurancePool)), uint256(uint160(newPool)));
         insurancePool = newPool;
     }
 
     function setProtocolFund(address newFund) external override onlyOwner {
-        emit ConfigurationUpdated("protocolFund", protocolFund, newFund);
+        emit ConfigurationUpdated("protocolFund", uint256(uint160(protocolFund)), uint256(uint160(newFund)));
         protocolFund = newFund;
     }
 
     function setExchange(address newExchange) external override onlyOwner {
-        emit ConfigurationUpdated("exchange", exchange, newExchange);
+        emit ConfigurationUpdated("exchange", uint256(uint160(exchange)), uint256(uint160(newExchange)));
         exchange = newExchange;
     }
 }

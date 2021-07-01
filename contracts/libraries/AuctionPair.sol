@@ -18,4 +18,5 @@ library AuctionPair {
     ) internal view returns (AuctionPair.Info storage pair) {
         pair = self[keccak256(abi.encodePacked(sellingToken, buyingToken))];
     }
+
 }
