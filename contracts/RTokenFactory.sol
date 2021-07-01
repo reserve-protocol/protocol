@@ -26,70 +26,15 @@ contract ReserveProtocolV1 {
         address owner,
         string calldata name, 
         string calldata symbol,
-        address[] memory tokenAddresses, 
-        uint256[] memory tokenQuantities, 
-        uint256[] memory tokenRateLimits, 
-        uint256[] memory tokenPricesInRToken, 
-        uint256[] memory tokenSlippageTolerances, 
-        uint256 auctionLengthSeconds,
-        uint256 auctionSpacingSeconds,
-        uint256 rsrDepositDelaySeconds,
-        uint256 rsrWithdrawalDelaySeconds,
-        uint256 maxSupply,
-        uint256 supplyExpansionRateScaled,
-        uint256 revenueBatchSizeScaled,
-        uint256 expenditureFactorScaled,
-        uint256 spreadScaled, 
-        uint256 issuanceBlockLimit,
-        uint256 freezeTradingCost,
-        address rsrTokenAddress,
-        uint256 rsrSellRate,
-        uint256 rsrPriceInRToken,
-        uint256 rsrSlippageTolerance,
-        address circuitBreakerAddress,
-        address txFeeAddress,
-        address insurancePoolAddress,
-        address protocolFundAddress
+        Token[] memory tokens,
+        Token memory insuranceToken,
+        ConfigurationParams memory configParams
     ) public returns (
         address rToken, 
         address insurancePool, 
         address configuration, 
         address timelockController
     ) {
-        Token[] memory tokens = new Token[](tokenAddresses.length);
-        for (uint i = 0; i < tokenAddresses.length; i++) {
-            tokens[i] = Token(
-                tokenAddresses[i], 
-                tokenQuantities[i], 
-                tokenRateLimits[i],
-                tokenPricesInRToken[i],
-                tokenSlippageTolerances[i]
-            );
-        }
-
-        Token memory insuranceToken = Token(
-                rsrTokenAddress, 
-                0, 
-                rsrSellRate,
-                rsrPriceInRToken,
-                rsrSlippageTolerance);
-
-        ConfigurationParams memory configParams = ConfigurationParams(
-                rsrDepositDelaySeconds,
-                rsrWithdrawalDelaySeconds,
-                maxSupply,
-                supplyExpansionRateScaled,
-                revenueBatchSizeScaled,
-                expenditureFactorScaled,
-                spreadScaled, 
-                issuanceBlockLimit,
-                freezeTradingCost,
-                circuitBreakerAddress,
-                txFeeAddress,
-                insurancePoolAddress,
-                protocolFundAddress,
-                exchangeAddress);
-
         // Deploy static configuration
         Configuration c = new Configuration(
             tokens,
