@@ -72,20 +72,7 @@ contract Configuration is IConfiguration, Ownable {
     constructor(
         Token[] memory tokens_,
         Token memory insuranceToken_,
-        uint256 stakingDepositDelay_,
-        uint256 stakingWithdrawalDelay_,
-        uint256 maxSupply_,
-        uint256 supplyExpansionRate_,
-        uint256 revenueBatchSize_,
-        uint256 expenditureFactor_,
-        uint256 spread_, 
-        uint256 issuanceRate_,
-        uint256 tradingFreezeCost_,
-        address circuitBreaker_,
-        address txFeeCalculator_,
-        address insurancePool_,
-        address protocolFund_,
-        address exchange_
+        ConfigurationParams memory configParams_
     ) {
         deployedAt = block.timestamp;
         basket.size = tokens_.length;
@@ -93,20 +80,20 @@ contract Configuration is IConfiguration, Ownable {
             basket.tokens[i] = tokens_[i];
         }
         insuranceToken = insuranceToken_;
-        stakingDepositDelay = stakingDepositDelay_;
-        stakingWithdrawalDelay = stakingWithdrawalDelay_;
-        maxSupply = maxSupply_;
-        supplyExpansionRate = supplyExpansionRate_;
-        revenueBatchSize = revenueBatchSize_;
-        expenditureFactor = expenditureFactor_;
-        spread = spread_;
-        issuanceRate = issuanceRate_;
-        tradingFreezeCost = tradingFreezeCost_;
-        circuitBreaker = circuitBreaker_;
-        txFeeCalculator = txFeeCalculator_;
-        insurancePool = insurancePool_;
-        protocolFund = protocolFund_;
-        exchange = exchange_;
+        stakingDepositDelay = configParams_.stakingDepositDelay;
+        stakingWithdrawalDelay = configParams_.stakingWithdrawalDelay;
+        maxSupply = configParams_.maxSupply;
+        supplyExpansionRate = configParams_.supplyExpansionRate;
+        revenueBatchSize = configParams_.revenueBatchSize;
+        expenditureFactor = configParams_.expenditureFactor;
+        spread = configParams_.spread;
+        issuanceRate = configParams_.issuanceRate;
+        tradingFreezeCost = configParams_.tradingFreezeCost;
+        circuitBreaker = configParams_.circuitBreaker;
+        txFeeCalculator = configParams_.txFeeCalculator;
+        insurancePool = configParams_.insurancePool;
+        protocolFund = configParams_.protocolFund;
+        exchange = configParams_.exchange;
     }
 
     function getBasketSize() external view override returns (uint256) {

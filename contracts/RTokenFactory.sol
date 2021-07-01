@@ -74,24 +74,27 @@ contract ReserveProtocolV1 {
                 rsrPriceInRToken,
                 rsrSlippageTolerance);
 
+        ConfigurationParams memory configParams = ConfigurationParams(
+                rsrDepositDelaySeconds,
+                rsrWithdrawalDelaySeconds,
+                maxSupply,
+                supplyExpansionRateScaled,
+                revenueBatchSizeScaled,
+                expenditureFactorScaled,
+                spreadScaled, 
+                issuanceBlockLimit,
+                freezeTradingCost,
+                circuitBreakerAddress,
+                txFeeAddress,
+                insurancePoolAddress,
+                protocolFundAddress,
+                exchangeAddress);
+
         // Deploy static configuration
         Configuration c = new Configuration(
             tokens,
             insuranceToken,
-            rsrDepositDelaySeconds,
-            rsrWithdrawalDelaySeconds,
-            maxSupply,
-            supplyExpansionRateScaled,
-            revenueBatchSizeScaled,
-            expenditureFactorScaled,
-            spreadScaled, 
-            issuanceBlockLimit,
-            freezeTradingCost,
-            circuitBreakerAddress,
-            txFeeAddress,
-            insurancePoolAddress,
-            protocolFundAddress,
-            exchangeAddress
+            configParams
         );
 
         address govAddress = owner;

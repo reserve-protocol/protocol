@@ -37,6 +37,23 @@ struct Basket {
     uint256 size;
 }
 
+struct ConfigurationParams {
+    uint256 stakingDepositDelay;
+    uint256 stakingWithdrawalDelay;
+    uint256 maxSupply;
+    uint256 supplyExpansionRate;
+    uint256 revenueBatchSize;
+    uint256 expenditureFactor;
+    uint256 spread;
+    uint256 issuanceRate;
+    uint256 tradingFreezeCost;
+    address circuitBreaker;
+    address txFeeCalculator;
+    address insurancePool;
+    address protocolFund;
+    address exchange;
+}
+
 /**
  * @title RToken
  * @dev An ERC-20 token with built-in rules for price stabilization centered around a basket. 
