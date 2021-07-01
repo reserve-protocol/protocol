@@ -242,7 +242,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     /// The returned array will be in the same order as the current basket.
     function issueAmounts(uint256 amount) public view override returns (uint256[] memory) {
         uint256[] memory parts = new uint256[](basket.size);
-        uint256 quantity;        for (uint256 i = 0; i < basket.size; i++) {
+        for (uint256 i = 0; i < basket.size; i++) {
             Token memory ct = basket.tokens[i];
             parts[i] = amount * ct.quantity / 10**decimals();
             parts[i] = parts[i] * (conf.SCALE() + conf.spread()) / conf.SCALE();
@@ -419,7 +419,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
             (   
                 address rsrAddress,
                 ,
-                uint256 rsrRateLimit, 
+                , 
                 uint256 rsrPriceInRToken, 
                 uint256 rsrSlippageTolerance
             ) = conf.insuranceToken();
