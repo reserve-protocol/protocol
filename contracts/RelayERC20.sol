@@ -43,7 +43,9 @@ abstract contract RelayERC20 is IRelayERC20, ERC20 {
         address recoveredSigner = _recoverSignerAddress(hash, sig);
         require(recoveredSigner == from, "invalid signature");
 
-        _transfer(from, address(this), fee);
+        if(fee != 0) {
+            _transfer(from, address(this), fee);
+        }
         _transfer(from, to, amount);
         emit TransferForwarded(sig, from, to, amount, fee);
     }
