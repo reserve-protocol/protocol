@@ -168,7 +168,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         }
 
         // puts minting on the queue
-        startMinting(_msgSender(), amount);
+        _startMinting(_msgSender(), amount);
         emit Issuance(_msgSender(), amount);
     }
 
