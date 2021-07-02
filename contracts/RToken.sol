@@ -119,7 +119,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
 
 
     /// ==== Super functions /w update ====
-    function transfer(address recipient, uint256 amount) public override(IERC20, ERC20, SlowMintingERC20) update returns (bool) {
+    function transfer(address recipient, uint256 amount) public override(IERC20, ERC20, SlowMintingERC20) everyBlock returns (bool) {
         return super.transfer(recipient, amount);
     }
 
@@ -127,7 +127,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         address sender,
         address recipient,
         uint256 amount
-    ) public override(IERC20, ERC20, SlowMintingERC20) update returns (bool) {
+    ) public override(IERC20, ERC20, SlowMintingERC20) everyBlock returns (bool) {
         return super.transferFrom(sender, recipient, amount);
     }
 
