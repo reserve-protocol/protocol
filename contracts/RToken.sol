@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./dependencies/zeppelin/token/ERC20/extensions/ERC20Snapshot.sol";
-import "./dependencies/zeppelin/token/ERC20/utils/SafeERC20.sol";
-import "./dependencies/zeppelin/token/ERC20/IERC20.sol";
-import "./dependencies/zeppelin/access/Ownable.sol";
-import "./dependencies/zeppelin/utils/math/Math.sol";
+import "./external/zeppelin/token/ERC20/extensions/ERC20Snapshot.sol";
+import "./external/zeppelin/token/ERC20/utils/SafeERC20.sol";
+import "./external/zeppelin/token/ERC20/IERC20.sol";
+import "./external/zeppelin/access/Ownable.sol";
+import "./external/zeppelin/utils/math/Math.sol";
 import "./interfaces/ITXFee.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IAtomicExchange.sol";
@@ -98,21 +98,6 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         _rebalance(); 
         _;
     }
-
-
-    /// ==== Super functions /w update ====
-    function transfer(address recipient, uint256 amount) public override(IERC20, ERC20, SlowMintingERC20) everyBlock returns (bool) {
-        return super.transfer(recipient, amount);
-    }
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) public override(IERC20, ERC20, SlowMintingERC20) everyBlock returns (bool) {
-        return super.transferFrom(sender, recipient, amount);
-    }
-
 
     /// ========================= External =============================
 
@@ -423,11 +408,10 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     ) internal {
         uint256 initialSellBal = IERC20(sellToken).balanceOf(address(this));
         uint256 initialBuyBal = IERC20(buyToken).balanceOf(address(this));
-        IERC20(sellToken).safeApprove(conf.exchange(), sellAmount);
+        IERC20(sellToken).safeTransfer(conf.exchange(), sellAmount);
         IAtomicExchange(conf.exchange()).tradeFixedSell(sellToken, buyToken, sellAmount, minBuyAmount);
         require(IERC20(sellToken).balanceOf(address(this)) - initialSellBal == sellAmount, "bad sell");
         require(IERC20(buyToken).balanceOf(address(this)) - initialBuyBal >= minBuyAmount, "bad buy");
-        IERC20(sellToken).safeApprove(conf.exchange(), 0);
     }
 
     /**

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../dependencies/zeppelin/access/Ownable.sol";
+import "../external/zeppelin/access/Ownable.sol";
 import "../interfaces/IConfiguration.sol";
 import "../RToken.sol";
 

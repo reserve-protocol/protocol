@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 import "./interfaces/IConfiguration.sol";
-import "./dependencies/zeppelin/governance/TimelockController.sol";
+import "./external/zeppelin/governance/TimelockController.sol";
 import "./modules/InsurancePool.sol";
 import "./modules/Configuration.sol";
 import "./modules/Owner.sol";
