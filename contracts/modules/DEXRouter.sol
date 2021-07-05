@@ -24,16 +24,17 @@ contract DEXRouter is IAtomicExchange, IUniswapV3SwapCallback {
         uint256 sellAmount,
         uint256 minBuyAmount
     ) external override {
+        uint24 fee = 3000; // .3% fee tier
+
         ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter.ExactInputSingleParams({
             tokenIn: sellToken,
             tokenOut: buyToken,
-            fee: 0, // TODO: what should this be? I'm guessing it's a fee tier? 
+            fee: fee, 
             recipient: msg.sender,
-            deadline: 0, // TODO: what this?
+            deadline: block.timestamp, // require the trade completes in this block
             amountIn: sellAmount,
             amountOutMinimum: minBuyAmount,
-            sqrtPriceLimitX96: 0 // TODO: what this? 
-
+            sqrtPriceLimitX96: 0 // TODO: Confirm
         });
         require(swapper.exactInputSingle(swapParams) > minBuyAmount, "buy too low");
     }

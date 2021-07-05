@@ -99,6 +99,21 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         _;
     }
 
+
+    /// ==== Super functions /w update ====
+    function transfer(address recipient, uint256 amount) public override(IERC20, ERC20, SlowMintingERC20) everyBlock returns (bool) {
+        return super.transfer(recipient, amount);
+    }
+
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) public override(IERC20, ERC20, SlowMintingERC20) everyBlock returns (bool) {
+        return super.transferFrom(sender, recipient, amount);
+    }
+
+
     /// ========================= External =============================
 
     /// Configuration changes, only callable by Owner.
@@ -408,10 +423,11 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     ) internal {
         uint256 initialSellBal = IERC20(sellToken).balanceOf(address(this));
         uint256 initialBuyBal = IERC20(buyToken).balanceOf(address(this));
-        IERC20(sellToken).safeTransfer(conf.exchange(), sellAmount);
+        IERC20(sellToken).safeApprove(conf.exchange(), sellAmount);
         IAtomicExchange(conf.exchange()).tradeFixedSell(sellToken, buyToken, sellAmount, minBuyAmount);
         require(IERC20(sellToken).balanceOf(address(this)) - initialSellBal == sellAmount, "bad sell");
         require(IERC20(buyToken).balanceOf(address(this)) - initialBuyBal >= minBuyAmount, "bad buy");
+        IERC20(sellToken).safeApprove(conf.exchange(), 0);
     }
 
     /**
