@@ -12,7 +12,7 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
 
     /// ==== Mutable state ====
 
-    bool public triggered = false;
+    bool private _triggered = false;
 
     constructor (address _admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -25,16 +25,16 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
     }
 
     function check() public view override returns (bool) {
-        return triggered;
+        return _triggered;
     }
 
     function pause() external override onlyRole(PAUSER_ROLE) {
-        triggered = true;
+        _triggered = true;
         emit Paused(_msgSender());
     }
 
     function unpause() external override onlyRole(PAUSER_ROLE) {
-        triggered = false;
+        _triggered = false;
         emit Unpaused(_msgSender());
     }
 }
