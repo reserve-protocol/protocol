@@ -4,6 +4,7 @@ pragma solidity 0.8.4;
 interface IConfiguration {
 
     // Getters
+    function insuranceTokenAddress() external view returns (address);
     function insuranceToken() external view returns (address, uint256, uint256, uint256, uint256);
     function getBasketSize() external view returns (uint256);
     function getBasketTokenAdjusted(uint256 index) external view returns(address, uint256, uint256, uint256, uint256);
@@ -47,7 +48,8 @@ interface IConfiguration {
     function setExchange(address newExchange) external;
 
     // Events
-    event ConfigurationUpdated(string variable, uint256 oldVal, uint256 newVal);
+    event UIntConfigurationUpdated(string variable, uint256 oldVal, uint256 newVal);
+    event AddressConfigurationUpdated(string variable, address oldVal, address newVal);
      
 }
 

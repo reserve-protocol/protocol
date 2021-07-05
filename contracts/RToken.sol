@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./zeppelin/token/ERC20/extensions/ERC20Snapshot.sol";
-import "./zeppelin/token/ERC20/utils/SafeERC20.sol";
-import "./zeppelin/token/ERC20/IERC20.sol";
-import "./zeppelin/access/Ownable.sol";
-import "./zeppelin/utils/math/Math.sol";
+import "./external/zeppelin/token/ERC20/extensions/ERC20Snapshot.sol";
+import "./external/zeppelin/token/ERC20/utils/SafeERC20.sol";
+import "./external/zeppelin/token/ERC20/IERC20.sol";
+import "./external/zeppelin/access/Ownable.sol";
+import "./external/zeppelin/utils/math/Math.sol";
 import "./interfaces/ITXFee.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IAtomicExchange.sol";
 import "./interfaces/IInsurancePool.sol";
 import "./interfaces/IConfiguration.sol";
-import "./modules/SimpleOrderbookExchange.sol";
 import "./SlowMintingERC20.sol";
 
 struct Token {
@@ -35,23 +34,6 @@ struct Token {
 struct Basket {
     mapping(uint256 => Token) tokens;
     uint256 size;
-}
-
-struct ConfigurationParams {
-    uint256 stakingDepositDelay;
-    uint256 stakingWithdrawalDelay;
-    uint256 maxSupply;
-    uint256 supplyExpansionRate;
-    uint256 revenueBatchSize;
-    uint256 expenditureFactor;
-    uint256 spread;
-    uint256 issuanceRate;
-    uint256 tradingFreezeCost;
-    address circuitBreaker;
-    address txFeeCalculator;
-    address insurancePool;
-    address protocolFund;
-    address exchange;
 }
 
 /**
@@ -191,7 +173,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
 
     /// Trading freeze
     function freezeTrading() external override everyBlock {
-        (address rsrAddress,,,,) = conf.insuranceToken();   
+        address rsrAddress = conf.insuranceTokenAddress();   
         
         if (freezer != address(0)) {
              IERC20(rsrAddress).safeTransfer(
@@ -213,7 +195,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     function unfreezeTrading() external override everyBlock {
         require(tradingFrozen(), "already unfrozen");
         require(_msgSender() == freezer, "only freezer can unfreeze");
-        (address rsrAddress,,,,) = conf.insuranceToken();
+        address rsrAddress = conf.insuranceTokenAddress();
        
         IERC20(rsrAddress).safeTransfer(
             freezer,

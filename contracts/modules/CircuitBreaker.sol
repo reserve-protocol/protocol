@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 import "../interfaces/ICircuitBreaker.sol";
-import "../zeppelin/access/AccessControlEnumerable.sol";
+import "../external/zeppelin/access/AccessControlEnumerable.sol";
 
 contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
 

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./zeppelin/token/ERC20/ERC20.sol";
-import "./zeppelin/token/ERC20/IERC20.sol";
+import "./external/zeppelin/token/ERC20/ERC20.sol";
+import "./external/zeppelin/token/ERC20/IERC20.sol";
 import "./interfaces/IConfiguration.sol";
 import "./interfaces/ICircuitBreaker.sol";
 import "./interfaces/ISlowMintingERC20.sol";
