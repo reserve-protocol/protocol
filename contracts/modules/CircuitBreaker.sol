@@ -14,13 +14,17 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
 
     bool public triggered = false;
 
+    /// ==== Events ====
+    event Paused(address account);
+    event Unpaused(address account);
+
     constructor (address _admin) {
-        grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        grantRole(PAUSER_ROLE, _admin);
+        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+        _setupRole(PAUSER_ROLE, _admin);
     }
 
     modifier isPauser() {
-        require(hasRole(PAUSER_ROLE, _msgSender()), "must be pauser role");
+        require(hasRole(PAUSER_ROLE, _msgSender()), "CircuitBreaker: Must be pauser role");
         _;
     }
 
@@ -30,9 +34,11 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
 
     function pause() external onlyRole(PAUSER_ROLE) {
         triggered = true;
+        emit Paused(_msgSender());
     }
 
     function unpause() external onlyRole(PAUSER_ROLE) {
         triggered = false;
+        emit Unpaused(_msgSender());
     }
 }
