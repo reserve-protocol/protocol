@@ -14,10 +14,6 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
 
     bool public triggered = false;
 
-    /// ==== Events ====
-    event Paused(address account);
-    event Unpaused(address account);
-
     constructor (address _admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
         _setupRole(PAUSER_ROLE, _admin);
@@ -32,12 +28,12 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
         return triggered;
     }
 
-    function pause() external onlyRole(PAUSER_ROLE) {
+    function pause() external override onlyRole(PAUSER_ROLE) {
         triggered = true;
         emit Paused(_msgSender());
     }
 
-    function unpause() external onlyRole(PAUSER_ROLE) {
+    function unpause() external override onlyRole(PAUSER_ROLE) {
         triggered = false;
         emit Unpaused(_msgSender());
     }
