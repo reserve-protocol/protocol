@@ -13,6 +13,7 @@ import "./interfaces/IInsurancePool.sol";
 import "./interfaces/IConfiguration.sol";
 import "./SlowMintingERC20.sol";
 
+
 struct Token {
     address tokenAddress;
     // How many tokens for each 1e18 RTokens
