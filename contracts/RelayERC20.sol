@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./external/zeppelin/token/ERC20/ERC20.sol";
-import "./external/zeppelin/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
 import "./interfaces/IRelayERC20.sol";
 
 abstract contract RelayERC20 is IRelayERC20, ERC20 {

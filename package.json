@@ -31,7 +31,9 @@
         "prettier-plugin-solidity": "1.0.0-beta.13"
     },
     "dependencies": {
-        "@uniswap/v3-core": "1.0.0"
+        "@openzeppelin/contracts": "^4.2.0",
+        "@uniswap/v3-core": "1.0.0",
+        "@uniswap/v3-periphery": "^1.1.1"
     },
     "prettier": {
         "overrides": [

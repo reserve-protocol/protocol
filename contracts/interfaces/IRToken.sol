@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../external/zeppelin/token/ERC20/IERC20.sol";
 import "./ISlowMintingERC20.sol";
 
 interface IRToken is ISlowMintingERC20 {

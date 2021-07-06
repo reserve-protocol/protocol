@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+
 import "../interfaces/ICircuitBreaker.sol";
-import "../external/zeppelin/access/AccessControlEnumerable.sol";
 
 contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
     /// ==== Immutable state ====

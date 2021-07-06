@@ -621,6 +621,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@openzeppelin/contracts@npm:3.4.1-solc-0.7-2":
+  version: 3.4.1-solc-0.7-2
+  resolution: "@openzeppelin/contracts@npm:3.4.1-solc-0.7-2"
+  checksum: 190147d83fac3b9aad9f163de2bb8dbe464cb12ea1e411a88e0fa141bda03e0a21c8b45904c40a6fff343adf8b0c322a185fd31c83107ff02d6b0a3479b30496
+  languageName: node
+  linkType: hard
+
+"@openzeppelin/contracts@npm:^4.2.0":
+  version: 4.2.0
+  resolution: "@openzeppelin/contracts@npm:4.2.0"
+  checksum: 5dee34e72797ec5071a8123db1225ac255570bf47bf28f4c20b651efe1422d6581115e699de4472a4a7c704876b4ccced5f73c9f7bacbea2199c4829d9e92e23
+  languageName: node
+  linkType: hard
+
 "@resolver-engine/core@npm:^0.3.3":
   version: 0.3.3
   resolution: "@resolver-engine/core@npm:0.3.3"
@@ -995,10 +1009,38 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@uniswap/lib@npm:^4.0.1-alpha":
+  version: 4.0.1-alpha
+  resolution: "@uniswap/lib@npm:4.0.1-alpha"
+  checksum: ce30f7f6dde6d7c955267dc1a631874aaab4df2b591550c334acf70935da8fc27802998e4d585641feac8277c221babd31c16d4038a5c812de4d9f6e969061b4
+  languageName: node
+  linkType: hard
+
+"@uniswap/v2-core@npm:1.0.1":
+  version: 1.0.1
+  resolution: "@uniswap/v2-core@npm:1.0.1"
+  checksum: e3dcbe72500530249b68d2f2c92062f3f21919267123262578a34cac2862edf7eeda8fcdc808a370d109f26e357635b1cf546e35dbd902a18768ac88d9a8fb0f
+  languageName: node
+  linkType: hard
+
 "@uniswap/v3-core@npm:1.0.0":
   version: 1.0.0
   resolution: "@uniswap/v3-core@npm:1.0.0"
   checksum: 594f6fb2959c24e2e98e2db95223d52da6b7a81a1d9e0ae002450c2ce8756972c11c6afd58f9331080248d6582f691e0b320840e59aef586d92165d5bce430d0
+  languageName: node
+  linkType: hard
+
+"@uniswap/v3-periphery@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "@uniswap/v3-periphery@npm:1.1.1"
+  dependencies:
+    "@openzeppelin/contracts": 3.4.1-solc-0.7-2
+    "@uniswap/lib": ^4.0.1-alpha
+    "@uniswap/v2-core": 1.0.1
+    "@uniswap/v3-core": 1.0.0
+    base64-sol: 1.0.1
+    hardhat-watcher: ^2.1.1
+  checksum: 0370bf049afd91f49f613814e8001624cee1f7a14ddd5514d1046758b474dd8e1283a58f67cdf17e930c84ebf24c1724bb9f7bdc1997e8ef438e538e03637ab9
   languageName: node
   linkType: hard
 
@@ -2097,6 +2139,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"base64-sol@npm:1.0.1":
+  version: 1.0.1
+  resolution: "base64-sol@npm:1.0.1"
+  checksum: 82a774b228a1659b8494cb855aadd4e93baa86ad383a5d83104c9c0012ccb1722ae2254b7b71a7883d1989ffcdc6b6e245429dde11a942dfcc3e48a18beff87e
+  languageName: node
+  linkType: hard
+
 "base@npm:^0.11.1":
   version: 0.11.2
   resolution: "base@npm:0.11.2"
@@ -2609,7 +2658,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chokidar@npm:^3.4.0":
+"chokidar@npm:^3.4.0, chokidar@npm:^3.4.3":
   version: 3.5.2
   resolution: "chokidar@npm:3.5.2"
   dependencies:
@@ -4851,6 +4900,17 @@ fsevents@~2.3.2:
     ajv: ^6.12.3
     har-schema: ^2.0.0
   checksum: 01b905cdaa7632c926a962c8127a77b98387935ef3aa0b44dae871eae2592ba6da948a3bdbb3eeceb90fa1599300f16716e50147965a7ea7c4e7c4e57ac69727
+  languageName: node
+  linkType: hard
+
+"hardhat-watcher@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "hardhat-watcher@npm:2.1.1"
+  dependencies:
+    chokidar: ^3.4.3
+  peerDependencies:
+    hardhat: ^2.0.0
+  checksum: bba8984f74fb759335c85fca3f76a744d38d8cba087b71cb1e7f8410e72136915ba47b18aaf7e1dac42687c90c5f8f386bac3efd1a96f332175d5a9930e02184
   languageName: node
   linkType: hard
 
@@ -8208,7 +8268,9 @@ fsevents@~2.3.2:
   dependencies:
     "@nomiclabs/hardhat-ethers": ^2.0.2
     "@nomiclabs/hardhat-waffle": ^2.0.1
+    "@openzeppelin/contracts": ^4.2.0
     "@uniswap/v3-core": 1.0.0
+    "@uniswap/v3-periphery": ^1.1.1
     chai: ^4.3.4
     ethereum-waffle: ^3.4.0
     ethers: ^5.4.1

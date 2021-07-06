@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../interfaces/IAtomicExchange.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../external/zeppelin/token/ERC20/IERC20.sol";
-import "../external/zeppelin/token/ERC20/utils/SafeERC20.sol";
-import "../external/uniswap/ISwapRouter.sol";
-import "../external/uniswap/IUniswapV3SwapCallback.sol";
-import "../external/uniswap/IUniswapV3Pool.sol";
+import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+
+import "../interfaces/IAtomicExchange.sol";
 
 contract DEXRouter is IAtomicExchange, IUniswapV3SwapCallback {
     using SafeERC20 for IERC20;

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
+import "@openzeppelin/contracts/governance/TimelockController.sol";
+
 import "./interfaces/IConfiguration.sol";
-import "./external/zeppelin/governance/TimelockController.sol";
 import "./modules/InsurancePool.sol";
 import "./modules/Configuration.sol";
 import "./modules/Owner.sol";
