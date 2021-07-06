@@ -4,8 +4,8 @@ design-docs
 node_modules/
 artifacts/
 cache/
+.yarn/
 
-.yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
