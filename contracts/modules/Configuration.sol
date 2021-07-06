@@ -82,6 +82,7 @@ contract Configuration is IConfiguration, Ownable {
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.tokens[i] = tokens_[i];
         }
+        insuranceToken = insuranceToken_;
         _params = params_;
     }
 
