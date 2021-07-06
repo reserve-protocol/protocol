@@ -13,4 +13,8 @@ contract SlowMintingERC20Mock is SlowMintingERC20 {
     function startMinting(address account, uint256 amount) public {
         _startMinting(account, amount);
     }
+
+    function issuanceRate() external view returns(uint256) {
+        return this.conf().issuanceRate();
+    }
 }

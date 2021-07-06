@@ -19,7 +19,7 @@ import "./RelayERC20.sol";
  * *Contract Invariant*
  * At any reasonable setting of values this algorithm should not result in the queue growing 
  * unboundedly. In the worst case this does occur, portions of the queue can be processed 
- * manually by calling `tryProcessMintings` directly. 
+ * manually by calling `tryProcessMintings(uint256 count)` directly. 
  */ 
 abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
 
@@ -59,26 +59,40 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
         if (!ICircuitBreaker(conf.circuitBreaker()).check()) {
             uint256 start = currentMinting;
             uint256 blocksSince = block.number - lastBlockChecked;
+            uint256 issuanceAmount = conf.issuanceRate();
             while (currentMinting < mintings.length && currentMinting < start + count) {
                 Minting storage m = mintings[currentMinting];
 
                 // Break if the next minting is too big.
-                if (m.amount > conf.issuanceRate() * (blocksSince)) {
+                if (m.amount > issuanceAmount * (blocksSince)) {
                     break;
                 }
                 _mint(m.account, m.amount);
                 emit MintingComplete(m.account, m.amount);
+
+                // update remaining
+                if(m.amount >= issuanceAmount) {
+                    issuanceAmount = 0;
+                } else {
+                    issuanceAmount -= m.amount;
+                }
 
                 uint256 blocksUsed = m.amount / conf.issuanceRate();
                 if (blocksUsed * conf.issuanceRate() > m.amount) {
                     blocksUsed = blocksUsed + 1;
                 }
                 blocksSince = blocksSince - blocksUsed;
+               
                 delete mintings[currentMinting]; // gas saving..?
+                
                 currentMinting++;
             }
+            
+            // update lastBlockChecked if tokens were minted
+            if(currentMinting > start) {
+                lastBlockChecked = block.number;
+            }        
         }
-        lastBlockChecked = block.number;
     }
 
 
@@ -113,6 +127,11 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
 
         Minting memory m = Minting(amount, account);
         mintings.push(m);
+
+        // update lastBlockChecked if this is the only item in queue
+        if (mintings.length == currentMinting + 1) {
+            lastBlockChecked = block.number;
+        }
         emit MintingInitiated(account, amount);
     }
 }
