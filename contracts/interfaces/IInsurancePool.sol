@@ -2,21 +2,19 @@
 pragma solidity 0.8.4;
 
 interface IInsurancePool {
-
-    function balanceOf(address account) external returns(uint256);
+    function balanceOf(address account) external returns (uint256);
 
     //function earned(address account) external view returns(uint256);
 
-    function lastFloor(address account) external view returns(uint256);
+    function lastFloor(address account) external view returns (uint256);
 
-    function totalSupply() external returns(uint256);
-
+    function totalSupply() external returns (uint256);
 
     // ==== Callable only by the RToken ====
 
     function notifyRevenue(bool isRSR, uint256 amount) external;
 
-    function seizeRSR(uint256 amount) external returns(uint256);
+    function seizeRSR(uint256 amount) external returns (uint256);
 
     // ==== Callable by anyone ====
 
@@ -35,7 +33,7 @@ interface IInsurancePool {
     /// Escape hatch for dynamic programming failurecase
     function climb(address account, uint256 floors) external;
 
-    event DepositInitiated(address indexed user, uint256 indexed timestamp,uint256 amount);
+    event DepositInitiated(address indexed user, uint256 indexed timestamp, uint256 amount);
     event DepositCompleted(address indexed user, uint256 amount);
     event WithdrawalInitiated(address indexed user, uint256 indexed timestamp, uint256 amount);
     event WithdrawalCompleted(address indexed user, uint256 amount);

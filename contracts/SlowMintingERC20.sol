@@ -9,12 +9,12 @@ import "./interfaces/ISlowMintingERC20.sol";
 import "./RelayERC20.sol";
 
 /*
- * @title SlowMintingERC20 
- * @dev An ERC20 that time-delays minting events, causing the internal balance mapping 
- * of the contract to update only after an appropriate delay. 
- * 
- * The delay is determined using a FIFO minting queue. The queue stores the block of the initial 
- * minting event. As the block number increases, mintings are taken off the queue and paid out. 
+ * @title SlowMintingERC20
+ * @dev An ERC20 that time-delays minting events, causing the internal balance mapping
+ * of the contract to update only after an appropriate delay.
+ *
+ * The delay is determined using a FIFO minting queue. The queue stores the block of the initial
+ * minting event. As the block number increases, mintings are taken off the queue and paid out.
  *
  * *Contract Invariant*
  * At any reasonable setting of values this algorithm should not result in the queue growing 
@@ -22,7 +22,6 @@ import "./RelayERC20.sol";
  * manually by calling `tryProcessMintings(uint256 count)` directly. 
  */ 
 abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
-
     IConfiguration public override conf;
 
     struct Minting {
@@ -35,14 +34,13 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
     uint256 private lastBlockChecked;
 
     constructor(
-        string memory name_, 
-        string memory symbol_, 
+        string memory name_,
+        string memory symbol_,
         address conf_
     ) ERC20(name_, symbol_) {
         conf = IConfiguration(conf_);
         lastBlockChecked = block.number;
     }
-
 
     modifier update() {
         tryProcessMintings();
@@ -54,7 +52,7 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
     }
 
     /// Tries to process `count` mintings. Called before most actions.
-    /// Can also be called directly if we get to the block gas limit. 
+    /// Can also be called directly if we get to the block gas limit.
     function tryProcessMintings(uint256 count) public {
         if (!ICircuitBreaker(conf.circuitBreaker()).check()) {
             uint256 start = currentMinting;
@@ -95,10 +93,15 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
         }
     }
 
-
     /// ==== Super functions /w update ====
 
-    function transfer(address recipient, uint256 amount) public override(IERC20) virtual update returns (bool) {
+    function transfer(address recipient, uint256 amount)
+        public
+        virtual
+        override(IERC20)
+        update
+        returns (bool)
+    {
         return super.transfer(recipient, amount);
     }
 
@@ -116,7 +119,7 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
         address sender,
         address recipient,
         uint256 amount
-    ) public override(IERC20) virtual update returns (bool) {
+    ) public virtual override(IERC20) update returns (bool) {
         return super.transferFrom(sender, recipient, amount);
     }
 

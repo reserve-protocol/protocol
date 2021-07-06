@@ -6,43 +6,33 @@ import "../interfaces/IConfiguration.sol";
 import "../RToken.sol";
 
 struct ConfigurationParams {
-
     /// RSR staking deposit delay (s)
     /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to enter the insurance pool
     uint256 stakingDepositDelay;
-
     /// RSR staking withdrawal delay (s)
     /// e.g. 2_592_000 => Currently staking RSR tokens take 1 month to withdraw
     uint256 stakingWithdrawalDelay;
-
     /// RToken max supply
     /// e.g. 1_000_000e18 => 1M max supply
     uint256 maxSupply;
-
     /// RToken annual supply-expansion rate, scaled
     /// e.g. 1.23e16 => 1.23% annually
     uint256 supplyExpansionRate;
-
     /// RToken revenue batch sizes
     /// e.g. 1e15 => 0.1% of the RToken supply
     uint256 revenueBatchSize;
-
     /// Protocol expenditure factor
     /// e.g. 1e16 => 1% of the RToken supply expansion goes to protocol fund
     uint256 expenditureFactor;
-
     /// Issuance/Redemption spread
     /// e.g. 1e14 => 0.01% spread
-    uint256 spread; 
-
+    uint256 spread;
     /// RToken issuance blocklimit
     /// e.g. 25_000e18 => 25_000e18 (atto)RToken can be issued per block
     uint256 issuanceRate;
-
     /// Cost of freezing trading (in RSR)
     /// e.g. 100_000_000e18 => 100M RSR
     uint256 tradingFreezeCost;
-
     /// Addresses
     address circuitBreaker;
     address txFeeCalculator;
@@ -52,18 +42,17 @@ struct ConfigurationParams {
 }
 
 /*
- * @title Configuration 
- * @dev This contract holds everything configurable by governance about the RToken. 
- */ 
+ * @title Configuration
+ * @dev This contract holds everything configurable by governance about the RToken.
+ */
 contract Configuration is IConfiguration, Ownable {
-
     // ==== Public ====
 
     uint256 public constant override SCALE = 1e18;
-    /// Used to express proportions relative to a constant. 
+    /// Used to express proportions relative to a constant.
     /// 5% => 5e16
 
-    uint256 public override immutable deployedAt;
+    uint256 public immutable override deployedAt;
 
     Token public override insuranceToken;
 
@@ -94,12 +83,29 @@ contract Configuration is IConfiguration, Ownable {
         return _basket.size;
     }
 
-    function getBasketTokenAdjusted(
-        uint256 i
-    ) external view override returns(address, uint256, uint256, uint256, uint256) { 
-        uint256 rate = SCALE + _params.supplyExpansionRate * (block.timestamp - deployedAt) / 31536000;
+    function getBasketTokenAdjusted(uint256 i)
+        external
+        view
+        override
+        returns (
+            address,
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        uint256 rate = SCALE +
+            (_params.supplyExpansionRate * (block.timestamp - deployedAt)) /
+            31536000;
         Token storage t = _basket.tokens[i];
-        return (t.tokenAddress, t.quantity * SCALE / rate, t.rateLimit, t.priceInRToken, t.slippageTolerance);
+        return (
+            t.tokenAddress,
+            (t.quantity * SCALE) / rate,
+            t.rateLimit,
+            t.priceInRToken,
+            t.slippageTolerance
+        );
     }
 
     function insuranceTokenAddress() external view override returns (address) {
@@ -170,8 +176,8 @@ contract Configuration is IConfiguration, Ownable {
 
     function setBasketTokenRateLimit(uint256 i, uint256 newLimit) external override onlyOwner {
         emit UIntConfigurationUpdated(
-            "_basket.tokens.rateLimit", 
-            _basket.tokens[i].rateLimit, 
+            "_basket.tokens.rateLimit",
+            _basket.tokens[i].rateLimit,
             newLimit
         );
         _basket.tokens[i].rateLimit = newLimit;
@@ -179,20 +185,28 @@ contract Configuration is IConfiguration, Ownable {
 
     function setBasketTokenPriceInRToken(uint256 i, uint256 price) external override onlyOwner {
         emit UIntConfigurationUpdated(
-            "_basket.tokens.rateLimit", 
-            _basket.tokens[i].priceInRToken, 
+            "_basket.tokens.rateLimit",
+            _basket.tokens[i].priceInRToken,
             price
         );
         _basket.tokens[i].priceInRToken = price;
     }
 
     function setInsuranceTokenRateLimit(uint256 newLimit) external override onlyOwner {
-        emit UIntConfigurationUpdated("insuranceToken.rateLimit", insuranceToken.rateLimit, newLimit);
+        emit UIntConfigurationUpdated(
+            "insuranceToken.rateLimit",
+            insuranceToken.rateLimit,
+            newLimit
+        );
         insuranceToken.rateLimit = newLimit;
     }
 
     function setInsuranceTokenPriceInRToken(uint256 newPrice) external override onlyOwner {
-        emit UIntConfigurationUpdated("insuranceToken.priceInRToken", insuranceToken.priceInRToken, newPrice);
+        emit UIntConfigurationUpdated(
+            "insuranceToken.priceInRToken",
+            insuranceToken.priceInRToken,
+            newPrice
+        );
         insuranceToken.priceInRToken = newPrice;
     }
 
@@ -204,7 +218,11 @@ contract Configuration is IConfiguration, Ownable {
     }
 
     function setStakingWithdrawalDelay(uint256 newDelay) external override onlyOwner {
-        emit UIntConfigurationUpdated("stakingWithdrawalDelay", _params.stakingWithdrawalDelay, newDelay);
+        emit UIntConfigurationUpdated(
+            "stakingWithdrawalDelay",
+            _params.stakingWithdrawalDelay,
+            newDelay
+        );
         _params.stakingWithdrawalDelay = newDelay;
     }
 
@@ -244,7 +262,11 @@ contract Configuration is IConfiguration, Ownable {
     }
 
     function setCircuitBreaker(address newCircuitBreaker) external override onlyOwner {
-        emit AddressConfigurationUpdated("circuitBreaker", _params.circuitBreaker, newCircuitBreaker);
+        emit AddressConfigurationUpdated(
+            "circuitBreaker",
+            _params.circuitBreaker,
+            newCircuitBreaker
+        );
         _params.circuitBreaker = newCircuitBreaker;
     }
 

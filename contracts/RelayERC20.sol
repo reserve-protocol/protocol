@@ -6,7 +6,6 @@ import "./external/zeppelin/utils/cryptography/ECDSA.sol";
 import "./interfaces/IRelayERC20.sol";
 
 abstract contract RelayERC20 is IRelayERC20, ERC20 {
-
     event TransferForwarded(
         bytes sig,
         address indexed from,
@@ -15,9 +14,9 @@ abstract contract RelayERC20 is IRelayERC20, ERC20 {
         uint256 fee
     );
 
-    mapping(address => uint) public override relayNonce;
+    mapping(address => uint256) public override relayNonce;
 
-    /// Checks the transfer signature in-tx in order to enable metatxs. 
+    /// Checks the transfer signature in-tx in order to enable metatxs.
     /// Note that `amount` is not reduced by `fee`; the fee is taken separately.
     /// Adheres to the SafeERC20 spec of reverting on failure, unlike ERC20 interface.
     function relayedTransfer(
@@ -26,24 +25,24 @@ abstract contract RelayERC20 is IRelayERC20, ERC20 {
         address to,
         uint256 amount,
         uint256 fee
-    )
-        public virtual override
-    {
-        bytes32 hash = keccak256(abi.encodePacked(
-            "relayedTransfer",
-            address(this),
-            from,
-            to,
-            amount,
-            fee,
-            relayNonce[from]
-        ));
+    ) public virtual override {
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                "relayedTransfer",
+                address(this),
+                from,
+                to,
+                amount,
+                fee,
+                relayNonce[from]
+            )
+        );
         relayNonce[from]++;
 
         address recoveredSigner = _recoverSignerAddress(hash, sig);
         require(recoveredSigner == from, "RelayERC20: Invalid signature");
 
-        if(fee != 0) {
+        if (fee != 0) {
             _transfer(from, address(this), fee);
         }
         _transfer(from, to, amount);
@@ -51,10 +50,7 @@ abstract contract RelayERC20 is IRelayERC20, ERC20 {
     }
 
     /// Recover the signer's address from the hash and signature.
-    function _recoverSignerAddress(bytes32 hash, bytes memory sig)
-        internal pure
-        returns (address)
-    {
+    function _recoverSignerAddress(bytes32 hash, bytes memory sig) internal pure returns (address) {
         bytes32 ethMessageHash = ECDSA.toEthSignedMessageHash(hash);
         return ECDSA.recover(ethMessageHash, sig);
     }

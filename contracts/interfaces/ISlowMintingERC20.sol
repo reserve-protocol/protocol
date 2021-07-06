@@ -5,9 +5,8 @@ import "./IConfiguration.sol";
 import "./IRelayERC20.sol";
 
 interface ISlowMintingERC20 is IRelayERC20 {
-
-    function conf() external returns(IConfiguration);
+    function conf() external returns (IConfiguration);
 
     event MintingInitiated(address account, uint256 amount);
     event MintingComplete(address account, uint256 amount);
-} 
+}
