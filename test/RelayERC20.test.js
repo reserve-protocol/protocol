@@ -75,7 +75,7 @@ describe("RelayERC20 contract", function () {
   });
 
   describe("Relay Transfers", function () {
-    it("Should perform relay transfer  between accounts", async function () {
+    it("Should perform relay transfer between accounts", async function () {
       // Transfer 50 tokens from owner to addr1, relayed by another account
       const nonce = await token.relayNonce(owner.address);
 
@@ -93,6 +93,30 @@ describe("RelayERC20 contract", function () {
 
       const addr1Balance = await token.balanceOf(addr1.address);
       expect(addr1Balance).to.equal(50);
+    });
+
+    it("Should perform relay transfer of fee", async function () {
+      // Transfer 50 tokens from owner to addr1 (with 20 tokens fee), relayed by another account.
+      const nonce = await token.relayNonce(owner.address);
+
+      const hash = ethers.utils.solidityKeccak256(
+        ["string", "address", "address", "address", "uint256", "uint256", "uint256"],
+        ["relayedTransfer", token.address, owner.address, addr1.address, 50, 20, nonce]
+      );
+      const sigHashBytes = ethers.utils.arrayify(hash);
+      const sig = await owner.signMessage(sigHashBytes)
+
+      // No balance in contract yet
+      let feeBalance = await token.balanceOf(token.address);
+      expect(feeBalance).to.equal(0);
+
+      await expect(token.connect(addr2).relayedTransfer(sig, owner.address, addr1.address, 50, 20))
+        .to.emit(token, 'TransferForwarded')
+        .withArgs(sig, owner.address, addr1.address, 50, 20);
+
+      // Check balance in contract
+      feeBalance = await token.balanceOf(token.address);
+      expect(feeBalance).to.equal(20);
     });
 
     it("Should update nonce correctly and only accept valid nonce", async function () {

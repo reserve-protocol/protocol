@@ -36,7 +36,9 @@ describe("SlowMintingERC20 contract", function () {
       expect(await token.totalSupply()).to.equal(0);
 
     });
+  });
 
+  describe("Minting", function () {
     it("Should start minting", async function () {
       let amount = 1000;
       await expect(token.startMinting(owner.address, amount))
@@ -44,7 +46,7 @@ describe("SlowMintingERC20 contract", function () {
         .withArgs(owner.address, amount)
     });
 
-    it("Process Mintings in one attempt for amounts smaller than issuance rate", async function () {
+    it("Should process Mintings in one attempt for amounts smaller than issuance rate", async function () {
       let amount = 1000;
       await expect(token.startMinting(owner.address, amount))
         .to.emit(token, 'MintingInitiated')
@@ -69,7 +71,7 @@ describe("SlowMintingERC20 contract", function () {
       expect(await token.totalSupply()).to.equal(amount);
     });
 
-    it("Process Mintings in multiple attempts - 2 blocks", async function () {
+    it("Should process Mintings in multiple attempts (2 blocks)", async function () {
       let amount = 50000;
       let issuanceRate = parseInt(await token.issuanceRate());
       let blocks = amount / issuanceRate;
@@ -100,7 +102,7 @@ describe("SlowMintingERC20 contract", function () {
 
     });
 
-    it("Process Mintings in multiple attempts - 3 blocks", async function () {
+    it("Should process Mintings in multiple attempts (3 blocks)", async function () {
       let amount = 70000;
       let issuanceRate = parseInt(await token.issuanceRate());
       let blocks = amount / issuanceRate;
@@ -127,7 +129,6 @@ describe("SlowMintingERC20 contract", function () {
       expect(await token.balanceOf(owner.address)).to.equal(0);
       expect(await token.totalSupply()).to.equal(0);
 
-
       // Process Mintings
       await token["tryProcessMintings()"]();
 
@@ -138,12 +139,12 @@ describe("SlowMintingERC20 contract", function () {
 
     });
 
-    it("Process Multiple Mintings in queue in single issuance", async function () {
+    it("Should process multiple Mintings in queue in single issuance", async function () {
       let amount1 = 2000;
       let amount2 = 3000;
       let amount3 = 5000;
       let amount4 = 6000;
-      
+
       await expect(token.startMinting(owner.address, amount1))
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount1);
@@ -158,10 +159,10 @@ describe("SlowMintingERC20 contract", function () {
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount3);
 
-        //console.log(blocks);
+      //console.log(blocks);
       await expect(token.startMinting(owner.address, amount4))
-      .to.emit(token, 'MintingInitiated')
-      .withArgs(owner.address, amount4);
+        .to.emit(token, 'MintingInitiated')
+        .withArgs(owner.address, amount4);
 
       // No Tokens minted yet
       expect(await token.balanceOf(owner.address)).to.equal(0);
@@ -173,15 +174,15 @@ describe("SlowMintingERC20 contract", function () {
       //  Tokens minted in single issuance
       expect(await token.balanceOf(owner.address)).to.equal(amount1 + amount2 + amount3 + amount4);
       expect(await token.totalSupply()).to.equal(amount1 + amount2 + amount3 + amount4);
-      
+
     });
 
-    it("Process Multiple Mintings in queue in single issuance - excludes exceeding", async function () {
+    it("Should process multiple Mintings in queue until exceeding rate", async function () {
       let amount1 = 10000;
       let amount2 = 15000;
       let amount3 = 20000;
-      
-      
+
+
       await expect(token.startMinting(owner.address, amount1))
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount1);
@@ -206,11 +207,10 @@ describe("SlowMintingERC20 contract", function () {
       //  Tokens minted in single issuance
       expect(await token.balanceOf(owner.address)).to.equal(amount1 + amount2);
       expect(await token.totalSupply()).to.equal(amount1 + amount2);
-      
+
     });
 
-
-    it("Process Multiple Mintings in multiple issuances", async function () {
+    it("Should process multiple Mintings in multiple issuances", async function () {
       let amount1 = 60000;
       let amount2 = 20000;
       // let issuanceRate = parseInt(await token.issuanceRate());
@@ -245,15 +245,14 @@ describe("SlowMintingERC20 contract", function () {
       //  Tokens minted for first mint
       expect(await token.balanceOf(owner.address)).to.equal(amount1);
       expect(await token.totalSupply()).to.equal(amount1);
-     
-       // Process Mintings
-       await token["tryProcessMintings()"]();
 
-       //  Tokens minted for first mint
-       expect(await token.balanceOf(owner.address)).to.equal(amount1 + amount2);
-       expect(await token.totalSupply()).to.equal(amount1 + amount2);
+      // Process Mintings
+      await token["tryProcessMintings()"]();
+
+      //  Tokens minted for first mint
+      expect(await token.balanceOf(owner.address)).to.equal(amount1 + amount2);
+      expect(await token.totalSupply()).to.equal(amount1 + amount2);
     });
   });
-
 
 });
