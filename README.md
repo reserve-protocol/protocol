@@ -4,13 +4,37 @@
 
 TODO
 
-## Development Env
+## Development Environment
 
 ### Yarn Installation
 
-    npm install -g yarn
-    cd ~/path/to/project
-    yarn set version berry
+Install `yarn` (if required)
+
+```bash
+$ npm install -g yarn 
+```
+
+Clone this repository:
+
+```bash
+$ git clone git@github.com:reserve-protocol/protocol.git 
+```
+
+Install the required modules: 
+
+ ```bash   
+ # Install required modules
+ $ cd ~/path/to/project
+ $ yarn
+```
+
+### Running Tests
+
+To run tests run the following command:
+
+```bash
+$ yarn test
+```
 
 ## Dependencies
 
