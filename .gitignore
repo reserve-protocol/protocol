@@ -4,6 +4,12 @@ design-docs
 node_modules/
 artifacts/
 cache/
-.yarn/
 coverage/
 coverage.json
+
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
