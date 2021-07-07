@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+
 import "../interfaces/ICircuitBreaker.sol";
-import "../external/zeppelin/access/AccessControlEnumerable.sol";
 
 contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
-
     /// ==== Immutable state ====
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -14,7 +14,7 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
 
     bool private _triggered = false;
 
-    constructor (address _admin) {
+    constructor(address _admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
         _setupRole(PAUSER_ROLE, _admin);
     }

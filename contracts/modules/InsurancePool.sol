@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../external/zeppelin/utils/Context.sol";
-import "../external/zeppelin/utils/math/Math.sol";
-import "../external/zeppelin/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import "../interfaces/IInsurancePool.sol";
 import "./Configuration.sol";
 
@@ -11,7 +12,7 @@ import "./Configuration.sol";
  * @title InsurancePool
  * @dev The InsurancePool is where people can stake their RSR in order to provide insurance and
  * benefit from the revenue stream from an RToken. By staking they make their RSR eligible
- * to be used in the event of recapitalization. 
+ * to be used in the event of recapitalization.
  */
 contract InsurancePool is Context, IInsurancePool {
     using SafeERC20 for IERC20;
@@ -48,7 +49,6 @@ contract InsurancePool is Context, IInsurancePool {
     StakingEvent[] public withdrawals;
     uint256 public withdrawalIndex;
 
-
     constructor(address rToken_, address rsr_) {
         RTOKEN = IERC20(rToken_);
         RSR = IERC20(rsr_);
@@ -62,10 +62,9 @@ contract InsurancePool is Context, IInsurancePool {
             for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
                 RevenueEvent storage re = revenueEvents[i];
                 if (re.isRSR) {
-                    _balances[account] += re.amount * _balanceOf(account) / re.totalStaked;
-
+                    _balances[account] += (re.amount * _balanceOf(account)) / re.totalStaked;
                 } else {
-                    rTokenRevenues[account] += re.amount * _balanceOf(account) / re.totalStaked;
+                    rTokenRevenues[account] += (re.amount * _balanceOf(account)) / re.totalStaked;
                 }
             }
 
@@ -83,7 +82,7 @@ contract InsurancePool is Context, IInsurancePool {
         while (success && depositIndex < deposits.length) {
             success = trySettleNextDeposit();
         }
-        
+
         _;
     }
 
@@ -96,11 +95,11 @@ contract InsurancePool is Context, IInsurancePool {
     function balanceOf(address account) external override update(account) returns (uint256) {
         return _balanceOf(account);
     }
-    
+
     // TODO: Implement earned
     function earned(address account) external view returns (uint256) {}
 
-    function trySettleNextWithdrawal() public returns(bool) {
+    function trySettleNextWithdrawal() public returns (bool) {
         StakingEvent storage withdrawal = withdrawals[withdrawalIndex];
         if (block.timestamp - conf.stakingWithdrawalDelay() < withdrawal.timestamp) {
             return false;
@@ -116,7 +115,7 @@ contract InsurancePool is Context, IInsurancePool {
         return true;
     }
 
-    function trySettleNextDeposit() public returns(bool) {
+    function trySettleNextDeposit() public returns (bool) {
         StakingEvent storage deposit = deposits[depositIndex];
         if (block.timestamp - conf.stakingDepositDelay() < deposit.timestamp) {
             return false;
@@ -132,7 +131,7 @@ contract InsurancePool is Context, IInsurancePool {
     }
 
     // TODO: Implement settleNextWithdrawal
-    function settleNextWithdrawal() external override { }
+    function settleNextWithdrawal() external override {}
 
     function stake(uint256 amount) external override update(_msgSender()) {
         require(amount > 0, "Cannot stake 0");
@@ -140,7 +139,6 @@ contract InsurancePool is Context, IInsurancePool {
         deposits.push(StakingEvent(_msgSender(), block.timestamp, amount));
         emit DepositInitiated(_msgSender(), block.timestamp, amount);
     }
-
 
     function initiateWithdrawal(uint256 amount) public override update(_msgSender()) {
         require(amount > 0, "Cannot withdraw 0");
@@ -158,12 +156,12 @@ contract InsurancePool is Context, IInsurancePool {
     }
 
     // Call if the lastFloor was _so_ far below that he hit the block gas limit.
-    // Anyone can call this for any account. 
+    // Anyone can call this for any account.
     function climb(address account, uint256 floors) external override {
         uint256 limit = Math.min(lastFloor[account] + floors, revenueEvents.length);
         for (uint256 i = lastFloor[account]; i < limit; i++) {
             RevenueEvent storage re = revenueEvents[i];
-            rTokenRevenues[account] += re.amount * _balanceOf(account) / re.totalStaked;
+            rTokenRevenues[account] += (re.amount * _balanceOf(account)) / re.totalStaked;
         }
 
         lastFloor[account] = limit;
@@ -186,7 +184,7 @@ contract InsurancePool is Context, IInsurancePool {
         emit RevenueEventSaved(isRSR, revenueEvents.length - 1, amount);
     }
 
-    function seizeRSR(uint256 amount) external override update(address(0)) returns(uint256) {
+    function seizeRSR(uint256 amount) external override update(address(0)) returns (uint256) {
         require(_msgSender() == address(RTOKEN), "only RToken can seize RSR");
         amount = Math.min(RSR.balanceOf(address(this)), amount);
         RSR.safeTransfer(address(RTOKEN), amount);
@@ -196,10 +194,8 @@ contract InsurancePool is Context, IInsurancePool {
     }
 
     /// ================= Internal =====================
-    
+
     function _balanceOf(address account) internal view returns (uint256) {
-        return (_totalSupply - _seized) * _balances[account] / _totalSupply;
+        return ((_totalSupply - _seized) * _balances[account]) / _totalSupply;
     }
 }
-
-

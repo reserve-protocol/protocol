@@ -1,26 +1,28 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./external/zeppelin/token/ERC20/extensions/ERC20Snapshot.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Snapshot.sol";
 
 interface IPrevRSR {
-    function paused() external view returns(bool);
-    function totalSupply() external view returns(uint256);
-    function balanceOf(address) external view returns(uint256);
-    function allowance(address, address) external view returns(uint256);
+    function paused() external view returns (bool);
+
+    function totalSupply() external view returns (uint256);
+
+    function balanceOf(address) external view returns (uint256);
+
+    function allowance(address, address) external view returns (uint256);
 }
 
 /*
  * @title RSR
- * @dev An ERC20 insurance token for the Reserve Protocol ecosystem. 
+ * @dev An ERC20 insurance token for the Reserve Protocol ecosystem.
  * Migration plan from old RSR:
  *  1. Load a balance for an account exactly once
  *  2. Only load a balance if the old RSR is paused
  *
- * The SlowWallet crossover logic gets special-cased, since otherwise funds would get lost. 
+ * The SlowWallet crossover logic gets special-cased, since otherwise funds would get lost.
  */
 contract RSR is ERC20Snapshot {
-
     /// ==== Immutable ====
 
     IPrevRSR public immutable prevRSR;
@@ -37,13 +39,19 @@ contract RSR is ERC20Snapshot {
 
     event SnapshotterChanged(address indexed oldSnapshotter, address indexed newSnapshotter);
 
-    constructor (address prevRSR_, address slowWallet_, address multisigWallet_, string memory name_, string memory symbol_) ERC20(name_, symbol_) {
+    constructor(
+        address prevRSR_,
+        address slowWallet_,
+        address multisigWallet_,
+        string memory name_,
+        string memory symbol_
+    ) ERC20(name_, symbol_) {
         snapshotter = _msgSender();
         prevRSR = IPrevRSR(prevRSR_);
         uint256 _totalSupply = IPrevRSR(prevRSR_).totalSupply();
         fixedSupply = _totalSupply;
         tokensToCross = _totalSupply;
-        
+
         slowWallet = slowWallet_;
         multisigWallet = multisigWallet_;
 
@@ -80,27 +88,28 @@ contract RSR is ERC20Snapshot {
 
     /// ==== External ====
 
-    function transfer(
-        address recipient, 
-        uint256 amount
-    ) public override crossover(recipient) returns (bool) {
+    function transfer(address recipient, uint256 amount)
+        public
+        override
+        crossover(recipient)
+        returns (bool)
+    {
         return super.transfer(recipient, amount);
     }
 
-    function allowance(
-        address owner, 
-        address spender
-    ) public view override returns (uint256) {
+    function allowance(address owner, address spender) public view override returns (uint256) {
         if (!crossed[owner]) {
             return prevRSR.allowance(owner, spender);
         }
         return super.allowance(owner, spender);
     }
 
-    function approve(
-        address spender, 
-        uint256 amount
-    ) public override crossover(spender) returns (bool) {
+    function approve(address spender, uint256 amount)
+        public
+        override
+        crossover(spender)
+        returns (bool)
+    {
         return super.approve(spender, amount);
     }
 
@@ -112,17 +121,21 @@ contract RSR is ERC20Snapshot {
         return super.transferFrom(sender, recipient, amount);
     }
 
-    function increaseAllowance(
-        address spender, 
-        uint256 addedValue
-    ) public override crossover(spender) returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue)
+        public
+        override
+        crossover(spender)
+        returns (bool)
+    {
         return super.increaseAllowance(spender, addedValue);
     }
 
-    function decreaseAllowance(
-        address spender, 
-        uint256 subtractedValue
-    ) public override crossover(spender) returns (bool) {
+    function decreaseAllowance(address spender, uint256 subtractedValue)
+        public
+        override
+        crossover(spender)
+        returns (bool)
+    {
         return super.decreaseAllowance(spender, subtractedValue);
     }
 

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../external/zeppelin/token/ERC20/IERC20.sol";
 import "./ISlowMintingERC20.sol";
 
 interface IRToken is ISlowMintingERC20 {
-
     /// Only callable by Owner.
     function changeConfiguration(address newConf) external;
+
     function takeSnapshot() external returns (uint256);
 
     /// Adaptation function, callable by anyone
@@ -21,7 +20,8 @@ interface IRToken is ISlowMintingERC20 {
     function redeem(uint256 amount) external;
 
     /// Global trading freeze, callable by anyone
-    function freezeTrading() external; 
+    function freezeTrading() external;
+
     function unfreezeTrading() external;
 
     /// =========================== Views =================================
@@ -42,12 +42,15 @@ interface IRToken is ISlowMintingERC20 {
     /// Returns the amounts of collateral tokens to be paid during a redemption
     function redemptionAmounts(uint256 amount) external view returns (uint256[] memory);
 
-    function adjustedAmountForFee(address from, address to, uint256 amount) external returns (uint256);
+    function adjustedAmountForFee(
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (uint256);
 
     event Issuance(address indexed issuer, uint256 indexed amount);
     event Redemption(address indexed redeemer, uint256 indexed amount);
     event ConfigurationChanged(address indexed oldConfiguration, address indexed newConfiguration);
     event TradingFrozen(address indexed account);
     event TradingUnfrozen(address indexed account);
-
 }

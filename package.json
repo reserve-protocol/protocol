@@ -1,0 +1,51 @@
+{
+    "name": "reserve-protocol",
+    "version": "1.0.0",
+    "description": "Reserve Mainnet Protocol",
+    "main": "index.js",
+    "directories": {
+        "test": "tests"
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "prettier": "prettier --write 'contracts/interfaces/*.sol' 'contracts/modules/*.sol' 'contracts/test/*.sol' 'contracts/*.sol'"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/reserve-protocol/protocol.git"
+    },
+    "author": "",
+    "license": "BlueOak-1.0.0",
+    "bugs": {
+        "url": "https://github.com/reserve-protocol/protocol/issues"
+    },
+    "homepage": "https://github.com/reserve-protocol/protocol#readme",
+    "devDependencies": {
+        "@nomiclabs/hardhat-ethers": "^2.0.2",
+        "@nomiclabs/hardhat-waffle": "^2.0.1",
+        "chai": "^4.3.4",
+        "ethereum-waffle": "^3.4.0",
+        "ethers": "^5.4.1",
+        "hardhat": "^2.4.1",
+        "prettier": "2.3.2",
+        "prettier-plugin-solidity": "1.0.0-beta.13"
+    },
+    "dependencies": {
+        "@openzeppelin/contracts": "^4.2.0",
+        "@uniswap/v3-core": "1.0.0",
+        "@uniswap/v3-periphery": "^1.1.1"
+    },
+    "prettier": {
+        "overrides": [
+            {
+                "files": "*.sol",
+                "options": {
+                    "printWidth": 100,
+                    "tabWidth": 4,
+                    "semi": false,
+                    "singleQuote": false
+                }
+            }
+        ]
+    }
+}
