@@ -3,7 +3,6 @@ const { expect } = require("chai");
 describe("CircuitBreaker contract", function () {
 
   let CircuitBreaker;
-  let cbContract;
   let addr1;
   let addrs;
 
