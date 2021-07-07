@@ -76,7 +76,6 @@ describe("SlowMintingERC20 contract", function () {
       let issuanceRate = parseInt(await token.issuanceRate());
       let blocks = amount / issuanceRate;
 
-      //console.log(blocks);
       await expect(token.startMinting(owner.address, amount))
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount);
@@ -149,17 +148,14 @@ describe("SlowMintingERC20 contract", function () {
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount1);
 
-      //console.log(blocks);
       await expect(token.startMinting(owner.address, amount2))
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount2);
 
-      //console.log(blocks);
       await expect(token.startMinting(owner.address, amount3))
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount3);
 
-      //console.log(blocks);
       await expect(token.startMinting(owner.address, amount4))
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount4);
@@ -187,12 +183,10 @@ describe("SlowMintingERC20 contract", function () {
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount1);
 
-      //console.log(blocks);
       await expect(token.startMinting(owner.address, amount2))
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount2);
 
-      //console.log(blocks);
       await expect(token.startMinting(owner.address, amount3))
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount3);
@@ -213,16 +207,11 @@ describe("SlowMintingERC20 contract", function () {
     it("Should process multiple Mintings in multiple issuances", async function () {
       let amount1 = 60000;
       let amount2 = 20000;
-      // let issuanceRate = parseInt(await token.issuanceRate());
-      // let blocks = amount1 / issuanceRate;
-      // console.log("Blocks: " + blocks);
-
-      //console.log(blocks);
+     
       await expect(token.startMinting(owner.address, amount1))
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount1);
 
-      //console.log(blocks);
       await expect(token.startMinting(owner.address, amount2))
         .to.emit(token, 'MintingInitiated')
         .withArgs(owner.address, amount2);
@@ -253,6 +242,7 @@ describe("SlowMintingERC20 contract", function () {
       expect(await token.balanceOf(owner.address)).to.equal(amount1 + amount2);
       expect(await token.totalSupply()).to.equal(amount1 + amount2);
     });
+
   });
 
 });
