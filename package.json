@@ -28,7 +28,8 @@
         "ethers": "^5.4.1",
         "hardhat": "^2.4.1",
         "prettier": "2.3.2",
-        "prettier-plugin-solidity": "1.0.0-beta.13"
+        "prettier-plugin-solidity": "1.0.0-beta.13",
+        "solidity-coverage": "^0.7.16"
     },
     "dependencies": {
         "@openzeppelin/contracts": "^4.2.0",
