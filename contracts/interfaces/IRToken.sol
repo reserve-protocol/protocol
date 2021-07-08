@@ -3,7 +3,7 @@ pragma solidity 0.8.4;
 
 import "./ISlowMintingERC20.sol";
 
-interface IRToken is ISlowMintingERC20 {
+interface IRToken {
     /// Only callable by Owner.
     function changeConfiguration(address newConf) external;
 
@@ -53,4 +53,7 @@ interface IRToken is ISlowMintingERC20 {
     event ConfigurationChanged(address indexed oldConfiguration, address indexed newConfiguration);
     event TradingFrozen(address indexed account);
     event TradingUnfrozen(address indexed account);
+
+    event MintingInitiated(address account, uint256 amount);
+    event MintingComplete(address account, uint256 amount);
 }

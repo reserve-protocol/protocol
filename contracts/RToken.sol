@@ -1,38 +1,21 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Snapshot.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
+import "./libraries/AppConfiguration.sol";
+import "./libraries/CollateralManager.sol";
 import "./interfaces/ITXFee.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IAtomicExchange.sol";
 import "./interfaces/IInsurancePool.sol";
 import "./interfaces/IConfiguration.sol";
 import "./SlowMintingERC20.sol";
-
-
-struct Token {
-    address tokenAddress;
-    // How many tokens for each 1e18 RTokens
-    uint256 quantity;
-    // How many tokens to sell per each block
-    uint256 rateLimit;
-    // How many tokens are equal in value to 1e18 RTokens (will always be a little stale)
-    uint256 priceInRToken;
-    // A number <=1e18 that indicates how much price movement to allow.
-    // E.g., 5e17 means up to a 50% price movement before the RToken halts trading.
-    // The slippage for a pair is the combination of two `slippageTolerance`
-    uint256 slippageTolerance;
-}
-
-struct Basket {
-    mapping(uint256 => Token) tokens;
-    uint256 size;
-}
 
 /**
  * @title RToken
@@ -43,35 +26,44 @@ struct Basket {
  *    - change their backing while maintaining price
  *    - and, recover from collateral defaults through insurance
  *
- * Only the owner (which should be set to a TimelockController) can change the Configuration.
  */
-contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
+contract RToken is ERC20VotesUpgradeable, Initializable, IRToken, UUPSUpgradeable {
     using SafeERC20 for IERC20;
+    using Token for Token.Info;
 
-    /// Max Fee on transfers, ever.
-    uint256 public constant MAX_FEE = 5e16; // 5%
 
-    /// ==== Mutable State ====
+    /// Meta-parameter, used to help define proportional values
+    uint256 public constant SCALE = 1e18;
 
-    // Updates every block with slightly decayed token quantities
-    Basket public basket;
+    RTokenConfig config;
+    Basket.Info basket;
+    Token.Info insuranceToken;
 
-    /// Set to 0 address when not frozen
-    address public freezer;
+    /// Relay data
+    mapping(address => uint256) metaNonces;
 
-    /// since last
-    uint256 public lastTimestamp;
-    uint256 public lastBlock;
+    /// SlowMinting data
+    Minting[] mintings;
+    uint256 currentMinting;
 
-    constructor(
+    uint256 private _deployedAt;
+    uint256 private _lastTimestamp;
+    uint256 private _lastBlock;
+
+    function initialize(
         address owner_,
         string memory name_,
         string memory symbol_,
-        address conf_
-    ) SlowMintingERC20(name_, symbol_, conf_) {
-        transferOwnership(owner_);
-        lastTimestamp = block.timestamp;
-        lastBlock = block.number;
+        AppStorage storage conf_
+    ) external initializer {
+        __ERC20Votes_init_unchained();
+        __UUPSUpgradeable_init();
+
+        _transferOwnership(owner_)
+        _deployedAt = block.timestamp;
+        _lastTimestamp = block.timestamp;
+        _lastBlock = block.number;
+        _updateBasket();
     }
 
     modifier canTrade() {
@@ -81,12 +73,12 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
 
     /// These sub-functions should all be idempotent within a block
     modifier everyBlock() {
-        // TODO: Confirm this is the right order
 
-        tryProcessMintings(); // SlowMintingERC20 update step
-
-        // set basket quantities based on blocknumber
+        // decrease basket quantities based on blocknumber
         _updateBasket();
+
+        // SlowMintingERC20 update step
+        tryProcessMintings(s.mintings.length - currentMinting);
 
         // expand RToken supply
         _expandSupply();
@@ -94,24 +86,6 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         // trade out collateral for other collateral or insurance RSR
         _rebalance();
         _;
-    }
-
-    /// ==== Super functions /w update ====
-    function transfer(address recipient, uint256 amount)
-        public
-        override(IERC20, ERC20, SlowMintingERC20)
-        everyBlock
-        returns (bool)
-    {
-        return super.transfer(recipient, amount);
-    }
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) public override(IERC20, ERC20, SlowMintingERC20) everyBlock returns (bool) {
-        return super.transferFrom(sender, recipient, amount);
     }
 
     /// ========================= External =============================
@@ -137,10 +111,9 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
     function issue(uint256 amount) external override everyBlock {
         require(amount > 0, "cannot issue zero RToken");
         require(basket.size > 0, "basket cannot be empty");
-        require(totalSupply() + amount < conf.maxSupply(), "at max supply");
-        require(!ICircuitBreaker(conf.circuitBreaker()).check(), "circuit breaker tripped");
+        require(!ICircuitBreaker(s.circuitBreaker).check(), "circuit breaker tripped");
 
-        uint256[] memory amounts = issueAmounts(amount);
+        uint256[] memory amounts = CollateralManager.issueAmounts(s, amount);
         for (uint256 i = 0; i < basket.size; i++) {
             IERC20(basket.tokens[i].tokenAddress).safeTransferFrom(
                 _msgSender(),
@@ -159,7 +132,7 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         require(amount > 0, "cannot redeem 0 RToken");
         require(basket.size > 0, "basket cannot be empty");
 
-        uint256[] memory amounts = redemptionAmounts(amount);
+        uint256[] memory amounts = CollateralManager.redemptionAmounts(s, amount);
         _burn(_msgSender(), amount);
         for (uint256 i = 0; i < basket.size; i++) {
             IERC20(basket.tokens[i].tokenAddress).safeTransfer(_msgSender(), amounts[i]);
@@ -206,34 +179,6 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
             }
         }
         return true;
-    }
-
-    /// The returned array will be in the same order as the current basket.
-    function issueAmounts(uint256 amount) public view override returns (uint256[] memory) {
-        uint256[] memory parts = new uint256[](basket.size);
-        for (uint256 i = 0; i < basket.size; i++) {
-            Token memory ct = basket.tokens[i];
-            parts[i] = (amount * ct.quantity) / 10**decimals();
-            parts[i] = (parts[i] * (conf.SCALE() + conf.spread())) / conf.SCALE();
-        }
-
-        return parts;
-    }
-
-    /// The returned array will be in the same order as the current basket.
-    function redemptionAmounts(uint256 amount) public view override returns (uint256[] memory) {
-        uint256[] memory parts = new uint256[](basket.size);
-        for (uint256 i = 0; i < basket.size; i++) {
-            Token memory ct = basket.tokens[i];
-            uint256 bal = IERC20(ct.tokenAddress).balanceOf(address(this));
-            if (isFullyCollateralized()) {
-                parts[i] = (ct.quantity * amount) / 10**decimals();
-            } else {
-                parts[i] = (bal * amount) / totalSupply();
-            }
-        }
-
-        return parts;
     }
 
     /// Returns index of least collateralized token, or -1 if fully collateralized.
@@ -290,16 +235,69 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         return ITXFee(conf.txFeeCalculator()).calculateAdjustedAmountToIncludeFee(from, to, amount);
     }
 
+    /// Tries to process `count` mintings. Called before most actions.
+    /// Can also be called directly if we get to the block gas limit.
+    function tryProcessMintings(uint256 count) public {
+        if (!ICircuitBreaker(conf.circuitBreaker()).check()) {
+            uint256 start = currentMinting;
+            uint256 blocksSince = block.number - lastBlockChecked;
+            uint256 issuanceAmount = conf.issuanceRate();
+            while (currentMinting < mintings.length && currentMinting < start + count) {
+                Minting storage m = mintings[currentMinting];
+
+                // Break if the next minting is too big.
+                if (m.amount > issuanceAmount * (blocksSince)) {
+                    break;
+                }
+                _mint(m.account, m.amount);
+                emit MintingComplete(m.account, m.amount);
+
+                // update remaining
+                if(m.amount >= issuanceAmount) {
+                    issuanceAmount = 0;
+                } else {
+                    issuanceAmount -= m.amount;
+                }
+
+                uint256 blocksUsed = m.amount / conf.issuanceRate();
+                if (blocksUsed * conf.issuanceRate() > m.amount) {
+                    blocksUsed = blocksUsed + 1;
+                }
+                blocksSince = blocksSince - blocksUsed;
+               
+                delete mintings[currentMinting]; // gas saving..?
+                
+                currentMinting++;
+            }
+            
+            // update lastBlockChecked if tokens were minted
+            if(currentMinting > start) {
+                lastBlockChecked = block.number;
+            }        
+        }
+    }
+
     /// =========================== Internal =================================
 
-    /// Gets the quantity-adjusted basket from Configuration
+    /// Starts a slow minting
+    function _startMinting(address account, uint256 amount) internal {
+        require(account != address(0), "ERC20: mint to the zero address");
+        require(amount > 0, "cannot mint 0");
+
+        Minting memory m = Minting(amount, account);
+        s.mintings.push(m);
+
+        // update lastBlockChecked if this is the only item in queue
+        if (s.mintings.length == s.currentMinting + 1) {
+            lastBlockChecked = block.number;
+        }
+        emit MintingInitiated(account, amount);
+    }
+
+    /// Sets the adjusted basket quantities for the current block 
     function _updateBasket() internal {
-        basket.size = conf.getBasketSize();
-        for (uint256 i = 0; i < conf.getBasketSize(); i++) {
-            Token memory t;
-            (t.tokenAddress, t.quantity, t.rateLimit, t.priceInRToken, t.slippageTolerance) = conf
-            .getBasketTokenAdjusted(i);
-            basket.tokens[i] = t;
+        for (uint16 i = 0; i < basket.size; i++) {
+            basket.tokens[i].adjustQuantity(SCALE, config.supplyExpansionRate, _deployedAt);
         }
     }
 
@@ -319,9 +317,9 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
 
         // Mint to protocol fund
         if (conf.expenditureFactor() > 0) {
-            uint256 e = (toExpand * Math.min(conf.SCALE(), conf.expenditureFactor())) /
+            uint256 e = (toExpand * MathUpgradeable.min(conf.SCALE(), conf.expenditureFactor())) /
                 conf.SCALE();
-            _mint(conf.protocolFund(), e);
+                (conf.protocolFund(), e);
         }
 
         // Mint to self
@@ -357,15 +355,15 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
 
             Token storage lowToken = basket.tokens[uint256(indexLowest)];
             Token storage highToken = basket.tokens[uint256(indexHighest)];
-            uint256 sell = Math.min(
+            uint256 sell = MathUpgradeable.min(
                 numBlocks * highToken.rateLimit,
                 IERC20(highToken.tokenAddress).balanceOf(address(this)) -
                     (totalSupply() * highToken.quantity) /
                     10**decimals()
             );
             uint256 minBuy = (sell * lowToken.priceInRToken) / highToken.priceInRToken;
-            minBuy = (minBuy * Math.min(lowToken.slippageTolerance, conf.SCALE())) / conf.SCALE();
-            minBuy = (minBuy * Math.min(highToken.slippageTolerance, conf.SCALE())) / conf.SCALE();
+            minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, conf.SCALE())) / conf.SCALE();
+            minBuy = (minBuy * MathUpgradeable.min(highToken.slippageTolerance, conf.SCALE())) / conf.SCALE();
             _tradeWithFixedSellAmount(highToken.tokenAddress, lowToken.tokenAddress, sell, minBuy);
         } else if (indexLowest >= 0) {
             // 1. Seize RSR from the insurance pool
@@ -383,8 +381,8 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
             uint256 sell = numBlocks * rsrRateLimit;
             sell = IInsurancePool(conf.insurancePool()).seizeRSR(sell);
             uint256 minBuy = (sell * lowToken.priceInRToken) / rsrPriceInRToken;
-            minBuy = (minBuy * Math.min(lowToken.slippageTolerance, conf.SCALE())) / conf.SCALE();
-            minBuy = (minBuy * Math.min(rsrSlippageTolerance, conf.SCALE())) / conf.SCALE();
+            minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, conf.SCALE())) / conf.SCALE();
+            minBuy = (minBuy * MathUpgradeable.min(rsrSlippageTolerance, conf.SCALE())) / conf.SCALE();
             _tradeWithFixedSellAmount(rsrAddress, lowToken.tokenAddress, sell, minBuy);
 
             // Clean up any leftover RSR
@@ -401,8 +399,8 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
             .insuranceToken();
             uint256 sell = numBlocks * highToken.rateLimit;
             uint256 minBuy = (sell * rsrPriceInRToken) / highToken.priceInRToken;
-            minBuy = (minBuy * Math.min(highToken.slippageTolerance, conf.SCALE())) / conf.SCALE();
-            minBuy = (minBuy * Math.min(rsrSlippageTolerance, conf.SCALE())) / conf.SCALE();
+            minBuy = (minBuy * MathUpgradeable.min(highToken.slippageTolerance, conf.SCALE())) / conf.SCALE();
+            minBuy = (minBuy * MathUpgradeable.min(rsrSlippageTolerance, conf.SCALE())) / conf.SCALE();
             _tradeWithFixedSellAmount(highToken.tokenAddress, rsrAddress, sell, minBuy);
         }
     }
@@ -456,12 +454,16 @@ contract RToken is ERC20Snapshot, IRToken, Ownable, SlowMintingERC20 {
         if (
             from != address(0) && to != address(0) && address(conf.txFeeCalculator()) != address(0)
         ) {
-            uint256 fee = ITXFee(conf.txFeeCalculator()).calculateFee(from, to, amount);
-            fee = Math.min(fee, (amount * MAX_FEE) / conf.SCALE());
+            uint256 fee = MathUpgradeable.min(amount, ITXFee(s.txFeeCalculator).calculateFee(from, to, amount));
 
             // Cheeky way of doing the fee without needing access to underlying _balances array
             _burn(from, fee);
             _mint(address(this), fee);
         }
+    }
+
+    function _mint(address recipient, uint256 amount) internal override {
+        super._mint(recipient, amount);
+        require(totalSupply() < s.maxSupply, "Max supply exceeded");
     }
 }
