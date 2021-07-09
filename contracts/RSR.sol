@@ -122,7 +122,7 @@ contract RSR is ERC20Snapshot {
 
         // The multisig inherits the slow wallet balance in addition to its own.
         uint256 amount = prevRSR.balanceOf(account);
-        if (account == multisigWallet && slowWallet != multisigWallet) {
+        if (account == multisigWallet && slowWallet != multisigWallet && !crossed[slowWallet]) {
             amount += prevRSR.balanceOf(slowWallet);
             crossed[slowWallet] = true;
         }
