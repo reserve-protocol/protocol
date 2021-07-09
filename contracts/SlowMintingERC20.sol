@@ -18,10 +18,10 @@ import "./RelayERC20.sol";
  * minting event. As the block number increases, mintings are taken off the queue and paid out.
  *
  * *Contract Invariant*
- * At any reasonable setting of values this algorithm should not result in the queue growing 
- * unboundedly. In the worst case this does occur, portions of the queue can be processed 
- * manually by calling `tryProcessMintings(uint256 count)` directly. 
- */ 
+ * At any reasonable setting of values this algorithm should not result in the queue growing
+ * unboundedly. In the worst case this does occur, portions of the queue can be processed
+ * manually by calling `tryProcessMintings(uint256 count)` directly.
+ */
 abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
     IConfiguration public override conf;
 
@@ -70,7 +70,7 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
                 emit MintingComplete(m.account, m.amount);
 
                 // update remaining
-                if(m.amount >= issuanceAmount) {
+                if (m.amount >= issuanceAmount) {
                     issuanceAmount = 0;
                 } else {
                     issuanceAmount -= m.amount;
@@ -78,16 +78,16 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
 
                 uint256 blocksUsed = m.amount / conf.issuanceRate();
                 blocksSince = blocksSince - blocksUsed;
-               
+
                 delete mintings[currentMinting];
-                
+
                 currentMinting++;
             }
-            
+
             // update lastBlockChecked if tokens were minted
-            if(currentMinting > start) {
+            if (currentMinting > start) {
                 lastBlockChecked = block.number;
-            }        
+            }
         }
     }
 

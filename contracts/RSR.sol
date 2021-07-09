@@ -126,7 +126,7 @@ contract RSR is ERC20Snapshot {
             amount += prevRSR.balanceOf(slowWallet);
             crossed[slowWallet] = true;
         }
-      
+
         _mint(account, amount);
         tokensToCross = tokensToCross - amount;
     }

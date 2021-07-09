@@ -5,10 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 
 contract ReserveRightsTokenMock is ERC20Pausable {
-  
-   constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
-   function mint(address recipient, uint256 amount) external {
+    function mint(address recipient, uint256 amount) external {
         _mint(recipient, amount);
     }
 
