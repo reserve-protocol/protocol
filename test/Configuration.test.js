@@ -1,9 +1,11 @@
 const { expect } = require("chai");
+const { ZERO_ADDRESS } = require("./utils/constants");
+const { BigNumber } = require("ethers");
 
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+// Sample Values for Configuration
 const stakingDepositDelay = 3600; // seconds
 const stakingWithdrawalDelay = 4800; // seconds
-const issuanceRate = 25000;
+const issuanceRate = BigNumber.from(25000);
 
 describe("Configuration contract", function () {
 
@@ -45,8 +47,8 @@ describe("Configuration contract", function () {
             beforeEach(async function () {
                 currentValue = stakingDepositDelay;
                 newValue = 1000;
-            }); 
-           
+            });
+
             it("Should update correctly if Owner", async function () {
                 expect(await conf.stakingDepositDelay()).to.equal(currentValue);
 
@@ -72,8 +74,8 @@ describe("Configuration contract", function () {
             beforeEach(async function () {
                 currentValue = stakingWithdrawalDelay;
                 newValue = 1000;
-            });    
-          
+            });
+
             it("Should update correctly if Owner", async function () {
                 expect(await conf.stakingWithdrawalDelay()).to.equal(currentValue);
 
@@ -98,9 +100,9 @@ describe("Configuration contract", function () {
         describe("issuanceRate", function () {
             beforeEach(async function () {
                 currentValue = issuanceRate;
-                newValue = 10000;
-            });    
-          
+                newValue = BigNumber.from(10000);
+            });
+
             it("Should update correctly if Owner", async function () {
                 expect(await conf.issuanceRate()).to.equal(currentValue);
 
@@ -125,9 +127,9 @@ describe("Configuration contract", function () {
         describe("circuitBreaker", function () {
             beforeEach(async function () {
                 currentValue = cb.address;
-                newValue = (await CircuitBreaker.deploy(owner.address)).address;      
-            });    
-            it("Should update correctly if Owner", async function () {    
+                newValue = (await CircuitBreaker.deploy(owner.address)).address;
+            });
+            it("Should update correctly if Owner", async function () {
                 expect(await conf.circuitBreaker()).to.equal(currentValue);
 
                 await expect(conf.connect(owner).setCircuitBreaker(newValue))
