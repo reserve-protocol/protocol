@@ -28,12 +28,12 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
         return _triggered;
     }
 
-    function pause() external override onlyRole(PAUSER_ROLE) {
+    function pause() external override isPauser {
         _triggered = true;
         emit Paused(_msgSender());
     }
 
-    function unpause() external override onlyRole(PAUSER_ROLE) {
+    function unpause() external override isPauser {
         _triggered = false;
         emit Unpaused(_msgSender());
     }
