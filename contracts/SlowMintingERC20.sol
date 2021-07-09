@@ -77,12 +77,9 @@ abstract contract SlowMintingERC20 is ISlowMintingERC20, RelayERC20 {
                 }
 
                 uint256 blocksUsed = m.amount / conf.issuanceRate();
-                if (blocksUsed * conf.issuanceRate() > m.amount) {
-                    blocksUsed = blocksUsed + 1;
-                }
                 blocksSince = blocksSince - blocksUsed;
                
-                delete mintings[currentMinting]; // gas saving..?
+                delete mintings[currentMinting];
                 
                 currentMinting++;
             }
