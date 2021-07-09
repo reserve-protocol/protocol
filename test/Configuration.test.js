@@ -47,8 +47,13 @@ describe("Configuration contract", function () {
             beforeEach(async function () {
                 currentValue = stakingDepositDelay;
                 newValue = 1000;
+<<<<<<< HEAD
             });
 
+=======
+            }); 
+           
+>>>>>>> 8823fecd664f706d4634e9fcce20144acbe1fee6
             it("Should update correctly if Owner", async function () {
                 expect(await conf.stakingDepositDelay()).to.equal(currentValue);
 
@@ -74,8 +79,13 @@ describe("Configuration contract", function () {
             beforeEach(async function () {
                 currentValue = stakingWithdrawalDelay;
                 newValue = 1000;
+<<<<<<< HEAD
             });
 
+=======
+            });    
+          
+>>>>>>> 8823fecd664f706d4634e9fcce20144acbe1fee6
             it("Should update correctly if Owner", async function () {
                 expect(await conf.stakingWithdrawalDelay()).to.equal(currentValue);
 
@@ -100,9 +110,15 @@ describe("Configuration contract", function () {
         describe("issuanceRate", function () {
             beforeEach(async function () {
                 currentValue = issuanceRate;
+<<<<<<< HEAD
                 newValue = BigNumber.from(10000);
             });
 
+=======
+                newValue = 10000;
+            });    
+          
+>>>>>>> 8823fecd664f706d4634e9fcce20144acbe1fee6
             it("Should update correctly if Owner", async function () {
                 expect(await conf.issuanceRate()).to.equal(currentValue);
 
@@ -127,9 +143,15 @@ describe("Configuration contract", function () {
         describe("circuitBreaker", function () {
             beforeEach(async function () {
                 currentValue = cb.address;
+<<<<<<< HEAD
                 newValue = (await CircuitBreaker.deploy(owner.address)).address;
             });
             it("Should update correctly if Owner", async function () {
+=======
+                newValue = (await CircuitBreaker.deploy(owner.address)).address;      
+            });    
+            it("Should update correctly if Owner", async function () {    
+>>>>>>> 8823fecd664f706d4634e9fcce20144acbe1fee6
                 expect(await conf.circuitBreaker()).to.equal(currentValue);
 
                 await expect(conf.connect(owner).setCircuitBreaker(newValue))
