@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/governance/TimelockController.sol";
-
-import "./interfaces/IConfiguration.sol";
 import "./modules/InsurancePool.sol";
-import "./modules/Configuration.sol";
 import "./modules/Owner.sol";
+import "./libraries/Token.sol";
 import "./RToken.sol";
 
 /*
@@ -19,23 +16,20 @@ contract RTokenDeployer {
         address owner,
         string calldata name,
         string calldata symbol,
-        Token[] memory tokens,
-        Token memory insuranceToken,
-        ConfigurationParams memory configParams
+        RToken.Config memory rTokenConfig,
+        Token.Info[] memory basketTokens,
+        Token.Info memory rsrToken
     )
         public
         returns (
             address rToken,
-            address insurancePool,
-            address configuration
+            address insurancePool
         )
     {
-        // Deploy static configuration
-        Configuration c = new Configuration(tokens, insuranceToken, configParams);
-
         // Create RToken and InsurancePool
-        RToken rtoken = new RToken(owner, name, symbol, address(c));
-        InsurancePool ip = new InsurancePool(address(rtoken), c.insuranceTokenAddress());
-        return (address(rtoken), address(ip), address(c));
+        // TODO: Deploy proxy
+        // RToken rtoken = RToken.initialize(owner, name, symbol, rTokenConfig, basketTokens, rsrToken);
+        // InsurancePool ip = new InsurancePool(address(rtoken), rsrToken.tokenAddress);
+        // return (address(rtoken), address(ip));
     }
 }

@@ -26,7 +26,7 @@ library Basket {
     /// The returned array will be in the same order as the current self.
     function redemptionAmounts(Basket.Info storage self, uint256 amount, uint8 decimals, uint256 totalSupply) internal view returns (uint256[] memory parts) {
         parts = new uint256[](self.size);
-        bool isFullyCollateralized = leastCollateralized(self) == -1;
+        bool isFullyCollateralized = leastCollateralized(self, decimals, totalSupply) == -1;
 
         for (uint16 i = 0; i < self.size; i++) {
             if (isFullyCollateralized) {
@@ -50,7 +50,7 @@ library Basket {
                 uint256 deficitNormed = (expected - bal) / self.tokens[i].adjustedQuantity;
                 if (deficitNormed > largestDeficitNormed) {
                     largestDeficitNormed = deficitNormed;
-                    index = int32(i);
+                    index = int32(uint32(i));
                 }
             }
         }
@@ -58,7 +58,7 @@ library Basket {
     }
 
     /// Returns the index of the most collateralized token, or -1.
-    function mostCollateralized(Basket.Info storage self, uint8 decimals, uint256 totalSupply) internal view returns (int256) {
+    function mostCollateralized(Basket.Info storage self, uint8 decimals, uint256 totalSupply) internal view returns (int32) {
         uint256 largestSurplusNormed;
         int32 index = -1;
 
@@ -71,7 +71,7 @@ library Basket {
                 uint256 surplusNormed = (bal - expected) / self.tokens[i].adjustedQuantity;
                 if (surplusNormed > largestSurplusNormed) {
                     largestSurplusNormed = surplusNormed;
-                    index = int32(i);
+                    index = int32(uint32(i));
                 }
             }
         }

@@ -9,5 +9,5 @@ interface ITXFee {
         address from,
         address to,
         uint256 amount
-    ) external returns (uint256);
+    ) external view returns (uint256);
 }
