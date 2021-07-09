@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/utils/Context.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/Math.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
@@ -105,7 +105,7 @@ contract InsurancePool is Context, IInsurancePool {
             return false;
         }
 
-        uint256 amount = Math.min(_balanceOf(withdrawal.account), withdrawal.amount);
+        uint256 amount = MathUpgradeable.min(_balanceOf(withdrawal.account), withdrawal.amount);
         _balances[withdrawal.account] = _balances[withdrawal.account] - amount;
         _totalSupply = _totalSupply - amount;
 
@@ -158,7 +158,7 @@ contract InsurancePool is Context, IInsurancePool {
     // Call if the lastFloor was _so_ far below that he hit the block gas limit.
     // Anyone can call this for any account.
     function climb(address account, uint256 floors) external override {
-        uint256 limit = Math.min(lastFloor[account] + floors, revenueEvents.length);
+        uint256 limit = MathUpgradeable.min(lastFloor[account] + floors, revenueEvents.length);
         for (uint256 i = lastFloor[account]; i < limit; i++) {
             RevenueEvent storage re = revenueEvents[i];
             rTokenRevenues[account] += (re.amount * _balanceOf(account)) / re.totalStaked;
@@ -186,7 +186,7 @@ contract InsurancePool is Context, IInsurancePool {
 
     function seizeRSR(uint256 amount) external override update(address(0)) returns (uint256) {
         require(_msgSender() == address(rToken), "only RToken can seize RSR");
-        amount = Math.min(rsrToken.balanceOf(address(this)), amount);
+        amount = MathUpgradeable.min(rsrToken.balanceOf(address(this)), amount);
         rsrToken.safeTransfer(address(rToken), amount);
         _seized += amount;
         emit RSRSeized(amount);

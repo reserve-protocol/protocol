@@ -153,9 +153,9 @@ contract RToken is ERC20VotesUpgradeable, Initializable, IRToken, UUPSUpgradeabl
         _updateBasket();
     }
 
-    function takeSnapshot() external override onlyOwner returns (uint256) {
-        return _snapshot();
-    }
+    // function takeSnapshot() external override onlyOwner returns (uint256) {
+    //     return _snapshot();
+    // }
 
     /// Callable by anyone, runs all the perBlockUpdates
     function act() external override everyBlock {
@@ -169,7 +169,7 @@ contract RToken is ERC20VotesUpgradeable, Initializable, IRToken, UUPSUpgradeabl
         require(basket.size > 0, "basket cannot be empty");
         require(!ICircuitBreaker(circuitBreaker).check(), "circuit breaker tripped");
 
-        uint256[] memory amounts = CollateralManager.issueAmounts(s, amount);
+        uint256[] memory amounts = issueAmounts();
         for (uint256 i = 0; i < basket.size; i++) {
             basket.tokens[i].safeTransferFrom(
                 _msgSender(),
@@ -187,7 +187,7 @@ contract RToken is ERC20VotesUpgradeable, Initializable, IRToken, UUPSUpgradeabl
         require(amount > 0, "cannot redeem 0 RToken");
         require(basket.size > 0, "basket cannot be empty");
 
-        uint256[] memory amounts = CollateralManager.redemptionAmounts(s, amount);
+        uint256[] memory amounts = redemptionAmounts();
         _burn(_msgSender(), amount);
         for (uint256 i = 0; i < basket.size; i++) {
             basket.tokens[i].safeTransfer(_msgSender(), amounts[i]);
@@ -197,7 +197,7 @@ contract RToken is ERC20VotesUpgradeable, Initializable, IRToken, UUPSUpgradeabl
     }
 
     /// Trading freeze
-    function freezeTrading() external override everyBlock {
+    function freezeTrading() external override {
         if (tradingFrozen()) {
             rsrToken.safeTransfer(freezer, config.tradingFreezeCost);
         }
@@ -208,7 +208,7 @@ contract RToken is ERC20VotesUpgradeable, Initializable, IRToken, UUPSUpgradeabl
     }
 
     /// Trading unfreeze
-    function unfreezeTrading() external override everyBlock {
+    function unfreezeTrading() external override {
         require(tradingFrozen(), "already unfrozen");
         require(_msgSender() == freezer, "only freezer can unfreeze");
 
@@ -219,11 +219,19 @@ contract RToken is ERC20VotesUpgradeable, Initializable, IRToken, UUPSUpgradeabl
 
     /// =========================== Views =================================
 
-    function stakingDepositDelay() external view returns(uint256) {
+    function issueAmounts(uint256 amount) public view override returns(uint256[] memory amounts) {
+        return basket.issueAmounts(amount, SCALE, config.spread, decimals());
+    }
+
+    function redemptionAmounts(uint256 amount) public view override returns(uint256[] memory amounts) {
+        return basket.redemptionAmounts(amount, decimals(), totalSupply());
+    }
+
+    function stakingDepositDelay() external view override returns(uint256) {
         return config.stakingDepositDelay;
     }
 
-    function stakingWithdrawalDelay() external view returns(uint256) {
+    function stakingWithdrawalDelay() external view override returns(uint256) {
         return config.stakingWithdrawalDelay;
     }
 

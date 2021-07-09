@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "./ISlowMintingERC20.sol";
-
 interface IRToken {
     /// Only callable by Owner.
     function changeConfiguration(address newConf) external;
@@ -26,15 +24,11 @@ interface IRToken {
 
     /// =========================== Views =================================
 
+    function stakingDepositDelay() external view returns (uint256);
+
+    function stakingWithdrawalDelay() external view returns (uint256);
+
     function tradingFrozen() external view returns (bool);
-
-    function isFullyCollateralized() external view returns (bool);
-
-    /// Returns index of least collateralized token, or -1 if fully collateralized.
-    function leastCollateralized() external view returns (int256);
-
-    /// Returns the index of the most collateralized token, or -1.
-    function mostCollateralized() external view returns (int256);
 
     /// Returns the amounts of collateral tokens required to issue `amount` quantity
     function issueAmounts(uint256 amount) external view returns (uint256[] memory);
