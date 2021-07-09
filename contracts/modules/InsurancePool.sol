@@ -4,9 +4,10 @@ pragma solidity 0.8.4;
 import "@openzeppelin/contracts-upgradeable/utils/Context.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/Math.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 import "../interfaces/IInsurancePool.sol";
-import "./Configuration.sol";
+import "../interfaces/IRToken.sol";
 
 /*
  * @title InsurancePool
@@ -15,11 +16,10 @@ import "./Configuration.sol";
  * to be used in the event of recapitalization.
  */
 contract InsurancePool is Context, IInsurancePool {
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Upgradeable;
 
-    Configuration public conf;
-    IERC20 public RTOKEN;
-    IERC20 public RSR;
+    IRToken public rToken;
+    IERC20Upgradeable public rsrToken;
 
     struct RevenueEvent {
         bool isRSR; // Two options, either RToken or RSR
@@ -50,8 +50,8 @@ contract InsurancePool is Context, IInsurancePool {
     uint256 public withdrawalIndex;
 
     constructor(address rToken_, address rsr_) {
-        RTOKEN = IERC20(rToken_);
-        RSR = IERC20(rsr_);
+        rToken = IRToken(rToken_);
+        rsrToken = IERC20Upgradeable(rsr_);
     }
 
     modifier update(address account) {
@@ -101,7 +101,7 @@ contract InsurancePool is Context, IInsurancePool {
 
     function trySettleNextWithdrawal() public returns (bool) {
         StakingEvent storage withdrawal = withdrawals[withdrawalIndex];
-        if (block.timestamp - conf.stakingWithdrawalDelay() < withdrawal.timestamp) {
+        if (block.timestamp - rToken.stakingWithdrawalDelay() < withdrawal.timestamp) {
             return false;
         }
 
@@ -117,7 +117,7 @@ contract InsurancePool is Context, IInsurancePool {
 
     function trySettleNextDeposit() public returns (bool) {
         StakingEvent storage deposit = deposits[depositIndex];
-        if (block.timestamp - conf.stakingDepositDelay() < deposit.timestamp) {
+        if (block.timestamp - rToken.stakingDepositDelay() < deposit.timestamp) {
             return false;
         }
 
@@ -135,7 +135,7 @@ contract InsurancePool is Context, IInsurancePool {
 
     function stake(uint256 amount) external override update(_msgSender()) {
         require(amount > 0, "Cannot stake 0");
-        RSR.safeTransferFrom(_msgSender(), address(this), amount);
+        rsrToken.safeTransferFrom(_msgSender(), address(this), amount);
         deposits.push(StakingEvent(_msgSender(), block.timestamp, amount));
         emit DepositInitiated(_msgSender(), block.timestamp, amount);
     }
@@ -150,7 +150,7 @@ contract InsurancePool is Context, IInsurancePool {
         uint256 revenue = rTokenRevenues[_msgSender()];
         if (revenue > 0) {
             rTokenRevenues[_msgSender()] = 0;
-            RTOKEN.safeTransfer(_msgSender(), revenue);
+            rToken.safeTransfer(_msgSender(), revenue);
             emit RevenueClaimed(_msgSender(), revenue);
         }
     }
@@ -170,24 +170,24 @@ contract InsurancePool is Context, IInsurancePool {
     /// Callable only by RToken address
 
     function notifyRevenue(bool isRSR, uint256 amount) external override update(address(0)) {
-        require(_msgSender() == address(RTOKEN), "only RToken can save revenue events");
+        require(_msgSender() == address(rToken), "only RToken can save revenue events");
 
         RevenueEvent memory next = RevenueEvent(isRSR, amount, _totalSupply);
         revenueEvents.push(next);
         if (isRSR) {
-            RSR.safeTransferFrom(address(RTOKEN), address(this), amount);
+            rsrToken.safeTransferFrom(address(rToken), address(this), amount);
             _totalSupply += amount;
         } else {
-            RTOKEN.safeTransferFrom(address(RTOKEN), address(this), amount);
+            rToken.safeTransferFrom(address(rToken), address(this), amount);
         }
 
         emit RevenueEventSaved(isRSR, revenueEvents.length - 1, amount);
     }
 
     function seizeRSR(uint256 amount) external override update(address(0)) returns (uint256) {
-        require(_msgSender() == address(RTOKEN), "only RToken can seize RSR");
-        amount = Math.min(RSR.balanceOf(address(this)), amount);
-        RSR.safeTransfer(address(RTOKEN), amount);
+        require(_msgSender() == address(rToken), "only RToken can seize RSR");
+        amount = Math.min(rsrToken.balanceOf(address(this)), amount);
+        rsrToken.safeTransfer(address(rToken), amount);
         _seized += amount;
         emit RSRSeized(amount);
         return amount;

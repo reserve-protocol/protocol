@@ -7,7 +7,6 @@ import "./Token.sol";
  * @title Basket
  */
 library Basket {
-    using SafeERC20 for IERC20;
     using Token for Token.Info;
 
     struct Info {

@@ -48,12 +48,11 @@ interface IRToken {
         uint256 amount
     ) external returns (uint256);
 
-    event Issuance(address indexed issuer, uint256 indexed amount);
+    event ConfigUpdated(); // this feels weird
+    event SlowMintingInitiated(address account, uint256 amount);
+    event SlowMintingComplete(address account, uint256 amount);
     event Redemption(address indexed redeemer, uint256 indexed amount);
-    event ConfigurationChanged(address indexed oldConfiguration, address indexed newConfiguration);
     event TradingFrozen(address indexed account);
     event TradingUnfrozen(address indexed account);
 
-    event MintingInitiated(address account, uint256 amount);
-    event MintingComplete(address account, uint256 amount);
 }
