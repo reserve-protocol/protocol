@@ -69,7 +69,7 @@ contract RSR is ERC20Snapshot {
     }
 
     modifier snapshotterOnly() {
-        require(_msgSender() == snapshotter, "only snapshotter can snapshot");
+        require(_msgSender() == snapshotter, "RSR: Only snapshotter can snapshot");
         _;
     }
 
@@ -81,7 +81,7 @@ contract RSR is ERC20Snapshot {
 
     function balanceOf(address account) public view override returns (uint256) {
         if (!crossed[account]) {
-            return prevRSR.balanceOf(account);
+            return prevRSR.balanceOf(account) + super.balanceOf(account);
         }
         return super.balanceOf(account);
     }
@@ -91,26 +91,10 @@ contract RSR is ERC20Snapshot {
     function transfer(address recipient, uint256 amount)
         public
         override
-        crossover(recipient)
+        crossover(_msgSender())
         returns (bool)
     {
         return super.transfer(recipient, amount);
-    }
-
-    function allowance(address owner, address spender) public view override returns (uint256) {
-        if (!crossed[owner]) {
-            return prevRSR.allowance(owner, spender);
-        }
-        return super.allowance(owner, spender);
-    }
-
-    function approve(address spender, uint256 amount)
-        public
-        override
-        crossover(spender)
-        returns (bool)
-    {
-        return super.approve(spender, amount);
     }
 
     function transferFrom(
@@ -119,24 +103,6 @@ contract RSR is ERC20Snapshot {
         uint256 amount
     ) public override crossover(sender) returns (bool) {
         return super.transferFrom(sender, recipient, amount);
-    }
-
-    function increaseAllowance(address spender, uint256 addedValue)
-        public
-        override
-        crossover(spender)
-        returns (bool)
-    {
-        return super.increaseAllowance(spender, addedValue);
-    }
-
-    function decreaseAllowance(address spender, uint256 subtractedValue)
-        public
-        override
-        crossover(spender)
-        returns (bool)
-    {
-        return super.decreaseAllowance(spender, subtractedValue);
     }
 
     function snapshot() external snapshotterOnly returns (uint256) {
@@ -151,14 +117,16 @@ contract RSR is ERC20Snapshot {
     /// ==== Internal ====
 
     function _crossover(address account) internal {
-        require(!crossed[account], "can only cross once");
+        require(!crossed[account], "RSR: Can only cross once");
         crossed[account] = true;
 
         // The multisig inherits the slow wallet balance in addition to its own.
         uint256 amount = prevRSR.balanceOf(account);
-        if (account == multisigWallet && slowWallet != multisigWallet) {
+        if (account == multisigWallet && slowWallet != multisigWallet && !crossed[slowWallet]) {
             amount += prevRSR.balanceOf(slowWallet);
+            crossed[slowWallet] = true;
         }
+
         _mint(account, amount);
         tokensToCross = tokensToCross - amount;
     }
