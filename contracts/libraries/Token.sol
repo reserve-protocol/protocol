@@ -22,6 +22,9 @@ library Token {
         // How many tokens to sell per each block
         uint256 rateLimit;
 
+        // Max number of tokens to sell in a single trade
+        uint256 maxTrade;
+
         // Quantity of Token that is equal in value to 1e18 RTokens (always a little stale)
         uint256 priceInRToken;
 

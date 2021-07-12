@@ -334,10 +334,10 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
             Token.Info storage lowToken = basket.tokens[uint16(uint32(indexLowest))];
             Token.Info storage highToken = basket.tokens[uint16(uint32(indexHighest))];
-            uint256 sell = MathUpgradeable.min(
+            uint256 sell = MathUpgradeable.min(highToken.maxTrade, MathUpgradeable.min(
                 numBlocks * highToken.rateLimit,
                 highToken.getBalance() - (totalSupply * highToken.adjustedQuantity) / 10**decimals
-            );
+            ));
             uint256 minBuy = (sell * lowToken.priceInRToken) / highToken.priceInRToken;
             minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, SCALE)) / SCALE;
             minBuy = (minBuy * MathUpgradeable.min(highToken.slippageTolerance, SCALE)) / SCALE;
@@ -348,7 +348,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             // 3. Return any leftover RSR
 
             Token.Info storage lowToken = basket.tokens[uint16(uint32(indexLowest))];
-            uint256 sell = IInsurancePool(config.insurancePool).seizeRSR(numBlocks * rsrToken.rateLimit);
+            uint256 toSeize = MathUpgradeable.min(numBlocks * rsrToken.rateLimit, rsrToken.maxTrade);
+            uint256 sell = IInsurancePool(config.insurancePool).seizeRSR(toSeize);
             uint256 minBuy = (sell * lowToken.priceInRToken) / rsrToken.priceInRToken;
             minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, SCALE)) / SCALE;
             minBuy = (minBuy * MathUpgradeable.min(rsrToken.slippageTolerance, SCALE)) / SCALE;
@@ -364,7 +365,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             // Sell as much excess collateral as possible for RSR
 
             Token.Info storage highToken = basket.tokens[uint16(uint32(indexHighest))];
-            uint256 sell = numBlocks * highToken.rateLimit;
+            uint256 sell = MathUpgradeable.min(numBlocks * highToken.rateLimit, highToken.maxTrade);
             uint256 minBuy = (sell * rsrToken.priceInRToken) / highToken.priceInRToken;
             minBuy = (minBuy * MathUpgradeable.min(highToken.slippageTolerance, SCALE)) / SCALE;
             minBuy = (minBuy * MathUpgradeable.min(rsrToken.slippageTolerance, SCALE)) / SCALE;
