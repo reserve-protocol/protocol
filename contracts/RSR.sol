@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -85,7 +84,6 @@ contract RSR is ERC20Votes {
         returns (bool)
     {
         require(super.transfer(recipient, amount), "not enough balance");
-        _afterTokenTransfer(_msgSender(), recipient, amount);
         return true;
 
     }
@@ -96,17 +94,10 @@ contract RSR is ERC20Votes {
         uint256 amount
     ) public override crossover(sender) returns (bool) {
         require(super.transferFrom(sender, recipient, amount), "not enough balance");
-        _afterTokenTransfer(sender, recipient, amount);
         return true;
     }
 
     /// ==== Internal ====
-
-    /// Recover the signer's address from the hash and signature.
-    function _recoverSignerAddress(bytes32 hash, bytes memory sig) internal pure returns (address) {
-        bytes32 ethMessageHash = ECDSA.toEthSignedMessageHash(hash);
-        return ECDSA.recover(ethMessageHash, sig);
-    }
 
     function _crossover(address account) internal {
         require(!crossed[account], "RSR: Can only cross once");
