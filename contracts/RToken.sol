@@ -93,7 +93,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _updateBasket();
 
         // SlowMintingERC20 update step
-        _tryProcessMintings(mintings.length - currentMinting);
+        _tryProcessMintings();
 
         // expand RToken supply
         _expandSupply();
@@ -104,11 +104,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     /// ========================= External =============================
-
-
-    function tryProcessMintings(uint256 amount) external override {
-        _tryProcessMintings(amount);
-    }
 
     /// Configuration changes, only callable by Owner.
     function updateConfig(Config memory newConfig) external override onlyOwner {
@@ -125,7 +120,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Handles issuance.
     /// Requires approvals to be in place beforehand.
     function issue(uint256 amount) external override everyBlock {
-        require(amount > 0, "cannot issue zero RToken");
+        require(amount > config.minMintingSize, "cannot issue less than minMintingSize");
         require(basket.size > 0, "basket cannot be empty");
         require(!ICircuitBreaker(config.circuitBreaker).check(), "circuit breaker tripped");
 
@@ -236,14 +231,14 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
     }
 
-    /// Tries to process `count` mintings. Called before most actions.
-    /// Can also be called directly if we get to the block gas limit.
-    function _tryProcessMintings(uint256 count) internal {
+    /// Tries to process up to a fixed number of mintings. Called before most actions.
+    function _tryProcessMintings() internal {
         if (!ICircuitBreaker(config.circuitBreaker).check()) {
             uint256 start = currentMinting;
             uint256 blocksSince = block.number - _lastBlock;
             uint256 issuanceAmount = config.issuanceRate;
-            while (currentMinting < mintings.length && currentMinting < start + count) {
+            while (currentMinting < mintings.length && currentMinting < start + 10000) {
+                // TODO: Tune the +10000 maximum. Might have to be smaller.
                 Minting storage m = mintings[currentMinting];
 
                 // Break if the next minting is too big.

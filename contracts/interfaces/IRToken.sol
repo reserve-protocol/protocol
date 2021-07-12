@@ -17,6 +17,9 @@ interface IRToken {
 
         /// Percentage rates are relative to 1e18, the constant SCALE variable set in RToken.
 
+        /// Minimum minting amount
+        /// e.g. 1_000e18 => 1k RToken 
+        uint256 minMintingSize;
         /// RToken annual supply-expansion rate, scaled
         /// e.g. 1.23e16 => 1.23% annually
         uint256 supplyExpansionRate;
@@ -65,8 +68,6 @@ interface IRToken {
     function setBasketTokenPriceInRToken(uint16 i, uint256 priceInRToken) external;
 
     function setRSRPriceInRToken(uint256 priceInRToken) external;
-
-    function tryProcessMintings(uint256 amount) external;
 
     /// =========================== Views =================================
 
