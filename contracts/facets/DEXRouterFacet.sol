@@ -10,13 +10,15 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import "../interfaces/IAtomicExchange.sol";
 
-contract DEXRouter is IAtomicExchange, IUniswapV3SwapCallback {
+contract DEXRouterFacet is IAtomicExchange, IUniswapV3SwapCallback {
     using SafeERC20 for IERC20;
 
-    ISwapRouter public immutable swapper;
+    AppStorage internal s;
 
-    constructor(address uniswapSwapAddress) {
-        swapper = ISwapRouter(uniswapSwapAddress);
+    ISwapRouter internal swapper;
+
+    constructor (address uniswapV3SwapRouterAddress) {
+        swapper = ISwapRouter(uniswapV3SwapRouterAddress);
     }
 
     function tradeFixedSell(
