@@ -7,7 +7,8 @@ describe("RelayERC20 contract", function () {
     [owner, addr1, addr2] = await ethers.getSigners();
 
     // Deploy and mint initial tokens
-    token = await RelayERC20.deploy("RelayToken", "RTKN");
+    token = await RelayERC20.deploy();
+    await token.initialize("RelayToken", "RTKN");
     await token.mint(owner.address, BigNumber.from(1000));
   });
 
@@ -75,7 +76,7 @@ describe("RelayERC20 contract", function () {
     it("Should perform relay transfer between accounts", async function () {
       // Transfer 50 tokens from owner to addr1, relayed by another account
       const amount = BigNumber.from(50);
-      const nonce = await token.relayNonce(owner.address);
+      const nonce = await token.metaNonces(owner.address);
 
       const hash = ethers.utils.solidityKeccak256(
         ["string", "address", "address", "address", "uint256", "uint256", "uint256"],
@@ -97,7 +98,7 @@ describe("RelayERC20 contract", function () {
       // Transfer 50 tokens from owner to addr1 (with 20 tokens fee), relayed by another account.
       const amount = BigNumber.from(50);
       const fee = BigNumber.from(20);
-      const nonce = await token.relayNonce(owner.address);
+      const nonce = await token.metaNonces(owner.address);
 
       const hash = ethers.utils.solidityKeccak256(
         ["string", "address", "address", "address", "uint256", "uint256", "uint256"],
@@ -123,7 +124,7 @@ describe("RelayERC20 contract", function () {
       // Transfer 50 tokens from owner to addr1, relayed by another account
       const amount1 = BigNumber.from(50);
       const amount2 = BigNumber.from(20);
-      let nonce = await token.relayNonce(owner.address);
+      let nonce = await token.metaNonces(owner.address);
 
       const hash = ethers.utils.solidityKeccak256(
         ["string", "address", "address", "address", "uint256", "uint256", "uint256"],
@@ -137,7 +138,7 @@ describe("RelayERC20 contract", function () {
       let addr1Balance = await token.balanceOf(addr1.address);
       expect(addr1Balance).to.equal(amount1);
 
-      nonce = await token.relayNonce(owner.address);
+      nonce = await token.metaNonces(owner.address);
 
       const hash2 = ethers.utils.solidityKeccak256(
         ["string", "address", "address", "address", "uint256", "uint256", "uint256"],
@@ -158,7 +159,7 @@ describe("RelayERC20 contract", function () {
     it("Should not relay if invalid signature", async function () {
       // Transfer 50 tokens from owner to addr1, relayed by another account
       const amount = BigNumber.from(50);
-      const nonce = await token.relayNonce(owner.address);
+      const nonce = await token.metaNonces(owner.address);
 
       const hash = ethers.utils.solidityKeccak256(
         ["string", "address", "address", "address", "uint256", "uint256", "uint256"],

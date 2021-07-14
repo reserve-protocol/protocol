@@ -11,7 +11,7 @@ describe("CircuitBreaker contract", function () {
 
   describe("Deployment", function () {
     it("Should create contract with Status and Pauser", async function () {
-      expect(await cb.check()).to.equal(false);
+      expect(await cb.paused()).to.equal(false);
       expect(await cb.hasRole(PAUSER_ROLE, owner.address)).to.equal(true);
     });
   });
@@ -23,14 +23,14 @@ describe("CircuitBreaker contract", function () {
         .to.emit(cb, 'Paused')
         .withArgs(owner.address);
 
-      expect(await cb.check()).to.equal(true);
+      expect(await cb.paused()).to.equal(true);
 
       // Unpause
       await expect(cb.connect(owner).unpause())
         .to.emit(cb, 'Unpaused')
         .withArgs(owner.address);
 
-      expect(await cb.check()).to.equal(false);
+      expect(await cb.paused()).to.equal(false);
     });
 
     it("Should not allow to Pause/Unpause if not Pauser", async function () {
