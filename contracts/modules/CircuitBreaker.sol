@@ -24,7 +24,7 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
         _;
     }
 
-    function paused() public override returns (bool) {
+    function paused() public view override returns (bool) {
         return _paused;
     }
 

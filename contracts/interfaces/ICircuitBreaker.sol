@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 interface ICircuitBreaker {
-    function paused() external returns (bool);
+    function paused() external view returns (bool);
 
     function pause() external;
 
