@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
+
 import "./interfaces/IRTokenDeployer.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IInsurancePool.sol";
 import "./modules/InsurancePool.sol";
 import "./libraries/Token.sol";
 import "./RToken.sol";
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
 
 /*
 * @title RTokenDeployer
@@ -40,7 +41,6 @@ contract RTokenDeployer is IRTokenDeployer {
         // Perform validations on parameters
         require(owner != address(0));
         require(basketTokens.length > 0);
-        //require(basketTokens.length <= _MAX_ALLOWED_TOKENS);
         
          // Deploy Proxy for RToken
         rToken = address(new ERC1967Proxy(
@@ -55,8 +55,8 @@ contract RTokenDeployer is IRTokenDeployer {
             )));
 
         // Deploy Insurance Pool
-        address ipClone = Clones.clone(address(insurancePoolImplementation));
-        InsurancePool(ipClone).initialize(rToken, rsrToken.tokenAddress);
+        InsurancePool ipClone = InsurancePool(Clones.clone(address(insurancePoolImplementation)));
+        ipClone.initialize(rToken, rsrToken.tokenAddress);
          
         // Set insurance Pool address in RToken
         rTokenConfig.insurancePool = ipClone;
