@@ -7,7 +7,7 @@ describe("RTokenDeployer contract", function () {
         [owner, newOwner, other] = await ethers.getSigners();
 
         // Deploy RToken and InsurancePool implementations
-        RToken = await ethers.getContractFactory("RToken");
+        RToken = await ethers.getContractFactory("RTokenMock");
         rTokenImplementation = await RToken.connect(owner).deploy();
 
         InsurancePool = await ethers.getContractFactory("InsurancePool");
@@ -25,7 +25,7 @@ describe("RTokenDeployer contract", function () {
         });
     });
 
-    describe("Creating Rtokens", function () {
+    describe("Creating RTokens", function () {
         beforeEach(async function () {
             // RToken Configuration and setup
             config = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];

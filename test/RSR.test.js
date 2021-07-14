@@ -19,7 +19,7 @@ describe("RSR contract", function () {
 
         // Deploy new RSR
         RSR = await ethers.getContractFactory("RSR");
-        token = await RSR.connect(owner).deploy(prevToken.address, slowWallet.address, multisigWallet.address, "Reserve Rights", "RSR");
+        token = await RSR.connect(owner).deploy(prevToken.address, slowWallet.address, multisigWallet.address);
     });
 
     describe("Deployment", function () {
@@ -32,7 +32,7 @@ describe("RSR contract", function () {
             const totalSupply = await token.totalSupply();
             expect(await token.tokensToCross()).to.equal(totalSupply);
             expect(await token.fixedSupply()).to.equal(totalSupply);
-            expect(await token.snapshotter()).to.equal(owner.address);
+            //expect(await token.snapshotter()).to.equal(owner.address);
             expect(await token.slowWallet()).to.equal(slowWallet.address);
             expect(await token.multisigWallet()).to.equal(multisigWallet.address);
         });
@@ -210,75 +210,76 @@ describe("RSR contract", function () {
         });
     });
 
-    describe("Snapshots", function () {
-        it("Should allow snapshotter to set a new snapshotter", async function () {
-            expect(await token.snapshotter()).to.equal(owner.address);
+    // TODO: Remove if Snapshop logic will not be setup again
+    // describe("Snapshots", function () {
+    //     it("Should allow snapshotter to set a new snapshotter", async function () {
+    //         expect(await token.snapshotter()).to.equal(owner.address);
 
-            await expect(token.transferSnapshotter(addr1.address))
-                .to.emit(token, 'SnapshotterChanged')
-                .withArgs(owner.address, addr1.address);
+    //         await expect(token.transferSnapshotter(addr1.address))
+    //             .to.emit(token, 'SnapshotterChanged')
+    //             .withArgs(owner.address, addr1.address);
 
-            expect(await token.snapshotter()).to.equal(addr1.address);
-        });
+    //         expect(await token.snapshotter()).to.equal(addr1.address);
+    //     });
 
-        it("Should not allow to set snapshotter if not current snapshotter", async function () {
-            expect(await token.snapshotter()).to.equal(owner.address);
+    //     it("Should not allow to set snapshotter if not current snapshotter", async function () {
+    //         expect(await token.snapshotter()).to.equal(owner.address);
 
-            await expect(
-                token.connect(addr1).transferSnapshotter(addr1.address)
-            ).to.be.revertedWith("RSR: Only snapshotter can snapshot");
+    //         await expect(
+    //             token.connect(addr1).transferSnapshotter(addr1.address)
+    //         ).to.be.revertedWith("RSR: Only snapshotter can snapshot");
 
-            expect(await token.snapshotter()).to.equal(owner.address);
-        });
+    //         expect(await token.snapshotter()).to.equal(owner.address);
+    //     });
 
-        it("Should snapshot totalSupply", async function () {
-            await expect(
-                token.connect(owner).snapshot()
-            ).to.emit(token, "Snapshot").withArgs(1);
+    //     it("Should snapshot totalSupply", async function () {
+    //         await expect(
+    //             token.connect(owner).snapshot()
+    //         ).to.emit(token, "Snapshot").withArgs(1);
 
-            expect(await token.totalSupply()).to.equal(await token.totalSupplyAt(1));
+    //         expect(await token.totalSupply()).to.equal(await token.totalSupplyAt(1));
 
-            await expect(
-                token.connect(owner).snapshot()
-            ).to.emit(token, "Snapshot").withArgs(2);
+    //         await expect(
+    //             token.connect(owner).snapshot()
+    //         ).to.emit(token, "Snapshot").withArgs(2);
 
-            expect(await token.totalSupply()).to.equal(await token.totalSupplyAt(2));
-        });
+    //         expect(await token.totalSupply()).to.equal(await token.totalSupplyAt(2));
+    //     });
 
-        it("Should snapshot balances", async function () {
-            const amount = BigNumber.from(50);
-            const ownerBalancePrev = await token.balanceOf(owner.address);
-            const addr1BalancePrev = await token.balanceOf(addr1.address);
+    //     it("Should snapshot balances", async function () {
+    //         const amount = BigNumber.from(50);
+    //         const ownerBalancePrev = await token.balanceOf(owner.address);
+    //         const addr1BalancePrev = await token.balanceOf(addr1.address);
 
-            // Pause old contract to cross tokens and impact supply
-            await prevToken.connect(owner).pause();
+    //         // Pause old contract to cross tokens and impact supply
+    //         await prevToken.connect(owner).pause();
 
-            await expect(
-                token.connect(owner).snapshot()
-            ).to.emit(token, "Snapshot").withArgs(1);
+    //         await expect(
+    //             token.connect(owner).snapshot()
+    //         ).to.emit(token, "Snapshot").withArgs(1);
 
-            expect(await token.balanceOf(owner.address)).to.equal(await token.balanceOfAt(owner.address, 1));
-            expect(await token.balanceOf(addr1.address)).to.equal(await token.balanceOfAt(addr1.address, 1));
-            expect(await token.balanceOf(addr2.address)).to.equal(await token.balanceOfAt(addr2.address, 1));
-            expect(await token.balanceOfAt(owner.address, 1)).to.equal(ownerBalancePrev);
-            expect(await token.balanceOfAt(addr1.address, 1)).to.equal(addr1BalancePrev);
+    //         expect(await token.balanceOf(owner.address)).to.equal(await token.balanceOfAt(owner.address, 1));
+    //         expect(await token.balanceOf(addr1.address)).to.equal(await token.balanceOfAt(addr1.address, 1));
+    //         expect(await token.balanceOf(addr2.address)).to.equal(await token.balanceOfAt(addr2.address, 1));
+    //         expect(await token.balanceOfAt(owner.address, 1)).to.equal(ownerBalancePrev);
+    //         expect(await token.balanceOfAt(addr1.address, 1)).to.equal(addr1BalancePrev);
             
-            // Perform a transfer to impact balances    
-            await token.connect(owner).transfer(addr1.address, amount);
+    //         // Perform a transfer to impact balances    
+    //         await token.connect(owner).transfer(addr1.address, amount);
 
-            await expect(
-                token.connect(owner).snapshot()
-            ).to.emit(token, "Snapshot").withArgs(2);
+    //         await expect(
+    //             token.connect(owner).snapshot()
+    //         ).to.emit(token, "Snapshot").withArgs(2);
 
-            expect(await token.balanceOf(owner.address)).to.equal(await token.balanceOfAt(owner.address, 2));
-            expect(await token.balanceOf(addr1.address)).to.equal(await token.balanceOfAt(addr1.address, 2));
-            expect(await token.balanceOf(addr2.address)).to.equal(await token.balanceOfAt(addr2.address, 2));
-            expect(await token.balanceOfAt(owner.address, 2)).to.equal(ownerBalancePrev.sub(amount));
-            expect(await token.balanceOfAt(addr1.address, 2)).to.equal(addr1BalancePrev.add(amount));
+    //         expect(await token.balanceOf(owner.address)).to.equal(await token.balanceOfAt(owner.address, 2));
+    //         expect(await token.balanceOf(addr1.address)).to.equal(await token.balanceOfAt(addr1.address, 2));
+    //         expect(await token.balanceOf(addr2.address)).to.equal(await token.balanceOfAt(addr2.address, 2));
+    //         expect(await token.balanceOfAt(owner.address, 2)).to.equal(ownerBalancePrev.sub(amount));
+    //         expect(await token.balanceOfAt(addr1.address, 2)).to.equal(addr1BalancePrev.add(amount));
           
-            // Snapshots contain different values for the same accounts
-            expect(await token.balanceOfAt(owner.address, 1)).to.not.equal(await token.balanceOfAt(owner.address, 2));
-            expect(await token.balanceOfAt(addr1.address, 1)).to.not.equal(await token.balanceOfAt(addr1.address, 2));
-        });
-    });
+    //         // Snapshots contain different values for the same accounts
+    //         expect(await token.balanceOfAt(owner.address, 1)).to.not.equal(await token.balanceOfAt(owner.address, 2));
+    //         expect(await token.balanceOfAt(addr1.address, 1)).to.not.equal(await token.balanceOfAt(addr1.address, 2));
+    //     });
+    // });
 });
