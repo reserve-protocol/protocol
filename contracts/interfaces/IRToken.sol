@@ -77,6 +77,8 @@ interface IRToken {
 
     function stakingWithdrawalDelay() external view returns (uint256);
 
+    function insurancePool() external view returns (address);
+    
     function tradingFrozen() external view returns (bool);
 
     /// Returns the amounts of collateral tokens required to issue `amount` quantity

@@ -15,7 +15,6 @@ import "./interfaces/IAtomicExchange.sol";
 import "./interfaces/IInsurancePool.sol";
 import "./interfaces/ICircuitBreaker.sol";
 
-
 /**
  * @title RToken
  * @dev An ERC-20 token with built-in rules for price stabilization centered around a basket.
@@ -55,7 +54,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
 
     function initialize(
-        address owner_,
+        //address owner_,
         string memory name_,
         string memory symbol_,
         Config memory config_,
@@ -203,10 +202,13 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         return config.stakingWithdrawalDelay;
     }
 
+    function insurancePool() external view override returns(address) {
+        return config.insurancePool;
+    }
+
     function basketSize() external view override returns(uint16) {
         return basket.size;
     }
-
 
     /// Can be used in conjuction with `transfer` methods to account for fees.
     function calculateFee(
