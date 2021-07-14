@@ -8,17 +8,17 @@ import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-import "../interfaces/IAtomicExchange.sol";
+import "../interfaces/IDEXRouter.sol";
+import "../libraries/Storage.sol";
 
-contract DEXRouterFacet is IAtomicExchange, IUniswapV3SwapCallback {
+contract DEXRouterFacet is IDEXRouter, IUniswapV3SwapCallback {
     using SafeERC20 for IERC20;
+    using DiamondStorage for DiamondStorage.Info;
 
-    AppStorage internal s;
+    DiamondStorage.Info internal ds;
 
-    ISwapRouter internal swapper;
-
-    constructor (address uniswapV3SwapRouterAddress) {
-        swapper = ISwapRouter(uniswapV3SwapRouterAddress);
+    struct DEXRouterStorage {
+        ISwapRouter swapper;
     }
 
     function tradeFixedSell(
@@ -39,7 +39,7 @@ contract DEXRouterFacet is IAtomicExchange, IUniswapV3SwapCallback {
             amountOutMinimum: minBuyAmount,
             sqrtPriceLimitX96: 0 // TODO: Confirm
         });
-        require(swapper.exactInputSingle(swapParams) > minBuyAmount, "buy too low");
+        require(ds.dexRouterStorage().swapper.exactInputSingle(swapParams) > minBuyAmount, "buy too low");
     }
 
     function uniswapV3SwapCallback(

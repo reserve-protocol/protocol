@@ -2,6 +2,7 @@
 pragma solidity 0.8.4;
 
 import "./IERC20.sol";
+import "../libraries/Storage.sol";
 import "./extensions/IERC20Metadata.sol";
 import "../../utils/Context.sol";
 
@@ -30,13 +31,28 @@ import "../../utils/Context.sol";
  * allowances. See {IERC20-approve}.
  */
 contract ERC20 is Context, IERC20, IERC20Metadata {
-    AppStorage internal s;
+    DiamondStorage.Info internal ds;
+
+    struct ERC20Storage {
+        mapping(address => uint256) balances;
+        mapping(address => mapping(address => uint256)) allowances;
+        uint256 totalSupply;
+        string name;
+        string symbol;
+
+        /// ==== Governance Params ====
+        /// RToken max supply
+        /// e.g. 1_000_000e18 => 1M max supply
+        uint256 maxSupply;
+        bool feeEnabled;
+    }
+
 
     /**
      * @dev Returns the name of the token.
      */
     function name() public view virtual override returns (string memory) {
-        return s.name;
+        return ds.erc20Storage().name;
     }
 
     /**
@@ -44,7 +60,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      * name.
      */
     function symbol() public view virtual override returns (string memory) {
-        return s.symbol;
+        return ds.erc20Storage().symbol;
     }
 
     /**
@@ -68,14 +84,14 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      * @dev See {IERC20-totalSupply}.
      */
     function totalSupply() public view virtual override returns (uint256) {
-        return s.totalSupply;
+        return ds.erc20Storage().totalSupply;
     }
 
     /**
      * @dev See {IERC20-balanceOf}.
      */
     function balanceOf(address account) public view virtual override returns (uint256) {
-        return s.balances[account];
+        return ds.erc20Storage().balances[account];
     }
 
     /**
@@ -95,7 +111,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      * @dev See {IERC20-allowance}.
      */
     function allowance(address owner, address spender) public view virtual override returns (uint256) {
-        return s.allowances[owner][spender];
+        return ds.erc20Storage().allowances[owner][spender];
     }
 
     /**
@@ -110,18 +126,6 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
         return true;
     }
 
-    /// Can be used in conjuction with `transfer` methods to account for fees.
-    function feeForTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) public override returns (uint256) {
-        if (s.txFeeCalculator == address(0)) {
-            return 0;
-        }
-
-        return Math.min(amount, ITXFee(address(this)).calculateFee(from, to, amount));
-    }
     /**
      * @dev See {IERC20-transferFrom}.
      *
@@ -142,13 +146,31 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
     ) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
 
-        uint256 currentAllowance = s.allowances[sender][_msgSender()];
+        uint256 currentAllowance = ds.erc20Storage().allowances[sender][_msgSender()];
         require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
         unchecked {
             _approve(sender, _msgSender(), currentAllowance - amount);
         }
 
         return true;
+    }
+
+    function setFeeEnabled(bool enabled) external override {
+        DiamondStorage.enforceIsContractOwner();
+        feeEnabled = enabled;
+    } 
+
+    /// Can be used in conjuction with `transfer` methods to account for fees.
+    function feeForTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) public override returns (uint256) {
+        if (!ds.erc20Storage().feeEnabled) {
+            return 0;
+        }
+
+        return Math.min(amount, ITXFee(address(this)).calculateFee(from, to, amount));
     }
 
     /**
@@ -164,7 +186,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      * - `spender` cannot be the zero address.
      */
     function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        _approve(_msgSender(), spender, s.allowances[_msgSender()][spender] + addedValue);
+        _approve(_msgSender(), spender, ds.erc20Storage().allowances[_msgSender()][spender] + addedValue);
         return true;
     }
 
@@ -183,7 +205,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      * `subtractedValue`.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        uint256 currentAllowance = s.allowances[_msgSender()][spender];
+        uint256 currentAllowance = ds.erc20Storage().allowances[_msgSender()][spender];
         require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
         unchecked {
             _approve(_msgSender(), spender, currentAllowance - subtractedValue);
@@ -216,6 +238,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
 
         _beforeTokenTransfer(sender, recipient, amount);
 
+        ERC20Storage storage s = ds.erc20Storage();
         uint256 senderBalance = s.balances[sender];
         require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
         unchecked {
@@ -242,6 +265,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
 
         _beforeTokenTransfer(address(0), account, amount);
 
+        ERC20Storage storage s = ds.erc20Storage();
         s.totalSupply += amount;
         s.balances[account] += amount;
         emit Transfer(address(0), account, amount);
@@ -266,6 +290,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
 
         _beforeTokenTransfer(account, address(0), amount);
 
+        ERC20Storage storage s = ds.erc20Storage();
         uint256 accountBalance = s.balances[account];
         require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
         unchecked {
@@ -299,7 +324,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
 
-        s.allowances[owner][spender] = amount;
+        ds.erc20Storage().allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
     }
 
@@ -324,6 +349,8 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
     ) internal virtual {
         if (from != address(0) && to != address(0)) {
             uint256 fee = feeForTransfer(from, to, account);
+            ERC20Storage storage s = ds.erc20Storage();
+
             s.balances[from] = s.balances[from] - fee;
             s.balances[address(this)] += fee;
         }

@@ -4,11 +4,21 @@ pragma solidity 0.8.4;
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
 import "../interfaces/ICircuitBreaker.sol";
+import "../libraries/Storage.sol";
 
 contract CircuitBreakerFacet is ICircuitBreaker, AccessControlEnumerable {
-    AppStorage internal s;
+    using DiamondStorage for DiamondStorage.Info;
 
+    DiamondStorage.Info internal ds;
+    
+    // How does this work? This dictates something in the second storage slot...
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+
+    struct CircuitBreakerStorage {
+        bool paused;
+    }
+
+
 
     // constructor(address _admin) {
     //     _setupRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -21,16 +31,16 @@ contract CircuitBreakerFacet is ICircuitBreaker, AccessControlEnumerable {
     }
 
     function check() public view override returns (bool) {
-        return s.tripped;
+        return ds.circuitBreakerStorage().paused;
     }
 
     function pause() external override isPauser {
-        s.tripped = true;
+        ds.circuitBreakerStorage().paused = true;
         emit Paused(_msgSender());
     }
 
     function unpause() external override isPauser {
-        s.tripped = false;
+        ds.circuitBreakerStorage().paused = false;
         emit Unpaused(_msgSender());
     }
 }

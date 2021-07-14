@@ -7,9 +7,13 @@ pragma solidity ^0.8.0;
 /******************************************************************************/
 
 import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
-import { LibDiamond } from "../libraries/LibDiamond.sol";
+import { DiamondStorage } from "../libraries/DiamondStorage.sol";
 
 contract DiamondCutFacet is IDiamondCut {
+    using DiamondStorage for DiamondStorage.Info;
+
+    DiamondStorage.Info internal ds;
+
     /// @notice Add/replace/remove any number of functions and optionally execute
     ///         a function with delegatecall
     /// @param _diamondCut Contains the facet addresses and function selectors
@@ -21,7 +25,7 @@ contract DiamondCutFacet is IDiamondCut {
         address _init,
         bytes calldata _calldata
     ) external override {
-        LibDiamond.enforceIsContractOwner();
-        LibDiamond.diamondCut(_diamondCut, _init, _calldata);
+        ds.enforceIsContractOwner(msg.sender);
+        ds.diamondCut(_diamondCut, _init, _calldata);
     }
 }

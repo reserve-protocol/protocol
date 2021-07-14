@@ -5,11 +5,15 @@ pragma solidity ^0.8.0;
 * EIP-2535 Diamonds: https://eips.ethereum.org/EIPS/eip-2535
 /******************************************************************************/
 
-import { LibDiamond } from  "../libraries/LibDiamond.sol";
+import { DiamondStorage } from  "../libraries/DiamondStorage.sol";
 import { IDiamondLoupe } from "../interfaces/IDiamondLoupe.sol";
 import { IERC165 } from "../interfaces/IERC165.sol";
 
 contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
+    using DiamondStorage for DiamondStorage.Info;
+
+    DiamondStorage.Info internal ds;
+
     // Diamond Loupe Functions
     ////////////////////////////////////////////////////////////////////
     /// These functions are expected to be called frequently by tools.
@@ -22,7 +26,6 @@ contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
     /// @notice Gets all facets and their selectors.
     /// @return facets_ Facet
     function facets() external override view returns (Facet[] memory facets_) {
-        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         uint256 numFacets = ds.facetAddresses.length;
         facets_ = new Facet[](numFacets);
         for (uint256 i; i < numFacets; i++) {
@@ -36,14 +39,12 @@ contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
     /// @param _facet The facet address.
     /// @return facetFunctionSelectors_
     function facetFunctionSelectors(address _facet) external override view returns (bytes4[] memory facetFunctionSelectors_) {
-        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         facetFunctionSelectors_ = ds.facetFunctionSelectors[_facet].functionSelectors;
     }
 
     /// @notice Get all the facet addresses used by a diamond.
     /// @return facetAddresses_
     function facetAddresses() external override view returns (address[] memory facetAddresses_) {
-        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         facetAddresses_ = ds.facetAddresses;
     }
 
@@ -52,13 +53,11 @@ contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
     /// @param _functionSelector The function selector.
     /// @return facetAddress_ The facet address.
     function facetAddress(bytes4 _functionSelector) external override view returns (address facetAddress_) {
-        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         facetAddress_ = ds.selectorToFacetAndPosition[_functionSelector].facetAddress;
     }
 
     // This implements ERC-165.
     function supportsInterface(bytes4 _interfaceId) external override view returns (bool) {
-        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         return ds.supportedInterfaces[_interfaceId];
     }
 }

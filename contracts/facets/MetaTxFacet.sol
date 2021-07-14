@@ -2,13 +2,19 @@
 // From: https://github.com/aavegotchi/aavegotchi-contracts/commit/6536d434b7c87c1cf0325917f811bf042e74ef50
 pragma solidity 0.8.4;
 
-import "../libraries/AppStorage.sol";
+import "../interfaces/IMetaTx.sol";
+import "../libraries/Storage.sol";
 
 
-contract MetaTxFacet {
-    AppStorage internal s;
+contract MetaTxFacet is IMetaTx {
+    DiamondStorage.Info internal ds;
 
     bytes32 private constant META_TRANSACTION_TYPEHASH = keccak256(bytes("MetaTransaction(uint256 nonce,address from,bytes functionSignature)"));
+
+    struct MetaTxStorage {
+        mapping(address => uint256) metaNonces;
+    }
+
 
     event MetaTransactionExecuted(address userAddress, address payable relayerAddress, bytes functionSignature);
 
@@ -23,7 +29,7 @@ contract MetaTxFacet {
     }
 
     function getDomainSeparator() private view returns (bytes32) {
-        return s.domainSeparator;
+        return address(this);
     }
 
     /**
@@ -42,7 +48,8 @@ contract MetaTxFacet {
     }
 
     function getNonce(address user) external view returns (uint256 nonce_) {
-        nonce_ = s.metaNonces[user];
+        MetaTxStorage storage mtx = ds.metaTxStorage();
+        nonce_ = mtx.metaNonces[user];
     }
 
     function verify(
@@ -77,10 +84,12 @@ contract MetaTxFacet {
     ) public payable returns (bytes memory) {
         bytes4 destinationFunctionSig = convertBytesToBytes4(functionSignature);
         require(destinationFunctionSig != msg.sig, "functionSignature can not be of executeMetaTransaction method");
-        uint256 nonce = s.metaNonces[userAddress];
+
+        MetaTxStorage storage mtx = ds.metaTxStorage();
+        uint256 nonce = mtx.metaNonces[userAddress];
         MetaTransaction memory metaTx = MetaTransaction({nonce: nonce, from: userAddress, functionSignature: functionSignature});
         require(verify(userAddress, metaTx, sigR, sigS, sigV), "Signer and signature do not match");
-        s.metaNonces[userAddress] = nonce + 1;
+        mtx.metaNonces[userAddress] = nonce + 1;
         // Append userAddress at the end to extract it from calling context
         (bool success, bytes memory returnData) = address(this).call(abi.encodePacked(functionSignature, userAddress));
 

@@ -8,7 +8,9 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "../interfaces/IInsurancePool.sol";
-import "../interfaces/IRToken.sol";
+import "../interfaces/IIssuance.sol";
+import "../libraries/Storage.sol";
+
 
 /*
  * @title InsurancePool
@@ -17,27 +19,60 @@ import "../interfaces/IRToken.sol";
  * to be used in the event of recapitalization.
  */
 contract InsurancePoolFacet is Context, IInsurancePool {
+    using DiamondStorage for DiamondStorage.Info;
     using SafeERC20 for IERC20;
     using Token for Token.Info;
 
-    AppStorage internal s;
+    DiamondStorage.Info internal ds;
+
+    struct RevenueEvent {
+       uint256 amount;
+       uint256 totalStaked;
+    }
+
+    struct StakingEvent {
+        address account;
+        uint256 timestamp;
+        uint256 amount;
+    }
+
+    struct InsurancePoolStorage {
+        RevenueEvent[] revenueEvents;
+        StakingEvent[] deposits;
+        StakingEvent[] withdrawals;
+        mapping(address => uint256) lastFloor;
+        mapping(address => uint256) earned; // in RToken
+        mapping(address => uint256) balances; // in RSR
+        uint256 total;
+        uint256 depositIndex;
+        uint256 withdrawalIndex;
+
+        /// ==== Governance Params ====
+        /// RSR staking deposit delay (s)
+        /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to enter the insurance pool
+        uint256 stakingDepositDelay;
+        /// RSR staking withdrawal delay (s)
+        /// e.g. 2_592_000 => Currently staking RSR tokens take 1 month to withdraw
+        uint256 stakingWithdrawalDelay;
+    }
 
     modifier update(address account) {
+        InsurancePoolStorage storage s = ds.insurancePoolStorage();
         // Scale floors for just this account to sum RevenueEvents
-        if (address(account) != address(0) && s.rsrStakeBalances[account] > 0) {
-            climb(account, r.revenueEvents.length - s.lastFloor[account]);
+        if (address(account) != address(0) && s.balances[account] > 0) {
+            climb(account, s.revenueEvents.length - s.lastFloor[account]);
         }
 
         // Process withdrawals
         bool success = true;
-        while (success && withdrawalIndex < withdrawals.length) {
-            success = _trySettleNextWithdrawal();
+        while (success && withdrawalIndex < s.withdrawals.length) {
+            success = _trySettleNextWithdrawal(s);
         }
 
         // Process deposits
         success = true;
-        while (success && depositIndex < deposits.length) {
-            success = _trySettleNextDeposit();
+        while (success && depositIndex < s.deposits.length) {
+            success = _trySettleNextDeposit(s);
         }
 
         _;
@@ -45,81 +80,95 @@ contract InsurancePoolFacet is Context, IInsurancePool {
 
     /* ========== Public ========== */
 
+
+
     // Call if the lastFloor was _so_ far below that he hit the block gas limit.
     // Anyone can call this for any account.
     function climb(address account, uint256 floors) public override {
-        for (uint256 i = lastFloor[account]; i < lastFloor[account] + floors; i++) {
+        InsurancePoolStorage storage s = ds.insurancePoolStorage();
+        for (uint256 i = lastFloor[account]; i < s.lastFloor[account] + floors; i++) {
             RevenueEvent storage re = s.revenueEvents[i];
-            s.rTokenEarned[account] += (re.amount * _balanceOf(account) / re.totalStaked;
+            s.earned[account] += (re.amount * _balanceOf(account) / re.totalStaked;
         }
 
-        lastFloor[account] += floors;
+        s.lastFloor[account] += floors;
     }
 
     function initiateWithdrawal(uint256 amount) public override update(_msgSender()) {
         require(amount > 0, "Cannot withdraw 0");
-        s.withdrawals.push(StakingEvent(_msgSender(), block.timestamp, amount));
+        ds.insurancePoolStorage().withdrawals.push(StakingEvent(_msgSender(), block.timestamp, amount));
         emit WithdrawalInitiated(_msgSender(), block.timestamp, amount);
     }
 
     /* ========== External ========== */
 
+    function balanceOf(address account) external view returns (uint256) {
+        InsurancePoolStorage storage s = ds.insurancePoolStorage();
+        return _balanceOf(s, account);
+    }
+
     function stake(uint256 amount) external override update(_msgSender()) {
         require(amount > 0, "Cannot stake 0");
-        deposits.push(StakingEvent(_msgSender(), block.timestamp, amount));
+        ds.insurancePoolStorage().deposits.push(StakingEvent(_msgSender(), block.timestamp, amount));
         emit DepositInitiated(_msgSender(), block.timestamp, amount);
     }
 
 
     function exit() external override {
-        initiateWithdrawal(_balanceOf(_msgSender()));
+        InsurancePoolStorage storage s = ds.insurancePoolStorage();
+        initiateWithdrawal(_balanceOf(s, _msgSender()));
     }
 
 
     function notifyRevenue(uint256 amount) external override update(address(0)) {
         require(_msgSender() == address(this), "only self can save revenue events");
 
-        RevenueEvent memory next = RevenueEvent(amount, s.rsrStaked);
-        s.revenueEvents.push(next);
-        emit RevenueEventSaved(s.revenueEvents.length - 1, amount);
+        RevenueEvent memory next = RevenueEvent(amount, s.total);
+        ds.insurancePoolStorage().revenueEvents.push(next);
+        emit RevenueEventSaved(ds.insurancePoolStorage().revenueEvents.length - 1, amount);
+    }
+
+    function claimRevenue(address account) external override update(account) {
+        IERC20(address(this)).safeTransfer(w.account, s.earned[w.account]);
+        s.earned[w.account] = 0;        
     }
 
     /// ================= Internal =====================
 
-    function _balanceOf(address account) internal view returns (uint256) {
-        return (s.rsr.getBalance() * s.rsrStakeBalances[account]) / s.rsrStaked;
+    function _balanceOf(InsurancePoolStorage storage s, address account) internal view returns (uint256) {
+        return (s.rsr.getBalance() * s.balances[account]) / s.total;
     }
 
-    function _trySettleNextDeposit() internal returns (bool) {
-        StakingEvent storage deposit = deposits[depositIndex];
+    function _trySettleNextDeposit(InsurancePoolStorage storage s) internal returns (bool) {
+        StakingEvent storage deposit = s.deposits[depositIndex];
         if (block.timestamp - s.stakingDepositDelay < deposit.timestamp) {
             return false;
         }
 
-        s.rsrStakeBalances[deposit.account] += deposit.amount;
-        s.rsrStaked += deposit.amount;
+        s.balances[deposit.account] += deposit.amount;
+        s.total += deposit.amount;
 
         emit DepositCompleted(deposit.account, deposit.amount);
-        delete deposits[depositIndex];
+        delete s.deposits[depositIndex];
         depositIndex += 1;
         return true;
     }
 
-    function _trySettleNextWithdrawal() internal returns (bool) {
-        StakingEvent storage w = withdrawals[withdrawalIndex];
+    function _trySettleNextWithdrawal(InsurancePoolStorage storage s) internal returns (bool) {
+        StakingEvent storage w = s.withdrawals[withdrawalIndex];
         if (block.timestamp - s.stakingWithdrawalDelay < w.timestamp) {
             return false;
         }
 
-        uint256 amount = Math.min(_balanceOf(w.account), w.amount);
-        s.rsrStakeBalances[w.account] = s.rsrStakeBalances[w.account] - amount;
-        s.rsrStaked = s.rsrStaked - amount;
+        uint256 amount = Math.min(_balanceOf(s, w.account), w.amount);
+        s.balances[w.account] = s.balances[w.account] - amount;
+        s.total = s.total - amount;
 
-        IERC20(address(this)).safeTransfer(w.account, s.rTokenEarned[w.account]);
-        r.rTokenEarned[w.account] = 0;
+        IERC20(address(this)).safeTransfer(w.account, s.earned[w.account]);
+        s.earned[w.account] = 0;
 
         emit WithdrawalCompleted(w.account, amount);
-        delete withdrawals[withdrawalIndex];
+        delete s.withdrawals[withdrawalIndex];
         withdrawalIndex += 1;
         return true;
     }
