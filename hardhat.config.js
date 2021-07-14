@@ -7,7 +7,7 @@ require("hardhat-gas-reporter");
  * @type import('hardhat/config').HardhatUserConfig
  */
 
- module.exports = {
+module.exports = {
   solidity: {
       version: "0.8.4",
       settings: {
