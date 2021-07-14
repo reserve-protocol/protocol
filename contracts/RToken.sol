@@ -167,7 +167,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     function issue(uint256 amount) external override everyBlock {
         require(amount > config.minMintingSize, "cannot issue less than minMintingSize");
         require(basket.size > 0, "basket cannot be empty");
-        require(config.circuitBreaker.check(), "circuit breaker tripped");
+        require(config.circuitBreaker.paused(), "circuit breaker tripped");
 
         uint256[] memory amounts = issueAmounts(amount);
         for (uint16 i = 0; i < basket.size; i++) {
@@ -281,7 +281,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Tries to process up to a fixed number of mintings. Called before most actions.
     function _tryProcessMintings() internal {
-        if (!config.circuitBreaker.check()) {
+        if (!config.circuitBreaker.paused()) {
             uint256 start = currentMinting;
             uint256 blocksSince = block.number - _lastBlock;
             uint256 issuanceAmount = config.issuanceRate;
