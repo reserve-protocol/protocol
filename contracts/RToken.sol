@@ -73,7 +73,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
         rsrToken = rsrToken_;
 
-        // _transferOwnership(owner_);
         _deployedAt = block.timestamp;
         _lastTimestamp = block.timestamp;
         _lastBlock = block.number;
@@ -81,7 +80,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     modifier canTrade() {
-        require(!tradingFrozen(), "DEX interactions are frozen, but you can transfer or redeem");
+        require(!tradingFrozen(), "RToken: no rebalancing");
         _;
     }
 
@@ -111,7 +110,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _updateBasket();
     }
 
-    /// Callable by anyone, runs all the perBlockUpdates
+    /// Callable by anyone, runs the block updates
     function act() external override everyBlock {
         return;
     }
