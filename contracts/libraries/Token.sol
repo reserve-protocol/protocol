@@ -54,4 +54,7 @@ library Token {
         return IERC20Upgradeable(self.tokenAddress).balanceOf(address(this));
     }
 
+    function getBalance(Token.Info storage self, address account) internal view returns(uint256) {
+        return IERC20Upgradeable(self.tokenAddress).balanceOf(account);
+    }
 }
