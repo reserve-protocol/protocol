@@ -7,6 +7,4 @@ interface IOwner {
         uint256 insuranceTokenPrice,
         uint256[] calldata collateralTokenPrices
     ) external;
-
-    function takeSnapshot(address rTokenAddress) external returns (uint256);
 }

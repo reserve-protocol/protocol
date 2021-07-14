@@ -25,7 +25,10 @@ interface IInsurancePool {
     function initiateWithdrawal(uint256 amount) external;
 
     // Settles the next withdrawal, if enough time has passed.
-    function settleNextWithdrawal() external;
+    function trySettleNextWithdrawal() external returns(bool);
+
+    // Settles the next deposit, if enough time has passed.
+    function trySettleNextDeposit() external returns(bool);
 
     /// Returns all earned RToken. Can call as second half of withdraw process.
     function claimRevenue() external;

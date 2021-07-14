@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-interface IRelayERC20 is IERC20 {
-    function relayNonce(address account) external returns (uint256);
+interface IRelayERC20 is IERC20Upgradeable {
+    function metaNonces(address account) external returns (uint256);
 
     function relayedTransfer(
         bytes calldata sig,

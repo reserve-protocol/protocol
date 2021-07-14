@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
 import "../interfaces/IInsurancePool.sol";
-import "./Configuration.sol";
+import "../interfaces/IRToken.sol";
 
 /*
  * @title InsurancePool
@@ -14,12 +15,11 @@ import "./Configuration.sol";
  * benefit from the revenue stream from an RToken. By staking they make their RSR eligible
  * to be used in the event of recapitalization.
  */
-contract InsurancePool is Context, IInsurancePool {
-    using SafeERC20 for IERC20;
+contract InsurancePool is ContextUpgradeable, IInsurancePool {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    Configuration public conf;
-    IERC20 public RTOKEN;
-    IERC20 public RSR;
+    IRToken public rToken;
+    IERC20Upgradeable public rsrToken;
 
     struct RevenueEvent {
         bool isRSR; // Two options, either RToken or RSR
@@ -48,11 +48,6 @@ contract InsurancePool is Context, IInsurancePool {
     uint256 public depositIndex;
     StakingEvent[] public withdrawals;
     uint256 public withdrawalIndex;
-
-    constructor(address rToken_, address rsr_) {
-        RTOKEN = IERC20(rToken_);
-        RSR = IERC20(rsr_);
-    }
 
     modifier update(address account) {
         // TODO: Think hard about ordering
@@ -86,26 +81,26 @@ contract InsurancePool is Context, IInsurancePool {
         _;
     }
 
+    function initialize(address rToken_, address rsr_) external initializer {
+        rToken = IRToken(rToken_);
+        rsrToken = IERC20Upgradeable(rsr_);
+    }
+
     /* ========== External ========== */
 
-    function totalSupply() external override update(address(0)) returns (uint256) {
-        return _totalSupply - _seized;
+    function initiateWithdrawal(uint256 amount) public override update(_msgSender()) {
+        require(amount > 0, "Cannot withdraw 0");
+        withdrawals.push(StakingEvent(_msgSender(), block.timestamp, amount));
+        emit WithdrawalInitiated(_msgSender(), block.timestamp, amount);
     }
 
-    function balanceOf(address account) external override update(account) returns (uint256) {
-        return _balanceOf(account);
-    }
-
-    // TODO: Implement earned
-    function earned(address account) external view returns (uint256) {}
-
-    function trySettleNextWithdrawal() public returns (bool) {
+    function trySettleNextWithdrawal() public override returns (bool) {
         StakingEvent storage withdrawal = withdrawals[withdrawalIndex];
-        if (block.timestamp - conf.stakingWithdrawalDelay() < withdrawal.timestamp) {
+        if (block.timestamp - rToken.stakingWithdrawalDelay() < withdrawal.timestamp) {
             return false;
         }
 
-        uint256 amount = Math.min(_balanceOf(withdrawal.account), withdrawal.amount);
+        uint256 amount = MathUpgradeable.min(_balanceOf(withdrawal.account), withdrawal.amount);
         _balances[withdrawal.account] = _balances[withdrawal.account] - amount;
         _totalSupply = _totalSupply - amount;
 
@@ -115,9 +110,9 @@ contract InsurancePool is Context, IInsurancePool {
         return true;
     }
 
-    function trySettleNextDeposit() public returns (bool) {
+    function trySettleNextDeposit() public override returns (bool) {
         StakingEvent storage deposit = deposits[depositIndex];
-        if (block.timestamp - conf.stakingDepositDelay() < deposit.timestamp) {
+        if (block.timestamp - rToken.stakingDepositDelay() < deposit.timestamp) {
             return false;
         }
 
@@ -130,27 +125,29 @@ contract InsurancePool is Context, IInsurancePool {
         return true;
     }
 
-    // TODO: Implement settleNextWithdrawal
-    function settleNextWithdrawal() external override {}
+    function totalSupply() external override update(address(0)) returns (uint256) {
+        return _totalSupply - _seized;
+    }
+
+    function balanceOf(address account) external override update(account) returns (uint256) {
+        return _balanceOf(account);
+    }
+
+    // TODO: Implement earned
+    function earned(address account) external view returns (uint256) {}
 
     function stake(uint256 amount) external override update(_msgSender()) {
         require(amount > 0, "Cannot stake 0");
-        RSR.safeTransferFrom(_msgSender(), address(this), amount);
+        IERC20Upgradeable(address(rsrToken)).safeTransferFrom(_msgSender(), address(this), amount);
         deposits.push(StakingEvent(_msgSender(), block.timestamp, amount));
         emit DepositInitiated(_msgSender(), block.timestamp, amount);
-    }
-
-    function initiateWithdrawal(uint256 amount) public override update(_msgSender()) {
-        require(amount > 0, "Cannot withdraw 0");
-        withdrawals.push(StakingEvent(_msgSender(), block.timestamp, amount));
-        emit WithdrawalInitiated(_msgSender(), block.timestamp, amount);
     }
 
     function claimRevenue() external override update(_msgSender()) {
         uint256 revenue = rTokenRevenues[_msgSender()];
         if (revenue > 0) {
             rTokenRevenues[_msgSender()] = 0;
-            RTOKEN.safeTransfer(_msgSender(), revenue);
+            IERC20Upgradeable(address(rToken)).safeTransfer(_msgSender(), revenue);
             emit RevenueClaimed(_msgSender(), revenue);
         }
     }
@@ -158,7 +155,7 @@ contract InsurancePool is Context, IInsurancePool {
     // Call if the lastFloor was _so_ far below that he hit the block gas limit.
     // Anyone can call this for any account.
     function climb(address account, uint256 floors) external override {
-        uint256 limit = Math.min(lastFloor[account] + floors, revenueEvents.length);
+        uint256 limit = MathUpgradeable.min(lastFloor[account] + floors, revenueEvents.length);
         for (uint256 i = lastFloor[account]; i < limit; i++) {
             RevenueEvent storage re = revenueEvents[i];
             rTokenRevenues[account] += (re.amount * _balanceOf(account)) / re.totalStaked;
@@ -170,24 +167,24 @@ contract InsurancePool is Context, IInsurancePool {
     /// Callable only by RToken address
 
     function notifyRevenue(bool isRSR, uint256 amount) external override update(address(0)) {
-        require(_msgSender() == address(RTOKEN), "only RToken can save revenue events");
+        require(_msgSender() == address(rToken), "only RToken can save revenue events");
 
         RevenueEvent memory next = RevenueEvent(isRSR, amount, _totalSupply);
         revenueEvents.push(next);
         if (isRSR) {
-            RSR.safeTransferFrom(address(RTOKEN), address(this), amount);
+            IERC20Upgradeable(address(rsrToken)).safeTransferFrom(address(rToken), address(this), amount);
             _totalSupply += amount;
         } else {
-            RTOKEN.safeTransferFrom(address(RTOKEN), address(this), amount);
+            IERC20Upgradeable(address(rToken)).safeTransferFrom(address(rToken), address(this), amount);
         }
 
         emit RevenueEventSaved(isRSR, revenueEvents.length - 1, amount);
     }
 
     function seizeRSR(uint256 amount) external override update(address(0)) returns (uint256) {
-        require(_msgSender() == address(RTOKEN), "only RToken can seize RSR");
-        amount = Math.min(RSR.balanceOf(address(this)), amount);
-        RSR.safeTransfer(address(RTOKEN), amount);
+        require(_msgSender() == address(rToken), "only RToken can seize RSR");
+        amount = MathUpgradeable.min(rsrToken.balanceOf(address(this)), amount);
+        IERC20Upgradeable(address(rsrToken)).safeTransfer(address(rToken), amount);
         _seized += amount;
         emit RSRSeized(amount);
         return amount;

@@ -4,7 +4,9 @@ pragma solidity 0.8.4;
 import "../RelayERC20.sol";
 
 contract RelayERC20Mock is RelayERC20 {
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
+    function initialize(string memory name, string memory symbol) external {
+        __ERC20_init(name, symbol);
+    }
 
     function mint(address recipient, uint256 amount) external {
         _mint(recipient, amount);

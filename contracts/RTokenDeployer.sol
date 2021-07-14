@@ -1,41 +1,70 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/governance/TimelockController.sol";
-
-import "./interfaces/IConfiguration.sol";
+import "./interfaces/IRTokenDeployer.sol";
+import "./interfaces/IRToken.sol";
+import "./interfaces/IInsurancePool.sol";
 import "./modules/InsurancePool.sol";
-import "./modules/Configuration.sol";
-import "./modules/Owner.sol";
+import "./libraries/Token.sol";
 import "./RToken.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 
 /*
- * @title RTokenDeployer
- * @dev Static deployment of V1 of the Reserve Protocol.
- * Allows anyone to create insured basket currencies that have the ability to change collateral.
- */
-contract RTokenDeployer {
+* @title RTokenDeployer
+* @dev Static deployment of V1 of the Reserve Protocol.
+* Allows anyone to create insured basket currencies that have the ability to change collateral.
+*/
+contract RTokenDeployer is IRTokenDeployer {
+    // Implementation addresses to be used for proxy deployments
+    IRToken public immutable rTokenImplementation;
+    IInsurancePool public immutable insurancePoolImplementation;
+
+    // Register tokens created by factory
+    mapping(address => bool)  public isRToken;
+
+    constructor(IRToken rTokenImplementation_, IInsurancePool insurancePoolImplementation_) {
+        rTokenImplementation = rTokenImplementation_;
+        insurancePoolImplementation = insurancePoolImplementation_;
+    }
+
     function deploy(
         address owner,
         string calldata name,
         string calldata symbol,
-        Token[] memory tokens,
-        Token memory insuranceToken,
-        ConfigurationParams memory configParams
-    )
-        public
-        returns (
-            address rToken,
-            address insurancePool,
-            address configuration
-        )
-    {
-        // Deploy static configuration
-        Configuration c = new Configuration(tokens, insuranceToken, configParams);
+        RToken.Config memory rTokenConfig,
+        Token.Info[] memory basketTokens,
+        Token.Info memory rsrToken
+    ) external override returns (address rToken) {
 
-        // Create RToken and InsurancePool
-        RToken rtoken = new RToken(owner, name, symbol, address(c));
-        InsurancePool ip = new InsurancePool(address(rtoken), c.insuranceTokenAddress());
-        return (address(rtoken), address(ip), address(c));
+        // Perform validations on parameters
+        require(owner != address(0));
+        require(basketTokens.length > 0);
+        //require(basketTokens.length <= _MAX_ALLOWED_TOKENS);
+        
+         // Deploy Proxy for RToken
+        rToken = address(new ERC1967Proxy(
+            address(rTokenImplementation),
+            abi.encodeWithSelector(
+                RToken(address(0)).initialize.selector,
+                name,
+                symbol,
+                rTokenConfig,
+                basketTokens,
+                rsrToken
+            )));
+
+        // Deploy Insurance Pool
+        address ipClone = Clones.clone(address(insurancePoolImplementation));
+        InsurancePool(ipClone).initialize(rToken, rsrToken.tokenAddress);
+         
+        // Set insurance Pool address in RToken
+        rTokenConfig.insurancePool = ipClone;
+        RToken(rToken).updateConfig(rTokenConfig);
+        RToken(rToken).transferOwnership(owner);
+
+        // Register token
+        isRToken[rToken] = true;
+        emit RTokenDeployed(rToken);
     }
 }

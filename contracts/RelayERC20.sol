@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 
 import "./interfaces/IRelayERC20.sol";
 
-abstract contract RelayERC20 is IRelayERC20, ERC20 {
+abstract contract RelayERC20 is IRelayERC20, ERC20Upgradeable {
+
+    mapping(address => uint256) public override metaNonces;
+
     event TransferForwarded(
         bytes sig,
         address indexed from,
@@ -14,8 +17,6 @@ abstract contract RelayERC20 is IRelayERC20, ERC20 {
         uint256 indexed amount,
         uint256 fee
     );
-
-    mapping(address => uint256) public override relayNonce;
 
     /// Checks the transfer signature in-tx in order to enable metatxs.
     /// Note that `amount` is not reduced by `fee`; the fee is taken separately.
@@ -35,10 +36,10 @@ abstract contract RelayERC20 is IRelayERC20, ERC20 {
                 to,
                 amount,
                 fee,
-                relayNonce[from]
+                metaNonces[from]
             )
         );
-        relayNonce[from]++;
+        metaNonces[from]++;
 
         address recoveredSigner = _recoverSignerAddress(hash, sig);
         require(recoveredSigner == from, "RelayERC20: Invalid signature");
@@ -52,7 +53,7 @@ abstract contract RelayERC20 is IRelayERC20, ERC20 {
 
     /// Recover the signer's address from the hash and signature.
     function _recoverSignerAddress(bytes32 hash, bytes memory sig) internal pure returns (address) {
-        bytes32 ethMessageHash = ECDSA.toEthSignedMessageHash(hash);
-        return ECDSA.recover(ethMessageHash, sig);
+        bytes32 ethMessageHash = ECDSAUpgradeable.toEthSignedMessageHash(hash);
+        return ECDSAUpgradeable.recover(ethMessageHash, sig);
     }
 }

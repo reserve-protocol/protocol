@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Snapshot.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 interface IPrevRSR {
     function paused() external view returns (bool);
@@ -22,7 +23,7 @@ interface IPrevRSR {
  *
  * The SlowWallet crossover logic gets special-cased, since otherwise funds would get lost.
  */
-contract RSR is ERC20Snapshot {
+contract RSR is ERC20Votes {
     /// ==== Immutable ====
 
     IPrevRSR public immutable prevRSR;
@@ -32,21 +33,14 @@ contract RSR is ERC20Snapshot {
     uint256 public immutable fixedSupply;
 
     /// ==== Mutable ====
-
     mapping(address => bool) public crossed;
     uint256 public tokensToCross;
-    address public snapshotter;
-
-    event SnapshotterChanged(address indexed oldSnapshotter, address indexed newSnapshotter);
 
     constructor(
         address prevRSR_,
         address slowWallet_,
-        address multisigWallet_,
-        string memory name_,
-        string memory symbol_
-    ) ERC20(name_, symbol_) {
-        snapshotter = _msgSender();
+        address multisigWallet_
+    ) ERC20("Reserve Rights", "RSR") ERC20Permit("Reserve Rights") {
         prevRSR = IPrevRSR(prevRSR_);
         uint256 _totalSupply = IPrevRSR(prevRSR_).totalSupply();
         fixedSupply = _totalSupply;
@@ -65,11 +59,6 @@ contract RSR is ERC20Snapshot {
         if (!crossed[account] && prevRSR.paused()) {
             _crossover(account);
         }
-        _;
-    }
-
-    modifier snapshotterOnly() {
-        require(_msgSender() == snapshotter, "RSR: Only snapshotter can snapshot");
         _;
     }
 
@@ -94,7 +83,9 @@ contract RSR is ERC20Snapshot {
         crossover(_msgSender())
         returns (bool)
     {
-        return super.transfer(recipient, amount);
+        require(super.transfer(recipient, amount), "not enough balance");
+        return true;
+
     }
 
     function transferFrom(
@@ -102,16 +93,8 @@ contract RSR is ERC20Snapshot {
         address recipient,
         uint256 amount
     ) public override crossover(sender) returns (bool) {
-        return super.transferFrom(sender, recipient, amount);
-    }
-
-    function snapshot() external snapshotterOnly returns (uint256) {
-        return _snapshot();
-    }
-
-    function transferSnapshotter(address newSnapshotter) external snapshotterOnly {
-        emit SnapshotterChanged(snapshotter, newSnapshotter);
-        snapshotter = newSnapshotter;
+        require(super.transferFrom(sender, recipient, amount), "not enough balance");
+        return true;
     }
 
     /// ==== Internal ====
