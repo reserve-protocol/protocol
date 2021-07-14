@@ -8,7 +8,6 @@ import "./interfaces/IRTokenDeployer.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IInsurancePool.sol";
 import "./modules/InsurancePool.sol";
-import "./libraries/Config.sol";
 import "./libraries/Token.sol";
 import "./RToken.sol";
 
@@ -34,7 +33,7 @@ contract RTokenDeployer is IRTokenDeployer {
         address owner,
         string calldata name,
         string calldata symbol,
-        Config memory rTokenConfig,
+        RToken.Config memory rTokenConfig,
         Token.Info[] memory basketTokens,
         Token.Info memory rsrToken
     ) external override returns (address rToken) {
@@ -42,7 +41,6 @@ contract RTokenDeployer is IRTokenDeployer {
         // Perform validations on parameters
         require(owner != address(0));
         require(basketTokens.length > 0);
-        //require(basketTokens.length <= _MAX_ALLOWED_TOKENS);
         
          // Deploy Proxy for RToken
         rToken = address(new ERC1967Proxy(

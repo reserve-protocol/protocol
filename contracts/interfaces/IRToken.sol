@@ -2,12 +2,12 @@
 pragma solidity 0.8.4;
 
 import "../interfaces/ICircuitBreaker.sol";
-import "../libraries/Config.sol";
+import "../RToken.sol";
 
 interface IRToken {
 
     /// Only callable by Owner.
-    function updateConfig(Config memory newConfig) external;
+    function updateConfig(RToken.Config memory newConfig) external;
 
     /// Adaptation function, callable by anyone
     function act() external;
