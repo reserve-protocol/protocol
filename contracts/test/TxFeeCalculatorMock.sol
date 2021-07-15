@@ -4,8 +4,7 @@ pragma solidity 0.8.4;
 import "../interfaces/ITXFee.sol";
 
 contract TXFeeCalculatorMock is ITXFee {
-
-    uint256 private immutable _scale=100;
+    uint256 private immutable _scale = 100;
     uint256 public feePercent;
 
     constructor() {
