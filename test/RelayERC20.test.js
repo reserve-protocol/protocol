@@ -25,7 +25,7 @@ describe("RelayERC20 contract", function () {
       const amount = BigNumber.from(50);
       await token.transfer(addr1.address, amount);
       const addr1Balance = await token.balanceOf(addr1.address);
-      expect(addr1Balance).to.equal(50);
+      expect(addr1Balance).to.equal(amount);
 
       // Transfer 50 tokens from addr1 to addr2
       await token.connect(addr1).transfer(addr2.address, amount);

@@ -39,7 +39,7 @@ describe("RToken contract", function () {
             expect(await rToken.circuitBreaker()).to.equal(cb.address);
             expect(await rToken.stakingDepositDelay()).to.equal(stakingDepositDelay);
             expect(await rToken.stakingWithdrawalDelay()).to.equal(stakingWithdrawalDelay);
-            expect(await rToken.maxSupply()).to.equal(maxSupply); 
+            expect(await rToken.maxSupply()).to.equal(maxSupply);
         });
 
         it("Should deploy with no tokens", async function () {
@@ -49,8 +49,8 @@ describe("RToken contract", function () {
         });
     });
 
-    describe("Updates/Change to Configuration", function () {
-       
+    describe("Updates/Changes to Configuration", function () {
+
         describe("stakingDepositDelay", function () {
             beforeEach(async function () {
                 currentValue = stakingDepositDelay;
@@ -144,7 +144,6 @@ describe("RToken contract", function () {
             });
         });
 
-
         describe("issuanceRate", function () {
             beforeEach(async function () {
                 currentValue = issuanceRate;
@@ -205,6 +204,39 @@ describe("RToken contract", function () {
                 ).to.be.revertedWith("Ownable: caller is not the owner");
 
                 expect(await rToken.circuitBreaker()).to.equal(currentValue);
+            });
+        });
+
+        describe("txFeeCalculator", function () {
+            beforeEach(async function () {
+                currentValue = ZERO_ADDRESS;
+                TxFeeCalculator = await ethers.getContractFactory("TXFeeCalculatorMock");
+                txFeeNew = await TxFeeCalculator.deploy();
+                newValue = txFeeNew.address;
+                newConfig = config;
+            });
+
+            it("Should update correctly if Owner", async function () {
+                expect(await rToken.txFeeCalculator()).to.equal(currentValue);
+
+                // Update individual field
+                newConfig[12] = newValue;
+                await expect(rToken.connect(owner).updateConfig(newConfig))
+                    .to.emit(rToken, "ConfigUpdated");
+
+                expect(await rToken.txFeeCalculator()).to.equal(newValue);
+            });
+
+            it("Should not allow to update if not Owner", async function () {
+                expect(await rToken.txFeeCalculator()).to.equal(currentValue);
+
+                // Update individual field
+                newConfig[12] = newValue;
+                await expect(
+                    rToken.connect(addr1).updateConfig(newConfig)
+                ).to.be.revertedWith("Ownable: caller is not the owner");
+
+                expect(await rToken.txFeeCalculator()).to.equal(currentValue);
             });
         });
     });
@@ -520,5 +552,90 @@ describe("RToken contract", function () {
         //     expect(await rToken.balanceOf(addr1.address)).to.equal(transferAmount);
         //     expect(await rToken.totalSupply()).to.equal(amount);
         // });
+    });
+
+    describe("Tx Fees", function () {
+
+        beforeEach(async function () {
+            // Mint initial tokens
+            await rToken.mint(owner.address, BigNumber.from(1000));
+
+            // Deploy TxFeeCalculator
+            TxFeeCalculator = await ethers.getContractFactory("TXFeeCalculatorMock");
+            txFeeCalc = await TxFeeCalculator.deploy();
+            newTxFeeConfig = config;
+            newTxFeeConfig[12] = txFeeCalc.address;
+        });
+
+        it("Should not apply fees by default", async function () {
+            // Transfer 50 tokens from owner to addr1
+            const amount = BigNumber.from(50);
+
+            expect(await rToken.balanceOf(rToken.address)).to.equal(0);
+            expect(await rToken.balanceOf(addr1.address)).to.equal(0);
+
+            // Perform transfer
+            await rToken.connect(owner).transfer(addr1.address, amount);
+
+            // No fee taken, correct amount received
+            expect(await rToken.balanceOf(addr1.address)).to.equal(amount);
+            expect(await rToken.balanceOf(rToken.address)).to.equal(0);
+        });
+
+        it("Should apply fees if TxFee calculator is defined", async function () {
+            // Transfer 50 tokens from owner to addr1
+            const amount = BigNumber.from(50);
+            const fee = amount.mul(10).div(100);
+
+            // Setup TxFee Calculator
+            await rToken.connect(owner).updateConfig(newTxFeeConfig);
+
+            expect(await rToken.balanceOf(rToken.address)).to.equal(0);
+            expect(await rToken.balanceOf(addr1.address)).to.equal(0);
+
+            // Perform transfer
+            await rToken.connect(owner).transfer(addr1.address, amount);
+
+            // Should take a 10% fee, correct amount received
+            expect(await rToken.balanceOf(addr1.address)).to.equal(amount);
+            expect(await rToken.balanceOf(rToken.address)).to.equal(fee);
+        });
+
+        it("Should cap TxFee to the total amount (max)", async function () {
+            // Transfer 50 tokens from owner to addr1
+            const amount = BigNumber.from(50);
+
+            // Set new percentage to 200%
+            await txFeeCalc.setFeePct(200);
+            await rToken.connect(owner).updateConfig(newTxFeeConfig);
+
+            expect(await rToken.balanceOf(rToken.address)).to.equal(0);
+
+            // Perform transfer
+            await rToken.connect(owner).transfer(addr1.address, amount);
+
+            // Should take a 10% fee, correct amount received
+            expect(await rToken.balanceOf(addr1.address)).to.equal(amount);
+            expect(await rToken.balanceOf(rToken.address)).to.equal(amount);
+        });
+
+        it("Should not allow transfer if user cannot pay fee", async function () {
+            // Transfer all balance from owner to addr1
+            const amount = BigNumber.from(1000);
+
+            // Setup TxFee Calculator
+            await rToken.connect(owner).updateConfig(newTxFeeConfig);
+
+            expect(await rToken.balanceOf(rToken.address)).to.equal(0);
+            expect(await rToken.balanceOf(addr1.address)).to.equal(0);
+
+            await expect(
+                rToken.connect(owner).transfer(addr1.address, amount)
+            ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+
+            // No transfer was processed
+            expect(await rToken.balanceOf(addr1.address)).to.equal(0);
+            expect(await rToken.balanceOf(rToken.address)).to.equal(0);
+        });
     });
 });
