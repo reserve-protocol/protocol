@@ -349,9 +349,10 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
 
         // Batch transfers from self to InsurancePool
-        if (balanceOf(address(this)) > (totalSupply() * config.revenueBatchSize) / SCALE) {
-            _approve(address(this), address(config.insurancePool), balanceOf(address(this)));
-            config.insurancePool.notifyRevenue(false, balanceOf(address(this)));
+        uint256 bal = balanceOf(address(this));
+        if (bal > (totalSupply() * config.revenueBatchSize) / SCALE) {
+            _approve(address(this), address(config.insurancePool), bal);
+            config.insurancePool.registerRevenueEvent(bal);
         }
     }
 
@@ -377,10 +378,9 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
             Token.Info storage lowToken = basket.tokens[uint16(uint32(indexLowest))];
             Token.Info storage highToken = basket.tokens[uint16(uint32(indexHighest))];
-            uint256 sell = MathUpgradeable.min(highToken.maxTrade, MathUpgradeable.min(
-                numBlocks * highToken.rateLimit,
-                highToken.getBalance() - (totalSupply * highToken.adjustedQuantity) / 10**decimals
-            ));
+            uint256 sell = MathUpgradeable.min(numBlocks * highToken.rateLimit, highToken.maxTrade);
+            sell = MathUpgradeable.min(sell, highToken.getBalance() - (totalSupply * highToken.adjustedQuantity) / 10**decimals);
+
             uint256 minBuy = (sell * lowToken.priceInRToken) / highToken.priceInRToken;
             minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, SCALE)) / SCALE;
             minBuy = (minBuy * MathUpgradeable.min(highToken.slippageTolerance, SCALE)) / SCALE;
@@ -391,8 +391,10 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             // 3. Return any leftover RSR
 
             Token.Info storage lowToken = basket.tokens[uint16(uint32(indexLowest))];
-            uint256 toSeize = MathUpgradeable.min(numBlocks * rsrToken.rateLimit, rsrToken.maxTrade);
-            uint256 sell = config.insurancePool.seizeRSR(toSeize);
+            uint256 sell = MathUpgradeable.min(numBlocks * rsrToken.rateLimit, rsrToken.maxTrade);
+            sell = MathUpgradeable.min(sell, rsrToken.getBalance(address(config.insurancePool)));
+            rsrToken.safeTransferFrom(address(config.insurancePool), address(this), sell);
+
             uint256 minBuy = (sell * lowToken.priceInRToken) / rsrToken.priceInRToken;
             minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, SCALE)) / SCALE;
             minBuy = (minBuy * MathUpgradeable.min(rsrToken.slippageTolerance, SCALE)) / SCALE;
@@ -400,15 +402,15 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
             // Clean up any leftover RSR
             if (rsrToken.getBalance() > 0) {
-                rsrToken.safeApprove(address(config.insurancePool), rsrToken.getBalance());
-                config.insurancePool.notifyRevenue(true, rsrToken.getBalance());
-                rsrToken.safeApprove(address(config.insurancePool), 0);
+                rsrToken.safeTransfer(address(config.insurancePool), rsrToken.getBalance());
             }
         } else if (indexHighest >= 0) {
             // Sell as much excess collateral as possible for RSR
 
             Token.Info storage highToken = basket.tokens[uint16(uint32(indexHighest))];
             uint256 sell = MathUpgradeable.min(numBlocks * highToken.rateLimit, highToken.maxTrade);
+            sell = MathUpgradeable.min(sell, highToken.getBalance() - (totalSupply * highToken.adjustedQuantity) / 10**decimals);
+
             uint256 minBuy = (sell * rsrToken.priceInRToken) / highToken.priceInRToken;
             minBuy = (minBuy * MathUpgradeable.min(highToken.slippageTolerance, SCALE)) / SCALE;
             minBuy = (minBuy * MathUpgradeable.min(rsrToken.slippageTolerance, SCALE)) / SCALE;

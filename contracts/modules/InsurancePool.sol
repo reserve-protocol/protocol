@@ -21,178 +21,139 @@ contract InsurancePool is ContextUpgradeable, IInsurancePool {
     IRToken public rToken;
     IERC20Upgradeable public rsrToken;
 
-    struct RevenueEvent {
-        bool isRSR; // Two options, either RToken or RSR
+    struct RTokenRevenueEvent {
         uint256 amount;
         uint256 totalStaked;
     }
 
-    // The index of this array is a "floor"
-    RevenueEvent[] public revenueEvents;
-    mapping(address => uint256) public override lastFloor;
-    mapping(address => uint256) public rTokenRevenues;
+    RTokenRevenueEvent[] public revenues;
+    mapping(address => uint256) public override lastIndex;
+    mapping(address => uint256) public override earned;
 
-    ///
-
-    uint256 private _seized;
-    uint256 private _totalSupply;
-    mapping(address => uint256) private _balances;
-
-    struct StakingEvent {
+    struct DelayedEvent {
         address account;
-        uint256 timestamp;
         uint256 amount;
+        uint256 timestamp;
     }
 
-    StakingEvent[] public deposits;
+    DelayedEvent[] public deposits;
     uint256 public depositIndex;
-    StakingEvent[] public withdrawals;
+    DelayedEvent[] public withdrawals;
     uint256 public withdrawalIndex;
 
+    uint256 public override totalStake;
+    mapping(address => uint256) public override stake;
+
     modifier update(address account) {
-        // TODO: Think hard about ordering
-
-        // Scale floors for just this account to sum RevenueEvents
-        if (address(account) != address(0) && _balanceOf(account) > 0) {
-            for (uint256 i = lastFloor[account]; i < revenueEvents.length; i++) {
-                RevenueEvent storage re = revenueEvents[i];
-                if (re.isRSR) {
-                    _balances[account] += (re.amount * _balanceOf(account)) / re.totalStaked;
-                } else {
-                    rTokenRevenues[account] += (re.amount * _balanceOf(account)) / re.totalStaked;
-                }
-            }
-
-            lastFloor[account] = revenueEvents.length;
-        }
-
-        // Process withdrawals
-        bool success = true;
-        while (success && withdrawalIndex < withdrawals.length) {
-            success = trySettleNextWithdrawal();
-        }
-
-        // Process deposits
-        success = true;
-        while (success && depositIndex < deposits.length) {
-            success = trySettleNextDeposit();
-        }
-
+        // Try to process up to a reasonable number of revenue events for the account.
+        _catchup(account, 10000);
         _;
     }
 
     function initialize(address rToken_, address rsr_) external initializer {
         rToken = IRToken(rToken_);
         rsrToken = IERC20Upgradeable(rsr_);
+        rsrToken.safeApprove(rToken_, type(uint256).max);
     }
 
     /* ========== External ========== */
 
+    function initiateDeposit(uint256 amount) external override update(_msgSender()) {
+        require(amount > 0, "Cannot stake 0");
+        IERC20Upgradeable(address(rsrToken)).safeTransferFrom(_msgSender(), address(this), amount);
+        deposits.push(DelayedEvent(_msgSender(), amount, block.timestamp));
+        emit DepositInitiated(_msgSender(), amount);
+    }
+
     function initiateWithdrawal(uint256 amount) public override update(_msgSender()) {
         require(amount > 0, "Cannot withdraw 0");
-        withdrawals.push(StakingEvent(_msgSender(), block.timestamp, amount));
-        emit WithdrawalInitiated(_msgSender(), block.timestamp, amount);
-    }
-
-    function trySettleNextWithdrawal() public override returns (bool) {
-        StakingEvent storage withdrawal = withdrawals[withdrawalIndex];
-        if (block.timestamp - rToken.stakingWithdrawalDelay() < withdrawal.timestamp) {
-            return false;
-        }
-
-        uint256 amount = MathUpgradeable.min(_balanceOf(withdrawal.account), withdrawal.amount);
-        _balances[withdrawal.account] = _balances[withdrawal.account] - amount;
-        _totalSupply = _totalSupply - amount;
-
-        emit WithdrawalCompleted(withdrawal.account, amount);
-        delete withdrawals[withdrawalIndex];
-        withdrawalIndex += 1;
-        return true;
-    }
-
-    function trySettleNextDeposit() public override returns (bool) {
-        StakingEvent storage deposit = deposits[depositIndex];
-        if (block.timestamp - rToken.stakingDepositDelay() < deposit.timestamp) {
-            return false;
-        }
-
-        _balances[deposit.account] += deposit.amount;
-        _totalSupply += deposit.amount;
-
-        emit DepositCompleted(deposit.account, deposit.amount);
-        delete deposits[depositIndex];
-        depositIndex += 1;
-        return true;
-    }
-
-    function totalSupply() external override update(address(0)) returns (uint256) {
-        return _totalSupply - _seized;
+        withdrawals.push(DelayedEvent(_msgSender(), amount, block.timestamp));
+        emit WithdrawalInitiated(_msgSender(), amount);
     }
 
     function balanceOf(address account) external override update(account) returns (uint256) {
         return _balanceOf(account);
     }
 
-    // TODO: Implement earned
-    function earned(address account) external view returns (uint256) {}
-
-    function stake(uint256 amount) external override update(_msgSender()) {
-        require(amount > 0, "Cannot stake 0");
-        IERC20Upgradeable(address(rsrToken)).safeTransferFrom(_msgSender(), address(this), amount);
-        deposits.push(StakingEvent(_msgSender(), block.timestamp, amount));
-        emit DepositInitiated(_msgSender(), block.timestamp, amount);
-    }
-
     function claimRevenue() external override update(_msgSender()) {
-        uint256 revenue = rTokenRevenues[_msgSender()];
+        uint256 revenue = earned[_msgSender()];
         if (revenue > 0) {
-            rTokenRevenues[_msgSender()] = 0;
+            earned[_msgSender()] = 0;
             IERC20Upgradeable(address(rToken)).safeTransfer(_msgSender(), revenue);
             emit RevenueClaimed(_msgSender(), revenue);
         }
     }
 
-    // Call if the lastFloor was _so_ far below that he hit the block gas limit.
+    // Escape Hatch for Dynamic Programming gone wrong.
+    // Call this function if an account's lastIndex was _so_ far below that it can't be processed.
     // Anyone can call this for any account.
-    function climb(address account, uint256 floors) external override {
-        uint256 limit = MathUpgradeable.min(lastFloor[account] + floors, revenueEvents.length);
-        for (uint256 i = lastFloor[account]; i < limit; i++) {
-            RevenueEvent storage re = revenueEvents[i];
-            rTokenRevenues[account] += (re.amount * _balanceOf(account)) / re.totalStaked;
-        }
-
-        lastFloor[account] = limit;
+    function catchup(address account, uint256 index) external override {
+        _catchup(account, index);
     }
 
-    /// Callable only by RToken address
+    // Callable only by RToken address
+    function registerRevenueEvent(uint256 amount) external override update(address(0)) {
+        require(_msgSender() == address(rToken), "only RToken");
 
-    function notifyRevenue(bool isRSR, uint256 amount) external override update(address(0)) {
-        require(_msgSender() == address(rToken), "only RToken can save revenue events");
+        revenues.push(RTokenRevenueEvent(amount, totalStake));
+        IERC20Upgradeable(address(rToken)).safeTransferFrom(address(rToken), address(this), amount);
 
-        RevenueEvent memory next = RevenueEvent(isRSR, amount, _totalSupply);
-        revenueEvents.push(next);
-        if (isRSR) {
-            IERC20Upgradeable(address(rsrToken)).safeTransferFrom(address(rToken), address(this), amount);
-            _totalSupply += amount;
-        } else {
-            IERC20Upgradeable(address(rToken)).safeTransferFrom(address(rToken), address(this), amount);
-        }
-
-        emit RevenueEventSaved(isRSR, revenueEvents.length - 1, amount);
-    }
-
-    function seizeRSR(uint256 amount) external override update(address(0)) returns (uint256) {
-        require(_msgSender() == address(rToken), "only RToken can seize RSR");
-        amount = MathUpgradeable.min(rsrToken.balanceOf(address(this)), amount);
-        IERC20Upgradeable(address(rsrToken)).safeTransfer(address(rToken), amount);
-        _seized += amount;
-        emit RSRSeized(amount);
-        return amount;
+        emit RevenueEventSaved(revenues.length - 1, amount);
     }
 
     /// ================= Internal =====================
 
     function _balanceOf(address account) internal view returns (uint256) {
-        return ((_totalSupply - _seized) * _balances[account]) / _totalSupply;
+        return (rsrToken.balanceOf(address(this)) * stake[account]) / totalStake;
+    }
+
+    function _catchup(address account, uint256 numToProcess) internal {
+        if (address(account) != address(0) && stake[account] > 0) {
+            uint256 limit = MathUpgradeable.min(lastIndex[account] + numToProcess, revenues.length);
+            for (uint256 i = lastIndex[account]; i < limit; i++) {
+                earned[account] += (revenues[i].amount * stake[account]) / revenues[i].totalStaked;
+            }
+
+            lastIndex[account] = limit;
+        }
+        _processWithdrawals();
+        _processDeposits();
+    }
+
+    function _processWithdrawals() internal {
+        while (withdrawalIndex < withdrawals.length) {
+            if (block.timestamp - rToken.stakingWithdrawalDelay() < withdrawals[withdrawalIndex].timestamp) {
+                _settleNextWithdrawal();
+            }
+        }
+    }
+
+    function _processDeposits() internal {
+        while (depositIndex < deposits.length) {
+            if (block.timestamp - rToken.stakingDepositDelay() < deposits[withdrawalIndex].timestamp) {
+                _settleNextDeposit();
+            }
+        }
+    }
+
+    function _settleNextWithdrawal() internal {
+        DelayedEvent storage withdrawal = withdrawals[withdrawalIndex];
+        uint256 amount = MathUpgradeable.min(_balanceOf(withdrawal.account), withdrawal.amount);
+        stake[withdrawal.account] = stake[withdrawal.account] - amount;
+        totalStake = totalStake - amount;
+
+        emit WithdrawalCompleted(withdrawal.account, amount);
+        delete withdrawals[withdrawalIndex];
+        withdrawalIndex += 1;
+    }
+
+    function _settleNextDeposit() internal {
+        DelayedEvent storage deposit = deposits[depositIndex];
+        stake[deposit.account] += deposit.amount;
+        totalStake += deposit.amount;
+
+        emit DepositCompleted(deposit.account, deposit.amount);
+        delete deposits[depositIndex];
+        depositIndex += 1;
     }
 }
