@@ -3,9 +3,9 @@ pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
-
 import "../interfaces/IInsurancePool.sol";
 import "../interfaces/IRToken.sol";
 
@@ -15,7 +15,7 @@ import "../interfaces/IRToken.sol";
  * benefit from the revenue stream from an RToken. By staking they make their RSR eligible
  * to be used in the event of recapitalization.
  */
-contract InsurancePool is ContextUpgradeable, IInsurancePool {
+contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IRToken public rToken;
@@ -50,10 +50,14 @@ contract InsurancePool is ContextUpgradeable, IInsurancePool {
         _;
     }
 
-    function initialize(address rToken_, address rsr_) external initializer {
+    function initialize(address rToken_, address rsr_, address owner) external initializer {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
         rToken = IRToken(rToken_);
         rsrToken = IERC20Upgradeable(rsr_);
         rsrToken.safeApprove(rToken_, type(uint256).max);
+  
+        transferOwnership(owner);
     }
 
     /* ========== External ========== */
@@ -156,4 +160,6 @@ contract InsurancePool is ContextUpgradeable, IInsurancePool {
         delete deposits[depositIndex];
         depositIndex += 1;
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

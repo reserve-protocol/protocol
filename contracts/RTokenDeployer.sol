@@ -2,8 +2,6 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
-
 import "./interfaces/IRTokenDeployer.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IInsurancePool.sol";
@@ -12,17 +10,17 @@ import "./libraries/Token.sol";
 import "./RToken.sol";
 
 /*
-* @title RTokenDeployer
-* @dev Static deployment of V1 of the Reserve Protocol.
-* Allows anyone to create insured basket currencies that have the ability to change collateral.
-*/
+ * @title RTokenDeployer
+ * @dev Static deployment of V1 of the Reserve Protocol.
+ * Allows anyone to create insured basket currencies that have the ability to change collateral.
+ */
 contract RTokenDeployer is IRTokenDeployer {
     // Implementation addresses to be used for proxy deployments
     IRToken public immutable rTokenImplementation;
     IInsurancePool public immutable insurancePoolImplementation;
 
     // Register tokens created by factory
-    mapping(address => bool)  public isRToken;
+    mapping(address => bool) public isRToken;
 
     constructor(IRToken rTokenImplementation_, IInsurancePool insurancePoolImplementation_) {
         rTokenImplementation = rTokenImplementation_;
@@ -37,29 +35,40 @@ contract RTokenDeployer is IRTokenDeployer {
         Token.Info[] memory basketTokens,
         Token.Info memory rsrToken
     ) external override returns (address rToken) {
-
         // Perform validations on parameters
         require(owner != address(0));
         require(basketTokens.length > 0);
-        
-         // Deploy Proxy for RToken
-        rToken = address(new ERC1967Proxy(
-            address(rTokenImplementation),
-            abi.encodeWithSelector(
-                RToken(address(0)).initialize.selector,
-                name,
-                symbol,
-                rTokenConfig,
-                basketTokens,
-                rsrToken
-            )));
 
-        // Deploy Insurance Pool
-        InsurancePool ipClone = InsurancePool(Clones.clone(address(insurancePoolImplementation)));
-        ipClone.initialize(rToken, rsrToken.tokenAddress);
-         
+        // Deploy Proxy for RToken
+        rToken = address(
+            new ERC1967Proxy(
+                address(rTokenImplementation),
+                abi.encodeWithSelector(
+                    RToken(address(0)).initialize.selector,
+                    name,
+                    symbol,
+                    rTokenConfig,
+                    basketTokens,
+                    rsrToken
+                )
+            )
+        );
+
+        // Deploy Proxy for InsurancePool
+        address ipool = address(
+            new ERC1967Proxy(
+                address(insurancePoolImplementation),
+                abi.encodeWithSelector(
+                    InsurancePool(address(0)).initialize.selector,
+                    rToken,
+                    rsrToken.tokenAddress,
+                    owner
+                )
+            )
+        );
+
         // Set insurance Pool address in RToken
-        rTokenConfig.insurancePool = ipClone;
+        rTokenConfig.insurancePool = InsurancePool(ipool);
         RToken(rToken).updateConfig(rTokenConfig);
         RToken(rToken).transferOwnership(owner);
 

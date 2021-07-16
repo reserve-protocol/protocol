@@ -88,36 +88,71 @@ describe("RTokenDeployer contract", function () {
             // Create a new RToken
             receipt = await (await factory.deploy(newOwner.address, 'RToken Test', 'RTKN', config, basketTokens, rsrTokenInfo)).wait();
             tokenAddress = (expectInReceipt(receipt, 'RTokenDeployed')).args.rToken;
+
+            // Get RToken
+            RToken = await ethers.getContractFactory('RToken');
+            rTokenInstance = await RToken.attach(tokenAddress);
+            // Get InsurancePool
+            InsurancePool = await ethers.getContractFactory('InsurancePool');
+            iPoolAddress = await rTokenInstance.insurancePool()
+            iPoolInstance = await InsurancePool.attach(iPoolAddress);
         });
 
-        it("Should allow upgrades in RToken if Owner", async function () {
-            const RToken = await ethers.getContractFactory('RToken');
-            const rTokenInstance = await RToken.attach(tokenAddress);
-          
-            // Deploy new RToken Implementation
-            RTokenV2 = await ethers.getContractFactory("RTokenMockV2");
-            rTokenV2Implementation = await RTokenV2.connect(owner).deploy();
+        describe("RToken Upgradeability", function () {
+            it("Should allow upgrades to RToken if Owner", async function () {
+                // Deploy new RToken Implementation
+                RTokenV2 = await ethers.getContractFactory("RTokenMockV2");
+                rTokenV2Implementation = await RTokenV2.connect(owner).deploy();
 
-            // Update implementation
-            await rTokenInstance.connect(newOwner).upgradeTo(rTokenV2Implementation.address);
+                // Update implementation
+                await rTokenInstance.connect(newOwner).upgradeTo(rTokenV2Implementation.address);
 
-            //Check if new version is now being used
-            const rTokenInstanceV2 = await RTokenV2.attach(tokenAddress);
-            expect(await rTokenInstanceV2.getVersion()).to.equal("V2");
+                //Check if new version is now being used
+                const rTokenInstanceV2 = await RTokenV2.attach(tokenAddress);
+                expect(await rTokenInstanceV2.getVersion()).to.equal("V2");
+                // Confirm it maintains state
+                expect(await rTokenInstanceV2.insurancePool()).to.equal(await rTokenInstance.insurancePool())
+            });
+
+            it("Should not allow upgrades to RToken if not Owner", async function () {
+                // Deploy new RToken Implementation
+                RTokenV2 = await ethers.getContractFactory("RTokenMockV2");
+                rTokenV2Implementation = await RTokenV2.connect(owner).deploy();
+
+                // Try to update implementation
+                await expect(
+                    rTokenInstance.connect(other).upgradeTo(rTokenV2Implementation.address)
+                ).to.be.revertedWith("Ownable: caller is not the owner");
+            });
         });
 
-        it("Should not allow upgrades in RToken if not Owner", async function () {
-            const RToken = await ethers.getContractFactory('RToken');
-            const rTokenInstance = await RToken.attach(tokenAddress);
-          
-            // Deploy new RToken Implementation
-            RTokenV2 = await ethers.getContractFactory("RTokenMockV2");
-            rTokenV2Implementation = await RTokenV2.connect(owner).deploy();
+        describe("InsurancePool Upgradeability", function () {
+            it("Should allow upgrades to InsurancePool if Owner", async function () {
+                // Deploy new InsurancePool Implementation
+                IPoolV2 = await ethers.getContractFactory("InsurancePoolMockV2");
+                iPoolV2Implementation = await IPoolV2.connect(owner).deploy();
 
-            // Try to update implementation
-            await expect(
-                rTokenInstance.connect(other).upgradeTo(rTokenV2Implementation.address)
-            ).to.be.revertedWith("Ownable: caller is not the owner");
+                // Update implementation
+                await iPoolInstance.connect(newOwner).upgradeTo(iPoolV2Implementation.address);
+
+                //Check if new version is now being used
+                const iPoolInstanceV2 = await IPoolV2.attach(iPoolAddress);
+                expect(await iPoolInstanceV2.getVersion()).to.equal("V2");
+                // Confirm it maintains state
+                expect(await iPoolInstanceV2.rsrToken()).to.equal(await iPoolInstance.rsrToken())
+            });
+
+            it("Should not allow upgrades to InsurancePool if not Owner", async function () {
+                // Deploy new InsurancePool Implementation
+                IPoolV2 = await ethers.getContractFactory("InsurancePoolMockV2");
+                iPoolV2Implementation = await IPoolV2.connect(owner).deploy();
+
+                // Try to update implementation
+                await expect(
+                    iPoolInstance.connect(other).upgradeTo(iPoolV2Implementation.address)
+                ).to.be.revertedWith("Ownable: caller is not the owner");
+            });
         });
+
     });
 });
