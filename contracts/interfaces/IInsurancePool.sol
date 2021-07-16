@@ -2,15 +2,16 @@
 pragma solidity 0.8.4;
 
 interface IInsurancePool {
-    function balanceOf(address account) external returns (uint256);
+
+    function balanceOf(address account) external view returns (uint256);
 
     function earned(address account) external view returns(uint256);
 
     function lastIndex(address account) external view returns (uint256);
 
-    function totalStake() external view returns (uint256);
+    function totalWeight() external view returns (uint256);
 
-    function stake(address account) external view returns (uint256);
+    function weight(address account) external view returns (uint256);
 
     // ==== Callable only by the RToken ====
 
@@ -18,11 +19,11 @@ interface IInsurancePool {
 
     // ==== Callable by anyone ====
 
-    /// Transfers RSR into the contract and locks it
-    function initiateDeposit(uint256 amount) external;
+    /// Stake RSR, delayed by a queue
+    function stake(uint256 amount) external;
 
-    /// Begins a withdrawal of RSR. Caller earns during the withdrawal period.
-    function initiateWithdrawal(uint256 amount) external;
+    /// Unstake RSR, delayed by a queue. Caller earns during the withdrawal period.
+    function unstake(uint256 amount) external;
 
     /// Returns all earned RToken. Can call as second half of withdraw process.
     function claimRevenue() external;
@@ -36,5 +37,4 @@ interface IInsurancePool {
     event WithdrawalCompleted(address indexed user, uint256 amount);
     event RevenueClaimed(address indexed user, uint256 reward);
     event RevenueEventSaved(uint256 index, uint256 amount);
-    event RSRSeized(uint256 amount);
 }
