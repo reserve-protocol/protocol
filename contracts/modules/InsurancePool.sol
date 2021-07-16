@@ -23,10 +23,9 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
 
     // ==== RSR ====
 
-    // Stakes are relative to each other
-    uint256 public override totalStake;
-    mapping(address => uint256) public override stake;
-
+    // Weights represent percent ownership of the pool
+    uint256 public override totalWeight;
+    mapping(address => uint256) public override weight;
 
     // ==== RToken ====
 
@@ -77,14 +76,14 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
 
     /* ========== External ========== */
 
-    function initiateDeposit(uint256 amount) external override update(_msgSender()) {
+    function stake(uint256 amount) external override update(_msgSender()) {
         require(amount > 0, "Cannot stake 0");
         IERC20Upgradeable(address(rsr)).safeTransferFrom(_msgSender(), address(this), amount);
         deposits.push(Delayed(_msgSender(), amount, block.timestamp));
         emit DepositInitiated(_msgSender(), amount);
     }
 
-    function initiateWithdrawal(uint256 amount) public override update(_msgSender()) {
+    function unstake(uint256 amount) public override update(_msgSender()) {
         require(amount > 0, "Cannot withdraw 0");
         withdrawals.push(Delayed(_msgSender(), amount, block.timestamp));
         emit WithdrawalInitiated(_msgSender(), amount);
@@ -107,9 +106,9 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         require(_msgSender() == address(rToken), "only RToken");
 
         IERC20Upgradeable(address(rToken)).safeTransferFrom(address(rToken), address(this), amount);
-        revenues.push(RevenueEvent(amount, totalStake));
+        revenues.push(RevenueEvent(amount, totalWeight));
         emit RevenueEventSaved(revenues.length - 1, amount);
-        
+
         // Nice to refresh this, and best to make RToken callers pay the cost. 
         rsr.safeApprove(address(rToken), type(uint256).max);
     }
@@ -126,14 +125,14 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _balanceOf(address account) internal view returns (uint256) {
-        return (rsr.balanceOf(address(this)) * stake[account]) / totalStake;
+        return (rsr.balanceOf(address(this)) * weight[account]) / totalWeight;
     }
 
     function _catchup(address account, uint256 numToProcess) internal {
-        if (address(account) != address(0) && stake[account] > 0) {
+        if (address(account) != address(0) && weight[account] > 0) {
             uint256 limit = MathUpgradeable.min(lastIndex[account] + numToProcess, revenues.length);
             for (uint256 i = lastIndex[account]; i < limit; i++) {
-                earned[account] += (revenues[i].amount * stake[account]) / revenues[i].totalStaked;
+                earned[account] += (revenues[i].amount * weight[account]) / revenues[i].totalStaked;
             }
 
             lastIndex[account] = limit;
@@ -164,9 +163,9 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         rsr.safeTransfer(withdrawal.account, amount);
 
         // Adjust stakes
-        uint256 equivalentStake = stake[withdrawal.account] * amount / _balanceOf(withdrawal.account);
-        stake[withdrawal.account] = stake[withdrawal.account] - equivalentStake;
-        totalStake = totalStake - equivalentStake;
+        uint256 equivalentStake = weight[withdrawal.account] * amount / _balanceOf(withdrawal.account);
+        weight[withdrawal.account] = weight[withdrawal.account] - equivalentStake;
+        totalWeight = totalWeight - equivalentStake;
 
         // Exit with earned RToken
         _claimRevenue();
@@ -178,8 +177,8 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
 
     function _settleNextDeposit() internal {
         Delayed storage deposit = deposits[depositIndex];
-        stake[deposit.account] += deposit.amount;
-        totalStake += deposit.amount;
+        weight[deposit.account] += deposit.amount;
+        totalWeight += deposit.amount;
 
         emit DepositCompleted(deposit.account, deposit.amount);
         delete deposits[depositIndex];
