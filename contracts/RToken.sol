@@ -69,7 +69,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         /// e.g. 1e14 => 0.01% spread
         uint256 spread;
 
-        
+
 
         /// Modules
         IAtomicExchange exchange;
@@ -228,6 +228,15 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         rsrToken.priceInRToken = priceInRToken;
     }
 
+    function transfer(address recipient, uint256 amount) public override returns (bool) {
+        require(recipient != address(this), "ERC20: we thought of you");
+        return super.transfer(recipient, amount);
+    }
+
+    function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
+        require(recipient != address(this), "ERC20: we thought of you");
+        return super.transferFrom(sender, recipient, amount);
+    }
 
     /// =========================== Views =================================
 

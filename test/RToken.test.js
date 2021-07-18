@@ -638,4 +638,21 @@ describe("RToken contract", function () {
             expect(await rToken.balanceOf(rToken.address)).to.equal(0);
         });
     });
+
+    describe("ERC20 functionality", function () {
+
+        beforeEach(async function () {
+            // Mint initial tokens
+            await rToken.mint(owner.address, BigNumber.from(1000));
+        });
+
+        it("Should not be able to send to contract externally", async function () {
+            // Transfer 50 tokens from owner to addr1
+            const amount = BigNumber.from(50);
+
+            await expect(
+                rToken.connect(owner).transfer(rToken.address, amount)
+            ).to.be.revertedWith("ERC20: we thought of you");
+        });
+    });
 });
