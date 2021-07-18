@@ -29,8 +29,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     using Token for Token.Info;
     using Basket for Basket.Info;
 
-    // Cannot have immutables in upgradeable contracts, but this is immutable after initialization
-    uint256 public SCALE = 1e18;
+    // A point of reference for percentage values
+    uint256 public SCALE = 1e18; // weakly immutable
 
     struct Config {
 
@@ -40,16 +40,23 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         /// RSR staking withdrawal delay (s)
         /// e.g. 2_592_000 => Currently staking RSR tokens take 1 month to withdraw
         uint256 stakingWithdrawalDelay;
+
         /// RToken max supply
         /// e.g. 1_000_000e18 => 1M max supply
         uint256 maxSupply;
-
-        /// Percentage rates are relative to 1e18, the constant SCALE variable set in RToken.
-
         /// Minimum minting amount
         /// e.g. 1_000e18 => 1k RToken 
         uint256 minMintingSize;
-        /// RToken annual supply-expansion rate, scaled
+        /// RToken issuance blocklimit
+        /// e.g. 25_000e18 => 25_000e18 (atto)RToken can be issued per block
+        uint256 issuanceRate;
+        /// Cost of freezing trading (in RSR)
+        /// e.g. 100_000_000e18 => 100M RSR
+        uint256 tradingFreezeCost;
+
+        /// Percentage rates are relative to 1e18, the constant SCALE variable set in RToken.
+
+        /// RToken annual supply-expansion rate
         /// e.g. 1.23e16 => 1.23% annually
         uint256 supplyExpansionRate;
         /// RToken revenue batch sizes
@@ -61,12 +68,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         /// Issuance/Redemption spread
         /// e.g. 1e14 => 0.01% spread
         uint256 spread;
-        /// RToken issuance blocklimit
-        /// e.g. 25_000e18 => 25_000e18 (atto)RToken can be issued per block
-        uint256 issuanceRate;
-        /// Cost of freezing trading (in RSR)
-        /// e.g. 100_000_000e18 => 100M RSR
-        uint256 tradingFreezeCost;
+
+        
 
         /// Modules
         IAtomicExchange exchange;

@@ -18,7 +18,7 @@ describe("RToken contract", function () {
         cb = await CircuitBreaker.deploy(owner.address);
 
         // RToken Configuration and setup
-        config = [stakingDepositDelay, stakingWithdrawalDelay, maxSupply, 0, 0, 0, 0, 0, issuanceRate, 0, ZERO_ADDRESS, cb.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
+        config = [stakingDepositDelay, stakingWithdrawalDelay, maxSupply, 0, issuanceRate, 0, 0, 0, 0, 0, ZERO_ADDRESS, cb.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
         basketTokens = [[ZERO_ADDRESS, 0, 0, 0, 0, 0, 0]];
         // RSR (Insurance token)
         PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock");
@@ -155,7 +155,7 @@ describe("RToken contract", function () {
                 expect(await rToken.issuanceRate()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[8] = newValue;
+                newConfig[4] = newValue;
                 await expect(rToken.connect(owner).updateConfig(newConfig))
                     .to.emit(rToken, "ConfigUpdated");
 
