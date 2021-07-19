@@ -342,7 +342,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         if (config.expenditureFactor > 0) {
             uint256 e = (toExpand * MathUpgradeable.min(SCALE, config.expenditureFactor)) /
                 SCALE;
-                (config.protocolFund, e);
+            _mint(address(config.protocolFund), e);
         }
 
         // Mint to self
