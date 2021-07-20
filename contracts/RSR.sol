@@ -99,6 +99,15 @@ contract RSR is ERC20Votes {
 
     /// ==== Internal ====
 
+    function _beforeTokenTransfer(
+        address,
+        address to,
+        uint256
+    ) internal view override {
+        require(to != address(this), "ERC20: we thought of you");
+    }
+
+
     function _crossover(address account) internal {
         require(!crossed[account], "RSR: Can only cross once");
         crossed[account] = true;

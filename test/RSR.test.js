@@ -158,6 +158,16 @@ describe("RSR contract", function () {
             expect(await token.tokensToCross()).to.equal(totalSupply.sub(ownerBalancePrev));
         });
 
+        it("Should not transfer tokens to self", async function () {
+            // Transfer 50 tokens from owner to RSR address
+            const amount = BigNumber.from(50);
+
+            // Try to perform transfer, should fail
+            await expect(
+                token.connect(owner).transfer(token.address, amount)
+            ).to.be.revertedWith("ERC20: we thought of you");
+        });
+
         it("Should cross only once with consecutive transfers", async function () {
             // Transfer 50 tokens from owner to addr1
             const amount1 = BigNumber.from(50);
