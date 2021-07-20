@@ -166,11 +166,11 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         uint256 amount = MathUpgradeable.min(_balanceOf(withdrawal.account), withdrawal.amount);
         rsr.safeTransfer(withdrawal.account, amount);
 
-        // Adjust stakes
-        uint256 equivalentStake = (weight[withdrawal.account] * amount) /
+        // Adjust weights
+        uint256 equivalentWeight = (weight[withdrawal.account] * amount) /
             _balanceOf(withdrawal.account);
-        weight[withdrawal.account] = weight[withdrawal.account] - equivalentStake;
-        totalWeight = totalWeight - equivalentStake;
+        weight[withdrawal.account] = weight[withdrawal.account] - equivalentWeight;
+        totalWeight = totalWeight - equivalentWeight;
 
         // Exit with earned RToken
         _claimRevenue();
