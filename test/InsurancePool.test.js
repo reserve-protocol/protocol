@@ -28,6 +28,11 @@ describe("InsurancePool contract", function () {
         InsurancePool = await ethers.getContractFactory("InsurancePoolMock");
         iPool = await InsurancePool.connect(owner).deploy();
         await iPool.connect(owner).initialize(rToken.address, rsrToken.address);
+
+        // Update config to include InsurancePool address
+        newConfig = config;
+        newConfig[13] = iPool.address;
+        await rToken.connect(owner).updateConfig(newConfig);
     });
 
     describe("Deployment", function () {
@@ -154,7 +159,7 @@ describe("InsurancePool contract", function () {
                 expect(await iPool.totalWeight()).to.equal(0);
                 expect(await iPool.weight(addr1.address)).to.equal(0);
 
-                // Process stakes after certain time (sill before stakingDepositDelay)
+                // Process stakes after certain time (still before stakingDepositDelay)
                 await advanceTime(15000);
 
                 await iPool.processDeposits();
@@ -164,7 +169,7 @@ describe("InsurancePool contract", function () {
                 expect(await iPool.totalWeight()).to.equal(0);
                 expect(await iPool.weight(addr1.address)).to.equal(0);
 
-                // Check RSR balance - Funds are still transferred
+                // Check RSR balance - Funds should still be minting queue
                 expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount1);
             });
 
@@ -221,6 +226,49 @@ describe("InsurancePool contract", function () {
 
                 // Check RSR balance
                 expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount1.add(amount2.add(amount3)));
+            });
+
+            it("Should handle prorata math after adding RSR", async function () {
+                // Move forward past stakingDeposityDelay
+                await advanceTime(stakingDepositDelay + 1);
+
+                // Process stakes
+                await iPool.processDeposits();
+
+                // Staking/Deposit was processed
+                expect(await iPool.depositIndex()).to.equal(1);
+                expect(await iPool.totalWeight()).to.equal(amount1);
+                expect(await iPool.weight(addr1.address)).to.equal(amount1);
+                expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount1);
+
+                // Mock RToken donating RSR
+                await rsrToken.connect(addr2).transfer(iPool.address, amount2);
+
+                // Balance should be sum of deposit and revenue RSR
+                expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount2.add(amount1));
+            });
+
+            it("Should handle prorata math after removing RSR", async function () {
+                // Move forward past stakingDeposityDelay
+                await advanceTime(stakingDepositDelay + 1);
+
+                // Process stakes
+                await iPool.processDeposits();
+
+                // Staking/Deposit was processed
+                expect(await iPool.depositIndex()).to.equal(1);
+                expect(await iPool.totalWeight()).to.equal(amount1);
+                expect(await iPool.weight(addr1.address)).to.equal(amount1);
+                expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount1);
+
+                // Seize 1/3
+                const toSeize = amount1.div(3);
+
+                // Mock RToken seizing RSR
+                await rToken.connect(addr1).seizeRSR(toSeize);
+
+                // Balance should be 2/3 of original deposit
+                expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount1.sub(toSeize));
             });
         });
     });
