@@ -10,7 +10,7 @@ describe("RTokenDeployer contract", function () {
         RToken = await ethers.getContractFactory("RTokenMock");
         rTokenImplementation = await RToken.connect(owner).deploy();
 
-        InsurancePool = await ethers.getContractFactory("InsurancePool");
+        InsurancePool = await ethers.getContractFactory("InsurancePoolMock");
         iPoolImplementation = await InsurancePool.connect(owner).deploy();
 
         // Deploy RTokenFactory
@@ -55,7 +55,7 @@ describe("RTokenDeployer contract", function () {
             expect(iPoolAddress).to.not.equal(iPoolImplementation.address);
             expect(tokenAddress).to.not.equal(rTokenImplementation.address);
             expect(await iPoolInstance.rToken()).to.equal(tokenAddress);
-            expect(await iPoolInstance.rsrToken()).to.equal(rsrToken.address);
+            expect(await iPoolInstance.rsr()).to.equal(rsrToken.address);
         });
 
         it("Should setup owner for RToken correctly", async function () {
@@ -93,7 +93,7 @@ describe("RTokenDeployer contract", function () {
             RToken = await ethers.getContractFactory('RToken');
             rTokenInstance = await RToken.attach(tokenAddress);
             // Get InsurancePool
-            InsurancePool = await ethers.getContractFactory('InsurancePool');
+            InsurancePool = await ethers.getContractFactory('InsurancePoolMock');
             iPoolAddress = await rTokenInstance.insurancePool()
             iPoolInstance = await InsurancePool.attach(iPoolAddress);
         });
@@ -139,7 +139,7 @@ describe("RTokenDeployer contract", function () {
                 const iPoolInstanceV2 = await IPoolV2.attach(iPoolAddress);
                 expect(await iPoolInstanceV2.getVersion()).to.equal("V2");
                 // Confirm it maintains state
-                expect(await iPoolInstanceV2.rsrToken()).to.equal(await iPoolInstance.rsrToken())
+                expect(await iPoolInstanceV2.rsr()).to.equal(await iPoolInstance.rsr())
             });
 
             it("Should not allow upgrades to InsurancePool if not Owner", async function () {
