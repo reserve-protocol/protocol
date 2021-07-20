@@ -61,8 +61,7 @@ contract RTokenDeployer is IRTokenDeployer {
                 abi.encodeWithSelector(
                     InsurancePool(address(0)).initialize.selector,
                     rToken,
-                    rsrToken.tokenAddress,
-                    owner
+                    rsrToken.tokenAddress
                 )
             )
         );
@@ -70,8 +69,11 @@ contract RTokenDeployer is IRTokenDeployer {
         // Set insurance Pool address in RToken
         rTokenConfig.insurancePool = InsurancePool(ipool);
         RToken(rToken).updateConfig(rTokenConfig);
-        RToken(rToken).transferOwnership(owner);
 
+        // Transfer ownerships
+        RToken(rToken).transferOwnership(owner);
+        InsurancePool(ipool).transferOwnership(owner);
+        
         // Register token
         isRToken[rToken] = true;
         emit RTokenDeployed(rToken);

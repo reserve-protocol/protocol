@@ -39,7 +39,6 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     mapping(address => uint256) public override lastIndex;
     mapping(address => uint256) public override earned;
 
-
     // ==== Deposit and Withdrawal Queues ====
 
     struct Delayed {
@@ -53,21 +52,18 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     Delayed[] public withdrawals;
     uint256 public withdrawalIndex;
 
-
     modifier update(address account) {
         // Try to process up to a reasonable number of revenue events for the account.
         _catchup(account, 10000);
         _;
     }
 
-    function initialize(address rToken_, address rsr_, address owner) external initializer {
+    function initialize(address rToken_, address rsr_) external initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         rToken = IRToken(rToken_);
         rsr = IERC20Upgradeable(rsr_);
         rsr.safeApprove(rToken_, type(uint256).max);
-  
-        transferOwnership(owner);
     }
 
     function balanceOf(address account) external view override returns (uint256) {
@@ -79,6 +75,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     function stake(uint256 amount) external override update(_msgSender()) {
         require(amount > 0, "Cannot stake 0");
         IERC20Upgradeable(address(rsr)).safeTransferFrom(_msgSender(), address(this), amount);
+
         deposits.push(Delayed(_msgSender(), amount, block.timestamp));
         emit DepositInitiated(_msgSender(), amount);
     }
@@ -88,7 +85,6 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         withdrawals.push(Delayed(_msgSender(), amount, block.timestamp));
         emit WithdrawalInitiated(_msgSender(), amount);
     }
-
 
     function claimRevenue() external override update(_msgSender()) {
         _claimRevenue();
@@ -109,7 +105,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         revenues.push(RevenueEvent(amount, totalWeight));
         emit RevenueEventSaved(revenues.length - 1, amount);
 
-        // Nice to refresh this, and best to make RToken callers pay the cost. 
+        // Nice to refresh this, and best to make RToken callers pay the cost.
         rsr.safeApprove(address(rToken), type(uint256).max);
     }
 
@@ -125,6 +121,9 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _balanceOf(address account) internal view returns (uint256) {
+        if (totalWeight == 0) {
+            return 0;
+        }
         return (rsr.balanceOf(address(this)) * weight[account]) / totalWeight;
     }
 
@@ -137,23 +136,28 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
 
             lastIndex[account] = limit;
         }
+
         _processWithdrawals();
         _processDeposits();
     }
 
     function _processWithdrawals() internal {
-        while (withdrawalIndex < withdrawals.length) {
-            if (block.timestamp - rToken.stakingWithdrawalDelay() < withdrawals[withdrawalIndex].timestamp) {
-                _settleNextWithdrawal();
-            }
+        uint256 stakingWithdrawalDelay = rToken.stakingWithdrawalDelay();
+        while (
+            withdrawalIndex < withdrawals.length &&
+            block.timestamp - stakingWithdrawalDelay > withdrawals[withdrawalIndex].timestamp
+        ) {
+            _settleNextWithdrawal();
         }
     }
 
     function _processDeposits() internal {
-        while (depositIndex < deposits.length) {
-            if (block.timestamp - rToken.stakingDepositDelay() < deposits[withdrawalIndex].timestamp) {
-                _settleNextDeposit();
-            }
+        uint256 stakingDepositDelay = rToken.stakingDepositDelay();
+        while (
+            depositIndex < deposits.length &&
+            block.timestamp - stakingDepositDelay > deposits[depositIndex].timestamp
+        ) {
+            _settleNextDeposit();
         }
     }
 
@@ -162,10 +166,11 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         uint256 amount = MathUpgradeable.min(_balanceOf(withdrawal.account), withdrawal.amount);
         rsr.safeTransfer(withdrawal.account, amount);
 
-        // Adjust stakes
-        uint256 equivalentStake = weight[withdrawal.account] * amount / _balanceOf(withdrawal.account);
-        weight[withdrawal.account] = weight[withdrawal.account] - equivalentStake;
-        totalWeight = totalWeight - equivalentStake;
+        // Adjust weights
+        uint256 equivalentWeight = (weight[withdrawal.account] * amount) /
+            _balanceOf(withdrawal.account);
+        weight[withdrawal.account] = weight[withdrawal.account] - equivalentWeight;
+        totalWeight = totalWeight - equivalentWeight;
 
         // Exit with earned RToken
         _claimRevenue();

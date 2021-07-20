@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import "../RToken.sol";
 
 contract RTokenMock is RToken {
+    using SafeERC20 for IERC20;
+
     function mint(address recipient, uint256 amount) external {
         _mint(recipient, amount);
     }
@@ -30,5 +35,9 @@ contract RTokenMock is RToken {
 
     function tryProcessMintings() public {
         _tryProcessMintings();
+    }
+
+    function seizeRSR(uint256 amount) external {
+        IERC20(rsrToken.tokenAddress).safeTransferFrom(address(config.insurancePool), address(this), amount);
     }
 }

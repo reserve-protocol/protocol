@@ -10,7 +10,7 @@ describe("RTokenDeployer contract", function () {
         RToken = await ethers.getContractFactory("RTokenMock");
         rTokenImplementation = await RToken.connect(owner).deploy();
 
-        InsurancePool = await ethers.getContractFactory("InsurancePool");
+        InsurancePool = await ethers.getContractFactory("InsurancePoolMock");
         iPoolImplementation = await InsurancePool.connect(owner).deploy();
 
         // Deploy RTokenFactory
@@ -93,7 +93,7 @@ describe("RTokenDeployer contract", function () {
             RToken = await ethers.getContractFactory('RToken');
             rTokenInstance = await RToken.attach(tokenAddress);
             // Get InsurancePool
-            InsurancePool = await ethers.getContractFactory('InsurancePool');
+            InsurancePool = await ethers.getContractFactory('InsurancePoolMock');
             iPoolAddress = await rTokenInstance.insurancePool()
             iPoolInstance = await InsurancePool.attach(iPoolAddress);
         });
