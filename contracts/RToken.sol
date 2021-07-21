@@ -116,6 +116,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         __ERC20Votes_init_unchained();
         __Ownable_init();
         __UUPSUpgradeable_init();
+        _checkNewBasket(basketTokens_);
         config = config_;
         basket.size = uint16(basketTokens_.length);
         for (uint16 i = 0; i < basket.size; i++) {
@@ -126,7 +127,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _deployedAt = block.timestamp;
         _lastTimestamp = block.timestamp;
         _lastBlock = block.number;
-        _updateBasket();
     }
 
     modifier canTrade() {
@@ -138,7 +138,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     modifier everyBlock() {
 
         // decrease basket quantities based on blocknumber
-        _updateBasket();
+        _decayBasket();
 
         // SlowMintingERC20 update step
         _tryProcessMintings();
@@ -155,9 +155,16 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Configuration changes, only callable by Owner.
     function updateConfig(Config memory newConfig) external override onlyOwner {
+        // TODO: Requires?
         emit ConfigUpdated();
         config = newConfig;
-        _updateBasket();
+    }
+
+    /// Basket changes, only callable by Owner.
+    function updateBasket(Token.Info[] memory newTokens) external override onlyOwner {
+        _checkNewBasket(newTokens);
+        emit BasketUpdated(basket.size, uint16(newTokens.length));
+        basket.setTokens(newTokens);
     }
 
     /// Callable by anyone, runs the block updates
@@ -285,9 +292,18 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// =========================== Internal =================================
 
     /// Sets the adjusted basket quantities for the current block 
-    function _updateBasket() internal {
+    function _decayBasket() internal {
         for (uint16 i = 0; i < basket.size; i++) {
             basket.tokens[i].adjustQuantity(SCALE, config.supplyExpansionRate, _deployedAt);
+        }
+    }
+
+    /// Performs any checks we want to perform on a new basket
+    function _checkNewBasket(Token.Info[] memory tokens) internal view {
+        require(tokens.length <= type(uint16).max, "basket too big");
+        for (uint16 i = 0; i < tokens.length; i++) {
+            require(tokens[i].slippageTolerance <= SCALE, "slippage tolerance too big");
+            require(tokens[i].maxTrade > 0 && tokens[i].rateLimit > 0, "uninitialized tokens");
         }
     }
 
@@ -378,55 +394,35 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
         uint8 decimals = decimals();
         uint256 totalSupply = totalSupply();
-        int32 indexLowest = basket.leastCollateralized(decimals, totalSupply);
-        int32 indexHighest = basket.mostCollateralized(decimals, totalSupply);
+        (int32 deficitIndex, int32 surplusIndex) = 
+            basket.leastUndercollateralizedAndMostOverCollateralized(decimals, totalSupply);
 
         /// Three cases:
         /// 1. Sideways: Trade collateral for collateral
         /// 2. Sell RSR: Trade RSR for collateral
         /// 3. Buyback RSR: Trade collateral for RSR
-        if (indexLowest >= 0 && indexHighest >= 0) {
+        if (deficitIndex >= 0 && surplusIndex >= 0) {
             // Sell as much excess collateral as possible for missing collateral
-
-            Token.Info storage lowToken = basket.tokens[uint16(uint32(indexLowest))];
-            Token.Info storage highToken = basket.tokens[uint16(uint32(indexHighest))];
-            uint256 sell = MathUpgradeable.min(numBlocks * highToken.rateLimit, highToken.maxTrade);
-            sell = MathUpgradeable.min(sell, highToken.getBalance() - (totalSupply * highToken.adjustedQuantity) / 10**decimals);
-
-            uint256 minBuy = (sell * lowToken.priceInRToken) / highToken.priceInRToken;
-            minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, SCALE)) / SCALE;
-            minBuy = (minBuy * MathUpgradeable.min(highToken.slippageTolerance, SCALE)) / SCALE;
-            _tradeWithFixedSellAmount(highToken, lowToken, sell, minBuy);
-        } else if (indexLowest >= 0) {
-            // 1. Seize RSR from the insurance pool
-            // 2. Trade some-to-all of the seized RSR for missing collateral
-            // 3. Return any leftover RSR
-
-            Token.Info storage lowToken = basket.tokens[uint16(uint32(indexLowest))];
+            _calculateBuyAmountAndTrade(basket.tokens[uint16(uint32(deficitIndex))], basket.tokens[uint16(uint32(surplusIndex))], numBlocks, decimals, totalSupply);
+        } else if (deficitIndex >= 0) {
+            // Seize RSR from the insurance pool and sell it for missing collateral
+            Token.Info storage lowToken = basket.tokens[uint16(uint32(deficitIndex))];
             uint256 sell = MathUpgradeable.min(numBlocks * rsrToken.rateLimit, rsrToken.maxTrade);
             sell = MathUpgradeable.min(sell, rsrToken.getBalance(address(config.insurancePool)));
             rsrToken.safeTransferFrom(address(config.insurancePool), address(this), sell);
 
             uint256 minBuy = (sell * lowToken.priceInRToken) / rsrToken.priceInRToken;
-            minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, SCALE)) / SCALE;
-            minBuy = (minBuy * MathUpgradeable.min(rsrToken.slippageTolerance, SCALE)) / SCALE;
+            minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, rsrToken.slippageTolerance)) / SCALE;
             _tradeWithFixedSellAmount(rsrToken, lowToken, sell, minBuy);
 
+            // TODO: Maybe remove, turn into require, or leave if necessary. 
             // Clean up any leftover RSR
             if (rsrToken.getBalance() > 0) {
                 rsrToken.safeTransfer(address(config.insurancePool), rsrToken.getBalance());
             }
-        } else if (indexHighest >= 0) {
+        } else if (surplusIndex >= 0) {
             // Sell as much excess collateral as possible for RSR
-
-            Token.Info storage highToken = basket.tokens[uint16(uint32(indexHighest))];
-            uint256 sell = MathUpgradeable.min(numBlocks * highToken.rateLimit, highToken.maxTrade);
-            sell = MathUpgradeable.min(sell, highToken.getBalance() - (totalSupply * highToken.adjustedQuantity) / 10**decimals);
-
-            uint256 minBuy = (sell * rsrToken.priceInRToken) / highToken.priceInRToken;
-            minBuy = (minBuy * MathUpgradeable.min(highToken.slippageTolerance, SCALE)) / SCALE;
-            minBuy = (minBuy * MathUpgradeable.min(rsrToken.slippageTolerance, SCALE)) / SCALE;
-            _tradeWithFixedSellAmount(highToken, rsrToken, sell, minBuy);
+            _calculateBuyAmountAndTrade(rsrToken, basket.tokens[uint16(uint32(surplusIndex))], numBlocks, decimals, totalSupply);
         }
     }
 
@@ -445,6 +441,13 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         emit SlowMintingInitiated(account, amount);
     }
 
+    function _calculateBuyAmountAndTrade(Token.Info storage buying, Token.Info storage selling, uint256 numBlocks, uint8 decimals, uint256 totalSupply) internal {
+        uint256 sell = MathUpgradeable.min(numBlocks * selling.rateLimit, selling.maxTrade);
+        sell = MathUpgradeable.min(sell, selling.getBalance() - (totalSupply * selling.adjustedQuantity) / 10**decimals);
+
+        uint256 minBuy = MathUpgradeable.min(buying.slippageTolerance, selling.slippageTolerance) * sell * buying.priceInRToken / (selling.priceInRToken * SCALE);
+        _tradeWithFixedSellAmount(selling, buying, sell, minBuy);            
+    }
 
     function _tradeWithFixedSellAmount(
         Token.Info storage sellToken,

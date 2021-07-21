@@ -2,6 +2,7 @@
 pragma solidity 0.8.4;
 
 import "../interfaces/ICircuitBreaker.sol";
+import "../libraries/Token.sol";
 import "../RToken.sol";
 
 interface IRToken {
@@ -9,7 +10,10 @@ interface IRToken {
     /// Only callable by Owner.
     function updateConfig(RToken.Config memory newConfig) external;
 
-    /// Adaptation function, callable by anyone
+    /// Only callable by Owner.
+    function updateBasket(Token.Info[] memory tokens) external;
+
+    /// callable by anyone: rebalancing, slow minting, supply expansion, and basket decay
     function act() external;
 
     /// Handles issuance.
@@ -53,6 +57,7 @@ interface IRToken {
     ) external view returns (uint256);
 
     event ConfigUpdated(); // this feels weird
+    event BasketUpdated(uint16 oldSize, uint16 newSize);
     event SlowMintingInitiated(address account, uint256 amount);
     event SlowMintingComplete(address account, uint256 amount);
     event Redemption(address indexed redeemer, uint256 indexed amount);

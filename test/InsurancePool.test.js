@@ -18,8 +18,8 @@ describe("InsurancePool contract", function () {
         // Deploy RToken
         const maxSupply = BigNumber.from(5000000);
         config = [0, 0, maxSupply, 0, 0, 0, 0, 0, 0, 0, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
-        basketTokens = [[ZERO_ADDRESS, 0, 0, 0, 0, 0, 0]];
-        rsrTokenInfo = [rsrToken.address, 0, 0, 0, 0, 0, 0];
+        basketTokens = [[ZERO_ADDRESS, 0, 0, 1, 1, 0, 0]];
+        rsrTokenInfo = [rsrToken.address, 0, 0, 1, 1, 0, 0];
         RToken = await ethers.getContractFactory("RTokenMock");
         rToken = await RToken.connect(owner).deploy();
         await rToken.connect(owner).initialize("RToken", "RTKN", config, basketTokens, rsrTokenInfo);
