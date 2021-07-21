@@ -85,7 +85,6 @@ contract RSR is ERC20Votes {
     {
         require(super.transfer(recipient, amount), "not enough balance");
         return true;
-
     }
 
     function transferFrom(
@@ -106,7 +105,6 @@ contract RSR is ERC20Votes {
     ) internal view override {
         require(to != address(this), "ERC20: we thought of you");
     }
-
 
     function _crossover(address account) internal {
         require(!crossed[account], "RSR: Can only cross once");

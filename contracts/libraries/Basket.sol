@@ -23,7 +23,13 @@ library Basket {
     }
 
     /// The returned array will be in the same order as the current self.
-    function issueAmounts(Basket.Info storage self, uint256 amount, uint256 scale, uint256 spread, uint8 decimals) internal view returns (uint256[] memory parts) {
+    function issueAmounts(
+        Basket.Info storage self,
+        uint256 amount,
+        uint256 scale,
+        uint256 spread,
+        uint8 decimals
+    ) internal view returns (uint256[] memory parts) {
         parts = new uint256[](self.size);
         for (uint16 i = 0; i < self.size; i++) {
             parts[i] = (amount * self.tokens[i].adjustedQuantity) / 10**decimals;
@@ -32,9 +38,18 @@ library Basket {
     }
 
     /// The returned array will be in the same order as the current self.
-    function redemptionAmounts(Basket.Info storage self, uint256 amount, uint8 decimals, uint256 totalSupply) internal view returns (uint256[] memory parts) {
+    function redemptionAmounts(
+        Basket.Info storage self,
+        uint256 amount,
+        uint8 decimals,
+        uint256 totalSupply
+    ) internal view returns (uint256[] memory parts) {
         parts = new uint256[](self.size);
-        (int32 deficitIndex,) = leastUndercollateralizedAndMostOverCollateralized(self, decimals, totalSupply);
+        (int32 deficitIndex, ) = leastUndercollateralizedAndMostOverCollateralized(
+            self,
+            decimals,
+            totalSupply
+        );
 
         for (uint16 i = 0; i < self.size; i++) {
             if (deficitIndex == -1) {
@@ -46,9 +61,15 @@ library Basket {
     }
 
     /// Returns indices of tokens, or -1 no tokens fit the criteria.
-    function leastUndercollateralizedAndMostOverCollateralized(Basket.Info storage self, uint8 decimals, uint256 totalSupply) internal view returns (int32, int32) {
-        uint256 largestDeficit; uint256 largestSurplus;
-        int32 deficitIndex = -1; int32 surplusIndex = -1;
+    function leastUndercollateralizedAndMostOverCollateralized(
+        Basket.Info storage self,
+        uint8 decimals,
+        uint256 totalSupply
+    ) internal view returns (int32, int32) {
+        uint256 largestDeficit;
+        uint256 largestSurplus;
+        int32 deficitIndex = -1;
+        int32 surplusIndex = -1;
 
         for (uint16 i = 0; i < self.size; i++) {
             uint256 bal = self.tokens[i].getBalance();

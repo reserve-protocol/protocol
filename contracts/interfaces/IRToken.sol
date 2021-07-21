@@ -6,7 +6,6 @@ import "../libraries/Token.sol";
 import "../RToken.sol";
 
 interface IRToken {
-
     /// Only callable by Owner.
     function updateConfig(RToken.Config memory newConfig) external;
 
@@ -41,7 +40,7 @@ interface IRToken {
     function stakingWithdrawalDelay() external view returns (uint256);
 
     function insurancePool() external view returns (address);
-    
+
     function tradingFrozen() external view returns (bool);
 
     /// Returns the amounts of collateral tokens required to issue `amount` quantity
@@ -63,5 +62,4 @@ interface IRToken {
     event Redemption(address indexed redeemer, uint256 indexed amount);
     event TradingFrozen(address indexed account);
     event TradingUnfrozen(address indexed account);
-
 }

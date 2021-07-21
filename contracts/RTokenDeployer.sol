@@ -73,7 +73,7 @@ contract RTokenDeployer is IRTokenDeployer {
         // Transfer ownerships
         RToken(rToken).transferOwnership(owner);
         InsurancePool(ipool).transferOwnership(owner);
-        
+
         // Register token
         isRToken[rToken] = true;
         emit RTokenDeployed(rToken);

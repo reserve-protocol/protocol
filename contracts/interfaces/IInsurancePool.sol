@@ -2,10 +2,9 @@
 pragma solidity 0.8.4;
 
 interface IInsurancePool {
-
     function balanceOf(address account) external view returns (uint256);
 
-    function earned(address account) external view returns(uint256);
+    function earned(address account) external view returns (uint256);
 
     function lastIndex(address account) external view returns (uint256);
 

@@ -16,7 +16,7 @@ contract Owner is IOwner, TimelockControllerUpgradeable {
         address[] memory executors = new address[](1);
         proposers[0] = admin_;
         executors[0] = admin_;
-        
+
         __TimelockController_init(0, proposers, executors);
     }
 
