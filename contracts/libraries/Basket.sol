@@ -14,6 +14,14 @@ library Basket {
         uint16 size;
     }
 
+    function setTokens(Basket.Info storage self, Token.Info[] memory tokens) internal {
+        self.size = uint16(tokens.length);
+        for (uint16 i = 0; i < self.size; i++) {
+            self.tokens[i] = tokens[i];
+            self.tokens[i].adjustedQuantity = self.tokens[i].genesisQuantity;
+        }
+    }
+
     /// The returned array will be in the same order as the current self.
     function issueAmounts(Basket.Info storage self, uint256 amount, uint256 scale, uint256 spread, uint8 decimals) internal view returns (uint256[] memory parts) {
         parts = new uint256[](self.size);

@@ -127,7 +127,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _deployedAt = block.timestamp;
         _lastTimestamp = block.timestamp;
         _lastBlock = block.number;
-        _decayBasket();
     }
 
     modifier canTrade() {
@@ -159,18 +158,13 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         // TODO: Requires?
         emit ConfigUpdated();
         config = newConfig;
-        _decayBasket();
     }
 
     /// Basket changes, only callable by Owner.
-    function updateBasket(Token.Info[] memory newBasket) external override onlyOwner {
-        _checkNewBasket(newBasket);
-        emit BasketUpdated(basket.size, uint16(newBasket.length));
-        basket.size = uint16(newBasket.length);
-        for (uint16 i = 0; i < basket.size; i++) {
-            basket.tokens[i] = newBasket[i];
-        }
-        _decayBasket();
+    function updateBasket(Token.Info[] memory newTokens) external override onlyOwner {
+        _checkNewBasket(newTokens);
+        emit BasketUpdated(basket.size, uint16(newTokens.length));
+        basket.setTokens(newTokens);
     }
 
     /// Callable by anyone, runs the block updates
