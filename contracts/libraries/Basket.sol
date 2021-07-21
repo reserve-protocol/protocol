@@ -45,18 +45,11 @@ library Basket {
         uint256 totalSupply
     ) internal view returns (uint256[] memory parts) {
         parts = new uint256[](self.size);
-        (int32 deficitIndex, ) = leastUndercollateralizedAndMostOverCollateralized(
-            self,
-            decimals,
-            totalSupply
-        );
-
         for (uint16 i = 0; i < self.size; i++) {
-            if (deficitIndex == -1) {
-                parts[i] = (self.tokens[i].adjustedQuantity * amount) / 10**decimals;
-            } else {
-                parts[i] = (self.tokens[i].getBalance() * amount) / totalSupply;
-            }
+            parts[i] = MathUpgradeable.min(
+                self.tokens[i].getBalance() * amount) / totalSupply,
+                (self.tokens[i].adjustedQuantity * amount) / 10**decimals
+            );
         }
     }
 
