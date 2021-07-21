@@ -19,4 +19,8 @@ contract InsurancePoolMock is InsurancePool {
     function processWithdrawals() external {
         _processWithdrawals();
     }
+
+    function revenuesCount() external view returns (uint256) {
+        return revenues.length;
+    }
 }

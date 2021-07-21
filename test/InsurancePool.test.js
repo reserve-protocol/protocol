@@ -16,7 +16,8 @@ describe("InsurancePool contract", function () {
         rsrToken = await NewRSR.connect(owner).deploy(prevRSRToken.address, ZERO_ADDRESS, ZERO_ADDRESS);
 
         // Deploy RToken
-        config = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
+        const maxSupply = BigNumber.from(5000000);
+        config = [0, 0, maxSupply, 0, 0, 0, 0, 0, 0, 0, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
         basketTokens = [[ZERO_ADDRESS, 0, 0, 0, 0, 0, 0]];
         rsrTokenInfo = [rsrToken.address, 0, 0, 0, 0, 0, 0];
         RToken = await ethers.getContractFactory("RTokenMock");
@@ -535,4 +536,69 @@ describe("InsurancePool contract", function () {
             });
         });
     });
+
+    describe("Revenues", function () {
+        beforeEach(async function () {
+            // Pause previous contract
+            await prevRSRToken.connect(owner).pause();
+        });
+
+        it("Should not allow to register Revenue if caller is not Rtoken", async function () {
+            const amount = BigNumber.from(1000);
+
+            await expect(iPool.connect(owner).registerRevenueEvent(amount))
+                .to.be.revertedWith("Only RToken")
+
+            expect(await rToken.balanceOf(iPool.address)).to.equal(0);
+        });
+
+        it("Should allow to register Revenue if caller is Rtoken", async function () {
+            const amount = BigNumber.from(1000);
+
+            await expect(rToken.registerRevenueEvent(amount))
+                .to.emit(iPool, 'RevenueEventSaved')
+                .withArgs(0, amount);
+
+            expect(await rToken.balanceOf(rToken.address)).to.equal(0);
+            expect(await rToken.balanceOf(iPool.address)).to.equal(amount);
+
+            // Check revenue properly registered   
+            expect(await iPool.revenuesCount()).to.equal(1);
+            const [revAmt, stakeAmt] = await iPool.revenues(0);
+            expect(revAmt).to.equal(amount);
+            expect(stakeAmt).to.equal(await iPool.totalWeight());
+        });
+
+        it("Should allow to register multiple Revenues", async function () {
+            const amount1 = BigNumber.from(1000);
+            const amount2 = BigNumber.from(2000);
+
+            await expect(rToken.registerRevenueEvent(amount1))
+                .to.emit(iPool, 'RevenueEventSaved')
+                .withArgs(0, amount1);
+
+            // Check revenue properly registered   
+            expect(await iPool.revenuesCount()).to.equal(1);
+            let [revAmt, stakeAmt] = await iPool.revenues(0);
+            expect(revAmt).to.equal(amount1);
+            expect(stakeAmt).to.equal(await iPool.totalWeight());
+
+            await expect(rToken.registerRevenueEvent(amount2))
+                .to.emit(iPool, 'RevenueEventSaved')
+                .withArgs(1, amount2);
+
+            // Check revenue properly registered   
+            expect(await iPool.revenuesCount()).to.equal(2);
+            [revAmt, stakeAmt] = await iPool.revenues(1);
+            expect(revAmt).to.equal(amount2);
+            expect(stakeAmt).to.equal(await iPool.totalWeight());
+
+            expect(await rToken.balanceOf(rToken.address)).to.equal(0);
+            expect(await rToken.balanceOf(iPool.address)).to.equal(amount1.add(amount2));
+        });
+
+
+    });
+
+
 });

@@ -100,14 +100,15 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
 
     // Callable only by RToken address
     function registerRevenueEvent(uint256 amount) external override update(address(0)) {
-        require(_msgSender() == address(rToken), "only RToken");
-
+        require(_msgSender() == address(rToken), "Only RToken");
+        
         IERC20Upgradeable(address(rToken)).safeTransferFrom(address(rToken), address(this), amount);
         revenues.push(RevenueEvent(amount, totalWeight));
+        
         emit RevenueEventSaved(revenues.length - 1, amount);
 
         // Nice to refresh this, and best to make RToken callers pay the cost.
-        rsr.safeApprove(address(rToken), type(uint256).max);
+        rsr.safeIncreaseAllowance(address(rToken), type(uint256).max - rsr.allowance(address(this), address(rToken)));
     }
 
     /// ================= Internal =====================
