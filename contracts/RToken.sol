@@ -417,8 +417,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             sell = MathUpgradeable.min(sell, highToken.getBalance() - (totalSupply * highToken.adjustedQuantity) / 10**decimals);
 
             uint256 minBuy = (sell * lowToken.priceInRToken) / highToken.priceInRToken;
-            minBuy = (minBuy * lowToken.slippageTolerance) / SCALE;
-            minBuy = (minBuy * highToken.slippageTolerance) / SCALE;
+            minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, highToken.slippageTolerance)) / SCALE;
             _tradeWithFixedSellAmount(highToken, lowToken, sell, minBuy);
         } else if (deficitIndex >= 0) {
             // 1. Seize RSR from the insurance pool
@@ -431,8 +430,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             rsrToken.safeTransferFrom(address(config.insurancePool), address(this), sell);
 
             uint256 minBuy = (sell * lowToken.priceInRToken) / rsrToken.priceInRToken;
-            minBuy = (minBuy * lowToken.slippageTolerance) / SCALE;
-            minBuy = (minBuy * rsrToken.slippageTolerance) / SCALE;
+            minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, rsrToken.slippageTolerance)) / SCALE;
             _tradeWithFixedSellAmount(rsrToken, lowToken, sell, minBuy);
 
             // TODO: Remove, turn into require, or leave if necessary. 
@@ -448,8 +446,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             sell = MathUpgradeable.min(sell, highToken.getBalance() - (totalSupply * highToken.adjustedQuantity) / 10**decimals);
 
             uint256 minBuy = (sell * rsrToken.priceInRToken) / highToken.priceInRToken;
-            minBuy = (minBuy * highToken.slippageTolerance) / SCALE;
-            minBuy = (minBuy * rsrToken.slippageTolerance) / SCALE;
+            minBuy = (minBuy * MathUpgradeable.min(highToken.slippageTolerance, rsrToken.slippageTolerance)) / SCALE;
             _tradeWithFixedSellAmount(highToken, rsrToken, sell, minBuy);
         }
     }
