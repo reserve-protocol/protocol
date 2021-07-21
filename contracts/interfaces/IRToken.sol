@@ -11,7 +11,7 @@ interface IRToken {
     function updateConfig(RToken.Config memory newConfig) external;
 
     /// Only callable by Owner.
-    function updateBasket(Token.Info[] memory newBasket) external;
+    function updateBasket(Token.Info[] memory tokens) external;
 
     /// callable by anyone: rebalancing, slow minting, supply expansion, and basket decay
     function act() external;

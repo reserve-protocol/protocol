@@ -116,6 +116,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         __ERC20Votes_init_unchained();
         __Ownable_init();
         __UUPSUpgradeable_init();
+        _checkNewBasket(basketTokens_);
         config = config_;
         basket.size = uint16(basketTokens_.length);
         for (uint16 i = 0; i < basket.size; i++) {
@@ -163,7 +164,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Basket changes, only callable by Owner.
     function updateBasket(Token.Info[] memory newBasket) external override onlyOwner {
-        require(newBasket.length <= type(uint16).max, "basket too big");
+        _checkNewBasket(newBasket);
         emit BasketUpdated(basket.size, uint16(newBasket.length));
         basket.size = uint16(newBasket.length);
         for (uint16 i = 0; i < basket.size; i++) {
@@ -303,6 +304,16 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
     }
 
+    /// Performs any checks we want to perform on a new basket
+    function _checkNewBasket(Token.Info[] memory tokens) internal view {
+        require(tokens.length <= type(uint16).max, "basket too big");
+        for (uint16 i = 0; i < tokens.length; i++) {
+            require(tokens[i].slippageTolerance <= SCALE, "slippage tolerance too big");
+            require(tokens[i].maxTrade > 0 && tokens[i].rateLimit > 0, "uninitialized tokens");
+        }
+    }
+
+
     /// Tries to process up to a fixed number of mintings. Called before most actions.
     function _tryProcessMintings() internal {
         if (!config.circuitBreaker.paused()) {
@@ -406,9 +417,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             sell = MathUpgradeable.min(sell, highToken.getBalance() - (totalSupply * highToken.adjustedQuantity) / 10**decimals);
 
             uint256 minBuy = (sell * lowToken.priceInRToken) / highToken.priceInRToken;
-            // TODO: Can we move the min checks out to when the basket is updated?
-            minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, SCALE)) / SCALE;
-            minBuy = (minBuy * MathUpgradeable.min(highToken.slippageTolerance, SCALE)) / SCALE;
+            minBuy = (minBuy * lowToken.slippageTolerance) / SCALE;
+            minBuy = (minBuy * highToken.slippageTolerance) / SCALE;
             _tradeWithFixedSellAmount(highToken, lowToken, sell, minBuy);
         } else if (deficitIndex >= 0) {
             // 1. Seize RSR from the insurance pool
@@ -421,9 +431,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             rsrToken.safeTransferFrom(address(config.insurancePool), address(this), sell);
 
             uint256 minBuy = (sell * lowToken.priceInRToken) / rsrToken.priceInRToken;
-            // TODO: Can we move the min checks out to when the basket is updated?
-            minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, SCALE)) / SCALE;
-            minBuy = (minBuy * MathUpgradeable.min(rsrToken.slippageTolerance, SCALE)) / SCALE;
+            minBuy = (minBuy * lowToken.slippageTolerance) / SCALE;
+            minBuy = (minBuy * rsrToken.slippageTolerance) / SCALE;
             _tradeWithFixedSellAmount(rsrToken, lowToken, sell, minBuy);
 
             // TODO: Remove, turn into require, or leave if necessary. 
@@ -439,9 +448,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             sell = MathUpgradeable.min(sell, highToken.getBalance() - (totalSupply * highToken.adjustedQuantity) / 10**decimals);
 
             uint256 minBuy = (sell * rsrToken.priceInRToken) / highToken.priceInRToken;
-            // TODO: Can we move the min checks out to when the basket is updated?
-            minBuy = (minBuy * MathUpgradeable.min(highToken.slippageTolerance, SCALE)) / SCALE;
-            minBuy = (minBuy * MathUpgradeable.min(rsrToken.slippageTolerance, SCALE)) / SCALE;
+            minBuy = (minBuy * highToken.slippageTolerance) / SCALE;
+            minBuy = (minBuy * rsrToken.slippageTolerance) / SCALE;
             _tradeWithFixedSellAmount(highToken, rsrToken, sell, minBuy);
         }
     }
