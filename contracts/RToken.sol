@@ -126,7 +126,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _deployedAt = block.timestamp;
         _lastTimestamp = block.timestamp;
         _lastBlock = block.number;
-        _updateBasket();
+        _decayBasket();
     }
 
     modifier canTrade() {
@@ -138,7 +138,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     modifier everyBlock() {
 
         // decrease basket quantities based on blocknumber
-        _updateBasket();
+        _decayBasket();
 
         // SlowMintingERC20 update step
         _tryProcessMintings();
@@ -155,9 +155,21 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Configuration changes, only callable by Owner.
     function updateConfig(Config memory newConfig) external override onlyOwner {
+        // TODO: Requires?
         emit ConfigUpdated();
         config = newConfig;
-        _updateBasket();
+        _decayBasket();
+    }
+
+    /// Basket changes, only callable by Owner.
+    function updateBasket(Token.Info[] memory newBasket) external override onlyOwner {
+        require(newBasket.length <= type(uint16).max, "basket too big");
+        emit BasketUpdated(basket.size, uint16(newBasket.length));
+        basket.size = uint16(newBasket.length);
+        for (uint16 i = 0; i < basket.size; i++) {
+            basket.tokens[i] = newBasket[i];
+        }
+        _decayBasket();
     }
 
     /// Callable by anyone, runs the block updates
@@ -285,7 +297,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// =========================== Internal =================================
 
     /// Sets the adjusted basket quantities for the current block 
-    function _updateBasket() internal {
+    function _decayBasket() internal {
         for (uint16 i = 0; i < basket.size; i++) {
             basket.tokens[i].adjustQuantity(SCALE, config.supplyExpansionRate, _deployedAt);
         }
