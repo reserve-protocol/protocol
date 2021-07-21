@@ -11,7 +11,7 @@
         "coverage": "npx hardhat coverage --temp artifacts",
         "test": "npx hardhat test",
         "test:parallel": "mocha --require hardhat/register --recursive --parallel --exit",
-        "prettier": "prettier --write 'contracts/interfaces/*.sol' 'contracts/modules/*.sol' 'contracts/test/*.sol' 'contracts/*.sol'"
+        "prettier": "prettier --write 'contracts/interfaces/*.sol' 'contracts/libraries/*.sol' 'contracts/modules/*.sol' 'contracts/test/*.sol' 'contracts/*.sol'"
     },
     "repository": {
         "type": "git",
