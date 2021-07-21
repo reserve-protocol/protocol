@@ -82,6 +82,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
 
     function unstake(uint256 amount) public override update(_msgSender()) {
         require(amount > 0, "Cannot withdraw 0");
+        require(_balanceOf(_msgSender()) >= amount, "Not enough balance");
         withdrawals.push(Delayed(_msgSender(), amount, block.timestamp));
         emit WithdrawalInitiated(_msgSender(), amount);
     }
@@ -99,14 +100,14 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
 
     // Callable only by RToken address
     function registerRevenueEvent(uint256 amount) external override update(address(0)) {
-        require(_msgSender() == address(rToken), "only RToken");
+        require(_msgSender() == address(rToken), "Only RToken");
 
         IERC20Upgradeable(address(rToken)).safeTransferFrom(address(rToken), address(this), amount);
-        revenues.push(RevenueEvent(amount, totalWeight));
+        revenues.push(RevenueEvent(amount, totalWeight));      
         emit RevenueEventSaved(revenues.length - 1, amount);
 
         // Nice to refresh this, and best to make RToken callers pay the cost.
-        rsr.safeApprove(address(rToken), type(uint256).max);
+        rsr.safeIncreaseAllowance(address(rToken), type(uint256).max - rsr.allowance(address(this), address(rToken)));
     }
 
     /// ================= Internal =====================
@@ -164,16 +165,17 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     function _settleNextWithdrawal() internal {
         Delayed storage withdrawal = withdrawals[withdrawalIndex];
         uint256 amount = MathUpgradeable.min(_balanceOf(withdrawal.account), withdrawal.amount);
-        rsr.safeTransfer(withdrawal.account, amount);
+        if (amount > 0) {
+            // Adjust weights
+            uint256 equivalentWeight = (amount * totalWeight) / rsr.balanceOf(address(this));
+            weight[withdrawal.account] = weight[withdrawal.account] - equivalentWeight;
+            totalWeight = totalWeight - equivalentWeight;
 
-        // Adjust weights
-        uint256 equivalentWeight = (weight[withdrawal.account] * amount) /
-            _balanceOf(withdrawal.account);
-        weight[withdrawal.account] = weight[withdrawal.account] - equivalentWeight;
-        totalWeight = totalWeight - equivalentWeight;
+            rsr.safeTransfer(withdrawal.account, amount);
 
-        // Exit with earned RToken
-        _claimRevenue();
+            // Exit with earned RToken
+            _claimRevenue();
+        }
 
         emit WithdrawalCompleted(withdrawal.account, amount);
         delete withdrawals[withdrawalIndex];
