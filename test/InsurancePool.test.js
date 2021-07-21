@@ -596,9 +596,5 @@ describe("InsurancePool contract", function () {
             expect(await rToken.balanceOf(rToken.address)).to.equal(0);
             expect(await rToken.balanceOf(iPool.address)).to.equal(amount1.add(amount2));
         });
-
-
     });
-
-
 });
