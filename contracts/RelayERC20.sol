@@ -7,7 +7,6 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.
 import "./interfaces/IRelayERC20.sol";
 
 abstract contract RelayERC20 is IRelayERC20, ERC20Upgradeable {
-
     mapping(address => uint256) public override metaNonces;
 
     event TransferForwarded(

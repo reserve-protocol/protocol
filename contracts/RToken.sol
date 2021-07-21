@@ -33,19 +33,17 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     uint256 public SCALE = 1e18; // weakly immutable
 
     struct Config {
-
         /// RSR staking deposit delay (s)
         /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to enter the insurance pool
         uint256 stakingDepositDelay;
         /// RSR staking withdrawal delay (s)
         /// e.g. 2_592_000 => Currently staking RSR tokens take 1 month to withdraw
         uint256 stakingWithdrawalDelay;
-
         /// RToken max supply
         /// e.g. 1_000_000e18 => 1M max supply
         uint256 maxSupply;
         /// Minimum minting amount
-        /// e.g. 1_000e18 => 1k RToken 
+        /// e.g. 1_000e18 => 1k RToken
         uint256 minMintingSize;
         /// RToken issuance blocklimit
         /// e.g. 25_000e18 => 25_000e18 (atto)RToken can be issued per block
@@ -53,7 +51,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         /// Cost of freezing trading (in RSR)
         /// e.g. 100_000_000e18 => 100M RSR
         uint256 tradingFreezeCost;
-
         /// Percentage rates are relative to 1e18, the constant SCALE variable set in RToken.
 
         /// RToken annual supply-expansion rate
@@ -68,19 +65,14 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         /// Issuance/Redemption spread
         /// e.g. 1e14 => 0.01% spread
         uint256 spread;
-
-
-
         /// Modules
         IAtomicExchange exchange;
         ICircuitBreaker circuitBreaker;
         ITXFee txFeeCalculator;
         IInsurancePool insurancePool;
-
         /// Addresses
         address protocolFund;
     }
-
 
     Config config;
     Basket.Info basket;
@@ -101,7 +93,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     uint256 private _deployedAt;
     uint256 private _lastTimestamp;
     uint256 private _lastBlock;
-
 
     function initialize(
         //address owner_,
@@ -136,7 +127,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// These sub-functions should all be idempotent within a block
     modifier everyBlock() {
-
         // decrease basket quantities based on blocknumber
         _decayBasket();
 
@@ -181,11 +171,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
         uint256[] memory amounts = issueAmounts(amount);
         for (uint16 i = 0; i < basket.size; i++) {
-            basket.tokens[i].safeTransferFrom(
-                _msgSender(),
-                address(this),
-                amounts[i]
-            );
+            basket.tokens[i].safeTransferFrom(_msgSender(), address(this), amounts[i]);
         }
 
         // puts minting on the queue
@@ -227,7 +213,11 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         emit TradingUnfrozen(_msgSender());
     }
 
-    function setBasketTokenPriceInRToken(uint16 i, uint256 priceInRToken) external override onlyOwner {
+    function setBasketTokenPriceInRToken(uint16 i, uint256 priceInRToken)
+        external
+        override
+        onlyOwner
+    {
         basket.tokens[i].priceInRToken = priceInRToken;
     }
 
@@ -240,7 +230,11 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         return super.transfer(recipient, amount);
     }
 
-    function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) public override returns (bool) {
         require(recipient != address(this), "ERC20: we thought of you");
         return super.transferFrom(sender, recipient, amount);
     }
@@ -251,27 +245,32 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         return freezer != address(0);
     }
 
-    function issueAmounts(uint256 amount) public view override returns(uint256[] memory amounts) {
+    function issueAmounts(uint256 amount) public view override returns (uint256[] memory amounts) {
         return basket.issueAmounts(amount, SCALE, config.spread, decimals());
     }
 
-    function redemptionAmounts(uint256 amount) public view override returns(uint256[] memory amounts) {
+    function redemptionAmounts(uint256 amount)
+        public
+        view
+        override
+        returns (uint256[] memory amounts)
+    {
         return basket.redemptionAmounts(amount, decimals(), totalSupply());
     }
 
-    function stakingDepositDelay() external view override returns(uint256) {
+    function stakingDepositDelay() external view override returns (uint256) {
         return config.stakingDepositDelay;
     }
 
-    function stakingWithdrawalDelay() external view override returns(uint256) {
+    function stakingWithdrawalDelay() external view override returns (uint256) {
         return config.stakingWithdrawalDelay;
     }
 
-    function insurancePool() external view override returns(address) {
+    function insurancePool() external view override returns (address) {
         return address(config.insurancePool);
     }
 
-    function basketSize() external view override returns(uint16) {
+    function basketSize() external view override returns (uint16) {
         return basket.size;
     }
 
@@ -288,10 +287,9 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         return MathUpgradeable.min(amount, config.txFeeCalculator.calculateFee(from, to, amount));
     }
 
-
     /// =========================== Internal =================================
 
-    /// Sets the adjusted basket quantities for the current block 
+    /// Sets the adjusted basket quantities for the current block
     function _decayBasket() internal {
         for (uint16 i = 0; i < basket.size; i++) {
             basket.tokens[i].adjustQuantity(SCALE, config.supplyExpansionRate, _deployedAt);
@@ -325,7 +323,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
                 emit SlowMintingComplete(m.account, m.amount);
 
                 // update remaining
-                if(m.amount >= issuanceAmount) {
+                if (m.amount >= issuanceAmount) {
                     issuanceAmount = 0;
                 } else {
                     issuanceAmount -= m.amount;
@@ -336,16 +334,16 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
                     blocksUsed = blocksUsed + 1;
                 }
                 blocksSince = blocksSince - blocksUsed;
-               
+
                 delete mintings[currentMinting]; // gas saving..?
-                
+
                 currentMinting++;
             }
-            
+
             // update _lastBlock if tokens were minted
-            if(currentMinting > start) {
+            if (currentMinting > start) {
                 _lastBlock = block.number;
-            }        
+            }
         }
     }
 
@@ -365,8 +363,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
         // Mint to protocol fund
         if (config.expenditureFactor > 0) {
-            uint256 e = (toExpand * MathUpgradeable.min(SCALE, config.expenditureFactor)) /
-                SCALE;
+            uint256 e = (toExpand * MathUpgradeable.min(SCALE, config.expenditureFactor)) / SCALE;
             _mint(address(config.protocolFund), e);
         }
 
@@ -394,8 +391,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
         uint8 decimals = decimals();
         uint256 totalSupply = totalSupply();
-        (int32 deficitIndex, int32 surplusIndex) = 
-            basket.leastUndercollateralizedAndMostOverCollateralized(decimals, totalSupply);
+        (int32 deficitIndex, int32 surplusIndex) = basket
+        .leastUndercollateralizedAndMostOverCollateralized(decimals, totalSupply);
 
         /// Three cases:
         /// 1. Sideways: Trade collateral for collateral
@@ -403,7 +400,13 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         /// 3. Buyback RSR: Trade collateral for RSR
         if (deficitIndex >= 0 && surplusIndex >= 0) {
             // Sell as much excess collateral as possible for missing collateral
-            _calculateBuyAmountAndTrade(basket.tokens[uint16(uint32(deficitIndex))], basket.tokens[uint16(uint32(surplusIndex))], numBlocks, decimals, totalSupply);
+            _calculateBuyAmountAndTrade(
+                basket.tokens[uint16(uint32(deficitIndex))],
+                basket.tokens[uint16(uint32(surplusIndex))],
+                numBlocks,
+                decimals,
+                totalSupply
+            );
         } else if (deficitIndex >= 0) {
             // Seize RSR from the insurance pool and sell it for missing collateral
             Token.Info storage lowToken = basket.tokens[uint16(uint32(deficitIndex))];
@@ -412,17 +415,26 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             rsrToken.safeTransferFrom(address(config.insurancePool), address(this), sell);
 
             uint256 minBuy = (sell * lowToken.priceInRToken) / rsrToken.priceInRToken;
-            minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, rsrToken.slippageTolerance)) / SCALE;
+            minBuy =
+                (minBuy *
+                    MathUpgradeable.min(lowToken.slippageTolerance, rsrToken.slippageTolerance)) /
+                SCALE;
             _tradeWithFixedSellAmount(rsrToken, lowToken, sell, minBuy);
 
-            // TODO: Maybe remove, turn into require, or leave if necessary. 
+            // TODO: Maybe remove, turn into require, or leave if necessary.
             // Clean up any leftover RSR
             if (rsrToken.getBalance() > 0) {
                 rsrToken.safeTransfer(address(config.insurancePool), rsrToken.getBalance());
             }
         } else if (surplusIndex >= 0) {
             // Sell as much excess collateral as possible for RSR
-            _calculateBuyAmountAndTrade(rsrToken, basket.tokens[uint16(uint32(surplusIndex))], numBlocks, decimals, totalSupply);
+            _calculateBuyAmountAndTrade(
+                rsrToken,
+                basket.tokens[uint16(uint32(surplusIndex))],
+                numBlocks,
+                decimals,
+                totalSupply
+            );
         }
     }
 
@@ -441,12 +453,23 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         emit SlowMintingInitiated(account, amount);
     }
 
-    function _calculateBuyAmountAndTrade(Token.Info storage buying, Token.Info storage selling, uint256 numBlocks, uint8 decimals, uint256 totalSupply) internal {
+    function _calculateBuyAmountAndTrade(
+        Token.Info storage buying,
+        Token.Info storage selling,
+        uint256 numBlocks,
+        uint8 decimals,
+        uint256 totalSupply
+    ) internal {
         uint256 sell = MathUpgradeable.min(numBlocks * selling.rateLimit, selling.maxTrade);
-        sell = MathUpgradeable.min(sell, selling.getBalance() - (totalSupply * selling.adjustedQuantity) / 10**decimals);
+        sell = MathUpgradeable.min(
+            sell,
+            selling.getBalance() - (totalSupply * selling.adjustedQuantity) / 10**decimals
+        );
 
-        uint256 minBuy = MathUpgradeable.min(buying.slippageTolerance, selling.slippageTolerance) * sell * buying.priceInRToken / (selling.priceInRToken * SCALE);
-        _tradeWithFixedSellAmount(selling, buying, sell, minBuy);            
+        uint256 minBuy = (MathUpgradeable.min(buying.slippageTolerance, selling.slippageTolerance) *
+            sell *
+            buying.priceInRToken) / (selling.priceInRToken * SCALE);
+        _tradeWithFixedSellAmount(selling, buying, sell, minBuy);
     }
 
     function _tradeWithFixedSellAmount(
@@ -456,7 +479,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         uint256 minBuyAmount
     ) internal {
         // TODO: Try catch so that trading failures don't block issuance/redemption
-
 
         uint256 initialSellBal = sellToken.getBalance();
         uint256 initialBuyBal = buyToken.getBalance();
@@ -471,10 +493,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             sellToken.getBalance() - initialSellBal == sellAmount,
             "bad sell, though maybe exact equality is too much to ask"
         );
-        require(
-            buyToken.getBalance() - initialBuyBal >= minBuyAmount,
-            "bad buy"
-        );
+        require(buyToken.getBalance() - initialBuyBal >= minBuyAmount, "bad buy");
         sellToken.safeApprove(address(config.exchange), 0);
     }
 
@@ -501,7 +520,10 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         if (
             from != address(0) && to != address(0) && address(config.txFeeCalculator) != address(0)
         ) {
-            uint256 fee = MathUpgradeable.min(amount, config.txFeeCalculator.calculateFee(from, to, amount));
+            uint256 fee = MathUpgradeable.min(
+                amount,
+                config.txFeeCalculator.calculateFee(from, to, amount)
+            );
 
             // Cheeky way of doing the fee without needing access to underlying _balances array
             _burn(from, fee);

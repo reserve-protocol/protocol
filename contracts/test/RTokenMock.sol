@@ -38,7 +38,11 @@ contract RTokenMock is RToken {
     }
 
     function seizeRSR(uint256 amount) external {
-        IERC20(rsrToken.tokenAddress).safeTransferFrom(address(config.insurancePool), address(this), amount);
+        IERC20(rsrToken.tokenAddress).safeTransferFrom(
+            address(config.insurancePool),
+            address(this),
+            amount
+        );
     }
 
     function registerRevenueEvent(uint256 amount) external {
