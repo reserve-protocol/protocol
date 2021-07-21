@@ -82,6 +82,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
 
     function unstake(uint256 amount) public override update(_msgSender()) {
         require(amount > 0, "Cannot withdraw 0");
+        require(_balanceOf(_msgSender()) >= amount, "Not enough balance");
         withdrawals.push(Delayed(_msgSender(), amount, block.timestamp));
         emit WithdrawalInitiated(_msgSender(), amount);
     }
@@ -164,16 +165,17 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     function _settleNextWithdrawal() internal {
         Delayed storage withdrawal = withdrawals[withdrawalIndex];
         uint256 amount = MathUpgradeable.min(_balanceOf(withdrawal.account), withdrawal.amount);
-        rsr.safeTransfer(withdrawal.account, amount);
+        if (amount > 0) {
+            // Adjust weights
+            uint256 equivalentWeight = (amount * totalWeight) / rsr.balanceOf(address(this));
+            weight[withdrawal.account] = weight[withdrawal.account] - equivalentWeight;
+            totalWeight = totalWeight - equivalentWeight;
 
-        // Adjust weights
-        uint256 equivalentWeight = (weight[withdrawal.account] * amount) /
-            _balanceOf(withdrawal.account);
-        weight[withdrawal.account] = weight[withdrawal.account] - equivalentWeight;
-        totalWeight = totalWeight - equivalentWeight;
+            rsr.safeTransfer(withdrawal.account, amount);
 
-        // Exit with earned RToken
-        _claimRevenue();
+            // Exit with earned RToken
+            _claimRevenue();
+        }
 
         emit WithdrawalCompleted(withdrawal.account, amount);
         delete withdrawals[withdrawalIndex];

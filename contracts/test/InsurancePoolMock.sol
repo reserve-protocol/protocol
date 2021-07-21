@@ -11,4 +11,12 @@ contract InsurancePoolMock is InsurancePool {
     function processDeposits() external {
         _processDeposits();
     }
+
+    function withdrawalsCount() external view returns (uint256) {
+        return withdrawals.length;
+    }
+
+    function processWithdrawals() external {
+        _processWithdrawals();
+    }
 }
