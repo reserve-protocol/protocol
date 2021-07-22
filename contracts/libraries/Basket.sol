@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-<<<<<<< HEAD
 import "@openzeppelin/contracts/utils/math/Math.sol";
-=======
-import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
-
->>>>>>> b99454c (Everywhere compute "adjustedQuantity" basket weights from genesisQuantity and basket.inflation)
 import "./Token.sol";
 
 /**
@@ -65,7 +60,7 @@ library Basket {
     ) internal view returns (uint256[] memory parts) {
         parts = new uint256[](self.size);
         for (uint16 i = 0; i < self.size; i++) {
-            parts[i] = MathUpgradeable.min(
+            parts[i] = Math.min(
                 (self.tokens[i].getBalance() * amount) / totalSupply,
                 (weight(self, scale, i) * amount) / 10**decimals
             );
