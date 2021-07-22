@@ -18,8 +18,8 @@ describe("InsurancePool contract", function () {
         // Deploy RToken
         const maxSupply = BigNumber.from(5000000);
         config = [0, 0, maxSupply, 0, 0, 0, 0, 0, 0, 0, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
-        basketTokens = [[ZERO_ADDRESS, 0, 0, 1, 1, 0, 0]];
-        rsrTokenInfo = [rsrToken.address, 0, 0, 1, 1, 0, 0];
+        basketTokens = [[ZERO_ADDRESS, 0, 1, 1, 0, 0]];
+        rsrTokenInfo = [rsrToken.address, 0, 1, 1, 0, 0];
         RToken = await ethers.getContractFactory("RTokenMock");
         rToken = await RToken.connect(owner).deploy();
         await rToken.connect(owner).initialize("RToken", "RTKN", config, basketTokens, rsrTokenInfo);
@@ -68,7 +68,7 @@ describe("InsurancePool contract", function () {
                 .to.emit(iPool, 'DepositInitiated')
                 .withArgs(addr1.address, amount);
 
-            // Check deposit properly registered   
+            // Check deposit properly registered
             expect(await iPool.depositsCount()).to.equal(1);
             const [stakeAcc, stakeAmt] = await iPool.deposits(0);
             expect(stakeAcc).to.equal(addr1.address);
@@ -90,7 +90,7 @@ describe("InsurancePool contract", function () {
             await expect(iPool.connect(addr1).stake(zero))
                 .to.be.revertedWith("Cannot stake 0")
 
-            // Check deposit not registered   
+            // Check deposit not registered
             expect(await iPool.depositsCount()).to.equal(0);
             expect(await rsrToken.balanceOf(iPool.address)).to.equal(0);
         });
@@ -109,7 +109,7 @@ describe("InsurancePool contract", function () {
                 .to.emit(iPool, 'DepositInitiated')
                 .withArgs(addr1.address, amount1);
 
-            // Check deposits properly registered   
+            // Check deposits properly registered
             expect(await iPool.depositsCount()).to.equal(1);
             let [stakeAcc, stakeAmt] = await iPool.deposits(0);
             expect(stakeAcc).to.equal(addr1.address);
@@ -120,7 +120,7 @@ describe("InsurancePool contract", function () {
                 .to.emit(iPool, 'DepositInitiated')
                 .withArgs(addr1.address, amount2);
 
-            // Check deposits properly registered   
+            // Check deposits properly registered
             expect(await iPool.depositsCount()).to.equal(2);
             [stakeAcc, stakeAmt] = await iPool.deposits(1);
             expect(stakeAcc).to.equal(addr1.address);
@@ -134,7 +134,7 @@ describe("InsurancePool contract", function () {
                 .to.emit(iPool, 'DepositInitiated')
                 .withArgs(addr2.address, amount3);
 
-            // Check deposit properly registered   
+            // Check deposit properly registered
             expect(await iPool.depositsCount()).to.equal(3);
             [stakeAcc, stakeAmt] = await iPool.deposits(2);
             expect(stakeAcc).to.equal(addr2.address);
@@ -317,7 +317,7 @@ describe("InsurancePool contract", function () {
                 .to.emit(iPool, 'WithdrawalInitiated')
                 .withArgs(addr1.address, amount);
 
-            // Check withdrawal properly registered   
+            // Check withdrawal properly registered
             expect(await iPool.withdrawalsCount()).to.equal(1);
             const [unstakeAcc, unstakeAmt] = await iPool.withdrawals(0);
             expect(unstakeAcc).to.equal(addr1.address);
@@ -332,7 +332,7 @@ describe("InsurancePool contract", function () {
             await expect(iPool.connect(addr1).unstake(zero))
                 .to.be.revertedWith("Cannot withdraw 0")
 
-            // Check withdrawal not registered   
+            // Check withdrawal not registered
             expect(await iPool.withdrawalsCount()).to.equal(0);
         });
 
@@ -344,7 +344,7 @@ describe("InsurancePool contract", function () {
             await expect(iPool.connect(other).unstake(amount))
                 .to.be.revertedWith("Not enough balance")
 
-            // Check withdrawal not registered   
+            // Check withdrawal not registered
             expect(await iPool.withdrawalsCount()).to.equal(0);
         });
 
@@ -376,7 +376,7 @@ describe("InsurancePool contract", function () {
                 .to.emit(iPool, 'WithdrawalInitiated')
                 .withArgs(addr1.address, amount1);
 
-            // Check withdrawal properly registered   
+            // Check withdrawal properly registered
             expect(await iPool.withdrawalsCount()).to.equal(1);
             let [unstakeAcc, unstakeAmt] = await iPool.withdrawals(0);
             expect(unstakeAcc).to.equal(addr1.address);
@@ -387,7 +387,7 @@ describe("InsurancePool contract", function () {
                 .to.emit(iPool, 'WithdrawalInitiated')
                 .withArgs(addr1.address, amount2);
 
-            // Check withrawals properly registered   
+            // Check withrawals properly registered
             expect(await iPool.withdrawalsCount()).to.equal(2);
             [unstakeAcc, unstakeAmt] = await iPool.withdrawals(1);
             expect(unstakeAcc).to.equal(addr1.address);
@@ -398,7 +398,7 @@ describe("InsurancePool contract", function () {
                 .to.emit(iPool, 'WithdrawalInitiated')
                 .withArgs(addr2.address, amount3);
 
-            // Check deposit properly registered   
+            // Check deposit properly registered
             expect(await iPool.withdrawalsCount()).to.equal(3);
             [unstakeAcc, unstakeAmt] = await iPool.withdrawals(2);
             expect(unstakeAcc).to.equal(addr2.address);
@@ -562,7 +562,7 @@ describe("InsurancePool contract", function () {
             expect(await rToken.balanceOf(rToken.address)).to.equal(0);
             expect(await rToken.balanceOf(iPool.address)).to.equal(amount);
 
-            // Check revenue properly registered   
+            // Check revenue properly registered
             expect(await iPool.revenuesCount()).to.equal(1);
             const [revAmt, stakeAmt] = await iPool.revenues(0);
             expect(revAmt).to.equal(amount);
@@ -577,7 +577,7 @@ describe("InsurancePool contract", function () {
                 .to.emit(iPool, 'RevenueEventSaved')
                 .withArgs(0, amount1);
 
-            // Check revenue properly registered   
+            // Check revenue properly registered
             expect(await iPool.revenuesCount()).to.equal(1);
             let [revAmt, stakeAmt] = await iPool.revenues(0);
             expect(revAmt).to.equal(amount1);
@@ -587,7 +587,7 @@ describe("InsurancePool contract", function () {
                 .to.emit(iPool, 'RevenueEventSaved')
                 .withArgs(1, amount2);
 
-            // Check revenue properly registered   
+            // Check revenue properly registered
             expect(await iPool.revenuesCount()).to.equal(2);
             [revAmt, stakeAmt] = await iPool.revenues(1);
             expect(revAmt).to.equal(amount2);

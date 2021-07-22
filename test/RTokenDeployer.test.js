@@ -29,13 +29,13 @@ describe("RTokenDeployer contract", function () {
         beforeEach(async function () {
             // RToken Configuration and setup
             config = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
-            basketTokens = [[ZERO_ADDRESS, 0, 0, 1, 1, 0, 0]];
+            basketTokens = [[ZERO_ADDRESS, 0, 1, 1, 0, 0]];
             // RSR (Insurance token)
             PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock");
             NewRSR = await ethers.getContractFactory("RSR");
             prevRSRToken = await PrevRSR.deploy("Reserve Rights", "RSR");
             rsrToken = await NewRSR.connect(owner).deploy(prevRSRToken.address, ZERO_ADDRESS, ZERO_ADDRESS);
-            rsrTokenInfo = [rsrToken.address, 0, 0, 1, 1, 0, 0];
+            rsrTokenInfo = [rsrToken.address, 0, 1, 1, 0, 0];
 
             // Create a new RToken
             receipt = await (await factory.deploy(newOwner.address, 'RToken Test', 'RTKN', config, basketTokens, rsrTokenInfo)).wait();
@@ -77,13 +77,13 @@ describe("RTokenDeployer contract", function () {
         beforeEach(async function () {
             // RToken Configuration and setup
             config = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
-            basketTokens = [[ZERO_ADDRESS, 0, 0, 1, 1, 0, 0]];
+            basketTokens = [[ZERO_ADDRESS, 0, 1, 1, 0, 0]];
             // RSR (Insurance token)
             PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock");
             NewRSR = await ethers.getContractFactory("RSR");
             prevRSRToken = await PrevRSR.deploy("Reserve Rights", "RSR");
             rsrToken = await NewRSR.connect(owner).deploy(prevRSRToken.address, ZERO_ADDRESS, ZERO_ADDRESS);
-            rsrTokenInfo = [rsrToken.address, 0, 0, 1, 1, 0, 0];
+            rsrTokenInfo = [rsrToken.address, 0, 1, 1, 0, 0];
 
             // Create a new RToken
             receipt = await (await factory.deploy(newOwner.address, 'RToken Test', 'RTKN', config, basketTokens, rsrTokenInfo)).wait();
