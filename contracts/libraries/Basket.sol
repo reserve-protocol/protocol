@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./Token.sol";
 
 /**
@@ -46,8 +47,8 @@ library Basket {
     ) internal view returns (uint256[] memory parts) {
         parts = new uint256[](self.size);
         for (uint16 i = 0; i < self.size; i++) {
-            parts[i] = MathUpgradeable.min(
-                self.tokens[i].getBalance() * amount) / totalSupply,
+            parts[i] = Math.min(
+                self.tokens[i].getBalance() * amount / totalSupply,
                 (self.tokens[i].adjustedQuantity * amount) / 10**decimals
             );
         }
