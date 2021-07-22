@@ -53,12 +53,13 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         uint256 tradingFreezeCost;
         /// Percentage rates are relative to 1e18, the constant SCALE variable set in RToken.
 
+        /// Frequency with which RToken sweeps supply expansion revenue into the insurance pool (s)
+        /// This must be relatively infrequent.
+        /// e.g. 1 week = 60 * 60 * 24 * 7 = 604800
+        uint256 insurancePaymentPeriod;
         /// RToken annual supply-expansion rate
         /// e.g. 1.23e16 => 1.23% annually
         uint256 supplyExpansionRate;
-        /// RToken revenue batch sizes
-        /// e.g. 1e15 => 0.1% of the RToken supply
-        uint256 revenueBatchSize;
         /// Protocol expenditure factor
         /// e.g. 1e16 => 1% of the RToken supply expansion goes to protocol fund
         uint256 expenditureFactor;
@@ -91,7 +92,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Private
     uint256 private _deployedAt;
-    uint256 private _lastTimestamp;
+    uint256 private _lastExpansion;
+    uint256 private _lastInsurancePayment;
     uint256 private _lastBlock;
 
     function initialize(
@@ -107,6 +109,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         __ERC20Votes_init_unchained();
         __Ownable_init();
         __UUPSUpgradeable_init();
+        _checkConfig(config_);
         _checkNewBasket(basketTokens_);
         config = config_;
         basket.size = uint16(basketTokens_.length);
@@ -116,7 +119,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         rsrToken = rsrToken_;
 
         _deployedAt = block.timestamp;
-        _lastTimestamp = block.timestamp;
+        _lastExpansion = block.timestamp;
+        _lastInsurancePayment = block.timestamp;
         _lastBlock = block.number;
     }
 
@@ -133,7 +137,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         // SlowMintingERC20 update step
         _tryProcessMintings();
 
-        // expand RToken supply
+        // expand supply 
         _expandSupply();
 
         // trade out collateral for other collateral or insurance RSR
@@ -145,7 +149,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Configuration changes, only callable by Owner.
     function updateConfig(Config memory newConfig) external override onlyOwner {
-        // TODO: Requires?
+        _checkConfig(newConfig);
         emit ConfigUpdated();
         config = newConfig;
     }
@@ -305,6 +309,13 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
     }
 
+    function _checkConfig(Config memory c) internal view {
+        require(c.supplyExpansionRate <= SCALE, "Supply expansion too large");
+        require(c.expenditureFactor <= SCALE, "Expenditure factor too large");
+        require(c.spread <= SCALE, "Spread too large");
+    }
+
+
     /// Tries to process up to a fixed number of mintings. Called before most actions.
     function _tryProcessMintings() internal {
         if (!config.circuitBreaker.paused()) {
@@ -350,13 +361,14 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Expands the RToken supply and gives the new mintings to the protocol fund and
     /// the insurance pool.
     function _expandSupply() internal {
+        // TODO: Swap out with Exponential Lib Math
         // 31536000 = seconds in a year
         uint256 toExpand = (totalSupply() *
             config.supplyExpansionRate *
-            (block.timestamp - _lastTimestamp)) /
+            (block.timestamp - _lastExpansion)) /
             31536000 /
             SCALE;
-        _lastTimestamp = block.timestamp;
+        _lastExpansion = block.timestamp;
         if (toExpand == 0) {
             return;
         }
@@ -374,10 +386,11 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
 
         // Batch transfers from self to InsurancePool
-        uint256 bal = balanceOf(address(this));
-        if (bal > (totalSupply() * config.revenueBatchSize) / SCALE) {
+        if (_lastInsurancePayment + config.insurancePaymentPeriod < block.timestamp) {
+            uint bal = balanceOf(address(this));
             _approve(address(this), address(config.insurancePool), bal);
-            config.insurancePool.registerRevenueEvent(bal);
+            config.insurancePool.makeInsurancePayment(bal);
+            _lastInsurancePayment = block.timestamp;
         }
     }
 

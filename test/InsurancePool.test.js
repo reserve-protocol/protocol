@@ -546,7 +546,7 @@ describe("InsurancePool contract", function () {
         it("Should not allow to register Revenue if caller is not Rtoken", async function () {
             const amount = BigNumber.from(1000);
 
-            await expect(iPool.connect(owner).registerRevenueEvent(amount))
+            await expect(iPool.connect(owner).makeInsurancePayment(amount))
                 .to.be.revertedWith("Only RToken")
 
             expect(await rToken.balanceOf(iPool.address)).to.equal(0);
@@ -555,7 +555,7 @@ describe("InsurancePool contract", function () {
         it("Should allow to register Revenue if caller is Rtoken", async function () {
             const amount = BigNumber.from(1000);
 
-            await expect(rToken.registerRevenueEvent(amount))
+            await expect(rToken.makeInsurancePayment(amount))
                 .to.emit(iPool, 'RevenueEventSaved')
                 .withArgs(0, amount);
 
@@ -573,7 +573,7 @@ describe("InsurancePool contract", function () {
             const amount1 = BigNumber.from(1000);
             const amount2 = BigNumber.from(2000);
 
-            await expect(rToken.registerRevenueEvent(amount1))
+            await expect(rToken.makeInsurancePayment(amount1))
                 .to.emit(iPool, 'RevenueEventSaved')
                 .withArgs(0, amount1);
 
@@ -583,7 +583,7 @@ describe("InsurancePool contract", function () {
             expect(revAmt).to.equal(amount1);
             expect(stakeAmt).to.equal(await iPool.totalWeight());
 
-            await expect(rToken.registerRevenueEvent(amount2))
+            await expect(rToken.makeInsurancePayment(amount2))
                 .to.emit(iPool, 'RevenueEventSaved')
                 .withArgs(1, amount2);
 
