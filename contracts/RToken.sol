@@ -113,6 +113,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _checkNewBasket(basketTokens_);
         config = config_;
         basket.size = uint16(basketTokens_.length);
+        basket.inflationSinceGenesis = SCALE;
         for (uint16 i = 0; i < basket.size; i++) {
             basket.tokens[i] = basketTokens_[i];
         }
@@ -259,7 +260,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         override
         returns (uint256[] memory amounts)
     {
-        return basket.redemptionAmounts(amount, decimals(), totalSupply());
+        return basket.redemptionAmounts(amount, SCALE, decimals(), totalSupply());
     }
 
     function stakingDepositDelay() external view override returns (uint256) {
@@ -295,9 +296,10 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Sets the adjusted basket quantities for the current block
     function _decayBasket() internal {
-        for (uint16 i = 0; i < basket.size; i++) {
-            basket.tokens[i].adjustQuantity(SCALE, config.supplyExpansionRate, _deployedAt);
-        }
+        // TODO: incorrect compounding!
+        basket.inflationSinceGenesis /=
+            (SCALE + (config.supplyExpansionRate * (block.timestamp - _deployedAt)) / 31556926) /
+            SCALE;
     }
 
     /// Performs any checks we want to perform on a new basket
@@ -405,7 +407,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         uint8 decimals = decimals();
         uint256 totalSupply = totalSupply();
         (int32 deficitIndex, int32 surplusIndex) = basket
-        .leastUndercollateralizedAndMostOverCollateralized(decimals, totalSupply);
+        .leastUndercollateralizedAndMostOverCollateralized(SCALE, decimals, totalSupply);
 
         /// Three cases:
         /// 1. Sideways: Trade collateral for collateral
@@ -416,6 +418,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             _calculateBuyAmountAndTrade(
                 basket.tokens[uint16(uint32(deficitIndex))],
                 basket.tokens[uint16(uint32(surplusIndex))],
+                uint16(uint32(surplusIndex)),
                 numBlocks,
                 decimals,
                 totalSupply
@@ -444,6 +447,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             _calculateBuyAmountAndTrade(
                 rsrToken,
                 basket.tokens[uint16(uint32(surplusIndex))],
+                uint16(uint32(surplusIndex)),
                 numBlocks,
                 decimals,
                 totalSupply
@@ -469,6 +473,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     function _calculateBuyAmountAndTrade(
         Token.Info storage buying,
         Token.Info storage selling,
+        uint16 sellingIndex,
         uint256 numBlocks,
         uint8 decimals,
         uint256 totalSupply
@@ -476,7 +481,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         uint256 sell = MathUpgradeable.min(numBlocks * selling.rateLimit, selling.maxTrade);
         sell = MathUpgradeable.min(
             sell,
-            selling.getBalance() - (totalSupply * selling.adjustedQuantity) / 10**decimals
+            selling.getBalance() - (totalSupply * basket.weight(SCALE, sellingIndex)) / 10**decimals
         );
 
         uint256 minBuy = (MathUpgradeable.min(buying.slippageTolerance, selling.slippageTolerance) *

@@ -14,8 +14,6 @@ library Token {
         address tokenAddress;
         // How many tokens are required for each 1e18 RTokens as of original deployment
         uint256 genesisQuantity;
-        // How many tokens are required in the current block for each 1e18 RTokens
-        uint256 adjustedQuantity;
         // How many tokens to sell per each block
         uint256 rateLimit;
         // Max number of tokens to sell in a single trade
@@ -26,17 +24,6 @@ library Token {
         // E.g., 5e17 means up to a 50% price movement before the RToken halts trading.
         // The slippage for a pair is the combination of two `slippageTolerance`
         uint256 slippageTolerance;
-    }
-
-    function adjustQuantity(
-        Token.Info storage self,
-        uint256 scale,
-        uint256 supplyExpansionRate,
-        uint256 timestampDeployed
-    ) internal {
-        self.adjustedQuantity =
-            (self.genesisQuantity * scale) /
-            (scale + (supplyExpansionRate * (block.timestamp - timestampDeployed)) / 31536000);
     }
 
     function safeApprove(
