@@ -14,7 +14,7 @@ interface IInsurancePool {
 
     // ==== Callable only by the RToken ====
 
-    function registerRevenueEvent(uint256 amount) external;
+    function makeInsurancePayment(uint256 amount) external;
 
     // ==== Callable by anyone ====
 

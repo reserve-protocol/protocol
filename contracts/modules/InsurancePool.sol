@@ -31,7 +31,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
 
     struct RevenueEvent {
         uint256 amount;
-        uint256 totalStaked;
+        uint256 totalWeight;
     }
 
     // Event log pattern
@@ -75,7 +75,6 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     function stake(uint256 amount) external override update(_msgSender()) {
         require(amount > 0, "Cannot stake 0");
         IERC20Upgradeable(address(rsr)).safeTransferFrom(_msgSender(), address(this), amount);
-
         deposits.push(Delayed(_msgSender(), amount, block.timestamp));
         emit DepositInitiated(_msgSender(), amount);
     }
@@ -99,7 +98,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     // Callable only by RToken address
-    function registerRevenueEvent(uint256 amount) external override update(address(0)) {
+    function makeInsurancePayment(uint256 amount) external override update(address(0)) {
         require(_msgSender() == address(rToken), "Only RToken");
 
         IERC20Upgradeable(address(rToken)).safeTransferFrom(address(rToken), address(this), amount);
@@ -135,7 +134,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         if (address(account) != address(0) && weight[account] > 0) {
             uint256 limit = MathUpgradeable.min(lastIndex[account] + numToProcess, revenues.length);
             for (uint256 i = lastIndex[account]; i < limit; i++) {
-                earned[account] += (revenues[i].amount * weight[account]) / revenues[i].totalStaked;
+                earned[account] += (revenues[i].amount * weight[account]) / revenues[i].totalWeight;
             }
 
             lastIndex[account] = limit;

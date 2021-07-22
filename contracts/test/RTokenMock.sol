@@ -45,9 +45,9 @@ contract RTokenMock is RToken {
         );
     }
 
-    function registerRevenueEvent(uint256 amount) external {
+    function makeInsurancePayment(uint256 amount) external {
         _mint(address(this), amount);
         _approve(address(this), address(config.insurancePool), amount);
-        config.insurancePool.registerRevenueEvent(amount);
+        config.insurancePool.makeInsurancePayment(amount);
     }
 }
