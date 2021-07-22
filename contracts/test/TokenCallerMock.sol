@@ -15,20 +15,6 @@ contract TokenCallerMock {
         deployedAt = block.timestamp;
     }
 
-    function adjustQuantity(
-        uint256 scale,
-        uint256 supplyExpansionRate,
-        uint256 timestampDeployed
-    ) external {
-        innerToken.adjustQuantity(scale, supplyExpansionRate, timestampDeployed);
-    }
-
-    function getAdjustedQuantity() external view returns (uint256) {
-        uint256 adjusted;
-        (, , adjusted, , , , ) = this.innerToken();
-        return adjusted;
-    }
-
     function safeApprove(address spender, uint256 amount) external {
         innerToken.safeApprove(spender, amount);
     }
