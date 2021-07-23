@@ -4,8 +4,7 @@ const { advanceTime } = require("./utils/time");
 const { BigNumber } = require("ethers");
 
 // Sample Values for Configuration
-const stakingDepositDelay = 3600; // seconds
-const stakingWithdrawalDelay = 4800; // seconds
+const stakingDelay = 3600; // seconds
 const issuanceRate = BigNumber.from(25000);
 const maxSupply = BigNumber.from(1000000);
 
@@ -19,8 +18,7 @@ describe("RToken contract", function () {
 
         // RToken Configuration and setup
         config = {
-            stakingDepositDelay: stakingDepositDelay,
-            stakingWithdrawalDelay: stakingWithdrawalDelay,
+            stakingDelay: stakingDelay,
             maxSupply: maxSupply,
             minMintingSize: 0,
             issuanceRate: issuanceRate,
@@ -71,8 +69,7 @@ describe("RToken contract", function () {
         it("Deployment should setup initial values correctly", async function () {
             expect(await rToken.issuanceRate()).to.equal(issuanceRate);
             expect(await rToken.circuitBreaker()).to.equal(cb.address);
-            expect(await rToken.stakingDepositDelay()).to.equal(stakingDepositDelay);
-            expect(await rToken.stakingWithdrawalDelay()).to.equal(stakingWithdrawalDelay);
+            expect(await rToken.stakingDelay()).to.equal(stakingDelay);
             expect(await rToken.maxSupply()).to.equal(maxSupply);
         });
 
@@ -85,65 +82,34 @@ describe("RToken contract", function () {
 
     describe("Updates/Changes to Configuration", function () {
 
-        describe("stakingDepositDelay", function () {
+        describe("stakingDelay", function () {
             beforeEach(async function () {
-                currentValue = stakingDepositDelay;
+                currentValue = stakingDelay;
                 newValue = 1000;
                 newConfig = config;
             });
 
             it("Should update correctly if Owner", async function () {
-                expect(await rToken.stakingDepositDelay()).to.equal(currentValue);
+                expect(await rToken.stakingDelay()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig.stakingDepositDelay = newValue;
+                newConfig.stakingDelay = newValue;
                 await expect(rToken.connect(owner).updateConfig(newConfig))
                     .to.emit(rToken, "ConfigUpdated");
 
-                expect(await rToken.stakingDepositDelay()).to.equal(newValue);
+                expect(await rToken.stakingDelay()).to.equal(newValue);
             });
 
             it("Should not allow to update if not Owner", async function () {
-                expect(await rToken.stakingDepositDelay()).to.equal(currentValue);
+                expect(await rToken.stakingDelay()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig.stakingDepositDelay = newValue;
+                newConfig.stakingDelay = newValue;
                 await expect(
                     rToken.connect(addr1).updateConfig(newConfig)
                 ).to.be.revertedWith("Ownable: caller is not the owner");
 
-                expect(await rToken.stakingDepositDelay()).to.equal(currentValue);
-            });
-        });
-
-        describe("stakingWithdrawalDelay", function () {
-            beforeEach(async function () {
-                currentValue = stakingWithdrawalDelay;
-                newValue = 1000;
-                newConfig = config;
-            });
-
-            it("Should update correctly if Owner", async function () {
-                expect(await rToken.stakingWithdrawalDelay()).to.equal(currentValue);
-
-                // Update individual field
-                newConfig.stakingWithdrawalDelay = newValue;
-                await expect(rToken.connect(owner).updateConfig(newConfig))
-                    .to.emit(rToken, "ConfigUpdated");
-
-                expect(await rToken.stakingWithdrawalDelay()).to.equal(newValue);
-            });
-
-            it("Should not allow to update if not Owner", async function () {
-                expect(await rToken.stakingWithdrawalDelay()).to.equal(currentValue);
-
-                // Update individual field
-                newConfig.stakingWithdrawalDelay = newValue;
-                await expect(
-                    rToken.connect(addr1).updateConfig(newConfig)
-                ).to.be.revertedWith("Ownable: caller is not the owner");
-
-                expect(await rToken.stakingWithdrawalDelay()).to.equal(currentValue);
+                expect(await rToken.stakingDelay()).to.equal(currentValue);
             });
         });
 

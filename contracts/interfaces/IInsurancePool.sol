@@ -6,7 +6,11 @@ interface IInsurancePool {
 
     function earned(address account) external view returns (uint256);
 
+    function lastTimestamp(address account) external view returns (uint256);
+
     function lastIndex(address account) external view returns (uint256);
+
+    function lastWeight(address account) external view returns (uint256);
 
     function totalWeight() external view returns (uint256);
 

@@ -9,7 +9,7 @@ contract InsurancePoolMock is InsurancePool {
     }
 
     function processDeposits() external {
-        _processDeposits();
+        _processDeposits(rToken.stakingDelay());
     }
 
     function withdrawalsCount() external view returns (uint256) {
@@ -17,7 +17,7 @@ contract InsurancePoolMock is InsurancePool {
     }
 
     function processWithdrawals() external {
-        _processWithdrawals();
+        _processWithdrawals(rToken.stakingDelay());
     }
 
     function revenuesCount() external view returns (uint256) {

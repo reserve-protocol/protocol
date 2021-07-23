@@ -32,12 +32,18 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     struct RevenueEvent {
         uint256 amount;
         uint256 totalWeight;
+        uint256 timestamp;
     }
 
     // Event log pattern
     RevenueEvent[] public revenues;
+
+    // `last*` variables hold values from the last time the account caught up
+    mapping(address => uint256) public override lastTimestamp;
     mapping(address => uint256) public override lastIndex;
-    mapping(address => uint256) public override lastWeight; // last weight at last account catchup
+    mapping(address => uint256) public override lastWeight;
+
+    // Holds accumulated earnings from revenues
     mapping(address => uint256) public override earned;
 
     // ==== Deposit and Withdrawal Queues ====
@@ -103,7 +109,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         require(_msgSender() == address(rToken), "Only RToken");
 
         IERC20Upgradeable(address(rToken)).safeTransferFrom(address(rToken), address(this), amount);
-        revenues.push(RevenueEvent(amount, totalWeight));
+        revenues.push(RevenueEvent(amount, totalWeight, block.timestamp));
         emit RevenueEventSaved(revenues.length - 1, amount);
 
         // Nice to refresh this, and best to make RToken callers pay the cost.
@@ -132,36 +138,46 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _catchup(address account, uint256 numToProcess) internal {
+        uint256 stakingDelay = rToken.stakingDelay();
+
         if (address(account) != address(0)) {
-            uint256 limit = MathUpgradeable.min(lastIndex[account] + numToProcess, revenues.length);
-            if (lastWeight[account] > 0) {
-                for (uint256 i = lastIndex[account]; i < limit; i++) {
+            uint256 t; uint256 lastTime;
+            uint256 endIndex = MathUpgradeable.min(lastIndex[account] + numToProcess, revenues.length);
+
+            for (uint256 i = lastIndex[account]; i < endIndex; i++) {
+                t = revenues[i].timestamp;
+                lastTime = lastTimestamp[account];
+
+                // If they couldn't have withdrawn/deposited since last _catchup, use `weight`.
+                // Else If they could have withdrawn/deposited since last _catchup, use `lastWeight`.
+                if (t > lastTime && t <= lastTime + stakingDelay) {
+                    earned[account] += (revenues[i].amount * weight[account]) / revenues[i].totalWeight;
+                } else if (t > lastTime && t > lastTime + stakingDelay) {
                     earned[account] += (revenues[i].amount * lastWeight[account]) / revenues[i].totalWeight;
                 }
             }
-            lastIndex[account] = limit;
+            lastIndex[account] = endIndex;
             lastWeight[account] = weight[account];
+            lastTimestamp[account] = block.timestamp;
         }
 
-        _processWithdrawals();
-        _processDeposits();
+        _processWithdrawals(stakingDelay);
+        _processDeposits(stakingDelay);
     }
 
-    function _processWithdrawals() internal {
-        uint256 stakingWithdrawalDelay = rToken.stakingWithdrawalDelay();
+    function _processWithdrawals(uint256 stakingDelay) internal {
         while (
             withdrawalIndex < withdrawals.length &&
-            block.timestamp - stakingWithdrawalDelay > withdrawals[withdrawalIndex].timestamp
+            block.timestamp - stakingDelay > withdrawals[withdrawalIndex].timestamp
         ) {
             _settleNextWithdrawal();
         }
     }
 
-    function _processDeposits() internal {
-        uint256 stakingDepositDelay = rToken.stakingDepositDelay();
+    function _processDeposits(uint256 stakingDelay) internal {
         while (
             depositIndex < deposits.length &&
-            block.timestamp - stakingDepositDelay > deposits[depositIndex].timestamp
+            block.timestamp - stakingDelay > deposits[depositIndex].timestamp
         ) {
             _settleNextDeposit();
         }

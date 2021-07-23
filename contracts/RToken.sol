@@ -35,12 +35,9 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     uint256 public SCALE = 1e18; // weakly immutable
 
     struct Config {
-        /// RSR staking deposit delay (s)
-        /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to enter the insurance pool
-        uint256 stakingDepositDelay;
-        /// RSR staking withdrawal delay (s)
-        /// e.g. 2_592_000 => Currently staking RSR tokens take 1 month to withdraw
-        uint256 stakingWithdrawalDelay;
+        /// RSR symmetric staking delay for entry/exit (s)
+        /// e.g. 2_592_000 => Staked tokens take 1 month to be deposited or withdrawn
+        uint256 stakingDelay;
         /// RToken max supply
         /// e.g. 1_000_000e18 => 1M max supply
         uint256 maxSupply;
@@ -290,12 +287,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         return basket.redemptionAmounts(amount, SCALE, decimals(), totalSupply());
     }
 
-    function stakingDepositDelay() external view override returns (uint256) {
-        return config.stakingDepositDelay;
-    }
-
-    function stakingWithdrawalDelay() external view override returns (uint256) {
-        return config.stakingWithdrawalDelay;
+    function stakingDelay() external view override returns (uint256) {
+        return config.stakingDelay;
     }
 
     function insurancePool() external view override returns (address) {

@@ -35,9 +35,7 @@ interface IRToken {
 
     function basketSize() external view returns (uint16);
 
-    function stakingDepositDelay() external view returns (uint256);
-
-    function stakingWithdrawalDelay() external view returns (uint256);
+    function stakingDelay() external view returns (uint256);
 
     function insurancePool() external view returns (address);
 

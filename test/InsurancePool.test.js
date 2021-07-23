@@ -18,8 +18,7 @@ describe("InsurancePool contract", function () {
         // Deploy RToken
         const maxSupply = BigNumber.from(5000000);
         config = {
-            stakingDepositDelay: 0,
-            stakingWithdrawalDelay: 0,
+            stakingDelay: 0,
             maxSupply: maxSupply,
             minMintingSize: 0,
             issuanceRate: 0,
@@ -181,10 +180,10 @@ describe("InsurancePool contract", function () {
 
         context("With stakes/deposits created", async function () {
             beforeEach(async function () {
-                // Set stakingDepositDelay
-                stakingDepositDelay = 20000;
+                // Set stakingDelay
+                stakingDelay = 20000;
                 newConfig = config;
-                newConfig.stakingDepositDelay = stakingDepositDelay;
+                newConfig.stakingDelay = stakingDelay;
                 await rToken.connect(owner).updateConfig(newConfig);
 
                 // Perform stake
@@ -202,7 +201,7 @@ describe("InsurancePool contract", function () {
                     .withArgs(addr1.address, amount1);
             });
 
-            it("Should not process deposits before stakingDepositDelay", async function () {
+            it("Should not process deposits before stakingDelay", async function () {
                 // Process stakes
                 await iPool.processDeposits();
 
@@ -211,7 +210,7 @@ describe("InsurancePool contract", function () {
                 expect(await iPool.totalWeight()).to.equal(0);
                 expect(await iPool.weight(addr1.address)).to.equal(0);
 
-                // Process stakes after certain time (still before stakingDepositDelay)
+                // Process stakes after certain time (still before stakingDelay)
                 await advanceTime(15000);
 
                 await iPool.processDeposits();
@@ -225,9 +224,9 @@ describe("InsurancePool contract", function () {
                 expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount1);
             });
 
-            it("Should process deposits after stakingDepositDelay", async function () {
-                // Move forward past stakingDeposityDelay
-                await advanceTime(stakingDepositDelay + 1);
+            it("Should process deposits after stakingDelay", async function () {
+                // Move forward past stakingDelay
+                await advanceTime(stakingDelay + 1);
 
                 // Process stakes
                 await iPool.processDeposits();
@@ -243,8 +242,8 @@ describe("InsurancePool contract", function () {
             });
 
             it("Should store weights and calculate balance correctly", async function () {
-                // Move forward past stakingDeposityDelay
-                await advanceTime(stakingDepositDelay + 1);
+                // Move forward past stakingDelay
+                await advanceTime(stakingDelay + 1);
 
                 // Process stakes
                 await iPool.processDeposits();
@@ -262,8 +261,8 @@ describe("InsurancePool contract", function () {
                     .to.emit(iPool, 'DepositInitiated')
                     .withArgs(addr2.address, amount3);
 
-                // Move forward past stakingDeposityDelay
-                await advanceTime(stakingDepositDelay + 1);
+                // Move forward past stakingDelay
+                await advanceTime(stakingDelay + 1);
 
                 // Process stakes
                 await iPool.processDeposits();
@@ -281,8 +280,8 @@ describe("InsurancePool contract", function () {
             });
 
             it("Should handle prorata math after adding RSR", async function () {
-                // Move forward past stakingDeposityDelay
-                await advanceTime(stakingDepositDelay + 1);
+                // Move forward past stakingDelay
+                await advanceTime(stakingDelay + 1);
 
                 // Process stakes
                 await iPool.processDeposits();
@@ -301,8 +300,8 @@ describe("InsurancePool contract", function () {
             });
 
             it("Should handle prorata math after removing RSR", async function () {
-                // Move forward past stakingDeposityDelay
-                await advanceTime(stakingDepositDelay + 1);
+                // Move forward past stakingDelay
+                await advanceTime(stakingDelay + 1);
 
                 // Process stakes
                 await iPool.processDeposits();
@@ -442,10 +441,10 @@ describe("InsurancePool contract", function () {
 
         context("With deposits and withdrawals", async function () {
             beforeEach(async function () {
-                // Set stakingDepositDelay and stakingWithdrawalDelay
-                stakingWithdrawalDelay = 20000;
+                // Set stakingDepositDelay and stakingDelay
+                stakingDelay = 20000;
                 newConfig = config;
-                newConfig.stakingWithdrawalDelay = stakingWithdrawalDelay;
+                newConfig.stakingDelay = stakingDelay;
                 await rToken.connect(owner).updateConfig(newConfig);
 
                 // Perform stake
@@ -479,7 +478,7 @@ describe("InsurancePool contract", function () {
                     .withArgs(addr1.address, amount1);
             })
 
-            it("Should not process withdrawals before stakingWithdrawalDelay", async function () {
+            it("Should not process withdrawals before stakingDelay", async function () {
                 // Process unstakes
                 await iPool.processWithdrawals();
 
@@ -488,7 +487,7 @@ describe("InsurancePool contract", function () {
                 expect(await iPool.totalWeight()).to.equal(amount1.add(amount2).add(amount3));
                 expect(await iPool.weight(addr1.address)).to.equal(amount1);
 
-                // Process unstakes after certain time (still before stakingWithdrawalDelay)
+                // Process unstakes after certain time (still before stakingDelay)
                 await advanceTime(15000);
 
                 await iPool.processWithdrawals();
@@ -502,12 +501,12 @@ describe("InsurancePool contract", function () {
                 expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount1.add(amount2).add(amount3));
             });
 
-            it("Should process withdrawals after stakingWithdrawalDelay", async function () {
+            it("Should process withdrawals after stakingDelay", async function () {
                 // Get current balance for user
                 const prevAddr1Balance = await rsrToken.balanceOf(addr1.address);
 
-                // Move forward past stakingWithdrawalDelay
-                await advanceTime(stakingWithdrawalDelay + 1);
+                // Move forward past stakingDelay
+                await advanceTime(stakingDelay + 1);
 
                 // Process stakes
                 await iPool.processWithdrawals();
@@ -533,8 +532,8 @@ describe("InsurancePool contract", function () {
                     .to.emit(iPool, 'WithdrawalInitiated')
                     .withArgs(addr2.address, amount2);
 
-                // Move forward past stakingWithdrawalDelay
-                await advanceTime(stakingWithdrawalDelay + 1);
+                // Move forward past stakingDelay
+                await advanceTime(stakingDelay + 1);
 
                 // Process unstakes
                 await iPool.processWithdrawals();
@@ -550,8 +549,8 @@ describe("InsurancePool contract", function () {
                     .to.emit(iPool, 'WithdrawalInitiated')
                     .withArgs(addr2.address, amount3);
 
-                // Move forward past stakingWithdrawalDelay
-                await advanceTime(stakingWithdrawalDelay + 1);
+                // Move forward past stakingDelay
+                await advanceTime(stakingDelay + 1);
 
                 // Process unstakes
                 await iPool.processWithdrawals();
