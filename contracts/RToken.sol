@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
+import "./libraries/ABDKMath64x64.sol";
 import "./libraries/Basket.sol";
 import "./libraries/Token.sol";
 import "./interfaces/ITXFee.sol";
@@ -59,9 +60,9 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         /// This must be relatively infrequent.
         /// e.g. 1 week = 60 * 60 * 24 * 7 = 604800
         uint256 insurancePaymentPeriod;
-        /// RToken annual supply-expansion rate
-        /// e.g. 1.23e16 => 1.23% annually
-        uint256 supplyExpansionRate;
+        /// RToken per-second supply-expansion rate
+        /// e.g. 936681155 => 0.0000000936681155% per-second => 3% annually
+        uint256 expansionRatePerSecond;
         /// Protocol expenditure factor
         /// e.g. 1e16 => 1% of the RToken supply expansion goes to protocol fund
         uint256 expenditureFactor;
@@ -323,10 +324,12 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Sets the adjusted basket quantities for the current block
     function _decayBasket() internal {
-        // TODO: incorrect compounding!
-        basket.inflationSinceGenesis /=
-            (SCALE + (config.supplyExpansionRate * (block.timestamp - _deployedAt)) / 31556926) /
-            SCALE;
+        /// Discrete compounding on a per-second basis
+        basket.inflationSinceGenesis = ABDKMath64x64.compound(
+            SCALE, 
+            config.expansionRatePerSecond, 
+            block.timestamp - _deployedAt
+        );
     }
 
     /// Performs any checks we want to perform on a new basket
@@ -346,7 +349,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     function _checkConfig(Config memory c) internal view {
-        if (c.supplyExpansionRate > SCALE) {
+        if (c.expansionRatePerSecond > SCALE) {
             revert SupplyExpansionTooLarge();
         }
 
@@ -404,27 +407,26 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Expands the RToken supply and gives the new mintings to the protocol fund and
     /// the insurance pool.
     function _expandSupply() internal {
-        // TODO: Swap out with Exponential Lib Math
-        // 31536000 = seconds in a year
-        uint256 toExpand = (totalSupply() *
-            config.supplyExpansionRate *
-            (block.timestamp - _lastExpansion)) /
-            31536000 /
-            SCALE;
+        /// Discrete compounding on a per-second basis
+        uint256 amount = totalSupply() * SCALE / ABDKMath64x64.compound(
+            SCALE, 
+            config.expansionRatePerSecond, 
+            block.timestamp - _lastExpansion
+        );
         _lastExpansion = block.timestamp;
-        if (toExpand == 0) {
+        if (amount == 0) {
             return;
         }
 
         // Mint to protocol fund
         if (config.expenditureFactor > 0) {
-            uint256 e = (toExpand * MathUpgradeable.min(SCALE, config.expenditureFactor)) / SCALE;
+            uint256 e = (amount * MathUpgradeable.min(SCALE, config.expenditureFactor)) / SCALE;
             _mint(address(config.protocolFund), e);
         }
 
         // Mint to self
         if (config.expenditureFactor < SCALE) {
-            uint256 p = (toExpand * (SCALE - config.expenditureFactor)) / SCALE;
+            uint256 p = (amount * (SCALE - config.expenditureFactor)) / SCALE;
             _mint(address(this), p);
         }
 

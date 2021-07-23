@@ -26,10 +26,18 @@ library ABDKMath64x64 {
    */
   int128 private constant MAX_64x64 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
-
-  // Added
-  function compound(uint256 scale, uint256 compoundRate, uint256 timedelta) internal pure returns (uint64) {
-    return toUInt(pow(divu(scale + compoundRate, scale), timedelta));
+  /**
+   * ADDED - Not part of the original code
+   * Compounds (scale + compoundRate) / scale over timedelta periods.
+   * Returns a uint256 relative to scale.
+   *
+   * @param scale unsigned 256-bit integer number
+   * @param compoundRate unsigned 256-bit integer number
+   * @param timedelta unsigned 256-bit integer number
+   * @return unsigned 256-bit integer number
+   */
+  function compound(uint256 scale, uint256 compoundRate, uint256 timedelta) internal pure returns (uint256) {
+    return mulu(pow(divu(scale + compoundRate, scale), timedelta), scale);
   }
 
 
@@ -60,6 +68,33 @@ library ABDKMath64x64 {
       return uint64 (uint128 (x >> 64));
     }
   }
+
+  /**
+   * Calculate x * y rounding down, where x is signed 64.64 fixed point number
+   * and y is unsigned 256-bit integer number.  Revert on overflow.
+   *
+   * @param x signed 64.64 fixed point number
+   * @param y unsigned 256-bit integer number
+   * @return unsigned 256-bit integer number
+   */
+  function mulu (int128 x, uint256 y) internal pure returns (uint256) {
+    unchecked {
+      if (y == 0) return 0;
+
+      require (x >= 0);
+
+      uint256 lo = (uint256 (int256 (x)) * (y & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)) >> 64;
+      uint256 hi = uint256 (int256 (x)) * (y >> 128);
+
+      require (hi <= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+      hi <<= 64;
+
+      require (hi <=
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF - lo);
+      return hi + lo;
+    }
+  }
+
 
   /**
    * Calculate x^y assuming 0^0 is 1, where x is signed 64.64 fixed point number
