@@ -36,7 +36,7 @@ library ABDKMath64x64 {
    * @param timedelta unsigned 256-bit integer number
    * @return unsigned 256-bit integer number
    */
-  function compound(uint256 scale, uint256 compoundRate, uint256 timedelta) internal pure returns (uint256) {
+  function compound(uint256 scale, uint256 compoundRate, uint256 timedelta) external pure returns (uint256) {
     return mulu(pow(divu(scale + compoundRate, scale), timedelta), scale);
   }
 
