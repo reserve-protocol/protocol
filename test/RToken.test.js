@@ -652,7 +652,7 @@ describe("RToken contract", function () {
 
             await expect(
                 rToken.connect(owner).transfer(rToken.address, amount)
-            ).to.be.revertedWith("ERC20: we thought of you");
+            ).to.be.revertedWith("TransferToContractAddress()");
         });
     });
 });
