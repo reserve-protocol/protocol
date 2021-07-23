@@ -165,6 +165,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _checkNewBasket(newTokens);
         emit BasketUpdated(basket.size, uint16(newTokens.length));
         basket.setTokens(newTokens);
+        basket.inflationSinceGenesis = SCALE;
     }
 
     /// Callable by anyone, runs the block updates
