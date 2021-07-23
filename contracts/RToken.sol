@@ -14,6 +14,7 @@ import "./interfaces/IRToken.sol";
 import "./interfaces/IAtomicExchange.sol";
 import "./interfaces/IInsurancePool.sol";
 import "./interfaces/ICircuitBreaker.sol";
+import "./helpers/ErrorMessages.sol";
 
 /**
  * @title RToken
@@ -25,6 +26,7 @@ import "./interfaces/ICircuitBreaker.sol";
  *    - and, recover from collateral defaults through insurance
  *
  */
+
 contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgradeable {
     using Token for Token.Info;
     using Basket for Basket.Info;
@@ -126,7 +128,9 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     modifier canTrade() {
-        require(!tradingFrozen(), "RToken: no rebalancing");
+        if (tradingFrozen()) {
+            revert TradingIsFrozen();
+        }
         _;
     }
 
@@ -138,7 +142,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         // SlowMintingERC20 update step
         _tryProcessMintings();
 
-        // expand supply 
+        // expand supply
         _expandSupply();
 
         // trade out collateral for other collateral or insurance RSR
@@ -170,9 +174,17 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Handles issuance.
     /// Requires approvals to be in place beforehand.
     function issue(uint256 amount) external override everyBlock {
-        require(amount > config.minMintingSize, "cannot issue less than minMintingSize");
-        require(basket.size > 0, "basket cannot be empty");
-        require(!config.circuitBreaker.paused(), "circuit breaker tripped");
+        if (config.circuitBreaker.paused()) {
+            revert CircuitPaused();
+        }
+
+        if (amount <= config.minMintingSize) {
+            revert MintingAmountTooLow();
+        }
+
+        if (basket.size == 0) {
+            revert EmptyBasket();
+        }
 
         uint256[] memory amounts = issueAmounts(amount);
         for (uint16 i = 0; i < basket.size; i++) {
@@ -185,8 +197,13 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Handles redemption.
     function redeem(uint256 amount) external override everyBlock {
-        require(amount > 0, "cannot redeem 0 RToken");
-        require(basket.size > 0, "basket cannot be empty");
+        if (amount == 0) {
+            revert RedeemAmountCannotBeZero();
+        }
+
+        if (basket.size == 0) {
+            revert EmptyBasket();
+        }
 
         uint256[] memory amounts = redemptionAmounts(amount);
         _burn(_msgSender(), amount);
@@ -210,8 +227,13 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Trading unfreeze
     function unfreezeTrading() external override {
-        require(tradingFrozen(), "already unfrozen");
-        require(_msgSender() == freezer, "only freezer can unfreeze");
+        if (!tradingFrozen()) {
+            revert TradingAlreadyUnfrozen();
+        }
+
+        if (_msgSender() != freezer) {
+            revert Unauthorized();
+        }
 
         rsrToken.safeTransfer(freezer, config.tradingFreezeCost);
         freezer = address(0);
@@ -231,7 +253,10 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     function transfer(address recipient, uint256 amount) public override returns (bool) {
-        require(recipient != address(this), "ERC20: we thought of you");
+        if (recipient == address(this)) {
+            revert TransferToContractAddress();
+        }
+
         return super.transfer(recipient, amount);
     }
 
@@ -240,7 +265,9 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         address recipient,
         uint256 amount
     ) public override returns (bool) {
-        require(recipient != address(this), "ERC20: we thought of you");
+        if (recipient == address(this)) {
+            revert TransferToContractAddress();
+        }
         return super.transferFrom(sender, recipient, amount);
     }
 
@@ -304,19 +331,33 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Performs any checks we want to perform on a new basket
     function _checkNewBasket(Token.Info[] memory tokens) internal view {
-        require(tokens.length <= type(uint16).max, "basket too big");
+        if (tokens.length > type(uint16).max) {
+            revert BasketTooBig();
+        }
         for (uint16 i = 0; i < tokens.length; i++) {
-            require(tokens[i].slippageTolerance <= SCALE, "slippage tolerance too big");
-            require(tokens[i].maxTrade > 0 && tokens[i].rateLimit > 0, "uninitialized tokens");
+            if (tokens[i].slippageTolerance > SCALE) {
+                revert SlippageToleranceTooBig();
+            }
+
+            if (tokens[i].maxTrade == 0 || tokens[i].rateLimit == 0) {
+                revert UninitializedTokens();
+            }
         }
     }
 
     function _checkConfig(Config memory c) internal view {
-        require(c.supplyExpansionRate <= SCALE, "Supply expansion too large");
-        require(c.expenditureFactor <= SCALE, "Expenditure factor too large");
-        require(c.spread <= SCALE, "Spread too large");
-    }
+        if (c.supplyExpansionRate > SCALE) {
+            revert SupplyExpansionTooLarge();
+        }
 
+        if (c.expenditureFactor > SCALE) {
+            revert ExpenditureFactorTooLarge();
+        }
+
+        if (c.spread > SCALE) {
+            revert SpreadTooLarge();
+        }
+    }
 
     /// Tries to process up to a fixed number of mintings. Called before most actions.
     function _tryProcessMintings() internal {
@@ -389,7 +430,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
         // Batch transfers from self to InsurancePool
         if (_lastInsurancePayment + config.insurancePaymentPeriod < block.timestamp) {
-            uint bal = balanceOf(address(this));
+            uint256 bal = balanceOf(address(this));
             _approve(address(this), address(config.insurancePool), bal);
             config.insurancePool.makeInsurancePayment(bal);
             _lastInsurancePayment = block.timestamp;
@@ -457,8 +498,12 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Starts a slow minting
     function _startSlowMinting(address account, uint256 amount) internal {
-        require(account != address(0), "ERC20: mint to the zero address");
-        require(amount > 0, "cannot mint 0");
+        if (account == address(0)) {
+            revert MintToZeroAddressNotAllowed();
+        }
+        if (amount == 0) {
+            revert CannotMintZero();
+        }
 
         Minting memory m = Minting(amount, account);
         mintings.push(m);
@@ -507,11 +552,13 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             sellAmount,
             minBuyAmount
         );
-        require(
-            sellToken.getBalance() - initialSellBal == sellAmount,
-            "bad sell, though maybe exact equality is too much to ask"
-        );
-        require(buyToken.getBalance() - initialBuyBal >= minBuyAmount, "bad buy");
+        // Review Maybe exact equality is too much to ask"
+        if (sellToken.getBalance() - initialSellBal != sellAmount) {
+            revert BadSell();
+        }
+        if (buyToken.getBalance() - initialBuyBal < minBuyAmount) {
+            revert BadBuy();
+        }
         sellToken.safeApprove(address(config.exchange), 0);
     }
 
@@ -551,7 +598,9 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     function _mint(address recipient, uint256 amount) internal override {
         super._mint(recipient, amount);
-        require(totalSupply() < config.maxSupply, "Max supply exceeded");
+        if (totalSupply() >= config.maxSupply) {
+            revert MaxSupplyExceeded();
+        }
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
