@@ -28,14 +28,48 @@ describe("RTokenDeployer contract", function () {
     describe("Creating RTokens", function () {
         beforeEach(async function () {
             // RToken Configuration and setup
-            config = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
-            basketTokens = [[ZERO_ADDRESS, 0, 1, 1, 0, 0]];
+            config = {
+                stakingDepositDelay: 0,
+                stakingWithdrawalDelay: 0,
+                maxSupply: 0,
+                minMintingSize: 0,
+                issuanceRate: 0,
+                tradingFreezeCost: 0,
+                insurancePaymentPeriod: 0,
+                supplyExpansionRate: 0,
+                expenditureFactor: 0,
+                spread: 0,
+                exchange: ZERO_ADDRESS,
+                circuitBreaker: ZERO_ADDRESS,
+                txFeeCalculator: ZERO_ADDRESS,
+                insurancePool: ZERO_ADDRESS,
+                protocolFund: ZERO_ADDRESS
+            };
+
+            basketTokens = [
+                {
+                    tokenAddress: ZERO_ADDRESS,
+                    genesisQuantity: 0,
+                    rateLimit: 1,
+                    maxTrade: 1,
+                    priceInRToken: 0,
+                    slippageTolerance: 0
+                }
+            ];
+
             // RSR (Insurance token)
             PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock");
             NewRSR = await ethers.getContractFactory("RSR");
             prevRSRToken = await PrevRSR.deploy("Reserve Rights", "RSR");
             rsrToken = await NewRSR.connect(owner).deploy(prevRSRToken.address, ZERO_ADDRESS, ZERO_ADDRESS);
-            rsrTokenInfo = [rsrToken.address, 0, 1, 1, 0, 0];
+            rsrTokenInfo = {
+                tokenAddress: rsrToken.address,
+                genesisQuantity: 0,
+                rateLimit: 1,
+                maxTrade: 1,
+                priceInRToken: 0,
+                slippageTolerance: 0
+            };
 
             // Create a new RToken
             receipt = await (await factory.deploy(newOwner.address, 'RToken Test', 'RTKN', config, basketTokens, rsrTokenInfo)).wait();
@@ -76,14 +110,48 @@ describe("RTokenDeployer contract", function () {
     describe("Upgradeability", function () {
         beforeEach(async function () {
             // RToken Configuration and setup
-            config = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
-            basketTokens = [[ZERO_ADDRESS, 0, 1, 1, 0, 0]];
+            config = {
+                stakingDepositDelay: 0,
+                stakingWithdrawalDelay: 0,
+                maxSupply: 0,
+                minMintingSize: 0,
+                issuanceRate: 0,
+                tradingFreezeCost: 0,
+                insurancePaymentPeriod: 0,
+                supplyExpansionRate: 0,
+                expenditureFactor: 0,
+                spread: 0,
+                exchange: ZERO_ADDRESS,
+                circuitBreaker: ZERO_ADDRESS,
+                txFeeCalculator: ZERO_ADDRESS,
+                insurancePool: ZERO_ADDRESS,
+                protocolFund: ZERO_ADDRESS
+            };
+
+            basketTokens = [
+                {
+                    tokenAddress: ZERO_ADDRESS,
+                    genesisQuantity: 0,
+                    rateLimit: 1,
+                    maxTrade: 1,
+                    priceInRToken: 0,
+                    slippageTolerance: 0
+                }
+            ];
+
             // RSR (Insurance token)
             PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock");
             NewRSR = await ethers.getContractFactory("RSR");
             prevRSRToken = await PrevRSR.deploy("Reserve Rights", "RSR");
             rsrToken = await NewRSR.connect(owner).deploy(prevRSRToken.address, ZERO_ADDRESS, ZERO_ADDRESS);
-            rsrTokenInfo = [rsrToken.address, 0, 1, 1, 0, 0];
+            rsrTokenInfo = {
+                tokenAddress: rsrToken.address,
+                genesisQuantity: 0,
+                rateLimit: 1,
+                maxTrade: 1,
+                priceInRToken: 0,
+                slippageTolerance: 0
+            };
 
             // Create a new RToken
             receipt = await (await factory.deploy(newOwner.address, 'RToken Test', 'RTKN', config, basketTokens, rsrTokenInfo)).wait();

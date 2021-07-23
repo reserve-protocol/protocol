@@ -17,9 +17,44 @@ describe("InsurancePool contract", function () {
 
         // Deploy RToken
         const maxSupply = BigNumber.from(5000000);
-        config = [0, 0, maxSupply, 0, 0, 0, 0, 0, 0, 0, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
-        basketTokens = [[ZERO_ADDRESS, 0, 1, 1, 0, 0]];
-        rsrTokenInfo = [rsrToken.address, 0, 1, 1, 0, 0];
+        config = {
+            stakingDepositDelay: 0,
+            stakingWithdrawalDelay: 0,
+            maxSupply: maxSupply,
+            minMintingSize: 0,
+            issuanceRate: 0,
+            tradingFreezeCost: 0,
+            insurancePaymentPeriod: 0,
+            supplyExpansionRate: 0,
+            expenditureFactor: 0,
+            spread: 0,
+            exchange: ZERO_ADDRESS,
+            circuitBreaker: ZERO_ADDRESS,
+            txFeeCalculator: ZERO_ADDRESS,
+            insurancePool: ZERO_ADDRESS,
+            protocolFund: ZERO_ADDRESS
+        };
+
+        basketTokens = [
+            {
+                tokenAddress: ZERO_ADDRESS,
+                genesisQuantity: 0,
+                rateLimit: 1,
+                maxTrade: 1,
+                priceInRToken: 0,
+                slippageTolerance: 0
+            }
+        ];
+
+        // Set RSR token info
+        rsrTokenInfo = {
+            tokenAddress: rsrToken.address,
+            genesisQuantity: 0,
+            rateLimit: 1,
+            maxTrade: 1,
+            priceInRToken: 0,
+            slippageTolerance: 0
+        };
         RToken = await ethers.getContractFactory("RTokenMock");
         rToken = await RToken.connect(owner).deploy();
         await rToken.connect(owner).initialize("RToken", "RTKN", config, basketTokens, rsrTokenInfo);
@@ -31,7 +66,7 @@ describe("InsurancePool contract", function () {
 
         // Update config to include InsurancePool address
         newConfig = config;
-        newConfig[13] = iPool.address;
+        newConfig.insurancePool = iPool.address;
         await rToken.connect(owner).updateConfig(newConfig);
     });
 
@@ -149,7 +184,7 @@ describe("InsurancePool contract", function () {
                 // Set stakingDepositDelay
                 stakingDepositDelay = 20000;
                 newConfig = config;
-                newConfig[0] = stakingDepositDelay;
+                newConfig.stakingDepositDelay = stakingDepositDelay;
                 await rToken.connect(owner).updateConfig(newConfig);
 
                 // Perform stake
@@ -410,7 +445,7 @@ describe("InsurancePool contract", function () {
                 // Set stakingDepositDelay and stakingWithdrawalDelay
                 stakingWithdrawalDelay = 20000;
                 newConfig = config;
-                newConfig[1] = stakingWithdrawalDelay;
+                newConfig.stakingWithdrawalDelay = stakingWithdrawalDelay;
                 await rToken.connect(owner).updateConfig(newConfig);
 
                 // Perform stake

@@ -18,14 +18,48 @@ describe("RToken contract", function () {
         cb = await CircuitBreaker.deploy(owner.address);
 
         // RToken Configuration and setup
-        config = [stakingDepositDelay, stakingWithdrawalDelay, maxSupply, 0, issuanceRate, 0, 0, 0, 0, 0, ZERO_ADDRESS, cb.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
-        basketTokens = [[ZERO_ADDRESS, 0, 1, 1, 0, 0]];
+        config = {
+            stakingDepositDelay: stakingDepositDelay,
+            stakingWithdrawalDelay: stakingWithdrawalDelay,
+            maxSupply: maxSupply,
+            minMintingSize: 0,
+            issuanceRate: issuanceRate,
+            tradingFreezeCost: 0,
+            insurancePaymentPeriod: 0,
+            supplyExpansionRate: 0,
+            expenditureFactor: 0,
+            spread: 0,
+            exchange: ZERO_ADDRESS,
+            circuitBreaker: cb.address,
+            txFeeCalculator: ZERO_ADDRESS,
+            insurancePool: ZERO_ADDRESS,
+            protocolFund: ZERO_ADDRESS
+        };
+
+        basketTokens = [
+            {
+                tokenAddress: ZERO_ADDRESS,
+                genesisQuantity: 0,
+                rateLimit: 1,
+                maxTrade: 1,
+                priceInRToken: 0,
+                slippageTolerance: 0
+            } 
+         ];
         // RSR (Insurance token)
         PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock");
         NewRSR = await ethers.getContractFactory("RSR");
         prevRSRToken = await PrevRSR.deploy("Reserve Rights", "RSR");
         rsrToken = await NewRSR.connect(owner).deploy(prevRSRToken.address, ZERO_ADDRESS, ZERO_ADDRESS);
-        rsrTokenInfo = [rsrToken.address, 0, 1, 1, 0, 0];
+        // Set RSR token info
+        rsrTokenInfo = {
+            tokenAddress: rsrToken.address,
+            genesisQuantity: 0,
+            rateLimit: 1,
+            maxTrade: 1,
+            priceInRToken: 0,
+            slippageTolerance: 0
+        };
 
         // Deploy RToken
         RToken = await ethers.getContractFactory("RTokenMock");
@@ -62,7 +96,7 @@ describe("RToken contract", function () {
                 expect(await rToken.stakingDepositDelay()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[0] = newValue;
+                newConfig.stakingDepositDelay = newValue;
                 await expect(rToken.connect(owner).updateConfig(newConfig))
                     .to.emit(rToken, "ConfigUpdated");
 
@@ -73,7 +107,7 @@ describe("RToken contract", function () {
                 expect(await rToken.stakingDepositDelay()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[0] = newValue;
+                newConfig.stakingDepositDelay = newValue;
                 await expect(
                     rToken.connect(addr1).updateConfig(newConfig)
                 ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -93,7 +127,7 @@ describe("RToken contract", function () {
                 expect(await rToken.stakingWithdrawalDelay()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[1] = newValue;
+                newConfig.stakingWithdrawalDelay = newValue;
                 await expect(rToken.connect(owner).updateConfig(newConfig))
                     .to.emit(rToken, "ConfigUpdated");
 
@@ -104,7 +138,7 @@ describe("RToken contract", function () {
                 expect(await rToken.stakingWithdrawalDelay()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[1] = newValue;
+                newConfig.stakingWithdrawalDelay = newValue;
                 await expect(
                     rToken.connect(addr1).updateConfig(newConfig)
                 ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -124,7 +158,7 @@ describe("RToken contract", function () {
                 expect(await rToken.maxSupply()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[2] = newValue;
+                newConfig.maxSupply = newValue;
                 await expect(rToken.connect(owner).updateConfig(newConfig))
                     .to.emit(rToken, "ConfigUpdated");
 
@@ -135,7 +169,7 @@ describe("RToken contract", function () {
                 expect(await rToken.maxSupply()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[2] = newValue;
+                newConfig.maxSupply = newValue;
                 await expect(
                     rToken.connect(addr1).updateConfig(newConfig)
                 ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -155,7 +189,7 @@ describe("RToken contract", function () {
                 expect(await rToken.issuanceRate()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[4] = newValue;
+                newConfig.issuanceRate = newValue;
                 await expect(rToken.connect(owner).updateConfig(newConfig))
                     .to.emit(rToken, "ConfigUpdated");
 
@@ -166,7 +200,7 @@ describe("RToken contract", function () {
                 expect(await rToken.issuanceRate()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[8] = newValue;
+                newConfig.issuanceRate = newValue;
                 await expect(
                     rToken.connect(addr1).updateConfig(newConfig)
                 ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -187,7 +221,7 @@ describe("RToken contract", function () {
                 expect(await rToken.circuitBreaker()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[11] = newValue;
+                newConfig.circuitBreaker = newValue;
                 await expect(rToken.connect(owner).updateConfig(newConfig))
                     .to.emit(rToken, "ConfigUpdated");
 
@@ -198,7 +232,7 @@ describe("RToken contract", function () {
                 expect(await rToken.circuitBreaker()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[11] = newValue;
+                newConfig.circuitBreaker = newValue;
                 await expect(
                     rToken.connect(addr1).updateConfig(newConfig)
                 ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -220,7 +254,7 @@ describe("RToken contract", function () {
                 expect(await rToken.txFeeCalculator()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[12] = newValue;
+                newConfig.txFeeCalculator = newValue;
                 await expect(rToken.connect(owner).updateConfig(newConfig))
                     .to.emit(rToken, "ConfigUpdated");
 
@@ -231,7 +265,7 @@ describe("RToken contract", function () {
                 expect(await rToken.txFeeCalculator()).to.equal(currentValue);
 
                 // Update individual field
-                newConfig[12] = newValue;
+                newConfig.txFeeCalculator = newValue;
                 await expect(
                     rToken.connect(addr1).updateConfig(newConfig)
                 ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -564,7 +598,7 @@ describe("RToken contract", function () {
             TxFeeCalculator = await ethers.getContractFactory("TXFeeCalculatorMock");
             txFeeCalc = await TxFeeCalculator.deploy();
             newTxFeeConfig = config;
-            newTxFeeConfig[12] = txFeeCalc.address;
+            newTxFeeConfig.txFeeCalculator = txFeeCalc.address;
         });
 
         it("Should not apply fees by default", async function () {

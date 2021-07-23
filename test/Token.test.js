@@ -10,7 +10,14 @@ describe("Token library", function () {
         token = await ERC20.deploy("Token", "TKN");
 
         // Set token info
-        innerTokenInfo = [token.address, 1, 0, 0, 0, 0, 0];
+        innerTokenInfo = {
+            tokenAddress: token.address,
+            genesisQuantity: 0,
+            rateLimit: 1,
+            maxTrade: 1,
+            priceInRToken: 0,
+            slippageTolerance: 0
+        };
 
         // ERC20 Token
         TokenCaller = await ethers.getContractFactory("TokenCallerMock");
