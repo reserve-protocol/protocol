@@ -25,7 +25,7 @@ describe("InsurancePool contract", function () {
             issuanceRate: 0,
             tradingFreezeCost: 0,
             insurancePaymentPeriod: 0,
-            expansionRatePerSecond: 0,
+            expansionPerSecond: 0,
             expenditureFactor: 0,
             spread: 0,
             exchange: ZERO_ADDRESS,

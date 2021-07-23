@@ -62,7 +62,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         uint256 insurancePaymentPeriod;
         /// RToken per-second supply-expansion rate
         /// e.g. 3% annually => 0.0000000936681155% per-second => 0.000000000936681155 * 1e18 => 936681155
-        uint256 expansionRatePerSecond;
+        uint256 expansionPerSecond;
         /// Protocol expenditure factor
         /// e.g. 1e16 => 1% of the RToken supply expansion goes to protocol fund
         uint256 expenditureFactor;
@@ -328,7 +328,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         /// Discrete compounding on a per-second basis
         basket.inflationSinceGenesis = ABDKMath64x64.compound(
             SCALE, 
-            config.expansionRatePerSecond, 
+            config.expansionPerSecond, 
             block.timestamp - _deployedAt
         );
     }
@@ -350,7 +350,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     function _checkConfig(Config memory c) internal view {
-        if (c.expansionRatePerSecond > SCALE) {
+        if (c.expansionPerSecond > SCALE) {
             revert SupplyExpansionTooLarge();
         }
 
@@ -411,7 +411,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         /// Discrete compounding on a per-second basis
         uint256 amount = totalSupply() * SCALE / ABDKMath64x64.compound(
             SCALE, 
-            config.expansionRatePerSecond, 
+            config.expansionPerSecond, 
             block.timestamp - _lastExpansion
         );
         _lastExpansion = block.timestamp;
