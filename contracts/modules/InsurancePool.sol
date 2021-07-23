@@ -37,6 +37,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     // Event log pattern
     RevenueEvent[] public revenues;
     mapping(address => uint256) public override lastIndex;
+    mapping(address => uint256) public override lastWeight; // last weight at last account catchup
     mapping(address => uint256) public override earned;
 
     // ==== Deposit and Withdrawal Queues ====
@@ -131,13 +132,16 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _catchup(address account, uint256 numToProcess) internal {
-        uint256 limit = MathUpgradeable.min(lastIndex[account] + numToProcess, revenues.length);
-        if (address(account) != address(0) && weight[account] > 0) {
-            for (uint256 i = lastIndex[account]; i < limit; i++) {
-                earned[account] += (revenues[i].amount * weight[account]) / revenues[i].totalWeight;
+        if (address(account) != address(0)) {
+            uint256 limit = MathUpgradeable.min(lastIndex[account] + numToProcess, revenues.length);
+            if (lastWeight[account] > 0) {
+                for (uint256 i = lastIndex[account]; i < limit; i++) {
+                    earned[account] += (revenues[i].amount * lastWeight[account]) / revenues[i].totalWeight;
+                }
             }
+            lastIndex[account] = limit;
+            lastWeight[account] = weight[account];
         }
-        lastIndex[account] = limit;
 
         _processWithdrawals();
         _processDeposits();
