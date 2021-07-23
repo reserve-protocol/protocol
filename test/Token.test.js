@@ -12,9 +12,9 @@ describe("Token library", function () {
         // Set token info
         innerTokenInfo = {
             tokenAddress: token.address,
-            genesisQuantity: 1,
+            genesisQuantity: 0,
             rateLimit: 1,
-            maxTrade: 0,
+            maxTrade: 1,
             priceInRToken: 0,
             slippageTolerance: 0
         };
