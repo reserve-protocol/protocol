@@ -131,14 +131,13 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _catchup(address account, uint256 numToProcess) internal {
+        uint256 limit = MathUpgradeable.min(lastIndex[account] + numToProcess, revenues.length);
         if (address(account) != address(0) && weight[account] > 0) {
-            uint256 limit = MathUpgradeable.min(lastIndex[account] + numToProcess, revenues.length);
             for (uint256 i = lastIndex[account]; i < limit; i++) {
                 earned[account] += (revenues[i].amount * weight[account]) / revenues[i].totalWeight;
             }
-
-            lastIndex[account] = limit;
         }
+        lastIndex[account] = limit;
 
         _processWithdrawals();
         _processDeposits();
