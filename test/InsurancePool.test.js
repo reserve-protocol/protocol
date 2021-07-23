@@ -57,13 +57,13 @@ describe("InsurancePool contract", function () {
         };
 
         // External math library
-        ABDKMath = await ethers.getContractFactory("ABDKMath64x64");
-        math = await ABDKMath.deploy();
+        CompoundMath = await ethers.getContractFactory("CompoundMath");
+        math = await CompoundMath.deploy();
 
         // Deploy RToken and InsurancePool implementations
         RToken = await ethers.getContractFactory("RTokenMock", {
             libraries: {
-                ABDKMath64x64: math.address,
+                CompoundMath: math.address,
             }
         });
         rToken = await RToken.connect(owner).deploy();

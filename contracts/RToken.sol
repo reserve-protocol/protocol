@@ -7,8 +7,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
-import "./libraries/ABDKMath64x64.sol";
 import "./libraries/Basket.sol";
+import "./libraries/CompoundMath.sol";
 import "./libraries/Token.sol";
 import "./interfaces/ITXFee.sol";
 import "./interfaces/IRToken.sol";
@@ -326,7 +326,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Sets the adjusted basket quantities for the current block
     function _decayBasket() internal {
         /// Discrete compounding on a per-second basis
-        basket.inflationSinceGenesis = ABDKMath64x64.compound(
+        basket.inflationSinceGenesis = CompoundMath.compound(
             SCALE, 
             config.expansionPerSecond, 
             block.timestamp - _deployedAt
@@ -409,7 +409,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// the insurance pool.
     function _expandSupply() internal {
         /// Discrete compounding on a per-second basis
-        uint256 amount = totalSupply() * SCALE / ABDKMath64x64.compound(
+        uint256 amount = totalSupply() * SCALE / CompoundMath.compound(
             SCALE, 
             config.expansionPerSecond, 
             block.timestamp - _lastExpansion

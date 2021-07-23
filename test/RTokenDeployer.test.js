@@ -6,13 +6,13 @@ describe("RTokenDeployer contract", function () {
     beforeEach(async function () {
         [owner, newOwner, other] = await ethers.getSigners();
 
-        ABDKMath = await ethers.getContractFactory("ABDKMath64x64");
-        math = await ABDKMath.deploy();
+        CompoundMath = await ethers.getContractFactory("CompoundMath");
+        math = await CompoundMath.deploy();
 
         // Deploy RToken and InsurancePool implementations
         RToken = await ethers.getContractFactory("RTokenMock", {
             libraries: {
-                ABDKMath64x64: math.address,
+                CompoundMath: math.address,
             }
         });
         rTokenImplementation = await RToken.connect(owner).deploy();
@@ -86,7 +86,7 @@ describe("RTokenDeployer contract", function () {
         it("Should deploy RToken and Insurance Pool correctly", async function () {
             const RToken = await ethers.getContractFactory('RToken', {
                 libraries: {
-                    ABDKMath64x64: math.address,
+                    CompoundMath: math.address,
                 }
             });
             const rTokenInstance = await RToken.attach(tokenAddress);
@@ -106,7 +106,7 @@ describe("RTokenDeployer contract", function () {
         it("Should setup owner for RToken correctly", async function () {
             const RToken = await ethers.getContractFactory('RToken', {
                 libraries: {
-                    ABDKMath64x64: math.address,
+                    CompoundMath: math.address,
                 }
             });
             const rTokenInstance = await RToken.attach(tokenAddress);
@@ -175,7 +175,7 @@ describe("RTokenDeployer contract", function () {
             // Get RToken
             RToken = await ethers.getContractFactory('RToken', {
                 libraries: {
-                    ABDKMath64x64: math.address,
+                    CompoundMath: math.address,
                 }
             });
             rTokenInstance = await RToken.attach(tokenAddress);
@@ -190,7 +190,7 @@ describe("RTokenDeployer contract", function () {
                 // Deploy new RToken Implementation
                 RTokenV2 = await ethers.getContractFactory("RTokenMockV2", {
                     libraries: {
-                        ABDKMath64x64: math.address,
+                        CompoundMath: math.address,
                     }
                 });
                 rTokenV2Implementation = await RTokenV2.connect(owner).deploy();
@@ -209,7 +209,7 @@ describe("RTokenDeployer contract", function () {
                 // Deploy new RToken Implementation
                 RTokenV2 = await ethers.getContractFactory("RTokenMockV2", {
                     libraries: {
-                        ABDKMath64x64: math.address,
+                        CompoundMath: math.address,
                     }
                 });
                 rTokenV2Implementation = await RTokenV2.connect(owner).deploy();

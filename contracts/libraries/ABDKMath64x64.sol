@@ -27,21 +27,6 @@ library ABDKMath64x64 {
   int128 private constant MAX_64x64 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
   /**
-   * ADDED - Not part of the original code
-   * Compounds (scale + compoundRate) / scale over timedelta periods.
-   * Returns a uint256 relative to scale.
-   *
-   * @param scale unsigned 256-bit integer number
-   * @param compoundRate unsigned 256-bit integer number
-   * @param timedelta unsigned 256-bit integer number
-   * @return unsigned 256-bit integer number
-   */
-  function compound(uint256 scale, uint256 compoundRate, uint256 timedelta) external pure returns (uint256) {
-    return mulu(pow(divu(scale + compoundRate, scale), timedelta), scale);
-  }
-
-
-  /**
    * Convert unsigned 256-bit integer number into signed 64.64-bit fixed point
    * number.  Revert on overflow.
    *
