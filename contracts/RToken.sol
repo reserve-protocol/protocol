@@ -420,7 +420,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
         // Mint to protocol fund
         if (config.expenditureFactor > 0) {
-            uint256 e = (amount * MathUpgradeable.min(SCALE, config.expenditureFactor)) / SCALE;
+            uint256 e = (amount * config.expenditureFactor) / SCALE;
             _mint(address(config.protocolFund), e);
         }
 
