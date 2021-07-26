@@ -441,7 +441,7 @@ describe("InsurancePool contract", function () {
 
         context("With deposits and withdrawals", async function () {
             beforeEach(async function () {
-                // Set stakingDepositDelay and stakingDelay
+                // Set stakingDelay
                 stakingDelay = 20000;
                 newConfig = config;
                 newConfig.stakingDelay = stakingDelay;
@@ -470,6 +470,7 @@ describe("InsurancePool contract", function () {
                     .withArgs(addr2.address, amount3);
 
                 // Process deposits
+                await advanceTime(stakingDelay + 1);
                 await iPool.processDeposits();
 
                 // Create Withdrawal
