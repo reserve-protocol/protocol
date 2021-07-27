@@ -9,7 +9,7 @@ contract InsurancePoolMock is InsurancePool {
     }
 
     function processDeposits() external {
-        _processDeposits(rToken.stakingDelay());
+        _processDeposits();
     }
 
     function withdrawalsCount() external view returns (uint256) {
@@ -17,10 +17,20 @@ contract InsurancePoolMock is InsurancePool {
     }
 
     function processWithdrawals() external {
-        _processWithdrawals(rToken.stakingDelay());
+        _processWithdrawals();
     }
 
     function revenuesCount() external view returns (uint256) {
         return revenues.length;
+    }
+
+    // function weightsAdjustments(address account, uint256 index) external view returns (uint256, bool) {
+    //     WeightAdjustment memory _adj = _weightsAdjustments[account][index];
+    //     return (_adj.amount, _adj.updated);
+    // }
+
+    function weightsAdjustments(address account, uint256 index) external view returns (uint256, bool) {
+        WeightAdjustment memory _adj = _weightsAdjustments[account][index];
+        return  (_adj.amount, _adj.updated);
     }
 }

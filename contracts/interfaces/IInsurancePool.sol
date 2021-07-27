@@ -6,8 +6,6 @@ interface IInsurancePool {
 
     function earned(address account) external view returns (uint256);
 
-    function lastTimestamp(address account) external view returns (uint256);
-
     function lastIndex(address account) external view returns (uint256);
 
     function lastWeight(address account) external view returns (uint256);
@@ -40,4 +38,5 @@ interface IInsurancePool {
     event WithdrawalCompleted(address indexed user, uint256 amount);
     event RevenueClaimed(address indexed user, uint256 reward);
     event RevenueEventSaved(uint256 index, uint256 amount);
+    event PendingUpdate(address indexed user);
 }
