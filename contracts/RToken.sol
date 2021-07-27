@@ -169,6 +169,9 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     /// Callable by anyone, runs the block updates
+    ///
+    /// The state of the system at time `t` should be independent from the 
+    /// frequency with which `act` has been called in the past.
     function act() external override everyBlock {
         return;
     }
