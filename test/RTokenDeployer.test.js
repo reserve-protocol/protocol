@@ -29,7 +29,8 @@ describe("RTokenDeployer contract", function () {
         beforeEach(async function () {
             // RToken Configuration and setup
             config = {
-                stakingDelay: 0,
+                stakingDepositDelay: 0,
+                stakingWithdrawalDelay: 0,
                 maxSupply: 0,
                 minMintingSize: 0,
                 issuanceRate: 0,
@@ -110,7 +111,8 @@ describe("RTokenDeployer contract", function () {
         beforeEach(async function () {
             // RToken Configuration and setup
             config = {
-                stakingDelay: 0,
+                stakingDepositDelay: 0,
+                stakingWithdrawalDelay: 0,
                 maxSupply: 0,
                 minMintingSize: 0,
                 issuanceRate: 0,
