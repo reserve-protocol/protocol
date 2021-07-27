@@ -135,18 +135,21 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _;
     }
 
-    /// These sub-functions should all be idempotent within a block
+    /// This modifier is run before every issuance, redemption, and act. 
+    /// It should not run expensive calculations. 
+    /// It should be idempotent within a block. 
     modifier everyBlock() {
-        // decrease basket quantities based on blocknumber
-        _decayBasket();
+        _decayBasket(); // straightforward function of block timestamp
+        _expandSupply(); // repeated calls will halt early
+        _;
+    }
 
-        // SlowMintingERC20 update step
+
+    /// Anyone can execute this modifier at anytime by calling act. 
+    /// The expectation is that it is called by arbitrageurs. We can ask them to pay the gas
+    /// for other important RToken operations, such as settling mintings and rebalance trading. 
+    modifier scaryStuff() {
         _tryProcessMintings();
-
-        // expand supply
-        _expandSupply();
-
-        // trade out collateral for other collateral or insurance RSR
         _rebalance();
         _;
     }
@@ -172,7 +175,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     ///
     /// The state of the system at time `t` should be independent from the 
     /// frequency with which `act` has been called in the past.
-    function act() external override everyBlock {
+    function act() external override everyBlock scaryStuff {
         return;
     }
 
@@ -366,6 +369,44 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
     }
 
+
+    /// Expands the RToken supply and gives the new mintings to the protocol fund and
+    /// the insurance pool.
+    function _expandSupply() internal {
+        /// Discrete compounding on a per-second basis
+        uint256 amount = totalSupply() * SCALE / CompoundMath.compound(
+            SCALE, 
+            config.expansionPerSecond, 
+            block.timestamp - _lastExpansion
+        );
+        _lastExpansion = block.timestamp;
+        if (amount == 0) {
+            return;
+        }
+
+        // Mint to protocol fund
+        if (config.expenditureFactor > 0) {
+            uint256 e = (amount * config.expenditureFactor) / SCALE;
+            _mint(address(config.protocolFund), e);
+        }
+
+        // Mint to self
+        if (config.expenditureFactor < SCALE) {
+            uint256 p = (amount * (SCALE - config.expenditureFactor)) / SCALE;
+            _mint(address(this), p);
+        }
+    }
+
+    /// Batches revenue payments from self to insurance pool periodically. 
+    function _sweepRevenue() internal {
+        if (_lastInsurancePayment + config.insurancePaymentPeriod < block.timestamp) {
+            uint256 bal = balanceOf(address(this));
+            _approve(address(this), address(config.insurancePool), bal);
+            config.insurancePool.makeInsurancePayment(bal);
+            _lastInsurancePayment = block.timestamp;
+        }
+    }
+
     /// Tries to process up to a fixed number of mintings. Called before most actions.
     function _tryProcessMintings() internal {
         if (!config.circuitBreaker.paused()) {
@@ -405,41 +446,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             if (currentMinting > start) {
                 _lastBlock = block.number;
             }
-        }
-    }
-
-    /// Expands the RToken supply and gives the new mintings to the protocol fund and
-    /// the insurance pool.
-    function _expandSupply() internal {
-        /// Discrete compounding on a per-second basis
-        uint256 amount = totalSupply() * SCALE / CompoundMath.compound(
-            SCALE, 
-            config.expansionPerSecond, 
-            block.timestamp - _lastExpansion
-        );
-        _lastExpansion = block.timestamp;
-        if (amount == 0) {
-            return;
-        }
-
-        // Mint to protocol fund
-        if (config.expenditureFactor > 0) {
-            uint256 e = (amount * config.expenditureFactor) / SCALE;
-            _mint(address(config.protocolFund), e);
-        }
-
-        // Mint to self
-        if (config.expenditureFactor < SCALE) {
-            uint256 p = (amount * (SCALE - config.expenditureFactor)) / SCALE;
-            _mint(address(this), p);
-        }
-
-        // Batch transfers from self to InsurancePool
-        if (_lastInsurancePayment + config.insurancePaymentPeriod < block.timestamp) {
-            uint256 bal = balanceOf(address(this));
-            _approve(address(this), address(config.insurancePool), bal);
-            config.insurancePool.makeInsurancePayment(bal);
-            _lastInsurancePayment = block.timestamp;
         }
     }
 
