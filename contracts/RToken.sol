@@ -54,9 +54,9 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         /// RToken issuance blocklimit
         /// e.g. 25_000e18 => 25_000e18 (atto)RToken can be issued per block
         uint256 issuanceRate;
-        /// Cost of freezing trading (in RSR)
+        /// Cost of freezing rebalancing (in RSR)
         /// e.g. 100_000_000e18 => 100M RSR
-        uint256 tradingFreezeCost;
+        uint256 rebalancingFreezeCost;
         /// Percentage rates are relative to 1e18, the constant SCALE variable set in RToken.
 
         /// Frequency with which RToken sweeps supply expansion revenue into the insurance pool (s)
@@ -96,7 +96,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     address public freezer;
 
-    /// Private
+    /// Private data for last timestamps and blocks
     uint256 private _deployedAt;
     uint256 private _lastExpansion;
     uint256 private _lastInsurancePayment;
@@ -134,8 +134,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     modifier canTrade() {
-        if (tradingFrozen()) {
-            revert TradingIsFrozen();
+        if (rebalancingFrozen()) {
+            revert RebalancingIsFrozen();
         }
         _;
     }
@@ -151,14 +151,14 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// ========================= External =============================
 
-    /// Configuration changes, only callable by Owner.
+    /// Updates the configuration, only callable by owner.
     function updateConfig(Config memory newConfig) external override onlyOwner {
         _checkConfig(newConfig);
         emit ConfigUpdated();
         config = newConfig;
     }
 
-    /// Basket changes, only callable by Owner.
+    /// Updates the basket, only callable by owner.
     function updateBasket(Token.Info[] memory newTokens) external override onlyOwner {
         _checkNewBasket(newTokens);
         emit BasketUpdated(basket.size, uint16(newTokens.length));
@@ -166,17 +166,33 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         basket.inflationSinceGenesis = SCALE;
     }
 
+    /// Updates priceInRToken for the token at index i, only callable by owner.
+    function setBasketTokenPriceInRToken(uint16 i, uint256 priceInRToken)
+        external
+        override
+        onlyOwner
+    {
+        basket.tokens[i].priceInRToken = priceInRToken;
+    }
+
+    /// Updates priceInRToken for the RSR token, only callable by owner.
+    function setRSRPriceInRToken(uint256 priceInRToken) external override onlyOwner {
+        rsrToken.priceInRToken = priceInRToken;
+    }
+
+
     /// Callable by anyone, runs the block updates and then a bunch of expensive operations.
     /// The expectation is that it is called by arbitrageurs who can be asked to pay the gas
-    /// for other important RToken operations such as settling mintings and rebalance trading. 
+    /// for other important RToken operations such as settling mintings and rebalance rebalancing. 
     function act() external override everyBlock {
         _trySweepRevenue();
         _tryProcessMintings();
         _rebalance();
     }
 
-    /// Handles issuance.
-    /// Requires approvals to be in place beforehand.
+    /// Anyone can call this function to issue RToken to themselves. 
+    /// The approvals for the collateral tokens must be made in advance. 
+    /// Mintings are slow and take time to setle. 
     function issue(uint256 amount) external override everyBlock {
         if (config.circuitBreaker.paused()) {
             revert CircuitPaused();
@@ -199,7 +215,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _startSlowMinting(_msgSender(), amount);
     }
 
-    /// Handles redemption.
+
+    /// Anyone can call this function to immediately redeem RToken for collateral tokens. 
     function redeem(uint256 amount) external override everyBlock {
         if (amount == 0) {
             revert RedeemAmountCannotBeZero();
@@ -218,44 +235,34 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         emit Redemption(_msgSender(), amount);
     }
 
-    /// Trading freeze
-    function freezeTrading() external override {
-        if (tradingFrozen()) {
-            rsrToken.safeTransfer(freezer, config.tradingFreezeCost);
+    /// Freezes rebalancing by locking a large amount of RSR. 
+    /// Anyone can freeze rebalancing, even if it's already frozen. 
+    function freezeRebalancing() external override {
+        if (rebalancingFrozen()) {
+            rsrToken.safeTransfer(freezer, config.rebalancingFreezeCost);
         }
 
-        rsrToken.safeTransferFrom(_msgSender(), address(this), config.tradingFreezeCost);
+        rsrToken.safeTransferFrom(_msgSender(), address(this), config.rebalancingFreezeCost);
         freezer = _msgSender();
-        emit TradingFrozen(_msgSender());
+        emit RebalancingFrozen(_msgSender());
     }
 
-    /// Trading unfreeze
-    function unfreezeTrading() external override {
-        if (!tradingFrozen()) {
-            revert TradingAlreadyUnfrozen();
+    /// Unfreezes rebalancing. Only callable by the freezer. 
+    function unfreezeRebalancing() external override {
+        if (!rebalancingFrozen()) {
+            revert RebalancingAlreadyUnfrozen();
         }
 
         if (_msgSender() != freezer) {
             revert Unauthorized();
         }
 
-        rsrToken.safeTransfer(freezer, config.tradingFreezeCost);
+        rsrToken.safeTransfer(freezer, config.rebalancingFreezeCost);
         freezer = address(0);
-        emit TradingUnfrozen(_msgSender());
+        emit RebalancingUnfrozen(_msgSender());
     }
 
-    function setBasketTokenPriceInRToken(uint16 i, uint256 priceInRToken)
-        external
-        override
-        onlyOwner
-    {
-        basket.tokens[i].priceInRToken = priceInRToken;
-    }
-
-    function setRSRPriceInRToken(uint256 priceInRToken) external override onlyOwner {
-        rsrToken.priceInRToken = priceInRToken;
-    }
-
+    /// A light wrapper to prevent sends to contract address. 
     function transfer(address recipient, uint256 amount) public override returns (bool) {
         if (recipient == address(this)) {
             revert TransferToContractAddress();
@@ -264,6 +271,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         return super.transfer(recipient, amount);
     }
 
+    /// A light wrapper to prevent sends to contract address. 
     function transferFrom(
         address sender,
         address recipient,
@@ -277,14 +285,19 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// =========================== Views =================================
 
-    function tradingFrozen() public view override returns (bool) {
+    /// Returns whether rebalancing is currently frozen or not. 
+    function rebalancingFrozen() public view override returns (bool) {
         return freezer != address(0);
     }
 
+    /// Returns the quantities necessary to issue a quantity of RToken. 
+    /// Does not decay the basket quantities.
     function issueAmounts(uint256 amount) public view override returns (uint256[] memory amounts) {
         return basket.issueAmounts(amount, SCALE, config.spread, decimals());
     }
 
+    /// Returns the collateral token quantities given by a redemption of a quantity of RToken. 
+    /// Does not decay the basket quantities.
     function redemptionAmounts(uint256 amount)
         public
         view
@@ -294,18 +307,22 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         return basket.redemptionAmounts(amount, SCALE, decimals(), totalSupply());
     }
 
+    /// Getter for stakingDepositDelay
     function stakingDepositDelay() external view override returns (uint256) {
         return config.stakingDepositDelay;
     }
 
+    /// Getter for stakingWithdrawalDelay
     function stakingWithdrawalDelay() external view override returns (uint256) {
         return config.stakingWithdrawalDelay;
     }
 
+    /// Getter for insurance pool address
     function insurancePool() external view override returns (address) {
         return address(config.insurancePool);
     }
 
+    /// Getter for basket size
     function basketSize() external view override returns (uint16) {
         return basket.size;
     }
@@ -447,7 +464,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     function _rebalance() internal {
         uint256 numBlocks = block.number - _lastRebalanceBlock;
         _lastRebalanceBlock = block.number;
-        if (tradingFrozen() || numBlocks == 0) {
+        if (rebalancingFrozen() || numBlocks == 0) {
             return;
         }
 
@@ -545,7 +562,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         uint256 sellAmount,
         uint256 minBuyAmount
     ) internal {
-        // TODO: Try catch so that trading failures don't block issuance/redemption
+        // TODO: Try catch so that rebalancing failures don't block issuance/redemption
 
         uint256 initialSellBal = sellToken.getBalance();
         uint256 initialBuyBal = buyToken.getBalance();

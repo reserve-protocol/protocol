@@ -3,8 +3,8 @@
 pragma solidity 0.8.4;
 
 // RToken
-error TradingIsFrozen();
-error TradingAlreadyUnfrozen();
+error RebalancingIsFrozen();
+error RebalancingAlreadyUnfrozen();
 
 // Minting
 error MintingAmountTooLow();
@@ -30,7 +30,7 @@ error CircuitPaused();
 // Authorization
 error Unauthorized();
 
-// Transfer/Trading
+// Transfer/Rebalancing
 error TransferToContractAddress();
 error BadSell();
 error BadBuy();

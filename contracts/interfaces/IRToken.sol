@@ -22,10 +22,10 @@ interface IRToken {
     /// Handles redemption.
     function redeem(uint256 amount) external;
 
-    /// Global trading freeze, callable by anyone
-    function freezeTrading() external;
+    /// Global rebalancing freeze, callable by anyone
+    function freezeRebalancing() external;
 
-    function unfreezeTrading() external;
+    function unfreezeRebalancing() external;
 
     function setBasketTokenPriceInRToken(uint16 i, uint256 priceInRToken) external;
 
@@ -41,7 +41,7 @@ interface IRToken {
 
     function insurancePool() external view returns (address);
 
-    function tradingFrozen() external view returns (bool);
+    function rebalancingFrozen() external view returns (bool);
 
     /// Returns the amounts of collateral tokens required to issue `amount` quantity
     function issueAmounts(uint256 amount) external view returns (uint256[] memory);
@@ -60,6 +60,6 @@ interface IRToken {
     event SlowMintingInitiated(address account, uint256 amount);
     event SlowMintingComplete(address account, uint256 amount);
     event Redemption(address indexed redeemer, uint256 indexed amount);
-    event TradingFrozen(address indexed account);
-    event TradingUnfrozen(address indexed account);
+    event RebalancingFrozen(address indexed account);
+    event RebalancingUnfrozen(address indexed account);
 }
