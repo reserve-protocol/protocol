@@ -31,8 +31,8 @@ contract TokenCallerMock {
         innerToken.safeTransferFrom(from, to, amount);
     }
 
-    function getBalance() external view returns (uint256) {
-        return innerToken.getBalance();
+    function myBalance() external view returns (uint256) {
+        return innerToken.myBalance();
     }
 
     function getBalance(address account) external view returns (uint256) {

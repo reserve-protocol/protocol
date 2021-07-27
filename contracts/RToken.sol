@@ -498,8 +498,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
             // TODO: Maybe remove, turn into require, or leave if necessary.
             // Clean up any leftover RSR
-            if (rsrToken.getBalance() > 0) {
-                rsrToken.safeTransfer(address(config.insurancePool), rsrToken.getBalance());
+            if (rsrToken.myBalance() > 0) {
+                rsrToken.safeTransfer(address(config.insurancePool), rsrToken.myBalance());
             }
         } else if (surplusIndex >= 0) {
             // Sell as much excess collateral as possible for RSR.
@@ -545,7 +545,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         uint256 sell = MathUpgradeable.min(numBlocks * selling.rateLimit, selling.maxTrade);
         sell = MathUpgradeable.min(
             sell,
-            selling.getBalance() - (totalSupply * basket.weight(SCALE, sellingIndex)) / 10**decimals
+            selling.myBalance() - (totalSupply * basket.weight(SCALE, sellingIndex)) / 10**decimals
         );
 
         uint256 minBuy = (MathUpgradeable.min(buying.slippageTolerance, selling.slippageTolerance) *
@@ -561,8 +561,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         uint256 sellAmount,
         uint256 minBuyAmount
     ) internal {
-        uint256 initialSellBal = sellToken.getBalance();
-        uint256 initialBuyBal = buyToken.getBalance();
+        uint256 initialSellBal = sellToken.myBalance();
+        uint256 initialBuyBal = buyToken.myBalance();
         sellToken.safeApprove(address(config.exchange), sellAmount);
         config.exchange.tradeFixedSell(
             sellToken.tokenAddress,
@@ -572,10 +572,10 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         );
 
         // TODO: Maybe exact equality is too much to ask? Discover during tests. 
-        if (sellToken.getBalance() - initialSellBal != sellAmount) {
+        if (sellToken.myBalance() - initialSellBal != sellAmount) {
             revert BadSell();
         }
-        if (buyToken.getBalance() - initialBuyBal < minBuyAmount) {
+        if (buyToken.myBalance() - initialBuyBal < minBuyAmount) {
             revert BadBuy();
         }
         sellToken.safeApprove(address(config.exchange), 0);
