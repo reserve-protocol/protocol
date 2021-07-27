@@ -23,6 +23,7 @@ error MaxSupplyExceeded();
 error EmptyBasket();
 error BasketTooBig();
 error UninitializedTokens();
+error InvalidTokenIndex();
 
 // Circuit Breaker
 error CircuitPaused();

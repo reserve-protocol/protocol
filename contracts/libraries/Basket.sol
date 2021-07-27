@@ -2,6 +2,7 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "../helpers/ErrorMessages.sol";
 import "./Token.sol";
 
 /**
@@ -31,11 +32,13 @@ library Basket {
         uint256 scale,
         uint16 index
     ) internal view returns (uint256) {
-        require(index < self.size, "High index");
+        if (index >= self.size) {
+            revert InvalidTokenIndex();
+        }
         return (self.tokens[index].genesisQuantity * scale) / self.inflationSinceGenesis;
     }
 
-    /// The returned array will be in the same order as the current self.
+    /// Returns the collateral token quantities required to issue a given quantity of RToken.
     function issueAmounts(
         Basket.Info storage self,
         uint256 amount,
@@ -50,7 +53,7 @@ library Basket {
         }
     }
 
-    /// The returned array will be in the same order as the current self.
+    /// Returns the collateral token quantities that could be redeemed for a given quantity of RToken.
     function redemptionAmounts(
         Basket.Info storage self,
         uint256 amount,
