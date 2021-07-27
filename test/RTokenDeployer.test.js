@@ -6,8 +6,15 @@ describe("RTokenDeployer contract", function () {
     beforeEach(async function () {
         [owner, newOwner, other] = await ethers.getSigners();
 
+        CompoundMath = await ethers.getContractFactory("CompoundMath");
+        math = await CompoundMath.deploy();
+
         // Deploy RToken and InsurancePool implementations
-        RToken = await ethers.getContractFactory("RTokenMock");
+        RToken = await ethers.getContractFactory("RTokenMock", {
+            libraries: {
+                CompoundMath: math.address,
+            }
+        });
         rTokenImplementation = await RToken.connect(owner).deploy();
 
         InsurancePool = await ethers.getContractFactory("InsurancePoolMock");
@@ -36,7 +43,7 @@ describe("RTokenDeployer contract", function () {
                 issuanceRate: 0,
                 tradingFreezeCost: 0,
                 insurancePaymentPeriod: 0,
-                supplyExpansionRate: 0,
+                expansionPerSecond: 0,
                 expenditureFactor: 0,
                 spread: 0,
                 exchange: ZERO_ADDRESS,
@@ -77,7 +84,11 @@ describe("RTokenDeployer contract", function () {
         });
 
         it("Should deploy RToken and Insurance Pool correctly", async function () {
-            const RToken = await ethers.getContractFactory('RToken');
+            const RToken = await ethers.getContractFactory('RToken', {
+                libraries: {
+                    CompoundMath: math.address,
+                }
+            });
             const rTokenInstance = await RToken.attach(tokenAddress);
             expect(await rTokenInstance.name()).to.equal('RToken Test');
             expect(await rTokenInstance.symbol()).to.equal('RTKN');
@@ -93,7 +104,11 @@ describe("RTokenDeployer contract", function () {
         });
 
         it("Should setup owner for RToken correctly", async function () {
-            const RToken = await ethers.getContractFactory('RToken');
+            const RToken = await ethers.getContractFactory('RToken', {
+                libraries: {
+                    CompoundMath: math.address,
+                }
+            });
             const rTokenInstance = await RToken.attach(tokenAddress);
             expect(await rTokenInstance.owner()).to.equal(newOwner.address);
         });
@@ -118,7 +133,7 @@ describe("RTokenDeployer contract", function () {
                 issuanceRate: 0,
                 tradingFreezeCost: 0,
                 insurancePaymentPeriod: 0,
-                supplyExpansionRate: 0,
+                expansionPerSecond: 0,
                 expenditureFactor: 0,
                 spread: 0,
                 exchange: ZERO_ADDRESS,
@@ -158,7 +173,11 @@ describe("RTokenDeployer contract", function () {
             tokenAddress = (expectInReceipt(receipt, 'RTokenDeployed')).args.rToken;
 
             // Get RToken
-            RToken = await ethers.getContractFactory('RToken');
+            RToken = await ethers.getContractFactory('RToken', {
+                libraries: {
+                    CompoundMath: math.address,
+                }
+            });
             rTokenInstance = await RToken.attach(tokenAddress);
             // Get InsurancePool
             InsurancePool = await ethers.getContractFactory('InsurancePoolMock');
@@ -169,7 +188,11 @@ describe("RTokenDeployer contract", function () {
         describe("RToken Upgradeability", function () {
             it("Should allow upgrades to RToken if Owner", async function () {
                 // Deploy new RToken Implementation
-                RTokenV2 = await ethers.getContractFactory("RTokenMockV2");
+                RTokenV2 = await ethers.getContractFactory("RTokenMockV2", {
+                    libraries: {
+                        CompoundMath: math.address,
+                    }
+                });
                 rTokenV2Implementation = await RTokenV2.connect(owner).deploy();
 
                 // Update implementation
@@ -184,7 +207,11 @@ describe("RTokenDeployer contract", function () {
 
             it("Should not allow upgrades to RToken if not Owner", async function () {
                 // Deploy new RToken Implementation
-                RTokenV2 = await ethers.getContractFactory("RTokenMockV2");
+                RTokenV2 = await ethers.getContractFactory("RTokenMockV2", {
+                    libraries: {
+                        CompoundMath: math.address,
+                    }
+                });
                 rTokenV2Implementation = await RTokenV2.connect(owner).deploy();
 
                 // Try to update implementation

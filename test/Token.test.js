@@ -91,10 +91,10 @@ describe("Token library", function () {
     // describe("Adjust Quantities", function () {
     //     it("Should update quantities correctly", async function () {
     //         const scale = BigNumber.from(SCALE_FACTOR.toString());
-    //         const supplyExpansionRate =  ....;
+    //         const expansionPerSecond =  ....;
     //         const deployedAt = await caller.deployedAt();
     //         const adjustedAmt = ....;
-    //         await caller.adjustQuantity(scale, supplyExpansionRate, deployedAt);
+    //         await caller.adjustQuantity(scale, expansionPerSecond, deployedAt);
     //         //expect(await caller.getAdjustedQuantity()).to.equal(adjustedAmt); 
     //     });
     // });
