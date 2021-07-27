@@ -30,7 +30,6 @@ describe("RSR contract", function () {
 
         it("Should setup correctly initial values", async function () {
             const totalSupply = await token.totalSupply();
-            expect(await token.tokensToCross()).to.equal(totalSupply);
             expect(await token.fixedSupply()).to.equal(totalSupply);
             //expect(await token.snapshotter()).to.equal(owner.address);
             expect(await token.slowWallet()).to.equal(slowWallet.address);
@@ -49,7 +48,6 @@ describe("RSR contract", function () {
             expect(await token.crossed(owner.address)).to.equal(false);
             expect(await token.crossed(addr1.address)).to.equal(false);
             expect(await token.crossed(addr2.address)).to.equal(false);
-            expect(await token.tokensToCross()).to.equal(await prevToken.totalSupply());
         });
 
         it("Should not populate allowances from previous RSR", async function () {
@@ -77,7 +75,6 @@ describe("RSR contract", function () {
             // No tokens crossed
             expect(await token.crossed(owner.address)).to.equal(false);
             expect(await token.crossed(addr1.address)).to.equal(false);
-            expect(await token.tokensToCross()).to.equal(await prevToken.totalSupply());
         });
 
         it("Should not transferFrom tokens between accounts if Previous RSR is not paused", async function () {
@@ -95,7 +92,6 @@ describe("RSR contract", function () {
             // No tokens crossed
             expect(await token.crossed(owner.address)).to.equal(false);
             expect(await token.crossed(addr2.address)).to.equal(false);
-            expect(await token.tokensToCross()).to.equal(await prevToken.totalSupply());
         });
 
         it("Should allow to grant allowances between accounts even if Previous RSR is not paused", async function () {
@@ -110,7 +106,6 @@ describe("RSR contract", function () {
             // No tokens crossed
             expect(await token.crossed(owner.address)).to.equal(false);
             expect(await token.crossed(addr1.address)).to.equal(false);
-            expect(await token.tokensToCross()).to.equal(await prevToken.totalSupply());
         });
     });
 
@@ -136,7 +131,6 @@ describe("RSR contract", function () {
             // Check owner has crossed
             expect(await token.crossed(owner.address)).to.equal(true);
             expect(await token.crossed(addr1.address)).to.equal(false);
-            expect(await token.tokensToCross()).to.equal(totalSupply - ownerBalancePrev);
         });
 
         it("Should transferFrom tokens between accounts and cross sender", async function () {
@@ -155,7 +149,6 @@ describe("RSR contract", function () {
             // Check owner has crossed
             expect(await token.crossed(owner.address)).to.equal(true);
             expect(await token.crossed(addr2.address)).to.equal(false);
-            expect(await token.tokensToCross()).to.equal(totalSupply.sub(ownerBalancePrev));
         });
 
         it("Should not transfer tokens to self", async function () {
@@ -165,7 +158,7 @@ describe("RSR contract", function () {
             // Try to perform transfer, should fail
             await expect(
                 token.connect(owner).transfer(token.address, amount)
-            ).to.be.revertedWith("ERC20: we thought of you");
+            ).to.be.revertedWith("TransferToContractAddress");
         });
 
         it("Should cross only once with consecutive transfers", async function () {
@@ -184,7 +177,6 @@ describe("RSR contract", function () {
             // Check owner has crossed
             expect(await token.crossed(owner.address)).to.equal(true);
             expect(await token.crossed(addr1.address)).to.equal(false);
-            expect(await token.tokensToCross()).to.equal(totalSupply.sub(ownerBalancePrev));
 
             // Perform second transfer of 50 tokens from owner to addr1
             await token.connect(owner).transfer(addr1.address, amount2);
@@ -195,7 +187,6 @@ describe("RSR contract", function () {
             // Check owner has crossed
             expect(await token.crossed(owner.address)).to.equal(true);
             expect(await token.crossed(addr1.address)).to.equal(false);
-            expect(await token.tokensToCross()).to.equal(totalSupply.sub(ownerBalancePrev));
         });
 
         it("Should add slowWallet balance when crossing multisig", async function () {
@@ -216,7 +207,6 @@ describe("RSR contract", function () {
             expect(await token.crossed(multisigWallet.address)).to.equal(true);
             expect(await token.crossed(slowWallet.address)).to.equal(true);
             expect(await token.crossed(addr1.address)).to.equal(false);
-            expect(await token.tokensToCross()).to.equal(totalSupply.sub(multisigBalancePrev).sub(slowWalletBalancePrev));
         });
     });
 

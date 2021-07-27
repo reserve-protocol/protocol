@@ -34,3 +34,6 @@ error Unauthorized();
 error TransferToContractAddress();
 error BadSell();
 error BadBuy();
+
+// RSR
+error CrossedAlready();
