@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
 import "./libraries/Basket.sol";
+import "./libraries/CompoundMath.sol";
 import "./libraries/Token.sol";
 import "./interfaces/ITXFee.sol";
 import "./interfaces/IRToken.sol";
@@ -24,6 +25,9 @@ import "./helpers/ErrorMessages.sol";
  *    - scale up or down in supply (nearly) completely elastically
  *    - change their backing while maintaining price
  *    - and, recover from collateral defaults through insurance
+ * 
+ * Contract Invariant: Calls to `act` should not impact the state of the system in the long-term,
+ * provided that calls to `act` are eventually made. 
  *
  */
 
@@ -59,9 +63,9 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         /// This must be relatively infrequent.
         /// e.g. 1 week = 60 * 60 * 24 * 7 = 604800
         uint256 insurancePaymentPeriod;
-        /// RToken annual supply-expansion rate
-        /// e.g. 1.23e16 => 1.23% annually
-        uint256 supplyExpansionRate;
+        /// RToken per-second supply-expansion rate
+        /// e.g. 3% annually => 0.0000000936681155% per-second => 0.000000000936681155 * 1e18 => 936681155
+        uint256 expansionPerSecond;
         /// Protocol expenditure factor
         /// e.g. 1e16 => 1% of the RToken supply expansion goes to protocol fund
         uint256 expenditureFactor;
@@ -96,7 +100,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     uint256 private _deployedAt;
     uint256 private _lastExpansion;
     uint256 private _lastInsurancePayment;
-    uint256 private _lastBlock;
+    uint256 private _lastMintingBlock;
+    uint256 private _lastRebalanceBlock;
 
     function initialize(
         //address owner_,
@@ -124,7 +129,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _deployedAt = block.timestamp;
         _lastExpansion = block.timestamp;
         _lastInsurancePayment = block.timestamp;
-        _lastBlock = block.number;
+        _lastMintingBlock = block.number;
+        _lastRebalanceBlock = block.number;
     }
 
     modifier canTrade() {
@@ -134,19 +140,12 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _;
     }
 
-    /// These sub-functions should all be idempotent within a block
+    /// This modifier is run before every issuance, redemption, and act. 
+    /// It should not run expensive calculations. 
+    /// It should be idempotent within a block. 
     modifier everyBlock() {
-        // decrease basket quantities based on blocknumber
-        _decayBasket();
-
-        // SlowMintingERC20 update step
-        _tryProcessMintings();
-
-        // expand supply
-        _expandSupply();
-
-        // trade out collateral for other collateral or insurance RSR
-        _rebalance();
+        _decayBasket(); // calculates a pure function of block timestamp
+        _expandSupply(); // repeated calls will halt early to save gas
         _;
     }
 
@@ -164,11 +163,16 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _checkNewBasket(newTokens);
         emit BasketUpdated(basket.size, uint16(newTokens.length));
         basket.setTokens(newTokens);
+        basket.inflationSinceGenesis = SCALE;
     }
 
-    /// Callable by anyone, runs the block updates
+    /// Callable by anyone, runs the block updates and then a bunch of expensive operations.
+    /// The expectation is that it is called by arbitrageurs who can be asked to pay the gas
+    /// for other important RToken operations such as settling mintings and rebalance trading. 
     function act() external override everyBlock {
-        return;
+        _trySweepRevenue();
+        _tryProcessMintings();
+        _rebalance();
     }
 
     /// Handles issuance.
@@ -321,14 +325,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// =========================== Internal =================================
 
-    /// Sets the adjusted basket quantities for the current block
-    function _decayBasket() internal {
-        // TODO: incorrect compounding!
-        basket.inflationSinceGenesis /=
-            (SCALE + (config.supplyExpansionRate * (block.timestamp - _deployedAt)) / 31556926) /
-            SCALE;
-    }
-
     /// Performs any checks we want to perform on a new basket
     function _checkNewBasket(Token.Info[] memory tokens) internal view {
         if (tokens.length > type(uint16).max) {
@@ -346,7 +342,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     function _checkConfig(Config memory c) internal view {
-        if (c.supplyExpansionRate > SCALE) {
+        if (c.expansionPerSecond > SCALE) {
             revert SupplyExpansionTooLarge();
         }
 
@@ -359,15 +355,62 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
     }
 
-    /// Tries to process up to a fixed number of mintings. Called before most actions.
+    /// Sets the adjusted basket quantities for the current block
+    function _decayBasket() internal {
+        /// Discrete compounding on a per-second basis
+        basket.inflationSinceGenesis = CompoundMath.compound(
+            SCALE, 
+            config.expansionPerSecond, 
+            block.timestamp - _deployedAt
+        );
+    }
+
+    /// Expands the RToken supply based on the time since last supply expansion.
+    function _expandSupply() internal {
+        /// Discrete compounding on a per-second basis
+        uint256 amount = totalSupply() * SCALE / CompoundMath.compound(
+            SCALE, 
+            config.expansionPerSecond, 
+            block.timestamp - _lastExpansion
+        );
+        _lastExpansion = block.timestamp;
+        if (amount == 0) {
+            return;
+        }
+
+        // Mint to protocol fund
+        if (config.expenditureFactor > 0) {
+            uint256 e = (amount * config.expenditureFactor) / SCALE;
+            _mint(address(config.protocolFund), e);
+        }
+
+        // Mint to self
+        if (config.expenditureFactor < SCALE) {
+            uint256 p = (amount * (SCALE - config.expenditureFactor)) / SCALE;
+            _mint(address(this), p);
+        }
+    }
+
+    /// Sweeps revenue payments from self to insurance pool periodically. 
+    function _trySweepRevenue() internal {
+        if (_lastInsurancePayment + config.insurancePaymentPeriod < block.timestamp) {
+            _lastInsurancePayment = block.timestamp;
+            uint256 bal = balanceOf(address(this));
+            _approve(address(this), address(config.insurancePool), bal);
+            config.insurancePool.makeInsurancePayment(bal);
+        }
+    }
+
+    /// Tries to process up to a fixed number of mintings.
     function _tryProcessMintings() internal {
         if (!config.circuitBreaker.paused()) {
             uint256 start = currentMinting;
-            uint256 blocksSince = block.number - _lastBlock;
+            uint256 blocksSince = block.number - _lastMintingBlock;
             uint256 issuanceAmount = config.issuanceRate;
-            while (currentMinting < mintings.length && currentMinting < start + 10000) {
-                // TODO: Tune the +10000 maximum. Might have to be smaller.
-                Minting storage m = mintings[currentMinting];
+            Minting storage m;
+            while (currentMinting < mintings.length && currentMinting < start + 1000) {
+                // TODO: Tune the +1000 maximum. 
+                m = mintings[currentMinting];
 
                 // Break if the next minting is too big.
                 if (m.amount > issuanceAmount * (blocksSince)) {
@@ -389,66 +432,27 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
                 }
                 blocksSince = blocksSince - blocksUsed;
 
-                delete mintings[currentMinting]; // gas saving..?
-
+                delete mintings[currentMinting]; // gas saving?
                 currentMinting++;
             }
 
-            // update _lastBlock if tokens were minted
+            // update _lastMintingBlock if tokens were minted
             if (currentMinting > start) {
-                _lastBlock = block.number;
+                _lastMintingBlock = block.number;
             }
-        }
-    }
-
-    /// Expands the RToken supply and gives the new mintings to the protocol fund and
-    /// the insurance pool.
-    function _expandSupply() internal {
-        // TODO: Swap out with Exponential Lib Math
-        // 31536000 = seconds in a year
-        uint256 toExpand = (totalSupply() *
-            config.supplyExpansionRate *
-            (block.timestamp - _lastExpansion)) /
-            31536000 /
-            SCALE;
-        _lastExpansion = block.timestamp;
-        if (toExpand == 0) {
-            return;
-        }
-
-        // Mint to protocol fund
-        if (config.expenditureFactor > 0) {
-            uint256 e = (toExpand * MathUpgradeable.min(SCALE, config.expenditureFactor)) / SCALE;
-            _mint(address(config.protocolFund), e);
-        }
-
-        // Mint to self
-        if (config.expenditureFactor < SCALE) {
-            uint256 p = (toExpand * (SCALE - config.expenditureFactor)) / SCALE;
-            _mint(address(this), p);
-        }
-
-        // Batch transfers from self to InsurancePool
-        if (_lastInsurancePayment + config.insurancePaymentPeriod < block.timestamp) {
-            uint256 bal = balanceOf(address(this));
-            _approve(address(this), address(config.insurancePool), bal);
-            config.insurancePool.makeInsurancePayment(bal);
-            _lastInsurancePayment = block.timestamp;
         }
     }
 
     /// Trades tokens against the IAtomicExchange with per-block rate limiting
     function _rebalance() internal {
-        uint256 numBlocks = block.number - _lastBlock;
-        _lastBlock = block.number;
+        uint256 numBlocks = block.number - _lastRebalanceBlock;
+        _lastRebalanceBlock = block.number;
         if (tradingFrozen() || numBlocks == 0) {
             return;
         }
 
-        uint8 decimals = decimals();
-        uint256 totalSupply = totalSupply();
         (int32 deficitIndex, int32 surplusIndex) = basket
-        .leastUndercollateralizedAndMostOverCollateralized(SCALE, decimals, totalSupply);
+            .leastUndercollateralizedAndMostOverCollateralized(SCALE, decimals(), totalSupply());
 
         /// Three cases:
         /// 1. Sideways: Trade collateral for collateral
@@ -461,8 +465,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
                 basket.tokens[uint16(uint32(surplusIndex))],
                 uint16(uint32(surplusIndex)),
                 numBlocks,
-                decimals,
-                totalSupply
+                decimals(),
+                totalSupply()
             );
         } else if (deficitIndex >= 0) {
             // Seize RSR from the insurance pool and sell it for missing collateral
@@ -490,8 +494,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
                 basket.tokens[uint16(uint32(surplusIndex))],
                 uint16(uint32(surplusIndex)),
                 numBlocks,
-                decimals,
-                totalSupply
+                decimals(),
+                totalSupply()
             );
         }
     }
@@ -508,9 +512,9 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         Minting memory m = Minting(amount, account);
         mintings.push(m);
 
-        // update _lastBlock if this is the only item in queue
+        // update _lastMintingBlock if this is the only item in queue
         if (mintings.length == currentMinting + 1) {
-            _lastBlock = block.number;
+            _lastMintingBlock = block.number;
         }
         emit SlowMintingInitiated(account, amount);
     }

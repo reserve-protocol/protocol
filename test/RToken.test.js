@@ -26,7 +26,7 @@ describe("RToken contract", function () {
             issuanceRate: issuanceRate,
             tradingFreezeCost: 0,
             insurancePaymentPeriod: 0,
-            supplyExpansionRate: 0,
+            expansionPerSecond: 0,
             expenditureFactor: 0,
             spread: 0,
             exchange: ZERO_ADDRESS,
@@ -61,8 +61,17 @@ describe("RToken contract", function () {
             slippageTolerance: 0
         };
 
+        // External math lib
+        CompoundMath = await ethers.getContractFactory("CompoundMath");
+        math = await CompoundMath.deploy();
+
+        // Deploy RToken and InsurancePool implementations
+        RToken = await ethers.getContractFactory("RTokenMock", {
+            libraries: {
+                CompoundMath: math.address,
+            }
+        });        
         // Deploy RToken
-        RToken = await ethers.getContractFactory("RTokenMock");
         rToken = await RToken.connect(owner).deploy();
         await rToken.connect(owner).initialize("RToken", "RTKN", config, basketTokens, rsrTokenInfo);
     });

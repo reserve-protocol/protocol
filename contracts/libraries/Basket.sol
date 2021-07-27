@@ -13,8 +13,8 @@ library Basket {
     struct Info {
         mapping(uint16 => Token.Info) tokens;
         uint16 size;
-        // inflationSinceGenesis: a SCALE decimal value. The inflation factor since basket genesis.
-        // One RToken is worth inflation_since_genesis / SCALE * token[i].genesisQuantity
+        // inflationSinceGenesis: a SCALE decimal value >= SCALE. The inflation factor since basket genesis.
+        // One RToken is worth token[i].genesisQuantity * SCALE / inflation_since_genesis
         uint256 inflationSinceGenesis;
     }
 
@@ -32,7 +32,7 @@ library Basket {
         uint16 index
     ) internal view returns (uint256) {
         require(index < self.size, "High index");
-        return (self.tokens[index].genesisQuantity * self.inflationSinceGenesis) / scale;
+        return (self.tokens[index].genesisQuantity * scale) / self.inflationSinceGenesis;
     }
 
     /// The returned array will be in the same order as the current self.
