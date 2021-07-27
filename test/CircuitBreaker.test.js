@@ -36,11 +36,11 @@ describe("CircuitBreaker contract", function () {
     it("Should not allow to Pause/Unpause if not Pauser", async function () {
       await expect(
         cb.connect(addr1).pause()
-      ).to.be.revertedWith("CircuitBreaker: Must be pauser role");
+      ).to.be.revertedWith("CircuitPaused");
 
       await expect(
         cb.connect(addr1).unpause()
-      ).to.be.revertedWith("CircuitBreaker: Must be pauser role");
+      ).to.be.revertedWith("CircuitPaused");
     });
   });
 });
