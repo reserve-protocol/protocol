@@ -930,6 +930,60 @@ describe("InsurancePool contract", function () {
                 expect(await iPool.earned(addr2.address)).to.equal(splitRevAddr2);
             });
 
+            it("Should processs withdrawals and reductions in weight correctly", async function () {
+                // Approve transfer
+                await rsrToken.connect(addr1).approve(iPool.address, amount2);
+                // Stake
+                await expect(iPool.connect(addr1).stake(amount2))
+                    .to.emit(iPool, 'DepositInitiated')
+                    .withArgs(addr1.address, amount2);
+
+                // Approve transfer
+                await rsrToken.connect(addr2).approve(iPool.address, amount3);
+                // Stake
+                await expect(iPool.connect(addr2).stake(amount3))
+                    .to.emit(iPool, 'DepositInitiated')
+                    .withArgs(addr2.address, amount3);
+
+                // Process deposit    
+                await iPool.processDeposits();
+
+                // Register Revenue     
+                await expect(rToken.makeInsurancePayment(revAmount2))
+                    .to.emit(iPool, 'RevenueEventSaved')
+                    .withArgs(1, revAmount2);
+
+                // Stake
+                await expect(iPool.connect(addr2).unstake(amount3))
+                    .to.emit(iPool, 'WithdrawalInitiated')
+                    .withArgs(addr2.address, amount3);
+
+                // Process wihtdrawal    
+                await iPool.processWithdrawals();
+
+                // Register Revenue     
+                await expect(rToken.makeInsurancePayment(revAmount3))
+                    .to.emit(iPool, 'RevenueEventSaved')
+                    .withArgs(2, revAmount3);
+
+                // Check revenue properly registered   
+                expect(await iPool.revenuesCount()).to.equal(3);
+
+                // Process revenues
+                await iPool.catchup(addr1.address, 5);
+                await iPool.catchup(addr2.address, 5);
+
+                // Revenue 2 apply to Address1 and Address2 with 40% and 60% respectively.
+                // All the others to addr1 only
+                const splitRevenue = revAmount2;
+                const splitRevAddr1 = splitRevenue.mul(40).div(100);
+                const splitRevAddr2 = splitRevenue.mul(60).div(100);
+                expect(await iPool.lastIndex(addr1.address)).to.equal(3);
+                expect(await iPool.lastIndex(addr2.address)).to.equal(3);
+                expect(await iPool.earned(addr1.address)).to.equal(revAmount.add(revAmount3.add(splitRevAddr1)));
+                expect(await iPool.earned(addr2.address)).to.equal(splitRevAddr2);
+            });
+
             it("Should process revenues for deposits recognized in same transaction", async function () {
                 // Approve transfer
                 await rsrToken.connect(addr2).approve(iPool.address, amount1);
