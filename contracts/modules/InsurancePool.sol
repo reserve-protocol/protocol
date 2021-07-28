@@ -219,19 +219,17 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
             // Adjust weights
             uint256 equivalentWeight = (amount * totalWeight) / rsr.balanceOf(address(this));
             weight[withdrawal.account] = weight[withdrawal.account] - equivalentWeight;
+            totalWeight = totalWeight - equivalentWeight;
             
             // Register adjustment
             WeightAdjustment storage _adj = _weightsAdjustments[withdrawal.account][revenues.length];
             _adj.amount = weight[withdrawal.account];
             _adj.updated = true;
 
-            totalWeight = totalWeight - equivalentWeight;
-
             rsr.safeTransfer(withdrawal.account, amount);
-
-            // Exit with earned RToken
-            _claimRevenue();
         }
+        // Exit with earned RToken
+        _claimRevenue();
 
         emit WithdrawalCompleted(withdrawal.account, amount);
         delete withdrawals[withdrawalIndex];
