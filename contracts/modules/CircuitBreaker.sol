@@ -5,12 +5,19 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
 import "../interfaces/ICircuitBreaker.sol";
 
-contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
-    /// ==== Immutable state ====
+/**
+ * @title CircuitBreaker
+ * @dev A lightweight contract that holds a paused state and maintains a list of pausers.
+ * 
+ * Uses the AccessControl pattern. 
+ */
+ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
+
+    // ==== Immutable ====
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    /// ==== Mutable state ====
+    // ==== Mutable ====
 
     bool private _paused = false;
 
@@ -19,8 +26,10 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
         _setupRole(PAUSER_ROLE, _admin);
     }
 
+    // =========================== Pausing =================================
+
     modifier isPauser() {
-        require(hasRole(PAUSER_ROLE, _msgSender()), "CircuitBreaker: Must be pauser role");
+        require(hasRole(PAUSER_ROLE, _msgSender()), "CircuitPaused");
         _;
     }
 

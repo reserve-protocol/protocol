@@ -6,11 +6,13 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 
 /**
  * @title Token
+ * @dev A Token contains the quantity and trading information for a given ERC20 token. 
  */
 library Token {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     struct Info {
+        // Token address
         address tokenAddress;
         // How many tokens are required for each 1e18 RTokens as of original deployment
         uint256 genesisQuantity;
@@ -26,6 +28,7 @@ library Token {
         uint256 slippageTolerance;
     }
 
+    /// Safely approves *spender* to spend *amount* of the token.  
     function safeApprove(
         Token.Info storage self,
         address spender,
@@ -34,6 +37,7 @@ library Token {
         return IERC20Upgradeable(self.tokenAddress).safeApprove(spender, amount);
     }
 
+    /// Safely transfers *amount* of the token to *to*.  
     function safeTransfer(
         Token.Info storage self,
         address to,
@@ -42,6 +46,7 @@ library Token {
         return IERC20Upgradeable(self.tokenAddress).safeTransfer(to, amount);
     }
 
+    /// Safely transfers *amount* of the token from *from* to *to*.  
     function safeTransferFrom(
         Token.Info storage self,
         address from,
@@ -51,10 +56,12 @@ library Token {
         return IERC20Upgradeable(self.tokenAddress).safeTransferFrom(from, to, amount);
     }
 
-    function getBalance(Token.Info storage self) internal view returns (uint256) {
+    /// Returns the balance the current caller has of the token. 
+    function myBalance(Token.Info storage self) internal view returns (uint256) {
         return IERC20Upgradeable(self.tokenAddress).balanceOf(address(this));
     }
 
+    /// Returns the balance an account has of the token. 
     function getBalance(Token.Info storage self, address account) internal view returns (uint256) {
         return IERC20Upgradeable(self.tokenAddress).balanceOf(account);
     }

@@ -2,6 +2,7 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "../helpers/ErrorMessages.sol";
 import "./Token.sol";
 
 /**
@@ -18,6 +19,7 @@ library Basket {
         uint256 inflationSinceGenesis;
     }
 
+    /// Sets a basket, without performing any checks. 
     function setTokens(Basket.Info storage self, Token.Info[] memory tokens) internal {
         self.size = uint16(tokens.length);
         for (uint16 i = 0; i < self.size; i++) {
@@ -31,11 +33,13 @@ library Basket {
         uint256 scale,
         uint16 index
     ) internal view returns (uint256) {
-        require(index < self.size, "High index");
+        if (index >= self.size) {
+            revert InvalidTokenIndex();
+        }
         return (self.tokens[index].genesisQuantity * scale) / self.inflationSinceGenesis;
     }
 
-    /// The returned array will be in the same order as the current self.
+    /// Returns the collateral token quantities required to issue a given quantity of RToken.
     function issueAmounts(
         Basket.Info storage self,
         uint256 amount,
@@ -50,7 +54,7 @@ library Basket {
         }
     }
 
-    /// The returned array will be in the same order as the current self.
+    /// Returns the collateral token quantities that could be redeemed for a given quantity of RToken.
     function redemptionAmounts(
         Basket.Info storage self,
         uint256 amount,
@@ -61,7 +65,7 @@ library Basket {
         parts = new uint256[](self.size);
         for (uint16 i = 0; i < self.size; i++) {
             parts[i] = Math.min(
-                (self.tokens[i].getBalance() * amount) / totalSupply,
+                (self.tokens[i].myBalance() * amount) / totalSupply,
                 (weight(self, scale, i) * amount) / 10**decimals
             );
         }
@@ -80,7 +84,7 @@ library Basket {
         int32 surplusIndex = -1;
 
         for (uint16 i = 0; i < self.size; i++) {
-            uint256 bal = self.tokens[i].getBalance();
+            uint256 bal = self.tokens[i].myBalance();
             uint256 expected = (totalSupply * weight(self, scale, i)) / 10**decimals;
 
             if (bal < expected) {

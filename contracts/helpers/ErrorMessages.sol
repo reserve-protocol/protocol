@@ -3,8 +3,8 @@
 pragma solidity 0.8.4;
 
 // RToken
-error TradingIsFrozen();
-error TradingAlreadyUnfrozen();
+error RebalancingIsFrozen();
+error RebalancingAlreadyUnfrozen();
 error BadSell();
 error BadBuy();
 
@@ -25,6 +25,7 @@ error MaxSupplyExceeded();
 error EmptyBasket();
 error BasketTooBig();
 error UninitializedTokens();
+error InvalidTokenIndex();
 
 // Circuit Breaker
 error CircuitPaused();
@@ -33,10 +34,14 @@ error CircuitPaused();
 error Unauthorized();
 error OnlyRToken();
 
-// Transfer/Trading
+// Transfer/Rebalancing
 error TransferToContractAddress();
 error NotEnoughBalance();
 
 // Insurance Pool
 error CannotStakeZero();
 error CannotWithdrawZero();
+
+// RSR
+error CrossedAlready();
+

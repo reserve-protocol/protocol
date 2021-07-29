@@ -24,7 +24,7 @@ describe("RToken contract", function () {
             maxSupply: maxSupply,
             minMintingSize: 0,
             issuanceRate: issuanceRate,
-            tradingFreezeCost: 0,
+            rebalancingFreezeCost: 0,
             insurancePaymentPeriod: 0,
             expansionPerSecond: 0,
             expenditureFactor: 0,
