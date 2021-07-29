@@ -662,24 +662,18 @@ describe("InsurancePool contract", function () {
                 // Withdrawal was not processed
                 expect(await iPool.withdrawalIndex()).to.equal(0);
                 expect(await iPool.totalWeight()).to.equal(amount1.add(amount2.add(amount3)));
-                console.log("1");
                 expect(await iPool.weight(addr1.address)).to.equal(amount1);
-                console.log("2");
                 expect(await iPool.balanceOf(addr1.address)).to.equal(amount1);
-
-                console.log("3");
 
                 // Should have recorded earlier deposit weight adjustment
                 let [wAdjAmount, wAdjUpdated] = await iPool.weightsAdjustments(addr1.address, 0);
                 expect(wAdjAmount).to.equal(amount1);
                 expect(wAdjUpdated).to.be.true;
-                console.log("4");
 
                 // Should not have recorded withdrwawal weight adjustment
                 [wAdjAmount, wAdjUpdated] = await iPool.weightsAdjustments(addr1.address, 1);
                 expect(wAdjAmount).to.equal(0);
                 expect(wAdjUpdated).to.be.false;
-                console.log("5");
 
                 // Check RSR balances
                 expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount1.add(amount2.add(amount3)));
