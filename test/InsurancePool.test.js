@@ -357,28 +357,6 @@ describe("InsurancePool contract", function () {
                 // Balance should be 2/3 of original deposit
                 expect(await iPool.balanceOf(addr1.address)).to.equal(amount1.sub(toSeize));
             });
-
-            it("Should not process deposits using catchup with zero address", async function () {
-                // Move forward past stakingDepositDelay
-                await advanceTime(stakingDepositDelay + 1);
-
-                // Should not process deposits using catchup
-                await iPool.connect(other).catchup(ZERO_ADDRESS, 10);
-
-                // Staking/Deposit was not processed
-                expect(await iPool.depositIndex()).to.equal(0);
-                expect(await iPool.totalWeight()).to.equal(0);
-                expect(await iPool.weight(addr1.address)).to.equal(0);
-                expect(await iPool.balanceOf(addr1.address)).to.equal(0);
-                // check adjusted weights
-                let [wAdjAmount, wAdjUpdated] = await iPool.weightsAdjustments(addr1.address, 0);
-                expect(wAdjAmount).to.equal(0);
-                expect(wAdjUpdated).to.be.false;
-
-                // Check RSR balance
-                expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount1);
-            });
-
         });
     });
 
@@ -650,34 +628,6 @@ describe("InsurancePool contract", function () {
                 expect(await rsrToken.balanceOf(iPool.address)).to.equal(0);
                 expect(await rsrToken.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1));
                 expect(await rsrToken.balanceOf(addr2.address)).to.equal(prevAddr2Balance.add(amount2.add(amount3)));
-            });
-
-            it("Should not process withdrawals with catchup using zero address", async function () {
-                // Move forward past stakingWithdrawalDelay
-                await advanceTime(stakingWithdrawalDelay + 1);
-
-                // Process unstakes with catchup
-                await iPool.connect(other).catchup(ZERO_ADDRESS, 10);
-
-                // Withdrawal was not processed
-                expect(await iPool.withdrawalIndex()).to.equal(0);
-                expect(await iPool.totalWeight()).to.equal(amount1.add(amount2.add(amount3)));
-                expect(await iPool.weight(addr1.address)).to.equal(amount1);
-                expect(await iPool.balanceOf(addr1.address)).to.equal(amount1);
-
-                // Should have recorded earlier deposit weight adjustment
-                let [wAdjAmount, wAdjUpdated] = await iPool.weightsAdjustments(addr1.address, 0);
-                expect(wAdjAmount).to.equal(amount1);
-                expect(wAdjUpdated).to.be.true;
-
-                // Should not have recorded withdrwawal weight adjustment
-                [wAdjAmount, wAdjUpdated] = await iPool.weightsAdjustments(addr1.address, 1);
-                expect(wAdjAmount).to.equal(0);
-                expect(wAdjUpdated).to.be.false;
-
-                // Check RSR balances
-                expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount1.add(amount2.add(amount3)));
-                expect(await rsrToken.balanceOf(addr1.address)).to.equal(initialBal1.sub(amount1));
             });
         });
     });
