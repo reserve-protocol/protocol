@@ -33,7 +33,7 @@ describe("Token library", function () {
             expect(await caller["getBalance(address)"](addr1.address)).to.equal(0);
             expect(await caller["getBalance(address)"](addr2.address)).to.equal(0);
             expect(await caller["getBalance(address)"](caller.address)).to.equal(amount);
-            expect(await caller["getBalance()"]()).to.equal(amount);
+            expect(await caller["myBalance()"]()).to.equal(amount);
         });
     });
 
