@@ -11,7 +11,8 @@ describe("InsurancePool contract", function () {
         PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock");
         NewRSR = await ethers.getContractFactory("RSR");
         prevRSRToken = await PrevRSR.deploy("Reserve Rights", "RSR");
-        await prevRSRToken.mint(addr1.address, BigNumber.from(20000));
+        initialBal1 = BigNumber.from(20000)
+        await prevRSRToken.mint(addr1.address, initialBal1);
         await prevRSRToken.mint(addr2.address, BigNumber.from(15000));
         rsrToken = await NewRSR.connect(owner).deploy(prevRSRToken.address, ZERO_ADDRESS, ZERO_ADDRESS);
 
@@ -214,7 +215,7 @@ describe("InsurancePool contract", function () {
 
             it("Should not process deposits before stakingDepositDelay", async function () {
                 // Process stakes
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Nothing processed so far
                 expect(await iPool.depositIndex()).to.equal(0);
@@ -228,7 +229,7 @@ describe("InsurancePool contract", function () {
                 // Process stakes after certain time (still before stakingDepositDelay)
                 await advanceTime(15000);
 
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Nothing processed still
                 expect(await iPool.depositIndex()).to.equal(0);
@@ -247,7 +248,7 @@ describe("InsurancePool contract", function () {
                 await advanceTime(stakingDepositDelay + 1);
 
                 // Process stakes
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Staking/Deposit was processed
                 expect(await iPool.depositIndex()).to.equal(1);
@@ -268,7 +269,7 @@ describe("InsurancePool contract", function () {
                 await advanceTime(stakingDepositDelay + 1);
 
                 // Process stakes
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Staking/Deposit was processed
                 expect(await iPool.depositIndex()).to.equal(1);
@@ -287,7 +288,7 @@ describe("InsurancePool contract", function () {
                 await advanceTime(stakingDepositDelay + 1);
 
                 // Process stakes
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Staking processed and weights calculated
                 expect(await iPool.depositIndex()).to.equal(3);
@@ -315,7 +316,7 @@ describe("InsurancePool contract", function () {
                 await advanceTime(stakingDepositDelay + 1);
 
                 // Process stakes
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Staking/Deposit was processed
                 expect(await iPool.depositIndex()).to.equal(1);
@@ -337,7 +338,7 @@ describe("InsurancePool contract", function () {
                 await advanceTime(stakingDepositDelay + 1);
 
                 // Process stakes
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Staking/Deposit was processed
                 expect(await iPool.depositIndex()).to.equal(1);
@@ -357,22 +358,22 @@ describe("InsurancePool contract", function () {
                 expect(await iPool.balanceOf(addr1.address)).to.equal(amount1.sub(toSeize));
             });
 
-            it("Should process deposits using catchup with zero address", async function () {
+            it("Should not process deposits using catchup with zero address", async function () {
                 // Move forward past stakingDepositDelay
                 await advanceTime(stakingDepositDelay + 1);
 
-                // Process deposits using catchup
+                // Should not process deposits using catchup
                 await iPool.connect(other).catchup(ZERO_ADDRESS, 10);
 
-                // Staking/Deposit was processed
-                expect(await iPool.depositIndex()).to.equal(1);
-                expect(await iPool.totalWeight()).to.equal(amount1);
-                expect(await iPool.weight(addr1.address)).to.equal(amount1);
-                expect(await iPool.balanceOf(addr1.address)).to.equal(amount1);
+                // Staking/Deposit was not processed
+                expect(await iPool.depositIndex()).to.equal(0);
+                expect(await iPool.totalWeight()).to.equal(0);
+                expect(await iPool.weight(addr1.address)).to.equal(0);
+                expect(await iPool.balanceOf(addr1.address)).to.equal(0);
                 // check adjusted weights
                 let [wAdjAmount, wAdjUpdated] = await iPool.weightsAdjustments(addr1.address, 0);
-                expect(wAdjAmount).to.equal(amount1);
-                expect(wAdjUpdated).to.be.true;
+                expect(wAdjAmount).to.equal(0);
+                expect(wAdjUpdated).to.be.false;
 
                 // Check RSR balance
                 expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount1);
@@ -381,7 +382,7 @@ describe("InsurancePool contract", function () {
         });
     });
 
-    describe("Withdawals/Unstaking", function () {
+    describe("Withdrawals/Unstaking", function () {
         beforeEach(async function () {
             // Pause previous contract
             await prevRSRToken.connect(owner).pause();
@@ -398,7 +399,7 @@ describe("InsurancePool contract", function () {
                 .withArgs(addr1.address, amount);
 
             // Process Deposits
-            await iPool.processDeposits();
+            await iPool.processWithdrawalsAndDeposits();
 
             // Check RSR balance, should not change
             expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount);
@@ -527,7 +528,7 @@ describe("InsurancePool contract", function () {
                     .withArgs(addr2.address, amount3);
 
                 // Process deposits
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Create Withdrawal
                 await expect(iPool.connect(addr1).unstake(amount1))
@@ -537,7 +538,7 @@ describe("InsurancePool contract", function () {
 
             it("Should not process withdrawals before stakingWithdrawalDelay", async function () {
                 // Process unstakes
-                await iPool.processWithdrawals();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Nothing processed so far
                 expect(await iPool.withdrawalIndex()).to.equal(0);
@@ -551,7 +552,7 @@ describe("InsurancePool contract", function () {
                 // Process unstakes after certain time (still before stakingWithdrawalDelay)
                 await advanceTime(15000);
 
-                await iPool.processWithdrawals();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Nothing processed still
                 expect(await iPool.withdrawalIndex()).to.equal(0);
@@ -574,7 +575,7 @@ describe("InsurancePool contract", function () {
                 await advanceTime(stakingWithdrawalDelay + 1);
 
                 // Process stakes
-                await iPool.processWithdrawals();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Withdrawal was processed
                 expect(await iPool.withdrawalIndex()).to.equal(1);
@@ -605,7 +606,7 @@ describe("InsurancePool contract", function () {
                 await advanceTime(stakingWithdrawalDelay + 1);
 
                 // Process unstakes
-                await iPool.processWithdrawals();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Withdrawals were processed
                 expect(await iPool.withdrawalIndex()).to.equal(2);
@@ -630,7 +631,7 @@ describe("InsurancePool contract", function () {
                 await advanceTime(stakingWithdrawalDelay + 1);
 
                 // Process unstakes
-                await iPool.processWithdrawals();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Withdrawals processed and weights calculated
                 expect(await iPool.withdrawalIndex()).to.equal(3);
@@ -651,29 +652,38 @@ describe("InsurancePool contract", function () {
                 expect(await rsrToken.balanceOf(addr2.address)).to.equal(prevAddr2Balance.add(amount2.add(amount3)));
             });
 
-            it("Should process withdrawals with catchup using zero address", async function () {
-                // Get current balance for user
-                const prevAddr1Balance = await rsrToken.balanceOf(addr1.address);
-
+            it("Should not process withdrawals with catchup using zero address", async function () {
                 // Move forward past stakingWithdrawalDelay
                 await advanceTime(stakingWithdrawalDelay + 1);
 
                 // Process unstakes with catchup
                 await iPool.connect(other).catchup(ZERO_ADDRESS, 10);
 
-                // Withdrawal was processed
-                expect(await iPool.withdrawalIndex()).to.equal(1);
-                expect(await iPool.totalWeight()).to.equal(amount2.add(amount3));
-                expect(await iPool.weight(addr1.address)).to.equal(0);
-                expect(await iPool.balanceOf(addr1.address)).to.equal(0);
-                // Should record weight adjustment
-                let [wAdjAmount, wAdjUpdated] = await iPool.weightsAdjustments(addr1.address, 0);
-                expect(wAdjAmount).to.equal(0);
-                expect(wAdjUpdated).to.be.true;
+                // Withdrawal was not processed
+                expect(await iPool.withdrawalIndex()).to.equal(0);
+                expect(await iPool.totalWeight()).to.equal(amount1.add(amount2.add(amount3)));
+                console.log("1");
+                expect(await iPool.weight(addr1.address)).to.equal(amount1);
+                console.log("2");
+                expect(await iPool.balanceOf(addr1.address)).to.equal(amount1);
 
-                // Check RSR balance
-                expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount2.add(amount3));
-                expect(await rsrToken.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1));
+                console.log("3");
+
+                // Should have recorded earlier deposit weight adjustment
+                let [wAdjAmount, wAdjUpdated] = await iPool.weightsAdjustments(addr1.address, 0);
+                expect(wAdjAmount).to.equal(amount1);
+                expect(wAdjUpdated).to.be.true;
+                console.log("4");
+
+                // Should not have recorded withdrwawal weight adjustment
+                [wAdjAmount, wAdjUpdated] = await iPool.weightsAdjustments(addr1.address, 1);
+                expect(wAdjAmount).to.equal(0);
+                expect(wAdjUpdated).to.be.false;
+                console.log("5");
+
+                // Check RSR balances
+                expect(await rsrToken.balanceOf(iPool.address)).to.equal(amount1.add(amount2.add(amount3)));
+                expect(await rsrToken.balanceOf(addr1.address)).to.equal(initialBal1.sub(amount1));
             });
         });
     });
@@ -756,7 +766,7 @@ describe("InsurancePool contract", function () {
                     .withArgs(addr1.address, amount1);
 
                 // Process depoaits
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Register Revenue     
                 await expect(rToken.makeInsurancePayment(revAmount))
@@ -826,7 +836,7 @@ describe("InsurancePool contract", function () {
                     .withArgs(addr2.address, amount2);
 
                 // Process deposit    
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Process revenues
                 await iPool.catchup(addr2.address, 5);
@@ -857,7 +867,7 @@ describe("InsurancePool contract", function () {
                     .withArgs(addr1.address, amount2);
 
                 // Process deposit    
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Check Weight adjustments
                 weightAdj = await iPool.weightsAdjustments(addr1.address, 1);
@@ -880,7 +890,7 @@ describe("InsurancePool contract", function () {
                     .withArgs(addr1.address, amount3);
 
                 // Process deposit    
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Check Weight adjustments
                 weightAdj = await iPool.weightsAdjustments(addr1.address, 3);
@@ -911,7 +921,7 @@ describe("InsurancePool contract", function () {
                     .withArgs(addr2.address, amount3);
 
                 // Process deposit    
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Register Revenue     
                 await expect(rToken.makeInsurancePayment(revAmount2))
@@ -956,7 +966,7 @@ describe("InsurancePool contract", function () {
                     .withArgs(addr2.address, amount3);
 
                 // Process deposit    
-                await iPool.processDeposits();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Register Revenue     
                 await expect(rToken.makeInsurancePayment(revAmount2))
@@ -969,7 +979,7 @@ describe("InsurancePool contract", function () {
                     .withArgs(addr2.address, amount3);
 
                 // Process wihtdrawal    
-                await iPool.processWithdrawals();
+                await iPool.processWithdrawalsAndDeposits();
 
                 // Register Revenue     
                 await expect(rToken.makeInsurancePayment(revAmount3))
@@ -1045,13 +1055,15 @@ describe("InsurancePool contract", function () {
                     .to.emit(iPool, 'RevenueEventSaved')
                     .withArgs(4, revAmount5);
 
+                expect(await iPool.revenuesCount()).to.equal(5);
+
                 // Not caught up yet
                 expect(await iPool.lastIndex(addr1.address)).to.equal(0);
                 expect(await iPool.earned(addr1.address)).to.equal(0);
-
                 // Process subset of revenues
                 await expect(iPool.catchup(addr1.address, 2))
-                    .to.emit(iPool, 'PendingUpdate');
+                    .to.emit(iPool, 'AccountPendingUpdate')
+                    .withArgs(addr1.address);
 
                 // Check progress
                 expect(await iPool.lastIndex(addr1.address)).to.equal(2);
@@ -1059,7 +1071,8 @@ describe("InsurancePool contract", function () {
 
                 // Process subset revenues
                 await expect(iPool.catchup(addr1.address, 1))
-                    .to.emit(iPool, 'PendingUpdate');
+                    .to.emit(iPool, 'AccountPendingUpdate')
+                    .withArgs(addr1.address);
 
                 // Check progress
                 expect(await iPool.lastIndex(addr1.address)).to.equal(3);
@@ -1067,7 +1080,7 @@ describe("InsurancePool contract", function () {
 
                 // Process final subset revenues
                 await expect(iPool.catchup(addr1.address, 2))
-                    .to.not.emit(iPool, 'PendingUpdate');
+                    .to.not.emit(iPool, 'AccountPendingUpdate');
 
                 // Check all processed
                 expect(await iPool.lastIndex(addr1.address)).to.equal(5);

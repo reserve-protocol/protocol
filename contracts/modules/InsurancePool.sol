@@ -65,11 +65,18 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     Delayed[] public withdrawals;
     uint256 public withdrawalIndex;
 
+    /// Modifier that runs before external
     modifier update(address account) {
         // Process up to a reasonable number of revenue events for the account.
-        // Only continue with transaction if account is up-to-date
-        _catchup(account, 10000);
-        if (account == address(0) || _isUpToDate(account)) {
+        bool caughtUp = _catchup(account, 10000);
+
+        // Process up to a reasonable number of deposits and withdrawals if we are caught up.
+        if (caughtUp) {
+            caughtUp = _processWithdrawalsAndDeposits();
+        }
+
+        // Only execute the tx if we are caught up. 
+        if (caughtUp) {
             _;
         }
     }
@@ -115,11 +122,17 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     // Escape Hatch for Dynamic Programming gone wrong.
     // Call this function if an account's lastIndex was _so_ far below that it can't be processed.
     // Anyone can call this for any account.
-    function catchup(address account, uint256 index) external override {
-        _catchup(account, index);
+    function catchup(address account, uint256 numToProcess) external override returns (bool) {
+        return _catchup(account, numToProcess);
     }
 
-    // Callable only by RToken address
+    /// Anyone can call this function.
+    /// Processes withdrawals and deposits that can be settled.
+    function processWithdrawalsAndDeposits() external override returns (bool) {
+        return _processWithdrawalsAndDeposits();
+    }
+
+    /// Callable only by RToken address
     function makeInsurancePayment(uint256 amount) external override update(address(0)) {
         if (_msgSender() != address(rToken)) {
             revert OnlyRToken();
@@ -147,10 +160,6 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         }
     }
 
-    function _isUpToDate(address account) internal view returns (bool) {
-        return lastIndex[account] == revenues.length;
-    }
-
     function _balanceOf(address account) internal view returns (uint256) {
         if (totalWeight == 0) {
             return 0;
@@ -158,7 +167,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         return (rsr.balanceOf(address(this)) * weight[account]) / totalWeight;
     }
 
-    function _catchup(address account, uint256 numToProcess) internal {
+    function _catchup(address account, uint256 numToProcess) internal returns (bool) {
         if (address(account) != address(0)) {
             uint256 weightToUse = lastWeight[account];
             uint256 endIndex = MathUpgradeable.min(
@@ -180,36 +189,40 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
             // Update values for next catchup process
             lastIndex[account] = endIndex;
             lastWeight[account] = weight[account];
-        }
 
-        // Process deposits and Withdrawals only if up-to-date
-        // Enables to catch up in multiple smaller transactions
-        if (account == address(0) || _isUpToDate(account)) {
-            _processWithdrawals();
-            _processDeposits();
-        } else {
-            emit PendingUpdate(account);
+            // Is there more work to do?
+            if (lastIndex[account] != revenues.length) {
+                emit AccountPendingUpdate(account);
+                return false;
+            }
         }
+        return true;
     }
-
-    function _processWithdrawals() internal {
+    
+    function _processWithdrawalsAndDeposits() internal returns (bool) {
+        // Withdrawals
         uint256 stakingWithdrawalDelay = rToken.stakingWithdrawalDelay();
+        uint256 endIndex = withdrawalIndex + 1000; // TODO: Check 1000 is safe
         while (
-            withdrawalIndex < withdrawals.length &&
-            block.timestamp - stakingWithdrawalDelay > withdrawals[withdrawalIndex].timestamp
+            withdrawalIndex < withdrawals.length && withdrawalIndex < endIndex && 
+            block.timestamp > withdrawals[withdrawalIndex].timestamp + stakingWithdrawalDelay
         ) {
             _settleNextWithdrawal();
         }
-    }
 
-    function _processDeposits() internal {
+        // Deposits
         uint256 stakingDepositDelay = rToken.stakingDepositDelay();
+        endIndex = depositIndex + (endIndex - withdrawalIndex);
         while (
-            depositIndex < deposits.length &&
-            block.timestamp - stakingDepositDelay > deposits[depositIndex].timestamp
+            depositIndex < deposits.length && depositIndex < endIndex && 
+            block.timestamp > deposits[depositIndex].timestamp + stakingDepositDelay
         ) {
             _settleNextDeposit();
         }
+
+        // Are we done?
+        return (withdrawalIndex == withdrawals.length || block.timestamp < withdrawals[withdrawalIndex].timestamp + stakingWithdrawalDelay) && 
+            (depositIndex == deposits.length || block.timestamp < deposits[depositIndex].timestamp + stakingDepositDelay);
     }
 
     function _settleNextWithdrawal() internal {

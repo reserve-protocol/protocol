@@ -30,7 +30,10 @@ interface IInsurancePool {
     function claimRevenue() external;
 
     /// Escape hatch for dynamic programming failurecase
-    function catchup(address account, uint256 floors) external;
+    function catchup(address account, uint256 numToProcess) external returns (bool);
+
+    /// Processes withdrawals/deposits that can be settled. 
+    function processWithdrawalsAndDeposits() external returns (bool);
 
     event DepositInitiated(address indexed user, uint256 amount);
     event DepositCompleted(address indexed user, uint256 amount);
@@ -38,5 +41,6 @@ interface IInsurancePool {
     event WithdrawalCompleted(address indexed user, uint256 amount);
     event RevenueClaimed(address indexed user, uint256 reward);
     event RevenueEventSaved(uint256 index, uint256 amount);
-    event PendingUpdate(address indexed user);
+    event AccountPendingUpdate(address indexed account);
+    event WithdrawalsDepositsPendingProcessing();
 }
