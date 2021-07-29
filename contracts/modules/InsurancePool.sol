@@ -13,8 +13,14 @@ import "../helpers/ErrorMessages.sol";
 /*
  * @title InsurancePool
  * @dev The InsurancePool is where people can stake their RSR in order to provide insurance and
- * benefit from the revenue stream from an RToken. By staking they make their RSR eligible
- * to be used in the event of recapitalization.
+ * benefit from the supply expansion of an RToken. By staking they make their RSR eligible
+ * to be seized by the RToken in times of default. 
+ *
+ * This contract has pretty complicated weights tracking. This arises from the fact that deposits and
+ * withdrawals are delayed and we would like to to prevent requiring users to return to process their
+ * deposits/withdrawals. Any account can settle a stranger's deposit/withdrawal. 
+ *
+ * This produces _weightsAdjustments which are used to retroactively interpret revenue events.
  */
 contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -142,7 +148,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         revenues.push(RevenueEvent(amount, totalWeight));
         emit RevenueEventSaved(revenues.length - 1, amount);
 
-        // Need to udpate allwance - RToken callers pay the cost.
+        // Need to update allowance - make RToken callers pay the cost.
         rsr.safeIncreaseAllowance(
             address(rToken),
             type(uint256).max - rsr.allowance(address(this), address(rToken))
