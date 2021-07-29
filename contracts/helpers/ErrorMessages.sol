@@ -5,6 +5,8 @@ pragma solidity 0.8.4;
 // RToken
 error RebalancingIsFrozen();
 error RebalancingAlreadyUnfrozen();
+error BadSell();
+error BadBuy();
 
 // Minting
 error MintingAmountTooLow();
@@ -30,11 +32,16 @@ error CircuitPaused();
 
 // Authorization
 error Unauthorized();
+error OnlyRToken();
 
 // Transfer/Rebalancing
 error TransferToContractAddress();
-error BadSell();
-error BadBuy();
+error NotEnoughBalance();
+
+// Insurance Pool
+error CannotStakeZero();
+error CannotWithdrawZero();
 
 // RSR
 error CrossedAlready();
+

@@ -4,23 +4,27 @@ pragma solidity 0.8.4;
 import "../modules/InsurancePool.sol";
 
 contract InsurancePoolMock is InsurancePool {
+    
     function depositsCount() external view returns (uint256) {
         return deposits.length;
     }
 
-    function processDeposits() external {
-        _processDeposits();
-    }
 
     function withdrawalsCount() external view returns (uint256) {
         return withdrawals.length;
     }
 
-    function processWithdrawals() external {
-        _processWithdrawals();
-    }
-
     function revenuesCount() external view returns (uint256) {
         return revenues.length;
+    }
+
+    // function weightsAdjustments(address account, uint256 index) external view returns (uint256, bool) {
+    //     WeightAdjustment memory _adj = _weightsAdjustments[account][index];
+    //     return (_adj.amount, _adj.updated);
+    // }
+
+    function weightsAdjustments(address account, uint256 index) external view returns (uint256, bool) {
+        WeightAdjustment memory _adj = _weightsAdjustments[account][index];
+        return  (_adj.amount, _adj.updated);
     }
 }

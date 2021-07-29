@@ -44,8 +44,8 @@ describe("RToken contract", function () {
                 maxTrade: 1,
                 priceInRToken: 0,
                 slippageTolerance: 0
-            } 
-         ];
+            }
+        ];
         // RSR (Insurance token)
         PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock");
         NewRSR = await ethers.getContractFactory("RSR");
