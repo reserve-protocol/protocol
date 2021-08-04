@@ -6,6 +6,7 @@ artifacts/
 cache/
 coverage/
 coverage.json
+.env
 
 .yarn/*
 !.yarn/patches
