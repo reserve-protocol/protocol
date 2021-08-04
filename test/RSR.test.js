@@ -8,6 +8,7 @@ describe("RSR contract", function () {
         // Deploy Previous RSR Mock (Pausable)
         PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock");
         prevToken = await PrevRSR.deploy("Reserve Rights", "RSR");
+        
         await prevToken.mint(owner.address, BigNumber.from(1000));
         await prevToken.mint(addr1.address, BigNumber.from(2000));
         await prevToken.mint(addr2.address, BigNumber.from(3000));

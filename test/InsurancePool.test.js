@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { ZERO_ADDRESS, MAX_UINT256, } = require("./utils/constants");
+const { ZERO_ADDRESS, MAX_UINT256, } = require("../common/constants");
 const { advanceTime } = require("./utils/time");
 const { BigNumber } = require("ethers");
 

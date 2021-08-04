@@ -1,6 +1,7 @@
 const { expect } = require("chai");
-const { expectInReceipt } = require("./utils/events");
-const { ZERO_ADDRESS } = require("./utils/constants");
+const { expectInReceipt } = require("../common/events");
+const { ZERO_ADDRESS } = require("../common/constants");
+const { ethers } = require("hardhat");
 
 describe("RTokenDeployer contract", function () {
     beforeEach(async function () {
@@ -84,12 +85,7 @@ describe("RTokenDeployer contract", function () {
         });
 
         it("Should deploy RToken and Insurance Pool correctly", async function () {
-            const RToken = await ethers.getContractFactory('RToken', {
-                libraries: {
-                    CompoundMath: math.address,
-                }
-            });
-            const rTokenInstance = await RToken.attach(tokenAddress);
+            const rTokenInstance = await ethers.getContractAt("RToken", tokenAddress);
             expect(await rTokenInstance.name()).to.equal('RToken Test');
             expect(await rTokenInstance.symbol()).to.equal('RTKN');
             expect(await rTokenInstance.totalSupply()).to.equal(0);
@@ -104,12 +100,7 @@ describe("RTokenDeployer contract", function () {
         });
 
         it("Should setup owner for RToken correctly", async function () {
-            const RToken = await ethers.getContractFactory('RToken', {
-                libraries: {
-                    CompoundMath: math.address,
-                }
-            });
-            const rTokenInstance = await RToken.attach(tokenAddress);
+            const rTokenInstance = await ethers.getContractAt("RToken", tokenAddress);
             expect(await rTokenInstance.owner()).to.equal(newOwner.address);
         });
 
@@ -173,16 +164,11 @@ describe("RTokenDeployer contract", function () {
             tokenAddress = (expectInReceipt(receipt, 'RTokenDeployed')).args.rToken;
 
             // Get RToken
-            RToken = await ethers.getContractFactory('RToken', {
-                libraries: {
-                    CompoundMath: math.address,
-                }
-            });
-            rTokenInstance = await RToken.attach(tokenAddress);
+            rTokenInstance = await ethers.getContractAt("RToken", tokenAddress);
+           
             // Get InsurancePool
-            InsurancePool = await ethers.getContractFactory('InsurancePoolMock');
             iPoolAddress = await rTokenInstance.insurancePool()
-            iPoolInstance = await InsurancePool.attach(iPoolAddress);
+            iPoolInstance = await ethers.getContractAt("InsurancePoolMock", iPoolAddress);
         });
 
         describe("RToken Upgradeability", function () {
