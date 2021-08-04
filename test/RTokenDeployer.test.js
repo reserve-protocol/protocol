@@ -1,7 +1,6 @@
 const { expect } = require("chai");
 const { expectInReceipt } = require("../common/events");
 const { ZERO_ADDRESS } = require("../common/constants");
-const { ethers } = require("hardhat");
 
 describe("RTokenDeployer contract", function () {
     beforeEach(async function () {
