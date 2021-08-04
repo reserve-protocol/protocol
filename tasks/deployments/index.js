@@ -1,0 +1,7 @@
+exports.deployRSR = require("./deploy-RSR.js")
+exports.deployReserveRightsTokenMock = require("./mocks/deploy-ReserveRightsTokenMock.js")
+exports.deployCompoundMath = require("./deploy-CompoundMath.js")
+exports.deployRToken = require("./deploy-RToken.js")
+exports.deployInsurancePool = require("./deploy-InsurancePool.js")
+exports.deployRTokenDeployer = require("./deploy-RTokenDeployer.js")
+exports.deployCircuitBreaker= require("./deploy-CircuitBreaker.js")
