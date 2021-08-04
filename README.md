@@ -82,10 +82,10 @@ Run the following commands:
 
 ```bash
 # In one terminal (run Hardhat network)
-$ npx hardhat node
+$ yarn devchain
 
 # Open another tab/terminal
-$ npx hardhat run scripts/deploy_all.js --network localhost
+$ yarn deploy:localhost
 ```
 
 Once contracts are deployed you can interact with them by running:
@@ -103,7 +103,7 @@ $ npx hardhat --network localhost console
 
 ```bash
 # In one terminal
-$ npx hardhat run scripts/deploy_all.js --network localhost
+$ yarn deploy:ropsten
 ```
 
 Once contracts are deployed you can interact with them by running:
