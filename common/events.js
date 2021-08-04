@@ -35,7 +35,6 @@ const expectInReceipt = (receipt, eventName, eventArgs = {}) => {
   return event;
 }
 
-
 function contains(args, key, value) {
   expect(key in args).to.equal(true, `Event argument '${key}' not found`);
 

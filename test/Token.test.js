@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { BigNumber } = require("ethers");
-const { SCALE_FACTOR } = require("./utils/constants");
+const { SCALE_FACTOR } = require("../common/constants");
 
 describe("Token library", function () {
     beforeEach(async function () {
