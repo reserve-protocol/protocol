@@ -98,6 +98,7 @@ $ npx hardhat --network localhost console
 
 ### Ropsten deployment (Testnet)
 
+* Get Test Ether (https://faucet.ropsten.be/)
 * Make sure contract addresses are properly configured for Ropsten network (`chainId = 3`) in the `networkConfig` object, and run the following commands:
 
 ```bash
@@ -110,3 +111,5 @@ Once contracts are deployed you can interact with them by running:
 ```bash
 $ npx hardhat --network ropsten console
 ```
+
+* You can obtain Test Ether here: https://faucet.ropsten.be/ (other faucets also available)
