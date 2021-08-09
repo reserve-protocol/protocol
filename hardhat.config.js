@@ -7,9 +7,9 @@ require("./tasks/RToken");
 
 require('dotenv').config()
 
-const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || process.env.ALCHEMY_MAINNET_RPC_URL
-const ROPSTEN_RPC_URL = process.env.ROPSTEN_RPC_URL
-const MNEMONIC = process.env.MNEMONIC
+const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || process.env.ALCHEMY_MAINNET_RPC_URL || ''
+const ROPSTEN_RPC_URL = process.env.ROPSTEN_RPC_URL || ''
+const MNEMONIC = process.env.MNEMONIC || ''
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -19,7 +19,7 @@ module.exports = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      // // To do Mainnet Forking, uncomment this sections
+      // // To do Mainnet Forking, uncomment this section
       // forking: {
       //   url: MAINNET_RPC_URL
       // }

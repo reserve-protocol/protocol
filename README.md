@@ -28,6 +28,13 @@ Install the required modules:
  $ yarn
 ```
 
+Create a local `.env` file:
+
+ ```bash   
+ # In project folder
+ $ cp .env.example .env
+```
+
 ## Running Tests
 
 To run tests run the following command:
@@ -38,7 +45,7 @@ $ yarn test
 
 ## Deployments
 
-1- Create an enviroment file named `.env` and fill the following enviroment variables:
+1- Make sure the local enviroment (`.env`) is properly configured:
 
 ```json
 # Mnemonic, first address will be used for deployments
@@ -49,7 +56,6 @@ ROPSTEN_RPC_URL=""
 
 #  Alchemy Mainnet URL, used for Mainnet forking
 ALCHEMY_MAINNET_RPC_URL=""
-
 ```
 
 2 - You also need to complete the network configuration (`networkConfig`) for the desired network. This can be located at `\common\configuration.js`. These settings will be used to validate supported networks and reuse components which may be already deployed.
