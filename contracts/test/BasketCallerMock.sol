@@ -36,9 +36,9 @@ contract BasketCallerMock {
         return innerBasket.inflationSinceGenesis;
     }
 
-    function getTokenInfo(uint16 index) external view returns (address, uint256, uint256) {
+    function getTokenInfo(uint16 index) external view returns (Token.Info memory) {
         Token.Info memory _tkn = innerBasket.tokens[index];
-        return (_tkn.tokenAddress, _tkn.genesisQuantity, _tkn.rateLimit);
+        return _tkn;
     }
 
     function weight(uint256 scale, uint16 index) external view returns (uint256) {

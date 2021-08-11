@@ -47,11 +47,10 @@ describe("Basket library", function () {
     describe("Tokens", function () {
 
         async function expectTokenInfo(index, tokenInfo) {
-            let [tknAddress, tknGenQty, tknRateLimit] = await caller.getTokenInfo(index);
-            expect(tknAddress).to.equal(tokenInfo.tokenAddress);
-            expect(tknGenQty).to.equal(tokenInfo.genesisQuantity);
-            expect(tknRateLimit).to.equal(tokenInfo.rateLimit);
-
+            let result = await caller.getTokenInfo(index);
+            expect(result.tokenAddress).to.equal(tokenInfo.tokenAddress);
+            expect(result.genesisQuantity).to.equal(tokenInfo.genesisQuantity);
+            expect(result.rateLimit).to.equal(tokenInfo.rateLimit);
         }
 
         it("Should setup initial values correctly", async function () {
