@@ -158,7 +158,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     /// Updates the basket, only callable by owner.
-    function updateBasket(Token.Info[] memory newTokens) external override onlyOwner {
+    function updateBasket(Token.Info[] calldata newTokens) external override onlyOwner {
         _checkNewBasket(newTokens);
         emit BasketUpdated(basket.size, uint16(newTokens.length));
         basket.setTokens(newTokens);
@@ -334,10 +334,15 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         return basket.size;
     }
 
+    function basketToken(uint16 i) external view override returns (Token.Info memory) {
+        return basket.tokens[i];
+    }
+    
+
     // =========================== Internal =================================
 
     /// Reverts if any of the tokens in the list are set incorrectly. 
-    function _checkNewBasket(Token.Info[] memory tokens) internal view {
+    function _checkNewBasket(Token.Info[] memory tokens) internal view { 
         if (tokens.length > type(uint16).max) {
             revert BasketTooBig();
         }

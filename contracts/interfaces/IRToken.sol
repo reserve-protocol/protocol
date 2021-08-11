@@ -35,6 +35,8 @@ interface IRToken {
 
     function basketSize() external view returns (uint16);
 
+    function basketToken(uint16 i) external view returns (Token.Info memory);
+
     function stakingDepositDelay() external view returns (uint256);
 
     function stakingWithdrawalDelay() external view returns (uint256);
