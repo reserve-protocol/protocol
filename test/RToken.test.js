@@ -422,6 +422,55 @@ describe("RToken contract", function () {
             result = await rToken.basketToken(0);
             expect(result.tokenAddress).to.equal(bskToken.address);
         });
+
+        it("Should set price in RToken for basket tokens and RSR if Owner", async function () {
+            const newPrice = BigNumber.from(100);
+
+            // Update price in RSR for Basket token
+            let result = await rToken.basketToken(0);
+            expect(result.priceInRToken).to.equal(0);
+
+            await rToken.connect(owner).setBasketTokenPriceInRToken(0, newPrice);
+
+            result = await rToken.basketToken(0);
+            expect(result.priceInRToken).to.equal(newPrice);
+
+            // Update price in RSR for RSR token
+            result = await rToken.rsr();
+            expect(result.priceInRToken).to.equal(0);
+
+            await rToken.connect(owner).setRSRPriceInRToken(newPrice);
+
+            result = await rToken.rsr();
+            expect(result.priceInRToken).to.equal(newPrice);
+        });
+
+        it("Should not allow to set price in RToken for basket tokens and RSR if not owner Owner", async function () {
+            const newPrice = BigNumber.from(100);
+
+            // Update price in RSR for Basket token
+            let result = await rToken.basketToken(0);
+            expect(result.priceInRToken).to.equal(0);
+
+            await expect(
+                rToken.connect(addr1).setBasketTokenPriceInRToken(0, newPrice)
+            ).to.be.revertedWith("Ownable: caller is not the owner");
+
+            result = await rToken.basketToken(0);
+            expect(result.priceInRToken).to.equal(0);
+
+            // Update price in RSR for RSR token
+            result = await rToken.rsr();
+            expect(result.priceInRToken).to.equal(0);
+
+            await expect(
+                rToken.connect(addr1).setRSRPriceInRToken(newPrice)
+            ).to.be.revertedWith("Ownable: caller is not the owner");
+
+            result = await rToken.rsr();
+            expect(result.priceInRToken).to.equal(0);
+        });
+
     });
 
     describe("Slow Minting", function () {
