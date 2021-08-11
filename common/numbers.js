@@ -1,7 +1,6 @@
 const { BigNumber } = require("ethers");
 const { BN_SCALE_FACTOR } = require("./constants");
 
-
 const bn = (x) => {
     if (BigNumber.isBigNumber(x)) return x;
     const stringified = parseScientific(x.toString());
