@@ -179,7 +179,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         rsrToken.priceInRToken = priceInRToken;
     }
 
-
     /// Callable by anyone, runs the block updates and then a bunch of expensive operations.
     /// The expectation is that it is called by arbitrageurs who can be asked to pay the gas
     /// for other important RToken operations such as settling mintings and rebalance rebalancing. 
@@ -337,7 +336,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     function basketToken(uint16 i) external view override returns (Token.Info memory) {
         return basket.tokens[i];
     }
-    
 
     // =========================== Internal =================================
 
