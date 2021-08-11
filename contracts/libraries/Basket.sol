@@ -19,7 +19,7 @@ library Basket {
         uint256 inflationSinceGenesis;
     }
 
-    /// Sets a basket, without performing any checks. 
+    /// Sets a basket, without performing any checks.
     function setTokens(Basket.Info storage self, Token.Info[] memory tokens) internal {
         self.size = uint16(tokens.length);
         for (uint16 i = 0; i < self.size; i++) {
@@ -88,13 +88,15 @@ library Basket {
             uint256 expected = (totalSupply * weight(self, scale, i)) / 10**decimals;
 
             if (bal < expected) {
-                if (bal / expected > largestDeficit) {
-                    largestDeficit = bal / expected;
+                uint256 diff = scale - ((bal * scale) / expected);
+                if (diff > largestDeficit) {
+                    largestDeficit = diff;
                     deficitIndex = int32(uint32(i));
                 }
             } else if (bal > expected + self.tokens[i].rateLimit) {
-                if (bal / expected > largestSurplus) {
-                    largestSurplus = bal / expected;
+                uint256 diff = ((bal * scale) / expected);
+                if (diff > largestSurplus) {
+                    largestSurplus = diff;
                     surplusIndex = int32(uint32(i));
                 }
             }
