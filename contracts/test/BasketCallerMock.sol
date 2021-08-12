@@ -63,13 +63,13 @@ contract BasketCallerMock {
         return innerBasket.redemptionAmounts(amount, scale, decimals, totalSupply);
     }
 
-    function leastUndercollateralizedAndMostOverCollateralized(
+    function mostUndercollateralizedAndMostOverCollateralized(
         uint256 scale,
         uint8 decimals,
         uint256 totalSupply
     ) external view returns (int32, int32) {
         return
-            innerBasket.leastUndercollateralizedAndMostOverCollateralized(
+            innerBasket.mostUndercollateralizedAndMostOverCollateralized(
                 scale,
                 decimals,
                 totalSupply

@@ -7,6 +7,10 @@ import "./Token.sol";
 
 /**
  * @title Basket
+ * @dev The Basket library computes important metrics for a basket. 
+ * 
+ * When updating the basket it is important to never entirely remove a token.
+ * Instead, set its quantity to 0 and leave the address. 
  */
 library Basket {
     using Token for Token.Info;
@@ -72,7 +76,7 @@ library Basket {
     }
 
     /// Returns indices of tokens, or -1 no tokens fit the criteria.
-    function leastUndercollateralizedAndMostOverCollateralized(
+    function mostUndercollateralizedAndMostOverCollateralized(
         Basket.Info storage self,
         uint256 scale, // TODO: prop
         uint8 decimals,
@@ -94,7 +98,11 @@ library Basket {
                     deficitIndex = int32(uint32(i));
                 }
             } else if (bal > expected + self.tokens[i].rateLimit) {
-                uint256 diff = ((bal * scale) / expected);
+                // Prioritize getting rid of collateral with 0 quantity. 
+                uint256 diff = type(uint256).max;
+                if (expected > 0) {
+                    diff = ((bal * scale) / expected);
+                }
                 if (diff > largestSurplus) {
                     largestSurplus = diff;
                     surplusIndex = int32(uint32(i));

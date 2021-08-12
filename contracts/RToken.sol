@@ -475,7 +475,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
 
         (int32 deficitIndex, int32 surplusIndex) = basket
-            .leastUndercollateralizedAndMostOverCollateralized(SCALE, decimals(), totalSupply());
+            .mostUndercollateralizedAndMostOverCollateralized(SCALE, decimals(), totalSupply());
 
         // Three cases:
         // 1. There is excess of collateral A and deficit of collateral B. Trade A for B.

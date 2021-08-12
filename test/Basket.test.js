@@ -33,14 +33,14 @@ describe("Basket library", function () {
         ERC20 = await ethers.getContractFactory("ERC20Mock");
 
         // Create Token 1
-        tokenInfo1 = await createToken("Token1", "TKN1", genesisQty_half);
+        tokenInfo0 = await createToken("Token1", "TKN1", genesisQty_half);
 
         // Create Token 2
-        tokenInfo2 = await createToken("Token2", "TKN2", genesisQty_half);
+        tokenInfo1 = await createToken("Token2", "TKN2", genesisQty_third);
 
         // Setup Basket
         BasketCaller = await ethers.getContractFactory("BasketCallerMock");
-        caller = await BasketCaller.deploy([tokenInfo1, tokenInfo2]);
+        caller = await BasketCaller.deploy([tokenInfo0, tokenInfo1]);
     });
 
 
@@ -59,54 +59,64 @@ describe("Basket library", function () {
 
             // Token at 0
             expectTokenInfo(0, {
+                tokenAddress: tokenInfo0.tokenAddress,
+                genesisQuantity: genesisQty_half.toString(),
+                rateLimit: fp_10.toString()
+            })
+
+            // Token at 1
+            expectTokenInfo(1, {
+                tokenAddress: tokenInfo1.tokenAddress,
+                genesisQuantity: genesisQty_third.toString(),
+                rateLimit: fp_10.toString()
+            })
+        });
+
+        it("Should allow to remove/add tokens", async function () {
+            // Create Token at 2
+            tokenInfo2 = await createToken("Token3", "TKN3", genesisQty_third);
+
+            // Create Token at 3
+            tokenInfo3 = await createToken("Token4", "TKN4", genesisQty_half);
+
+            // Remove Token at 0 from basket
+            tokenInfo0.genesisQuantity = bn(0);
+
+            // Update quantity for Token at 1
+            tokenInfo1.genesisQuantity = genesisQty_half.toString();
+
+            // Set Tokens
+            await caller.setTokens([tokenInfo0, tokenInfo1, tokenInfo2, tokenInfo3]);
+
+            // Check Basket is properly set
+            expect(await caller.getBasketSize()).to.equal(4);
+            expect(await caller.getInflationSinceGenesis()).to.equal(BN_SCALE_FACTOR);
+
+            // Token at 0
+            expectTokenInfo(0, {
+                tokenAddress: tokenInfo0.tokenAddress,
+                genesisQuantity: bn(0),
+                rateLimit: fp_10.toString()
+            })
+
+            // Token at 1
+            expectTokenInfo(1, {
                 tokenAddress: tokenInfo1.tokenAddress,
                 genesisQuantity: genesisQty_half.toString(),
                 rateLimit: fp_10.toString()
             })
 
-            // Token at 1
-            expectTokenInfo(1, {
-                tokenAddress: tokenInfo2.tokenAddress,
-                genesisQuantity: genesisQty_half.toString(),
-                rateLimit: fp_10.toString()
-            })
-        });
-
-        it("Should allow to set tokens", async function () {
-            // Create Token 3
-            tokenInfo3 = await createToken("Token3", "TKN3", genesisQty_third);
-
-            // Create Token 4
-            tokenInfo4 = await createToken("Token4", "TKN4", genesisQty_third);
-
-            // Update quantity for Token 2
-            tokenInfo2.genesisQuantity = genesisQty_third.toString();
-
-            // Set Tokens
-            await caller.setTokens([tokenInfo2, tokenInfo3, tokenInfo4]);
-
-            // Check Basket is properly set
-            expect(await caller.getBasketSize()).to.equal(3);
-            expect(await caller.getInflationSinceGenesis()).to.equal(BN_SCALE_FACTOR);
-
-            // Token at 0
-            expectTokenInfo(0, {
-                tokenAddress: tokenInfo2.tokenAddress,
-                genesisQuantity: genesisQty_third.toString(),
-                rateLimit: fp_10.toString()
-            })
-
-            // Token at 1
-            expectTokenInfo(1, {
-                tokenAddress: tokenInfo3.tokenAddress,
-                genesisQuantity: genesisQty_third.toString(),
-                rateLimit: fp_10.toString()
-            })
-
             // Token at 2
             expectTokenInfo(2, {
-                tokenAddress: tokenInfo4.tokenAddress,
+                tokenAddress: tokenInfo2.tokenAddress,
                 genesisQuantity: genesisQty_third.toString(),
+                rateLimit: fp_10.toString()
+            })
+
+            // Token at 3
+            expectTokenInfo(3, {
+                tokenAddress: tokenInfo3.tokenAddress,
+                genesisQuantity: genesisQty_half.toString(),
                 rateLimit: fp_10.toString()
             })
         });
@@ -117,11 +127,11 @@ describe("Basket library", function () {
             expect(w1).to.equal(genesisQty_half);
 
             // Token at 1
-            let w2 = await caller.weight(BN_SCALE_FACTOR, 1)
-            expect(w2).to.equal(genesisQty_half);
+            let w2 = await caller.weight(BN_SCALE_FACTOR, 1);
+            expect(w2).to.equal(genesisQty_third);
 
             // Reverts for invalid index
-            await expect(caller.weight(BN_SCALE_FACTOR, 5))
+            await expect(caller.weight(BN_SCALE_FACTOR, 2))
                 .to.be.revertedWith("InvalidTokenIndex()");
         });
 
@@ -129,25 +139,28 @@ describe("Basket library", function () {
             // Set new inflation value to modify weights
             await caller.setInflationSinceGenesis(inflationSinceGenesis_10);
             const newWeight_half = (genesisQty_half.mul(BN_SCALE_FACTOR)).div(inflationSinceGenesis_10);
+            const newWeight_third = (genesisQty_third.mul(BN_SCALE_FACTOR)).div(inflationSinceGenesis_10);
 
             w1 = await caller.weight(BN_SCALE_FACTOR, 0);
             expect(w1).to.equal(newWeight_half);
 
             w2 = await caller.weight(BN_SCALE_FACTOR, 1)
-            expect(w2).to.equal(newWeight_half);
+            expect(w2).to.equal(newWeight_third);
         });
 
         it("Should return amounts for issuance", async function () {
             // With no spread
             const fp_100 = fp(100);
             const fp_50 = fp(50);
+            const fp_33 = fp(1).div(3).mul(100);
             let parts = await caller.issueAmounts(fp_100, BN_SCALE_FACTOR, 0, 18);
-            expect(parts).to.eql([fp_50, fp_50]);
+            expect(parts).to.eql([fp_50, fp_33]);
 
             // Another example with decimals - No spread
             const fp_9 = fp(9);
+            const fp_9_3 = fp(1).div(3).mul(9);
             parts = await caller.issueAmounts(fp_9, BN_SCALE_FACTOR, 0, 18);
-            expect(parts).to.eql([fp_9.div(2), fp_9.div(2)]);
+            expect(parts).to.eql([fp_9.div(2), fp_9_3]);
         });
 
         it("Should return amounts for issuance using spread", async function () {
@@ -162,71 +175,62 @@ describe("Basket library", function () {
 
         context("With collateral balance", async function () {
             beforeEach(async function () {
+                totalSupply = fp(1000);
                 fp_500 = fp(500);
+                fp_333 = fp(1).div(3).mul(1000);
 
                 // Add collateral to basket
-                token1 = await ethers.getContractAt("ERC20Mock", tokenInfo1.tokenAddress);
+                token1 = await ethers.getContractAt("ERC20Mock", tokenInfo0.tokenAddress);
                 await token1.mint(caller.address, fp_500);
 
-                token2 = await ethers.getContractAt("ERC20Mock", tokenInfo2.tokenAddress);
-                await token2.mint(caller.address, fp_500);
-
-                // set total supply
-                totalSupply = fp_500.mul(2);
+                token2 = await ethers.getContractAt("ERC20Mock", tokenInfo1.tokenAddress);
+                await token2.mint(caller.address, fp_333);
             });
 
             it("Should return redemption amounts", async function () {
                 const fp_100 = fp(100);
                 const fp_50 = fp(50);
+                const fp_33 = fp(1).div(3).mul(100);
                 let parts = await caller.redemptionAmounts(fp_100, BN_SCALE_FACTOR, 18, totalSupply);
-                expect(parts).to.eql([fp_50, fp_50]);
+                expect(parts).to.eql([fp_50, fp_33]);
 
                 // Another example
                 const fp_9 = fp(9);
+                const fp_9_3 = fp(1).div(3).mul(9);
                 parts = await caller.redemptionAmounts(fp_9, BN_SCALE_FACTOR, 18, totalSupply);
-                expect(parts).to.eql([fp_9.div(2), fp_9.div(2)]);
+                expect(parts).to.eql([fp_9.div(2), fp_9_3]);
             });
 
             it("Should handle amounts with remainder to issue/reedem", async function () {
-                // Add a third token
-                tokenInfo3 = await createToken("Token3", "TKN3", genesisQty_third);
-                token3 = await ethers.getContractAt("ERC20Mock", tokenInfo3.tokenAddress);
-                await token3.mint(caller.address, fp_500);
-                totalSupply = totalSupply.add(fp_500);
-
-                // Adjust quantities
-                tokenInfo1.genesisQuantity = genesisQty_third.toString();
-                tokenInfo2.genesisQuantity = genesisQty_third.toString();
-
-                // Set Tokens
-                await caller.setTokens([tokenInfo1, tokenInfo2, tokenInfo3]);
-
-                const fp_120 = fp(120);
-                const weight = await caller.weight(BN_SCALE_FACTOR, 0); // pick weight for token1 (= others) 
-                const fp_120_third = fp_120.mul(weight).div(BN_SCALE_FACTOR);
+                const fp_1000 = fp(1000);
+                const weight1 = await caller.weight(BN_SCALE_FACTOR, 0); // pick weight for token1 (= others) 
+                const weight2 = await caller.weight(BN_SCALE_FACTOR, 1); // pick weight for token1 (= others) 
+                const fp_1000_half = fp_1000.mul(weight1).div(BN_SCALE_FACTOR);
+                const fp_1000_third = fp_1000.mul(weight2).div(BN_SCALE_FACTOR);
 
                 // Issue
-                let parts = await caller.issueAmounts(fp_120, BN_SCALE_FACTOR, 0, 18);
-                expect(parts).to.eql([fp_120_third, fp_120_third, fp_120_third]);
+                let parts = await caller.issueAmounts(fp_1000, BN_SCALE_FACTOR, 0, 18);
+                expect(parts).to.eql([fp_1000_half, fp_1000_third]);
 
                 // Redeem
-                parts = await caller.redemptionAmounts(fp_120, BN_SCALE_FACTOR, 18, totalSupply);
-                expect(parts).to.eql([fp_120_third, fp_120_third, fp_120_third]);
+                parts = await caller.redemptionAmounts(fp_1000, BN_SCALE_FACTOR, 18, totalSupply);
+                expect(parts).to.eql([fp_1000_half, fp_1000_third]);
 
                 // Another example
-                const fp_100 = fp(100);
-                const fp_100_third = fp_100.mul(weight).div(BN_SCALE_FACTOR); // same weight as above
+                const fp_1001 = fp(1001);
+                const fp_1001_half = fp_1001.mul(weight1).div(BN_SCALE_FACTOR); // same weight as above
+                const fp_1001_third = fp_1001.mul(weight2).div(BN_SCALE_FACTOR); // same weight as above
 
-                parts = await caller.issueAmounts(fp_100, BN_SCALE_FACTOR, 0, 18);
-                expect(parts).to.eql([fp_100_third, fp_100_third, fp_100_third]);
+                parts = await caller.issueAmounts(fp_1001, BN_SCALE_FACTOR, 0, 18);
+                expect(parts).to.eql([fp_1001_half, fp_1001_third]);
 
                 // Redeem
-                parts = await caller.redemptionAmounts(fp_100, BN_SCALE_FACTOR, 18, totalSupply);
-                expect(parts).to.eql([fp_100_third, fp_100_third, fp_100_third]);
+                parts = await caller.redemptionAmounts(fp_1001, BN_SCALE_FACTOR, 18, totalSupply);
+                expect(parts).to.eql([fp_1001_half, fp_1001_third]);
             });
             it("Should not return collateralized indexes if situation is stable", async function () {
                 // If everything is stable, returns -1
-                let indexes = await caller.leastUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
+                let indexes = await caller.mostUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
                 expect(indexes).to.eql([-1, -1]);
             });
 
@@ -234,12 +238,12 @@ describe("Basket library", function () {
                 // Detects token under collateralized
                 const fp_100 = fp(100);
                 await token1.burn(caller.address, fp_100);
-                indexes = await caller.leastUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
+                indexes = await caller.mostUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
                 expect(indexes).to.eql([0, -1]);
 
                 // Detects token under collateralized (switch)
                 await token2.burn(caller.address, fp_100.mul(2));
-                indexes = await caller.leastUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
+                indexes = await caller.mostUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
                 expect(indexes).to.eql([1, -1]);
             });
 
@@ -247,13 +251,31 @@ describe("Basket library", function () {
                 // Detects token over collateralized
                 const fp_100 = fp(100);
                 await token1.mint(caller.address, fp_100);
-                indexes = await caller.leastUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
+                indexes = await caller.mostUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
                 expect(indexes).to.eql([-1, 0]);
 
                 // Detects token over collateralized (switch)
                 await token2.mint(caller.address, fp_100.mul(2));
-                indexes = await caller.leastUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
+                indexes = await caller.mostUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
                 expect(indexes).to.eql([-1, 1]);
+            });
+
+            it("Should prioritize getting rid of 0 quantity tokens", async function () {
+                // Add a third token with extra collateral
+                fp_high = fp(1000000000);
+                tokenInfo2 = await createToken("Token3", "TKN3", genesisQty_third);
+                token3 = await ethers.getContractAt("ERC20Mock", tokenInfo2.tokenAddress);
+                await token3.mint(caller.address, fp_high);
+
+                // Remove token at 0 from basket
+                tokenInfo0.genesisQuantity = bn(0);
+
+                // Set Tokens
+                await caller.setTokens([tokenInfo0, tokenInfo1, tokenInfo2]);
+
+                // Token at index 0 should be the prioritized one
+                indexes = await caller.mostUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
+                expect(indexes).to.eql([-1, 0]);
             });
         });
     });
