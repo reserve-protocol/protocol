@@ -276,6 +276,12 @@ describe("Basket library", function () {
                 // Token at index 0 should be the prioritized one
                 indexes = await caller.mostUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
                 expect(indexes).to.eql([-1, 0]);
+
+                // Assuming collateral was sold for Token 0
+                // When calling again moves to the next most collateralized Token at 2        
+                await token1.burn(caller.address, fp_500);
+                indexes = await caller.mostUndercollateralizedAndMostOverCollateralized(BN_SCALE_FACTOR, 18, totalSupply);
+                expect(indexes).to.eql([-1, 2]);
             });
         });
     });
