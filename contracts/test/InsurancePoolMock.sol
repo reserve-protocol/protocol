@@ -18,11 +18,6 @@ contract InsurancePoolMock is InsurancePool {
         return revenues.length;
     }
 
-    // function weightsAdjustments(address account, uint256 index) external view returns (uint256, bool) {
-    //     WeightAdjustment memory _adj = _weightsAdjustments[account][index];
-    //     return (_adj.amount, _adj.updated);
-    // }
-
     function weightsAdjustments(address account, uint256 index) external view returns (uint256, bool) {
         WeightAdjustment memory _adj = _weightsAdjustments[account][index];
         return  (_adj.amount, _adj.updated);
