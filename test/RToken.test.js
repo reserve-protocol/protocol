@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ZERO_ADDRESS, BN_SCALE_FACTOR } = require("../common/constants");
+const { bn } = require("../common/numbers");
 const { advanceTime } = require("./utils/time");
 const { BigNumber } = require("ethers");
 
@@ -8,6 +9,7 @@ const stakingDepositDelay = 3600; // seconds
 const stakingWithdrawalDelay = 4800; // seconds
 const issuanceRate = BigNumber.from(25000);
 const maxSupply = BigNumber.from(1000000);
+const minMintingSize = BigNumber.from(50);
 const spread = BigNumber.from(10);
 
 describe("RToken contract", function () {
@@ -25,7 +27,7 @@ describe("RToken contract", function () {
             stakingDepositDelay: stakingDepositDelay,
             stakingWithdrawalDelay: stakingWithdrawalDelay,
             maxSupply: maxSupply,
-            minMintingSize: 0,
+            minMintingSize: minMintingSize,
             issuanceRate: issuanceRate,
             rebalancingFreezeCost: 0,
             insurancePaymentPeriod: 0,
@@ -42,7 +44,7 @@ describe("RToken contract", function () {
         basketTokens = [
             {
                 tokenAddress: bskToken.address,
-                genesisQuantity: 1,
+                genesisQuantity: bn(1e18),
                 rateLimit: 1,
                 maxTrade: 1,
                 priceInRToken: 0,
@@ -98,7 +100,7 @@ describe("RToken contract", function () {
             expect(await rToken.basketSize()).to.equal(1);
             const bskTokenInfo = await rToken.basketToken(0);
             expect(bskTokenInfo.tokenAddress).to.equal(bskToken.address);
-            expect(bskTokenInfo.genesisQuantity).to.equal(1);
+            expect(bskTokenInfo.genesisQuantity).to.equal(bn(1e18));
             expect(bskTokenInfo.rateLimit).to.equal(1);
         });
     });
@@ -409,7 +411,7 @@ describe("RToken contract", function () {
             expect(await rToken.basketSize()).to.equal(basketTokens.length);
             result = await rToken.basketToken(0);
             expect(result.tokenAddress).to.equal(bskToken.address);
-            expect(result.genesisQuantity).to.equal(1);
+            expect(result.genesisQuantity).to.equal(bn(1e18));
         });
 
         it("Should validate correct initialization", async function () {
@@ -434,7 +436,7 @@ describe("RToken contract", function () {
             expect(await rToken.basketSize()).to.equal(basketTokens.length);
             result = await rToken.basketToken(0);
             expect(result.tokenAddress).to.equal(bskToken.address);
-            expect(result.genesisQuantity).to.equal(1);
+            expect(result.genesisQuantity).to.equal(bn(1e18));
         });
 
         it("Should set price in RToken for basket tokens and RSR if Owner", async function () {
@@ -798,6 +800,164 @@ describe("RToken contract", function () {
         //     expect(await rToken.balanceOf(addr1.address)).to.equal(transferAmount);
         //     expect(await rToken.totalSupply()).to.equal(amount);
         // });
+    });
+
+    describe("Issuance", function () {
+        beforeEach(async function () {
+        });
+
+        it("Should not issue RTokens if circuit breaker is paused", async function () {
+            const mintAmount = BigNumber.from(100);
+
+            // Pause circuit breaker
+            await cb.connect(owner).pause();
+
+            await expect(
+                rToken.issue(mintAmount)
+            ).to.be.revertedWith("CircuitPaused()");
+        });
+
+        it("Should not issue RTokens if amount is below minMintingSize", async function () {
+            const mintAmount = BigNumber.from(10);
+
+            await expect(
+                rToken.issue(mintAmount)
+            ).to.be.revertedWith("MintingAmountTooLow()");
+        });
+
+        it("Should not issue RTokens if basket is empty", async function () {
+            const mintAmount = BigNumber.from(100);
+            const newTokens = [];
+
+            // Update to empty basket
+            await expect(rToken.connect(owner).updateBasket(newTokens))
+                .to.emit(rToken, "BasketUpdated")
+                .withArgs(basketTokens.length, newTokens.length);
+
+            await expect(
+                rToken.issue(mintAmount)
+            ).to.be.revertedWith("EmptyBasket()");
+        });
+
+        it("Should revert if user did not provide approval for Token transfer", async function () {
+            const mintAmount = BigNumber.from(1000);
+            await bskToken.mint(addr1.address, mintAmount);
+            await expect(
+                rToken.connect(addr1).issue(mintAmount)
+            ).to.be.revertedWith("ERC20: transfer amount exceeds allowance");
+        });
+
+
+        it("Should revert if user does not have the required Tokens", async function () {
+            const mintAmount = BigNumber.from(1000);
+            await expect(
+                rToken.connect(addr1).issue(mintAmount)
+            ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+        });
+
+        it("Should issue RTokens correctly", async function () {
+            const mintAmount = BigNumber.from(1000);
+            await bskToken.mint(addr1.address, mintAmount);
+            await bskToken.connect(addr1).approve(rToken.address, mintAmount);
+
+            // Check no balance in contract
+            expect(await bskToken.balanceOf(rToken.address)).to.equal(bn(0));
+            expect(await bskToken.balanceOf(addr1.address)).to.equal(mintAmount);
+
+            // Issue rTokens
+            await expect(rToken.connect(addr1).issue(mintAmount))
+                .to.emit(rToken, "SlowMintingInitiated")
+                .withArgs(addr1.address, mintAmount);
+
+            // Check funds were transferred
+            expect(await bskToken.balanceOf(rToken.address)).to.equal(mintAmount);
+            expect(await bskToken.balanceOf(addr1.address)).to.equal(bn(0));
+        });
+
+        it("Should issue RTokens correctly for multiple basket tokens and users", async function () {
+            const mintAmount = BigNumber.from(10000);
+
+            bskToken2 = await ERC20.deploy("Basket Token 2", "BSK2");
+            await bskToken2.mint(addr1.address, mintAmount.mul(2));
+            await bskToken2.mint(addr2.address, mintAmount.mul(2));
+            await bskToken2.connect(addr1).approve(rToken.address, mintAmount.mul(2));
+            await bskToken2.connect(addr2).approve(rToken.address, mintAmount.mul(2));
+
+
+            bskToken3 = await ERC20.deploy("Basket Token 2", "BSK2");
+            await bskToken3.mint(addr1.address, mintAmount.div(2));
+            await bskToken3.mint(addr2.address, mintAmount.div(2));
+            await bskToken3.connect(addr1).approve(rToken.address, mintAmount.div(2));
+            await bskToken3.connect(addr2).approve(rToken.address, mintAmount.div(2));
+
+            newTokens = [
+                // We always need to keep previous tokens but set Qty to 0 to remove
+                {
+                    tokenAddress: bskToken.address,
+                    genesisQuantity: 0,
+                    rateLimit: 1,
+                    maxTrade: 1,
+                    priceInRToken: 0,
+                    slippageTolerance: 0
+                },
+                {
+                    tokenAddress: bskToken2.address,
+                    genesisQuantity: bn(2e18),
+                    rateLimit: 1,
+                    maxTrade: 1,
+                    priceInRToken: 0,
+                    slippageTolerance: 0
+                },
+                {
+                    tokenAddress: bskToken3.address,
+                    genesisQuantity: bn(0.5e18),
+                    rateLimit: 1,
+                    maxTrade: 1,
+                    priceInRToken: 0,
+                    slippageTolerance: 0
+                },
+            ]
+
+            // Update basket
+            await expect(rToken.connect(owner).updateBasket(newTokens))
+                .to.emit(rToken, "BasketUpdated")
+                .withArgs(basketTokens.length, newTokens.length);
+
+            // Check no balance in contract
+            expect(await bskToken.balanceOf(rToken.address)).to.equal(bn(0));
+            expect(await bskToken.balanceOf(addr1.address)).to.equal(bn(0));
+            expect(await bskToken.balanceOf(addr2.address)).to.equal(bn(0));
+
+            expect(await bskToken2.balanceOf(rToken.address)).to.equal(bn(0));
+            expect(await bskToken2.balanceOf(addr1.address)).to.equal(mintAmount.mul(2));
+            expect(await bskToken2.balanceOf(addr2.address)).to.equal(mintAmount.mul(2));
+
+            expect(await bskToken3.balanceOf(rToken.address)).to.equal(bn(0));
+            expect(await bskToken3.balanceOf(addr1.address)).to.equal(mintAmount.div(2));
+            expect(await bskToken3.balanceOf(addr2.address)).to.equal(mintAmount.div(2));
+
+            // Issue rTokens
+            await expect(rToken.connect(addr1).issue(mintAmount))
+                .to.emit(rToken, "SlowMintingInitiated")
+                .withArgs(addr1.address, mintAmount);
+
+            await expect(rToken.connect(addr2).issue(mintAmount))
+                .to.emit(rToken, "SlowMintingInitiated")
+                .withArgs(addr2.address, mintAmount);
+
+            // Check funds were transferred
+            expect(await bskToken.balanceOf(rToken.address)).to.equal(bn(0));
+            expect(await bskToken.balanceOf(addr1.address)).to.equal(bn(0));
+            expect(await bskToken.balanceOf(addr2.address)).to.equal(bn(0));
+
+            expect(await bskToken2.balanceOf(rToken.address)).to.equal(mintAmount.mul(2).mul(2));
+            expect(await bskToken2.balanceOf(addr1.address)).to.equal(bn(0));
+            expect(await bskToken2.balanceOf(addr2.address)).to.equal(bn(0));
+
+            expect(await bskToken3.balanceOf(rToken.address)).to.equal(mintAmount.div(2).mul(2));
+            expect(await bskToken3.balanceOf(addr1.address)).to.equal(bn(0));
+            expect(await bskToken3.balanceOf(addr2.address)).to.equal(bn(0));
+        });
     });
 
     describe("Tx Fees", function () {
