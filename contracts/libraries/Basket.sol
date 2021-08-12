@@ -7,6 +7,10 @@ import "./Token.sol";
 
 /**
  * @title Basket
+ * @dev The Basket library computes important metrics for a basket. 
+ * 
+ * When updating the basket it is important to never entirely remove a token.
+ * Instead, set its quantity to 0 and leave the address. 
  */
 library Basket {
     using Token for Token.Info;
@@ -19,7 +23,7 @@ library Basket {
         uint256 inflationSinceGenesis;
     }
 
-    /// Sets a basket, without performing any checks. 
+    /// Sets a basket, without performing any checks.
     function setTokens(Basket.Info storage self, Token.Info[] memory tokens) internal {
         self.size = uint16(tokens.length);
         for (uint16 i = 0; i < self.size; i++) {
@@ -72,7 +76,7 @@ library Basket {
     }
 
     /// Returns indices of tokens, or -1 no tokens fit the criteria.
-    function leastUndercollateralizedAndMostOverCollateralized(
+    function mostUndercollateralizedAndMostOverCollateralized(
         Basket.Info storage self,
         uint256 scale, // TODO: prop
         uint8 decimals,
@@ -88,13 +92,19 @@ library Basket {
             uint256 expected = (totalSupply * weight(self, scale, i)) / 10**decimals;
 
             if (bal < expected) {
-                if (bal / expected > largestDeficit) {
-                    largestDeficit = bal / expected;
+                uint256 diff = scale - ((bal * scale) / expected);
+                if (diff > largestDeficit) {
+                    largestDeficit = diff;
                     deficitIndex = int32(uint32(i));
                 }
             } else if (bal > expected + self.tokens[i].rateLimit) {
-                if (bal / expected > largestSurplus) {
-                    largestSurplus = bal / expected;
+                // Prioritize getting rid of collateral with 0 quantity. 
+                uint256 diff = type(uint256).max;
+                if (expected > 0) {
+                    diff = ((bal * scale) / expected);
+                }
+                if (diff > largestSurplus) {
+                    largestSurplus = diff;
                     surplusIndex = int32(uint32(i));
                 }
             }

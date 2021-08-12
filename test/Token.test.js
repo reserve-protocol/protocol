@@ -1,6 +1,5 @@
 const { expect } = require("chai");
 const { BigNumber } = require("ethers");
-const { SCALE_FACTOR } = require("../common/constants");
 
 describe("Token library", function () {
     beforeEach(async function () {
@@ -86,16 +85,4 @@ describe("Token library", function () {
 
         });
     });
-
-    // TODO: Need to complete tests for Adjust quantities
-    // describe("Adjust Quantities", function () {
-    //     it("Should update quantities correctly", async function () {
-    //         const scale = BigNumber.from(SCALE_FACTOR.toString());
-    //         const expansionPerSecond =  ....;
-    //         const deployedAt = await caller.deployedAt();
-    //         const adjustedAmt = ....;
-    //         await caller.adjustQuantity(scale, expansionPerSecond, deployedAt);
-    //         //expect(await caller.getAdjustedQuantity()).to.equal(adjustedAmt); 
-    //     });
-    // });
 });

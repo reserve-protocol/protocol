@@ -25,9 +25,9 @@ import "./helpers/ErrorMessages.sol";
  *    - scale up or down in supply (nearly) completely elastically
  *    - change their backing while maintaining price
  *    - and, recover from collateral defaults through insurance
- * 
+ *
  * Contract Invariant: Calls to `act` should not impact the state of the system in the long-term,
- * provided that calls to `act` are eventually made. 
+ * provided that calls to `act` are eventually made.
  *
  */
 contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgradeable {
@@ -95,7 +95,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     address public freezer;
 
-    // Private data for last timestamps and last blocks. Not necessary for contract upgrades. 
+    // Private data for last timestamps and last blocks. Not necessary for contract upgrades.
     uint256 private _deployedAt;
     uint256 private _lastExpansion;
     uint256 private _lastInsurancePayment;
@@ -139,9 +139,9 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _;
     }
 
-    /// This modifier is run before every issuance, redemption, and act. 
-    /// It should not run expensive calculations. 
-    /// It should be idempotent within a block. 
+    /// This modifier is run before every issuance, redemption, and act.
+    /// It should not run expensive calculations.
+    /// It should be idempotent within a block.
     modifier everyBlock() {
         _decayBasket(); // calculates a pure function of block timestamp
         _expandSupply(); // repeated calls will halt early to save gas
@@ -179,19 +179,18 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         rsrToken.priceInRToken = priceInRToken;
     }
 
-
     /// Callable by anyone, runs the block updates and then a bunch of expensive operations.
     /// The expectation is that it is called by arbitrageurs who can be asked to pay the gas
-    /// for other important RToken operations such as settling mintings and rebalance rebalancing. 
+    /// for other important RToken operations such as settling mintings and rebalance rebalancing.
     function act() external override everyBlock {
         _trySweepRevenue();
         _tryProcessMintings();
         _rebalance();
     }
 
-    /// Anyone can call this function to issue RToken to themselves. 
-    /// The approvals for the collateral tokens must be made in advance. 
-    /// Mintings are slow and take time to setle. 
+    /// Anyone can call this function to issue RToken to themselves.
+    /// The approvals for the collateral tokens must be made in advance.
+    /// Mintings are slow and take time to setle.
     function issue(uint256 amount) external override everyBlock {
         if (config.circuitBreaker.paused()) {
             revert CircuitPaused();
@@ -214,8 +213,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _startSlowMinting(_msgSender(), amount);
     }
 
-
-    /// Anyone can call this function to immediately redeem RToken for collateral tokens. 
+    /// Anyone can call this function to immediately redeem RToken for collateral tokens.
     function redeem(uint256 amount) external override everyBlock {
         if (amount == 0) {
             revert RedeemAmountCannotBeZero();
@@ -234,8 +232,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         emit Redemption(_msgSender(), amount);
     }
 
-    /// Freezes rebalancing by locking a large amount of RSR. 
-    /// Anyone can freeze rebalancing, even if it's already frozen. 
+    /// Freezes rebalancing by locking a large amount of RSR.
+    /// Anyone can freeze rebalancing, even if it's already frozen.
     function freezeRebalancing() external override {
         if (rebalancingFrozen()) {
             rsrToken.safeTransfer(freezer, config.rebalancingFreezeCost);
@@ -246,7 +244,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         emit RebalancingFrozen(_msgSender());
     }
 
-    /// Unfreezes rebalancing. Only callable by the freezer. 
+    /// Unfreezes rebalancing. Only callable by the freezer.
     function unfreezeRebalancing() external override {
         if (!rebalancingFrozen()) {
             revert RebalancingAlreadyUnfrozen();
@@ -261,7 +259,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         emit RebalancingUnfrozen(_msgSender());
     }
 
-    /// A light wrapper to prevent sends to contract address. 
+    /// A light wrapper to prevent sends to contract address.
     function transfer(address recipient, uint256 amount) public override returns (bool) {
         if (recipient == address(this)) {
             revert TransferToContractAddress();
@@ -270,7 +268,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         return super.transfer(recipient, amount);
     }
 
-    /// A light wrapper to prevent sends to contract address. 
+    /// A light wrapper to prevent sends to contract address.
     function transferFrom(
         address sender,
         address recipient,
@@ -284,18 +282,18 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     // =========================== Views =================================
 
-    /// Returns whether rebalancing is currently frozen or not. 
+    /// Returns whether rebalancing is currently frozen or not.
     function rebalancingFrozen() public view override returns (bool) {
         return freezer != address(0);
     }
 
-    /// Returns the quantities necessary to issue a quantity of RToken. 
+    /// Returns the quantities necessary to issue a quantity of RToken.
     /// Does not decay the basket quantities.
     function issueAmounts(uint256 amount) public view override returns (uint256[] memory amounts) {
         return basket.issueAmounts(amount, SCALE, config.spread, decimals());
     }
 
-    /// Returns the collateral token quantities given by a redemption of a quantity of RToken. 
+    /// Returns the collateral token quantities given by a redemption of a quantity of RToken.
     /// Does not decay the basket quantities.
     function redemptionAmounts(uint256 amount)
         public
@@ -324,19 +322,30 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     function stakingDepositDelay() external view override returns (uint256) {
         return config.stakingDepositDelay;
     }
+
     function stakingWithdrawalDelay() external view override returns (uint256) {
         return config.stakingWithdrawalDelay;
     }
+
     function insurancePool() external view override returns (address) {
         return address(config.insurancePool);
     }
+
     function basketSize() external view override returns (uint16) {
         return basket.size;
     }
 
+    function basketToken(uint16 i) external view override returns (Token.Info memory) {
+        return basket.tokens[i];
+    }
+
+    function rsr() external view override returns (Token.Info memory) {
+        return rsrToken;
+    }
+
     // =========================== Internal =================================
 
-    /// Reverts if any of the tokens in the list are set incorrectly. 
+    /// Reverts if any of the tokens in the list are set incorrectly.
     function _checkNewBasket(Token.Info[] memory tokens) internal view {
         if (tokens.length > type(uint16).max) {
             revert BasketTooBig();
@@ -352,7 +361,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
     }
 
-    /// Reverts if any of the config values are set incorrectly. 
+    /// Reverts if any of the config values are set incorrectly.
     function _checkConfig(Config memory c) internal view {
         if (c.expansionPerSecond > SCALE) {
             revert SupplyExpansionTooLarge();
@@ -371,8 +380,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     function _decayBasket() internal {
         // Discrete compounding on a per-second basis
         basket.inflationSinceGenesis = CompoundMath.compound(
-            SCALE, 
-            config.expansionPerSecond, 
+            SCALE,
+            config.expansionPerSecond,
             block.timestamp - _deployedAt
         );
     }
@@ -380,11 +389,12 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Expands the RToken supply based on the time since last supply expansion.
     function _expandSupply() internal {
         // Discrete compounding on a per-second basis
-        uint256 amount = totalSupply() * SCALE / CompoundMath.compound(
-            SCALE, 
-            config.expansionPerSecond, 
-            block.timestamp - _lastExpansion
-        );
+        uint256 amount = (totalSupply() * SCALE) /
+            CompoundMath.compound(
+                SCALE,
+                config.expansionPerSecond,
+                block.timestamp - _lastExpansion
+            );
         _lastExpansion = block.timestamp;
         if (amount == 0) {
             return;
@@ -403,7 +413,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
     }
 
-    /// Sweeps revenue payments from self to insurance pool if it has been long enough. 
+    /// Sweeps revenue payments from self to insurance pool if it has been long enough.
     function _trySweepRevenue() internal {
         if (_lastInsurancePayment + config.insurancePaymentPeriod < block.timestamp) {
             _lastInsurancePayment = block.timestamp;
@@ -421,7 +431,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             uint256 issuanceAmount = config.issuanceRate;
             Minting storage m;
             while (currentMinting < mintings.length && currentMinting < start + 1000) {
-                // TODO: Tune the +1000 maximum. 
+                // TODO: Tune the +1000 maximum.
                 m = mintings[currentMinting];
 
                 // We should break if the next minting is too big to allow more blocks to pass.
@@ -430,7 +440,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
                 }
                 _mint(m.account, m.amount);
                 emit SlowMintingComplete(m.account, m.amount);
-
 
                 // ==== Overhead ====
 
@@ -450,7 +459,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
                 currentMinting++;
             }
 
-            // Update _lastMintingBlock if tokens are minted. 
+            // Update _lastMintingBlock if tokens are minted.
             if (currentMinting > start) {
                 _lastMintingBlock = block.number;
             }
@@ -466,12 +475,12 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
 
         (int32 deficitIndex, int32 surplusIndex) = basket
-            .leastUndercollateralizedAndMostOverCollateralized(SCALE, decimals(), totalSupply());
+            .mostUndercollateralizedAndMostOverCollateralized(SCALE, decimals(), totalSupply());
 
         // Three cases:
-        // 1. There is excess of collateral A and deficit of collateral B. Trade A for B. 
+        // 1. There is excess of collateral A and deficit of collateral B. Trade A for B.
         // 2. There is deficit of collateral A and no excesses. Trade RSR for A.
-        // 3. There is excess of collateral A and no deficits. Trade A for RSR. 
+        // 3. There is excess of collateral A and no deficits. Trade A for RSR.
         if (deficitIndex >= 0 && surplusIndex >= 0) {
             // Sell as much excess collateral as possible for missing collateral.
             _calculateBuyAmountAndTrade(
@@ -514,7 +523,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
     }
 
-    /// Starts a time-delayed minting. 
+    /// Starts a time-delayed minting.
     function _startSlowMinting(address account, uint256 amount) internal {
         if (account == address(0)) {
             revert MintToZeroAddressNotAllowed();
@@ -533,7 +542,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         emit SlowMintingInitiated(account, amount);
     }
 
-    /// Calculates the selling and buying amount for a fixed sell trade. 
+    /// Calculates the selling and buying amount for a fixed sell trade.
     function _calculateBuyAmountAndTrade(
         Token.Info storage buying,
         Token.Info storage selling,
@@ -554,7 +563,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         _tradeWithFixedSellAmount(selling, buying, sell, minBuy);
     }
 
-    /// Performs the trade interaction with the DEXRouter and checks for bad outcomes. 
+    /// Performs the trade interaction with the DEXRouter and checks for bad outcomes.
     function _tradeWithFixedSellAmount(
         Token.Info storage sellToken,
         Token.Info storage buyToken,
@@ -571,7 +580,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             minBuyAmount
         );
 
-        // TODO: Maybe exact equality is too much to ask? Discover during tests. 
+        // TODO: Maybe exact equality is too much to ask? Discover during tests.
         if (sellToken.myBalance() - initialSellBal != sellAmount) {
             revert BadSell();
         }
@@ -615,7 +624,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
     }
 
-    /// A wrapper for the inherited _mint that ensures supply never exceeds the maximum. 
+    /// A wrapper for the inherited _mint that ensures supply never exceeds the maximum.
     function _mint(address recipient, uint256 amount) internal override {
         super._mint(recipient, amount);
         if (totalSupply() >= config.maxSupply) {
@@ -623,6 +632,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         }
     }
 
-    /// UUPSUpgradeable pattern that encodes under what conditions this proxy implementation can be upgraded. 
+    /// UUPSUpgradeable pattern that encodes under what conditions this proxy implementation can be upgraded.
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

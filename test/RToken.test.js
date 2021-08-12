@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { ZERO_ADDRESS } = require("../common/constants");
+const { ZERO_ADDRESS, BN_SCALE_FACTOR } = require("../common/constants");
 const { advanceTime } = require("./utils/time");
 const { BigNumber } = require("ethers");
 
@@ -8,14 +8,17 @@ const stakingDepositDelay = 3600; // seconds
 const stakingWithdrawalDelay = 4800; // seconds
 const issuanceRate = BigNumber.from(25000);
 const maxSupply = BigNumber.from(1000000);
+const spread = BigNumber.from(10);
 
 describe("RToken contract", function () {
-
     beforeEach(async function () {
         [owner, addr1, addr2, other] = await ethers.getSigners();
 
         CircuitBreaker = await ethers.getContractFactory("CircuitBreaker");
         cb = await CircuitBreaker.deploy(owner.address);
+
+        ERC20 = await ethers.getContractFactory("ERC20Mock");
+        bskToken = await ERC20.deploy("Basket Token", "BSK");
 
         // RToken Configuration and setup
         config = {
@@ -28,7 +31,7 @@ describe("RToken contract", function () {
             insurancePaymentPeriod: 0,
             expansionPerSecond: 0,
             expenditureFactor: 0,
-            spread: 0,
+            spread: spread,
             exchange: ZERO_ADDRESS,
             circuitBreaker: cb.address,
             txFeeCalculator: ZERO_ADDRESS,
@@ -38,8 +41,8 @@ describe("RToken contract", function () {
 
         basketTokens = [
             {
-                tokenAddress: ZERO_ADDRESS,
-                genesisQuantity: 0,
+                tokenAddress: bskToken.address,
+                genesisQuantity: 1,
                 rateLimit: 1,
                 maxTrade: 1,
                 priceInRToken: 0,
@@ -70,7 +73,7 @@ describe("RToken contract", function () {
             libraries: {
                 CompoundMath: math.address,
             }
-        });        
+        });
         // Deploy RToken
         rToken = await RToken.connect(owner).deploy();
         await rToken.connect(owner).initialize("RToken", "RTKN", config, basketTokens, rsrTokenInfo);
@@ -89,6 +92,14 @@ describe("RToken contract", function () {
             const ownerBalance = await rToken.balanceOf(owner.address);
             expect(await rToken.totalSupply()).to.equal(ownerBalance);
             expect(await rToken.totalSupply()).to.equal(0);
+        });
+
+        it("Should setup basket tokens correctly", async function () {
+            expect(await rToken.basketSize()).to.equal(1);
+            const bskTokenInfo = await rToken.basketToken(0);
+            expect(bskTokenInfo.tokenAddress).to.equal(bskToken.address);
+            expect(bskTokenInfo.genesisQuantity).to.equal(1);
+            expect(bskTokenInfo.rateLimit).to.equal(1);
         });
     });
 
@@ -218,6 +229,37 @@ describe("RToken contract", function () {
             });
         });
 
+        describe("spread", function () {
+            beforeEach(async function () {
+                currentValue = spread;
+                newValue = BigNumber.from(15);
+                newConfig = config;
+            });
+
+            it("Should update correctly if Owner", async function () {
+                expect(await rToken.spread()).to.equal(currentValue);
+
+                // Update individual field
+                newConfig.spread = newValue;
+                await expect(rToken.connect(owner).updateConfig(newConfig))
+                    .to.emit(rToken, "ConfigUpdated");
+
+                expect(await rToken.spread()).to.equal(newValue);
+            });
+
+            it("Should not allow to update if not Owner", async function () {
+                expect(await rToken.spread()).to.equal(currentValue);
+
+                // Update individual field
+                newConfig.spread = newValue;
+                await expect(
+                    rToken.connect(addr1).updateConfig(newConfig)
+                ).to.be.revertedWith("Ownable: caller is not the owner");
+
+                expect(await rToken.spread()).to.equal(currentValue);
+            });
+        });
+
         describe("circuitBreaker", function () {
             beforeEach(async function () {
                 currentValue = cb.address;
@@ -282,6 +324,167 @@ describe("RToken contract", function () {
                 expect(await rToken.txFeeCalculator()).to.equal(currentValue);
             });
         });
+    });
+
+    describe("Updates/Changes to Basket", function () {
+        beforeEach(async function () {
+            bskToken2 = await ERC20.deploy("Basket Token 2", "BSK2");
+            bskToken3 = await ERC20.deploy("Basket Token 3", "BSK3");
+            newTokens = [
+                // We always need to keep previous tokens but set Qty to 0 to remove
+                {
+                    tokenAddress: bskToken.address,
+                    genesisQuantity: 0,
+                    rateLimit: 1,
+                    maxTrade: 1,
+                    priceInRToken: 0,
+                    slippageTolerance: 0
+                },
+                {
+                    tokenAddress: bskToken2.address,
+                    genesisQuantity: 2,
+                    rateLimit: 1,
+                    maxTrade: 1,
+                    priceInRToken: 0,
+                    slippageTolerance: 0
+                },
+                {
+                    tokenAddress: bskToken3.address,
+                    genesisQuantity: 3,
+                    rateLimit: 1,
+                    maxTrade: 1,
+                    priceInRToken: 0,
+                    slippageTolerance: 0
+                }];
+        });
+
+        it("Should update basket correctly if Owner", async function () {
+            expect(await rToken.basketSize()).to.equal(basketTokens.length);
+            let result = await rToken.basketToken(0);
+            expect(result.tokenAddress).to.equal(bskToken.address);
+
+            // Update basket
+            await expect(rToken.connect(owner).updateBasket(newTokens))
+                .to.emit(rToken, "BasketUpdated")
+                .withArgs(basketTokens.length, newTokens.length);
+
+            // Check basket was set properly
+            expect(await rToken.basketSize()).to.equal(newTokens.length);
+
+            result = await rToken.basketToken(0);
+            expect(result.tokenAddress).to.equal(bskToken.address);
+
+            result = await rToken.basketToken(1);
+            expect(result.tokenAddress).to.equal(bskToken2.address);
+
+            result = await rToken.basketToken(2);
+            expect(result.tokenAddress).to.equal(bskToken3.address);
+        });
+
+        it("Should not allow to update basket if not Owner", async function () {
+            expect(await rToken.basketSize()).to.equal(basketTokens.length);
+            let result = await rToken.basketToken(0);
+            expect(result.tokenAddress).to.equal(bskToken.address);
+
+            // Update basket
+            await expect(
+                rToken.connect(addr1).updateBasket(newTokens)
+            ).to.be.revertedWith("Ownable: caller is not the owner");
+
+            // Check basket was not updated
+            expect(await rToken.basketSize()).to.equal(basketTokens.length);
+            result = await rToken.basketToken(0);
+            expect(result.tokenAddress).to.equal(bskToken.address);
+        });
+
+        it("Should validate slippage tolerance", async function () {
+            // Set invalid value in one of the tokens
+            newTokens[0].slippageTolerance = (BN_SCALE_FACTOR.add(1)).toString();
+            // Update basket
+            await expect(
+                rToken.connect(owner).updateBasket(newTokens)
+            ).to.be.revertedWith("SlippageToleranceTooBig()");
+
+            // Check basket was not updated
+            expect(await rToken.basketSize()).to.equal(basketTokens.length);
+            result = await rToken.basketToken(0);
+            expect(result.tokenAddress).to.equal(bskToken.address);
+            expect(result.genesisQuantity).to.equal(1);
+        });
+
+        it("Should validate correct initialization", async function () {
+            // Set invalid value in rateLimit
+            newTokens[1].rateLimit = 0;
+
+            // Update basket
+            await expect(
+                rToken.connect(owner).updateBasket(newTokens)
+            ).to.be.revertedWith("UninitializedTokens()");
+
+            // Set invalid value in maxTrade
+            newTokens[1].rateLimit = 1;
+            newTokens[1].maxTrade = 0;
+
+            // Update basket
+            await expect(
+                rToken.connect(owner).updateBasket(newTokens)
+            ).to.be.revertedWith("UninitializedTokens()");
+
+            // Check basket was not updated
+            expect(await rToken.basketSize()).to.equal(basketTokens.length);
+            result = await rToken.basketToken(0);
+            expect(result.tokenAddress).to.equal(bskToken.address);
+            expect(result.genesisQuantity).to.equal(1);
+        });
+
+        it("Should set price in RToken for basket tokens and RSR if Owner", async function () {
+            const newPrice = BigNumber.from(100);
+
+            // Update price in RSR for Basket token
+            let result = await rToken.basketToken(0);
+            expect(result.priceInRToken).to.equal(0);
+
+            await rToken.connect(owner).setBasketTokenPriceInRToken(0, newPrice);
+
+            result = await rToken.basketToken(0);
+            expect(result.priceInRToken).to.equal(newPrice);
+
+            // Update price in RSR for RSR token
+            result = await rToken.rsr();
+            expect(result.priceInRToken).to.equal(0);
+
+            await rToken.connect(owner).setRSRPriceInRToken(newPrice);
+
+            result = await rToken.rsr();
+            expect(result.priceInRToken).to.equal(newPrice);
+        });
+
+        it("Should not allow to set price in RToken for basket tokens and RSR if not owner Owner", async function () {
+            const newPrice = BigNumber.from(100);
+
+            // Update price in RSR for Basket token
+            let result = await rToken.basketToken(0);
+            expect(result.priceInRToken).to.equal(0);
+
+            await expect(
+                rToken.connect(addr1).setBasketTokenPriceInRToken(0, newPrice)
+            ).to.be.revertedWith("Ownable: caller is not the owner");
+
+            result = await rToken.basketToken(0);
+            expect(result.priceInRToken).to.equal(0);
+
+            // Update price in RSR for RSR token
+            result = await rToken.rsr();
+            expect(result.priceInRToken).to.equal(0);
+
+            await expect(
+                rToken.connect(addr1).setRSRPriceInRToken(newPrice)
+            ).to.be.revertedWith("Ownable: caller is not the owner");
+
+            result = await rToken.rsr();
+            expect(result.priceInRToken).to.equal(0);
+        });
+
     });
 
     describe("Slow Minting", function () {

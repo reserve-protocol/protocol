@@ -21,6 +21,10 @@ contract RTokenMock is RToken {
         return config.issuanceRate;
     }
 
+    function spread() external view returns (uint256) {
+        return config.spread;
+    }
+
     function circuitBreaker() external view returns (address) {
         return address(config.circuitBreaker);
     }
