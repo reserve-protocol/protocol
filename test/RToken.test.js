@@ -331,6 +331,15 @@ describe("RToken contract", function () {
             bskToken2 = await ERC20.deploy("Basket Token 2", "BSK2");
             bskToken3 = await ERC20.deploy("Basket Token 3", "BSK3");
             newTokens = [
+                // We always need to keep previous tokens but set Qty to 0 to remove
+                {
+                    tokenAddress: bskToken.address,
+                    genesisQuantity: 0,
+                    rateLimit: 1,
+                    maxTrade: 1,
+                    priceInRToken: 0,
+                    slippageTolerance: 0
+                },
                 {
                     tokenAddress: bskToken2.address,
                     genesisQuantity: 2,
@@ -363,9 +372,12 @@ describe("RToken contract", function () {
             expect(await rToken.basketSize()).to.equal(newTokens.length);
 
             result = await rToken.basketToken(0);
-            expect(result.tokenAddress).to.equal(bskToken2.address);
+            expect(result.tokenAddress).to.equal(bskToken.address);
 
             result = await rToken.basketToken(1);
+            expect(result.tokenAddress).to.equal(bskToken2.address);
+
+            result = await rToken.basketToken(2);
             expect(result.tokenAddress).to.equal(bskToken3.address);
         });
 
@@ -397,6 +409,7 @@ describe("RToken contract", function () {
             expect(await rToken.basketSize()).to.equal(basketTokens.length);
             result = await rToken.basketToken(0);
             expect(result.tokenAddress).to.equal(bskToken.address);
+            expect(result.genesisQuantity).to.equal(1);
         });
 
         it("Should validate correct initialization", async function () {
@@ -421,6 +434,7 @@ describe("RToken contract", function () {
             expect(await rToken.basketSize()).to.equal(basketTokens.length);
             result = await rToken.basketToken(0);
             expect(result.tokenAddress).to.equal(bskToken.address);
+            expect(result.genesisQuantity).to.equal(1);
         });
 
         it("Should set price in RToken for basket tokens and RSR if Owner", async function () {
