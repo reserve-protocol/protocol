@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ZERO_ADDRESS, BN_SCALE_FACTOR } = require("../common/constants");
-const { bn } = require("../common/numbers");
+const { bn, fp } = require("../common/numbers");
 const { advanceTime } = require("./utils/time");
 const { BigNumber } = require("ethers");
 
@@ -803,11 +803,8 @@ describe("RToken contract", function () {
     });
 
     describe("Issuance", function () {
-        beforeEach(async function () {
-        });
-
         it("Should not issue RTokens if circuit breaker is paused", async function () {
-            const mintAmount = BigNumber.from(100);
+            const mintAmount = bn(100);
 
             // Pause circuit breaker
             await cb.connect(owner).pause();
@@ -815,18 +812,22 @@ describe("RToken contract", function () {
             await expect(
                 rToken.issue(mintAmount)
             ).to.be.revertedWith("CircuitPaused()");
+
+            expect(await rToken.totalSupply()).to.equal(bn(0));
         });
 
         it("Should not issue RTokens if amount is below minMintingSize", async function () {
-            const mintAmount = BigNumber.from(10);
+            const mintAmount = bn(10);
 
             await expect(
                 rToken.issue(mintAmount)
             ).to.be.revertedWith("MintingAmountTooLow()");
+
+            expect(await rToken.totalSupply()).to.equal(bn(0));
         });
 
         it("Should not issue RTokens if basket is empty", async function () {
-            const mintAmount = BigNumber.from(100);
+            const mintAmount = bn(100);
             const newTokens = [];
 
             // Update to empty basket
@@ -837,26 +838,31 @@ describe("RToken contract", function () {
             await expect(
                 rToken.issue(mintAmount)
             ).to.be.revertedWith("EmptyBasket()");
+
+            expect(await rToken.totalSupply()).to.equal(bn(0));
         });
 
         it("Should revert if user did not provide approval for Token transfer", async function () {
-            const mintAmount = BigNumber.from(1000);
+            const mintAmount = bn(1000);
             await bskToken.mint(addr1.address, mintAmount);
             await expect(
                 rToken.connect(addr1).issue(mintAmount)
             ).to.be.revertedWith("ERC20: transfer amount exceeds allowance");
+
+            expect(await rToken.totalSupply()).to.equal(bn(0));
         });
 
-
         it("Should revert if user does not have the required Tokens", async function () {
-            const mintAmount = BigNumber.from(1000);
+            const mintAmount = bn(1000);
             await expect(
                 rToken.connect(addr1).issue(mintAmount)
             ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+
+            expect(await rToken.totalSupply()).to.equal(bn(0));
         });
 
         it("Should issue RTokens correctly", async function () {
-            const mintAmount = BigNumber.from(1000);
+            const mintAmount = bn(1000);
             await bskToken.mint(addr1.address, mintAmount);
             await bskToken.connect(addr1).approve(rToken.address, mintAmount);
 
@@ -872,23 +878,31 @@ describe("RToken contract", function () {
             // Check funds were transferred
             expect(await bskToken.balanceOf(rToken.address)).to.equal(mintAmount);
             expect(await bskToken.balanceOf(addr1.address)).to.equal(bn(0));
+
+            expect(await rToken.totalSupply()).to.equal(0);
+
+            // Process Mintings and check RTokens issued
+            await rToken["tryProcessMintings()"]();
+            expect(await rToken.balanceOf(addr1.address)).to.equal(mintAmount);
+            expect(await rToken.totalSupply()).to.equal(mintAmount);
         });
 
         it("Should issue RTokens correctly for multiple basket tokens and users", async function () {
-            const mintAmount = BigNumber.from(10000);
+            const mintAmount = bn(10000);
+            const mintAmount_tkn2 = mintAmount.mul(2);
+            const mintAmount_tkn3 = mintAmount.div(2);
 
             bskToken2 = await ERC20.deploy("Basket Token 2", "BSK2");
-            await bskToken2.mint(addr1.address, mintAmount.mul(2));
-            await bskToken2.mint(addr2.address, mintAmount.mul(2));
-            await bskToken2.connect(addr1).approve(rToken.address, mintAmount.mul(2));
-            await bskToken2.connect(addr2).approve(rToken.address, mintAmount.mul(2));
-
+            await bskToken2.mint(addr1.address, mintAmount_tkn2);
+            await bskToken2.mint(addr2.address, mintAmount_tkn2);
+            await bskToken2.connect(addr1).approve(rToken.address, mintAmount_tkn2);
+            await bskToken2.connect(addr2).approve(rToken.address, mintAmount_tkn2);
 
             bskToken3 = await ERC20.deploy("Basket Token 2", "BSK2");
-            await bskToken3.mint(addr1.address, mintAmount.div(2));
-            await bskToken3.mint(addr2.address, mintAmount.div(2));
-            await bskToken3.connect(addr1).approve(rToken.address, mintAmount.div(2));
-            await bskToken3.connect(addr2).approve(rToken.address, mintAmount.div(2));
+            await bskToken3.mint(addr1.address, mintAmount_tkn3);
+            await bskToken3.mint(addr2.address, mintAmount_tkn3);
+            await bskToken3.connect(addr1).approve(rToken.address, mintAmount_tkn3);
+            await bskToken3.connect(addr2).approve(rToken.address, mintAmount_tkn3);
 
             newTokens = [
                 // We always need to keep previous tokens but set Qty to 0 to remove
@@ -929,12 +943,12 @@ describe("RToken contract", function () {
             expect(await bskToken.balanceOf(addr2.address)).to.equal(bn(0));
 
             expect(await bskToken2.balanceOf(rToken.address)).to.equal(bn(0));
-            expect(await bskToken2.balanceOf(addr1.address)).to.equal(mintAmount.mul(2));
-            expect(await bskToken2.balanceOf(addr2.address)).to.equal(mintAmount.mul(2));
+            expect(await bskToken2.balanceOf(addr1.address)).to.equal(mintAmount_tkn2);
+            expect(await bskToken2.balanceOf(addr2.address)).to.equal(mintAmount_tkn2);
 
             expect(await bskToken3.balanceOf(rToken.address)).to.equal(bn(0));
-            expect(await bskToken3.balanceOf(addr1.address)).to.equal(mintAmount.div(2));
-            expect(await bskToken3.balanceOf(addr2.address)).to.equal(mintAmount.div(2));
+            expect(await bskToken3.balanceOf(addr1.address)).to.equal(mintAmount_tkn3);
+            expect(await bskToken3.balanceOf(addr2.address)).to.equal(mintAmount_tkn3);
 
             // Issue rTokens
             await expect(rToken.connect(addr1).issue(mintAmount))
@@ -950,18 +964,204 @@ describe("RToken contract", function () {
             expect(await bskToken.balanceOf(addr1.address)).to.equal(bn(0));
             expect(await bskToken.balanceOf(addr2.address)).to.equal(bn(0));
 
-            expect(await bskToken2.balanceOf(rToken.address)).to.equal(mintAmount.mul(2).mul(2));
+            expect(await bskToken2.balanceOf(rToken.address)).to.equal(mintAmount_tkn2.mul(2));
             expect(await bskToken2.balanceOf(addr1.address)).to.equal(bn(0));
             expect(await bskToken2.balanceOf(addr2.address)).to.equal(bn(0));
 
-            expect(await bskToken3.balanceOf(rToken.address)).to.equal(mintAmount.div(2).mul(2));
+            expect(await bskToken3.balanceOf(rToken.address)).to.equal(mintAmount_tkn3.mul(2));
             expect(await bskToken3.balanceOf(addr1.address)).to.equal(bn(0));
             expect(await bskToken3.balanceOf(addr2.address)).to.equal(bn(0));
+
+            // Process Mintings and check RTokens issued
+            await rToken["tryProcessMintings()"]();
+            expect(await rToken.balanceOf(addr1.address)).to.equal(mintAmount);
+            expect(await rToken.balanceOf(addr2.address)).to.equal(mintAmount);
+            expect(await rToken.totalSupply()).to.equal(mintAmount.mul(2));
+        });
+    });
+
+    describe("Redeem", function () {
+        it("Should revert if there is no supply of RToken", async function () {
+            const redeemAmount = BigNumber.from(1000);
+
+            await expect(
+                rToken.connect(addr1).redeem(redeemAmount)
+            ).to.be.revertedWith("ERC20: burn amount exceeds balance");
+        });
+
+        context("With issued RTokens", async function () {
+            beforeEach(async function () {
+                // Issue some RTokens to user
+                mintAmount = bn(5000);
+                await bskToken.mint(addr1.address, mintAmount);
+                await bskToken.connect(addr1).approve(rToken.address, mintAmount);
+
+                await expect(rToken.connect(addr1).issue(mintAmount))
+                    .to.emit(rToken, "SlowMintingInitiated")
+                    .withArgs(addr1.address, mintAmount);
+
+                // Process Minting
+                await rToken["tryProcessMintings()"]();
+                expect(await rToken.balanceOf(addr1.address)).to.equal(mintAmount);
+                expect(await rToken.totalSupply()).to.equal(mintAmount);
+            });
+
+            it("Should not redeem RTokens if amount is 0", async function () {
+                const redeemAmount = bn(0);
+
+                await expect(
+                    rToken.redeem(redeemAmount)
+                ).to.be.revertedWith("RedeemAmountCannotBeZero()");
+            });
+
+            it("Should not redeem RTokens if basket is empty", async function () {
+                const redeemAmount = bn(100);
+                const newTokens = [];
+
+                // Update to empty basket
+                await expect(rToken.connect(owner).updateBasket(newTokens))
+                    .to.emit(rToken, "BasketUpdated")
+                    .withArgs(basketTokens.length, newTokens.length);
+
+                await expect(
+                    rToken.redeem(redeemAmount)
+                ).to.be.revertedWith("EmptyBasket()");
+            });
+
+
+            it("Should revert if users does not have enough RTokens", async function () {
+                const redeemAmount = bn(10000);
+
+                await expect(
+                    rToken.connect(addr1).issue(redeemAmount)
+                ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+            });
+
+
+            it("Should redeem RTokens correctly", async function () {
+                const redeemAmount = bn(500);
+
+                // Check balances
+                expect(await rToken.balanceOf(addr1.address)).to.equal(mintAmount);
+                expect(await bskToken.balanceOf(rToken.address)).to.equal(mintAmount);
+                expect(await bskToken.balanceOf(addr1.address)).to.equal(bn(0));
+
+                // Redeem rTokens
+                await expect(rToken.connect(addr1).redeem(redeemAmount))
+                    .to.emit(rToken, "Redemption")
+                    .withArgs(addr1.address, redeemAmount);
+
+                // Check funds were transferred
+                expect(await rToken.balanceOf(addr1.address)).to.equal(mintAmount.sub(redeemAmount));
+                expect(await rToken.totalSupply()).to.equal(mintAmount.sub(redeemAmount));
+                expect(await bskToken.balanceOf(rToken.address)).to.equal(mintAmount.sub(redeemAmount));
+                expect(await bskToken.balanceOf(addr1.address)).to.equal(redeemAmount);
+            });
+        });
+
+        it("Should redeem RTokens correctly for multiple basket tokens and users", async function () {
+            const mintAmount = bn(10000);
+            const mintAmount_tkn2 = mintAmount.mul(2);
+            const mintAmount_tkn3 = mintAmount.div(2);
+
+            const redeemAmount = bn(2000);
+            const redeemAmount_tkn2 = redeemAmount.mul(2);
+            const redeemAmount_tkn3 = redeemAmount.div(2);
+
+            bskToken2 = await ERC20.deploy("Basket Token 2", "BSK2");
+            await bskToken2.mint(addr1.address, mintAmount_tkn2);
+            await bskToken2.mint(addr2.address, mintAmount_tkn2);
+            await bskToken2.connect(addr1).approve(rToken.address, mintAmount_tkn2);
+            await bskToken2.connect(addr2).approve(rToken.address, mintAmount_tkn2);
+
+
+            bskToken3 = await ERC20.deploy("Basket Token 2", "BSK2");
+            await bskToken3.mint(addr1.address, mintAmount_tkn3);
+            await bskToken3.mint(addr2.address, mintAmount_tkn3);
+            await bskToken3.connect(addr1).approve(rToken.address, mintAmount_tkn3);
+            await bskToken3.connect(addr2).approve(rToken.address, mintAmount_tkn3);
+
+            newTokens = [
+                // We always need to keep previous tokens but set Qty to 0 to remove
+                {
+                    tokenAddress: bskToken.address,
+                    genesisQuantity: 0,
+                    rateLimit: 1,
+                    maxTrade: 1,
+                    priceInRToken: 0,
+                    slippageTolerance: 0
+                },
+                {
+                    tokenAddress: bskToken2.address,
+                    genesisQuantity: bn(2e18),
+                    rateLimit: 1,
+                    maxTrade: 1,
+                    priceInRToken: 0,
+                    slippageTolerance: 0
+                },
+                {
+                    tokenAddress: bskToken3.address,
+                    genesisQuantity: bn(0.5e18),
+                    rateLimit: 1,
+                    maxTrade: 1,
+                    priceInRToken: 0,
+                    slippageTolerance: 0
+                },
+            ]
+
+            // Update basket
+            await expect(rToken.connect(owner).updateBasket(newTokens))
+                .to.emit(rToken, "BasketUpdated")
+                .withArgs(basketTokens.length, newTokens.length);
+
+            // Issue rTokens
+            await expect(rToken.connect(addr1).issue(mintAmount))
+                .to.emit(rToken, "SlowMintingInitiated")
+                .withArgs(addr1.address, mintAmount);
+
+            await expect(rToken.connect(addr2).issue(mintAmount))
+                .to.emit(rToken, "SlowMintingInitiated")
+                .withArgs(addr2.address, mintAmount);
+
+            // Process Mintings and check RTokens issued
+            await rToken["tryProcessMintings()"]();
+
+            expect(await rToken.balanceOf(addr1.address)).to.equal(mintAmount);
+            expect(await rToken.balanceOf(addr2.address)).to.equal(mintAmount);
+            expect(await rToken.totalSupply()).to.equal(mintAmount.mul(2));
+
+            expect(await bskToken2.balanceOf(rToken.address)).to.equal(mintAmount_tkn2.mul(2));
+            expect(await bskToken2.balanceOf(addr1.address)).to.equal(bn(0));
+            expect(await bskToken2.balanceOf(addr2.address)).to.equal(bn(0));
+
+            expect(await bskToken3.balanceOf(rToken.address)).to.equal(mintAmount_tkn3.mul(2));
+            expect(await bskToken3.balanceOf(addr1.address)).to.equal(bn(0));
+            expect(await bskToken3.balanceOf(addr2.address)).to.equal(bn(0));
+
+            // Redeem RTokens
+            await expect(rToken.connect(addr1).redeem(redeemAmount))
+                .to.emit(rToken, "Redemption")
+                .withArgs(addr1.address, redeemAmount);
+
+            await expect(rToken.connect(addr2).redeem(redeemAmount))
+                .to.emit(rToken, "Redemption")
+                .withArgs(addr2.address, redeemAmount);
+
+            expect(await rToken.balanceOf(addr1.address)).to.equal(mintAmount.sub(redeemAmount));
+            expect(await rToken.balanceOf(addr2.address)).to.equal(mintAmount.sub(redeemAmount));
+            expect(await rToken.totalSupply()).to.equal((mintAmount.mul(2)).sub(redeemAmount.mul(2)));
+
+            expect(await bskToken2.balanceOf(rToken.address)).to.equal((mintAmount_tkn2.mul(2)).sub(redeemAmount_tkn2.mul(2)));
+            expect(await bskToken2.balanceOf(addr1.address)).to.equal(redeemAmount_tkn2);
+            expect(await bskToken2.balanceOf(addr2.address)).to.equal(redeemAmount_tkn2);
+
+            expect(await bskToken3.balanceOf(rToken.address)).to.equal((mintAmount_tkn3.mul(2)).sub(redeemAmount_tkn3.mul(2)));
+            expect(await bskToken3.balanceOf(addr1.address)).to.equal(redeemAmount_tkn3);
+            expect(await bskToken3.balanceOf(addr2.address)).to.equal(redeemAmount_tkn3);
         });
     });
 
     describe("Tx Fees", function () {
-
         beforeEach(async function () {
             // Mint initial tokens
             await rToken.mint(owner.address, BigNumber.from(1000));

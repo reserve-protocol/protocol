@@ -173,6 +173,12 @@ describe("Basket library", function () {
             expect(parts).to.eql([bn(0), bn(0)]);
         });
 
+        it("Should return zero redemption amount if no supply at all", async function () {
+            const totalSupply = bn(0);
+            let parts = await caller.redemptionAmounts(fp_10, BN_SCALE_FACTOR, 18, totalSupply);
+            expect(parts).to.eql([bn(0), bn(0)]);
+        });
+
         context("With collateral balance", async function () {
             beforeEach(async function () {
                 totalSupply = fp(1000);
