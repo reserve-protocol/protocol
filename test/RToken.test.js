@@ -8,7 +8,7 @@ const { BigNumber } = require("ethers");
 const stakingDepositDelay = 3600; // seconds
 const stakingWithdrawalDelay = 4800; // seconds
 const issuanceRate = BigNumber.from(25000);
-const maxSupply = BigNumber.from(1000000);
+const maxSupply = BigNumber.from(100000);
 const minMintingSize = BigNumber.from(50);
 const spread = BigNumber.from(10);
 
@@ -718,6 +718,41 @@ describe("RToken contract", function () {
             expect(await rToken.totalSupply()).to.equal(amount);
         });
 
+        it("Should not process Mintings if it exceeds max allowed supply", async function () {
+            let amount = maxSupply;
+            let extraAmount = bn(100);
+
+            await expect(rToken.startMinting(owner.address, amount))
+                .to.emit(rToken, 'SlowMintingInitiated')
+                .withArgs(owner.address, amount);
+
+            // Should mine a few blocks to process the large amount
+            await advanceTime(60);
+            await advanceTime(60);
+            await advanceTime(60);
+            await advanceTime(60);
+
+            // Process Mintings
+            await rToken["tryProcessMintings()"]();
+
+            // Check Tokens were minted
+            expect(await rToken.balanceOf(owner.address)).to.equal(amount);
+            expect(await rToken.totalSupply()).to.equal(amount);
+
+            // Attempt to mint additional amount
+            await expect(rToken.startMinting(owner.address, extraAmount))
+                .to.emit(rToken, 'SlowMintingInitiated')
+                .withArgs(owner.address, extraAmount);
+
+            // Process Mintings
+            await expect(rToken["tryProcessMintings()"]())
+                .to.emit(rToken, 'MaxSupplyExceeded');
+
+            // Check no additional Tokens were minted
+            expect(await rToken.balanceOf(owner.address)).to.equal(amount);
+            expect(await rToken.totalSupply()).to.equal(amount);
+        });
+
         // TODO: Remove is this will not be enabled again
         // it("Should process Mintings on transfer", async function () {
         //     const amount = BigNumber.from(10000);
@@ -977,6 +1012,66 @@ describe("RToken contract", function () {
             expect(await rToken.balanceOf(addr1.address)).to.equal(mintAmount);
             expect(await rToken.balanceOf(addr2.address)).to.equal(mintAmount);
             expect(await rToken.totalSupply()).to.equal(mintAmount.mul(2));
+        });
+
+        it("Should not allow to exceed max supply on issuance", async function () {
+            const mintAmount = maxSupply;
+            const extraAmount = bn(100);
+            await bskToken.mint(addr1.address, mintAmount.add(extraAmount));
+            await bskToken.connect(addr1).approve(rToken.address, mintAmount.add(extraAmount));
+
+            // Issue rTokens
+            await expect(rToken.connect(addr1).issue(mintAmount))
+                .to.emit(rToken, "SlowMintingInitiated")
+                .withArgs(addr1.address, mintAmount);
+
+            // Need to mine multiple blocks for slow minting to process large amount
+            await advanceTime(60);
+            await advanceTime(60);
+            await advanceTime(60);
+            await advanceTime(60);
+
+            // Process Mintings
+            await rToken["tryProcessMintings()"]();
+
+            // Ensure max supply was minted
+            expect(await rToken.totalSupply()).to.equal(mintAmount);
+            expect(await bskToken.balanceOf(rToken.address)).to.equal(mintAmount);
+            expect(await bskToken.balanceOf(addr1.address)).to.equal(extraAmount);
+
+            // Try to issue more RTokens
+            await expect(rToken.connect(addr1).issue(extraAmount))
+                .to.emit(rToken, "SlowMintingInitiated")
+                .withArgs(addr1.address, extraAmount);
+
+            // Process Mintings
+            await expect(rToken["tryProcessMintings()"]())
+                .to.emit(rToken, "MaxSupplyExceeded");
+
+            expect(await rToken.totalSupply()).to.equal(mintAmount);
+            // Funds in basket token were already received by contract
+            expect(await bskToken.balanceOf(rToken.address)).to.equal(mintAmount.add(extraAmount));
+            expect(await bskToken.balanceOf(addr1.address)).to.equal(0);
+
+            // Attempt to process again
+            await expect(rToken["tryProcessMintings()"]())
+                .to.emit(rToken, "MaxSupplyExceeded");
+
+            expect(await rToken.totalSupply()).to.equal(mintAmount);
+
+            // Increase max and process again
+            newConfig = config;
+            newConfig.maxSupply += extraAmount;
+            await expect(rToken.connect(owner).updateConfig(newConfig))
+                .to.emit(rToken, "ConfigUpdated");
+
+            // Process again - Should process minting
+            await rToken["tryProcessMintings()"]();
+
+            expect(await rToken.totalSupply()).to.equal(mintAmount.add(extraAmount));
+            // Funds in basket token were already received by contract
+            expect(await bskToken.balanceOf(rToken.address)).to.equal(mintAmount.add(extraAmount));
+            expect(await bskToken.balanceOf(addr1.address)).to.equal(0);
         });
     });
 

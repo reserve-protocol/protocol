@@ -436,10 +436,16 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
                 // TODO: Tune the +1000 maximum.
                 m = mintings[currentMinting];
 
-                // We should break if the next minting is too big to allow more blocks to pass.
+                // We should break if the next minting is too big to allow more blocks to pass
                 if (m.amount > issuanceAmount * (blocksSince)) {
                     break;
                 }
+                // We should also break if the max allowed supply is exceeded 
+                if ((totalSupply() + m.amount) > config.maxSupply) {
+                    emit MaxSupplyExceeded();
+                    break;
+                }
+
                 _mint(m.account, m.amount);
                 emit SlowMintingComplete(m.account, m.amount);
 
@@ -623,14 +629,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             // Cheeky way of doing the fee without needing access to underlying _balances array
             _burn(from, fee);
             _mint(address(this), fee);
-        }
-    }
-
-    /// A wrapper for the inherited _mint that ensures supply never exceeds the maximum.
-    function _mint(address recipient, uint256 amount) internal override {
-        super._mint(recipient, amount);
-        if (totalSupply() >= config.maxSupply) {
-            revert MaxSupplyExceeded();
         }
     }
 

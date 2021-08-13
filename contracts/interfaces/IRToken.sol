@@ -66,4 +66,5 @@ interface IRToken {
     event Redemption(address indexed redeemer, uint256 indexed amount);
     event RebalancingFrozen(address indexed account);
     event RebalancingUnfrozen(address indexed account);
+    event MaxSupplyExceeded();
 }
