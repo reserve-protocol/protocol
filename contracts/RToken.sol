@@ -389,12 +389,14 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Expands the RToken supply based on the time since last supply expansion.
     function _expandSupply() internal {
         // Discrete compounding on a per-second basis
-        uint256 amount = (totalSupply() * SCALE) /
+        uint256 amount = totalSupply() -
+            (totalSupply() * SCALE) /
             CompoundMath.compound(
                 SCALE,
                 config.expansionPerSecond,
                 block.timestamp - _lastExpansion
             );
+
         _lastExpansion = block.timestamp;
         if (amount == 0) {
             return;
