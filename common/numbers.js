@@ -1,5 +1,6 @@
 const { BigNumber } = require("ethers");
-const { BN_SCALE_FACTOR } = require("./constants");
+const { ethers } = require("hardhat");
+const { BN_SCALE_FACTOR, SCALE_DECIMALS } = require("./constants");
 
 const bn = (x) => {
     if (BigNumber.isBigNumber(x)) return x;
@@ -9,9 +10,12 @@ const bn = (x) => {
 };
 
 const fp = (x) => {
-    return BN_SCALE_FACTOR.mul(x);
+    if (BigNumber.isBigNumber(x)) {
+        return BN_SCALE_FACTOR.mul(x);
+    }
+    return ethers.utils.parseUnits(x.toString(), SCALE_DECIMALS);
 }
- 
+
 function parseScientific(num) {
     // If the number is not in scientific notation return it as it is
     if (!/\d+\.?\d*e[+-]*\d+/i.test(num)) return num;

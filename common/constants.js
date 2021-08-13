@@ -7,7 +7,8 @@ const ONE_ETH= BigNumber.from("1000000000000000000");
 const MAX_UINT256 = BigNumber.from(2).pow(256).sub(1);
 const MAX_UINT16 = (2**16) - 1;
 
-const SCALE_FACTOR = 1e18;
+const SCALE_DECIMALS = 18;
+const SCALE_FACTOR = 10 ** SCALE_DECIMALS;
 const BN_SCALE_FACTOR = BigNumber.from(SCALE_FACTOR.toString());
 
 module.exports = {
@@ -16,5 +17,6 @@ module.exports = {
     MAX_UINT16,
     SCALE_FACTOR,
     BN_SCALE_FACTOR,
+    SCALE_DECIMALS,
     ONE_ETH
 };
