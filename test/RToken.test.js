@@ -11,6 +11,7 @@ const issuanceRate = BigNumber.from(25000);
 const maxSupply = BigNumber.from(100000);
 const minMintingSize = BigNumber.from(50);
 const spread = BigNumber.from(10);
+const rebalancingFreezeCost = BigNumber.from(50000);
 
 describe("RToken contract", function () {
     beforeEach(async function () {
@@ -29,7 +30,7 @@ describe("RToken contract", function () {
             maxSupply: maxSupply,
             minMintingSize: minMintingSize,
             issuanceRate: issuanceRate,
-            rebalancingFreezeCost: 0,
+            rebalancingFreezeCost: rebalancingFreezeCost,
             insurancePaymentPeriod: 0,
             expansionPerSecond: 0,
             expenditureFactor: 0,
@@ -55,6 +56,10 @@ describe("RToken contract", function () {
         PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock");
         NewRSR = await ethers.getContractFactory("RSR");
         prevRSRToken = await PrevRSR.deploy("Reserve Rights", "RSR");
+        await prevRSRToken.mint(owner.address, bn(100000));
+        await prevRSRToken.mint(addr1.address, bn(50000));
+        await prevRSRToken.mint(addr2.address, bn(50000));
+        await prevRSRToken.connect(owner).pause();
         rsrToken = await NewRSR.connect(owner).deploy(prevRSRToken.address, ZERO_ADDRESS, ZERO_ADDRESS);
         // Set RSR token info
         rsrTokenInfo = {
@@ -88,6 +93,7 @@ describe("RToken contract", function () {
             expect(await rToken.stakingDepositDelay()).to.equal(stakingDepositDelay);
             expect(await rToken.stakingWithdrawalDelay()).to.equal(stakingWithdrawalDelay);
             expect(await rToken.maxSupply()).to.equal(maxSupply);
+            expect(await rToken.rebalancingFreezeCost()).to.equal(rebalancingFreezeCost);
         });
 
         it("Should deploy with no tokens", async function () {
@@ -259,6 +265,37 @@ describe("RToken contract", function () {
                 ).to.be.revertedWith("Ownable: caller is not the owner");
 
                 expect(await rToken.spread()).to.equal(currentValue);
+            });
+        });
+
+        describe("rebalancingFreezeCost", function () {
+            beforeEach(async function () {
+                currentValue = rebalancingFreezeCost;
+                newValue = BigNumber.from(30000);
+                newConfig = config;
+            });
+
+            it("Should update correctly if Owner", async function () {
+                expect(await rToken.rebalancingFreezeCost()).to.equal(currentValue);
+
+                // Update individual field
+                newConfig.rebalancingFreezeCost = newValue;
+                await expect(rToken.connect(owner).updateConfig(newConfig))
+                    .to.emit(rToken, "ConfigUpdated");
+
+                expect(await rToken.rebalancingFreezeCost()).to.equal(newValue);
+            });
+
+            it("Should not allow to update if not Owner", async function () {
+                expect(await rToken.rebalancingFreezeCost()).to.equal(currentValue);
+
+                // Update individual field
+                newConfig.rebalancingFreezeCost = newValue;
+                await expect(
+                    rToken.connect(addr1).updateConfig(newConfig)
+                ).to.be.revertedWith("Ownable: caller is not the owner");
+
+                expect(await rToken.rebalancingFreezeCost()).to.equal(currentValue);
             });
         });
 
@@ -1256,6 +1293,136 @@ describe("RToken contract", function () {
         });
     });
 
+    describe("Rebalancing", function () {
+        it("Should allow rebalancing by default", async function () {
+            expect(await rToken.rebalancingFrozen()).to.equal(false);
+            expect(await rToken.freezer()).to.equal(ZERO_ADDRESS);
+        });
+
+        it("Should not allow to freeze rebalancing if not enough RSR", async function () {
+            // Increase required amount
+            const newConfig = config;
+            newConfig.rebalancingFreezeCost = bn(2000000);
+            await expect(rToken.connect(owner).updateConfig(newConfig))
+                .to.emit(rToken, "ConfigUpdated");
+
+            // Attempt to freeze rebalancing
+            await expect(
+                rToken.connect(addr1).freezeRebalancing()
+            ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+
+            expect(await rToken.rebalancingFrozen()).to.equal(false);
+            expect(await rToken.freezer()).to.equal(ZERO_ADDRESS);
+        });
+
+        it("Should not allow to freeze rebalancing if RSR not approved to transfer", async function () {
+            // Attempt to freeze rebalancing without approval
+            await expect(
+                rToken.connect(addr1).freezeRebalancing()
+            ).to.be.revertedWith("ERC20: transfer amount exceeds allowance");
+
+            expect(await rToken.rebalancingFrozen()).to.equal(false);
+            expect(await rToken.freezer()).to.equal(ZERO_ADDRESS);
+        });
+
+        it("Should allow to freeze rebalancing", async function () {
+            const freezeCost = config.rebalancingFreezeCost;
+            const prevRSRBalanceAddr1 = await rsrToken.balanceOf(addr1.address);
+            const prevRSRBalanceRToken = await rsrToken.balanceOf(rToken.address);
+
+            // Approve transfer
+            await rsrToken.connect(addr1).approve(rToken.address, freezeCost);
+
+            // Freeze rebalancing
+            await expect(
+                rToken.connect(addr1).freezeRebalancing()
+            ).to.emit(rToken, "RebalancingFrozen")
+                .withArgs(addr1.address);
+
+            // Check rebalancing is frozen
+            expect(await rToken.rebalancingFrozen()).to.equal(true);
+            expect(await rToken.freezer()).to.equal(addr1.address);
+            expect(await rsrToken.balanceOf(addr1.address)).to.equal(prevRSRBalanceAddr1.sub(freezeCost));
+            expect(await rsrToken.balanceOf(rToken.address)).to.equal(prevRSRBalanceRToken.add(freezeCost));
+        });
+
+        it("Should not allow to unfreeze if not frozen", async function () {
+            // Attempt to unfreeze rebalancing
+            expect(await rToken.rebalancingFrozen()).to.equal(false);
+
+            await expect(
+                rToken.connect(addr1).unfreezeRebalancing()
+            ).to.be.revertedWith("RebalancingAlreadyUnfrozen()");
+
+            expect(await rToken.rebalancingFrozen()).to.equal(false);
+        });
+
+        context("With frozen rebalancing", async function () {
+            beforeEach(async function () {
+                // Freeze rebalancing
+                freezeCost = config.rebalancingFreezeCost;
+                await rsrToken.connect(addr1).approve(rToken.address, freezeCost);
+
+                await expect(
+                    rToken.connect(addr1).freezeRebalancing()
+                ).to.emit(rToken, "RebalancingFrozen")
+                    .withArgs(addr1.address);
+
+                expect(await rToken.rebalancingFrozen()).to.equal(true);
+                expect(await rToken.freezer()).to.equal(addr1.address);
+            });
+
+            it("Should not allow to unfreeze rebalancing if not freezer", async function () {
+                // Attempt to unfreeze with different user
+                await expect(
+                    rToken.connect(addr2).unfreezeRebalancing()
+                ).to.be.revertedWith("Unauthorized()");
+
+                expect(await rToken.rebalancingFrozen()).to.equal(true);
+                expect(await rToken.freezer()).to.equal(addr1.address);
+            });
+
+            it("Should allow freezer to unfreeze rebalancing", async function () {
+                const prevRSRBalanceAddr1 = await rsrToken.balanceOf(addr1.address);
+                const prevRSRBalanceRToken = await rsrToken.balanceOf(rToken.address);
+
+                // Unfreeze rebalancing
+                await expect(
+                    rToken.connect(addr1).unfreezeRebalancing()
+                ).to.emit(rToken, "RebalancingUnfrozen")
+                    .withArgs(addr1.address);
+
+                expect(await rToken.rebalancingFrozen()).to.equal(false);
+                expect(await rToken.freezer()).to.equal(ZERO_ADDRESS);
+                expect(await rsrToken.balanceOf(addr1.address)).to.equal(prevRSRBalanceAddr1.add(freezeCost));
+                expect(await rsrToken.balanceOf(rToken.address)).to.equal(prevRSRBalanceRToken.sub(freezeCost));
+            });
+
+            it("Should allow to freeze rebalancing even if already frozen", async function () {
+                const prevRSRBalanceAddr1 = await rsrToken.balanceOf(addr1.address);
+                const prevRSRBalanceAddr2 = await rsrToken.balanceOf(addr2.address);
+                const prevRSRBalanceRToken = await rsrToken.balanceOf(rToken.address);
+
+                // New Freezer (addr2)
+                await rsrToken.connect(addr2).approve(rToken.address, freezeCost);
+
+                await expect(
+                    rToken.connect(addr2).freezeRebalancing()
+                ).to.emit(rToken, "RebalancingFrozen")
+                    .withArgs(addr2.address);
+
+                // Check new freezer was assigned
+                expect(await rToken.rebalancingFrozen()).to.equal(true);
+                expect(await rToken.freezer()).to.equal(addr2.address);
+                expect(await rsrToken.balanceOf(addr2.address)).to.equal(prevRSRBalanceAddr2.sub(freezeCost));
+                expect(await rsrToken.balanceOf(rToken.address)).to.equal(prevRSRBalanceRToken);
+
+                // Funds returned to previous freezer
+                expect(await rsrToken.balanceOf(addr1.address)).to.equal(prevRSRBalanceAddr1.add(freezeCost));
+            });
+        });
+    });
+
     describe("Tx Fees", function () {
         beforeEach(async function () {
             // Mint initial tokens
@@ -1341,19 +1508,82 @@ describe("RToken contract", function () {
     });
 
     describe("ERC20 functionality", function () {
-
         beforeEach(async function () {
             // Mint initial tokens
-            await rToken.mint(owner.address, BigNumber.from(1000));
+            await rToken.mint(owner.address, bn(1000));
         });
 
-        it("Should not be able to send to contract externally", async function () {
+        it("Should transfer tokens between accounts", async function () {
+            // Transfer 50 tokens from owner to addr1 
+            const amount = bn(50);
+            const ownerBalancePrev = await rToken.balanceOf(owner.address);
+            const addr1BalancePrev = await rToken.balanceOf(addr1.address);
+            const previousSupply = await rToken.totalSupply();
+
+            // Perform transfer
+            await rToken.connect(owner).transfer(addr1.address, amount);
+
+            expect(await rToken.balanceOf(addr1.address)).to.equal(addr1BalancePrev.add(amount));
+            expect(await rToken.balanceOf(owner.address)).to.equal(ownerBalancePrev.sub(amount));
+
+            // Check supply not impacted
+            expect(await rToken.totalSupply()).to.equal(previousSupply);
+        });
+
+        it("Should not be able to transfer to contract externally", async function () {
             // Transfer 50 tokens from owner to addr1
-            const amount = BigNumber.from(50);
+            const amount = bn(50);
+            const ownerBalancePrev = await rToken.balanceOf(owner.address);
+            const rTokenBalancePrev = await rToken.balanceOf(rToken.address);
+            const previousSupply = await rToken.totalSupply();
 
             await expect(
                 rToken.connect(owner).transfer(rToken.address, amount)
             ).to.be.revertedWith("TransferToContractAddress()");
+
+            expect(await rToken.balanceOf(rToken.address)).to.equal(rTokenBalancePrev);
+            expect(await rToken.balanceOf(owner.address)).to.equal(ownerBalancePrev);
+
+            // Check supply not impacted
+            expect(await rToken.totalSupply()).to.equal(previousSupply);
+        });
+
+        it("Should transferFrom tokens between accounts", async function () {
+            // Transfer 50 tokens from owner to addr1
+            const amount = bn(500);
+            const ownerBalancePrev = await rToken.balanceOf(owner.address);
+            const addr2BalancePrev = await rToken.balanceOf(addr2.address);
+            const previousSupply = await rToken.totalSupply();
+
+            // Set allowance and transfer
+            await rToken.connect(owner).approve(addr1.address, amount);
+            await rToken.connect(addr1).transferFrom(owner.address, addr2.address, amount);
+
+            expect(await rToken.balanceOf(addr2.address)).to.equal(addr2BalancePrev.add(amount));
+            expect(await rToken.balanceOf(owner.address)).to.equal(ownerBalancePrev.sub(amount));
+
+            // Check supply not impacted
+            expect(await rToken.totalSupply()).to.equal(previousSupply);
+        });
+
+        it("Should not be able to transferFrom to contract externally", async function () {
+            // Transfer 50 tokens from owner to addr1
+            const amount = bn(500);
+            const ownerBalancePrev = await rToken.balanceOf(owner.address);
+            const rTokenBalancePrev = await rToken.balanceOf(rToken.address);
+            const previousSupply = await rToken.totalSupply();
+
+            // Set allowance and transfer
+            await rToken.connect(owner).approve(addr1.address, amount);
+            await expect(
+                rToken.connect(addr1).transferFrom(owner.address, rToken.address, amount)
+            ).to.be.revertedWith("TransferToContractAddress()");
+
+            expect(await rToken.balanceOf(rToken.address)).to.equal(rTokenBalancePrev);
+            expect(await rToken.balanceOf(owner.address)).to.equal(ownerBalancePrev);
+
+            // Check supply not impacted
+            expect(await rToken.totalSupply()).to.equal(previousSupply);
         });
     });
 });
