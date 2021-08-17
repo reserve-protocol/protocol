@@ -25,6 +25,10 @@ contract RTokenMock is RToken {
         return config.spread;
     }
 
+    function rebalancingFreezeCost() external view returns (uint256) {
+        return config.rebalancingFreezeCost;
+    }
+
     function circuitBreaker() external view returns (address) {
         return address(config.circuitBreaker);
     }

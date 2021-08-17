@@ -7,10 +7,10 @@ import "./Token.sol";
 
 /**
  * @title Basket
- * @dev The Basket library computes important metrics for a basket. 
- * 
+ * @dev The Basket library computes important metrics for a basket.
+ *
  * When updating the basket it is important to never entirely remove a token.
- * Instead, set its quantity to 0 and leave the address. 
+ * Instead, set its quantity to 0 and leave the address.
  */
 library Basket {
     using Token for Token.Info;
@@ -68,10 +68,14 @@ library Basket {
     ) internal view returns (uint256[] memory parts) {
         parts = new uint256[](self.size);
         for (uint16 i = 0; i < self.size; i++) {
-            parts[i] = Math.min(
-                (self.tokens[i].myBalance() * amount) / totalSupply,
-                (weight(self, scale, i) * amount) / 10**decimals
-            );
+            if (totalSupply > 0) {
+                parts[i] = Math.min(
+                    (self.tokens[i].myBalance() * amount) / totalSupply,
+                    (weight(self, scale, i) * amount) / 10**decimals
+                );
+            } else {
+                parts[i] = 0;
+            }
         }
     }
 
@@ -98,7 +102,7 @@ library Basket {
                     deficitIndex = int32(uint32(i));
                 }
             } else if (bal > expected + self.tokens[i].rateLimit) {
-                // Prioritize getting rid of collateral with 0 quantity. 
+                // Prioritize getting rid of collateral with 0 quantity.
                 uint256 diff = type(uint256).max;
                 if (expected > 0) {
                     diff = ((bal * scale) / expected);
