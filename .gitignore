@@ -3,6 +3,7 @@ reports
 design-docs
 node_modules/
 artifacts/
+typechain/
 cache/
 coverage/
 coverage.json
