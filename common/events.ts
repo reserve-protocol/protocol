@@ -2,7 +2,7 @@ import { expect } from "chai"
 import { BigNumber, ContractReceipt, Event } from "ethers"
 
 // TODO: Proper typing
-const contains = (args: any, key: string, value: any) => {
+const contains = (args: { [key: string]: any | undefined }, key: string, value: any): any => {
     expect(key in args).to.equal(true, `Event argument '${key}' not found`)
 
     if (value === null) {
@@ -27,7 +27,11 @@ const contains = (args: any, key: string, value: any) => {
 }
 
 // TODO: Proper typing for "eventArgs"
-export const expectInReceipt = (receipt: ContractReceipt, eventName: string, eventArgs = {}) => {
+export const expectInReceipt = (
+    receipt: ContractReceipt,
+    eventName: string,
+    eventArgs = {}
+): any => {
     if (receipt.events == undefined) {
         throw new Error("No events found in receipt")
     }
@@ -35,7 +39,7 @@ export const expectInReceipt = (receipt: ContractReceipt, eventName: string, eve
     const events = receipt.events.filter((e: Event) => e.event === eventName)
     expect(events.length > 0).to.equal(true, `No '${eventName}' events found`)
 
-    const exceptions: Error[] = []
+    const exceptions: string[] = []
     const event = events.find(function (e: Event) {
         for (const [k, v] of Object.entries(eventArgs)) {
             try {
@@ -45,7 +49,7 @@ export const expectInReceipt = (receipt: ContractReceipt, eventName: string, eve
 
                 contains(e.args, k, v)
             } catch (error) {
-                exceptions.push(error as Error)
+                exceptions.push(error as string)
                 return false
             }
         }

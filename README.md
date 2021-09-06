@@ -58,7 +58,7 @@ ROPSTEN_RPC_URL=""
 ALCHEMY_MAINNET_RPC_URL=""
 ```
 
-2 - You also need to complete the network configuration (`networkConfig`) for the desired network. This can be located at `\common\configuration.js`. These settings will be used to validate supported networks and reuse components which may be already deployed.
+2 - You also need to complete the network configuration (`networkConfig`) for the desired network. This can be located at `\common\configuration.ts`. These settings will be used to validate supported networks and reuse components which may be already deployed.
 
 For now these are the supported networks:
 
@@ -80,7 +80,7 @@ const networkConfig = {
 
 3 - For deploying the full suite you can use the available scripts located at `\scripts`.
 
--   `scripts\deploy-all.js`: Deploys all components and mockups (mainly oriented for local development, but works for Testnets as well). Uses default configuration for a generic `RToken`.
+-   `scripts\deploy-all.ts`: Deploys all components and mockups (mainly oriented for local development, but works for Testnets as well). Uses default configuration for a generic `RToken`.
 
 ### Local deployment (Hardhat network)
 

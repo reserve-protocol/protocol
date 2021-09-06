@@ -1,4 +1,5 @@
 import { ZERO_ADDRESS } from "../common/constants"
+import { BigNumberish } from "ethers"
 
 interface INetworkConfig {
     name: string
@@ -38,6 +39,33 @@ export const developmentChains = ["hardhat", "localhost"]
 
 export interface IBasketToken {
     tokenAddress: string
+    genesisQuantity: BigNumberish
+    rateLimit: number
+    maxTrade: number
+    priceInRToken: number
+    slippageTolerance: BigNumberish
+}
+
+export interface IRTokenParams {
+    stakingDepositDelay: number
+    stakingWithdrawalDelay: number
+    maxSupply: BigNumberish
+    minMintingSize: BigNumberish
+    issuanceRate: BigNumberish
+    rebalancingFreezeCost: BigNumberish
+    insurancePaymentPeriod: number
+    expansionPerSecond: number
+    expenditureFactor: number
+    spread: BigNumberish
+    exchange: string
+    circuitBreaker: string
+    txFeeCalculator: string
+    insurancePool: string
+    protocolFund: string
+}
+
+export interface IRSRConfig {
+    tokenAddress: string
     genesisQuantity: number
     rateLimit: number
     maxTrade: number
@@ -48,32 +76,9 @@ export interface IBasketToken {
 export interface IRTokenConfig {
     name: string
     symbol: string
-    params: {
-        stakingDepositDelay: number
-        stakingWithdrawalDelay: number
-        maxSupply: number
-        minMintingSize: number
-        issuanceRate: number
-        rebalancingFreezeCost: number
-        insurancePaymentPeriod: number
-        expansionPerSecond: number
-        expenditureFactor: number
-        spread: number
-        exchange: string
-        circuitBreaker: string
-        txFeeCalculator: string
-        insurancePool: string
-        protocolFund: string
-    }
+    params: IRTokenParams
     basketTokens: IBasketToken[]
-    rsr: {
-        tokenAddress: string
-        genesisQuantity: number
-        rateLimit: number
-        maxTrade: number
-        priceInRToken: number
-        slippageTolerance: number
-    }
+    rsr: IRSRConfig
 }
 
 const rTokenConfig: { [key: string]: IRTokenConfig } = {

@@ -14,7 +14,7 @@ const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || process.env.ALCHEMY_MAINN
 const ROPSTEN_RPC_URL = process.env.ROPSTEN_RPC_URL || ""
 const MNEMONIC = process.env.MNEMONIC || ""
 
-export default {
+export default <HardhatUserConfig>{
     defaultNetwork: "hardhat",
     networks: {
         hardhat: {
