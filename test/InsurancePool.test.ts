@@ -39,15 +39,6 @@ const basketTokens = [
     },
 ]
 
-const rsrTokenInfo = {
-    tokenAddress: "",
-    genesisQuantity: 0,
-    rateLimit: 1,
-    maxTrade: 1,
-    priceInRToken: 0,
-    slippageTolerance: 0,
-}
-
 describe("InsurancePool contract", () => {
     let owner: SignerWithAddress
     let addr1: SignerWithAddress
@@ -75,7 +66,14 @@ describe("InsurancePool contract", () => {
             await NewRSR.connect(owner).deploy(prevRSRToken.address, ZERO_ADDRESS, ZERO_ADDRESS)
         )
 
-        rsrTokenInfo.tokenAddress = rsrToken.address
+        const rsrTokenInfo = {
+            tokenAddress: rsrToken.address,
+            genesisQuantity: 0,
+            rateLimit: 1,
+            maxTrade: 1,
+            priceInRToken: 0,
+            slippageTolerance: 0,
+        }
 
         // External math library
         const CompoundMath = await ethers.getContractFactory("CompoundMath")
@@ -215,7 +213,9 @@ describe("InsurancePool contract", () => {
 
             beforeEach(async () => {
                 // Set stakingDelay
-                await rToken.connect(owner).updateConfig({ ...config, stakingDepositDelay })
+                await rToken
+                    .connect(owner)
+                    .updateConfig({ ...config, stakingDepositDelay, insurancePool: iPool.address })
 
                 // Perform stake
                 amount1 = BigNumber.from(1000)
@@ -506,7 +506,11 @@ describe("InsurancePool contract", () => {
             beforeEach(async () => {
                 // Set stakingWithdrawalDelay
 
-                await rToken.connect(owner).updateConfig({ ...config, stakingWithdrawalDelay })
+                await rToken.connect(owner).updateConfig({
+                    ...config,
+                    stakingWithdrawalDelay,
+                    insurancePool: iPool.address,
+                })
 
                 // Perform stake
                 amount1 = BigNumber.from(1000)

@@ -35,7 +35,7 @@ describe("RTokenDeployer contract", function () {
         ;[owner, newOwner, other] = await ethers.getSigners()
 
         const CompoundMathFactory = await ethers.getContractFactory("CompoundMath")
-        const math = await CompoundMathFactory.deploy()
+        math = <CompoundMath>await CompoundMathFactory.deploy()
 
         // Deploy RToken and InsurancePool implementations
         const RToken = await ethers.getContractFactory("RTokenMock", {
@@ -269,6 +269,7 @@ describe("RTokenDeployer contract", function () {
 
         describe("InsurancePool Upgradeability", function () {
             it("Should allow upgrades to InsurancePool if Owner", async function () {
+                ;[owner, newOwner, other] = await ethers.getSigners()
                 // Deploy new InsurancePool Implementation
                 const IPoolV2 = await ethers.getContractFactory("InsurancePoolMockV2")
                 const iPoolV2Implementation = await IPoolV2.connect(owner).deploy()
