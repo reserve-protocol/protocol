@@ -16,6 +16,10 @@ export const fp = (x: BigNumber | number) => {
     return ethers.utils.parseUnits(x.toString(), SCALE_DECIMALS)
 }
 
+export const divCeil = (x: BigNumber, y: BigNumber): BigNumber =>
+    // ceil(x/y) == (x + y - 1) / y
+    x.add(y).sub(1).div(y)
+
 function parseScientific(num: string) {
     // If the number is not in scientific notation return it as it is
     if (!/\d+\.?\d*e[+-]*\d+/i.test(num)) return num
