@@ -1,7 +1,7 @@
 import { ethers } from "hardhat"
 import { expect } from "chai"
 import { ZERO_ADDRESS, BN_SCALE_FACTOR } from "../common/constants"
-import { bn, fp } from "../common/numbers"
+import { bn, divCeil } from "../common/numbers"
 import { advanceTime } from "./utils/time"
 import { BigNumber, BigNumberish, ContractFactory } from "ethers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
@@ -148,7 +148,7 @@ describe("RToken contract", function () {
             beforeEach(async function () {
                 currentValue = stakingDepositDelay
                 newValue = 1000
-                newConfig = { ...config }
+                newConfig = config
             })
 
             it("Should update correctly if Owner", async function () {
@@ -181,7 +181,7 @@ describe("RToken contract", function () {
             beforeEach(async function () {
                 currentValue = stakingWithdrawalDelay
                 newValue = 1000
-                newConfig = { ...config }
+                newConfig = config
             })
 
             it("Should update correctly if Owner", async function () {
@@ -216,7 +216,7 @@ describe("RToken contract", function () {
             beforeEach(async function () {
                 currentValue = maxSupply
                 newValue = BigNumber.from(500000)
-                newConfig = { ...config }
+                newConfig = config
             })
 
             it("Should update correctly if Owner", async function () {
@@ -251,7 +251,7 @@ describe("RToken contract", function () {
             beforeEach(async function () {
                 currentValue = issuanceRate
                 newValue = BigNumber.from(10000)
-                newConfig = { ...config }
+                newConfig = config
             })
 
             it("Should update correctly if Owner", async function () {
@@ -286,7 +286,7 @@ describe("RToken contract", function () {
             beforeEach(async function () {
                 currentValue = spread
                 newValue = BigNumber.from(15)
-                newConfig = { ...config }
+                newConfig = config
             })
 
             it("Should update correctly if Owner", async function () {
@@ -321,7 +321,7 @@ describe("RToken contract", function () {
             beforeEach(async function () {
                 currentValue = rebalancingFreezeCost
                 newValue = BigNumber.from(30000)
-                newConfig = { ...config }
+                newConfig = config
             })
 
             it("Should update correctly if Owner", async function () {
@@ -358,7 +358,7 @@ describe("RToken contract", function () {
                 currentValue = cb.address
                 cbNew = <CircuitBreaker>await CircuitBreakerFactory.deploy(owner.address)
                 newValue = cbNew.address
-                newConfig = { ...config }
+                newConfig = config
             })
 
             it("Should update correctly if Owner", async function () {
@@ -396,7 +396,7 @@ describe("RToken contract", function () {
                 const TxFeeCalculator = await ethers.getContractFactory("TXFeeCalculatorMock")
                 txFeeNew = <TXFeeCalculatorMock>await TxFeeCalculator.deploy()
                 newValue = txFeeNew.address
-                newConfig = { ...config }
+                newConfig = config
             })
 
             it("Should update correctly if Owner", async function () {
@@ -625,11 +625,14 @@ describe("RToken contract", function () {
         it("Should process Mintings in multiple attempts (2 blocks)", async function () {
             let amount = BigNumber.from(50000)
             let issuanceRate = await rToken.issuanceRate()
-            let blocks = amount.div(issuanceRate)
+            let blocks = divCeil(amount, issuanceRate)
 
             await expect(rToken.startMinting(owner.address, amount))
                 .to.emit(rToken, "SlowMintingInitiated")
                 .withArgs(owner.address, amount)
+
+            // Get block number when minting started
+            const mintingBlock = (await ethers.provider.getBlock("latest")).number
 
             // No Tokens minted yet
             expect(await rToken.balanceOf(owner.address)).to.equal(0)
@@ -645,19 +648,24 @@ describe("RToken contract", function () {
             // Process Mintings
             await rToken.tryProcessMintings()
 
-            // Tokens minted
+            // Tokens minted in the expected number of blocks
             expect(await rToken.balanceOf(owner.address)).to.equal(amount)
-            expect(await rToken.balanceOf(owner.address)).to.equal(blocks.mul(issuanceRate))
             expect(await rToken.totalSupply()).to.equal(amount)
+            const currentBlock = (await ethers.provider.getBlock("latest")).number
+            expect(currentBlock).to.equal(bn(mintingBlock).add(blocks))
         })
 
         it("Should process Mintings in multiple attempts (3 blocks)", async function () {
-            const amount = BigNumber.from(74000)
-            const issuanceRate = await rToken.issuanceRate()
-            const blocks = amount.div(issuanceRate)
+            let amount = BigNumber.from(74000)
+            let issuanceRate = await rToken.issuanceRate()
+            let blocks = divCeil(amount, issuanceRate)
+
             await expect(rToken.startMinting(owner.address, amount))
                 .to.emit(rToken, "SlowMintingInitiated")
                 .withArgs(owner.address, amount)
+
+            // Get block number when minting started
+            const mintingBlock = (await ethers.provider.getBlock("latest")).number
 
             // No Tokens minted yet
             expect(await rToken.balanceOf(owner.address)).to.equal(0)
@@ -666,24 +674,25 @@ describe("RToken contract", function () {
             // Process Mintings
             await rToken.tryProcessMintings()
 
-            //  Tokens not minted until three blocks have passed
+            // Tokens not minted until three blocks have passed
             expect(await rToken.balanceOf(owner.address)).to.equal(0)
             expect(await rToken.totalSupply()).to.equal(0)
 
             // Process Mintings
             await rToken.tryProcessMintings()
 
-            //  Tokens not minted until three blocks have passed
+            // Tokens not minted until three blocks have passed
             expect(await rToken.balanceOf(owner.address)).to.equal(0)
             expect(await rToken.totalSupply()).to.equal(0)
 
             // Process Mintings
             await rToken.tryProcessMintings()
 
-            // Tokens minted
+            // Tokens minted in the expected number of blocks
             expect(await rToken.balanceOf(owner.address)).to.equal(amount)
-            expect(await rToken.balanceOf(owner.address)).to.equal(blocks.mul(issuanceRate))
             expect(await rToken.totalSupply()).to.equal(amount)
+            const currentBlock = (await ethers.provider.getBlock("latest")).number
+            expect(currentBlock).to.equal(bn(mintingBlock).add(blocks))
         })
 
         it("Should process multiple Mintings in queue in single issuance", async function () {
@@ -1153,7 +1162,7 @@ describe("RToken contract", function () {
             expect(await rToken.totalSupply()).to.equal(mintAmount)
 
             // Increase max and process again
-            const newConfig = { ...config }
+            const newConfig = config
             newConfig.maxSupply = maxSupply.add(extraAmount)
             await expect(rToken.connect(owner).updateConfig(newConfig)).to.emit(
                 rToken,
@@ -1362,7 +1371,7 @@ describe("RToken contract", function () {
 
         it("Should not allow to freeze rebalancing if not enough RSR", async function () {
             // Increase required amount
-            const newConfig = { ...config }
+            const newConfig = config
             newConfig.rebalancingFreezeCost = bn(2000000)
             await expect(rToken.connect(owner).updateConfig(newConfig)).to.emit(
                 rToken,
