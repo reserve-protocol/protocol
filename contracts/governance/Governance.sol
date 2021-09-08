@@ -7,9 +7,6 @@ import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import "@openzeppelin/contracts/governance/compatibility/GovernorCompatibilityBravo.sol";
 
-import "../modules/InsurancePool.sol";
-
-
 /*
  * @title Governance
  * @dev Decentralized Governance for the Reserve Protocol.
@@ -21,17 +18,15 @@ contract Governance is
     GovernorCompatibilityBravo,
     GovernorTimelockControl
 {
-
-    InsurancePool public iPool;
-
-    constructor(ERC20Votes _token, TimelockController _timelock, InsurancePool _iPool)
+    // TODO: Swap out ERC20Votes with our own custom InsurancePoolVotes. It should contain the 
+    // functionality for both GovernorVotes + GovernorVotesQuorumFraction, and intimately
+    // the details of the InsurancePool. 
+    constructor(ERC20Votes _token, TimelockController _timelock)
         Governor("MyGovernor")
         GovernorVotes(_token)
         GovernorVotesQuorumFraction(4)
         GovernorTimelockControl(_timelock)
-    {
-        iPool = _iPool;
-    }
+    {}
 
     function votingDelay() public pure override returns (uint256) {
         return 1; // 1 block
@@ -42,7 +37,7 @@ contract Governance is
     }
 
     function proposalThreshold() public pure override returns (uint256) {
-        // TODO: Integrate with staking pool
+        // TODO: Integrate with InsurancePoolVotes
         return 0e18;
     }
 
@@ -54,6 +49,7 @@ contract Governance is
         override(IGovernor, GovernorVotesQuorumFraction)
         returns (uint256)
     {
+        // TODO: Integrate with InsurancePoolVotes
         return super.quorum(blockNumber);
     }
 
@@ -63,6 +59,7 @@ contract Governance is
         override(IGovernor, GovernorVotes)
         returns (uint256)
     {
+        // TODO: Integrate with InsurancePoolVotes
         return super.getVotes(account, blockNumber);
     }
 
@@ -81,12 +78,12 @@ contract Governance is
         bytes[] memory calldatas,
         string memory description
     ) public override(Governor, GovernorCompatibilityBravo, IGovernor) returns (uint256) {
-        // TODO: Require sufficient stake
+        // TODO: Add Access Control
         return super.propose(targets, values, calldatas, description);
     }
 
     function cancel(uint256 proposalId) public override {
-        // TODO: Set permissions
+        // TODO: Add Access Control
         super.cancel(proposalId);
     }
 
@@ -97,6 +94,7 @@ contract Governance is
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) internal override(Governor, GovernorTimelockControl) {
+        // TODO: Maybe require sufficient stake here too?
         super._execute(proposalId, targets, values, calldatas, descriptionHash);
     }
 
