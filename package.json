@@ -2,15 +2,14 @@
     "name": "reserve-protocol",
     "version": "1.0.0",
     "description": "Reserve Mainnet Protocol",
-    "main": "index.js",
     "directories": {
         "test": "tests"
     },
     "scripts": {
         "compile": "npx hardhat compile",
         "coverage": "npx hardhat coverage --temp artifacts",
-        "deploy:localhost": "npx hardhat run scripts/deploy_all.js --network localhost",
-        "deploy:ropsten": "npx hardhat run scripts/deploy_all.js --network ropsten",
+        "deploy:localhost": "npx hardhat run scripts/deploy_all.ts --network localhost",
+        "deploy:ropsten": "npx hardhat run scripts/deploy_all.ts --network ropsten",
         "devchain": "npx hardhat node",
         "test": "npx hardhat test",
         "test:parallel": "mocha --require hardhat/register --recursive --parallel --exit",
@@ -31,6 +30,9 @@
         "@nomiclabs/hardhat-ethers": "^2.0.2",
         "@nomiclabs/hardhat-waffle": "^2.0.1",
         "@openzeppelin/hardhat-upgrades": "^1.9.0",
+        "@typechain/ethers-v5": "^7.0.1",
+        "@types/chai": "^4.2.21",
+        "@types/mocha": "^9.0.0",
         "chai": "^4.3.4",
         "ethereum-waffle": "^3.4.0",
         "ethers": "^5.4.1",
@@ -39,7 +41,13 @@
         "mocha": "^9.0.2",
         "prettier": "2.3.2",
         "prettier-plugin-solidity": "1.0.0-beta.13",
-        "solidity-coverage": "^0.7.16"
+        "solhint-plugin-prettier": "^0.0.5",
+        "solidity-coverage": "^0.7.16",
+        "ts-generator": "^0.1.1",
+        "ts-node": "^10.2.1",
+        "typechain": "^5.1.2",
+        "@typechain/hardhat": "^2.3.0",
+        "typescript": "^4.4.2"
     },
     "dependencies": {
         "@openzeppelin/contracts": "^4.2.0",
@@ -51,17 +59,5 @@
     "resolutions": {
         "@solidity-parser/parser": "^0.13.2"
     },
-    "prettier": {
-        "overrides": [
-            {
-                "files": "*.sol",
-                "options": {
-                    "printWidth": 100,
-                    "tabWidth": 4,
-                    "semi": false,
-                    "singleQuote": false
-                }
-            }
-        ]
-    }
+    "packageManager": "yarn@3.1.0-rc.2"
 }

@@ -11,28 +11,28 @@ TODO
 Install `yarn` (if required)
 
 ```bash
-$ npm install -g yarn 
+$ npm install -g yarn
 ```
 
 Clone this repository:
 
 ```bash
-$ git clone git@github.com:reserve-protocol/protocol.git 
+$ git clone git@github.com:reserve-protocol/protocol.git
 ```
 
-Install the required modules: 
+Install the required modules:
 
- ```bash   
- # Install required modules
- $ cd ~/path/to/project
- $ yarn
+```bash
+# Install required modules
+$ cd ~/path/to/project
+$ yarn
 ```
 
 Create a local `.env` file:
 
- ```bash   
- # In project folder
- $ cp .env.example .env
+```bash
+# In project folder
+$ cp .env.example .env
 ```
 
 ## Running Tests
@@ -58,7 +58,7 @@ ROPSTEN_RPC_URL=""
 ALCHEMY_MAINNET_RPC_URL=""
 ```
 
-2 - You also need to complete the network configuration (`networkConfig`) for the desired network. This can be located at `\common\configuration.js`. These settings will be used to validate supported networks and reuse components which may be already deployed.
+2 - You also need to complete the network configuration (`networkConfig`) for the desired network. This can be located at `\common\configuration.ts`. These settings will be used to validate supported networks and reuse components which may be already deployed.
 
 For now these are the supported networks:
 
@@ -80,7 +80,7 @@ const networkConfig = {
 
 3 - For deploying the full suite you can use the available scripts located at `\scripts`.
 
-* `scripts\deploy-all.js`: Deploys all components and mockups (mainly oriented for local development, but works for Testnets as well). Uses default configuration for a generic `RToken`. 
+-   `scripts\deploy-all.ts`: Deploys all components and mockups (mainly oriented for local development, but works for Testnets as well). Uses default configuration for a generic `RToken`.
 
 ### Local deployment (Hardhat network)
 
@@ -96,16 +96,14 @@ $ yarn deploy:localhost
 
 Once contracts are deployed you can interact with them by running:
 
-
 ```bash
 $ npx hardhat --network localhost console
 ```
 
-
 ### Ropsten deployment (Testnet)
 
-* Get Test Ether (https://faucet.ropsten.be/)
-* Make sure contract addresses are properly configured for Ropsten network (`chainId = 3`) in the `networkConfig` object, and run the following commands:
+-   Get Test Ether (https://faucet.ropsten.be/)
+-   Make sure contract addresses are properly configured for Ropsten network (`chainId = 3`) in the `networkConfig` object, and run the following commands:
 
 ```bash
 # In one terminal
@@ -118,4 +116,4 @@ Once contracts are deployed you can interact with them by running:
 $ npx hardhat --network ropsten console
 ```
 
-* You can obtain Test Ether here: https://faucet.ropsten.be/ (other faucets also available)
+-   You can obtain Test Ether here: https://faucet.ropsten.be/ (other faucets also available)
