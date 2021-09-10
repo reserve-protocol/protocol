@@ -14,11 +14,11 @@ import "../helpers/ErrorMessages.sol";
  * @title InsurancePool
  * @dev The InsurancePool is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken. By staking they make their RSR eligible
- * to be seized by the RToken in times of default. 
+ * to be seized by the RToken in times of default.
  *
  * This contract has pretty complicated weights tracking. This arises from the fact that deposits and
  * withdrawals are delayed and we would like to to prevent requiring users to return to process their
- * deposits/withdrawals. Any account can settle a stranger's deposit/withdrawal. 
+ * deposits/withdrawals. Any account can settle a stranger's deposit/withdrawal.
  *
  * This produces _weightsAdjustments which are used to retroactively interpret revenue events.
  */
@@ -81,7 +81,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
             caughtUp = _processWithdrawalsAndDeposits();
         }
 
-        // Only execute the tx if we are caught up. 
+        // Only execute the tx if we are caught up.
         if (caughtUp) {
             _;
         }
@@ -149,10 +149,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         emit RevenueEventSaved(revenues.length - 1, amount);
 
         // Need to update allowance - make RToken callers pay the cost.
-        rsr.safeIncreaseAllowance(
-            address(rToken),
-            type(uint256).max - rsr.allowance(address(this), address(rToken))
-        );
+        rsr.safeIncreaseAllowance(address(rToken), type(uint256).max - rsr.allowance(address(this), address(rToken)));
     }
 
     /// ================= Internal =====================
@@ -176,10 +173,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     function _catchup(address account, uint256 numToProcess) internal returns (bool) {
         if (address(account) != address(0)) {
             uint256 weightToUse = lastWeight[account];
-            uint256 endIndex = MathUpgradeable.min(
-                lastIndex[account] + numToProcess,
-                revenues.length
-            );
+            uint256 endIndex = MathUpgradeable.min(lastIndex[account] + numToProcess, revenues.length);
 
             for (uint256 i = lastIndex[account]; i < endIndex; i++) {
                 // Check if weight adjustments occured, use new weight from that point
@@ -204,13 +198,14 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         }
         return true;
     }
-    
+
     function _processWithdrawalsAndDeposits() internal returns (bool) {
         // Withdrawals
         uint256 stakingWithdrawalDelay = rToken.stakingWithdrawalDelay();
         uint256 endIndex = withdrawalIndex + 1000; // TODO: Check 1000 is safe
         while (
-            withdrawalIndex < withdrawals.length && withdrawalIndex < endIndex && 
+            withdrawalIndex < withdrawals.length &&
+            withdrawalIndex < endIndex &&
             block.timestamp > withdrawals[withdrawalIndex].timestamp + stakingWithdrawalDelay
         ) {
             _settleNextWithdrawal();
@@ -220,15 +215,19 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         uint256 stakingDepositDelay = rToken.stakingDepositDelay();
         endIndex = depositIndex + (endIndex - withdrawalIndex);
         while (
-            depositIndex < deposits.length && depositIndex < endIndex && 
+            depositIndex < deposits.length &&
+            depositIndex < endIndex &&
             block.timestamp > deposits[depositIndex].timestamp + stakingDepositDelay
         ) {
             _settleNextDeposit();
         }
 
         // Are we done?
-        return (withdrawalIndex == withdrawals.length || block.timestamp < withdrawals[withdrawalIndex].timestamp + stakingWithdrawalDelay) && 
-            (depositIndex == deposits.length || block.timestamp < deposits[depositIndex].timestamp + stakingDepositDelay);
+        return
+            (withdrawalIndex == withdrawals.length ||
+                block.timestamp < withdrawals[withdrawalIndex].timestamp + stakingWithdrawalDelay) &&
+            (depositIndex == deposits.length ||
+                block.timestamp < deposits[depositIndex].timestamp + stakingDepositDelay);
     }
 
     function _settleNextWithdrawal() internal {
@@ -239,7 +238,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
             uint256 equivalentWeight = (amount * totalWeight) / rsr.balanceOf(address(this));
             weight[withdrawal.account] = weight[withdrawal.account] - equivalentWeight;
             totalWeight = totalWeight - equivalentWeight;
-            
+
             // Register adjustment
             WeightAdjustment storage _adj = _weightsAdjustments[withdrawal.account][revenues.length];
             _adj.amount = weight[withdrawal.account];
@@ -270,5 +269,6 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
         depositIndex += 1;
     }
 
+    /* solhint-disable no-empty-blocks */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

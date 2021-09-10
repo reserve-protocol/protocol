@@ -25,10 +25,9 @@ interface IPrevRSR {
  *  3. Ensure old RSR can never be unpaused.
  *
  * Note that there is one exception to this:
- * - SlowWallet: The SlowWallet balance should be moved into the Reserve multisig. 
+ * - SlowWallet: The SlowWallet balance should be moved into the Reserve multisig.
  */
 contract RSR is ERC20Votes {
-
     /// ==== Immutable ====
 
     IPrevRSR public immutable prevRSR;
@@ -65,16 +64,10 @@ contract RSR is ERC20Votes {
         _;
     }
 
-
     // ========================= External =============================
 
     /// A light wrapper for ERC20 transfer that crosses the account over if necessary.
-    function transfer(address recipient, uint256 amount)
-        public
-        override
-        crossover(_msgSender())
-        returns (bool)
-    {
+    function transfer(address recipient, uint256 amount) public override crossover(_msgSender()) returns (bool) {
         return super.transfer(recipient, amount);
     }
 
@@ -87,12 +80,12 @@ contract RSR is ERC20Votes {
         return super.transferFrom(sender, recipient, amount);
     }
 
-    /// Returns the fixed total supply of the token. 
+    /// Returns the fixed total supply of the token.
     function totalSupply() public view override returns (uint256) {
         return fixedSupply;
     }
 
-    /// A light wrapper for ERC20 balanceOf that shows balances across both RSR deployments. 
+    /// A light wrapper for ERC20 balanceOf that shows balances across both RSR deployments.
     function balanceOf(address account) public view override returns (uint256) {
         if (!crossed[account]) {
             return prevRSR.balanceOf(account) + super.balanceOf(account);
@@ -102,7 +95,7 @@ contract RSR is ERC20Votes {
 
     // ========================= Internal =============================
 
-    /// A hook for the internal ERC20 transfer fucntion that prevents accidental sends to the contract. 
+    /// A hook for the internal ERC20 transfer fucntion that prevents accidental sends to the contract.
     function _beforeTokenTransfer(
         address,
         address to,
@@ -114,8 +107,8 @@ contract RSR is ERC20Votes {
     }
 
     /// IMPORTANT!
-    /// 
-    /// Implements a one-time crossover from the old RSR, per account. 
+    ///
+    /// Implements a one-time crossover from the old RSR, per account.
     function _crossover(address account) internal {
         if (crossed[account]) {
             revert CrossedAlready();

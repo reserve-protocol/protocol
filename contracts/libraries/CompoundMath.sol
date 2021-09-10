@@ -13,12 +13,11 @@ library CompoundMath {
      * @param timedelta unsigned 256-bit integer number
      * @return unsigned 256-bit integer number
      */
-    function compound(uint256 scale, uint256 compoundRate, uint256 timedelta) external pure returns (uint256) {
-      return ABDKMath64x64.mulu(
-        ABDKMath64x64.pow(
-            ABDKMath64x64.divu(scale + compoundRate, scale), 
-            timedelta
-        ), scale);
+    function compound(
+        uint256 scale,
+        uint256 compoundRate,
+        uint256 timedelta
+    ) external pure returns (uint256) {
+        return ABDKMath64x64.mulu(ABDKMath64x64.pow(ABDKMath64x64.divu(scale + compoundRate, scale), timedelta), scale);
     }
-
 }

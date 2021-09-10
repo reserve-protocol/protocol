@@ -8,6 +8,7 @@ import "./interfaces/IInsurancePool.sol";
 import "./modules/InsurancePool.sol";
 import "./libraries/Token.sol";
 import "./RToken.sol";
+import "./helpers/ErrorMessages.sol";
 
 /*
  * @title RTokenDeployer
@@ -27,7 +28,7 @@ contract RTokenDeployer is IRTokenDeployer {
         insurancePoolImplementation = insurancePoolImplementation_;
     }
 
-    /// Deploys a new RToken. 
+    /// Deploys a new RToken.
     function deploy(
         address owner,
         string calldata name,
@@ -36,8 +37,12 @@ contract RTokenDeployer is IRTokenDeployer {
         Token.Info[] memory basketTokens,
         Token.Info memory rsrToken
     ) external override returns (address rToken) {
-        require(owner != address(0));
-        require(basketTokens.length > 0);
+        if (owner == address(0)) {
+            revert OwnerNotDefined();
+        }
+        if (basketTokens.length == 0) {
+            revert EmptyBasket();
+        }
 
         // Deploy RToken Proxy and connect it to the RToken implementation.
         rToken = address(
@@ -58,11 +63,7 @@ contract RTokenDeployer is IRTokenDeployer {
         address ipool = address(
             new ERC1967Proxy(
                 address(insurancePoolImplementation),
-                abi.encodeWithSelector(
-                    InsurancePool(address(0)).initialize.selector,
-                    rToken,
-                    rsrToken.tokenAddress
-                )
+                abi.encodeWithSelector(InsurancePool(address(0)).initialize.selector, rToken, rsrToken.tokenAddress)
             )
         );
 

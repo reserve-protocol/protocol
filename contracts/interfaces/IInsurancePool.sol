@@ -23,16 +23,16 @@ interface IInsurancePool {
     /// Stake RSR, delayed by a queue
     function stake(uint256 amount) external;
 
-    /// Unstake RSR, delayed by a queue. Caller earns during the withdrawal period.
+    /// Unstake RSR, delayed by a queue. Caller earns during the withdrawal period
     function unstake(uint256 amount) external;
 
-    /// Returns all earned RToken. Can call as second half of withdraw process.
+    /// Returns all earned RToken. Can call as second half of withdraw process
     function claimRevenue() external;
 
     /// Escape hatch for dynamic programming failurecase
     function catchup(address account, uint256 numToProcess) external returns (bool);
 
-    /// Processes withdrawals/deposits that can be settled. 
+    /// Processes withdrawals/deposits that can be settled
     function processWithdrawalsAndDeposits() external returns (bool);
 
     event DepositInitiated(address indexed user, uint256 amount);
