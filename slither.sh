@@ -7,6 +7,7 @@ then
 fi
 
 # Flatten Solidity files
+rm -rf flatten
 yarn flatten
 
 # Run slither on specific contracts
