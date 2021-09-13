@@ -42,7 +42,7 @@ interface IRToken {
     function stakingWithdrawalDelay() external view returns (uint256);
 
     function rsr() external view returns (Token.Info memory);
-    
+
     function insurancePool() external view returns (address);
 
     function rebalancingFrozen() external view returns (bool);

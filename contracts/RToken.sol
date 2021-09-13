@@ -35,6 +35,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     using Basket for Basket.Info;
 
     // A point of reference for percentage values
+    /* solhint-disable var-name-mixedcase */
     uint256 public SCALE = 1e18; // weakly immutable
 
     struct Config {
@@ -80,9 +81,12 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         address protocolFund;
     }
 
-    Config config;
-    Basket.Info basket;
-    Token.Info rsrToken;
+    /* solhint-disable private-vars-leading-underscore*/
+    Config internal config;
+    /* solhint-disable private-vars-leading-underscore*/
+    Basket.Info internal basket;
+    /* solhint-disable private-vars-leading-underscore*/
+    Token.Info internal rsrToken;
 
     // SlowMinting data
     struct Minting {
@@ -166,11 +170,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     /// Updates priceInRToken for the token at index i, only callable by owner.
-    function setBasketTokenPriceInRToken(uint16 i, uint256 priceInRToken)
-        external
-        override
-        onlyOwner
-    {
+    function setBasketTokenPriceInRToken(uint16 i, uint256 priceInRToken) external override onlyOwner {
         basket.tokens[i].priceInRToken = priceInRToken;
     }
 
@@ -295,12 +295,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     /// Returns the collateral token quantities given by a redemption of a quantity of RToken.
     /// Does not decay the basket quantities.
-    function redemptionAmounts(uint256 amount)
-        public
-        view
-        override
-        returns (uint256[] memory amounts)
-    {
+    function redemptionAmounts(uint256 amount) public view override returns (uint256[] memory amounts) {
         return basket.redemptionAmounts(amount, SCALE, decimals(), totalSupply());
     }
 
@@ -391,11 +386,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         // Discrete compounding on a per-second basis
         uint256 amount = totalSupply() -
             (totalSupply() * SCALE) /
-            CompoundMath.compound(
-                SCALE,
-                config.expansionPerSecond,
-                block.timestamp - _lastExpansion
-            );
+            CompoundMath.compound(SCALE, config.expansionPerSecond, block.timestamp - _lastExpansion);
 
         _lastExpansion = block.timestamp;
         if (amount == 0) {
@@ -440,7 +431,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
                 if (m.amount > issuanceAmount * (blocksSince)) {
                     break;
                 }
-                // We should also break if the max allowed supply is exceeded 
+                // We should also break if the max allowed supply is exceeded
                 if ((totalSupply() + m.amount) > config.maxSupply) {
                     emit MaxSupplyExceeded();
                     break;
@@ -482,8 +473,11 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             return;
         }
 
-        (int32 deficitIndex, int32 surplusIndex) = basket
-            .mostUndercollateralizedAndMostOverCollateralized(SCALE, decimals(), totalSupply());
+        (int32 deficitIndex, int32 surplusIndex) = basket.mostUndercollateralizedAndMostOverCollateralized(
+            SCALE,
+            decimals(),
+            totalSupply()
+        );
 
         // Three cases:
         // 1. There is excess of collateral A and deficit of collateral B. Trade A for B.
@@ -507,10 +501,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
             rsrToken.safeTransferFrom(address(config.insurancePool), address(this), sell);
 
             uint256 minBuy = (sell * lowToken.priceInRToken) / rsrToken.priceInRToken;
-            minBuy =
-                (minBuy *
-                    MathUpgradeable.min(lowToken.slippageTolerance, rsrToken.slippageTolerance)) /
-                SCALE;
+            minBuy = (minBuy * MathUpgradeable.min(lowToken.slippageTolerance, rsrToken.slippageTolerance)) / SCALE;
             _tradeWithFixedSellAmount(rsrToken, lowToken, sell, minBuy);
 
             // TODO: Maybe remove, turn into require, or leave if necessary.
@@ -581,12 +572,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         uint256 initialSellBal = sellToken.myBalance();
         uint256 initialBuyBal = buyToken.myBalance();
         sellToken.safeApprove(address(config.exchange), sellAmount);
-        config.exchange.tradeFixedSell(
-            sellToken.tokenAddress,
-            buyToken.tokenAddress,
-            sellAmount,
-            minBuyAmount
-        );
+        config.exchange.tradeFixedSell(sellToken.tokenAddress, buyToken.tokenAddress, sellAmount, minBuyAmount);
 
         // TODO: Maybe exact equality is too much to ask? Discover during tests.
         if (sellToken.myBalance() - initialSellBal != sellAmount) {
@@ -618,13 +604,8 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         address to,
         uint256 amount
     ) internal override {
-        if (
-            from != address(0) && to != address(0) && address(config.txFeeCalculator) != address(0)
-        ) {
-            uint256 fee = MathUpgradeable.min(
-                amount,
-                config.txFeeCalculator.calculateFee(from, to, amount)
-            );
+        if (from != address(0) && to != address(0) && address(config.txFeeCalculator) != address(0)) {
+            uint256 fee = MathUpgradeable.min(amount, config.txFeeCalculator.calculateFee(from, to, amount));
 
             // Cheeky way of doing the fee without needing access to underlying _balances array
             _burn(from, fee);
@@ -633,5 +614,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     /// UUPSUpgradeable pattern that encodes under what conditions this proxy implementation can be upgraded.
+    /* solhint-disable no-empty-blocks */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

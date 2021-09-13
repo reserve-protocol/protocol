@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
@@ -33,6 +32,7 @@ error CircuitPaused();
 // Authorization
 error Unauthorized();
 error OnlyRToken();
+error OwnerNotDefined();
 
 // Transfer/Rebalancing
 error TransferToContractAddress();
@@ -44,4 +44,3 @@ error CannotWithdrawZero();
 
 // RSR
 error CrossedAlready();
-

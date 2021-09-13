@@ -9,13 +9,7 @@ import "./interfaces/IRelayERC20.sol";
 abstract contract RelayERC20 is IRelayERC20, ERC20Upgradeable {
     mapping(address => uint256) public override metaNonces;
 
-    event TransferForwarded(
-        bytes sig,
-        address indexed from,
-        address indexed to,
-        uint256 indexed amount,
-        uint256 fee
-    );
+    event TransferForwarded(bytes sig, address indexed from, address indexed to, uint256 indexed amount, uint256 fee);
 
     /// Checks the transfer signature in-tx in order to enable metatxs.
     /// Note that `amount` is not reduced by `fee`; the fee is taken separately.
@@ -28,15 +22,7 @@ abstract contract RelayERC20 is IRelayERC20, ERC20Upgradeable {
         uint256 fee
     ) public virtual override {
         bytes32 hash = keccak256(
-            abi.encodePacked(
-                "relayedTransfer",
-                address(this),
-                from,
-                to,
-                amount,
-                fee,
-                metaNonces[from]
-            )
+            abi.encodePacked("relayedTransfer", address(this), from, to, amount, fee, metaNonces[from])
         );
         metaNonces[from]++;
 

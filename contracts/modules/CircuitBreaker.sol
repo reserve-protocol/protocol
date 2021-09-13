@@ -8,17 +8,15 @@ import "../interfaces/ICircuitBreaker.sol";
 /**
  * @title CircuitBreaker
  * @dev A lightweight contract that holds a paused state and maintains a list of pausers.
- * 
- * Uses the AccessControl pattern. 
+ *
+ * Uses the AccessControl pattern.
  */
- contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
 
+contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
     // ==== Immutable ====
-
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     // ==== Mutable ====
-
     bool private _paused = false;
 
     constructor(address _admin) {
