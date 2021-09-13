@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Note: This script requires slither installed using solc 0.8.4
-if ! command -v slither /dev/null
+if ! command -v slither >/dev/null
 then
     echo "slither could not be found"
     exit
