@@ -52,9 +52,18 @@ $ yarn lint:sol
 
 ## Static Analysis with Slither
 
-* Make sure `slither` is installed and properly working. 
-    * Follow the instructions [here](https://github.com/crytic/slither#how-to-install) and check all pre-requisites are met. 
-    * You will also need `solc-select` installed (instructions [here](https://github.com/crytic/solc-select)) and set to version `0.8.4`.
+* Make sure `slither` is installed and properly working. Follow the instructions [here](https://github.com/crytic/slither#how-to-install) and check all pre-requisites are met. 
+
+```bash
+$ pip3 install slither-analyzer
+```
+* You will also need `solc-select` installed (instructions [here](https://github.com/crytic/solc-select)) and set to version `0.8.4`.
+
+```bash
+$ pip3 install solc-select
+$ solc-select install 0.8.4
+$ solc-select use 0.8.4
+```
 
 * Run `slither` using this command:
 
