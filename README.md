@@ -50,6 +50,20 @@ Linting the Solidity code:
 $ yarn lint:sol
 ```
 
+## Static Analysis with Slither
+
+* Make sure `slither` is installed and properly working. 
+    * Follow the instructions [here](https://github.com/crytic/slither#how-to-install) and check all pre-requisites are met. 
+    * You will also need `solc-select` installed (instructions [here](https://github.com/crytic/solc-select)) and set to version `0.8.4`.
+
+* Run `slither` using this command:
+
+```bash
+$ yarn slither
+```
+
+**Note:** In case you are running `slither` via Docker you can modify the command being executed in `./slither.sh`. You can also add/remove contracts to analyze by changing the script in this file
+
 ## Deployments
 
 1- Make sure the local enviroment (`.env`) is properly configured:
