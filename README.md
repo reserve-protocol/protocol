@@ -43,6 +43,13 @@ To run tests run the following command:
 $ yarn test
 ```
 
+## Linting Solidity
+Linting the Solidity code:
+
+```bash
+$ yarn lint:sol
+```
+
 ## Deployments
 
 1- Make sure the local enviroment (`.env`) is properly configured:
