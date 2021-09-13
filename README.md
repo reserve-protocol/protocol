@@ -71,7 +71,27 @@ $ solc-select use 0.8.4
 $ yarn slither
 ```
 
-**Note:** In case you are running `slither` via Docker you can modify the command being executed in `./slither.sh`. You can also add/remove contracts to analyze by changing the script in this file
+## Security Analysis with Mythril
+
+* Make sure `mythril` is installed and properly working.  We recommend using **Docker** for this as many issues exit when installing via `pip3`. Follow the instructions [here](https://mythril-classic.readthedocs.io/en/master/installation.html). You can get Docker [here](https://docs.docker.com/get-docker/)
+
+
+```bash
+$ docker pull mythril/myth
+```
+
+```bash
+# Check it properly installed
+$ docker run mythril/myth --help
+```
+
+* Run `mythril` using this command:
+
+```bash
+$ yarn mythril
+```
+
+**Note:** In case you are running `myth analyze` directly you can modify the command being executed in `./mythril.sh`. You can also add/remove contracts to analyze by changing the script in this file
 
 ## Deployments
 
