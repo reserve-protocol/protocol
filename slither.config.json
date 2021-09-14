@@ -1,0 +1,7 @@
+{
+    "exclude_informational": true,
+    "exclude_low": false,
+    "solc_disable_warnings": true,
+    "filter_paths": "contracts/test|node_modules",
+    "detectors_to_exclude": ""
+}

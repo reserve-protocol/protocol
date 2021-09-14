@@ -15,7 +15,10 @@
         "test:parallel": "mocha --require hardhat/register --recursive --parallel --exit",
         "test:recompile": "npx hardhat compile --force && mocha --require hardhat/register --recursive --exit",
         "lint:sol": "npx solhint 'contracts/**/*.sol'",
-        "prettier": "prettier --write 'contracts/interfaces/*.sol' 'contracts/libraries/*.sol' 'contracts/modules/*.sol' 'contracts/test/*.sol' 'contracts/*.sol'"
+        "prettier": "prettier --write 'contracts/interfaces/*.sol' 'contracts/libraries/*.sol' 'contracts/modules/*.sol' 'contracts/test/*.sol' 'contracts/*.sol'",
+        "slither": "./slither.sh",
+        "mythril": "./mythril.sh",
+        "flatten": "waffle flatten"
     },
     "repository": {
         "type": "git",

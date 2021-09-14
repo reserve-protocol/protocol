@@ -5,6 +5,7 @@ node_modules/
 artifacts/
 typechain/
 cache/
+flatten/
 coverage/
 coverage.json
 .env

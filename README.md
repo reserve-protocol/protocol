@@ -50,6 +50,49 @@ Linting the Solidity code:
 $ yarn lint:sol
 ```
 
+## Static Analysis with Slither
+
+* Make sure `slither` is installed and properly working. Follow the instructions [here](https://github.com/crytic/slither#how-to-install) and check all pre-requisites are met. 
+
+```bash
+$ pip3 install slither-analyzer
+```
+* You will also need `solc-select` installed (instructions [here](https://github.com/crytic/solc-select)) and set to version `0.8.4`.
+
+```bash
+$ pip3 install solc-select
+$ solc-select install 0.8.4
+$ solc-select use 0.8.4
+```
+
+* Run `slither` using this command:
+
+```bash
+$ yarn slither
+```
+
+## Security Analysis with Mythril
+
+* Make sure `mythril` is installed and properly working.  We recommend using **Docker** for this as many issues exit when installing via `pip3`. Follow the instructions [here](https://mythril-classic.readthedocs.io/en/master/installation.html). You can get Docker [here](https://docs.docker.com/get-docker/)
+
+
+```bash
+$ docker pull mythril/myth
+```
+
+```bash
+# Check it properly installed
+$ docker run mythril/myth --help
+```
+
+* Run `mythril` using this command:
+
+```bash
+$ yarn mythril
+```
+
+**Note:** In case you are running `myth analyze` directly you can modify the command being executed in `./mythril.sh`. You can also add/remove contracts to analyze by changing the script in this file
+
 ## Deployments
 
 1- Make sure the local enviroment (`.env`) is properly configured:
