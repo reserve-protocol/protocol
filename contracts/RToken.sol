@@ -38,49 +38,6 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /* solhint-disable var-name-mixedcase */
     uint256 public SCALE = 1e18; // weakly immutable
 
-    struct Config {
-        /// RSR staking deposit delay (s)
-        /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to enter the insurance pool
-        uint256 stakingDepositDelay;
-        /// RSR staking withdrawal delay (s)
-        /// e.g. 2_592_000 => Currently staking RSR tokens take 1 month to withdraw
-        uint256 stakingWithdrawalDelay;
-        /// RToken max supply
-        /// e.g. 1_000_000e18 => 1M max supply
-        uint256 maxSupply;
-        /// Minimum minting amount
-        /// e.g. 1_000e18 => 1k RToken
-        uint256 minMintingSize;
-        /// RToken issuance blocklimit
-        /// e.g. 25_000e18 => 25_000e18 (atto)RToken can be issued per block
-        uint256 issuanceRate;
-        /// Cost of freezing rebalancing (in RSR)
-        /// e.g. 100_000_000e18 => 100M RSR
-        uint256 rebalancingFreezeCost;
-        /// Percentage rates are relative to 1e18, the constant SCALE variable set in RToken.
-
-        /// Frequency with which RToken sweeps supply expansion revenue into the insurance pool (s)
-        /// This must be relatively infrequent.
-        /// e.g. 1 week = 60 * 60 * 24 * 7 = 604800
-        uint256 insurancePaymentPeriod;
-        /// RToken per-second supply-expansion rate
-        /// e.g. 3% annually => 0.0000000936681155% per-second => 0.000000000936681155 * 1e18 => 936681155
-        uint256 expansionPerSecond;
-        /// Protocol expenditure factor
-        /// e.g. 1e16 => 1% of the RToken supply expansion goes to protocol fund
-        uint256 expenditureFactor;
-        /// Issuance/Redemption spread
-        /// e.g. 1e14 => 0.01% spread
-        uint256 spread;
-        /// Modules
-        IAtomicExchange exchange;
-        ICircuitBreaker circuitBreaker;
-        ITXFee txFeeCalculator;
-        IInsurancePool insurancePool;
-        /// Addresses
-        address protocolFund;
-    }
-
     /* solhint-disable private-vars-leading-underscore*/
     Config internal config;
     /* solhint-disable private-vars-leading-underscore*/
