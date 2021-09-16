@@ -18,6 +18,7 @@
         "prettier": "prettier --write 'contracts/interfaces/*.sol' 'contracts/libraries/*.sol' 'contracts/modules/*.sol' 'contracts/test/*.sol' 'contracts/*.sol'",
         "slither": "./slither.sh",
         "mythril": "./mythril.sh",
+        "echidna": "rm -rf crytic-export && ./echidna.sh",
         "flatten": "waffle flatten"
     },
     "repository": {
