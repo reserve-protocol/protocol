@@ -6,7 +6,7 @@
       "max-line-length": ["error", 120],
       "func-param-name-mixedcase": "error",
       "modifier-name-mixedcase": "error",
-      "private-vars-leading-underscore": "error",
+      "private-vars-leading-underscore": "off",
       "reason-string": ["error", {"maxLength": 64}],
       "func-visibility": ["error", {"ignoreConstructors": true}],
       "compiler-version": ["off"],
