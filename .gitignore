@@ -6,6 +6,7 @@ artifacts/
 typechain/
 cache/
 flatten/
+crytic-export/
 coverage/
 coverage.json
 .env

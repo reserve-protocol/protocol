@@ -8,8 +8,7 @@ import "../interfaces/IInsurancePool.sol";
 import "../libraries/Token.sol";
 
 interface IRToken {
-
-      struct Config {
+    struct Config {
         /// RSR staking deposit delay (s)
         /// e.g. 2_592_000 => Newly staked RSR tokens take 1 month to enter the insurance pool
         uint256 stakingDepositDelay;
