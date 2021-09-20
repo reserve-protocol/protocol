@@ -1,0 +1,22 @@
+compiler:
+    evm_version: null
+    solc:
+        version: 0.8.4
+        optimizer:
+            enabled: true
+            runs: 200
+        remappings:
+          - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.3.2"
+          - "@openzeppelin-upgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@4.3.2"
+          - "@openzeppelin-upgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@4.3.2"
+          - "@uniswap/v3-core=Uniswap/v3-core@1.0.0"
+          - "@uniswap/v3-periphery=Uniswap/v3-periphery@1.1.1"
+          
+    vyper:
+        version: null
+
+dependencies:
+    - OpenZeppelin/openzeppelin-contracts@4.3.2
+    - OpenZeppelin/openzeppelin-contracts-upgradeable@4.3.2
+    - Uniswap/v3-core@1.0.0
+    - Uniswap/v3-periphery@1.1.1
