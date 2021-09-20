@@ -19,4 +19,4 @@ yarn flatten
 # Run echidna on specific contracts
 echidna-test flatten/TokenLibEchidnaTest.sol --contract TokenLibEchidnaTest --config echidna.config.yml --test-mode assertion
 echidna-test flatten/TokenLibEchidnaTest.sol --contract TokenLibEchidnaTest --config echidna.config.yml
-#echidna-test flatten/CompoundMathEchidnaTest.sol --contract CompoundMathEchidnaTest --config echidna.config.yml --test-mode assertion
+echidna-test contracts/test/fuzzing/CompoundMathEchidnaTest.sol --contract CompoundMathEchidnaTest --config contracts/test/fuzzing/compmath.config.yml --test-mode assertion
