@@ -20,4 +20,6 @@ yarn flatten
 
 # Run mythril on specific contracts
 docker run -v $(pwd):/tmp mythril/myth analyze /tmp/flatten/Basket.sol --solv $SOLC
-docker run -v $(pwd):/tmp mythril/myth analyze /tmp/flatten/Token.sol --solv $SOLC --execution-timeout 60
+docker run -v $(pwd):/tmp mythril/myth analyze /tmp/flatten/Token.sol --solv $SOLC
+docker run -v $(pwd):/tmp mythril/myth analyze /tmp/flatten/RSR.sol --solv $SOLC
+docker run -v $(pwd):/tmp mythril/myth analyze /tmp/flatten/CircuitBreaker.sol --solv $SOLC
