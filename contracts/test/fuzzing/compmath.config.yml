@@ -1,0 +1,4 @@
+solcLibs: ["contracts/libraries/CompoundMath.sol:CompoundMath"]
+quiet: true
+format: 'text'
+
