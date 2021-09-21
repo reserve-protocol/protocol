@@ -6,8 +6,16 @@ def owner(accounts):
     return accounts[0]
 
 @pytest.fixture(scope="session")
-def other(accounts):
+def user1(accounts):
     return accounts[1]
+
+@pytest.fixture(scope="session")
+def user2(accounts):
+    return accounts[2]
+
+@pytest.fixture(scope="session")
+def other(accounts):
+    return accounts[5]
 
 @pytest.fixture
 def tokenMock(ERC20Mock, owner):

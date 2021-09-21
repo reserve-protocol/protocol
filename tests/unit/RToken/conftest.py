@@ -48,4 +48,13 @@ def rToken(RTokenMock, circuitBreaker, tokenMock, rsr, compoundMath, owner):
     rToken.initialize("RToken", "RTKN", config, basketTokens, rsrTokenInfo, {'from': owner})
 
     return rToken
-    
+
+
+@pytest.fixture
+def rTokenIssued(rToken, tokenMock, user1, user2, owner):
+    mintAmount = 5000 * 1e18
+    tokenMock.mint(user1, mintAmount, {'from': owner})
+    tokenMock.approve(rToken.address, mintAmount, {'from': user1})
+    rToken.issue(mintAmount, {'from': user1})
+    rToken.tryProcessMintings({'from': owner})
+    return rToken
