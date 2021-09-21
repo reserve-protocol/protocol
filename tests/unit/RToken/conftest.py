@@ -1,8 +1,9 @@
 import pytest
-from brownie import ZERO_ADDRESS
+from brownie import RTokenMock, ZERO_ADDRESS
+
 
 @pytest.fixture
-def rToken(RTokenMock, circuitBreaker, tokenMock, rsr, compoundMath, owner):
+def rToken(circuitBreaker, tokenMock, rsr, compoundMath, owner):
     # config =  ({
     #         "stakingDepositDelay": 0,
     #         "stakingWithdrawalDelay": 0,
@@ -20,7 +21,23 @@ def rToken(RTokenMock, circuitBreaker, tokenMock, rsr, compoundMath, owner):
     #         "insurancePool": ZERO_ADDRESS,
     #         "protocolFund": ZERO_ADDRESS
     #     })
-    config = (0, 0, 100000 * 1e18, 0, 25000 * 1e18, 0, 0, 0, 0, 0, ZERO_ADDRESS, circuitBreaker.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS)
+    config = (
+        0,
+        0,
+        100000 * 1e18,
+        0,
+        25000 * 1e18,
+        0,
+        0,
+        0,
+        0,
+        0,
+        ZERO_ADDRESS,
+        circuitBreaker.address,
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
+    )
 
     # basketTokens = [
     #         {
@@ -33,7 +50,7 @@ def rToken(RTokenMock, circuitBreaker, tokenMock, rsr, compoundMath, owner):
     #         },
     #     ]
     basketTokens = [(tokenMock.address, 1e18, 1, 1, 0, 0)]
-    
+
     # rsrTokenInfo = {
     #         "tokenAddress": rsr.address,
     #         "genesisQuantity": 0,
@@ -45,7 +62,8 @@ def rToken(RTokenMock, circuitBreaker, tokenMock, rsr, compoundMath, owner):
     rsrTokenInfo = (rsr.address, 0, 1, 1, 0, 0)
 
     rToken = owner.deploy(RTokenMock)
-    rToken.initialize("RToken", "RTKN", config, basketTokens, rsrTokenInfo, {'from': owner})
+    rToken.initialize(
+        "RToken", "RTKN", config, basketTokens, rsrTokenInfo, {"from": owner}
+    )
 
     return rToken
-    
