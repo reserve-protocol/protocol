@@ -4,18 +4,6 @@ from brownie import web3
 
 PAUSER_ROLE = web3.solidityKeccak(["string"], ["PAUSER_ROLE"])
 
-@pytest.fixture(scope="session")
-def owner(accounts):
-    return accounts[0]
-
-@pytest.fixture(scope="session")
-def other(accounts):
-    return accounts[1]
-
-@pytest.fixture
-def circuitBreaker(CircuitBreaker, owner):
-    return owner.deploy(CircuitBreaker, owner)
-
 def test_initialized(circuitBreaker, owner):
     assert circuitBreaker.hasRole(PAUSER_ROLE, owner) == True
     assert circuitBreaker.paused() == False
