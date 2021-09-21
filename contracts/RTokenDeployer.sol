@@ -2,9 +2,9 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "./interfaces/IRTokenDeployer.sol";
-import "./interfaces/IRToken.sol";
-import "./interfaces/IInsurancePool.sol";
+import "../interfaces/IRTokenDeployer.sol";
+import "../interfaces/IRToken.sol";
+import "../interfaces/IInsurancePool.sol";
 import "./modules/InsurancePool.sol";
 import "./libraries/Token.sol";
 import "./RToken.sol";

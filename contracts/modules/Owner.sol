@@ -3,8 +3,8 @@ pragma solidity 0.8.4;
 
 import "@openzeppelin-upgradeable/contracts/governance/TimelockControllerUpgradeable.sol";
 
-import "../interfaces/IOwner.sol";
-import "../interfaces/IRToken.sol";
+import "../../interfaces/IOwner.sol";
+import "../../interfaces/IRToken.sol";
 
 contract Owner is IOwner, TimelockControllerUpgradeable {
     bytes32 public constant PRICES_ROLE = keccak256("PRICES_ROLE");

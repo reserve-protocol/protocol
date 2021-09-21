@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import "@openzeppelin-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/utils/cryptography/ECDSAUpgradeable.sol";
 
-import "./interfaces/IRelayERC20.sol";
+import "../interfaces/IRelayERC20.sol";
 
 abstract contract RelayERC20 is IRelayERC20, ERC20Upgradeable {
     mapping(address => uint256) public override metaNonces;

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../libraries/Token.sol";
-import "../RToken.sol";
+import "../contracts/libraries/Token.sol";
+import "../contracts/RToken.sol";
 
 interface IRTokenDeployer {
     event RTokenDeployed(address rToken);

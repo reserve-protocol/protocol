@@ -10,11 +10,11 @@ import "@openzeppelin-upgradeable/contracts/utils/math/MathUpgradeable.sol";
 import "./libraries/Basket.sol";
 import "./libraries/CompoundMath.sol";
 import "./libraries/Token.sol";
-import "./interfaces/ITXFee.sol";
-import "./interfaces/IRToken.sol";
-import "./interfaces/IAtomicExchange.sol";
-import "./interfaces/IInsurancePool.sol";
-import "./interfaces/ICircuitBreaker.sol";
+import "../interfaces/ITXFee.sol";
+import "../interfaces/IRToken.sol";
+import "../interfaces/IAtomicExchange.sol";
+import "../interfaces/IInsurancePool.sol";
+import "../interfaces/ICircuitBreaker.sol";
 import "./helpers/ErrorMessages.sol";
 
 /**

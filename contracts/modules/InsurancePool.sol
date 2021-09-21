@@ -6,8 +6,8 @@ import "@openzeppelin-upgradeable/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/utils/math/MathUpgradeable.sol";
-import "../interfaces/IInsurancePool.sol";
-import "../interfaces/IRToken.sol";
+import "../../interfaces/IInsurancePool.sol";
+import "../../interfaces/IRToken.sol";
 import "../helpers/ErrorMessages.sol";
 
 /*

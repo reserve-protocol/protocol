@@ -8,7 +8,7 @@ import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-import "../interfaces/IAtomicExchange.sol";
+import "../../interfaces/IAtomicExchange.sol";
 
 contract DEXRouter is IAtomicExchange, IUniswapV3SwapCallback {
     using SafeERC20 for IERC20;

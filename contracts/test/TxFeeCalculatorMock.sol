@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../interfaces/ITXFee.sol";
+import "../../interfaces/ITXFee.sol";
 
 contract TXFeeCalculatorMock is ITXFee {
     uint256 private immutable _scale = 100;

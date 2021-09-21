@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../interfaces/ICircuitBreaker.sol";
-import "../interfaces/IAtomicExchange.sol";
-import "../interfaces/ITXFee.sol";
-import "../interfaces/IInsurancePool.sol";
-import "../libraries/Token.sol";
+import "./ICircuitBreaker.sol";
+import "./IAtomicExchange.sol";
+import "./ITXFee.sol";
+import "./IInsurancePool.sol";
+import "../contracts/libraries/Token.sol";
 
 interface IRToken {
     struct Config {
