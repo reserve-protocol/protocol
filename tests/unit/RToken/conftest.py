@@ -20,8 +20,8 @@ def rToken(RTokenMock, circuitBreaker, tokenMock, rsr, compoundMath, owner):
     #         "insurancePool": ZERO_ADDRESS,
     #         "protocolFund": ZERO_ADDRESS
     #     })
-    
-    config = (0, 0, 0, 0, 100, 0, 0, 0, 0, 0, ZERO_ADDRESS, circuitBreaker.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS)
+    config = (0, 0, 100000 * 1e18, 0, 25000 * 1e18, 0, 0, 0, 0, 0, ZERO_ADDRESS, circuitBreaker.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS)
+
     # basketTokens = [
     #         {
     #             "tokenAddress": tokenMock.address,
@@ -32,7 +32,6 @@ def rToken(RTokenMock, circuitBreaker, tokenMock, rsr, compoundMath, owner):
     #             "slippageTolerance": 0,
     #         },
     #     ]
-    
     basketTokens = [(tokenMock.address, 1e18, 1, 1, 0, 0)]
     
     # rsrTokenInfo = {
@@ -43,18 +42,10 @@ def rToken(RTokenMock, circuitBreaker, tokenMock, rsr, compoundMath, owner):
     #         "priceInRToken": 0,
     #         "slippageTolerance": 0,
     #     }
-
     rsrTokenInfo = (rsr.address, 0, 1, 1, 0, 0)
 
     rToken = owner.deploy(RTokenMock)
     rToken.initialize("RToken", "RTKN", config, basketTokens, rsrTokenInfo, {'from': owner})
 
-    #rToken2 = web3.eth.contract(rToken.address, abi=rToken.abi)
-    #rToken2.functions.initialize("RToken", "RTKN", config, basketTokens, rsrTokenInfo).transact()
     return rToken
     
-
-def test_initialized(rToken, circuitBreaker):
-    assert rToken.issuanceRate() == 100
-    assert rToken.stakingDepositDelay() == 0
-    assert rToken.circuitBreaker() == circuitBreaker.address
