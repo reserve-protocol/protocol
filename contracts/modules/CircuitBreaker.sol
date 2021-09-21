@@ -2,7 +2,6 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-
 import "../../interfaces/ICircuitBreaker.sol";
 
 /**
@@ -27,7 +26,7 @@ contract CircuitBreaker is ICircuitBreaker, AccessControlEnumerable {
     // =========================== Pausing =================================
 
     modifier isPauser() {
-        require(hasRole(PAUSER_ROLE, _msgSender()), "CircuitPaused");
+        require(hasRole(PAUSER_ROLE, _msgSender()), "Not Pauser");
         _;
     }
 
