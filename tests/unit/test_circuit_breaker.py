@@ -19,13 +19,14 @@ def test_pause_unpause_with_owner(circuitBreaker, owner):
     assert circuitBreaker.paused() == False
     assert tx.events["Unpaused"]['account'] == owner
  
-def test_cannot_pause_unpause_if_not_owner(circuitBreaker, other):
+@pytest.mark.parametrize("idx", range(1, 4)) 
+def test_cannot_pause_unpause_if_not_owner(circuitBreaker, accounts, idx):
     assert circuitBreaker.paused() == False
     
     with brownie.reverts("Not Pauser"):
-        circuitBreaker.pause({'from': other})
+        circuitBreaker.pause({'from': accounts[idx]})
 
     with brownie.reverts("Not Pauser"):
-        circuitBreaker.unpause({'from': other})
+        circuitBreaker.unpause({'from': accounts[idx]})
 
     assert circuitBreaker.paused() == False
