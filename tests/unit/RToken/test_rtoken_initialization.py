@@ -1,4 +1,4 @@
-def test_initialized(rToken, circuitBreaker, tokenMock, owner):
+def test_rtoken_initialized(rToken, circuitBreaker, tokenMock, owner):
     # check config
     assert rToken.issuanceRate() == 25000 * 1e18
     assert rToken.stakingDepositDelay() == 0

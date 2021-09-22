@@ -1,5 +1,4 @@
 import pytest
-from brownie import ZERO_ADDRESS
 
 @pytest.fixture(scope="session")
 def owner(accounts):
@@ -14,23 +13,44 @@ def user2(accounts):
     return accounts[2]
 
 @pytest.fixture(scope="session")
-def other(accounts):
+def slowWallet(accounts):
     return accounts[5]
+
+@pytest.fixture(scope="session")
+def multisigWallet(accounts):
+    return accounts[6]
+
+@pytest.fixture(scope="session")
+def other(accounts):
+    return accounts[9]
 
 @pytest.fixture
 def tokenMock(ERC20Mock, owner):
     return  owner.deploy(ERC20Mock, "Basket Token", "BSK")
 
 @pytest.fixture
-def previousRSR(ReserveRightsTokenMock, owner):
-    prevRSRToken =  owner.deploy(ReserveRightsTokenMock, "Reserve Rights", "RSR")
-    prevRSRToken.mint(owner.address, 100000*1e18, {'from': owner})
-    prevRSRToken.pause({'from': owner})
+def previousRSR(ReserveRightsTokenMock, owner, user1, user2, slowWallet, multisigWallet):
+    prevRSRToken = owner.deploy(ReserveRightsTokenMock, "Reserve Rights", "RSR")
+    
+    prevRSRToken.mint(owner, 100000*1e18, {'from': owner})
+    prevRSRToken.mint(user1, 20000*1e18, {'from': owner})
+    prevRSRToken.mint(user2, 30000*1e18, {'from': owner})
+    prevRSRToken.mint(slowWallet, 40000*1e18, {'from': owner})
+    prevRSRToken.mint(multisigWallet, 10000*1e18, {'from': owner})
+
+    prevRSRToken.approve(user1, 500*1e18, {'from': owner})
+    prevRSRToken.approve(user1, 200*1e18, {'from': user2})
+
     return prevRSRToken
 
 @pytest.fixture
-def rsr(RSR, previousRSR, owner):
-     return owner.deploy(RSR, previousRSR.address, ZERO_ADDRESS, ZERO_ADDRESS)
+def previousRSRPaused(previousRSR, owner):
+    previousRSR.pause({'from': owner})
+    return previousRSR
+
+@pytest.fixture
+def rsr(RSR, previousRSR, slowWallet,multisigWallet, owner):
+     return owner.deploy(RSR, previousRSR.address, slowWallet, multisigWallet)
 
 @pytest.fixture(scope="session")
 def compoundMath(CompoundMath, owner):
