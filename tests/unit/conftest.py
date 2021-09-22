@@ -1,5 +1,6 @@
 import pytest
 from brownie import (
+    accounts,
     CircuitBreaker,
     CompoundMath,
     ERC20Mock,
@@ -9,39 +10,39 @@ from brownie import (
 )
 
 
-@pytest.fixture(scope="session")
-def owner(accounts):
-    return accounts[0]
-
-
-@pytest.fixture(scope="session")
-def other(accounts):
-    return accounts[1]
+@pytest.fixture
+def owner(backend):
+    return backend.accounts[0]
 
 
 @pytest.fixture
-def tokenMock(owner):
-    return owner.deploy(ERC20Mock, "Basket Token", "BSK")
+def other(backend):
+    return backend.accounts[1]
 
 
 @pytest.fixture
-def previousRSR(owner):
-    prevRSRToken = owner.deploy(ReserveRightsTokenMock, "Reserve Rights", "RSR")
-    prevRSRToken.mint(owner.address, 100000 * 1e18, {"from": owner})
-    prevRSRToken.pause({"from": owner})
-    return prevRSRToken
+def tokenMock(backend, owner):
+    return backend.ERC20(owner, "Basket Token", "BSK")
+
+
+# @pytest.fixture
+# def previousRSR(owner):
+#     prevRSRToken = owner.deploy(ReserveRightsTokenMock, "Reserve Rights", "RSR")
+#     prevRSRToken.mint(owner.address, 100000 * 1e18, {"from": owner})
+#     prevRSRToken.pause({"from": owner})
+#     return prevRSRToken
+
+
+# @pytest.fixture
+# def rsr(previousRSR, owner):
+#     return owner.deploy(RSR, previousRSR.address, ZERO_ADDRESS, ZERO_ADDRESS)
 
 
 @pytest.fixture
-def rsr(previousRSR, owner):
-    return owner.deploy(RSR, previousRSR.address, ZERO_ADDRESS, ZERO_ADDRESS)
-
-
-@pytest.fixture(scope="session")
 def compoundMath(owner):
-    return owner.deploy(CompoundMath)
+    return backend.CompoundMath(owner)
 
 
 @pytest.fixture
-def circuitBreaker(owner):
-    return owner.deploy(CircuitBreaker, owner)
+def circuitBreaker(backend, owner):
+    return backend.CircuitBreaker(owner, owner.address)

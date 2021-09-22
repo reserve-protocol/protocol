@@ -1,3 +1,6 @@
+networks:
+    default: hardhat
+
 compiler:
     evm_version: null
     solc:

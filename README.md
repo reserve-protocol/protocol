@@ -24,11 +24,4 @@ To use the hardhat network for testing (recommended, for speed), first make sure
 npm install -g npx
 ```
 
-After that you should be able to run `npx hardhat`. 
-
-## Running tests
-
-```
-brownie test --network hardhat
-```
-
+After that you should be able to run `npx hardhat`. `
