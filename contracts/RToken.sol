@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
+import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import "@openzeppelin-upgradeable/contracts/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
+import "@openzeppelin-upgradeable/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin-upgradeable/contracts/utils/math/MathUpgradeable.sol";
 
 import "./libraries/Basket.sol";
 import "./libraries/CompoundMath.sol";
 import "./libraries/Token.sol";
-import "./interfaces/ITXFee.sol";
-import "./interfaces/IRToken.sol";
-import "./interfaces/IAtomicExchange.sol";
-import "./interfaces/IInsurancePool.sol";
-import "./interfaces/ICircuitBreaker.sol";
+import "../interfaces/ITXFee.sol";
+import "../interfaces/IRToken.sol";
+import "../interfaces/IAtomicExchange.sol";
+import "../interfaces/IInsurancePool.sol";
+import "../interfaces/ICircuitBreaker.sol";
 import "./helpers/ErrorMessages.sol";
 
 /**
