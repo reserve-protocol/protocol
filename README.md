@@ -34,7 +34,7 @@ To run solidity unit tests:
 brownie test
 ```
 
-To compare simulations:
+To compare simulations (and skip unit tests):
 ```
 brownie test --nounit --sim py0,evm
 ```

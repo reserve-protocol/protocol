@@ -3,8 +3,8 @@ from simulation.interface import Account, Token
 
 basket = [
     Token("USDC", 333334),
-    Token("PAX", 333333 * 10 ** 12),
-    Token("TUSD", 333333 * 10 ** 12),
+    Token("PAX", 333333 * 1e12),
+    Token("TUSD", 333333 * 1e12),
 ]
 
 
@@ -15,9 +15,9 @@ def backends(Backends):
 
     # Mint enough for 100 RTokens
     for i in range(len(backends)):
-        backends[i].basket_tokens[0].mint(Account.Alice, 333334 * 10 ** 2)
-        backends[i].basket_tokens[1].mint(Account.Alice, 333333 * 10 ** 14)
-        backends[i].basket_tokens[2].mint(Account.Alice, 333333 * 10 ** 14)
+        backends[i].basket_tokens[0].mint(Account.Alice, 333334 * 1e2)
+        backends[i].basket_tokens[1].mint(Account.Alice, 333333 * 1e14)
+        backends[i].basket_tokens[2].mint(Account.Alice, 333333 * 1e14)
     return backends
 
 
