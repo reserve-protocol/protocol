@@ -24,4 +24,17 @@ To use the hardhat network for testing (recommended, for speed), first make sure
 npm install -g npx
 ```
 
-After that you should be able to run `npx hardhat`. `
+After that you should be able to run `npx hardhat`. 
+
+## Tests
+
+To run solidity unit tests:
+
+```
+brownie test
+```
+
+To compare simulations:
+```
+brownie test --nounit --sim py0,evm
+```

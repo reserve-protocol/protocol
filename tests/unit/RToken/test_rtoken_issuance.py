@@ -25,7 +25,7 @@ def test_reverts_if_no_approval(rToken, tokenMock, owner, accounts, idx):
 
 
 @pytest.mark.parametrize("idx", range(1, 4)) 
-def test_reverts_if_no_balance(rToken, accounts, idx):    
+def test_reverts_if_no_balanceOf(rToken, accounts, idx):    
     mintAmount = 1000 * 1e18
   
     with brownie.reverts("ERC20: transfer amount exceeds balance"):

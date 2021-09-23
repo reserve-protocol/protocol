@@ -142,7 +142,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     function act() external override everyBlock {
         _trySweepRevenue();
         _tryProcessMintings();
-        _rebalance();
+        _rebalanceOf();
     }
 
     /// Anyone can call this function to issue RToken to themselves.
@@ -423,7 +423,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     }
 
     /// Trades a single token against the DEXRouter with per-block rate limiting.
-    function _rebalance() internal {
+    function _rebalanceOf() internal {
         uint256 numBlocks = block.number - _lastRebalanceBlock;
         _lastRebalanceBlock = block.number;
         if (numBlocks == 0 || rebalancingFrozen()) {
