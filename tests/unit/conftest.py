@@ -56,6 +56,7 @@ def rsr(RSR, previousRSR, slowWallet,multisigWallet, owner):
 def compoundMath(CompoundMath, owner):
     return owner.deploy(CompoundMath)
 
+
 @pytest.fixture
 def circuitBreaker(CircuitBreaker, owner):
     return owner.deploy(CircuitBreaker, owner)
