@@ -1,20 +1,11 @@
 {
     "printWidth": 120,
-    "tabWidth": 2,
+    "tabWidth": 4,
     "semi": false,
-    "singleQuote": true,
+    "singleQuote": false,
     "bracketSpacing": true,
     "newline-before-return": true,
     "no-duplicate-variable": [true, "check-parameters"],
     "no-var-keyword": true,
     "useTabs": false,
-    "overrides": [
-        {
-          "files": "*.sol",
-          "options": {
-            "singleQuote": false,
-            "tabWidth": 4
-          }
-        }
-      ]
 }
