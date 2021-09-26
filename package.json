@@ -65,5 +65,16 @@
     "resolutions": {
         "@solidity-parser/parser": "^0.13.2"
     },
+    "mocha": {
+        "require": [
+            "hardhat/register"
+        ],
+        "recursive": true,
+        "extension": [
+            "ts",
+            "js",
+            "tsx"
+        ]
+    },
     "packageManager": "yarn@3.1.0-rc.2"
 }
