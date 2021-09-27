@@ -3,13 +3,13 @@ import { expect } from "chai"
 import { BigNumber } from "ethers"
 import { ZERO, bn, pow10 } from "../../common/numbers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { AbstractERC20, AbstractImplementation, Token } from "./interface"
+import { AbstractERC20, Simulation, Token } from "./interface"
 import { Implementation0 } from "./implementations/0"
 import { EVMImplementation } from "./implementations/evm"
 
 describe("Simulations", function () {
-    let sim1: AbstractImplementation
-    let sim2: AbstractImplementation
+    let sim1: Simulation
+    let sim2: Simulation
     let owner: SignerWithAddress
     let addr1: SignerWithAddress
     let tokens: Token[]
@@ -38,36 +38,36 @@ describe("Simulations", function () {
         beforeEach(async function () {
             amount = pow10(21)
 
-            both(function (impl: AbstractImplementation) {
-                impl.basket.erc20(tokens[0]).mint(owner.address, amount)
-                impl.basket.erc20(tokens[1]).mint(owner.address, amount)
-                impl.basket.erc20(tokens[2]).mint(owner.address, amount)
-                impl.issue(owner.address, amount)
+            both(function (sim: Simulation) {
+                sim.basket.erc20(tokens[0]).mint(owner.address, amount)
+                sim.basket.erc20(tokens[1]).mint(owner.address, amount)
+                sim.basket.erc20(tokens[2]).mint(owner.address, amount)
+                sim.issue(owner.address, amount)
                 return amount
             })
         })
 
         it("Should allow issuance", async function () {
-            both(function (impl: AbstractImplementation) {
-                expect(impl.rToken.balanceOf(owner.address)).to.equal(amount)
+            both(function (sim: Simulation) {
+                expect(sim.rToken.balanceOf(owner.address)).to.equal(amount)
                 return amount
             })
         })
 
         it("Should allow redemption", async function () {
-            both(function (impl: AbstractImplementation) {
-                impl.redeem(owner.address, amount)
-                expect(impl.rToken.balanceOf(owner.address)).to.equal(ZERO)
+            both(function (sim: Simulation) {
+                sim.redeem(owner.address, amount)
+                expect(sim.rToken.balanceOf(owner.address)).to.equal(ZERO)
                 return ZERO
             })
         })
 
         it("Should allow transfer", async function () {
-            both(function (impl: AbstractImplementation) {
-                expect(impl.rToken.balanceOf(owner.address)).to.equal(amount)
-                impl.rToken.transfer(owner.address, addr1.address, amount)
-                expect(impl.rToken.balanceOf(owner.address)).to.equal(ZERO)
-                expect(impl.rToken.balanceOf(addr1.address)).to.equal(amount)
+            both(function (sim: Simulation) {
+                expect(sim.rToken.balanceOf(owner.address)).to.equal(amount)
+                sim.rToken.transfer(owner.address, addr1.address, amount)
+                expect(sim.rToken.balanceOf(owner.address)).to.equal(ZERO)
+                expect(sim.rToken.balanceOf(addr1.address)).to.equal(amount)
                 return amount
             })
         })

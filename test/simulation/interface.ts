@@ -26,7 +26,7 @@ export interface AbstractERC20 extends Contract {
     transfer(from: Address, to: Address, amount: BigNumber): void
 }
 
-export interface AbstractImplementation {
+export interface Simulation {
     rToken: AbstractERC20
     basket: Basket
     issue(account: Address, amount: BigNumber): void

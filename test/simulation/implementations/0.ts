@@ -3,9 +3,9 @@ import { expect } from "chai"
 import { BigNumber } from "ethers"
 import { ZERO, bn, pow10 } from "../../../common/numbers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { AbstractERC20, Address, Basket, AbstractImplementation, Token } from "../interface"
+import { AbstractERC20, Address, Basket, Simulation, Token } from "../interface"
 
-export class Implementation0 implements AbstractImplementation {
+export class Implementation0 implements Simulation {
     rToken: ERC20
     basket: SimpleBasket
 
