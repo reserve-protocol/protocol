@@ -2,14 +2,20 @@ import { BigNumber } from "ethers"
 import { ethers } from "hardhat"
 import { BN_SCALE_FACTOR, SCALE_DECIMALS } from "./constants"
 
-export const bn = (x: BigNumber | number) => {
+export const ZERO = BigNumber.from(0)
+
+export const bn = (x: BigNumber | number): BigNumber => {
     if (BigNumber.isBigNumber(x)) return x
     const stringified = parseScientific(x.toString())
     const integer = stringified.split(".")[0]
     return BigNumber.from(integer)
 }
 
-export const fp = (x: BigNumber | number) => {
+export const pow10 = (exponent: number): BigNumber => {
+    return bn(10).pow(exponent)
+}
+
+export const fp = (x: BigNumber | number): BigNumber => {
     if (BigNumber.isBigNumber(x)) {
         return BN_SCALE_FACTOR.mul(x)
     }
@@ -32,9 +38,7 @@ function parseScientific(num: string) {
     const [coefficient, exponent] = num.toLowerCase().split("e")
     let zeros = Math.abs(Number(exponent))
     const exponentSign = Math.sign(Number(exponent))
-    const [integer, decimals] = (
-        coefficient.indexOf(".") != -1 ? coefficient : `${coefficient}.`
-    ).split(".")
+    const [integer, decimals] = (coefficient.indexOf(".") != -1 ? coefficient : `${coefficient}.`).split(".")
 
     if (exponentSign === -1) {
         zeros -= integer.length
