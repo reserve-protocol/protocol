@@ -1,13 +1,12 @@
 import { BigNumber } from "ethers"
 import { bn } from "../../common/numbers"
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 
-// Top-level interface
+// Top-level interface object
 export interface Simulation {
     rToken: AbstractRToken
 }
 
-// ================
+// ================================================
 
 export type Address = string
 
@@ -17,6 +16,7 @@ export type Token = {
     quantityE18: BigNumber
 }
 
+// Parent interface that all system components should implement.
 export interface Component {
     address: () => Address
     connect: (account: Address) => this

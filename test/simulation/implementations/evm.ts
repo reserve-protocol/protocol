@@ -1,6 +1,6 @@
 import { ethers } from "hardhat"
 import { expect } from "chai"
-import { BigNumber, ContractFactory } from "ethers"
+import { BigNumber } from "ethers"
 import { advanceTime } from "../../utils/time"
 import { bn, pow10 } from "../../../common/numbers"
 import { ZERO_ADDRESS } from "../../../common/constants"
@@ -9,8 +9,7 @@ import { CircuitBreaker } from "../../../typechain/CircuitBreaker.d"
 import { ReserveRightsTokenMock } from "../../../typechain/ReserveRightsTokenMock.d"
 import { RSR } from "../../../typechain/RSR.d"
 import { RTokenMock } from "../../../typechain/RTokenMock.d"
-import { TXFeeCalculatorMock } from "../../../typechain/TXFeeCalculatorMock.d"
-import { IBasketToken, IRTokenConfig, IRSRConfig, IRTokenParams } from "../../../common/configuration"
+import { IRTokenParams } from "../../../common/configuration"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { AbstractERC20, AbstractRToken, Address, Component, Simulation, Token } from "../interface"
 
@@ -34,25 +33,6 @@ export class EVMImplementation implements Simulation {
     iPool: InsurancePool
 
     async create(owner: SignerWithAddress, rTokenName: string, rTokenSymbol: string, tokens: Token[]): Promise<this> {
-        // Deploy Basket ERC20s
-        const ERC20Factory = await ethers.getContractFactory("ERC20Mock")
-        const basketInfo = []
-        const basketERC20s: ERC20[] = []
-        for (const token of tokens) {
-            const tokenDeployment = <ERC20Mock>await ERC20Factory.deploy(token.name, token.symbol)
-            const erc20 = new ERC20(tokenDeployment)
-            await erc20.init()
-            basketERC20s.push(erc20)
-            basketInfo.push({
-                tokenAddress: tokenDeployment.address,
-                genesisQuantity: token.quantityE18,
-                rateLimit: 1,
-                maxTrade: 1,
-                priceInRToken: 0,
-                slippageTolerance: 0,
-            })
-        }
-
         // Circuit Breaker Factory
         const CircuitBreakerFactory = await ethers.getContractFactory("CircuitBreaker")
         const cb = <CircuitBreaker>await CircuitBreakerFactory.deploy(owner.address)
@@ -76,6 +56,25 @@ export class EVMImplementation implements Simulation {
         // External math lib
         const CompoundMath = await ethers.getContractFactory("CompoundMath")
         const math = await CompoundMath.deploy()
+
+        // Deploy Basket ERC20s
+        const ERC20Factory = await ethers.getContractFactory("ERC20Mock")
+        const basketInfo = []
+        const basketERC20s: ERC20[] = []
+        for (const token of tokens) {
+            const tokenDeployment = <ERC20Mock>await ERC20Factory.deploy(token.name, token.symbol)
+            const erc20 = new ERC20(tokenDeployment)
+            await erc20.init()
+            basketERC20s.push(erc20)
+            basketInfo.push({
+                tokenAddress: tokenDeployment.address,
+                genesisQuantity: token.quantityE18,
+                rateLimit: 1,
+                maxTrade: 1,
+                priceInRToken: 0,
+                slippageTolerance: 0,
+            })
+        }
 
         // Deploy RToken
         const config: IRTokenParams = {
@@ -104,7 +103,6 @@ export class EVMImplementation implements Simulation {
         await rTokenMock.connect(owner).initialize("RToken", "RTKN", config, basketInfo, rsrInfo)
         this.rToken = new RToken(rTokenMock, basketERC20s)
         await this.rToken.init()
-
         return this
     }
 }
