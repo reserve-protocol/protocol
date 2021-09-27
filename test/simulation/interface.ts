@@ -9,12 +9,6 @@ export type Token = {
     quantityE18: BigNumber
 }
 
-export interface Basket {
-    scalarE18: BigNumber // a float multiplier expressed relative to 1e18
-    erc20s: Map<Token, AbstractERC20>
-    erc20(token: Token): AbstractERC20
-}
-
 export interface Contract {
     address: Address
 }
@@ -26,9 +20,10 @@ export interface AbstractERC20 extends Contract {
     transfer(from: Address, to: Address, amount: BigNumber): void
 }
 
+// Top-level interface
 export interface Simulation {
     rToken: AbstractERC20
-    basket: Basket
+    basketERC20(token: Token): AbstractERC20
     issue(account: Address, amount: BigNumber): void
     redeem(account: Address, amount: BigNumber): void
 }

@@ -39,9 +39,9 @@ describe("Simulations", function () {
             amount = pow10(21)
 
             both(function (sim: Simulation) {
-                sim.basket.erc20(tokens[0]).mint(owner.address, amount)
-                sim.basket.erc20(tokens[1]).mint(owner.address, amount)
-                sim.basket.erc20(tokens[2]).mint(owner.address, amount)
+                sim.basketERC20(tokens[0]).mint(owner.address, amount)
+                sim.basketERC20(tokens[1]).mint(owner.address, amount)
+                sim.basketERC20(tokens[2]).mint(owner.address, amount)
                 sim.issue(owner.address, amount)
                 return amount
             })

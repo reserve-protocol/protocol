@@ -3,11 +3,11 @@ import { expect } from "chai"
 import { BigNumber } from "ethers"
 import { ZERO, bn, pow10 } from "../../../common/numbers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { AbstractERC20, Address, Basket, Simulation, Token } from "../interface"
+import { AbstractERC20, Address, Simulation, Token } from "../interface"
 
 export class Implementation0 implements Simulation {
     rToken: ERC20
-    basket: SimpleBasket
+    basket: Basket
 
     constructor(rTokenName: string, rTokenSymbol: string, tokens: Token[]) {
         this.rToken = new ERC20(rTokenName, rTokenSymbol)
@@ -15,13 +15,20 @@ export class Implementation0 implements Simulation {
         for (let token of tokens) {
             tokenMap.set(token, new ERC20(token.name, token.symbol))
         }
-        this.basket = new SimpleBasket(tokenMap)
+        this.basket = new Basket(tokenMap)
+    }
+
+    basketERC20(token: Token): ERC20 {
+        if (!this.basket.erc20s.has(token)) {
+            throw new Error("Token not in basket")
+        }
+        return <ERC20>this.basket.erc20s.get(token)
     }
 
     issue(account: Address, amount: BigNumber): void {
         for (let token of this.basket.erc20s.keys()) {
             const amt = this.basket.getAdjustedQuantity(token).mul(amount).div(pow10(18))
-            this.basket.erc20(token).transfer(account, this.rToken.address, amt)
+            this.basketERC20(token).transfer(account, this.rToken.address, amt)
         }
         this.rToken.mint(account, amount)
     }
@@ -30,12 +37,12 @@ export class Implementation0 implements Simulation {
         this.rToken.burn(account, amount)
         for (let token of this.basket.erc20s.keys()) {
             const amt = this.basket.getAdjustedQuantity(token).mul(amount).div(pow10(18))
-            this.basket.erc20(token).transfer(this.rToken.address, account, amt)
+            this.basketERC20(token).transfer(this.rToken.address, account, amt)
         }
     }
 }
 
-export class SimpleBasket implements Basket {
+class Basket {
     scalarE18: BigNumber // a float multiplier expressed relative to 1e18
     erc20s: Map<Token, ERC20>
 
@@ -47,16 +54,9 @@ export class SimpleBasket implements Basket {
     getAdjustedQuantity(token: Token): BigNumber {
         return token.quantityE18.mul(this.scalarE18).div(pow10(18))
     }
-
-    erc20(token: Token): ERC20 {
-        if (!this.erc20s.has(token)) {
-            throw new Error("Token not in basket")
-        }
-        return <ERC20>this.erc20s.get(token)
-    }
 }
 
-export class ERC20 implements AbstractERC20 {
+class ERC20 implements AbstractERC20 {
     address: Address
     name: string
     symbol: string
