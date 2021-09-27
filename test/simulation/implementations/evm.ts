@@ -1,7 +1,8 @@
 import { ethers } from "hardhat"
 import { expect } from "chai"
 import { BigNumber, ContractFactory } from "ethers"
-import { bn } from "../../../common/numbers"
+import { advanceTime } from "../../utils/time"
+import { bn, pow10 } from "../../../common/numbers"
 import { ZERO_ADDRESS } from "../../../common/constants"
 import { ERC20Mock } from "../../../typechain/ERC20Mock.d"
 import { CircuitBreaker } from "../../../typechain/CircuitBreaker.d"
@@ -11,62 +12,38 @@ import { RTokenMock } from "../../../typechain/RTokenMock.d"
 import { TXFeeCalculatorMock } from "../../../typechain/TXFeeCalculatorMock.d"
 import { IBasketToken, IRTokenConfig, IRSRConfig, IRTokenParams } from "../../../common/configuration"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { AbstractERC20, Address, Component, Simulation, Token } from "../interface"
+import { AbstractERC20, AbstractRToken, Address, Component, Simulation, Token } from "../interface"
 
 // WORK IN PROGRESS
-
-class Base implements Component {
-    // @ts-ignore
-    _signer: SignerWithAddress // @ts-ignore
-    _allSigners: Map<Address, SignerWithAddress> // @ts-ignore
-    address: Address
-
-    async init(address: Address): Promise<void> {
-        this.address = address
-        this._allSigners = new Map<Address, SignerWithAddress>()
-        const signers = await ethers.getSigners()
-        for (const signer of signers) {
-            this._allSigners.set(signer.address, signer)
-        }
-    }
-
-    connect(sender: Address): this {
-        if (!this._allSigners.has(sender)) {
-            throw new Error("Signer unknown")
-        }
-        this._signer = <SignerWithAddress>this._allSigners.get(sender)
-        return this
-    }
-}
 
 // Sample Values for Configuration
 const stakingDepositDelay = 3600 // seconds
 const stakingWithdrawalDelay = 4800 // seconds
-const issuanceRate = bn(25000)
-const maxSupply = bn(100000)
+const issuanceRate = pow10(36)
+const maxSupply = pow10(36)
 const minMintingSize = bn(50)
-const spread = bn(10)
+const spread = bn(0)
 const rebalancingFreezeCost = bn(50000)
 
-export class EVMImplementation extends Base implements Simulation {
-    // TS-IGNORE necessary due to empty constructor
+export class EVMImplementation implements Simulation {
+    // TS-IGNORE needed due to empty constructor
 
     // @ts-ignore
-    owner: SignerWithAddress // @ts-ignore
-
-    rToken: ERC20 // @ts-ignore
-    cb: CircuitBreaker // @ts-ignore
+    rToken: RToken // @ts-ignore
     rsr: RSR // @ts-ignore
+    iPool: InsurancePool
 
-    async create(owner: SignerWithAddress, rTokenName: string, rTokenSymbol: string, tokens: Token[]): Promise<void> {
-        this.owner = owner
-
+    async create(owner: SignerWithAddress, rTokenName: string, rTokenSymbol: string, tokens: Token[]): Promise<this> {
         // Deploy Basket ERC20s
         const ERC20Factory = await ethers.getContractFactory("ERC20Mock")
-        const basketTokens = []
+        const basketInfo = []
+        const basketERC20s: ERC20[] = []
         for (const token of tokens) {
             const tokenDeployment = <ERC20Mock>await ERC20Factory.deploy(token.name, token.symbol)
-            basketTokens.push({
+            const erc20 = new ERC20(tokenDeployment)
+            await erc20.init()
+            basketERC20s.push(erc20)
+            basketInfo.push({
                 tokenAddress: tokenDeployment.address,
                 genesisQuantity: token.quantityE18,
                 rateLimit: 1,
@@ -78,7 +55,7 @@ export class EVMImplementation extends Base implements Simulation {
 
         // Circuit Breaker Factory
         const CircuitBreakerFactory = await ethers.getContractFactory("CircuitBreaker")
-        this.cb = <CircuitBreaker>await CircuitBreakerFactory.deploy(owner.address)
+        const cb = <CircuitBreaker>await CircuitBreakerFactory.deploy(owner.address)
 
         // RSR (Insurance token)
         const PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock")
@@ -113,7 +90,7 @@ export class EVMImplementation extends Base implements Simulation {
             expenditureFactor: 0,
             spread: spread,
             exchange: ZERO_ADDRESS,
-            circuitBreaker: this.cb.address,
+            circuitBreaker: cb.address,
             txFeeCalculator: ZERO_ADDRESS,
             insurancePool: ZERO_ADDRESS,
             protocolFund: ZERO_ADDRESS,
@@ -123,34 +100,34 @@ export class EVMImplementation extends Base implements Simulation {
                 CompoundMath: math.address,
             },
         })
-        const rToken = <RTokenMock>await RTokenFactory.connect(owner).deploy()
-        await rToken.connect(owner).initialize("RToken", "RTKN", config, basketTokens, rsrInfo)
-        this.rToken = new ERC20(rToken)
+        const rTokenMock = <RTokenMock>await RTokenFactory.connect(owner).deploy()
+        await rTokenMock.connect(owner).initialize("RToken", "RTKN", config, basketInfo, rsrInfo)
+        this.rToken = new RToken(rTokenMock, basketERC20s)
+        await this.rToken.init()
 
-        await this.init(this.rToken.address)
+        return this
+    }
+}
+
+class Base {
+    // @ts-ignore
+    _signer: SignerWithAddress // @ts-ignore
+    _allSigners: Map<Address, SignerWithAddress>
+
+    async init(): Promise<void> {
+        this._allSigners = new Map<Address, SignerWithAddress>()
+        const signers = await ethers.getSigners()
+        for (const signer of signers) {
+            this._allSigners.set(signer.address, signer)
+        }
     }
 
-    basketERC20(token: Token): ERC20 {
-        if (!this.basket.erc20s.has(token)) {
-            throw new Error("Token not in basket")
+    connect(sender: Address): this {
+        if (!this._allSigners.has(sender)) {
+            throw new Error("Signer unknown")
         }
-        return <ERC20>this.basket.erc20s.get(token)
-    }
-
-    issue(account: Address, amount: BigNumber): void {
-        for (let token of this.basket.erc20s.keys()) {
-            const amt = this.basket.getAdjustedQuantity(token).mul(amount).div(1e18)
-            this.basket.erc20(token).transfer(account, this.rToken.address, amt)
-        }
-        this.rToken.mint(account, amount)
-    }
-
-    redeem(account: Address, amount: BigNumber): void {
-        this.rToken.burn(account, amount)
-        for (let token of this.basket.erc20s.keys()) {
-            const amt = this.basket.getAdjustedQuantity(token).mul(amount).div(1e18)
-            this.basket.erc20(token).transfer(this.rToken.address, account, amt)
-        }
+        this._signer = <SignerWithAddress>this._allSigners.get(sender)
+        return this
     }
 }
 
@@ -162,17 +139,63 @@ class ERC20 extends Base implements AbstractERC20 {
         this.erc20 = erc20
     }
 
+    address(): Address {
+        return this.erc20.address
+    }
+
     async balanceOf(account: Address): Promise<BigNumber> {
         return await this.erc20.balanceOf(account)
     }
-    async mint(account: Address, amount: BigNumber): Promise<void> {
-        await this.erc20.mint(account, amount)
-    }
-    async burn(account: Address, amount: BigNumber): Promise<void> {
 
-        await this.erc20.burn(account, amount)
+    async mint(account: Address, amount: BigNumber): Promise<void> {
+        await this.erc20.connect(this._signer).mint(account, amount)
     }
-    async transfer(from: Address, to: Address, amount: BigNumber): Promise<void> {
-        await this.erc20.transfer(from, to, amount)
+
+    async burn(account: Address, amount: BigNumber): Promise<void> {
+        await this.erc20.connect(this._signer).burn(account, amount)
+    }
+
+    async transfer(to: Address, amount: BigNumber): Promise<void> {
+        await this.erc20.connect(this._signer).transfer(to, amount)
+    }
+}
+
+class RToken extends Base implements AbstractRToken {
+    rToken: RTokenMock
+    basketERC20s: ERC20[]
+
+    constructor(rToken: RTokenMock, basketERC20s: ERC20[]) {
+        super()
+        this.rToken = rToken
+        this.basketERC20s = basketERC20s
+    }
+
+    address(): Address {
+        return this.rToken.address
+    }
+
+    basketERC20(index: number): ERC20 {
+        return this.basketERC20s[index]
+    }
+
+    async balanceOf(account: Address): Promise<BigNumber> {
+        return await this.rToken.balanceOf(account)
+    }
+
+    async issue(amount: BigNumber): Promise<void> {
+        for (let i = 0; i < this.basketERC20s.length; i++) {
+            await this.basketERC20(i).erc20.connect(this._signer).approve(this.rToken.address, pow10(36))
+        }
+        await this.rToken.connect(this._signer).issue(amount)
+        await this.rToken.tryProcessMintings()
+    }
+
+    async redeem(amount: BigNumber): Promise<void> {
+        await this.rToken.connect(this._signer).approve(this.rToken.address, pow10(36))
+        await this.rToken.connect(this._signer).redeem(amount)
+    }
+
+    async transfer(to: Address, amount: BigNumber): Promise<void> {
+        await this.rToken.connect(this._signer).transfer(to, amount)
     }
 }

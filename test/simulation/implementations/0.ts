@@ -5,39 +5,43 @@ import { ZERO, bn, pow10 } from "../../../common/numbers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { AbstractERC20, AbstractRToken, Address, Component, Simulation, Token } from "../interface"
 
+export class Implementation0 implements Simulation {
+    rToken: RToken
+
+    constructor(owner: Address, rTokenName: string, rTokenSymbol: string, tokens: Token[]) {
+        this.rToken = new RToken(owner, rTokenName, rTokenSymbol, tokens)
+    }
+}
+
 class Base implements Component {
     // @ts-ignore
     _signer: Address
-    address: Address
+    _address: Address
 
     constructor(address: Address) {
-        this.address = address
+        this._address = address
     }
 
     connect(sender: Address): this {
         this._signer = sender
         return this
     }
-}
 
-export class Implementation0 implements Simulation {
-    owner: Address
-    rToken: RToken
-
-    constructor(owner: Address, rTokenName: string, rTokenSymbol: string, tokens: Token[]) {
-        this.owner = owner
-        this.rToken = new RToken(rTokenName, rTokenSymbol, tokens)
+    address(): Address {
+        return this._address
     }
 }
 
 class ERC20 extends Base implements AbstractERC20 {
+    owner: Address
     name: string
     symbol: string
     balances: Map<Address, BigNumber> // address -> balance
     allowances: Map<Address, BigNumber> // address -> allowance
 
-    constructor(name: string, symbol: string) {
+    constructor(owner: Address, name: string, symbol: string) {
         super(ethers.Wallet.createRandom().address)
+        this.owner = owner
         this.name = name
         this.symbol = symbol
         this.balances = new Map<Address, BigNumber>()
@@ -74,50 +78,50 @@ class ERC20 extends Base implements AbstractERC20 {
 
 class Basket {
     scalarE18: BigNumber // a float multiplier expressed relative to 1e18
-    erc20s: Map<Token, ERC20>
+    tokens: Token[]
+    erc20s: ERC20[]
+    size: number
 
-    constructor(erc20s: Map<Token, ERC20>) {
+    constructor(tokens: Token[], erc20s: ERC20[]) {
         this.scalarE18 = pow10(18)
+        this.tokens = tokens
         this.erc20s = erc20s
+        this.size = this.erc20s.length
     }
 
-    getAdjustedQuantity(token: Token): BigNumber {
-        return token.quantityE18.mul(this.scalarE18).div(pow10(18))
+    getAdjustedQuantity(index: number): BigNumber {
+        return this.tokens[index].quantityE18.mul(this.scalarE18).div(pow10(18))
     }
 }
 
 class RToken extends ERC20 implements AbstractRToken {
     basket: Basket
 
-    constructor(name: string, symbol: string, tokens: Token[]) {
-        super(name, symbol)
-        const tokenMap = new Map<Token, ERC20>()
-        for (let token of tokens) {
-            tokenMap.set(token, new ERC20(token.name, token.symbol))
-        }
-        this.basket = new Basket(tokenMap)
+    constructor(owner: Address, name: string, symbol: string, tokens: Token[]) {
+        super(owner, name, symbol)
+        const erc20s = tokens.map((t) => new ERC20(owner, t.name, t.symbol))
+        this.basket = new Basket(tokens, erc20s)
     }
 
-    basketERC20(token: Token): ERC20 {
-        if (!this.basket.erc20s.has(token)) {
-            throw new Error("Token not in basket")
-        }
-        return <ERC20>this.basket.erc20s.get(token)
+    basketERC20(index: number): ERC20 {
+        return this.basket.erc20s[index]
     }
 
     async issue(amount: BigNumber): Promise<void> {
-        for (let token of this.basket.erc20s.keys()) {
-            const amt = this.basket.getAdjustedQuantity(token).mul(amount).div(pow10(18))
-            this.basketERC20(token).connect(this._signer).transfer(this.address, amt)
+        for (let i = 0; i < this.basket.size; i++) {
+            const amt = this.basket.getAdjustedQuantity(i).mul(amount).div(pow10(18))
+            const basketERC20 = await this.basketERC20(i)
+            await basketERC20.connect(this._signer).transfer(this.address(), amt)
         }
         this.mint(this._signer, amount)
     }
 
     async redeem(amount: BigNumber): Promise<void> {
         this.burn(this._signer, amount)
-        for (let token of this.basket.erc20s.keys()) {
-            const amt = this.basket.getAdjustedQuantity(token).mul(amount).div(pow10(18))
-            this.basketERC20(token).connect(this.address).transfer(this._signer, amt)
+        for (let i = 0; i < this.basket.size; i++) {
+            const amt = this.basket.getAdjustedQuantity(i).mul(amount).div(pow10(18))
+            const basketERC20 = await this.basketERC20(i)
+            await basketERC20.connect(this.address()).transfer(this._signer, amt)
         }
     }
 }

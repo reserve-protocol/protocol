@@ -18,7 +18,7 @@ export type Token = {
 }
 
 export interface Component {
-    address: Address
+    address: () => Address
     connect: (account: Address) => this
 }
 
@@ -29,8 +29,10 @@ export interface AbstractERC20 extends Component {
     transfer(to: Address, amount: BigNumber): Promise<void>
 }
 
-export interface AbstractRToken extends AbstractERC20 {
-    basketERC20(token: Token): AbstractERC20
+export interface AbstractRToken extends Component {
+    balanceOf(account: Address): Promise<BigNumber>
+    basketERC20(index: number): AbstractERC20
     issue(amount: BigNumber): Promise<void>
     redeem(amount: BigNumber): Promise<void>
+    transfer(to: Address, amount: BigNumber): Promise<void>
 }
