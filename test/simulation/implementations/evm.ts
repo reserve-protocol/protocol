@@ -11,9 +11,33 @@ import { RTokenMock } from "../../../typechain/RTokenMock.d"
 import { TXFeeCalculatorMock } from "../../../typechain/TXFeeCalculatorMock.d"
 import { IBasketToken, IRTokenConfig, IRSRConfig, IRTokenParams } from "../../../common/configuration"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { AbstractERC20, Address, Basket, AbstractImplementation, Token } from "../interface"
+import { AbstractERC20, Address, Component, Simulation, Token } from "../interface"
 
 // WORK IN PROGRESS
+
+class Base implements Component {
+    // @ts-ignore
+    _signer: SignerWithAddress // @ts-ignore
+    _allSigners: Map<Address, SignerWithAddress> // @ts-ignore
+    address: Address
+
+    async init(address: Address): Promise<void> {
+        this.address = address
+        this._allSigners = new Map<Address, SignerWithAddress>()
+        const signers = await ethers.getSigners()
+        for (const signer of signers) {
+            this._allSigners.set(signer.address, signer)
+        }
+    }
+
+    connect(sender: Address): this {
+        if (!this._allSigners.has(sender)) {
+            throw new Error("Signer unknown")
+        }
+        this._signer = <SignerWithAddress>this._allSigners.get(sender)
+        return this
+    }
+}
 
 // Sample Values for Configuration
 const stakingDepositDelay = 3600 // seconds
@@ -24,29 +48,59 @@ const minMintingSize = bn(50)
 const spread = bn(10)
 const rebalancingFreezeCost = bn(50000)
 
-export class EVMImplementation implements AbstractImplementation {
+export class EVMImplementation extends Base implements Simulation {
+    // TS-IGNORE necessary due to empty constructor
+
     // @ts-ignore
     owner: SignerWithAddress // @ts-ignore
+
     rToken: ERC20 // @ts-ignore
-    basket: SimpleBasket // @ts-ignore
-
-    CircuitBreakerFactory: ContractFactory // @ts-ignore
-    ERC20Factory: ContractFactory // @ts-ignore
-
     cb: CircuitBreaker // @ts-ignore
-    rsrToken: RSR // @ts-ignore
-
-    constructor() {}
+    rsr: RSR // @ts-ignore
 
     async create(owner: SignerWithAddress, rTokenName: string, rTokenSymbol: string, tokens: Token[]): Promise<void> {
         this.owner = owner
-        this.CircuitBreakerFactory = await ethers.getContractFactory("CircuitBreaker")
-        this.cb = <CircuitBreaker>await this.CircuitBreakerFactory.deploy(this.owner.address)
 
-        this.ERC20Factory = await ethers.getContractFactory("ERC20Mock")
-        this.bskToken = <ERC20Mock>await this.ERC20Factory.deploy("Basket Token", "BSK")
+        // Deploy Basket ERC20s
+        const ERC20Factory = await ethers.getContractFactory("ERC20Mock")
+        const basketTokens = []
+        for (const token of tokens) {
+            const tokenDeployment = <ERC20Mock>await ERC20Factory.deploy(token.name, token.symbol)
+            basketTokens.push({
+                tokenAddress: tokenDeployment.address,
+                genesisQuantity: token.quantityE18,
+                rateLimit: 1,
+                maxTrade: 1,
+                priceInRToken: 0,
+                slippageTolerance: 0,
+            })
+        }
 
-        // RToken Configuration and setup
+        // Circuit Breaker Factory
+        const CircuitBreakerFactory = await ethers.getContractFactory("CircuitBreaker")
+        this.cb = <CircuitBreaker>await CircuitBreakerFactory.deploy(owner.address)
+
+        // RSR (Insurance token)
+        const PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock")
+        const NewRSR = await ethers.getContractFactory("RSR")
+        const prevRSR = <ReserveRightsTokenMock>await PrevRSR.deploy("Reserve Rights", "RSR")
+        await prevRSR.connect(owner).pause()
+        this.rsr = <RSR>await NewRSR.connect(owner).deploy(prevRSR.address, ZERO_ADDRESS, ZERO_ADDRESS)
+        // Set RSR token info
+        const rsrInfo = {
+            tokenAddress: this.rsr.address,
+            genesisQuantity: 0,
+            rateLimit: 1,
+            maxTrade: 1,
+            priceInRToken: 0,
+            slippageTolerance: 0,
+        }
+
+        // External math lib
+        const CompoundMath = await ethers.getContractFactory("CompoundMath")
+        const math = await CompoundMath.deploy()
+
+        // Deploy RToken
         const config: IRTokenParams = {
             stakingDepositDelay,
             stakingWithdrawalDelay: stakingWithdrawalDelay,
@@ -64,46 +118,23 @@ export class EVMImplementation implements AbstractImplementation {
             insurancePool: ZERO_ADDRESS,
             protocolFund: ZERO_ADDRESS,
         }
-
-        const basketTokens = [
-            {
-                tokenAddress: this.bskToken.address,
-                genesisQuantity: bn(1e18),
-                rateLimit: 1,
-                maxTrade: 1,
-                priceInRToken: 0,
-                slippageTolerance: 0,
-            },
-        ]
-        // RSR (Insurance token)
-        const PrevRSR = await ethers.getContractFactory("ReserveRightsTokenMock")
-        const NewRSR = await ethers.getContractFactory("RSR")
-        const prevRSRToken = <ReserveRightsTokenMock>await PrevRSR.deploy("Reserve Rights", "RSR")
-        await prevRSRToken.connect(owner).pause()
-        this.rsrToken = <RSR>await NewRSR.connect(owner).deploy(prevRSRToken.address, ZERO_ADDRESS, ZERO_ADDRESS)
-        // Set RSR token info
-        const rsrTokenInfo = {
-            tokenAddress: this.rsrToken.address,
-            genesisQuantity: 0,
-            rateLimit: 1,
-            maxTrade: 1,
-            priceInRToken: 0,
-            slippageTolerance: 0,
-        }
-
-        // External math lib
-        const CompoundMath = await ethers.getContractFactory("CompoundMath")
-        const math = await CompoundMath.deploy()
-
-        // Deploy RToken and InsurancePool implementations
-        const RToken = await ethers.getContractFactory("RTokenMock", {
+        const RTokenFactory = await ethers.getContractFactory("RTokenMock", {
             libraries: {
                 CompoundMath: math.address,
             },
         })
-        // Deploy RToken
-        this.rToken = <RTokenMock>await RToken.connect(owner).deploy()
-        await this.rToken.connect(owner).initialize("RToken", "RTKN", config, basketTokens, rsrTokenInfo)
+        const rToken = <RTokenMock>await RTokenFactory.connect(owner).deploy()
+        await rToken.connect(owner).initialize("RToken", "RTKN", config, basketTokens, rsrInfo)
+        this.rToken = new ERC20(rToken)
+
+        await this.init(this.rToken.address)
+    }
+
+    basketERC20(token: Token): ERC20 {
+        if (!this.basket.erc20s.has(token)) {
+            throw new Error("Token not in basket")
+        }
+        return <ERC20>this.basket.erc20s.get(token)
     }
 
     issue(account: Address, amount: BigNumber): void {
@@ -123,25 +154,25 @@ export class EVMImplementation implements AbstractImplementation {
     }
 }
 
-export class SimpleBasket implements Basket {
-    scalarE18: BigNumber // a float multiplier expressed relative to 1e18
-    erc20s: Map<Token, ERC20>
+class ERC20 extends Base implements AbstractERC20 {
+    erc20: ERC20Mock
 
-    constructor(erc20s: Map<Token, ERC20>) {
-        this.scalarE18 = bn(1e18)
-        this.erc20s = erc20s
+    constructor(erc20: ERC20Mock) {
+        super()
+        this.erc20 = erc20
     }
 
-    getAdjustedQuantity(token: Token): BigNumber {
-        return token.quantityE18.mul(this.scalarE18).div(bn(1e18))
+    async balanceOf(account: Address): Promise<BigNumber> {
+        return await this.erc20.balanceOf(account)
     }
+    async mint(account: Address, amount: BigNumber): Promise<void> {
+        await this.erc20.mint(account, amount)
+    }
+    async burn(account: Address, amount: BigNumber): Promise<void> {
 
-    erc20(token: Token): ERC20 {
-        if (!this.erc20s.has(token)) {
-            throw new Error("Token not in basket")
-        }
-        return <ERC20>this.erc20s.get(token)
+        await this.erc20.burn(account, amount)
+    }
+    async transfer(from: Address, to: Address, amount: BigNumber): Promise<void> {
+        await this.erc20.transfer(from, to, amount)
     }
 }
-
-export class ERC20 implements AbstractERC20 {}

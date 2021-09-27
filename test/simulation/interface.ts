@@ -1,5 +1,13 @@
 import { BigNumber } from "ethers"
 import { bn } from "../../common/numbers"
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
+
+// Top-level interface
+export interface Simulation {
+    rToken: AbstractRToken
+}
+
+// ================
 
 export type Address = string
 
@@ -9,21 +17,20 @@ export type Token = {
     quantityE18: BigNumber
 }
 
-export interface Contract {
+export interface Component {
     address: Address
+    connect: (account: Address) => this
 }
 
-export interface AbstractERC20 extends Contract {
-    balanceOf(account: Address): BigNumber
-    mint(account: Address, amount: BigNumber): void
-    burn(account: Address, amount: BigNumber): void
-    transfer(from: Address, to: Address, amount: BigNumber): void
+export interface AbstractERC20 extends Component {
+    balanceOf(account: Address): Promise<BigNumber>
+    mint(account: Address, amount: BigNumber): Promise<void>
+    burn(account: Address, amount: BigNumber): Promise<void>
+    transfer(to: Address, amount: BigNumber): Promise<void>
 }
 
-// Top-level interface
-export interface Simulation {
-    rToken: AbstractERC20
+export interface AbstractRToken extends AbstractERC20 {
     basketERC20(token: Token): AbstractERC20
-    issue(account: Address, amount: BigNumber): void
-    redeem(account: Address, amount: BigNumber): void
+    issue(amount: BigNumber): Promise<void>
+    redeem(amount: BigNumber): Promise<void>
 }

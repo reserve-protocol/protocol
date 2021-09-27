@@ -15,8 +15,8 @@ describe("Simulations", function () {
     let tokens: Token[]
 
     // Compares a function run on two implementations
-    function both(func: Function, ...args: any[]): void {
-        expect(func(sim1, ...args)).to.equal(func(sim2, ...args))
+    async function both(func: Function, ...args: any[]): Promise<void> {
+        expect(await func(sim1, ...args)).to.equal(await func(sim2, ...args))
     }
 
     beforeEach(async function () {
@@ -26,8 +26,8 @@ describe("Simulations", function () {
             { name: "USDC", symbol: "USDC", quantityE18: bn(333333) }, // 6 decimals
         ]
         ;[owner, addr1] = await ethers.getSigners()
-        sim1 = new Implementation0("RToken", "RSV", tokens)
-        sim2 = new Implementation0("RToken", "RSV", tokens)
+        sim1 = new Implementation0(owner.address, "RToken", "RSV", tokens)
+        sim2 = new Implementation0(owner.address, "RToken", "RSV", tokens)
         // TODO: Swap in EVM implementation for sim2
         // sim2 = await new EVMImplementation().create(owner, "RToken", "RSV", tokens)
     })
@@ -38,36 +38,36 @@ describe("Simulations", function () {
         beforeEach(async function () {
             amount = pow10(21)
 
-            both(function (sim: Simulation) {
-                sim.basketERC20(tokens[0]).mint(owner.address, amount)
-                sim.basketERC20(tokens[1]).mint(owner.address, amount)
-                sim.basketERC20(tokens[2]).mint(owner.address, amount)
-                sim.issue(owner.address, amount)
+            await both(async function (sim: Simulation) {
+                await sim.rToken.basketERC20(tokens[0]).connect(owner.address).mint(owner.address, amount)
+                await sim.rToken.basketERC20(tokens[1]).connect(owner.address).mint(owner.address, amount)
+                await sim.rToken.basketERC20(tokens[2]).connect(owner.address).mint(owner.address, amount)
+                await sim.rToken.connect(owner.address).issue(amount)
                 return amount
             })
         })
 
         it("Should allow issuance", async function () {
-            both(function (sim: Simulation) {
-                expect(sim.rToken.balanceOf(owner.address)).to.equal(amount)
+            await both(async function (sim: Simulation) {
+                expect(await sim.rToken.balanceOf(owner.address)).to.equal(amount)
                 return amount
             })
         })
 
         it("Should allow redemption", async function () {
-            both(function (sim: Simulation) {
-                sim.redeem(owner.address, amount)
-                expect(sim.rToken.balanceOf(owner.address)).to.equal(ZERO)
+            await both(async function (sim: Simulation) {
+                await sim.rToken.connect(owner.address).redeem(amount)
+                expect(await sim.rToken.balanceOf(owner.address)).to.equal(ZERO)
                 return ZERO
             })
         })
 
         it("Should allow transfer", async function () {
-            both(function (sim: Simulation) {
-                expect(sim.rToken.balanceOf(owner.address)).to.equal(amount)
-                sim.rToken.transfer(owner.address, addr1.address, amount)
-                expect(sim.rToken.balanceOf(owner.address)).to.equal(ZERO)
-                expect(sim.rToken.balanceOf(addr1.address)).to.equal(amount)
+            await both(async function (sim: Simulation) {
+                expect(await sim.rToken.balanceOf(owner.address)).to.equal(amount)
+                await sim.rToken.connect(owner.address).transfer(addr1.address, amount)
+                expect(await sim.rToken.balanceOf(owner.address)).to.equal(ZERO)
+                expect(await sim.rToken.balanceOf(addr1.address)).to.equal(amount)
                 return amount
             })
         })
