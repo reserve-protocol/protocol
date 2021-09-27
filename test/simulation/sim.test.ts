@@ -1,7 +1,7 @@
 import { ethers } from "hardhat"
 import { expect } from "chai"
 import { BigNumber } from "ethers"
-import { bn, pow10 } from "../../common/numbers"
+import { ZERO, bn, pow10 } from "../../common/numbers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { AbstractERC20, AbstractImplementation, Token } from "./interface"
 import { Implementation0 } from "./implementations/0"
@@ -43,19 +43,22 @@ describe("Simulations", function () {
                 impl.basket.erc20(tokens[1]).mint(owner.address, amount)
                 impl.basket.erc20(tokens[2]).mint(owner.address, amount)
                 impl.issue(owner.address, amount)
+                return amount
             })
         })
 
         it("Should allow issuance", async function () {
             both(function (impl: AbstractImplementation) {
                 expect(impl.rToken.balanceOf(owner.address)).to.equal(amount)
+                return amount
             })
         })
 
         it("Should allow redemption", async function () {
             both(function (impl: AbstractImplementation) {
                 impl.redeem(owner.address, amount)
-                expect(impl.rToken.balanceOf(owner.address)).to.equal(bn(0))
+                expect(impl.rToken.balanceOf(owner.address)).to.equal(ZERO)
+                return ZERO
             })
         })
 
@@ -63,8 +66,9 @@ describe("Simulations", function () {
             both(function (impl: AbstractImplementation) {
                 expect(impl.rToken.balanceOf(owner.address)).to.equal(amount)
                 impl.rToken.transfer(owner.address, addr1.address, amount)
-                expect(impl.rToken.balanceOf(owner.address)).to.equal(bn(0))
+                expect(impl.rToken.balanceOf(owner.address)).to.equal(ZERO)
                 expect(impl.rToken.balanceOf(addr1.address)).to.equal(amount)
+                return amount
             })
         })
     })
