@@ -5,19 +5,18 @@ import { bn, pow10 } from "../../common/numbers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { AbstractERC20, AbstractImplementation, Token } from "./interface"
 import { Implementation0 } from "./implementations/0"
-// import { EVMImplementation } from "./implementations/evm"
+import { EVMImplementation } from "./implementations/evm"
 
 describe("Simulations", function () {
     let sim1: AbstractImplementation
-    // let sim2: EVMImplementation
+    let sim2: AbstractImplementation
     let owner: SignerWithAddress
     let addr1: SignerWithAddress
     let tokens: Token[]
 
     // Compares a function run on two implementations
     function both(func: Function, ...args: any[]): void {
-        // expect(func(sim1, ...args)).to.equal(func(sim2, ...args))
-        func(sim1, ...args)
+        expect(func(sim1, ...args)).to.equal(func(sim2, ...args))
     }
 
     beforeEach(async function () {
@@ -28,10 +27,12 @@ describe("Simulations", function () {
         ]
         ;[owner, addr1] = await ethers.getSigners()
         sim1 = new Implementation0("RToken", "RSV", tokens)
+        sim2 = new Implementation0("RToken", "RSV", tokens)
+        // TODO: Swap in EVM implementation for sim2
         // sim2 = await new EVMImplementation().create(owner, "RToken", "RSV", tokens)
     })
 
-    describe("Issuance/Redemption", function () {
+    describe("RToken", function () {
         let amount: BigNumber
 
         beforeEach(async function () {
