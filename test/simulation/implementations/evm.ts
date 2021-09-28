@@ -11,7 +11,7 @@ import { RSR } from "../../../typechain/RSR.d"
 import { RTokenMock } from "../../../typechain/RTokenMock.d"
 import { IRTokenParams } from "../../../common/configuration"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { AbstractERC20, AbstractRToken, Address, Component, Simulation, Token } from "../interface"
+import { AbstractERC20, AbstractRToken, Account, Component, Simulation, Token } from "../interface"
 
 // WORK IN PROGRESS
 
@@ -110,21 +110,29 @@ export class EVMImplementation implements Simulation {
 class Base {
     // @ts-ignore
     _signer: SignerWithAddress // @ts-ignore
-    _allSigners: Map<Address, SignerWithAddress>
+    _allSigners: Map<Account, SignerWithAddress>
 
     async init(): Promise<void> {
-        this._allSigners = new Map<Address, SignerWithAddress>()
         const signers = await ethers.getSigners()
-        for (const signer of signers) {
-            this._allSigners.set(signer.address, signer)
-        }
+        this._allSigners = new Map<Account, SignerWithAddress>([
+            [Account.Alice, signers[Account.Alice]],
+            [Account.Bob, signers[Account.Bob]],
+            [Account.Charlie, signers[Account.Charlie]],
+            [Account.Dave, signers[Account.Dave]],
+            [Account.Eve, signers[Account.Eve]],
+        ])
     }
 
-    connect(sender: Address): this {
+    signer(sender: Account): SignerWithAddress {
         if (!this._allSigners.has(sender)) {
+            console.log(sender)
             throw new Error("Signer unknown")
         }
-        this._signer = <SignerWithAddress>this._allSigners.get(sender)
+        return <SignerWithAddress>this._allSigners.get(sender)
+    }
+
+    connect(sender: Account): this {
+        this._signer = this.signer(sender)
         return this
     }
 }
@@ -137,24 +145,20 @@ class ERC20 extends Base implements AbstractERC20 {
         this.erc20 = erc20
     }
 
-    address(): Address {
-        return this.erc20.address
+    balanceOf(account: Account): Promise<BigNumber> {
+        return this.erc20.balanceOf(this.signer(account).address)
     }
 
-    async balanceOf(account: Address): Promise<BigNumber> {
-        return await this.erc20.balanceOf(account)
+    async mint(account: Account, amount: BigNumber): Promise<void> {
+        await this.erc20.connect(this._signer).mint(this.signer(account).address, amount)
     }
 
-    async mint(account: Address, amount: BigNumber): Promise<void> {
-        await this.erc20.connect(this._signer).mint(account, amount)
+    async burn(account: Account, amount: BigNumber): Promise<void> {
+        await this.erc20.connect(this._signer).burn(this.signer(account).address, amount)
     }
 
-    async burn(account: Address, amount: BigNumber): Promise<void> {
-        await this.erc20.connect(this._signer).burn(account, amount)
-    }
-
-    async transfer(to: Address, amount: BigNumber): Promise<void> {
-        await this.erc20.connect(this._signer).transfer(to, amount)
+    async transfer(to: Account, amount: BigNumber): Promise<void> {
+        await this.erc20.connect(this._signer).transfer(this.signer(to).address, amount)
     }
 }
 
@@ -168,16 +172,16 @@ class RToken extends Base implements AbstractRToken {
         this.basketERC20s = basketERC20s
     }
 
-    address(): Address {
-        return this.rToken.address
-    }
+    // address(): Account {
+    //     return this.rToken.address
+    // }
 
     basketERC20(index: number): ERC20 {
         return this.basketERC20s[index]
     }
 
-    async balanceOf(account: Address): Promise<BigNumber> {
-        return await this.rToken.balanceOf(account)
+    balanceOf(account: Account): Promise<BigNumber> {
+        return this.rToken.balanceOf(this.signer(account).address)
     }
 
     async issue(amount: BigNumber): Promise<void> {
@@ -193,7 +197,7 @@ class RToken extends Base implements AbstractRToken {
         await this.rToken.connect(this._signer).redeem(amount)
     }
 
-    async transfer(to: Address, amount: BigNumber): Promise<void> {
-        await this.rToken.connect(this._signer).transfer(to, amount)
+    async transfer(to: Account, amount: BigNumber): Promise<void> {
+        await this.rToken.connect(this._signer).transfer(this.signer(to).address, amount)
     }
 }
