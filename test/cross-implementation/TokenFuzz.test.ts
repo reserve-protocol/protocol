@@ -5,13 +5,14 @@ import { TokenCallerImplem } from './system1-evm/TokenCaller'
 import { ethers } from 'hardhat'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from 'ethers'
-const hre = require('hardhat')
 
 describe('Token Fuzz Test', () => {
   let token: Contract
   let minter: SignerWithAddress
   let recipient: SignerWithAddress
   let model: TokenModel
+
+  let snapshotId: Number
 
   beforeEach(async function () {
     ;[minter, recipient] = await ethers.getSigners()
@@ -30,11 +31,13 @@ describe('Token Fuzz Test', () => {
           const real = new TokenCallerImplem(token, minter, recipient)
           await fc.asyncModelRun(() => ({ model, real }), commands)
         })
+        .beforeEach(async () => {
+          snapshotId = await ethers.provider.send('evm_snapshot', [])
+        })
         .afterEach(async () => {
-          // Force rollback to reset, need to find a better and more flexible bay
-          // TODO: Check HH evm snapshots
-          await model.reset();
-          await token.connect(minter).burn(recipient.address, token.balanceOf(recipient.address))
+          // Force rollback to reset
+          await model.reset()
+          await ethers.provider.send('evm_revert', [snapshotId])
         })
     )
   })
