@@ -22,7 +22,7 @@ export default <HardhatUserConfig>{
             // forking: {
             //   url: MAINNET_RPC_URL
             // }
-            allowUnlimitedContractSize: true
+            allowUnlimitedContractSize: true,
         },
         localhost: {},
         ropsten: {
@@ -41,5 +41,8 @@ export default <HardhatUserConfig>{
                 runs: 2000,
             },
         },
+    },
+    mocha: {
+        timeout: 50000,
     },
 }

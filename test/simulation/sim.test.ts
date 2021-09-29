@@ -20,13 +20,6 @@ type TX = [User, Command]
 describe("Simulation", function () {
     let sim1: Simulation
     let sim2: Simulation
-    let tokens: Token[]
-
-    // Configures both simulations to start off in the same state.
-    async function seed(user: User, state: State): Promise<void> {
-        await sim1.seed(user, state)
-        await sim2.seed(user, state)
-    }
 
     // Runs the same commands on two implementations of our protocol and asserts the states match.
     async function executeParallel(...txs: TX[]): Promise<void> {
@@ -54,7 +47,8 @@ describe("Simulation", function () {
             sim1 = new Implementation0()
             // sim2 = new Implementation0()
             sim2 = new EVMImplementation()
-            await seed(User.Alice, state)
+            await sim1.seed(User.Alice, state)
+            await sim2.seed(User.Alice, state)
         })
 
         it("Should allow issuance", async function () {
@@ -91,7 +85,7 @@ describe("Simulation", function () {
     })
 })
 
-function match(obj: any, other: any): boolean {
+export function match(obj: any, other: any): boolean {
     function replacer(key: any, value: any) {
         if (value instanceof Map) {
             const entries = [...value]
@@ -113,6 +107,7 @@ function match(obj: any, other: any): boolean {
     const match = JSON.stringify(obj, replacer) === JSON.stringify(other, replacer)
     console.log(JSON.stringify(obj, replacer))
     if (!match) {
+        console.log("Mismatch")
         console.log(JSON.stringify(other, replacer))
     }
 

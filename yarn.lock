@@ -5273,6 +5273,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fast-check@npm:^2.17.0":
+  version: 2.17.0
+  resolution: "fast-check@npm:2.17.0"
+  dependencies:
+    pure-rand: ^5.0.0
+  checksum: 2ca9383ee6fe5261e44108be293a04999025436973c3f340e9b395491ff52bcf5c93dfcfd14cd93285f7898732aa007ddeaf3d258a51568fe666e6d70a87c25a
+  languageName: node
+  linkType: hard
+
 "fast-deep-equal@npm:^3.1.1":
   version: 3.1.3
   resolution: "fast-deep-equal@npm:3.1.3"
@@ -9788,6 +9797,13 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
+"pure-rand@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "pure-rand@npm:5.0.0"
+  checksum: f33a9021a8916ae1c2e3211ba0ecaa01ed5fae21e3979ce0ee67e562b7e0dabf0d35a9f4113f0c0ceffa799d2276da44d09eebe6b7f49ec3b8fe0dcfa59f8dec
+  languageName: node
+  linkType: hard
+
 "qs@npm:6.7.0":
   version: 6.7.0
   resolution: "qs@npm:6.7.0"
@@ -10221,6 +10237,7 @@ fsevents@~2.3.2:
     dotenv: ^10.0.0
     ethereum-waffle: ^3.4.0
     ethers: ^5.4.1
+    fast-check: ^2.17.0
     hardhat: ^2.5.0
     hardhat-gas-reporter: ^1.0.4
     mocha: ^9.0.2

@@ -18,7 +18,7 @@ const stakingDepositDelay = 3600 // seconds
 const stakingWithdrawalDelay = 4800 // seconds
 const issuanceRate = pow10(36)
 const maxSupply = pow10(36)
-const minMintingSize = bn(50)
+const minMintingSize = bn(0)
 const spread = bn(0)
 const rebalancingFreezeCost = bn(50000)
 
