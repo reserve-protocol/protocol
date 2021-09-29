@@ -96,13 +96,15 @@ function match(obj: any, other: any): boolean {
         if (value instanceof Map) {
             const entries = [...value]
             for (let i = 0; i < entries.length; i++) {
-                // Use every value's toString() method to cast BigNumbers
+                // Cast BigNumbers to human readable
                 entries[i][1] = entries[i][1].toString()
             }
             return {
                 dataType: "Map",
                 value: entries,
             }
+        } else if (["quantityE18"].includes(key)) {
+            return BigNumber.from(value).toString()
         } else {
             return value
         }
