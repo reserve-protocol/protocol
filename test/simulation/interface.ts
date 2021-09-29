@@ -1,7 +1,14 @@
 import { BigNumber } from "ethers"
 import { bn } from "../../common/numbers"
 
-// Types for testing suite
+// Top-level simulation interface
+export interface Simulation {
+    seed(state: State): Promise<void>
+    execute(command: Command): Promise<void>
+    state(): Promise<State>
+}
+
+// Types
 
 export enum Account {
     Alice = "Alice",
@@ -20,11 +27,7 @@ export type Token = {
     quantityE18: BigNumber
 }
 
-// ================================================
-
-// Canonical state
-// used to setup a system for testing.
-
+// Used to setup a system for testing.
 export type State = {
     owner: Account
     rToken: {
@@ -33,24 +36,13 @@ export type State = {
     }
 }
 
-// ================================================
-
-// Plain-old data definition of the outermost system interface
-
-// For now all commands should be nested 1 layer deep.
+// INVARIANT: A command should only ever contain AT MOST 1 leaf target.
+// e.g.     {rToken: { issue: [..], redeem: [..] }} is invalid
 export type Command = {
+    // For now all commands should be nested 1 layer deep.
     rToken?: {
         issue?: [Account, BigNumber]
         redeem?: [Account, BigNumber]
         transfer?: [Account, Account, BigNumber]
     }
-}
-
-// ================================================
-
-// Top-level simulation interface
-export interface Simulation {
-    seed(state: State): Promise<void>
-    execute(command: Command, as?: Account): Promise<void>
-    state(): Promise<State>
 }
