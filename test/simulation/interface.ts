@@ -1,14 +1,17 @@
 import { BigNumber } from "ethers"
 import { bn } from "../../common/numbers"
 
+// Types for testing suite
+
 export enum Account {
-    Alice = 0,
-    Bob,
-    Charlie,
-    Dave,
-    Eve,
-    // Components can also hold balances
-    RToken,
+    Alice = "Alice",
+    Bob = "Bob",
+    Charlie = "Charlie",
+    Dave = "Dave",
+    Eve = "Eve",
+
+    // Components also hold balances, maybe we can delete this later
+    RToken = "RToken",
 }
 
 export type Token = {
@@ -19,38 +22,35 @@ export type Token = {
 
 // ================================================
 
-// Top-level interface object
-export interface Simulation {
-    rToken: AbstractRToken
-    // poop: Function // TODO
-}
+// Canonical state
+// used to setup a system for testing.
 
 export type State = {
-    rToken: {}
+    owner: Account
+    rToken: {
+        basket: Token[]
+        balances: Map<Account, BigNumber>
+    }
 }
-
-// Later
-export type Commands = {}
 
 // ================================================
 
-// Parent interface that all system components should implement.
-export interface Component {
-    connect: (account: Account) => this
-    // poop: Function // TODO
+// Plain-old data definition of the outermost system interface
+
+// For now all commands should be nested 1 layer deep.
+export type Command = {
+    rToken?: {
+        issue?: [Account, BigNumber]
+        redeem?: [Account, BigNumber]
+        transfer?: [Account, Account, BigNumber]
+    }
 }
 
-export interface AbstractERC20 extends Component {
-    balanceOf(account: Account): Promise<BigNumber>
-    mint(account: Account, amount: BigNumber): Promise<void>
-    burn(account: Account, amount: BigNumber): Promise<void>
-    transfer(to: Account, amount: BigNumber): Promise<void>
-}
+// ================================================
 
-export interface AbstractRToken extends Component {
-    balanceOf(account: Account): Promise<BigNumber>
-    basketERC20(index: number): AbstractERC20
-    issue(amount: BigNumber): Promise<void>
-    redeem(amount: BigNumber): Promise<void>
-    transfer(to: Account, amount: BigNumber): Promise<void>
+// Top-level simulation interface
+export interface Simulation {
+    seed(state: State): Promise<void>
+    execute(command: Command, as?: Account): Promise<void>
+    state(): Promise<State>
 }
