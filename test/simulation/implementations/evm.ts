@@ -11,7 +11,7 @@ import { RSR } from "../../../typechain/RSR.d"
 import { RTokenMock } from "../../../typechain/RTokenMock.d"
 import { IRTokenParams } from "../../../common/configuration"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { AbstractERC20, AbstractRToken, Account, Component, Simulation, Token } from "../interface"
+import { Account, Command, Simulation, State, Token } from "../interface"
 
 // WORK IN PROGRESS
 
@@ -32,7 +32,7 @@ export class EVMImplementation implements Simulation {
     rsr: RSR // @ts-ignore
     iPool: InsurancePool
 
-    async create(owner: SignerWithAddress, rTokenName: string, rTokenSymbol: string, tokens: Token[]): Promise<this> {
+    async seed(state: State): Promise<this> {
         // Circuit Breaker Factory
         const CircuitBreakerFactory = await ethers.getContractFactory("CircuitBreaker")
         const cb = <CircuitBreaker>await CircuitBreakerFactory.deploy(owner.address)
@@ -107,20 +107,24 @@ export class EVMImplementation implements Simulation {
     }
 }
 
-class Base {
+class AccountInterpreter {
     // @ts-ignore
-    _signer: SignerWithAddress // @ts-ignore
-    _allSigners: Map<Account, SignerWithAddress>
+    addresses: Map<Account, string> // @ts-ignore
+    signers: Map<Account, SignerWithAddress>
 
     async init(): Promise<void> {
         const signers = await ethers.getSigners()
-        this._allSigners = new Map<Account, SignerWithAddress>([
-            [Account.Alice, signers[Account.Alice]],
-            [Account.Bob, signers[Account.Bob]],
-            [Account.Charlie, signers[Account.Charlie]],
-            [Account.Dave, signers[Account.Dave]],
-            [Account.Eve, signers[Account.Eve]],
+        this.signers = new Map<Account, SignerWithAddress>([
+            [Account.Alice, signers[0]],
+            [Account.Bob, signers[1]],
+            [Account.Charlie, signers[2]],
+            [Account.Dave, signers[3]],
+            [Account.Eve, signers[4]],
         ])
+        this.addresses = new Map<Account, string>()
+        this.signers.forEach((value: SignerWithAddress, key: Account) => {
+            this.addresses.set(key, value.address)
+        })
     }
 
     signer(sender: Account): SignerWithAddress {
@@ -131,10 +135,13 @@ class Base {
         return <SignerWithAddress>this._allSigners.get(sender)
     }
 
-    connect(sender: Account): this {
-        this._signer = this.signer(sender)
-        return this
+    address(sender: Account): string {
+        if (!this.accounts.has(sender)) {
+            throw new Error("invalid account")
+        }
+        return this.accounts.get(sender)
     }
+
 }
 
 class ERC20 extends Base implements AbstractERC20 {

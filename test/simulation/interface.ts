@@ -8,18 +8,8 @@ export interface Simulation {
     state(): Promise<State>
 }
 
-// Types
-
-export enum Account {
-    Alice = "Alice",
-    Bob = "Bob",
-    Charlie = "Charlie",
-    Dave = "Dave",
-    Eve = "Eve",
-
-    // Components also hold balances, maybe we can delete this later
-    RToken = "RToken",
-}
+// =================================================================
+// Simulation types
 
 export type Token = {
     name: string
@@ -29,7 +19,7 @@ export type Token = {
 
 // Used to setup a system for testing.
 export type State = {
-    owner: Account
+    owner: User
     rToken: {
         basket: Token[]
         balances: Map<Account, BigNumber>
@@ -37,12 +27,32 @@ export type State = {
 }
 
 // INVARIANT: A command should only ever contain AT MOST 1 leaf target.
-// e.g.     {rToken: { issue: [..], redeem: [..] }} is invalid
+// e.g. {rToken: { issue: [..], redeem: [..] }} is invalid
 export type Command = {
     // For now all commands should be nested 1 layer deep.
     rToken?: {
-        issue?: [Account, BigNumber]
-        redeem?: [Account, BigNumber]
+        issue?: [User, BigNumber]
+        redeem?: [User, BigNumber]
         transfer?: [Account, Account, BigNumber]
     }
 }
+
+// =================================================================
+// Account types
+
+export enum User {
+    Alice = "Alice",
+    Bob = "Bob",
+    Charlie = "Charlie",
+    Dave = "Dave",
+    Eve = "Eve",
+}
+
+export enum Contract {
+    RToken = "RToken",
+    RSR = "RSR",
+    IPool = "IPool",
+}
+
+// Ethereum Account
+export type Account = User | Contract

@@ -2,7 +2,7 @@ import { ethers } from "hardhat"
 import { expect } from "chai"
 import { BigNumber } from "ethers"
 import { ZERO, bn, pow10 } from "../../common/numbers"
-import { Account, Command, Simulation, State, Token } from "./interface"
+import { Account, Command, Simulation, State, Token, User } from "./interface"
 import { Implementation0 } from "./implementations/0"
 import { EVMImplementation } from "./implementations/evm"
 
@@ -61,7 +61,7 @@ describe("Simulation", function () {
         beforeEach(async function () {
             amount = pow10(21)
             const state: State = {
-                owner: Account.Alice,
+                owner: User.Alice,
                 rToken: {
                     basket: [
                         { name: "DAI", symbol: "DAI", quantityE18: bn(333334).mul(pow10(12)) },
@@ -78,20 +78,20 @@ describe("Simulation", function () {
         })
 
         it("Should allow issuance", async function () {
-            await executeBoth({ rToken: { issue: [Account.Alice, amount] } })
+            await executeBoth({ rToken: { issue: [User.Alice, amount] } })
         })
 
         it("Should allow redemption", async function () {
             await executeBoth(
-                { rToken: { issue: [Account.Alice, amount] } },
-                { rToken: { redeem: [Account.Alice, amount] } }
+                { rToken: { issue: [User.Alice, amount] } },
+                { rToken: { redeem: [User.Alice, amount] } }
             )
         })
 
         it("Should allow transfer", async function () {
             await executeBoth(
-                { rToken: { issue: [Account.Alice, amount] } },
-                { rToken: { transfer: [Account.Alice, Account.Bob, amount] } }
+                { rToken: { issue: [User.Alice, amount] } },
+                { rToken: { transfer: [User.Alice, User.Bob, amount] } }
             )
         })
     })

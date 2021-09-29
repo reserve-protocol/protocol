@@ -3,11 +3,11 @@ import { expect } from "chai"
 import { BigNumber } from "ethers"
 import { ZERO, bn, pow10 } from "../../../common/numbers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { Account, Command, Simulation, State, Token } from "../interface"
+import { Account, Command, Contract, Simulation, State, Token, User } from "../interface"
 
 export class Implementation0 implements Simulation {
     // @ts-ignore
-    owner: Account // @ts-ignore
+    owner: User // @ts-ignore
     rToken: RToken
 
     async seed(state: State): Promise<void> {
@@ -36,12 +36,14 @@ export class Implementation0 implements Simulation {
     }
 }
 
+
+
 class ERC20 {
     name: string
     symbol: string
     balances: Map<Account, BigNumber>
 
-    constructor(owner: Account, name: string, symbol: string, fund?: boolean) {
+    constructor(owner: User, name: string, symbol: string, fund?: boolean) {
         this.name = name
         this.symbol = symbol
         this.balances = new Map<Account, BigNumber>()
@@ -108,7 +110,7 @@ class RToken extends ERC20 {
     issue(account: Account, amount: BigNumber): void {
         for (let i = 0; i < this.basket.size; i++) {
             const amt = this.basket.getAdjustedQuantity(i).mul(amount).div(pow10(18))
-            this.basket.erc20s[i].transfer(account, Account.RToken, amt)
+            this.basket.erc20s[i].transfer(account, Contract.RToken, amt)
         }
         this.mint(account, amount)
     }
@@ -117,7 +119,7 @@ class RToken extends ERC20 {
         this.burn(account, amount)
         for (let i = 0; i < this.basket.size; i++) {
             const amt = this.basket.getAdjustedQuantity(i).mul(amount).div(pow10(18))
-            this.basket.erc20s[i].transfer(Account.RToken, account, amt)
+            this.basket.erc20s[i].transfer(Contract.RToken, account, amt)
         }
     }
 }
