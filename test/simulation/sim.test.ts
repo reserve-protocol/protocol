@@ -12,9 +12,7 @@ import { EVMImplementation } from "./implementations/evm"
  * How this works:
  * - Tests are written against the simulation interface definitions in `interface.ts`.
  * - Accounts should be represented and referred to using the `Account` enum.
- * - The simulation interface re-uses the `*.connect` pattern to set tx originators.
- * - The `both` helper function is used to run and compare individual test results across implementations.
- * - The function passed to `both` should return an object containing all relevant state for comparison.
+ * - Use `seedBoth` followed by `executeBoth` to prep a state, mutate it, and check the results.
  */
 
 function match(obj: any, other: any): boolean {
@@ -29,8 +27,11 @@ function match(obj: any, other: any): boolean {
       }
     }
 
-    console.log(JSON.stringify(obj, replacer))
-    console.log(JSON.stringify(other, replacer))
+    const match = JSON.stringify(obj, replacer) === JSON.stringify(other, replacer)
+    if (!match) {
+        console.log(JSON.stringify(obj, replacer))
+        console.log(JSON.stringify(other, replacer))
+    }
 
     return JSON.stringify(obj, replacer) === JSON.stringify(other, replacer)
 }
