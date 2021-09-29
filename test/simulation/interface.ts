@@ -3,8 +3,8 @@ import { bn } from "../../common/numbers"
 
 // Top-level simulation interface
 export interface Simulation {
-    seed(state: State): Promise<void>
-    execute(command: Command): Promise<void>
+    seed(deployer: User, state: State): Promise<void>
+    execute(user: User, command: Command): Promise<void>
     state(): Promise<State>
 }
 
@@ -17,23 +17,23 @@ export type Token = {
     quantityE18: BigNumber
 }
 
-// Used to setup a system for testing.
-export type State = {
-    owner: User
-    rToken: {
-        basket: Token[]
-        balances: Map<Account, BigNumber>
-    }
+export type RTokenState = {
+    basket: Token[]
+    balances: Map<Account, BigNumber>
 }
 
-// INVARIANT: A command should only ever contain AT MOST 1 leaf target.
-// e.g. {rToken: { issue: [..], redeem: [..] }} is invalid
+// Used to setup a system for testing.
+export type State = {
+    rToken: RTokenState
+}
+
+// INVARIANT: A command should only ever contain AT MOST 1 of the optional leaf targets.
+// e.g. { user: User.Alice, rToken: { issue: [..], redeem: [..] }} is an invalid command.
 export type Command = {
-    // For now all commands should be nested 1 layer deep.
     rToken?: {
-        issue?: [User, BigNumber]
-        redeem?: [User, BigNumber]
-        transfer?: [Account, Account, BigNumber]
+        issue?: [BigNumber]
+        redeem?: [BigNumber]
+        transfer?: [Account, BigNumber]
     }
 }
 
@@ -47,6 +47,8 @@ export enum User {
     Dave = "Dave",
     Eve = "Eve",
 }
+
+export const Users = [User.Alice, User.Bob, User.Charlie, User.Dave, User.Eve]
 
 export enum Contract {
     RToken = "RToken",

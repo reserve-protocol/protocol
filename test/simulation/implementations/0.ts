@@ -7,27 +7,24 @@ import { Account, Command, Contract, Simulation, State, Token, User } from "../i
 
 export class Implementation0 implements Simulation {
     // @ts-ignore
-    owner: User // @ts-ignore
     rToken: RToken
 
-    async seed(state: State): Promise<void> {
-        this.owner = state.owner
-        this.rToken = new RToken(state)
+    async seed(user: User, state: State): Promise<void> {
+        this.rToken = new RToken(user, state)
     }
 
     // Interprets a Command as a function call, optionally originating from an account.
-    async execute(command: Command): Promise<any> {
+    async execute(user: User, command: Command): Promise<any> {
         const key = Object.keys(command)[0]
         const subtree = command[key as keyof Command]
         const func = Object.keys(subtree as Object)[0]
         // @ts-ignore
         const args = subtree[func] // @ts-ignored
-        return await this[key][func](...args)
+        return await this[key][func](user, ...args)
     }
 
     async state(): Promise<State> {
         return {
-            owner: this.owner,
             rToken: {
                 basket: this.rToken.basket.tokens,
                 balances: this.rToken.balances,
@@ -36,19 +33,17 @@ export class Implementation0 implements Simulation {
     }
 }
 
-
-
 class ERC20 {
     name: string
     symbol: string
     balances: Map<Account, BigNumber>
 
-    constructor(owner: User, name: string, symbol: string, fund?: boolean) {
+    constructor(deployer: User, name: string, symbol: string, fund?: boolean) {
         this.name = name
         this.symbol = symbol
         this.balances = new Map<Account, BigNumber>()
         if (fund) {
-            this.balances.set(owner, pow10(36))
+            this.balances.set(deployer, pow10(36))
         }
     }
 
@@ -101,9 +96,9 @@ class Basket {
 class RToken extends ERC20 {
     basket: Basket
 
-    constructor(state: State) {
-        super(state.owner, "Reserve", "RSV")
-        const erc20s = state.rToken.basket.map((token) => new ERC20(state.owner, token.name, token.symbol, true))
+    constructor(deployer: User, state: State) {
+        super(deployer, "Reserve", "RSV")
+        const erc20s = state.rToken.basket.map((token) => new ERC20(deployer, token.name, token.symbol, true))
         this.basket = new Basket(state.rToken.basket, erc20s)
     }
 
