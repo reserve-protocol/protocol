@@ -15,27 +15,6 @@ import { EVMImplementation } from "./implementations/evm"
  * - Use `seed` followed by `executeParallel` to prep a state, mutate it, and check the results.
  */
 
-function match(obj: any, other: any): boolean {
-    function replacer(key: any, value: any) {
-        if (value instanceof Map) {
-            return {
-                dataType: "Map",
-                value: Array.from(value.entries()), // or with spread: value: [...value]
-            }
-        } else {
-            return value
-        }
-    }
-
-    const match = JSON.stringify(obj, replacer) === JSON.stringify(other, replacer)
-    console.log(JSON.stringify(obj, replacer))
-    if (!match) {
-        console.log(JSON.stringify(other, replacer))
-    }
-
-    return match
-}
-
 type TX = [User, Command]
 
 describe("Simulation", function () {
@@ -111,3 +90,29 @@ describe("Simulation", function () {
         // })
     })
 })
+
+function match(obj: any, other: any): boolean {
+    function replacer(key: any, value: any) {
+        if (value instanceof Map) {
+            const entries = [...value]
+            for (let i = 0; i < entries.length; i++) {
+                // Use every value's toString() method to cast BigNumbers
+                entries[i][1] = entries[i][1].toString()
+            }
+            return {
+                dataType: "Map",
+                value: entries,
+            }
+        } else {
+            return value
+        }
+    }
+
+    const match = JSON.stringify(obj, replacer) === JSON.stringify(other, replacer)
+    console.log(JSON.stringify(obj, replacer))
+    if (!match) {
+        console.log(JSON.stringify(other, replacer))
+    }
+
+    return match
+}
