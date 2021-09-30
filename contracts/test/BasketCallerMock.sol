@@ -68,11 +68,6 @@ contract BasketCallerMock {
         uint8 decimals,
         uint256 totalSupply
     ) external view returns (int32, int32) {
-        return
-            innerBasket.mostUndercollateralizedAndMostOverCollateralized(
-                scale,
-                decimals,
-                totalSupply
-            );
+        return innerBasket.mostUndercollateralizedAndMostOverCollateralized(scale, decimals, totalSupply);
     }
 }

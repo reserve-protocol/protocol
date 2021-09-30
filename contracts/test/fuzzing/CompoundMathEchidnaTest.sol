@@ -16,4 +16,3 @@ contract CompoundMathEchidnaTest {
     //     assert(_res == 1);
     // }
 }
-

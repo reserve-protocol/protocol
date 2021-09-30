@@ -6500,6 +6500,15 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
+"husky@npm:^7.0.2":
+  version: 7.0.2
+  resolution: "husky@npm:7.0.2"
+  bin:
+    husky: lib/bin.js
+  checksum: 2ccfe6ddc51dc05ae8ea1e2fbb893344e93a813e00c595d6b5f5e704b7b998d6b0e2adda7c57f99b5e46a60dc07c7d860269a2ea91661c6bacef0eca8e0b8e96
+  languageName: node
+  linkType: hard
+
 "iconv-lite@npm:0.4.24, iconv-lite@npm:^0.4.24":
   version: 0.4.24
   resolution: "iconv-lite@npm:0.4.24"
@@ -10223,6 +10232,7 @@ fsevents@~2.3.2:
     ethers: ^5.4.1
     hardhat: ^2.5.0
     hardhat-gas-reporter: ^1.0.4
+    husky: ^7.0.2
     mocha: ^9.0.2
     prettier: 2.3.2
     prettier-plugin-solidity: 1.0.0-beta.13
