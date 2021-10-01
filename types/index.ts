@@ -1,3 +1,1 @@
-export interface Address {
-    
-}
+export interface Address {}
