@@ -15,7 +15,7 @@
         "test:parallel": "mocha --require hardhat/register --recursive --parallel --exit",
         "test:recompile": "npx hardhat compile --force && mocha --require hardhat/register --recursive --exit",
         "lint:sol": "npx solhint 'contracts/**/*.sol'",
-        "prettier": "prettier --write 'contracts/**/*.sol' '{test,common,scripts,tasks,types}/**/*.ts'",
+        "prettier": "prettier --write 'contracts/**/*.sol' '{test,common,scripts,tasks,types,}/**/{*.ts,*.json}' '*.ts' '*.json'",
         "slither": "./slither.sh",
         "mythril": "./mythril.sh",
         "echidna": "rm -rf crytic-export && ./echidna.sh",
