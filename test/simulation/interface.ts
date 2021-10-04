@@ -37,6 +37,8 @@ export type Command = {
   }
 }
 
+export type TX = [ User, Command ]
+
 // =================================================================
 // Account types
 

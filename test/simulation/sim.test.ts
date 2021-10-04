@@ -1,10 +1,12 @@
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber } from 'ethers'
-import { ZERO, bn, pow10 } from '../../common/numbers'
-import { Account, Command, Contract, Simulation, State, Token, User } from './interface'
+import { bn, pow10 } from '../../common/numbers'
+import { Account, Contract, Simulation, State, Token, User, TX } from './interface'
 import { Implementation0 } from './implementations/0'
 import { EVMImplementation } from './implementations/evm'
+import * as fc from 'fast-check'
+import * as Arbitrary from './fuzzing/arbitrary'
 
 /*
  * Simulation Test Harness
@@ -14,8 +16,6 @@ import { EVMImplementation } from './implementations/evm'
  * - Accounts should be represented and referred to using the `Account` enum.
  * - Use `seed` followed by `executeParallel` to prep a state, mutate it, and check the results.
  */
-
-type TX = [User, Command]
 
 describe('Simulation', function () {
   let sim1: Simulation
@@ -38,10 +38,11 @@ describe('Simulation', function () {
 
   describe('RToken', function () {
     let amount: BigNumber
+    let initialState: State
 
     beforeEach(async function () {
       amount = pow10(21)
-      const state: State = {
+      initialState = {
         rToken: {
           basket: [
             { name: 'DAI', symbol: 'DAI', quantityE18: bn(333334).mul(pow10(12)) },
@@ -54,14 +55,21 @@ describe('Simulation', function () {
       sim1 = new Implementation0()
       // sim2 = new Implementation0()
       sim2 = new EVMImplementation()
-      await seed(User.Alice, state)
+      //await seed(User.Alice, state)
+    })
+
+    it('Should set state correctly', async function () {
+      await seed(User.Alice, initialState)
+      expect(match(await sim1.state(), await sim2.state())).to.equal(true)
     })
 
     it('Should allow issuance', async function () {
+      await seed(User.Alice, initialState)
       await executeParallel([User.Alice, { rToken: { issue: [amount] } }])
     })
 
     it('Should allow redemption', async function () {
+      await seed(User.Alice, initialState)
       await executeParallel(
         [User.Alice, { rToken: { issue: [amount] } }],
         [User.Alice, { rToken: { redeem: [amount] } }]
@@ -69,6 +77,7 @@ describe('Simulation', function () {
     })
 
     it('Should allow transfer to another user', async function () {
+      await seed(User.Alice, initialState)
       await executeParallel(
         [User.Alice, { rToken: { issue: [amount] } }],
         [User.Alice, { rToken: { transfer: [User.Bob, amount] } }]
@@ -76,6 +85,7 @@ describe('Simulation', function () {
     })
 
     it('Should allow transfer to another smart contract', async function () {
+      await seed(User.Alice, initialState)
       await executeParallel(
         [User.Alice, { rToken: { issue: [amount] } }],
         [User.Alice, { rToken: { transfer: [Contract.RSR, amount] } }]
@@ -88,6 +98,64 @@ describe('Simulation', function () {
     //         [User.Alice, { rToken: { transfer: [Contract.RSR, amount] } }]
     //     )
     // })
+
+    it.skip('Should allow issuance with fuzzing of state and amount', async function () {
+      let snapshotId: number
+
+      await fc.assert(
+        fc
+          .asyncProperty(
+            Arbitrary.State(),
+            Arbitrary.User(),
+            Arbitrary.simpleAmount,
+            async (state: State, user: User, amount: BigNumber) => {
+              // Seed state
+              await seed(user, state)
+              expect(match(await sim1.state(), await sim2.state())).to.equal(true)
+
+              // Execute issuance
+              await executeParallel([user, { rToken: { issue: [amount] } }])
+            }
+          )
+          .beforeEach(async () => {
+            snapshotId = await ethers.provider.send('evm_snapshot', [])
+          })
+          .afterEach(async () => {
+            // Force rollback to reset
+            sim1 = new Implementation0()
+            await ethers.provider.send('evm_revert', [snapshotId])
+          })
+      )
+    })
+
+    it.skip('Fuzzing state and commands', async function () {
+      let snapshotId: number
+
+      await fc.assert(
+        fc
+          .asyncProperty(
+            Arbitrary.State(),
+            Arbitrary.User(),
+            Arbitrary.Commands(),
+            async (state: State, user: User, commands: TX[]) => {
+              // Seed state
+              await seed(user, state)
+              expect(match(await sim1.state(), await sim2.state())).to.equal(true)
+
+              // Execute commands
+              await executeParallel(...commands)
+            }
+          )
+          .beforeEach(async () => {
+            snapshotId = await ethers.provider.send('evm_snapshot', [])
+          })
+          .afterEach(async () => {
+            // Force rollback to reset
+            sim1 = new Implementation0()
+            await ethers.provider.send('evm_revert', [snapshotId])
+          })
+      )
+    })
   })
 })
 
