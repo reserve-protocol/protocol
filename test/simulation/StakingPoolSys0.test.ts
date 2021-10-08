@@ -6,6 +6,7 @@ import { bn } from '../../common/numbers'
 import { advanceTime } from '../utils/time'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
+import { RTokenSys0Mock } from '../../typechain/RTokenSys0Mock'
 import { StakingPoolSys0 } from '../../typechain/StakingPoolSys0'
 
 describe('StakingPoolSys0 contract', () => {
@@ -14,8 +15,8 @@ describe('StakingPoolSys0 contract', () => {
   let addr2: SignerWithAddress
   let other: SignerWithAddress
 
-  let ERC20: ContractFactory
-  let rToken: ERC20Mock
+  let ERC20, RToken: ContractFactory
+  let rToken: RTokenSys0Mock
   let rsr: ERC20Mock
   let stkPool: StakingPoolSys0
   let initialBal: BigNumber
@@ -24,8 +25,10 @@ describe('StakingPoolSys0 contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy RToken and RSR Token
+    RToken = await ethers.getContractFactory('RTokenSys0Mock')
+    rToken = <RTokenSys0Mock>await RToken.deploy('RToken', 'RTKN')
+
     ERC20 = await ethers.getContractFactory('ERC20Mock')
-    rToken = <ERC20Mock>await ERC20.deploy('RToken', 'RTKN')
     rsr = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
 
     // Mint initial amounts
@@ -35,7 +38,7 @@ describe('StakingPoolSys0 contract', () => {
     // Deploy StakingPool_Sys0
     const StakingPool = await ethers.getContractFactory('StakingPoolSys0')
     stkPool = <StakingPoolSys0>await StakingPool.connect(owner).deploy(rToken.address, rsr.address, 0)
-    //await rToken.connect(owner).updateConfig({ ...config, insurancePool: iPool.address })
+    await rToken.connect(owner).setStakingPool(stkPool.address)
   })
 
   describe('Deployment', () => {
@@ -288,6 +291,35 @@ describe('StakingPoolSys0 contract', () => {
         expect(await rsr.balanceOf(addr2.address)).to.equal(prevAddr2Balance.add(amount2).add(amount3))
         expect(await stkPool.balanceOf(addr2.address)).to.equal(0)
       })
+    })
+  })
+
+  describe('Add/Remove RSR', () => {
+    it('Should not allow to add RSR if caller is not Rtoken', async () => {
+      const amount: BigNumber = bn(1e18)
+      const prevPoolBalance: BigNumber = await rsr.balanceOf(stkPool.address)
+
+      await expect(stkPool.connect(other).addRSR(amount)).to.be.revertedWith('Caller is not RToken')
+
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(prevPoolBalance)
+    })
+
+    it('Should not allow to add RSR if amount is zero', async () => {
+      const zero: BigNumber = bn(0)
+      const prevPoolBalance: BigNumber = await rsr.balanceOf(stkPool.address)
+
+      await expect(rToken.connect(owner).addRSR(zero)).to.be.revertedWith('Amount cannot be zero')
+
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(prevPoolBalance)
+    })
+
+    it('Should allow to add RSR if caller is Rtoken', async () => {
+      const amount: BigNumber = bn(1e18)
+
+      // TODO: Get balances before
+      await rToken.connect(owner).addRSR(amount)
+
+      // TODO: Check balances after
     })
   })
 })
