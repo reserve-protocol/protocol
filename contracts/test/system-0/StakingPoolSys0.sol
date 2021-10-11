@@ -81,7 +81,13 @@ contract StakingPoolSys0 is IStakingPool {
     }
 
     function balanceOf(address account) external view override returns (uint256) {
+        // Option A - ignore funds sent directly to contract
         return _stakes[account];
+        // Option B - Always consider current RSR balance - Should we also consider it at time of stake/unstake?
+        //  if (_totalStaked == 0) {
+        //      return 0;
+        //  }
+        //  return (rsr.balanceOf(address(this)) * _stakes[account]) / _totalStaked;
     }
 
     function totalStaked() external view returns (uint256) {
@@ -118,10 +124,12 @@ contract StakingPoolSys0 is IStakingPool {
         uint256 _snapshotTotalStaked = _totalStaked;
         _totalStaked += amount;
 
-        // Redistribute RSR to stakers
-        for (uint256 index = 0; index < _accounts.length(); index++) {
-            uint256 amtToAdd = (amount * _stakes[_accounts.at(index)]) / _snapshotTotalStaked;
-            _stakes[_accounts.at(index)] += amtToAdd;
+        // Redistribute RSR to stakers   
+        if(_snapshotTotalStaked > 0) {
+            for (uint256 index = 0; index < _accounts.length(); index++) {
+                uint256 amtToAdd = (amount * _stakes[_accounts.at(index)]) / _snapshotTotalStaked;
+                _stakes[_accounts.at(index)] += amtToAdd;
+            }
         }
     }
 
@@ -133,11 +141,12 @@ contract StakingPoolSys0 is IStakingPool {
         _totalStaked -= amount;
 
         // Remove RSR for stakers
-        for (uint256 index = 0; index < _accounts.length(); index++) {
-            uint256 amtToRemove = (amount * _stakes[_accounts.at(index)]) / _snapshotTotalStaked;
-            _stakes[_accounts.at(index)] -= amtToRemove;
+        if(_snapshotTotalStaked > 0) {
+            for (uint256 index = 0; index < _accounts.length(); index++) {
+                uint256 amtToRemove = (amount * _stakes[_accounts.at(index)]) / _snapshotTotalStaked;
+                _stakes[_accounts.at(index)] -= amtToRemove;
+            }
         }
-
         // Transfer RSR to RToken
         rsr.safeTransfer(address(rToken), amount);
     }
