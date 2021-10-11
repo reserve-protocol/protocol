@@ -13,6 +13,7 @@ describe('StakingPoolSys0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
+  let addr3: SignerWithAddress
   let other: SignerWithAddress
 
   let ERC20, RToken: ContractFactory
@@ -22,19 +23,22 @@ describe('StakingPoolSys0 contract', () => {
   let initialBal: BigNumber
 
   beforeEach(async () => {
-    ;[owner, addr1, addr2, other] = await ethers.getSigners()
+    ;[owner, addr1, addr2, addr3, other] = await ethers.getSigners()
 
-    // Deploy RToken and RSR Token
-    RToken = await ethers.getContractFactory('RTokenSys0Mock')
-    rToken = <RTokenSys0Mock>await RToken.deploy('RToken', 'RTKN')
-
+    // Deploy RSR and RToken
     ERC20 = await ethers.getContractFactory('ERC20Mock')
     rsr = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
+
+    RToken = await ethers.getContractFactory('RTokenSys0Mock')
+    rToken = <RTokenSys0Mock>await RToken.deploy('RToken', 'RTKN', rsr.address)
 
     // Mint initial amounts
     initialBal = bn(100e18)
     rsr.connect(owner).mint(addr1.address, initialBal)
     rsr.connect(owner).mint(addr2.address, initialBal)
+    rsr.connect(owner).mint(addr3.address, initialBal)
+    rsr.connect(owner).mint(rToken.address, initialBal)
+
     // Deploy StakingPool_Sys0
     const StakingPool = await ethers.getContractFactory('StakingPoolSys0')
     stkPool = <StakingPoolSys0>await StakingPool.connect(owner).deploy(rToken.address, rsr.address, 0)
@@ -295,31 +299,214 @@ describe('StakingPoolSys0 contract', () => {
   })
 
   describe('Add/Remove RSR', () => {
-    it('Should not allow to add RSR if caller is not Rtoken', async () => {
+    it('Should not allow to add/remove RSR if caller is not Rtoken', async () => {
       const amount: BigNumber = bn(1e18)
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stkPool.address)
 
       await expect(stkPool.connect(other).addRSR(amount)).to.be.revertedWith('Caller is not RToken')
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(prevPoolBalance)
 
+      await expect(stkPool.connect(other).seizeRSR(amount)).to.be.revertedWith('Caller is not RToken')
       expect(await rsr.balanceOf(stkPool.address)).to.equal(prevPoolBalance)
     })
 
-    it('Should not allow to add RSR if amount is zero', async () => {
+    it('Should not allow to add/remove RSR if amount is zero', async () => {
       const zero: BigNumber = bn(0)
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stkPool.address)
 
       await expect(rToken.connect(owner).addRSR(zero)).to.be.revertedWith('Amount cannot be zero')
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(prevPoolBalance)
 
+      await expect(rToken.connect(owner).seizeRSR(zero)).to.be.revertedWith('Amount cannot be zero')
       expect(await rsr.balanceOf(stkPool.address)).to.equal(prevPoolBalance)
     })
 
-    it('Should allow to add RSR if caller is Rtoken', async () => {
+    it('Should allow to add RSR - Single staker', async () => {
       const amount: BigNumber = bn(1e18)
+      const amount2: BigNumber = bn(10e18)
 
-      // TODO: Get balances before
-      await rToken.connect(owner).addRSR(amount)
+      // Stake
+      await rsr.connect(addr1).approve(stkPool.address, amount)
+      await stkPool.connect(addr1).stake(amount)
 
-      // TODO: Check balances after
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount)
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
+
+      // Add RSR
+      await rToken.connect(owner).addRSR(amount2)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.add(amount2))
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount.add(amount2))
+    })
+
+    it('Should allow to add RSR - Two stakers - Rounded values', async () => {
+      const amount: BigNumber = bn(1e18)
+      const amount2: BigNumber = bn(10e18)
+
+      // Stake
+      await rsr.connect(addr1).approve(stkPool.address, amount)
+      await stkPool.connect(addr1).stake(amount)
+
+      await rsr.connect(addr2).approve(stkPool.address, amount)
+      await stkPool.connect(addr2).stake(amount)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(2))
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
+      expect(await stkPool.balanceOf(addr2.address)).to.equal(amount)
+
+      // Add RSR
+      await rToken.connect(owner).addRSR(amount2)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(2).add(amount2))
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount.add(amount2.div(2)))
+      expect(await stkPool.balanceOf(addr2.address)).to.equal(amount.add(amount2.div(2)))
+    })
+
+    it('Should allow to add RSR - Three stakers - Check Precision', async () => {
+      const amount: BigNumber = bn(1e18)
+      const amount2: BigNumber = bn(10e18)
+
+      // Stake
+      await rsr.connect(addr1).approve(stkPool.address, amount)
+      await stkPool.connect(addr1).stake(amount)
+
+      await rsr.connect(addr2).approve(stkPool.address, amount)
+      await stkPool.connect(addr2).stake(amount)
+
+      await rsr.connect(addr3).approve(stkPool.address, amount)
+      await stkPool.connect(addr3).stake(amount)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(3))
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
+      expect(await stkPool.balanceOf(addr2.address)).to.equal(amount)
+      expect(await stkPool.balanceOf(addr3.address)).to.equal(amount)
+
+      // Add RSR
+      await rToken.connect(owner).addRSR(amount2)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(3).add(amount2))
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
+
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount.add(amount2.div(3)))
+      expect(await stkPool.balanceOf(addr2.address)).to.equal(amount.add(amount2.div(3)))
+      expect(await stkPool.balanceOf(addr3.address)).to.equal(amount.add(amount2.div(3)))
+    })
+
+    it('Should allow to remove RSR - Single staker', async () => {
+      const amount: BigNumber = bn(10e18)
+      const amount2: BigNumber = bn(1e18)
+
+      // Stake
+      await rsr.connect(addr1).approve(stkPool.address, amount)
+      await stkPool.connect(addr1).stake(amount)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount)
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
+
+      // Seize RSR
+      await rToken.connect(owner).seizeRSR(amount2)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.sub(amount2))
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount.sub(amount2))
+    })
+
+    it('Should allow to remove RSR - Two stakers - Rounded values', async () => {
+      const amount: BigNumber = bn(10e18)
+      const amount2: BigNumber = bn(1e18)
+
+      // Stake
+      await rsr.connect(addr1).approve(stkPool.address, amount)
+      await stkPool.connect(addr1).stake(amount)
+
+      await rsr.connect(addr2).approve(stkPool.address, amount)
+      await stkPool.connect(addr2).stake(amount)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(2))
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
+      expect(await stkPool.balanceOf(addr2.address)).to.equal(amount)
+
+      // Seize RSR
+      await rToken.connect(owner).seizeRSR(amount2)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(2).sub(amount2))
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount.sub(amount2.div(2)))
+      expect(await stkPool.balanceOf(addr2.address)).to.equal(amount.sub(amount2.div(2)))
+    })
+
+    it('Should allow to remove RSR - Three stakers - Check Precision', async () => {
+      const amount: BigNumber = bn(10e18)
+      const amount2: BigNumber = bn(1e18)
+
+      // Stake
+      await rsr.connect(addr1).approve(stkPool.address, amount)
+      await stkPool.connect(addr1).stake(amount)
+
+      await rsr.connect(addr2).approve(stkPool.address, amount)
+      await stkPool.connect(addr2).stake(amount)
+
+      await rsr.connect(addr3).approve(stkPool.address, amount)
+      await stkPool.connect(addr3).stake(amount)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(3))
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
+      expect(await stkPool.balanceOf(addr2.address)).to.equal(amount)
+      expect(await stkPool.balanceOf(addr3.address)).to.equal(amount)
+
+      // Add RSR
+      await rToken.connect(owner).seizeRSR(amount2)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(3).sub(amount2))
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
+
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount.sub(amount2.div(3)))
+      expect(await stkPool.balanceOf(addr2.address)).to.equal(amount.sub(amount2.div(3)))
+      expect(await stkPool.balanceOf(addr3.address)).to.equal(amount.sub(amount2.div(3)))
     })
   })
 })
