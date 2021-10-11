@@ -90,20 +90,22 @@ contract StakingPoolSys0 is IStakingPool {
 
     function processWithdrawals() public {
         // Process all pending withdrawals
-        while (
-            withdrawalIndex < withdrawals.length &&
-            block.timestamp > withdrawals[withdrawalIndex].timestamp + stakingWithdrawalDelay
-        ) {
-            Withdrawal storage withdrawal = withdrawals[withdrawalIndex];
-            uint256 amount = Math.min(_stakes[withdrawal.account], withdrawal.amount);
-            if (amount > 0) {
-                _stakes[withdrawal.account] -= amount;
-                _totalStaked -= amount;
-                rsr.safeTransfer(withdrawal.account, amount);
-            }
+        for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
+            if (block.timestamp > withdrawals[withdrawalIndex].timestamp + stakingWithdrawalDelay) {
+                Withdrawal storage withdrawal = withdrawals[withdrawalIndex];
+                uint256 amount = Math.min(_stakes[withdrawal.account], withdrawal.amount);
 
-            delete withdrawals[withdrawalIndex];
-            withdrawalIndex += 1;
+                if (amount > 0) {
+                    _stakes[withdrawal.account] -= amount;
+                    _totalStaked -= amount;
+                    rsr.safeTransfer(withdrawal.account, amount);
+                }
+
+                delete withdrawals[withdrawalIndex];
+                withdrawalIndex += 1;
+            } else {
+                break;
+            }
         }
     }
 
@@ -114,35 +116,31 @@ contract StakingPoolSys0 is IStakingPool {
         rsr.safeTransferFrom(address(rToken), address(this), amount);
 
         uint256 _snapshotTotalStaked = _totalStaked;
+        _totalStaked += amount;
 
         // Redistribute RSR to stakers
         for (uint256 index = 0; index < _accounts.length(); index++) {
             uint256 amtToAdd = (amount * _stakes[_accounts.at(index)]) / _snapshotTotalStaked;
             _stakes[_accounts.at(index)] += amtToAdd;
-            _totalStaked += amtToAdd;
         }
-
-        assert(_totalStaked == _snapshotTotalStaked + amount);
     }
 
-    // function seizeRSR(uint256 amount) external override {
-    //     require(msg.sender == address(rToken), "Caller is not RToken");
-    //     require(amount > 0, "Amount is zero");
+    function seizeRSR(uint256 amount) external override {
+        require(msg.sender == address(rToken), "Caller is not RToken");
+        require(amount > 0, "Amount cannot be zero");
 
-    //     uint256 _snapshotTotalStaked = _totalStaked;
+        uint256 _snapshotTotalStaked = _totalStaked;
+        _totalStaked -= amount;
 
-    //     // Remove RSR for stakers
-    //     for (uint256 index = 0; index < _accounts.length(); index++) {
-    //         uint256 amtToRemove = (amount * _stakes[_accounts.at(index)]) / _snapshotTotalStaked;
-    //         _stakes[_accounts.at(index)] -= amtToRemove;
-    //         _totalStaked -= amtToRemove;
-    //     }
+        // Remove RSR for stakers
+        for (uint256 index = 0; index < _accounts.length(); index++) {
+            uint256 amtToRemove = (amount * _stakes[_accounts.at(index)]) / _snapshotTotalStaked;
+            _stakes[_accounts.at(index)] -= amtToRemove;
+        }
 
-    //     assert(_totalStaked == _snapshotTotalStaked - amount);
-
-    //     // Transfer RSR to RToken
-    //     rsr.safeTransfer(address(rToken), amount);
-    // }
+        // Transfer RSR to RToken
+        rsr.safeTransfer(address(rToken), amount);
+    }
 
     function setStakingWithdrawalDelay(uint256 stakingWithdrawalDelay_) external {
         stakingWithdrawalDelay = stakingWithdrawalDelay_;

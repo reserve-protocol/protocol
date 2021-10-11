@@ -9,19 +9,30 @@ import "./IStakingPool.sol";
 interface IRToken is IERC20 {}
 
 contract RTokenSys0Mock is ERC20Mock, IRToken {
+    using SafeERC20 for IERC20;
     using SafeERC20 for IRToken;
 
     IStakingPool public stakingPool;
+    IERC20 public rsr;
 
-    constructor(string memory name, string memory symbol) ERC20Mock(name, symbol) {}
+    constructor(
+        string memory name,
+        string memory symbol,
+        address rsr_
+    ) ERC20Mock(name, symbol) {
+        rsr = IERC20(rsr_);
+    }
 
     function setStakingPool(address stakingPool_) external {
         stakingPool = IStakingPool(stakingPool_);
     }
 
     function addRSR(uint256 amount) external {
-        IRToken(address(this)).safeApprove(address(stakingPool), amount);
-        //safeApprove(address(stakingPool), amount);
+        rsr.safeApprove(address(stakingPool), amount);
         stakingPool.addRSR(amount);
+    }
+
+    function seizeRSR(uint256 amount) external {
+        stakingPool.seizeRSR(amount);
     }
 }

@@ -10,5 +10,5 @@ interface IStakingPool {
 
     function addRSR(uint256 amount) external;
 
-    //function seizeRSR(uint256 amount) external;
+    function seizeRSR(uint256 amount) external;
 }
