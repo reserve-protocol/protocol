@@ -6,10 +6,10 @@ import { bn } from '../../common/numbers'
 import { advanceTime } from '../utils/time'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { RTokenSys0Mock } from '../../typechain/RTokenSys0Mock'
-import { StakingPoolSys0 } from '../../typechain/StakingPoolSys0'
+import { RTokenMockP0 } from '../../typechain/RTokenMockP0'
+import { StakingPoolP0 } from '../../typechain/StakingPoolP0'
 
-describe('StakingPoolSys0 contract', () => {
+describe('StakingPoolP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -17,9 +17,9 @@ describe('StakingPoolSys0 contract', () => {
   let other: SignerWithAddress
 
   let ERC20, RToken: ContractFactory
-  let rToken: RTokenSys0Mock
+  let rToken: RTokenMockP0
   let rsr: ERC20Mock
-  let stkPool: StakingPoolSys0
+  let stkPool: StakingPoolP0
   let initialBal: BigNumber
 
   beforeEach(async () => {
@@ -29,8 +29,8 @@ describe('StakingPoolSys0 contract', () => {
     ERC20 = await ethers.getContractFactory('ERC20Mock')
     rsr = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
 
-    RToken = await ethers.getContractFactory('RTokenSys0Mock')
-    rToken = <RTokenSys0Mock>await RToken.deploy('RToken', 'RTKN', rsr.address)
+    RToken = await ethers.getContractFactory('RTokenMockP0')
+    rToken = <RTokenMockP0>await RToken.deploy('RToken', 'RTKN', rsr.address)
 
     // Mint initial amounts
     initialBal = bn(100e18)
@@ -40,8 +40,8 @@ describe('StakingPoolSys0 contract', () => {
     rsr.connect(owner).mint(rToken.address, initialBal)
 
     // Deploy StakingPool_Sys0
-    const StakingPool = await ethers.getContractFactory('StakingPoolSys0')
-    stkPool = <StakingPoolSys0>await StakingPool.connect(owner).deploy(rToken.address, rsr.address, 0)
+    const StakingPool = await ethers.getContractFactory('StakingPoolP0')
+    stkPool = <StakingPoolP0>await StakingPool.connect(owner).deploy(rToken.address, rsr.address, 0)
     await rToken.connect(owner).setStakingPool(stkPool.address)
   })
 

@@ -5,9 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "./IStakingPool.sol";
-
-import "hardhat/console.sol";
+import "./interfaces/IStakingPool.sol";
 
 interface IRToken is IERC20 {}
 
@@ -16,7 +14,7 @@ interface IRToken is IERC20 {}
  * @dev The StakingPool is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken. System-0 version.
  */
-contract StakingPoolSys0 is IStakingPool {
+contract StakingPoolP0 is IStakingPool {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
