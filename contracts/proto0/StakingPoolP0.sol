@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -14,7 +15,7 @@ interface IRToken is IERC20 {}
  * @dev The StakingPool is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken. System-0 version.
  */
-contract StakingPoolP0 is IStakingPool {
+contract StakingPoolP0 is IStakingPool, Ownable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -61,9 +62,9 @@ contract StakingPoolP0 is IStakingPool {
 
         require(amount > 0, "Cannot stake zero");
 
-        rsr.safeTransferFrom(msg.sender, address(this), amount);
-        _accounts.add(msg.sender);
-        _stakes[msg.sender] += amount;
+        rsr.safeTransferFrom(_msgSender(), address(this), amount);
+        _accounts.add(_msgSender());
+        _stakes[_msgSender()] += amount;
         _totalStaked += amount;
     }
 
@@ -72,10 +73,10 @@ contract StakingPoolP0 is IStakingPool {
         processWithdrawals();
 
         require(amount > 0, "Cannot withdraw zero");
-        require(_stakes[msg.sender] >= amount, "Not enough balance");
+        require(_stakes[_msgSender()] >= amount, "Not enough balance");
 
         // Submit delayed withdrawal
-        withdrawals.push(Withdrawal(msg.sender, amount, block.timestamp));
+        withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp));
     }
 
     function balanceOf(address account) external view override returns (uint256) {
@@ -114,7 +115,7 @@ contract StakingPoolP0 is IStakingPool {
     }
 
     function addRSR(uint256 amount) external override {
-        require(msg.sender == address(rToken), "Caller is not RToken");
+        require(_msgSender() == address(rToken), "Caller is not RToken");
         require(amount > 0, "Amount cannot be zero");
 
         // Process pending withdrawals
@@ -125,8 +126,8 @@ contract StakingPoolP0 is IStakingPool {
         uint256 _snapshotTotalStaked = _totalStaked;
         _totalStaked += amount;
 
-        // Redistribute RSR to stakers   
-        if(_snapshotTotalStaked > 0) {
+        // Redistribute RSR to stakers
+        if (_snapshotTotalStaked > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
                 uint256 amtToAdd = (amount * _stakes[_accounts.at(index)]) / _snapshotTotalStaked;
                 _stakes[_accounts.at(index)] += amtToAdd;
@@ -135,7 +136,7 @@ contract StakingPoolP0 is IStakingPool {
     }
 
     function seizeRSR(uint256 amount) external override {
-        require(msg.sender == address(rToken), "Caller is not RToken");
+        require(_msgSender() == address(rToken), "Caller is not RToken");
         require(amount > 0, "Amount cannot be zero");
 
         // Process pending withdrawals
@@ -145,7 +146,7 @@ contract StakingPoolP0 is IStakingPool {
         _totalStaked -= amount;
 
         // Remove RSR for stakers
-        if(_snapshotTotalStaked > 0) {
+        if (_snapshotTotalStaked > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
                 uint256 amtToRemove = (amount * _stakes[_accounts.at(index)]) / _snapshotTotalStaked;
                 _stakes[_accounts.at(index)] -= amtToRemove;
