@@ -14,8 +14,6 @@ interface ITokenInfo {
 describe('VaultP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
-  let addr2: SignerWithAddress
-  let other: SignerWithAddress
 
   let ERC20: ContractFactory
   let VaultFactory: ContractFactory
@@ -35,7 +33,7 @@ describe('VaultP0 contract', () => {
   let qtyDouble: BigNumber
 
   beforeEach(async () => {
-    ;[owner, addr1, addr2, other] = await ethers.getSigners()
+    ;[owner, addr1] = await ethers.getSigners()
 
     // Deploy RSR and RToken
     ERC20 = await ethers.getContractFactory('ERC20Mock')
@@ -191,6 +189,63 @@ describe('VaultP0 contract', () => {
 
       expect(await vault.totalUnits()).to.equal(issueAmount)
       expect(await vault.basketUnits(addr1.address)).to.equal(issueAmount)
+    })
+  })
+
+  describe('Redeem', () => {
+    let issueAmount: BigNumber = bn(1e18)
+
+    beforeEach(async () => {
+      // Approvals
+      await tkn0.connect(addr1).approve(vault.address, qtyHalf)
+      await tkn1.connect(addr1).approve(vault.address, qtyHalf)
+      await tkn2.connect(addr1).approve(vault.address, qtyThird)
+      await tkn3.connect(addr1).approve(vault.address, qtyDouble)
+
+      // Issue BUs
+      await vault.connect(addr1).issue(issueAmount)
+    })
+
+    it('Should not redeem BU if amount is zero', async function () {
+      const zero: BigNumber = bn(0)
+
+      // Redeem
+      await expect(vault.connect(addr1).redeem(zero)).to.be.revertedWith('Cannot redeem zero')
+
+      // No units redeemed
+      expect(await vault.totalUnits()).to.equal(issueAmount)
+      expect(await vault.basketUnits(addr1.address)).to.equal(issueAmount)
+    })
+
+    it('Should revert if user does not have the required BUs', async function () {
+      const redeemAmount = bn(2e18)
+
+      await expect(vault.connect(addr1).redeem(redeemAmount)).to.be.revertedWith('Not enough units')
+
+      // No units redeemed
+      expect(await vault.totalUnits()).to.equal(issueAmount)
+      expect(await vault.basketUnits(addr1.address)).to.equal(issueAmount)
+    })
+
+    it('Should redeem BUs correctly', async function () {
+      const redeemAmount = bn(1e18)
+
+      // Redeem BUs
+      await vault.connect(addr1).redeem(redeemAmount)
+
+      // Check balance after redeem go to initial state
+      expect(await tkn0.balanceOf(vault.address)).to.equal(bn(0))
+      expect(await tkn1.balanceOf(vault.address)).to.equal(bn(0))
+      expect(await tkn2.balanceOf(vault.address)).to.equal(bn(0))
+      expect(await tkn3.balanceOf(vault.address)).to.equal(bn(0))
+
+      expect(await tkn0.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await tkn1.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await tkn2.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await tkn3.balanceOf(addr1.address)).to.equal(initialBal)
+
+      expect(await vault.totalUnits()).to.equal(bn(0))
+      expect(await vault.basketUnits(addr1.address)).to.equal(bn(0))
     })
   })
 })
