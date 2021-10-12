@@ -119,6 +119,9 @@ contract StakingPoolSys0 is IStakingPool {
         require(msg.sender == address(rToken), "Caller is not RToken");
         require(amount > 0, "Amount cannot be zero");
 
+        // Process pending withdrawals
+        processWithdrawals();
+
         rsr.safeTransferFrom(address(rToken), address(this), amount);
 
         uint256 _snapshotTotalStaked = _totalStaked;
@@ -136,6 +139,9 @@ contract StakingPoolSys0 is IStakingPool {
     function seizeRSR(uint256 amount) external override {
         require(msg.sender == address(rToken), "Caller is not RToken");
         require(amount > 0, "Amount cannot be zero");
+
+        // Process pending withdrawals
+        processWithdrawals();
 
         uint256 _snapshotTotalStaked = _totalStaked;
         _totalStaked -= amount;
