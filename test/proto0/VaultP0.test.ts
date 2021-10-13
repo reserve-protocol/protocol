@@ -35,7 +35,7 @@ describe('VaultP0 contract', () => {
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
 
-    // Deploy RSR and RToken
+    // Deploy Tokens
     ERC20 = await ethers.getContractFactory('ERC20Mock')
     tkn0 = <ERC20Mock>await ERC20.deploy('Token 0', 'TKN0')
     tkn1 = <ERC20Mock>await ERC20.deploy('Token 1', 'TKN1')
