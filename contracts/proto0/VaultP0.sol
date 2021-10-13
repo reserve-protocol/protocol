@@ -28,14 +28,16 @@ contract VaultP0 is IVault, Ownable {
     mapping(address => uint256) public basketUnits;
     uint256 public totalUnits;
 
-    //TODO: IVault[] public backupVaults;
+    IVault[] public backups;
 
-    constructor(Token[] memory basketTokens_) {
+    constructor(Token[] memory basketTokens, IVault[] memory backupVaults) {
         // Set default immutable basket
-        _basket.size = uint16(basketTokens_.length);
+        _basket.size = uint16(basketTokens.length);
         for (uint16 i = 0; i < _basket.size; i++) {
-            _basket.tokens[i] = basketTokens_[i];
+            _basket.tokens[i] = basketTokens[i];
         }
+
+        setBackups(backupVaults);
     }
 
     function issue(uint256 amount) external override {
@@ -82,5 +84,13 @@ contract VaultP0 is IVault, Ownable {
     function tokenInfoAt(uint16 index) external view returns (Token memory) {
         Token memory _tkn = _basket.tokens[index];
         return _tkn;
+    }
+
+    function setBackups(IVault[] memory backupVaults) public onlyOwner {
+        backups = backupVaults;
+    }
+
+    function getBackups() public view returns (IVault[] memory) {
+        return backups;
     }
 }

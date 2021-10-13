@@ -77,9 +77,9 @@ describe('VaultP0 contract', () => {
 
     basketTokens = [tokenInfo0, tokenInfo1, tokenInfo2, tokenInfo3]
 
-    // Deploy Vault
+    // Deploy Main Vault
     VaultFactory = await ethers.getContractFactory('VaultP0')
-    vault = <VaultP0>await VaultFactory.deploy(basketTokens)
+    vault = <VaultP0>await VaultFactory.deploy(basketTokens, [])
   })
 
   describe('Deployment', () => {
@@ -92,6 +92,7 @@ describe('VaultP0 contract', () => {
 
     it('Deployment should setup basket correctly', async () => {
       expect(await vault.basketSize()).to.equal(4)
+      expect(await vault.getBackups()).to.be.empty
 
       // Token at 0
       expectTokenInfo(0, {
@@ -116,6 +117,15 @@ describe('VaultP0 contract', () => {
         tokenAddress: tokenInfo3.tokenAddress,
         quantity: qtyDouble,
       })
+    })
+
+    it('Deployment should setup backup vaults correctly', async () => {
+      // Setup a simple backup vault with single token
+      const backupVault: VaultP0 = <VaultP0>await VaultFactory.deploy([basketTokens[0]], [])
+      const newVault: VaultP0 = <VaultP0>await VaultFactory.deploy(basketTokens, [backupVault.address])
+
+      expect((await newVault.getBackups()).length).to.equal(1)
+      expect(await newVault.backups(0)).to.equal(backupVault.address)
     })
   })
 
@@ -246,6 +256,31 @@ describe('VaultP0 contract', () => {
 
       expect(await vault.totalUnits()).to.equal(bn(0))
       expect(await vault.basketUnits(addr1.address)).to.equal(bn(0))
+    })
+  })
+
+  describe('Backups', () => {
+    let backupVault: VaultP0
+
+    beforeEach(async () => {
+      // Setup a simple backup vault with two tokens
+      backupVault = <VaultP0>await VaultFactory.deploy([basketTokens[0], basketTokens[1]], [])
+    })
+
+    it('Should not allow to setup backup vaults if not owner', async () => {
+      await expect(vault.connect(addr1).setBackups([backupVault.address])).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      expect(await vault.getBackups()).to.be.empty
+    })
+
+    it('Should allow to setup backup vaults if owner', async () => {
+      // Set a new backup with two tokens
+      await vault.connect(owner).setBackups([backupVault.address])
+
+      expect((await vault.getBackups()).length).to.equal(1)
+      expect(await vault.backups(0)).to.equal(backupVault.address)
     })
   })
 })
