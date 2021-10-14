@@ -34,10 +34,10 @@ describe('StakingPoolP0 contract', () => {
 
     // Mint initial amounts
     initialBal = bn(100e18)
-    rsr.connect(owner).mint(addr1.address, initialBal)
-    rsr.connect(owner).mint(addr2.address, initialBal)
-    rsr.connect(owner).mint(addr3.address, initialBal)
-    rsr.connect(owner).mint(rToken.address, initialBal)
+    await rsr.connect(owner).mint(addr1.address, initialBal)
+    await rsr.connect(owner).mint(addr2.address, initialBal)
+    await rsr.connect(owner).mint(addr3.address, initialBal)
+    await rsr.connect(owner).mint(rToken.address, initialBal)
 
     // Deploy StakingPool_Sys0
     const StakingPool = await ethers.getContractFactory('StakingPoolP0')

@@ -49,10 +49,10 @@ describe('VaultP0 contract', () => {
     qtyDouble = bn(1e18).mul(2)
 
     // Mint tokens
-    tkn0.connect(owner).mint(addr1.address, initialBal)
-    tkn1.connect(owner).mint(addr1.address, initialBal)
-    tkn2.connect(owner).mint(addr1.address, initialBal)
-    tkn3.connect(owner).mint(addr1.address, initialBal)
+    await tkn0.connect(owner).mint(addr1.address, initialBal)
+    await tkn1.connect(owner).mint(addr1.address, initialBal)
+    await tkn2.connect(owner).mint(addr1.address, initialBal)
+    await tkn3.connect(owner).mint(addr1.address, initialBal)
 
     // Set Basket Tokens
     tokenInfo0 = {
