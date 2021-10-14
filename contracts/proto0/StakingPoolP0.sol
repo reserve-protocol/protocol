@@ -156,7 +156,7 @@ contract StakingPoolP0 is IStakingPool, Ownable {
         rsr.safeTransfer(address(rToken), amount);
     }
 
-    function setStakingWithdrawalDelay(uint256 stakingWithdrawalDelay_) external {
+    function setStakingWithdrawalDelay(uint256 stakingWithdrawalDelay_) external onlyOwner {
         stakingWithdrawalDelay = stakingWithdrawalDelay_;
     }
 }

@@ -21,7 +21,7 @@ contract VaultP0 is IVault, Ownable {
     using SafeERC20 for IERC20;
 
     uint256 public SCALE = 1e18;
-    //uint8 public decimals = 18;
+    uint8 public decimals = 18;
 
     Basket internal _basket;
 
@@ -73,7 +73,7 @@ contract VaultP0 is IVault, Ownable {
     function _tokenAmounts(uint256 amount) internal view returns (uint256[] memory parts) {
         parts = new uint256[](_basket.size);
         for (uint16 i = 0; i < _basket.size; i++) {
-            parts[i] = (amount * _basket.tokens[i].quantity) / SCALE; // Or 10**decimals?
+            parts[i] = (amount * _basket.tokens[i].quantity) / 10**decimals;
         }
     }
 

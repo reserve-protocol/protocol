@@ -42,7 +42,7 @@ contract FaucetP0 is IFaucet {
 
     function drip() external override {
         uint256 releasable = _processHandouts(block.timestamp);
-        SafeERC20.safeTransfer(IERC20(token), beneficiary, releasable);
+        token.safeTransfer(beneficiary, releasable);
     }
 
     function _processHandouts(uint256 timestamp) internal returns (uint256) {
