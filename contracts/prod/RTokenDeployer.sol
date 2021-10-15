@@ -8,7 +8,7 @@ import "./interfaces/IInsurancePool.sol";
 import "./modules/InsurancePool.sol";
 import "./libraries/Token.sol";
 import "./RToken.sol";
-import "./helpers/ErrorMessages.sol";
+import "../libraries/CommonErrors.sol";
 
 /*
  * @title RTokenDeployer
@@ -38,10 +38,10 @@ contract RTokenDeployer is IRTokenDeployer {
         Token.Info memory rsrToken
     ) external override returns (address rToken) {
         if (owner == address(0)) {
-            revert OwnerNotDefined();
+            revert CommonErrors.OwnerNotDefined();
         }
         if (basketTokens.length == 0) {
-            revert EmptyBasket();
+            revert CommonErrors.EmptyBasket();
         }
 
         // Deploy RToken Proxy and connect it to the RToken implementation.

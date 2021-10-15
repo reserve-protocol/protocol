@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import "./helpers/ErrorMessages.sol";
+import "../libraries/CommonErrors.sol";
 
 interface IPrevRSR {
     function paused() external view returns (bool);
@@ -102,7 +102,7 @@ contract RSR is ERC20Votes {
         uint256
     ) internal view override {
         if (to == address(this)) {
-            revert TransferToContractAddress();
+            revert CommonErrors.TransferToContractAddress();
         }
     }
 
@@ -111,7 +111,7 @@ contract RSR is ERC20Votes {
     /// Implements a one-time crossover from the old RSR, per account.
     function _crossover(address account) internal {
         if (crossed[account]) {
-            revert CrossedAlready();
+            revert CommonErrors.CrossedAlready();
         }
 
         crossed[account] = true;

@@ -2,7 +2,7 @@ import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { RelayERC20Mock } from '../typechain/RelayERC20Mock.d'
+import { RelayERC20Mock } from '../../typechain/RelayERC20Mock.d'
 
 describe('RelayERC20 contract', function () {
   let owner: SignerWithAddress

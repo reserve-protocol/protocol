@@ -2,8 +2,8 @@ import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { ReserveRightsTokenMock } from '../typechain/ReserveRightsTokenMock.d'
-import { RSR } from '../typechain/RSR.d'
+import { ReserveRightsTokenMock } from '../../typechain/ReserveRightsTokenMock.d'
+import { RSR } from '../../typechain/RSR.d'
 
 describe('RSR contract', function () {
   let owner: SignerWithAddress

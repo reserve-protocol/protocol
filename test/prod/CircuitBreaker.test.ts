@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { CircuitBreaker } from '../typechain/CircuitBreaker.d'
+import { CircuitBreaker } from '../../typechain/CircuitBreaker.d'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 const PAUSER_ROLE = ethers.utils.solidityKeccak256(['string'], ['PAUSER_ROLE'])

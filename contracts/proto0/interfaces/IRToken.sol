@@ -17,5 +17,4 @@ interface IRToken {
     function quoteIssue(uint256 amount) external view returns (uint256[] memory);
 
     function quoteRedeem(uint256 amount) external view returns (uint256[] memory);
-
 }

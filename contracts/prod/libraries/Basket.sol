@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../helpers/ErrorMessages.sol";
+import "../../libraries/CommonErrors.sol";
 import "./Token.sol";
 
 /**
@@ -38,7 +38,7 @@ library Basket {
         uint16 index
     ) internal view returns (uint256) {
         if (index >= self.size) {
-            revert InvalidTokenIndex();
+            revert CommonErrors.InvalidTokenIndex();
         }
         return (self.tokens[index].genesisQuantity * scale) / self.inflationSinceGenesis;
     }

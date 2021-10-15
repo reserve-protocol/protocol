@@ -1,5 +1,6 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
+import hre from 'hardhat'
 import { BigNumber, ContractFactory, Contract } from 'ethers'
 import { bn } from '../../common/numbers'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
@@ -8,7 +9,6 @@ import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { RTokenMockP0 } from '../../typechain/RTokenMockP0'
 import { FaucetP0 } from '../../typechain/FaucetP0'
 import { ZERO_ADDRESS } from '../../common/constants'
-import { subtask } from 'hardhat/config'
 
 interface IHandoutInfo {
   amount: BigNumber
@@ -40,6 +40,14 @@ describe('FaucetP0 contract', () => {
     expect(duration).to.equal(hdnOutInfo?.duration)
     expect(released).to.equal(hdnOutInfo.released)
   }
+
+  before(async () => {
+    // Reset for correct timestamp disbursement calculation
+    await hre.network.provider.request({
+      method: 'hardhat_reset',
+      params: [],
+    })
+  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, beneficiary] = await ethers.getSigners()
