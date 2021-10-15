@@ -15,21 +15,26 @@ interface IRToken is IERC20 {}
  * @dev The StakingPool is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken. System-0 version.
  */
-contract StakingPoolP0 is IStakingPool, Ownable {
+contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     IRToken public rToken;
     IERC20 public rsr;
 
+    // Staking Token Name and Symbol
+    string private _name;
+    string private _symbol;
+
     // Amount of RSR staked per account
-    mapping(address => uint256) internal _stakes;
+    mapping(address => uint256) private _balances;
+    mapping(address => mapping(address => uint256)) private _allowances;
 
     // List of accounts
     EnumerableSet.AddressSet internal _accounts;
 
     // Total staked
-    uint256 internal _totalStaked;
+    uint256 internal _totalSupply;
 
     // Delayed Withdrawals
     struct Withdrawal {
@@ -45,10 +50,14 @@ contract StakingPoolP0 is IStakingPool, Ownable {
     uint256 public stakingWithdrawalDelay;
 
     constructor(
+        string memory name_,
+        string memory symbol_,
         address rToken_,
         address rsr_,
         uint256 stakingWithdrawalDelay_
     ) {
+        _name = name_;
+        _symbol = symbol_;
         rToken = IRToken(rToken_);
         rsr = IERC20(rsr_);
         stakingWithdrawalDelay = stakingWithdrawalDelay_;
@@ -64,8 +73,8 @@ contract StakingPoolP0 is IStakingPool, Ownable {
 
         rsr.safeTransferFrom(_msgSender(), address(this), amount);
         _accounts.add(_msgSender());
-        _stakes[_msgSender()] += amount;
-        _totalStaked += amount;
+        _balances[_msgSender()] += amount;
+        _totalSupply += amount;
     }
 
     function unstake(uint256 amount) external override {
@@ -73,7 +82,7 @@ contract StakingPoolP0 is IStakingPool, Ownable {
         processWithdrawals();
 
         require(amount > 0, "Cannot withdraw zero");
-        require(_stakes[_msgSender()] >= amount, "Not enough balance");
+        require(_balances[_msgSender()] >= amount, "Not enough balance");
 
         // Submit delayed withdrawal
         withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp));
@@ -81,16 +90,7 @@ contract StakingPoolP0 is IStakingPool, Ownable {
 
     function balanceOf(address account) external view override returns (uint256) {
         // Option A - ignore funds sent directly to contract
-        return _stakes[account];
-        // Option B - Always consider current RSR balance - Should we also consider it at time of stake/unstake?
-        //  if (_totalStaked == 0) {
-        //      return 0;
-        //  }
-        //  return (rsr.balanceOf(address(this)) * _stakes[account]) / _totalStaked;
-    }
-
-    function totalStaked() external view returns (uint256) {
-        return _totalStaked;
+        return _balances[account];
     }
 
     function processWithdrawals() public {
@@ -98,11 +98,11 @@ contract StakingPoolP0 is IStakingPool, Ownable {
         for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
             if (block.timestamp > withdrawals[withdrawalIndex].timestamp + stakingWithdrawalDelay) {
                 Withdrawal storage withdrawal = withdrawals[withdrawalIndex];
-                uint256 amount = Math.min(_stakes[withdrawal.account], withdrawal.amount);
+                uint256 amount = Math.min(_balances[withdrawal.account], withdrawal.amount);
 
                 if (amount > 0) {
-                    _stakes[withdrawal.account] -= amount;
-                    _totalStaked -= amount;
+                    _balances[withdrawal.account] -= amount;
+                    _totalSupply -= amount;
                     rsr.safeTransfer(withdrawal.account, amount);
                 }
 
@@ -123,14 +123,14 @@ contract StakingPoolP0 is IStakingPool, Ownable {
 
         rsr.safeTransferFrom(address(rToken), address(this), amount);
 
-        uint256 _snapshotTotalStaked = _totalStaked;
-        _totalStaked += amount;
+        uint256 _snapshotTotalStaked = _totalSupply;
+        _totalSupply += amount;
 
         // Redistribute RSR to stakers
         if (_snapshotTotalStaked > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
-                uint256 amtToAdd = (amount * _stakes[_accounts.at(index)]) / _snapshotTotalStaked;
-                _stakes[_accounts.at(index)] += amtToAdd;
+                uint256 amtToAdd = (amount * _balances[_accounts.at(index)]) / _snapshotTotalStaked;
+                _balances[_accounts.at(index)] += amtToAdd;
             }
         }
     }
@@ -142,14 +142,14 @@ contract StakingPoolP0 is IStakingPool, Ownable {
         // Process pending withdrawals
         processWithdrawals();
 
-        uint256 _snapshotTotalStaked = _totalStaked;
-        _totalStaked -= amount;
+        uint256 _snapshotTotalStaked = _totalSupply;
+        _totalSupply -= amount;
 
         // Remove RSR for stakers
         if (_snapshotTotalStaked > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
-                uint256 amtToRemove = (amount * _stakes[_accounts.at(index)]) / _snapshotTotalStaked;
-                _stakes[_accounts.at(index)] -= amtToRemove;
+                uint256 amtToRemove = (amount * _balances[_accounts.at(index)]) / _snapshotTotalStaked;
+                _balances[_accounts.at(index)] -= amtToRemove;
             }
         }
         // Transfer RSR to RToken
@@ -158,5 +158,78 @@ contract StakingPoolP0 is IStakingPool, Ownable {
 
     function setStakingWithdrawalDelay(uint256 stakingWithdrawalDelay_) external onlyOwner {
         stakingWithdrawalDelay = stakingWithdrawalDelay_;
+    }
+
+    // ERC20 Interface
+    function name() public view returns (string memory) {
+        return _name;
+    }
+
+    function symbol() public view returns (string memory) {
+        return _symbol;
+    }
+
+    function decimals() public pure returns (uint8) {
+        return 18;
+    }
+
+    function totalSupply() external view override returns (uint256) {
+        return _totalSupply;
+    }
+
+    function transfer(address recipient, uint256 amount) external override returns (bool) {
+        _transfer(_msgSender(), recipient, amount);
+        return true;
+    }
+
+    function _transfer(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) private {
+        require(sender != address(0), "ERC20: transfer from the zero address");
+        require(recipient != address(0), "ERC20: transfer to the zero address");
+
+        // Process pending withdrawals
+        processWithdrawals();
+
+        uint256 senderBalance = _balances[sender];
+        require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
+        _balances[sender] = senderBalance - amount;
+        _balances[recipient] += amount;
+        _accounts.add(recipient);
+    }
+
+    function allowance(address owner_, address spender) public view override returns (uint256) {
+        return _allowances[owner_][spender];
+    }
+
+    function approve(address spender, uint256 amount) public override returns (bool) {
+        _approve(_msgSender(), spender, amount);
+        return true;
+    }
+
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) public override returns (bool) {
+        _transfer(sender, recipient, amount);
+
+        uint256 currentAllowance = _allowances[sender][_msgSender()];
+        require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
+        _approve(sender, _msgSender(), currentAllowance - amount);
+        return true;
+    }
+
+    function _approve(
+        address owner_,
+        address spender,
+        uint256 amount
+    ) private {
+        require(owner_ != address(0), "ERC20: approve from the zero address");
+        require(spender != address(0), "ERC20: approve to the zero address");
+
+        _allowances[owner_][spender] = amount;
     }
 }

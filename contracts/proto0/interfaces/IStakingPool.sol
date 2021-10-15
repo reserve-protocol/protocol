@@ -6,8 +6,6 @@ interface IStakingPool {
 
     function unstake(uint256 amount) external;
 
-    function balanceOf(address account) external returns (uint256);
-
     function addRSR(uint256 amount) external;
 
     function seizeRSR(uint256 amount) external;

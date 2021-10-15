@@ -41,7 +41,9 @@ describe('StakingPoolP0 contract', () => {
 
     // Deploy StakingPool_Sys0
     const StakingPool = await ethers.getContractFactory('StakingPoolP0')
-    stkPool = <StakingPoolP0>await StakingPool.connect(owner).deploy(rToken.address, rsr.address, 0)
+    stkPool = <StakingPoolP0>(
+      await StakingPool.connect(owner).deploy('Staked RSR', 'stRSR', rToken.address, rsr.address, 0)
+    )
     await rToken.connect(owner).setStakingPool(stkPool.address)
   })
 
@@ -54,6 +56,11 @@ describe('StakingPoolP0 contract', () => {
       expect(await stkPool.balanceOf(owner.address)).to.equal(0)
       expect(await stkPool.balanceOf(addr1.address)).to.equal(0)
       expect(await stkPool.balanceOf(addr2.address)).to.equal(0)
+
+      // ERC20
+      expect(await stkPool.name()).to.equal('Staked RSR')
+      expect(await stkPool.symbol()).to.equal('stRSR')
+      expect(await stkPool.totalSupply()).to.equal(0)
     })
   })
 
@@ -68,7 +75,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount)
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
     })
@@ -84,7 +91,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check deposit not registered
       expect(await rsr.balanceOf(stkPool.address)).to.equal(0)
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await stkPool.balanceOf(addr1.address)).to.equal(0)
     })
@@ -106,7 +113,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount1.add(amount2).add(amount3))
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1).sub(amount2))
       expect(await stkPool.balanceOf(addr1.address)).to.equal(amount1.add(amount2))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount3))
@@ -132,7 +139,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes (unchanged)
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount)
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
     })
@@ -193,7 +200,7 @@ describe('StakingPoolP0 contract', () => {
 
       beforeEach(async () => {
         // Set stakingWithdrawalDelay
-        await stkPool.setStakingWithdrawalDelay(stkWithdrawalDelay)
+        await stkPool.connect(owner).setStakingWithdrawalDelay(stkWithdrawalDelay)
 
         // Perform stake
         amount1 = bn(1e18)
@@ -219,7 +226,7 @@ describe('StakingPoolP0 contract', () => {
 
         // Nothing processed so far
         expect(await stkPool.withdrawalIndex()).to.equal(0)
-        expect(await stkPool.totalStaked()).to.equal(amount1.add(amount2).add(amount3))
+        expect(await stkPool.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
         expect(await stkPool.balanceOf(addr1.address)).to.equal(amount1)
 
@@ -230,8 +237,8 @@ describe('StakingPoolP0 contract', () => {
 
         // Nothing processed still
         expect(await stkPool.withdrawalIndex()).to.equal(0)
-        expect(await stkPool.totalStaked()).to.equal(amount1.add(amount2).add(amount3))
-        expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+        expect(await stkPool.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
+        expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
         expect(await stkPool.balanceOf(addr1.address)).to.equal(amount1)
       })
@@ -248,8 +255,8 @@ describe('StakingPoolP0 contract', () => {
 
         // Withdrawal was processed
         expect(await stkPool.withdrawalIndex()).to.equal(1)
-        expect(await stkPool.totalStaked()).to.equal(amount2.add(amount3))
-        expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+        expect(await stkPool.totalSupply()).to.equal(amount2.add(amount3))
+        expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
         expect(await stkPool.balanceOf(addr1.address)).to.equal(0)
       })
@@ -270,8 +277,8 @@ describe('StakingPoolP0 contract', () => {
 
         // Withdrawals were processed
         expect(await stkPool.withdrawalIndex()).to.equal(2)
-        expect(await stkPool.totalStaked()).to.equal(amount3)
-        expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+        expect(await stkPool.totalSupply()).to.equal(amount3)
+        expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
         expect(await stkPool.balanceOf(addr1.address)).to.equal(0)
         expect(await rsr.balanceOf(addr2.address)).to.equal(prevAddr2Balance.add(amount2))
@@ -288,8 +295,8 @@ describe('StakingPoolP0 contract', () => {
 
         // Withdrawals processed
         expect(await stkPool.withdrawalIndex()).to.equal(3)
-        expect(await stkPool.totalStaked()).to.equal(0)
-        expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+        expect(await stkPool.totalSupply()).to.equal(0)
+        expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
         expect(await stkPool.balanceOf(addr1.address)).to.equal(0)
         expect(await rsr.balanceOf(addr2.address)).to.equal(prevAddr2Balance.add(amount2).add(amount3))
@@ -331,7 +338,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount)
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
 
@@ -340,7 +347,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.add(amount2))
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stkPool.balanceOf(addr1.address)).to.equal(amount.add(amount2))
     })
@@ -358,7 +365,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(2))
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
@@ -369,7 +376,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(2).add(amount2))
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await stkPool.balanceOf(addr1.address)).to.equal(amount.add(amount2.div(2)))
@@ -392,7 +399,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(3))
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
@@ -405,7 +412,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(3).add(amount2))
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
@@ -425,7 +432,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount)
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
 
@@ -434,7 +441,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.sub(amount2))
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stkPool.balanceOf(addr1.address)).to.equal(amount.sub(amount2))
     })
@@ -452,7 +459,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(2))
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
@@ -463,7 +470,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(2).sub(amount2))
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await stkPool.balanceOf(addr1.address)).to.equal(amount.sub(amount2.div(2)))
@@ -486,7 +493,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(3))
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
@@ -499,7 +506,7 @@ describe('StakingPoolP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount.mul(3).sub(amount2))
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalStaked())
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
@@ -507,6 +514,106 @@ describe('StakingPoolP0 contract', () => {
       expect(await stkPool.balanceOf(addr1.address)).to.equal(amount.sub(amount2.div(3)))
       expect(await stkPool.balanceOf(addr2.address)).to.equal(amount.sub(amount2.div(3)))
       expect(await stkPool.balanceOf(addr3.address)).to.equal(amount.sub(amount2.div(3)))
+    })
+  })
+
+  describe('Staking Withdrawal Delay', function () {
+    const stkWithdrawalDelay: number = 20000
+
+    it('Should update correctly if Owner', async function () {
+      expect(await stkPool.stakingWithdrawalDelay()).to.equal(0)
+
+      // Update parameter
+      await stkPool.connect(owner).setStakingWithdrawalDelay(stkWithdrawalDelay)
+
+      expect(await stkPool.stakingWithdrawalDelay()).to.equal(stkWithdrawalDelay)
+    })
+
+    it('Should not allow to update if not Owner', async function () {
+      expect(await stkPool.stakingWithdrawalDelay()).to.equal(0)
+
+      // Update parameter
+      await expect(stkPool.connect(addr1).setStakingWithdrawalDelay(stkWithdrawalDelay)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      expect(await stkPool.stakingWithdrawalDelay()).to.equal(0)
+    })
+  })
+
+  describe('Transfers', () => {
+    let amount: BigNumber
+
+    beforeEach(async function () {
+      // Stake some RSR
+      amount = bn(10e18)
+
+      // Approve transfer and stake
+      await rsr.connect(addr1).approve(stkPool.address, amount)
+      await stkPool.connect(addr1).stake(amount)
+    })
+
+    it('Should transfer stakes between accounts', async function () {
+      const addr1BalancePrev = await stkPool.balanceOf(addr1.address)
+      const addr2BalancePrev = await stkPool.balanceOf(addr2.address)
+      const totalSupplyPrev = await stkPool.totalSupply()
+
+      //  Perform transfer
+      await stkPool.connect(addr1).transfer(addr2.address, amount)
+
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(addr1BalancePrev.sub(amount))
+      expect(await stkPool.balanceOf(addr2.address)).to.equal(addr2BalancePrev.add(amount))
+      expect(await stkPool.totalSupply()).to.equal(totalSupplyPrev)
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount)
+    })
+
+    it('Should not transfer stakes if no balance', async function () {
+      const addr1BalancePrev = await stkPool.balanceOf(addr1.address)
+      const addr2BalancePrev = await stkPool.balanceOf(addr2.address)
+      const totalSupplyPrev = await stkPool.totalSupply()
+
+      //  Perform transfer with user with no stake
+      await expect(stkPool.connect(addr2).transfer(addr1.address, amount)).to.be.revertedWith(
+        'ERC20: transfer amount exceeds balance'
+      )
+
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
+      expect(await stkPool.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
+      expect(await stkPool.totalSupply()).to.equal(totalSupplyPrev)
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount)
+    })
+
+    it('Should transferFrom stakes between accounts', async function () {
+      const addr1BalancePrev = await stkPool.balanceOf(addr1.address)
+      const addr2BalancePrev = await stkPool.balanceOf(addr2.address)
+      const totalSupplyPrev = await stkPool.totalSupply()
+
+      // Set allowance and transfer
+      await stkPool.connect(addr1).approve(addr2.address, amount)
+      await stkPool.connect(addr2).transferFrom(addr1.address, other.address, amount)
+
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(addr1BalancePrev.sub(amount))
+      expect(await stkPool.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
+      expect(await stkPool.balanceOf(other.address)).to.equal(amount)
+      expect(await stkPool.totalSupply()).to.equal(totalSupplyPrev)
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount)
+    })
+
+    it('Should not transferFrom stakes if no allowance', async function () {
+      const addr1BalancePrev = await stkPool.balanceOf(addr1.address)
+      const addr2BalancePrev = await stkPool.balanceOf(addr2.address)
+      const totalSupplyPrev = await stkPool.totalSupply()
+
+      // Set allowance and transfer
+      await expect(stkPool.connect(addr2).transferFrom(addr1.address, other.address, amount)).to.be.revertedWith(
+        'ERC20: transfer amount exceeds allowance'
+      )
+
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
+      expect(await stkPool.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
+      expect(await stkPool.balanceOf(other.address)).to.equal(0)
+      expect(await stkPool.totalSupply()).to.equal(totalSupplyPrev)
+      expect(await rsr.balanceOf(stkPool.address)).to.equal(amount)
     })
   })
 })
