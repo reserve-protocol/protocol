@@ -84,7 +84,7 @@ describe('VaultP0 contract', () => {
 
   describe('Deployment', () => {
     const expectTokenInfo = async (index: number, tokenInfo: Partial<ITokenInfo>) => {
-      const { tokenAddress, quantity } = await vault.tokenInfoAt(index)
+      const { tokenAddress, quantity } = await vault.tokenAt(index)
 
       expect(tokenAddress).to.equal(tokenInfo.tokenAddress)
       expect(quantity).to.equal(tokenInfo.quantity)
