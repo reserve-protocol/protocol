@@ -1,11 +1,11 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { BN_SCALE_FACTOR } from '../common/constants'
-import { bn, fp } from '../common/numbers'
-import { ERC20Mock } from '../typechain/ERC20Mock.d'
+import { BN_SCALE_FACTOR } from '../../common/constants'
+import { bn, fp } from '../../common/numbers'
+import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { ContractFactory } from 'ethers'
 import { BigNumberish } from 'ethers'
-import { BasketCallerMock } from '../typechain/BasketCallerMock.d'
+import { BasketCallerMock } from '../../typechain/BasketCallerMock'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 const genesisQty_half = BN_SCALE_FACTOR.div(2)

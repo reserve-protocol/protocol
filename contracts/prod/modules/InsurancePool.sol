@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import "../interfaces/IInsurancePool.sol";
 import "../interfaces/IRToken.sol";
-import "../helpers/ErrorMessages.sol";
+import "../../libraries/CommonErrors.sol";
 
 /*
  * @title InsurancePool
@@ -103,7 +103,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
 
     function stake(uint256 amount) external override update(_msgSender()) {
         if (amount == 0) {
-            revert CannotStakeZero();
+            revert CommonErrors.CannotStakeZero();
         }
         IERC20Upgradeable(address(rsr)).safeTransferFrom(_msgSender(), address(this), amount);
         deposits.push(Delayed(_msgSender(), amount, block.timestamp));
@@ -112,10 +112,10 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
 
     function unstake(uint256 amount) public override update(_msgSender()) {
         if (amount == 0) {
-            revert CannotWithdrawZero();
+            revert CommonErrors.CannotWithdrawZero();
         }
         if (_balanceOf(_msgSender()) < amount) {
-            revert NotEnoughBalance();
+            revert CommonErrors.NotEnoughBalance();
         }
         withdrawals.push(Delayed(_msgSender(), amount, block.timestamp));
         emit WithdrawalInitiated(_msgSender(), amount);
@@ -141,7 +141,7 @@ contract InsurancePool is IInsurancePool, OwnableUpgradeable, UUPSUpgradeable {
     /// Callable only by RToken address
     function makeInsurancePayment(uint256 amount) external override update(address(0)) {
         if (_msgSender() != address(rToken)) {
-            revert OnlyRToken();
+            revert CommonErrors.OnlyRToken();
         }
         IERC20Upgradeable(address(rToken)).safeTransferFrom(address(rToken), address(this), amount);
 

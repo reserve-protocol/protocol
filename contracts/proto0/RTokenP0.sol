@@ -10,7 +10,7 @@ import "./VaultP0.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IVault.sol";
 
-contract RToken is IRToken, ERC20, Ownable {
+contract RTokenP0 is IRToken, ERC20, Ownable {
     using SafeERC20 for IERC20;
 
     uint256 public constant SCALE = 1e18;
@@ -30,7 +30,11 @@ contract RToken is IRToken, ERC20, Ownable {
     bool public paused;
     bool public inDefault;
 
-    constructor(string memory name, string memory symbol, IVault vault) ERC20(name, symbol) {
+    constructor(
+        string memory name,
+        string memory symbol,
+        IVault vault
+    ) ERC20(name, symbol) {
         _vault = vault;
         pauser = _msgSender();
     }
@@ -69,7 +73,7 @@ contract RToken is IRToken, ERC20, Ownable {
     function redeem(uint256 amount) external override notPaused {
         require(amount > 0, "Cannot redeem zero");
         _burn(_msgSender(), amount);
-        
+
         uint256 BUs = _toBUs(amount);
         _vault.redeem(BUs);
 
@@ -111,10 +115,10 @@ contract RToken is IRToken, ERC20, Ownable {
     }
 
     function _toBUs(uint256 amount) internal view returns (uint256) {
-        return amount * _basketDilutionRatio / _meltingRatio;
+        return (amount * _basketDilutionRatio) / _meltingRatio;
     }
 
     function _fromBUs(uint256 amount) internal view returns (uint256) {
-        return amount * _meltingRatio / _basketDilutionRatio;
+        return (amount * _meltingRatio) / _basketDilutionRatio;
     }
 }

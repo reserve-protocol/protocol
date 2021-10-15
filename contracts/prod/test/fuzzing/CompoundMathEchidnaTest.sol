@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity ^0.8.0;
 
-import "../../libraries/CompoundMath.sol";
+import "../../../libraries/CompoundMath.sol";
 
 contract CompoundMathEchidnaTest {
     function compoundForZeroTimedelta(uint256 scale, uint256 compoundRate) public pure {

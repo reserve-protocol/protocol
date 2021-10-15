@@ -8,14 +8,14 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
 import "./libraries/Basket.sol";
-import "./libraries/CompoundMath.sol";
+import "../libraries/CompoundMath.sol";
 import "./libraries/Token.sol";
 import "./interfaces/ITXFee.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IAtomicExchange.sol";
 import "./interfaces/IInsurancePool.sol";
 import "./interfaces/ICircuitBreaker.sol";
-import "./helpers/ErrorMessages.sol";
+import "../libraries/CommonErrors.sol";
 
 /**
  * @title RToken
@@ -95,7 +95,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
     modifier canTrade() {
         if (rebalancingFrozen()) {
-            revert RebalancingIsFrozen();
+            revert CommonErrors.RebalancingIsFrozen();
         }
         _;
     }
@@ -150,15 +150,15 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Mintings are slow and take time to setle.
     function issue(uint256 amount) external override everyBlock {
         if (config.circuitBreaker.paused()) {
-            revert CircuitPaused();
+            revert CommonErrors.CircuitPaused();
         }
 
         if (amount <= config.minMintingSize) {
-            revert MintingAmountTooLow();
+            revert CommonErrors.MintingAmountTooLow();
         }
 
         if (basket.size == 0) {
-            revert EmptyBasket();
+            revert CommonErrors.EmptyBasket();
         }
 
         uint256[] memory amounts = issueAmounts(amount);
@@ -173,11 +173,11 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Anyone can call this function to immediately redeem RToken for collateral tokens.
     function redeem(uint256 amount) external override everyBlock {
         if (amount == 0) {
-            revert RedeemAmountCannotBeZero();
+            revert CommonErrors.RedeemAmountCannotBeZero();
         }
 
         if (basket.size == 0) {
-            revert EmptyBasket();
+            revert CommonErrors.EmptyBasket();
         }
 
         uint256[] memory amounts = redemptionAmounts(amount);
@@ -204,11 +204,11 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Unfreezes rebalancing. Only callable by the freezer.
     function unfreezeRebalancing() external override {
         if (!rebalancingFrozen()) {
-            revert RebalancingAlreadyUnfrozen();
+            revert CommonErrors.RebalancingAlreadyUnfrozen();
         }
 
         if (_msgSender() != freezer) {
-            revert Unauthorized();
+            revert CommonErrors.Unauthorized();
         }
 
         rsrToken.safeTransfer(freezer, config.rebalancingFreezeCost);
@@ -219,7 +219,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// A light wrapper to prevent sends to contract address.
     function transfer(address recipient, uint256 amount) public override returns (bool) {
         if (recipient == address(this)) {
-            revert TransferToContractAddress();
+            revert CommonErrors.TransferToContractAddress();
         }
 
         return super.transfer(recipient, amount);
@@ -232,7 +232,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         uint256 amount
     ) public override returns (bool) {
         if (recipient == address(this)) {
-            revert TransferToContractAddress();
+            revert CommonErrors.TransferToContractAddress();
         }
         return super.transferFrom(sender, recipient, amount);
     }
@@ -300,15 +300,15 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Reverts if any of the tokens in the list are set incorrectly.
     function _checkNewBasket(Token.Info[] memory tokens) internal view {
         if (tokens.length > type(uint16).max) {
-            revert BasketTooBig();
+            revert CommonErrors.BasketTooBig();
         }
         for (uint16 i = 0; i < tokens.length; i++) {
             if (tokens[i].slippageTolerance > SCALE) {
-                revert SlippageToleranceTooBig();
+                revert CommonErrors.SlippageToleranceTooBig();
             }
 
             if (tokens[i].maxTrade == 0 || tokens[i].rateLimit == 0) {
-                revert UninitializedTokens();
+                revert CommonErrors.UninitializedTokens();
             }
         }
     }
@@ -316,15 +316,15 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Reverts if any of the config values are set incorrectly.
     function _checkConfig(Config memory c) internal view {
         if (c.expansionPerSecond > SCALE) {
-            revert SupplyExpansionTooLarge();
+            revert CommonErrors.SupplyExpansionTooLarge();
         }
 
         if (c.expenditureFactor > SCALE) {
-            revert ExpenditureFactorTooLarge();
+            revert CommonErrors.ExpenditureFactorTooLarge();
         }
 
         if (c.spread > SCALE) {
-            revert SpreadTooLarge();
+            revert CommonErrors.SpreadTooLarge();
         }
     }
 
@@ -482,10 +482,10 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
     /// Starts a time-delayed minting.
     function _startSlowMinting(address account, uint256 amount) internal {
         if (account == address(0)) {
-            revert MintToZeroAddressNotAllowed();
+            revert CommonErrors.MintToZeroAddressNotAllowed();
         }
         if (amount == 0) {
-            revert CannotMintZero();
+            revert CommonErrors.CannotMintZero();
         }
 
         Minting memory m = Minting(amount, account);
@@ -533,10 +533,10 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
 
         // TODO: Maybe exact equality is too much to ask? Discover during tests.
         if (sellToken.myBalance() - initialSellBal != sellAmount) {
-            revert BadSell();
+            revert CommonErrors.BadSell();
         }
         if (buyToken.myBalance() - initialBuyBal < minBuyAmount) {
-            revert BadBuy();
+            revert CommonErrors.BadBuy();
         }
         sellToken.safeApprove(address(config.exchange), 0);
     }

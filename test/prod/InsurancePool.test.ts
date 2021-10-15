@@ -1,13 +1,13 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { ZERO_ADDRESS, MAX_UINT256 } from '../common/constants'
-import { advanceTime } from './utils/time'
+import { ZERO_ADDRESS, MAX_UINT256 } from '../../common/constants'
+import { advanceTime } from '../utils/time'
 import { BigNumber, ContractFactory } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { ReserveRightsTokenMock } from '../typechain/ReserveRightsTokenMock.d'
-import { RSR } from '../typechain/RSR.d'
-import { InsurancePoolMock } from '../typechain/InsurancePoolMock.d'
-import { RTokenMock } from '../typechain/RTokenMock.d'
+import { ReserveRightsTokenMock } from '../../typechain/ReserveRightsTokenMock.d'
+import { RSR } from '../../typechain/RSR.d'
+import { InsurancePoolMock } from '../../typechain/InsurancePoolMock.d'
+import { RTokenMock } from '../../typechain/RTokenMock.d'
 
 // RToken configuration
 const config = {

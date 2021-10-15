@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity ^0.8.4;
 
-import "../ERC20Mock.sol";
+import "../../../mocks/ERC20Mock.sol";
 import "../../libraries/Token.sol";
 
 /// @dev A contract that will receive a token, and allows for it to be retrieved.
