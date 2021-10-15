@@ -7,21 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./interfaces/IVault.sol";
 
-struct Token {
-    address tokenAddress;
-    uint256 quantity; // Quantity required for each basket unit
-}
-
-struct Basket {
-    mapping(uint16 => Token) tokens;
-    uint16 size;
-}
-
 contract VaultP0 is IVault, Ownable {
     using SafeERC20 for IERC20;
 
-    uint256 public SCALE = 1e18;
-    uint8 public decimals = 18;
+    uint8 public constant decimals = 18;
 
     Basket internal _basket;
 
@@ -44,7 +33,7 @@ contract VaultP0 is IVault, Ownable {
         require(amount > 0, "Cannot issue zero");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory tokenAmounts = _tokenAmounts(amount);
+        uint256[] memory tokenAmounts = tokenAmounts(amount);
 
         for (uint16 i = 0; i < _basket.size; i++) {
             IERC20(_basket.tokens[i].tokenAddress).safeTransferFrom(_msgSender(), address(this), tokenAmounts[i]);
@@ -59,7 +48,7 @@ contract VaultP0 is IVault, Ownable {
         require(amount <= basketUnits[_msgSender()], "Not enough units");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory tokenAmounts = _tokenAmounts(amount);
+        uint256[] memory tokenAmounts = tokenAmounts(amount);
 
         basketUnits[_msgSender()] -= amount;
         totalUnits -= amount;
@@ -70,18 +59,18 @@ contract VaultP0 is IVault, Ownable {
     }
 
     // Returns the collateral token quantities required to issue/redeem a Basket Unit
-    function _tokenAmounts(uint256 amount) internal view returns (uint256[] memory parts) {
+    function tokenAmounts(uint256 amount) public view override returns (uint256[] memory parts) {
         parts = new uint256[](_basket.size);
         for (uint16 i = 0; i < _basket.size; i++) {
             parts[i] = (amount * _basket.tokens[i].quantity) / 10**decimals;
         }
     }
 
-    function basketSize() external view returns (uint16) {
+    function basketSize() external view override returns (uint16) {
         return _basket.size;
     }
 
-    function tokenInfoAt(uint16 index) external view returns (Token memory) {
+    function tokenAt(uint16 index) external view override returns (Token memory) {
         Token memory _tkn = _basket.tokens[index];
         return _tkn;
     }
