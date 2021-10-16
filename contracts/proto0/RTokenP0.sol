@@ -6,9 +6,10 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "./VaultP0.sol";
 import "./interfaces/IRToken.sol";
+import "./interfaces/IFaucet.sol";
 import "./interfaces/IVault.sol";
+import "./interfaces/ICollateral.sol";
 
 contract RTokenP0 is IRToken, ERC20, Ownable {
     using SafeERC20 for IERC20;
@@ -16,27 +17,37 @@ contract RTokenP0 is IRToken, ERC20, Ownable {
     uint256 public constant SCALE = 1e18;
 
     // base factor = exchange rate between Vault BUs and RTokens
-    // base factor = b = _meltingRatio / _basketDilutionRatio
+    // base factor = b = _meltingRatioScaled / _basketDilutionRatioScaled
     // <RToken> = b * <Basket Unit Vector>
     // #RTokens <= #BUs / b
-    // #BUs = _vault.basketUnits(address(this))
+    // #BUs = vault.basketUnits(address(this))
 
-    uint256 internal _meltingRatio; // increases the base factor
-    uint256 internal _basketDilutionRatio; // decreases the base factor
+    uint256 internal _meltingRatioScaled = 1e18; // increases the base factor
+    uint256 internal _basketDilutionRatioScaled = 1e18; // decreases the base factor
 
-    IVault public _vault;
+    uint256 public fScaled; // the fraction of revenue that goes to stakers
+    uint256 public prevBasketFiatcoinRate; // the redemption value of the basket in fiatcoins last time f was updated
+
+    uint256 public melted;
+    uint256 public targetBUs;
+
+    IVault public vault;
+    IFaucet public faucet;
 
     address public pauser;
     bool public paused;
     bool public inDefault;
 
     constructor(
-        string memory name,
-        string memory symbol,
-        IVault vault
-    ) ERC20(name, symbol) {
-        _vault = vault;
+        string memory name_,
+        string memory symbol_,
+        IVault vault_,
+        IFaucet faucet_
+    ) ERC20(name_, symbol_) {
+        vault = vault_;
+        faucet = faucet_;
         pauser = _msgSender();
+        prevBasketFiatcoinRate = vault.basketFiatcoinRate();
     }
 
     modifier notPaused() {
@@ -44,7 +55,14 @@ contract RTokenP0 is IRToken, ERC20, Ownable {
         _;
     }
 
-    function act() external override notPaused {
+    modifier before() {
+        faucet.drip();
+        _melt();
+        _diluteBasket();
+        _;
+    }
+
+    function act() external override notPaused before {
         // Closed form computation of state
         // Launch any auctions
     }
@@ -54,35 +72,37 @@ contract RTokenP0 is IRToken, ERC20, Ownable {
         // Check for default
     }
 
-    function issue(uint256 amount) external override notPaused {
+    function issue(uint256 amount) external override notPaused before {
         require(amount > 0, "Cannot issue zero");
         uint256 BUs = _toBUs(amount);
-        uint256[] memory tokenAmounts = _vault.tokenAmounts(BUs);
-        Token memory token;
+        uint256[] memory tokenAmounts = vault.tokenAmounts(BUs);
+        ICollateral c;
 
-        for (uint16 i = 0; i < _vault.basketSize(); i++) {
-            token = _vault.tokenAt(i);
-            IERC20(token.tokenAddress).safeTransferFrom(_msgSender(), address(this), tokenAmounts[i]);
-            IERC20(token.tokenAddress).safeApprove(address(_vault), tokenAmounts[i]);
+        for (uint16 i = 0; i < vault.basketSize(); i++) {
+            c = ICollateral(vault.collateralAt(i));
+            IERC20(c.erc20()).safeTransferFrom(_msgSender(), address(this), tokenAmounts[i]);
+            IERC20(c.erc20()).safeApprove(address(vault), tokenAmounts[i]);
         }
 
-        _vault.issue(BUs);
+        vault.issue(BUs);
         _mint(_msgSender(), amount);
+        targetBUs += BUs;
     }
 
-    function redeem(uint256 amount) external override notPaused {
+    function redeem(uint256 amount) external override notPaused before {
         require(amount > 0, "Cannot redeem zero");
         _burn(_msgSender(), amount);
 
         uint256 BUs = _toBUs(amount);
-        _vault.redeem(BUs);
+        vault.redeem(BUs);
+        targetBUs -= BUs;
 
-        uint256[] memory tokenAmounts = _vault.tokenAmounts(BUs);
-        Token memory token;
+        uint256[] memory tokenAmounts = vault.tokenAmounts(BUs);
+        ICollateral c;
 
-        for (uint16 i = 0; i < _vault.basketSize(); i++) {
-            token = _vault.tokenAt(i);
-            IERC20(token.tokenAddress).safeTransfer(_msgSender(), tokenAmounts[i]);
+        for (uint16 i = 0; i < vault.basketSize(); i++) {
+            c = ICollateral(vault.collateralAt(i));
+            IERC20(c.erc20()).safeTransfer(_msgSender(), tokenAmounts[i]);
         }
     }
 
@@ -101,24 +121,36 @@ contract RTokenP0 is IRToken, ERC20, Ownable {
     }
 
     function setVault(IVault vault) external onlyOwner {
-        _vault = vault;
+        vault = vault;
     }
 
     function quoteIssue(uint256 amount) public view override returns (uint256[] memory) {
         require(amount > 0, "Cannot quote issue zero");
-        return _vault.tokenAmounts(_toBUs(amount));
+        return vault.tokenAmounts(_toBUs(amount));
     }
 
     function quoteRedeem(uint256 amount) public view override returns (uint256[] memory) {
         require(amount > 0, "Cannot quote redeem zero");
-        return _vault.tokenAmounts(_toBUs(amount));
+        return vault.tokenAmounts(_toBUs(amount));
     }
 
     function _toBUs(uint256 amount) internal view returns (uint256) {
-        return (amount * _basketDilutionRatio) / _meltingRatio;
+        return (amount * _basketDilutionRatioScaled) / _meltingRatioScaled;
     }
 
     function _fromBUs(uint256 amount) internal view returns (uint256) {
-        return (amount * _meltingRatio) / _basketDilutionRatio;
+        return (amount * _meltingRatioScaled) / _basketDilutionRatioScaled;
+    }
+
+    function _melt() internal {
+        uint256 amount = balanceOf(address(this));
+        _burn(address(this), amount);
+        melted += amount;
+        _meltingRatioScaled = SCALE * (totalSupply() + melted) / totalSupply();
+    }
+
+    function _diluteBasket() internal {
+        uint256 current = vault.basketFiatcoinRate();
+        _basketDilutionRatioScaled = SCALE + fScaled * (SCALE * current / prevBasketFiatcoinRate - SCALE);
     }
 }

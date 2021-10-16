@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-struct Token {
-    address tokenAddress;
-    uint256 quantity; // Quantity required for each basket unit
-}
+import "../interfaces/ICollateral.sol";
 
 struct Basket {
-    mapping(uint16 => Token) tokens;
+    mapping(uint16 => ICollateral) collateral;
     uint16 size;
 }
 
@@ -20,5 +17,7 @@ interface IVault {
 
     function basketSize() external view returns (uint16);
 
-    function tokenAt(uint16 index) external view returns (Token memory);
+    function collateralAt(uint16 index) external view returns (address);
+
+    function basketFiatcoinRate() external returns (uint256);
 }

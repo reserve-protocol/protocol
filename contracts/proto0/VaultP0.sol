@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "./collateral/Collateral.sol";
 import "./interfaces/IVault.sol";
 
 contract VaultP0 is IVault, Ownable {
@@ -19,11 +20,11 @@ contract VaultP0 is IVault, Ownable {
 
     IVault[] public backups;
 
-    constructor(Token[] memory basketTokens, IVault[] memory backupVaults) {
+    constructor(Collateral[] memory collateral, IVault[] memory backupVaults) {
         // Set default immutable basket
-        _basket.size = uint16(basketTokens.length);
+        _basket.size = uint16(collateral.length);
         for (uint16 i = 0; i < _basket.size; i++) {
-            _basket.tokens[i] = basketTokens[i];
+            _basket.collateral[i] = collateral[i];
         }
 
         setBackups(backupVaults);
@@ -36,7 +37,7 @@ contract VaultP0 is IVault, Ownable {
         uint256[] memory tokenAmounts = tokenAmounts(amount);
 
         for (uint16 i = 0; i < _basket.size; i++) {
-            IERC20(_basket.tokens[i].tokenAddress).safeTransferFrom(_msgSender(), address(this), tokenAmounts[i]);
+            IERC20(_basket.collateral[i].erc20()).safeTransferFrom(_msgSender(), address(this), tokenAmounts[i]);
         }
 
         basketUnits[_msgSender()] += amount;
@@ -54,7 +55,7 @@ contract VaultP0 is IVault, Ownable {
         totalUnits -= amount;
 
         for (uint16 i = 0; i < _basket.size; i++) {
-            IERC20(_basket.tokens[i].tokenAddress).safeTransfer(_msgSender(), tokenAmounts[i]);
+            IERC20(_basket.collateral[i].erc20()).safeTransfer(_msgSender(), tokenAmounts[i]);
         }
     }
 
@@ -62,7 +63,7 @@ contract VaultP0 is IVault, Ownable {
     function tokenAmounts(uint256 amount) public view override returns (uint256[] memory parts) {
         parts = new uint256[](_basket.size);
         for (uint16 i = 0; i < _basket.size; i++) {
-            parts[i] = (amount * _basket.tokens[i].quantity) / 10**decimals;
+            parts[i] = (amount * _basket.collateral[i].quantity()) / 10**decimals;
         }
     }
 
@@ -70,9 +71,8 @@ contract VaultP0 is IVault, Ownable {
         return _basket.size;
     }
 
-    function tokenAt(uint16 index) external view override returns (Token memory) {
-        Token memory _tkn = _basket.tokens[index];
-        return _tkn;
+    function collateralAt(uint16 index) external view override returns (address) {
+        return address(_basket.collateral[index]);
     }
 
     function setBackups(IVault[] memory backupVaults) public onlyOwner {
@@ -81,5 +81,14 @@ contract VaultP0 is IVault, Ownable {
 
     function getBackups() public view returns (IVault[] memory) {
         return backups;
+    }
+
+    // Returns how many fiatcoins a single BU can be redeemed for. 
+    function basketFiatcoinRate() external override returns (uint256 sum) {
+        ICollateral c;
+        for (uint16 i = 0; i < _basket.size; i++) {
+            c = ICollateral(_basket.collateral[i]);
+            sum += c.quantity() * c.getRedemptionRate() / c.decimals();
+        }
     }
 }
