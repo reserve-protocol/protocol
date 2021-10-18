@@ -10,6 +10,7 @@ import "./interfaces/IRToken.sol";
 import "./interfaces/IFaucet.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/ICollateral.sol";
+import "./OracleP0.sol";
 
 contract RTokenP0 is IRToken, ERC20, Ownable {
     using SafeERC20 for IERC20;
@@ -33,6 +34,7 @@ contract RTokenP0 is IRToken, ERC20, Ownable {
 
     IVault public vault;
     IFaucet public faucet;
+    Oracle public oracle;
 
     address public pauser;
     bool public paused;
@@ -42,10 +44,12 @@ contract RTokenP0 is IRToken, ERC20, Ownable {
         string memory name_,
         string memory symbol_,
         IVault vault_,
-        IFaucet faucet_
+        IFaucet faucet_,
+        Oracle oracle_
     ) ERC20(name_, symbol_) {
         vault = vault_;
         faucet = faucet_;
+        oracle = oracle_;
         pauser = _msgSender();
         prevBasketFiatcoinRate = vault.basketFiatcoinRate();
     }
@@ -65,11 +69,14 @@ contract RTokenP0 is IRToken, ERC20, Ownable {
     function act() external override notPaused before {
         // Closed form computation of state
         // Launch any auctions
+
+        // 1. Trading mechanism
+        // 2. Trading algorithm
     }
 
     function detectDefault() external override notPaused {
-        // Oracle readouts
-        // Check for default
+        // 1. Check fiatcoin redemption rates have not decreased since last time.
+        // 2. Check oracle prices of fiatcoins for default
     }
 
     function issue(uint256 amount) external override notPaused before {
