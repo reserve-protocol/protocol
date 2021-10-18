@@ -60,6 +60,7 @@ describe('StakingPoolP0 contract', () => {
       // ERC20
       expect(await stkPool.name()).to.equal('Staked RSR')
       expect(await stkPool.symbol()).to.equal('stRSR')
+      expect(await stkPool.decimals()).to.equal(18)
       expect(await stkPool.totalSupply()).to.equal(0)
     })
   })
@@ -590,8 +591,12 @@ describe('StakingPoolP0 contract', () => {
 
       // Set allowance and transfer
       await stkPool.connect(addr1).approve(addr2.address, amount)
+
+      expect(await stkPool.allowance(addr1.address, addr2.address)).to.equal(amount)
+
       await stkPool.connect(addr2).transferFrom(addr1.address, other.address, amount)
 
+      expect(await stkPool.allowance(addr1.address, addr2.address)).to.equal(0)
       expect(await stkPool.balanceOf(addr1.address)).to.equal(addr1BalancePrev.sub(amount))
       expect(await stkPool.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
       expect(await stkPool.balanceOf(other.address)).to.equal(amount)
@@ -605,10 +610,10 @@ describe('StakingPoolP0 contract', () => {
       const totalSupplyPrev = await stkPool.totalSupply()
 
       // Set allowance and transfer
+      expect(await stkPool.allowance(addr1.address, addr2.address)).to.equal(0)
       await expect(stkPool.connect(addr2).transferFrom(addr1.address, other.address, amount)).to.be.revertedWith(
         'ERC20: transfer amount exceeds allowance'
       )
-
       expect(await stkPool.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
       expect(await stkPool.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
       expect(await stkPool.balanceOf(other.address)).to.equal(0)

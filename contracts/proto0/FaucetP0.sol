@@ -45,6 +45,27 @@ contract FaucetP0 is IFaucet {
         token.safeTransfer(beneficiary, releasable);
     }
 
+    function getVestedAmount(uint256 timestamp) external view returns (uint256) {
+        uint256 releasable = 0;
+        for (
+            uint256 index = 0; /*handoutIndex*/
+            index < handouts.length;
+            index++
+        ) {
+            Handout memory currHandout = handouts[index];
+
+            // Check if there are still funds to be released
+            if (currHandout.released < currHandout.amount) {
+                uint256 vestedAmount = _vestedAmount(currHandout, timestamp);
+
+                // Release amount
+                releasable += vestedAmount - currHandout.released;
+            }
+        }
+
+        return releasable;
+    }
+
     function _processHandouts(uint256 timestamp) internal returns (uint256) {
         uint256 releasable = 0;
         for (
@@ -74,7 +95,7 @@ contract FaucetP0 is IFaucet {
     }
 
     function _vestedAmount(Handout memory _handout, uint256 timestamp) internal pure returns (uint256) {
-        if (timestamp < _handout.start) {
+        if (timestamp <= _handout.start) {
             return 0;
         } else if (timestamp > _handout.start + _handout.duration) {
             return _handout.amount;
