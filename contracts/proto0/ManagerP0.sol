@@ -28,7 +28,6 @@ struct Config {
     uint256 shortVWAPPeriod; // the VWAP length used during the raising of the default flag
     uint256 longVWAPPeriod; // the VWAP length used during the lowering of the default flag
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
-
     // Percentage values (relative to SCALE)
     uint256 auctionSize; // the size of an auction, as a fraction of backing
     uint256 issuanceRate; // the number of RToken to issue per block, as a fraction of RToken supply
@@ -76,7 +75,6 @@ contract ManagerP0 is IManager, Ownable {
     address public pauser;
     bool public paused;
 
-
     constructor(
         string memory name_,
         string memory symbol_,
@@ -87,7 +85,14 @@ contract ManagerP0 is IManager, Ownable {
     ) {
         rToken = new RTokenP0(name_, symbol_, _msgSender(), address(this));
         faucet = new FaucetP0(address(this), address(rToken));
-        staking = new StakingPoolP0(string(abi.encodePacked("Staked RSR - ", name_)), string(abi.encodePacked("st", symbol_, "RSR")), _msgSender(), address(rToken), address(rsr_), config_.stakingWithdrawalDelay);
+        staking = new StakingPoolP0(
+            string(abi.encodePacked("Staked RSR - ", name_)),
+            string(abi.encodePacked("st", symbol_, "RSR")),
+            _msgSender(),
+            address(rToken),
+            address(rsr_),
+            config_.stakingWithdrawalDelay
+        );
         vault = vault_;
         oracle = oracle_;
 
@@ -111,12 +116,9 @@ contract ManagerP0 is IManager, Ownable {
 
     function act() external override notPaused before {
         // Launch auctions
-
         // if ()
-
         // Closed form computation of state
         // Launch any auctions
-
         // 1. Trading mechanism
         // 2. Trading algorithm
     }
@@ -183,7 +185,7 @@ contract ManagerP0 is IManager, Ownable {
 
     function _issuanceRate(uint256 amount) internal view returns (uint256) {
         // Lower-bound of 10_000 per block
-        return Math.max(10_000 * 10**rToken.decimals() , rToken.totalSupply() * _config.issuanceRate / SCALE);
+        return Math.max(10_000 * 10**rToken.decimals(), (rToken.totalSupply() * _config.issuanceRate) / SCALE);
     }
 
     function _slowMintingEnd() internal view returns (uint256) {
@@ -194,7 +196,7 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     function _oldestNonEmptyVault() internal view returns (IVault) {
-        for (uint i = 0; i < pastVaults.length; i++) {
+        for (uint256 i = 0; i < pastVaults.length; i++) {
             if (pastVaults[i].basketUnits(address(this)) > 0) {
                 return pastVaults[i];
             }
@@ -203,7 +205,7 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     function _processSlowMintings() internal {
-        for (uint i = 0; i < numSlowMintings; i++) {
+        for (uint256 i = 0; i < numSlowMintings; i++) {
             if (!slowMintings[i].processed && address(slowMintings[i].vault) != address(vault)) {
                 slowMintings[i].undo();
             } else if (!slowMintings[i].processed && slowMintings[i].availableAt >= block.timestamp) {
@@ -217,12 +219,11 @@ contract ManagerP0 is IManager, Ownable {
         uint256 amount = rToken.balanceOf(address(this));
         rToken.burn(address(this), amount);
         melted += amount;
-        _meltingRatioScaled = SCALE * (rToken.totalSupply() + melted) / rToken.totalSupply();
+        _meltingRatioScaled = (SCALE * (rToken.totalSupply() + melted)) / rToken.totalSupply();
     }
 
     function _diluteBasket() internal {
         uint256 current = vault.basketFiatcoinRate();
-        _basketDilutionRatioScaled = SCALE + _config.f * (SCALE * current / prevBasketFiatcoinRate - SCALE);
+        _basketDilutionRatioScaled = SCALE + _config.f * ((SCALE * current) / prevBasketFiatcoinRate - SCALE);
     }
-
 }

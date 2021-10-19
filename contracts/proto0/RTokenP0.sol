@@ -8,10 +8,14 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./interfaces/IRToken.sol";
 
 contract RTokenP0 is IRToken, ERC20, Ownable {
-
     address public manager;
 
-    constructor(string memory name_, string memory symbol_, address owner_, address manager_) ERC20(name_, symbol_) {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        address owner_,
+        address manager_
+    ) ERC20(name_, symbol_) {
         _transferOwnership(owner_);
         manager = manager_;
     }
@@ -35,7 +39,7 @@ contract RTokenP0 is IRToken, ERC20, Ownable {
         manager = manager_;
     }
 
-    function decimals() public override(IRToken, ERC20) view returns (uint8) {
+    function decimals() public view override(IRToken, ERC20) returns (uint8) {
         return 18;
     }
 }

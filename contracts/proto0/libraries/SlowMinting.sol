@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IVault.sol";
 
-
 library SlowMinting {
     using SafeERC20 for IERC20;
 
@@ -19,7 +18,14 @@ library SlowMinting {
         bool processed;
     }
 
-    function start(SlowMinting.Info storage self, IVault vault, uint256 amount, uint256 BUs, address minter, uint256 availableAt) internal {
+    function start(
+        SlowMinting.Info storage self,
+        IVault vault,
+        uint256 amount,
+        uint256 BUs,
+        address minter,
+        uint256 availableAt
+    ) internal {
         self.vault = vault;
         self.amount = amount;
         self.BUs = BUs;
@@ -27,7 +33,7 @@ library SlowMinting {
         self.minter = minter;
         self.availableAt = availableAt;
 
-        for (uint i = 0; i < vault.basketSize(); i++) {
+        for (uint256 i = 0; i < vault.basketSize(); i++) {
             IERC20(vault.collateralAt(i)).safeTransferFrom(minter, address(this), self.basketAmounts[i]);
         }
     }
@@ -36,7 +42,7 @@ library SlowMinting {
         require(!self.processed, "slow minting already processed");
         require(self.availableAt >= block.timestamp, "slow minting needs more time");
 
-        for (uint i = 0; i < self.vault.basketSize(); i++) {
+        for (uint256 i = 0; i < self.vault.basketSize(); i++) {
             IERC20(self.vault.collateralAt(i)).safeApprove(address(self.vault), self.basketAmounts[i]);
         }
         self.vault.issue(self.BUs);
@@ -46,7 +52,7 @@ library SlowMinting {
     function undo(SlowMinting.Info storage self) internal {
         require(!self.processed, "slow minting already processed");
 
-        for (uint i = 0; i < self.vault.basketSize(); i++) {
+        for (uint256 i = 0; i < self.vault.basketSize(); i++) {
             IERC20(self.vault.collateralAt(i)).safeTransfer(self.minter, self.basketAmounts[i]);
         }
         self.processed = true;

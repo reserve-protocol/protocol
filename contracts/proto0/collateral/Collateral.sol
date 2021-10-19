@@ -12,13 +12,17 @@ contract Collateral is ICollateral {
     uint256 internal immutable _quantity;
     uint8 internal immutable _decimals;
 
-    constructor(address erc20_, uint256 quantity_, uint8 decimals_) {
+    constructor(
+        address erc20_,
+        uint256 quantity_,
+        uint8 decimals_
+    ) {
         _erc20 = erc20_;
         _quantity = quantity_;
         _decimals = decimals_;
     }
 
-    // Fiatcoins return 1e18. Lending tokens may have redemption rates > 1e18. 
+    // Fiatcoins return 1e18. Lending tokens may have redemption rates > 1e18.
     function getRedemptionRate() external virtual override returns (uint256) {
         return 1e18;
     }

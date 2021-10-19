@@ -10,8 +10,11 @@ interface IStaticAToken {
 }
 
 contract ATokenCollateral is Collateral {
-
-    constructor(address erc20_, uint256 quantity_, uint8 decimals) Collateral(erc20_, quantity_, decimals) {}
+    constructor(
+        address erc20_,
+        uint256 quantity_,
+        uint8 decimals
+    ) Collateral(erc20_, quantity_, decimals) {}
 
     function getRedemptionRate() external override returns (uint256) {
         return IStaticAToken(_erc20).rate();

@@ -8,13 +8,13 @@ import "../libraries/CommonErrors.sol";
 import "./interfaces/ICollateral.sol";
 
 contract Oracle is Ownable {
-    mapping(address => uint) prices;
+    mapping(address => uint256) prices;
 
-    function setPrice(address token, uint amount) public onlyOwner{
+    function setPrice(address token, uint256 amount) public onlyOwner {
         prices[token] = amount;
     }
 
-    function getPrice(address token) public view returns (uint) {
+    function getPrice(address token) public view returns (uint256) {
         if (prices[token] == 0) {
             revert CommonErrors.PriceNotFound();
         }

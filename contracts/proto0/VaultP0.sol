@@ -85,12 +85,12 @@ contract VaultP0 is IVault, Ownable {
         return backups;
     }
 
-    // Returns how many fiatcoins a single BU can be redeemed for. 
+    // Returns how many fiatcoins a single BU can be redeemed for.
     function basketFiatcoinRate() external override returns (uint256 sum) {
         ICollateral c;
         for (uint256 i = 0; i < _basket.size; i++) {
             c = ICollateral(_basket.collateral[i]);
-            sum += c.quantity() * c.getRedemptionRate() / c.decimals();
+            sum += (c.quantity() * c.getRedemptionRate()) / c.decimals();
         }
     }
 }
