@@ -1,20 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-interface IRToken {
-    function issue(uint256 amount) external;
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-    function redeem(uint256 amount) external;
+interface IRToken is IERC20 {
+    function decimals() external view returns (uint8);
 
-    function act() external;
+    function mint(address recipient, uint256 amount) external returns (bool);
 
-    function detectDefault() external;
-
-    function pause() external;
-
-    function unpause() external;
-
-    function quoteIssue(uint256 amount) external view returns (uint256[] memory);
-
-    function quoteRedeem(uint256 amount) external view returns (uint256[] memory);
+    function burn(address recipient, uint256 amount) external returns (bool);
 }
