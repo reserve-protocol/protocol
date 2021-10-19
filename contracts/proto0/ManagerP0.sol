@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "../Ownable.sol"; // temporary
+// import "@openzeppelin/contracts/access/Ownable.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -11,6 +13,7 @@ import "./interfaces/IFaucet.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/ICollateral.sol";
 import "./interfaces/IOracle.sol";
+import "./interfaces/IManager.sol";
 import "./FaucetP0.sol";
 import "./RTokenP0.sol";
 import "./OracleP0.sol";
@@ -66,27 +69,25 @@ contract ManagerP0 is IManager, Ownable {
 
     // Append-only historical record
     IVault[] public pastVaults;
-    SlowMinting.Info[] internal slowMintings;
+    mapping(uint256 => SlowMinting.Info) public slowMintings;
+    uint256 numSlowMintings;
 
     // Pausing
     address public pauser;
     bool public paused;
 
 
-    // Default rules
-    //   - Issue at current vault
-    //   - Redeem at oldest vault
     constructor(
         string memory name_,
         string memory symbol_,
         IVault vault_,
         IOracle oracle_,
         IERC20 rsr_,
-        Config config_
-    ) ERC20(name_, symbol_) {
+        Config memory config_
+    ) {
         rToken = new RTokenP0(name_, symbol_, _msgSender(), address(this));
         faucet = new FaucetP0(address(this), address(rToken));
-        staking = new StakingPoolP0("Staked RSR - " + name_, "st" + symbol_ + "RSR", _msgSender(), address(rToken), address(rsr_), config_.stakingWithdrawalDelay);
+        staking = new StakingPoolP0(string(abi.encodePacked("Staked RSR - ", name_)), string(abi.encodePacked("st", symbol_, "RSR")), _msgSender(), address(rToken), address(rsr_), config_.stakingWithdrawalDelay);
         vault = vault_;
         oracle = oracle_;
 
@@ -133,8 +134,9 @@ contract ManagerP0 is IManager, Ownable {
         uint256 issuanceRate = _issuanceRate(amount);
         uint256 numBlocks = (amount + issuanceRate - 1) / (issuanceRate);
 
-        SlowMinting.Info memory slowMinting;
-        slowMinting.start(vault, amount, BUs, _msgSender(), _slowMintingEnd() + numBlocks * issuanceRate);
+        SlowMinting.Info storage minting = slowMintings[numSlowMintings + 1];
+        minting.start(vault, amount, BUs, _msgSender(), _slowMintingEnd() + numBlocks * issuanceRate);
+        numSlowMintings++;
     }
 
     function redeem(uint256 amount) external override notPaused before {
@@ -181,14 +183,14 @@ contract ManagerP0 is IManager, Ownable {
 
     function _issuanceRate(uint256 amount) internal view returns (uint256) {
         // Lower-bound of 10_000 per block
-        return Math.max(10_000 * 10**decimals() , rToken.totalSupply() * config.issuanceRate / SCALE);
+        return Math.max(10_000 * 10**rToken.decimals() , rToken.totalSupply() * _config.issuanceRate / SCALE);
     }
 
     function _slowMintingEnd() internal view returns (uint256) {
-        if (slowMintings.length == 0) {
+        if (numSlowMintings == 0) {
             return block.timestamp;
         }
-        return Math.max(block.timestamp, slowMintings[slowMintings.length - 1].availableAt);
+        return Math.max(block.timestamp, slowMintings[numSlowMintings - 1].availableAt);
     }
 
     function _oldestNonEmptyVault() internal view returns (IVault) {
@@ -201,7 +203,7 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     function _processSlowMintings() internal {
-        for (uint i = 0; i < slowMintings.length; i++) {
+        for (uint i = 0; i < numSlowMintings; i++) {
             if (!slowMintings[i].processed && address(slowMintings[i].vault) != address(vault)) {
                 slowMintings[i].undo();
             } else if (!slowMintings[i].processed && slowMintings[i].availableAt >= block.timestamp) {
@@ -212,10 +214,10 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     function _melt() internal {
-        uint256 amount = balanceOf(address(this));
-        _burn(address(this), amount);
+        uint256 amount = rToken.balanceOf(address(this));
+        rToken.burn(address(this), amount);
         melted += amount;
-        _meltingRatioScaled = SCALE * (totalSupply() + melted) / totalSupply();
+        _meltingRatioScaled = SCALE * (rToken.totalSupply() + melted) / rToken.totalSupply();
     }
 
     function _diluteBasket() internal {

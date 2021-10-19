@@ -3,8 +3,10 @@ pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IRToken {
-    function mint(address recipient, uint256 amount) external;
+interface IRToken is IERC20 {
+    function decimals() external view returns (uint8);
 
-    function burn(address recipient, uint256 amount) external;
+    function mint(address recipient, uint256 amount) external returns (bool);
+
+    function burn(address recipient, uint256 amount) external returns (bool);
 }

@@ -4,8 +4,8 @@ pragma solidity 0.8.4;
 import "../interfaces/ICollateral.sol";
 
 struct Basket {
-    mapping(uint16 => ICollateral) collateral;
-    uint16 size;
+    mapping(uint256 => ICollateral) collateral;
+    uint256 size;
 }
 
 interface IVault {
@@ -15,9 +15,11 @@ interface IVault {
 
     function tokenAmounts(uint256 amount) external view returns (uint256[] memory);
 
-    function basketSize() external view returns (uint16);
+    function basketSize() external view returns (uint256);
 
-    function collateralAt(uint16 index) external view returns (address);
+    function collateralAt(uint256 index) external view returns (address);
 
     function basketFiatcoinRate() external returns (uint256);
+
+    function basketUnits(address account) external view returns (uint256);
 }
