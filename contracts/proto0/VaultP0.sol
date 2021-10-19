@@ -34,28 +34,28 @@ contract VaultP0 is IVault, Ownable {
         require(amount > 0, "Cannot issue zero");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory tokenAmounts = tokenAmounts(amount);
+        uint256[] memory amounts = tokenAmounts(amount);
 
         for (uint16 i = 0; i < _basket.size; i++) {
-            IERC20(_basket.collateral[i].erc20()).safeTransferFrom(_msgSender(), address(this), tokenAmounts[i]);
+            IERC20(_basket.collateral[i].erc20()).safeTransferFrom(_msgSender(), address(this), amounts[i]);
         }
 
         basketUnits[_msgSender()] += amount;
         totalUnits += amount;
     }
 
-    function redeem(uint256 amount) external override {
+    function redeem(address redeemer, uint256 amount) external override {
         require(amount > 0, "Cannot redeem zero");
         require(amount <= basketUnits[_msgSender()], "Not enough units");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory tokenAmounts = tokenAmounts(amount);
+        uint256[] memory amounts = tokenAmounts(amount);
 
         basketUnits[_msgSender()] -= amount;
         totalUnits -= amount;
 
         for (uint16 i = 0; i < _basket.size; i++) {
-            IERC20(_basket.collateral[i].erc20()).safeTransfer(_msgSender(), tokenAmounts[i]);
+            IERC20(_basket.collateral[i].erc20()).safeTransfer(redeemer, amounts[i]);
         }
     }
 

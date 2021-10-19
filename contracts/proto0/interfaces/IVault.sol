@@ -11,7 +11,7 @@ struct Basket {
 interface IVault {
     function issue(uint256 amount) external;
 
-    function redeem(uint256 amount) external;
+    function redeem(address redeemer, uint256 amount) external;
 
     function tokenAmounts(uint256 amount) external view returns (uint256[] memory);
 

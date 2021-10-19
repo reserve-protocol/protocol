@@ -7,8 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./interfaces/IStakingPool.sol";
-
-interface IRToken is IERC20 {}
+import "./interfaces/IRToken.sol";
 
 /*
  * @title StakingPool
@@ -52,12 +51,14 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
     constructor(
         string memory name_,
         string memory symbol_,
+        address owner_,
         address rToken_,
         address rsr_,
         uint256 stakingWithdrawalDelay_
     ) {
         _name = name_;
         _symbol = symbol_;
+        _transferOwnership(owner_);
         rToken = IRToken(rToken_);
         rsr = IERC20(rsr_);
         stakingWithdrawalDelay = stakingWithdrawalDelay_;
