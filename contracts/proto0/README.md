@@ -9,7 +9,6 @@ TODO: More
 ### Token Balances
 
 - Vault: holds exactly the collateral to back its own BU issuance
-- RToken: extra collateral tokens held that do not fit in a BU
-- Manager: slow minting collateral tokens
+- Manager: holds RToken that is slow minting, and slush fund for collateral (ie intermediate location for collateral during vault migrations)
 - Faucet: holds revenue RToken to be melted
 - StakingPool: holds staked RSR

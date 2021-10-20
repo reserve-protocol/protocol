@@ -47,16 +47,19 @@ contract ManagerP0 is IManager, Ownable {
 
     uint256 public constant SCALE = 1e18;
 
-    // ECONOMICS
+    // ECONOMICS (Note that SCALE is ignored here. These are the abstract mathematical relationships)
+    //
     // base factor = exchange rate between Vault BUs and RTokens
-    // base factor = b = _meltingRatioScaled / _basketDilutionRatioScaled
+    // base factor = b = _meltingRatio / basketDilutionRatio
+    // basketDilutionRatio = _currentBasketDilution * _historicalBasketDilution
     // <RToken> = b * <Basket Unit Vector>
     // #RTokens <= #BUs / b
     // #BUs = vault.basketUnits(address(this))
 
     Config internal _config;
-    uint256 internal _meltingRatioScaled = 1e18; // increases the base factor
-    uint256 internal _basketDilutionRatioScaled = 1e18; // decreases the base factor
+    uint256 internal _meltingRatio = 1e18;
+    uint256 internal _currentBasketDilution = 1e18; // for this current vault, since the last time *f* was changed
+    uint256 internal _historicalBasketDilution = 1e18; // the product of all historical basket dilutions
 
     // Deployed by Manager
     IRToken public rToken;
@@ -162,14 +165,7 @@ contract ManagerP0 is IManager, Ownable {
 
                     // If the default flag has been raised for 24 (default delay) hours, select new vault
                     if (block.timestamp >= lastDefault + _config.defaultDelay) {
-                        IVault _newVault = _getBestBackupVault();
-                        if (address(_newVault) != address(0)) {
-                            pastVaults.push(vault);
-                            vault = _newVault;
-
-                            //  Lower default flag (keep defaulted tokens in list)
-                            inDefault = false;
-                        }
+                        _switchVaults();
                     }
                 }
             }
@@ -183,6 +179,7 @@ contract ManagerP0 is IManager, Ownable {
 
         SlowMinting.Info storage minting = mintings[mintingCount + 1];
         minting.start(vault, amount, _toBUs(amount), _msgSender(), _slowMintingEnd() + numBlocks * issuanceRate);
+        rToken.mint(address(this), amount);
         mintingCount++;
     }
 
@@ -210,6 +207,14 @@ contract ManagerP0 is IManager, Ownable {
         vault = vault_;
     }
 
+    function setConfig(Config memory config_) external onlyOwner {
+        // When f changes we need to accumulate the historical basket dilution
+        if (_config.f != config_.f) {
+            _accumulateDilutionFactor();
+        }
+        _config = config_;
+    }
+
     function quoteIssue(uint256 amount) public view override returns (uint256[] memory) {
         require(amount > 0, "Cannot quote issue zero");
         return vault.tokenAmounts(_toBUs(amount));
@@ -223,11 +228,13 @@ contract ManagerP0 is IManager, Ownable {
     //
 
     function _toBUs(uint256 amount) internal view returns (uint256) {
-        return (amount * _basketDilutionRatioScaled) / _meltingRatioScaled;
+        uint256 basketDilutionRatio = _currentBasketDilution * _historicalBasketDilution / SCALE;
+        return (amount * basketDilutionRatio) / _meltingRatio;
     }
 
     function _fromBUs(uint256 amount) internal view returns (uint256) {
-        return (amount * _meltingRatioScaled) / _basketDilutionRatioScaled;
+        uint256 basketDilutionRatio = _currentBasketDilution * _historicalBasketDilution / SCALE;
+        return (amount * _meltingRatio) / basketDilutionRatio;
     }
 
     function _issuanceRate(uint256 amount) internal view returns (uint256) {
@@ -254,10 +261,11 @@ contract ManagerP0 is IManager, Ownable {
     function _processSlowMintings() internal {
         for (uint256 i = 0; i < mintingCount; i++) {
             if (!mintings[i].processed && address(mintings[i].vault) != address(vault)) {
+                rToken.burn(address(this), mintings[i].amount);
                 mintings[i].undo();
             } else if (!mintings[i].processed && mintings[i].availableAt >= block.timestamp) {
+                rToken.transfer(mintings[i].minter, mintings[i].amount);
                 mintings[i].complete();
-                rToken.mint(mintings[i].minter, mintings[i].amount);
             }
         }
     }
@@ -266,12 +274,19 @@ contract ManagerP0 is IManager, Ownable {
         uint256 amount = rToken.balanceOf(address(this));
         rToken.burn(address(this), amount);
         melted += amount;
-        _meltingRatioScaled = (SCALE * (rToken.totalSupply() + melted)) / rToken.totalSupply();
+        _meltingRatio = (SCALE * (rToken.totalSupply() + melted)) / rToken.totalSupply();
     }
 
     function _diluteBasket() internal {
         uint256 current = vault.basketFiatcoinRate();
-        _basketDilutionRatioScaled = SCALE + _config.f * ((SCALE * current) / prevBasketFiatcoinRate - SCALE);
+        _currentBasketDilution = SCALE + _config.f * ((SCALE * current) / prevBasketFiatcoinRate - SCALE);
+    }
+
+    // Upon vault change or change to *f*, we accumulate the historical dilution factor.
+    function _accumulateDilutionFactor() internal {
+        _diluteBasket();
+        _historicalBasketDilution = _historicalBasketDilution * _currentBasketDilution / SCALE;
+        prevBasketFiatcoinRate = vault.basketFiatcoinRate();
     }
 
     // Continually runs auctions as long as there is a past non-empty vault.
@@ -285,25 +300,19 @@ contract ManagerP0 is IManager, Ownable {
             prev.closeOut();
         }
 
-        // Partially empty the oldest vault that still contains BUs into the RToken
+        // Redeem BUs from the oldest vault
         IVault oldVault = _oldestNonEmptyVault();
         if (address(oldVault) != address(vault)) {
             uint256 target = _toBUs(rToken.totalSupply());
             uint256 current = vault.basketUnits(address(this));
             uint256 max = _toBUs((rToken.totalSupply() * _config.auctionSize) / SCALE);
             uint256 chunk = Math.min(max, current < target ? target - current : oldVault.basketUnits(address(this)));
-            oldVault.redeem(address(rToken), chunk);
-            // (I know it's weird to use the RToken address like this, but the alternative is storing SlowMinting
-            //      collateral in a separate Escrow contract. There is contention for the Manager's address.)
+            oldVault.redeem(address(this), chunk);
         }
 
-        // Convert any balances at the RToken address into BUs
-        uint256 issuable = vault.maxIssuable(address(rToken));
+        // Create as many BUs as we can in the current vault
+        uint256 issuable = vault.maxIssuable(address(this));
         if (issuable > 0) {
-            uint256[] memory tokenAmounts = vault.tokenAmounts(issuable);
-            for (uint256 i = 0; i < vault.basketSize(); i++) {
-                rToken.withdrawToken(vault.collateralAt(i).erc20(), tokenAmounts[i]);
-            }
             vault.issue(issuable);
         }
 
@@ -384,6 +393,23 @@ contract ManagerP0 is IManager, Ownable {
         } else {
             return IVault(address(0));
         }
+    }
+
+    function _switchVaults() internal {
+        IVault _newVault = _getBestBackupVault();
+        if (address(_newVault) != address(0)) {
+            pastVaults.push(vault);
+            vault = _newVault;
+
+            //  Lower default flag (keep defaulted tokens in list)
+            inDefault = false;
+        }
+
+        // Undo all live slowmintings
+        _processSlowMintings();
+
+        // Accumulate the basket dilution factor to enable forward accounting
+        _accumulateDilutionFactor();
     }
 
     // Add tokens to the enumerable set - Cleans it up first

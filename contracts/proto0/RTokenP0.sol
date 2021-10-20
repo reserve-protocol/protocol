@@ -4,13 +4,10 @@ pragma solidity 0.8.4;
 import "../Ownable.sol"; // temporary
 // import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IRToken.sol";
 
 contract RTokenP0 is IRToken, ERC20, Ownable {
-    using SafeERC20 for IERC20;
 
     address public manager;
 
@@ -37,10 +34,6 @@ contract RTokenP0 is IRToken, ERC20, Ownable {
     function burn(address recipient, uint256 amount) external override onlyManager returns (bool) {
         _burn(recipient, amount);
         return true;
-    }
-
-    function withdrawToken(address token, uint256 amount) external override onlyManager {
-        IERC20(token).safeTransfer(manager, amount);
     }
 
     function setManager(address manager_) external onlyOwner {
