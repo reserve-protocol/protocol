@@ -26,4 +26,8 @@ interface IVault {
     function basketUnits(address account) external view returns (uint256);
 
     function basketQuantity(address token) external view returns (uint256);
+
+    function getBackups() external view returns (IVault[] memory);
+
+    function backupAt(uint256 index) external view returns (IVault);
 }

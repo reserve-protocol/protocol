@@ -7,6 +7,7 @@ import "../Ownable.sol"; // temporary
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./libraries/Auction.sol";
 import "./libraries/SlowMinting.sol";
 import "./interfaces/IRToken.sol";
@@ -42,6 +43,7 @@ contract ManagerP0 is IManager, Ownable {
     using SafeERC20 for IERC20;
     using SlowMinting for SlowMinting.Info;
     using Auction for Auction.Info;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     uint256 public constant SCALE = 1e18;
 
@@ -77,6 +79,12 @@ contract ManagerP0 is IManager, Ownable {
     uint256 public lastAuction; // timestamp of the last auction
     uint256 public melted; // how many RTokens have been melted
 
+    // Default detection
+    bool public inDefault;
+    uint256 public lastDefault; // timestamp when default occurred
+    EnumerableSet.AddressSet internal _defaultedTokens;
+    mapping(address => uint256) internal _prevRedemptionRates; // the redemption Rates for each token last time it was checked
+
     // Pausing
     address public pauser;
     bool public paused;
@@ -101,7 +109,6 @@ contract ManagerP0 is IManager, Ownable {
         );
         vault = vault_;
         oracle = oracle_;
-
         _config = config_;
         pauser = _msgSender();
         prevBasketFiatcoinRate = vault.basketFiatcoinRate();
@@ -125,11 +132,48 @@ contract ManagerP0 is IManager, Ownable {
         _runAuctions();
     }
 
+    // Default check (on-demand)
     function detectDefault() external override notPaused {
-        // 1. Check fiatcoin redemption rates have not decreased since last time.
-        // 2. Check oracle prices of fiatcoins for default
-        // If default detected, then:
-        //  replace vault, add old vault to `pastVaults`
+        // Check if already in default
+        if (!inDefault) {
+            (bool _defaulted, address[] memory _defaultTokens) = _detectDefaultInVault(vault, _config.shortVWAPPeriod);
+
+            // If Default detected - simply set timestamp and flag
+            if (_defaulted) {
+                // Raise default flag
+                inDefault = true;
+                lastDefault = block.timestamp;
+                _setDefaultedTokens(_defaultTokens);
+            }
+        } else {
+            // If Default already flagged - Check of long TWAP period has passed
+            if (block.timestamp >= lastDefault + _config.longVWAPPeriod) {
+                (bool _defaulted, address[] memory _defaultTokens) = _detectDefaultInVault(
+                    vault,
+                    _config.longVWAPPeriod
+                );
+
+                // If No Default anymore,  lower default flag and cleanup
+                if (!_defaulted) {
+                    inDefault = false;
+                    _cleanupDefaultedTokens();
+                } else {
+                    _setDefaultedTokens(_defaultTokens);
+
+                    // If the default flag has been raised for 24 (default delay) hours, select new vault
+                    if (block.timestamp >= lastDefault + _config.defaultDelay) {
+                        IVault _newVault = _getBestBackupVault();
+                        if (address(_newVault) != address(0)) {
+                            pastVaults.push(vault);
+                            vault = _newVault;
+
+                            //  Lower default flag (keep defaulted tokens in list)
+                            inDefault = false;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     function issue(uint256 amount) external override notPaused before {
@@ -266,6 +310,94 @@ contract ManagerP0 is IManager, Ownable {
         // if we are still undercollateralized, launch the next auction
         if (vault.basketUnits(address(this)) < _toBUs(rToken.totalSupply())) {
             // TODO: Pick next auction and start it
+        }
+    }
+
+    function _detectDefaultInVault(IVault vault_, uint256 period) internal view returns (bool, address[] memory) {
+        bool _defaulted = false;
+        address[] memory _defaultTokens = new address[](vault_.basketSize() * 6); // Worst case scenario in which all are defaulted
+        uint256 _indexDefault;
+        uint256 _price;
+
+        for (uint256 i = 0; i < vault_.basketSize(); i++) {
+            ICollateral c = vault_.collateralAt(i);
+
+            // 1. Check fiatcoin redemption rates have not decreased since last time.
+            if (c.getRedemptionRate() < _prevRedemptionRates[c.erc20()]) {
+                // Set default detected
+                _defaulted = true;
+                _defaultTokens[_indexDefault] = c.erc20();
+                _indexDefault++;
+            }
+
+            // 2. Check oracle prices of fiatcoins for default (received a TWAP period)
+            // If any fiatcoins are 5% (default threshold) below their stable price raise flag
+            _price = oracle.getPrice(c.getUnderlyingERC20(), period);
+            // TODO: Apply correct calculation
+            if (
+                _price < 10**c.decimals() /*  - 5% */
+            ) {
+                // Set default detected
+                _defaulted = true;
+                // Add tokens to defaulted set
+                _defaultTokens[_indexDefault] = c.getUnderlyingERC20();
+                _indexDefault++;
+
+                // Also mark the parent token if applies
+                if (!c.isFiatcoin()) {
+                    _defaultTokens[_indexDefault] = c.erc20();
+                    _indexDefault++;
+                }
+            }
+        }
+
+        return (_defaulted, _defaultTokens);
+    }
+
+    // Get best backup vault after defaul
+    // Criteria: Highest basketFiatcoinRate value, and no defaulted tokens
+    function _getBestBackupVault() internal returns (IVault) {
+        uint256 _maxRate;
+        uint256 indexMax = 0;
+
+        // Loop through backups to find the best
+        for (uint256 i = 0; i < vault.getBackups().length; i++) {
+            IVault v = vault.backupAt(i);
+
+            (bool _defaulted, ) = _detectDefaultInVault(v, _config.shortVWAPPeriod); // or longVWAPPeriod?
+
+            if (!_defaulted) {
+                // Get basketFiatcoinRate()
+                uint256 _rate = v.basketFiatcoinRate();
+
+                // See if it has the highest basket rate
+                if (_rate > _maxRate) {
+                    _maxRate = _rate;
+                    indexMax = i;
+                }
+            }
+        }
+
+        // Return selected vault index
+        if (indexMax > 0) {
+            return vault.backupAt(indexMax);
+        } else {
+            return IVault(address(0));
+        }
+    }
+
+    // Add tokens to the enumerable set - Cleans it up first
+    function _setDefaultedTokens(address[] memory _tokens) internal {
+        _cleanupDefaultedTokens();
+        for (uint256 index = 0; index < _tokens.length; index++) {
+            _defaultedTokens.add(_tokens[index]);
+        }
+    }
+
+    // Cleanup the enumerable set
+    function _cleanupDefaultedTokens() internal {
+        for (uint256 index = 0; index < _defaultedTokens.length(); index++) {
+            _defaultedTokens.remove(_defaultedTokens.at(index));
         }
     }
 }

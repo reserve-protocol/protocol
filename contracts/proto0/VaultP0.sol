@@ -7,7 +7,7 @@ import "../Ownable.sol"; // temporary
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "./collateral/Collateral.sol";
+import "./interfaces/ICollateral.sol";
 import "./interfaces/IVault.sol";
 
 contract VaultP0 is IVault, Ownable {
@@ -22,7 +22,7 @@ contract VaultP0 is IVault, Ownable {
 
     IVault[] public backups;
 
-    constructor(Collateral[] memory collateral, IVault[] memory backupVaults) {
+    constructor(ICollateral[] memory collateral, IVault[] memory backupVaults) {
         // Set default immutable basket
         _basket.size = collateral.length;
         for (uint256 i = 0; i < _basket.size; i++) {
@@ -118,8 +118,12 @@ contract VaultP0 is IVault, Ownable {
         backups = backupVaults;
     }
 
-    function getBackups() external view returns (IVault[] memory) {
+    function getBackups() external view override returns (IVault[] memory) {
         return backups;
+    }
+
+    function backupAt(uint256 index) external view override returns (IVault) {
+        return backups[index];
     }
 
     // // Returns the quantities of tokens missing from *other's* basket.
