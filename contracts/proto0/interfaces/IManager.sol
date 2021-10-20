@@ -6,7 +6,7 @@ interface IManager {
 
     function redeem(uint256 amount) external;
 
-    function act() external;
+    function poke() external;
 
     function detectDefault() external;
 

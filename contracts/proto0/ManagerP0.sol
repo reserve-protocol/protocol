@@ -7,6 +7,7 @@ import "../Ownable.sol"; // temporary
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "./libraries/Auction.sol";
 import "./libraries/SlowMinting.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IFaucet.sol";
@@ -29,7 +30,7 @@ struct Config {
     uint256 longVWAPPeriod; // the VWAP length used during the lowering of the default flag
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Percentage values (relative to SCALE)
-    uint256 auctionSize; // the size of an auction, as a fraction of backing
+    uint256 auctionSize; // the size of an auction, as a fraction of RToken supply
     uint256 issuanceRate; // the number of RToken to issue per block, as a fraction of RToken supply
     uint256 defaultThreshold; // the percent deviation required before a token is marked as in-default
     uint256 f; // The Revenue Factor: the fraction of revenue that goes to stakers
@@ -40,9 +41,11 @@ struct Config {
 contract ManagerP0 is IManager, Ownable {
     using SafeERC20 for IERC20;
     using SlowMinting for SlowMinting.Info;
+    using Auction for Auction.Info;
 
     uint256 public constant SCALE = 1e18;
 
+    // ECONOMICS
     // base factor = exchange rate between Vault BUs and RTokens
     // base factor = b = _meltingRatioScaled / _basketDilutionRatioScaled
     // <RToken> = b * <Basket Unit Vector>
@@ -53,10 +56,6 @@ contract ManagerP0 is IManager, Ownable {
     uint256 internal _meltingRatioScaled = 1e18; // increases the base factor
     uint256 internal _basketDilutionRatioScaled = 1e18; // decreases the base factor
 
-    uint256 public prevBasketFiatcoinRate; // the redemption value of the basket in fiatcoins last time f was updated
-    uint256 public lastAuction; // timestamp of the last auction
-    uint256 public melted; // how many RTokens have been melted
-
     // Deployed by Manager
     IRToken public rToken;
     IFaucet public faucet;
@@ -66,10 +65,17 @@ contract ManagerP0 is IManager, Ownable {
     IVault public vault;
     IOracle public oracle;
 
-    // Append-only historical record
+    // Append-only records
     IVault[] public pastVaults;
-    mapping(uint256 => SlowMinting.Info) public slowMintings;
-    uint256 numSlowMintings;
+    mapping(uint256 => SlowMinting.Info) public mintings;
+    uint256 mintingCount;
+    mapping(uint256 => Auction.Info) public auctions;
+    uint256 auctionCount;
+
+    // Accounting
+    uint256 public prevBasketFiatcoinRate; // the redemption value of the basket in fiatcoins last time f was updated
+    uint256 public lastAuction; // timestamp of the last auction
+    uint256 public melted; // how many RTokens have been melted
 
     // Pausing
     address public pauser;
@@ -109,18 +115,14 @@ contract ManagerP0 is IManager, Ownable {
     modifier before() {
         faucet.drip();
         _melt();
+        // TODO: Check individual collateral redemption rates and default if they have decreased
         _diluteBasket();
         _processSlowMintings();
         _;
     }
 
-    function act() external override notPaused before {
-        // Launch auctions
-        // if ()
-        // Closed form computation of state
-        // Launch any auctions
-        // 1. Trading mechanism
-        // 2. Trading algorithm
+    function poke() external override notPaused before {
+        _runAuctions();
     }
 
     function detectDefault() external override notPaused {
@@ -132,13 +134,12 @@ contract ManagerP0 is IManager, Ownable {
 
     function issue(uint256 amount) external override notPaused before {
         require(amount > 0, "Cannot issue zero");
-        uint256 BUs = _toBUs(amount);
         uint256 issuanceRate = _issuanceRate(amount);
-        uint256 numBlocks = (amount + issuanceRate - 1) / (issuanceRate);
+        uint256 numBlocks = Math.ceilDiv(amount, issuanceRate);
 
-        SlowMinting.Info storage minting = slowMintings[numSlowMintings + 1];
-        minting.start(vault, amount, BUs, _msgSender(), _slowMintingEnd() + numBlocks * issuanceRate);
-        numSlowMintings++;
+        SlowMinting.Info storage minting = mintings[mintingCount + 1];
+        minting.start(vault, amount, _toBUs(amount), _msgSender(), _slowMintingEnd() + numBlocks * issuanceRate);
+        mintingCount++;
     }
 
     function redeem(uint256 amount) external override notPaused before {
@@ -175,6 +176,8 @@ contract ManagerP0 is IManager, Ownable {
         return vault.tokenAmounts(_toBUs(amount));
     }
 
+    //
+
     function _toBUs(uint256 amount) internal view returns (uint256) {
         return (amount * _basketDilutionRatioScaled) / _meltingRatioScaled;
     }
@@ -189,10 +192,10 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     function _slowMintingEnd() internal view returns (uint256) {
-        if (numSlowMintings == 0) {
+        if (mintingCount == 0) {
             return block.timestamp;
         }
-        return Math.max(block.timestamp, slowMintings[numSlowMintings - 1].availableAt);
+        return Math.max(block.timestamp, mintings[mintingCount - 1].availableAt);
     }
 
     function _oldestNonEmptyVault() internal view returns (IVault) {
@@ -205,12 +208,12 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     function _processSlowMintings() internal {
-        for (uint256 i = 0; i < numSlowMintings; i++) {
-            if (!slowMintings[i].processed && address(slowMintings[i].vault) != address(vault)) {
-                slowMintings[i].undo();
-            } else if (!slowMintings[i].processed && slowMintings[i].availableAt >= block.timestamp) {
-                slowMintings[i].complete();
-                rToken.mint(slowMintings[i].minter, slowMintings[i].amount);
+        for (uint256 i = 0; i < mintingCount; i++) {
+            if (!mintings[i].processed && address(mintings[i].vault) != address(vault)) {
+                mintings[i].undo();
+            } else if (!mintings[i].processed && mintings[i].availableAt >= block.timestamp) {
+                mintings[i].complete();
+                rToken.mint(mintings[i].minter, mintings[i].amount);
             }
         }
     }
@@ -225,5 +228,44 @@ contract ManagerP0 is IManager, Ownable {
     function _diluteBasket() internal {
         uint256 current = vault.basketFiatcoinRate();
         _basketDilutionRatioScaled = SCALE + _config.f * ((SCALE * current) / prevBasketFiatcoinRate - SCALE);
+    }
+
+    // Continually runs auctions as long as there is a past non-empty vault.
+    function _runAuctions() internal {
+        // Closeout previous auctions
+        Auction.Info storage prev = auctionCount > 0 ? auctions[auctionCount - 1] : auctions[0];
+        if (prev.open) {
+            if (block.timestamp <= prev.endTime) {
+                return;
+            }
+            prev.closeOut();
+        }
+
+        // Partially empty the oldest vault that still contains BUs into the RToken
+        IVault oldVault = _oldestNonEmptyVault();
+        if (address(oldVault) != address(vault)) {
+            uint256 target = _toBUs(rToken.totalSupply());
+            uint256 current = vault.basketUnits(address(this));
+            uint256 max = _toBUs((rToken.totalSupply() * _config.auctionSize) / SCALE);
+            uint256 chunk = Math.min(max, current < target ? target - current : oldVault.basketUnits(address(this)));
+            oldVault.redeem(address(rToken), chunk);
+            // (I know it's weird to use the RToken address like this, but the alternative is storing SlowMinting
+            //      collateral in a separate Escrow contract. There is contention for the Manager's address.)
+        }
+
+        // Convert any balances at the RToken address into BUs
+        uint256 issuable = vault.maxIssuable(address(rToken));
+        if (issuable > 0) {
+            uint256[] memory tokenAmounts = vault.tokenAmounts(issuable);
+            for (uint256 i = 0; i < vault.basketSize(); i++) {
+                rToken.withdrawToken(vault.collateralAt(i).erc20(), tokenAmounts[i]);
+            }
+            vault.issue(issuable);
+        }
+
+        // if we are still undercollateralized, launch the next auction
+        if (vault.basketUnits(address(this)) < _toBUs(rToken.totalSupply())) {
+            // TODO: Pick next auction and start it
+        }
     }
 }

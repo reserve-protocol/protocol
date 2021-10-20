@@ -34,7 +34,7 @@ library SlowMinting {
         self.availableAt = availableAt;
 
         for (uint256 i = 0; i < vault.basketSize(); i++) {
-            IERC20(vault.collateralAt(i)).safeTransferFrom(minter, address(this), self.basketAmounts[i]);
+            IERC20(vault.collateralAt(i).erc20()).safeTransferFrom(minter, address(this), self.basketAmounts[i]);
         }
     }
 
@@ -43,7 +43,7 @@ library SlowMinting {
         require(self.availableAt >= block.timestamp, "slow minting needs more time");
 
         for (uint256 i = 0; i < self.vault.basketSize(); i++) {
-            IERC20(self.vault.collateralAt(i)).safeApprove(address(self.vault), self.basketAmounts[i]);
+            IERC20(self.vault.collateralAt(i).erc20()).safeApprove(address(self.vault), self.basketAmounts[i]);
         }
         self.vault.issue(self.BUs);
         self.processed = true;
@@ -53,7 +53,7 @@ library SlowMinting {
         require(!self.processed, "slow minting already processed");
 
         for (uint256 i = 0; i < self.vault.basketSize(); i++) {
-            IERC20(self.vault.collateralAt(i)).safeTransfer(self.minter, self.basketAmounts[i]);
+            IERC20(self.vault.collateralAt(i).erc20()).safeTransfer(self.minter, self.basketAmounts[i]);
         }
         self.processed = true;
     }

@@ -13,13 +13,17 @@ interface IVault {
 
     function redeem(address redeemer, uint256 amount) external;
 
+    function basketFiatcoinRate() external returns (uint256);
+
+    function maxIssuable(address issuer) external view returns (uint256);
+
     function tokenAmounts(uint256 amount) external view returns (uint256[] memory);
+
+    function collateralAt(uint256 index) external view returns (ICollateral);
 
     function basketSize() external view returns (uint256);
 
-    function collateralAt(uint256 index) external view returns (address);
-
-    function basketFiatcoinRate() external returns (uint256);
-
     function basketUnits(address account) external view returns (uint256);
+
+    function basketQuantity(address token) external view returns (uint256);
 }
