@@ -4,6 +4,7 @@ pragma solidity 0.8.4;
 import "../Ownable.sol"; // temporary
 // import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -31,12 +32,29 @@ struct Config {
     uint256 longVWAPPeriod; // the VWAP length used during the lowering of the default flag
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Percentage values (relative to SCALE)
-    uint256 auctionSize; // the size of an auction, as a fraction of RToken supply
+    uint256 maxAuctionSize; // the size of an auction, as a fraction of RToken supply
+    uint256 minAuctionSize; // the size of an auction, as a fraction of RToken supply
+    uint256 migrationChunk; // how much backing to migrate at a time, as a fraction of RToken supply
     uint256 issuanceRate; // the number of RToken to issue per block, as a fraction of RToken supply
     uint256 defaultThreshold; // the percent deviation required before a token is marked as in-default
     uint256 f; // The Revenue Factor: the fraction of revenue that goes to stakers
-
     // TODO: Revenue Distribution Map
+
+    // Sample values
+    //
+    // rewardStart = timestamp of first weekly handout
+    // rewardPeriod = 604800 (1 week)
+    // auctionPeriod = 1800 (30 minutes)
+    // stakingWithdrawalDelay = 1209600 (2 weeks)
+    // shortVWAPPeriod = 300 (5 minutes)
+    // longVWAPPeriod = 21600 (6 hours)
+    // defaultDelay = 86400 (24 hours)
+    // maxAuctionSize = 1e16 (1%)
+    // minAuctionSize = 1e15 (0.1%)
+    // migrationChunk = 2e17 (20%)
+    // issuanceRate = 25e13 (0.025% per block, or ~0.1% per minute)
+    // defaultThreshold = 5e16 (5% deviation)
+    // f = 6e17 (60% to stakers)
 }
 
 contract ManagerP0 is IManager, Ownable {
@@ -71,7 +89,7 @@ contract ManagerP0 is IManager, Ownable {
     IVault public vault;
     IOracle public oracle;
 
-    // Append-only records
+    // Append-only record keeping
     IVault[] public pastVaults;
     mapping(uint256 => SlowMinting.Info) public mintings;
     uint256 mintingCount;
@@ -86,8 +104,9 @@ contract ManagerP0 is IManager, Ownable {
     // Default detection
     bool public inDefault;
     uint256 public lastDefault; // timestamp when default occurred
-    EnumerableSet.AddressSet internal _defaultedTokens;
-    mapping(address => uint256) internal _prevRedemptionRates; // the redemption Rates for each token last time it was checked
+    EnumerableSet.AddressSet internal _defaultedCollateral;
+    EnumerableSet.AddressSet internal _approvedCollateral;
+    mapping(address => uint256) internal _prevRedemptionRates; // the redemption rates for each collateral last time it was checked
 
     // Pausing
     address public pauser;
@@ -99,7 +118,8 @@ contract ManagerP0 is IManager, Ownable {
         IVault vault_,
         IOracle oracle_,
         IERC20 rsr_,
-        Config memory config_
+        Config memory config_,
+        address[] memory approvedCollateral_
     ) {
         rToken = new RTokenP0(name_, symbol_, _msgSender(), address(this));
         faucet = new FaucetP0(address(this), address(rToken));
@@ -114,6 +134,13 @@ contract ManagerP0 is IManager, Ownable {
         vault = vault_;
         oracle = oracle_;
         _config = config_;
+        for (uint256 i = 0; i < approvedCollateral_.length; i++) {
+            _approvedCollateral.add(approvedCollateral_[i]);
+        }
+        if (!_approvedTokensOnly(vault)) {
+            revert CommonErrors.UnapprovedToken();
+        }
+
         pauser = _msgSender();
         prevBasketFiatcoinRate = vault.basketFiatcoinRate();
     }
@@ -126,33 +153,36 @@ contract ManagerP0 is IManager, Ownable {
     modifier before() {
         faucet.drip();
         _melt();
-        // TODO: Check individual collateral redemption rates and default if they have decreased
         _diluteBasket();
         _processSlowMintings();
         _;
+        _saveRedemptionRates();
     }
 
     function poke() external override notPaused before {
-        _runAuctions();
+        _manageAuctions();
     }
 
     // Default check (on-demand)
     function detectDefault() external override notPaused {
         // Check if already in default
         if (!inDefault) {
-            (bool _defaulted, address[] memory _defaultTokens) = _detectDefaultInVault(vault, _config.shortVWAPPeriod);
+            (bool _defaulted, ICollateral[] memory _defaultCollateral) = _detectDefaultInVault(
+                vault,
+                _config.shortVWAPPeriod
+            );
 
             // If Default detected - simply set timestamp and flag
             if (_defaulted) {
                 // Raise default flag
                 inDefault = true;
                 lastDefault = block.timestamp;
-                _setDefaultedTokens(_defaultTokens);
+                _setDefaultedCollateral(_defaultCollateral);
             }
         } else {
             // If Default already flagged - Check of long TWAP period has passed
             if (block.timestamp >= lastDefault + _config.longVWAPPeriod) {
-                (bool _defaulted, address[] memory _defaultTokens) = _detectDefaultInVault(
+                (bool _defaulted, ICollateral[] memory _defaultCollateral) = _detectDefaultInVault(
                     vault,
                     _config.longVWAPPeriod
                 );
@@ -160,9 +190,9 @@ contract ManagerP0 is IManager, Ownable {
                 // If No Default anymore,  lower default flag and cleanup
                 if (!_defaulted) {
                     inDefault = false;
-                    _cleanupDefaultedTokens();
+                    _cleanupDefaultedCollateral();
                 } else {
-                    _setDefaultedTokens(_defaultTokens);
+                    _setDefaultedCollateral(_defaultCollateral);
 
                     // If the default flag has been raised for 24 (default delay) hours, select new vault
                     if (block.timestamp >= lastDefault + _config.defaultDelay) {
@@ -217,6 +247,14 @@ contract ManagerP0 is IManager, Ownable {
         _config = config_;
     }
 
+    function approveCollateral(ICollateral collateral) external onlyOwner {
+        _approvedCollateral.add(address(collateral));
+    }
+
+    function unapproveCollateral(ICollateral collateral) external onlyOwner {
+        _approvedCollateral.remove(address(collateral));
+    }
+
     function quoteIssue(uint256 amount) public view override returns (uint256[] memory) {
         require(amount > 0, "Cannot quote issue zero");
         return vault.tokenAmounts(_toBUs(amount));
@@ -249,6 +287,9 @@ contract ManagerP0 is IManager, Ownable {
         return Math.max(block.timestamp, mintings[mintingCount - 1].availableAt);
     }
 
+    // Returns the oldest vault that contains at nonzero BUs
+    // Note that this will pass over vaults with uneven holdings, it does not necessarily mean the vault
+    // contains no collateral tokens.
     function _oldestNonEmptyVault() internal view returns (IVault) {
         for (uint256 i = 0; i < pastVaults.length; i++) {
             if (pastVaults[i].basketUnits(address(this)) > 0) {
@@ -256,6 +297,22 @@ contract ManagerP0 is IManager, Ownable {
             }
         }
         return vault;
+    }
+
+    function _approvedTokensOnly(IVault v) internal view returns (bool) {
+        for (uint256 i = 0; i < v.basketSize(); i++) {
+            if (!_approvedCollateral.contains(address(v.collateralAt(i)))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function _saveRedemptionRates() internal {
+        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
+            ICollateral c = ICollateral(_approvedCollateral.at(i));
+            _prevRedemptionRates[address(c)] = c.redemptionRate();
+        }
     }
 
     function _processSlowMintings() internal {
@@ -280,36 +337,31 @@ contract ManagerP0 is IManager, Ownable {
     function _diluteBasket() internal {
         uint256 current = vault.basketFiatcoinRate();
         _currentBasketDilution = SCALE + _config.f * ((SCALE * current) / prevBasketFiatcoinRate - SCALE);
-        _basketDilutionRatio = _currentBasketDilution * _historicalBasketDilution / SCALE;
+        _basketDilutionRatio = (_currentBasketDilution * _historicalBasketDilution) / SCALE;
     }
 
     // Upon vault change or change to *f*, we accumulate the historical dilution factor.
     function _accumulateDilutionFactor() internal {
         _diluteBasket();
-        _historicalBasketDilution = _historicalBasketDilution * _currentBasketDilution / SCALE;
+        _historicalBasketDilution = (_historicalBasketDilution * _currentBasketDilution) / SCALE;
         _currentBasketDilution = SCALE;
         prevBasketFiatcoinRate = vault.basketFiatcoinRate();
     }
 
     // Continually runs auctions as long as there is a past non-empty vault.
-    function _runAuctions() internal {
-        // Closeout previous auctions
-        Auction.Info storage prev = auctionCount > 0 ? auctions[auctionCount - 1] : auctions[0];
-        if (prev.open) {
-            if (block.timestamp <= prev.endTime) {
-                return;
-            }
-            prev.closeOut();
-        }
+    function _manageAuctions() internal {
+        // Try to launch an auction
+        bool auctionRunning = _tryLaunchCollateralAuction();
 
-        // Redeem BUs from the oldest vault
+        // Break a large chunk of BUs off the oldest vault if we need more collateral for trading
         IVault oldVault = _oldestNonEmptyVault();
-        if (address(oldVault) != address(vault)) {
+        if (!auctionRunning && address(oldVault) != address(vault)) {
             uint256 target = _toBUs(rToken.totalSupply());
             uint256 current = vault.basketUnits(address(this));
-            uint256 max = _toBUs((rToken.totalSupply() * _config.auctionSize) / SCALE);
+            uint256 max = _toBUs((rToken.totalSupply() * _config.maxAuctionSize) / SCALE);
             uint256 chunk = Math.min(max, current < target ? target - current : oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
+            _tryLaunchCollateralAuction();
         }
 
         // Create as many BUs as we can in the current vault
@@ -318,51 +370,73 @@ contract ManagerP0 is IManager, Ownable {
             vault.issue(issuable);
         }
 
-        // if we are still undercollateralized, launch the next auction
-        if (vault.basketUnits(address(this)) < _toBUs(rToken.totalSupply())) {
-            // TODO: Pick next auction and start it
-        }
+        // TODO: RSR recapitalization
     }
 
-    function _detectDefaultInVault(IVault vault_, uint256 period) internal view returns (bool, address[] memory) {
+    // Launches any collateral for collateral auctions and returns if there are any auctions running.
+    // Note: Only one auction is live at any given time.
+    function _tryLaunchCollateralAuction() internal returns (bool) {
+        // Closeout previous auctions
+        Auction.Info storage prev = auctionCount > 0 ? auctions[auctionCount - 1] : auctions[0];
+        if (prev.open) {
+            if (block.timestamp <= prev.endTime) {
+                return true;
+            }
+            prev.closeOut();
+        }
+
+        // Are we capitalized?
+        if (vault.basketUnits(address(this)) >= _toBUs(rToken.totalSupply())) {
+            return false;
+        }
+
+        // Is the slush fund large enough to merit an auction?
+        bool onlyDustLeft = true;
+        uint256[] memory redemptionRates = new uint256[](_approvedCollateral.length());
+        for (uint256 i = 0; i < redemptionRates.length; i++) {
+            ICollateral c = ICollateral(_approvedCollateral.at(i));
+            redemptionRates[i] = c.redemptionRate();
+        }
+
+        // uint256[] memory BUs = vault.calculateBUsPerCollateral(address(this));
+        // for (uint i = 0; i < BUs.length; i++) {
+        //     if (BUs[i] > _toBUs((rToken.totalSupply() * _config.minAuctionSize) / SCALE)) {
+
+        //     }
+        // }
+        return true;
+    }
+
+    function _detectDefaultInVault(IVault vault_, uint256 period) internal view returns (bool, ICollateral[] memory) {
         bool _defaulted = false;
-        address[] memory _defaultTokens = new address[](vault_.basketSize() * 6); // Worst case scenario in which all are defaulted
-        uint256 _indexDefault;
+        ICollateral[] memory _defaultCollateral = new ICollateral[](vault_.basketSize());
         uint256 _price;
 
         for (uint256 i = 0; i < vault_.basketSize(); i++) {
             ICollateral c = vault_.collateralAt(i);
 
             // 1. Check fiatcoin redemption rates have not decreased since last time.
-            if (c.getRedemptionRate() < _prevRedemptionRates[c.erc20()]) {
+            if (c.redemptionRate() + 1 < _prevRedemptionRates[address(c)]) {
                 // Set default detected
                 _defaulted = true;
-                _defaultTokens[_indexDefault] = c.erc20();
-                _indexDefault++;
+                _defaultCollateral[i] = c;
             }
 
             // 2. Check oracle prices of fiatcoins for default (received a TWAP period)
             // If any fiatcoins are 5% (default threshold) below their stable price raise flag
-            _price = oracle.getPrice(c.getUnderlyingERC20(), period);
+            _price = oracle.getPrice(c.fiatcoin(), period);
             // TODO: Apply correct calculation
             if (
-                _price < 10**c.decimals() /*  - 5% */
+                _price < 10**IERC20Metadata(c.fiatcoin()).decimals() /*  - 5% */
             ) {
                 // Set default detected
                 _defaulted = true;
                 // Add tokens to defaulted set
-                _defaultTokens[_indexDefault] = c.getUnderlyingERC20();
-                _indexDefault++;
-
-                // Also mark the parent token if applies
-                if (!c.isFiatcoin()) {
-                    _defaultTokens[_indexDefault] = c.erc20();
-                    _indexDefault++;
-                }
+                _defaultCollateral[i] = c;
             }
         }
 
-        return (_defaulted, _defaultTokens);
+        return (_defaulted, _defaultCollateral);
     }
 
     // Get best backup vault after defaul
@@ -374,6 +448,10 @@ contract ManagerP0 is IManager, Ownable {
         // Loop through backups to find the best
         for (uint256 i = 0; i < vault.getBackups().length; i++) {
             IVault v = vault.backupAt(i);
+
+            if (!_approvedTokensOnly(v)) {
+                continue;
+            }
 
             (bool _defaulted, ) = _detectDefaultInVault(v, _config.shortVWAPPeriod); // or longVWAPPeriod?
 
@@ -415,17 +493,17 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     // Add tokens to the enumerable set - Cleans it up first
-    function _setDefaultedTokens(address[] memory _tokens) internal {
-        _cleanupDefaultedTokens();
-        for (uint256 index = 0; index < _tokens.length; index++) {
-            _defaultedTokens.add(_tokens[index]);
+    function _setDefaultedCollateral(ICollateral[] memory _collateral) internal {
+        _cleanupDefaultedCollateral();
+        for (uint256 i = 0; i < _collateral.length; i++) {
+            _defaultedCollateral.add(address(_collateral[i]));
         }
     }
 
     // Cleanup the enumerable set
-    function _cleanupDefaultedTokens() internal {
-        for (uint256 index = 0; index < _defaultedTokens.length(); index++) {
-            _defaultedTokens.remove(_defaultedTokens.at(index));
+    function _cleanupDefaultedCollateral() internal {
+        for (uint256 i = 0; i < _defaultedCollateral.length(); i++) {
+            _defaultedCollateral.remove(_defaultedCollateral.at(i));
         }
     }
 }

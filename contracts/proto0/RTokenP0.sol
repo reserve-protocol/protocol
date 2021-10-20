@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./interfaces/IRToken.sol";
 
 contract RTokenP0 is IRToken, ERC20, Ownable {
-
     address public manager;
 
     constructor(

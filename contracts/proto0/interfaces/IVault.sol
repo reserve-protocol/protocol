@@ -5,6 +5,7 @@ import "../interfaces/ICollateral.sol";
 
 struct Basket {
     mapping(uint256 => ICollateral) collateral;
+    mapping(uint256 => uint256) quantities;
     uint256 size;
 }
 
@@ -14,6 +15,8 @@ interface IVault {
     function redeem(address redeemer, uint256 amount) external;
 
     function basketFiatcoinRate() external returns (uint256);
+
+    function calculateBUsPerCollateral(address issuer) external view returns (uint256[] memory);
 
     function maxIssuable(address issuer) external view returns (uint256);
 
@@ -25,7 +28,7 @@ interface IVault {
 
     function basketUnits(address account) external view returns (uint256);
 
-    function basketQuantity(address token) external view returns (uint256);
+    // function basketQuantity(address token) external view returns (uint256);
 
     function getBackups() external view returns (IVault[] memory);
 

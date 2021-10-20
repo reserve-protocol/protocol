@@ -87,6 +87,8 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
         require(amount > 0, "Cannot withdraw zero");
         require(_balances[_msgSender()] >= amount, "Not enough balance");
 
+        // TODO: When a staker unstakes, this should remove their ability to sell stRSR to someone else
+
         // Submit delayed withdrawal
         withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp));
     }

@@ -33,7 +33,7 @@ library SlowMinting {
         self.minter = minter;
         self.availableAt = availableAt;
 
-        for (uint i = 0; i < vault.basketSize(); i++) {
+        for (uint256 i = 0; i < vault.basketSize(); i++) {
             IERC20(vault.collateralAt(i).erc20()).safeTransferFrom(minter, address(this), self.basketAmounts[i]);
             IERC20(self.vault.collateralAt(i).erc20()).safeApprove(address(self.vault), self.basketAmounts[i]);
         }

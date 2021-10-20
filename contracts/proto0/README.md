@@ -12,3 +12,9 @@ TODO: More
 - Manager: holds RToken that is slow minting, and slush fund for collateral (ie intermediate location for collateral during vault migrations)
 - Faucet: holds revenue RToken to be melted
 - StakingPool: holds staked RSR
+
+## Invariants
+
+- The vault always holds sufficient backing for its outstanding BUs
+- Only one auction is live at any given time
+- ...more

@@ -12,17 +12,13 @@ interface ICToken {
 }
 
 contract CTokenCollateral is Collateral {
-    constructor(
-        address erc20_,
-        uint256 quantity_,
-        uint8 decimals
-    ) Collateral(erc20_, quantity_, decimals) {}
+    constructor(address erc20_, uint8 decimals) Collateral(erc20_, decimals) {}
 
-    function getRedemptionRate() external view override returns (uint256) {
+    function redemptionRate() external view override returns (uint256) {
         return ICToken(_erc20).exchangeRateCurrent();
     }
 
-    function getUnderlyingERC20() external view override returns (address) {
+    function fiatcoin() external view override returns (address) {
         return ICToken(_erc20).underlying();
     }
 
