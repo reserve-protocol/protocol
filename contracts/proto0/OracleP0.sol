@@ -8,16 +8,21 @@ import "../libraries/CommonErrors.sol";
 import "./interfaces/ICollateral.sol";
 
 contract Oracle is Ownable {
-    mapping(address => uint256) prices;
+    // Mapping Token -> TWAP Period -> Amount
+    mapping(address => mapping(uint256 => uint256)) private _prices;
 
-    function setPrice(address token, uint256 amount) public onlyOwner {
-        prices[token] = amount;
+    function setPrice(
+        address token,
+        uint256 period,
+        uint256 amount
+    ) public onlyOwner {
+        _prices[token][period] = amount;
     }
 
-    function getPrice(address token) public view returns (uint256) {
-        if (prices[token] == 0) {
+    function getPrice(address token, uint256 period) public view returns (uint256) {
+        if (_prices[token][period] == 0) {
             revert CommonErrors.PriceNotFound();
         }
-        return prices[token];
+        return _prices[token][period];
     }
 }
