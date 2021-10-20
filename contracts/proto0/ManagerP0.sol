@@ -58,6 +58,7 @@ contract ManagerP0 is IManager, Ownable {
 
     Config internal _config;
     uint256 internal _meltingRatio = 1e18;
+    uint256 internal _basketDilutionRatio = 1e18; // _currentBasketDilution * _historicalBasketDilution
     uint256 internal _currentBasketDilution = 1e18; // for this current vault, since the last time *f* was changed
     uint256 internal _historicalBasketDilution = 1e18; // the product of all historical basket dilutions
 
@@ -78,7 +79,7 @@ contract ManagerP0 is IManager, Ownable {
     uint256 auctionCount;
 
     // Accounting
-    uint256 public prevBasketFiatcoinRate; // the redemption value of the basket in fiatcoins last time f was updated
+    uint256 public prevBasketFiatcoinRate; // redemption value of the basket in fiatcoins last update
     uint256 public lastAuction; // timestamp of the last auction
     uint256 public melted; // how many RTokens have been melted
 
@@ -177,6 +178,7 @@ contract ManagerP0 is IManager, Ownable {
         uint256 issuanceRate = _issuanceRate(amount);
         uint256 numBlocks = Math.ceilDiv(amount, issuanceRate);
 
+        // Mint the RToken now and hold onto it while the slow minting vests
         SlowMinting.Info storage minting = mintings[mintingCount + 1];
         minting.start(vault, amount, _toBUs(amount), _msgSender(), _slowMintingEnd() + numBlocks * issuanceRate);
         rToken.mint(address(this), amount);
@@ -228,13 +230,11 @@ contract ManagerP0 is IManager, Ownable {
     //
 
     function _toBUs(uint256 amount) internal view returns (uint256) {
-        uint256 basketDilutionRatio = _currentBasketDilution * _historicalBasketDilution / SCALE;
-        return (amount * basketDilutionRatio) / _meltingRatio;
+        return (amount * _basketDilutionRatio) / _meltingRatio;
     }
 
     function _fromBUs(uint256 amount) internal view returns (uint256) {
-        uint256 basketDilutionRatio = _currentBasketDilution * _historicalBasketDilution / SCALE;
-        return (amount * _meltingRatio) / basketDilutionRatio;
+        return (amount * _meltingRatio) / _basketDilutionRatio;
     }
 
     function _issuanceRate(uint256 amount) internal view returns (uint256) {
@@ -280,12 +280,14 @@ contract ManagerP0 is IManager, Ownable {
     function _diluteBasket() internal {
         uint256 current = vault.basketFiatcoinRate();
         _currentBasketDilution = SCALE + _config.f * ((SCALE * current) / prevBasketFiatcoinRate - SCALE);
+        _basketDilutionRatio = _currentBasketDilution * _historicalBasketDilution / SCALE;
     }
 
     // Upon vault change or change to *f*, we accumulate the historical dilution factor.
     function _accumulateDilutionFactor() internal {
         _diluteBasket();
         _historicalBasketDilution = _historicalBasketDilution * _currentBasketDilution / SCALE;
+        _currentBasketDilution = SCALE;
         prevBasketFiatcoinRate = vault.basketFiatcoinRate();
     }
 
