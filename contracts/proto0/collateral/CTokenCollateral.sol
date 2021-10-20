@@ -6,7 +6,9 @@ import "./Collateral.sol";
 
 // https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 interface ICToken {
-    function exchangeRateCurrent() external returns (uint256);
+    function exchangeRateCurrent() external view returns (uint256);
+
+    function underlying() external view returns (address);
 }
 
 contract CTokenCollateral is Collateral {
@@ -16,7 +18,15 @@ contract CTokenCollateral is Collateral {
         uint8 decimals
     ) Collateral(erc20_, quantity_, decimals) {}
 
-    function getRedemptionRate() external override returns (uint256) {
+    function getRedemptionRate() external view override returns (uint256) {
         return ICToken(_erc20).exchangeRateCurrent();
+    }
+
+    function getUnderlyingERC20() external view override returns (address) {
+        return ICToken(_erc20).underlying();
+    }
+
+    function isFiatcoin() external pure override returns (bool) {
+        return false;
     }
 }

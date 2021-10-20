@@ -24,7 +24,7 @@ contract Collateral is ICollateral {
     }
 
     // Fiatcoins return 1e18. Lending tokens may have redemption rates > 1e18.
-    function getRedemptionRate() external virtual override returns (uint256) {
+    function getRedemptionRate() external view virtual override returns (uint256) {
         return 1e18;
     }
 
@@ -38,5 +38,13 @@ contract Collateral is ICollateral {
 
     function decimals() external view override returns (uint8) {
         return _decimals;
+    }
+
+    function getUnderlyingERC20() external view virtual override returns (address) {
+        return _erc20;
+    }
+
+    function isFiatcoin() external pure virtual override returns (bool) {
+        return true;
     }
 }

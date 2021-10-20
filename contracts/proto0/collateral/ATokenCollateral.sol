@@ -7,6 +7,8 @@ import "./Collateral.sol";
 // https://github.com/aave/protocol-v2/blob/feat-atoken-wrapper-liquidity-mining/contracts/protocol/tokenization/StaticATokenLM.sol
 interface IStaticAToken {
     function rate() external view returns (uint256);
+
+    function UNDERLYING_ASSET_ADDRESS() external view returns (address);
 }
 
 contract ATokenCollateral is Collateral {
@@ -16,7 +18,15 @@ contract ATokenCollateral is Collateral {
         uint8 decimals
     ) Collateral(erc20_, quantity_, decimals) {}
 
-    function getRedemptionRate() external override returns (uint256) {
+    function getRedemptionRate() external view override returns (uint256) {
         return IStaticAToken(_erc20).rate();
+    }
+
+    function getUnderlyingERC20() external view override returns (address) {
+        return IStaticAToken(_erc20).UNDERLYING_ASSET_ADDRESS();
+    }
+
+    function isFiatcoin() external pure override returns (bool) {
+        return false;
     }
 }
