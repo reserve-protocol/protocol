@@ -8,7 +8,11 @@ interface ICollateral {
 
     function decimals() external view returns (uint8);
 
+    function fiatcoinDecimals() external view returns (uint8);
+
     function fiatcoin() external view returns (address);
 
     function isFiatcoin() external view returns (bool);
+
+    function oracle() external view returns (string memory);
 }

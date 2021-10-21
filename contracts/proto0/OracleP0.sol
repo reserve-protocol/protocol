@@ -1,28 +1,57 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../Ownable.sol"; // temporary
-// import "@openzeppelin/contracts/access/Ownable.sol";
-
-import "../libraries/CommonErrors.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./interfaces/ICollateral.sol";
+import "./interfaces/IOracle.sol";
 
-contract Oracle is Ownable {
-    // Mapping Token -> TWAP Period -> Amount
-    mapping(address => mapping(uint256 => uint256)) private _prices;
+interface Comptroller {
+    function oracle() external view returns (CompoundOracle);
+}
 
-    function setPrice(
-        address token,
-        uint256 period,
-        uint256 amount
-    ) public onlyOwner {
-        _prices[token][period] = amount;
+interface CompoundOracle {
+    function price(string memory symbol) external view returns (uint256);
+}
+
+//
+
+interface AaveLendingPool {
+    function getAddressesProvider() external view returns (ILendingPoolAddressesProvider);
+}
+
+interface ILendingPoolAddressesProvider {
+    function getPriceOracle() external view returns (AaveOracle);
+}
+
+interface AaveOracle {
+    function WETH() external view returns (address);
+    function getAssetPrice(address oracle) external view returns (uint256);
+}
+
+contract OracleP0 is IOracle {
+
+    Comptroller public compound;
+    AaveLendingPool public aave;
+
+    constructor(address comptrollerAddress, address aaveLendingPoolAddress) {
+        compound = Comptroller(comptrollerAddress);
+        aave = AaveLendingPool(aaveLendingPoolAddress);
     }
 
-    function getPrice(address token, uint256 period) public view returns (uint256) {
-        if (_prices[token][period] == 0) {
-            revert CommonErrors.PriceNotFound();
+    // Returns the USD price using 18 decimals
+    function fiatcoinPrice(ICollateral collateral) external view override returns (uint256) {
+        uint256 padding = 10**12;
+        if (keccak256(bytes(collateral.oracle())) == keccak256("AAVE")) {
+            // Aave keeps their prices in terms of ETH
+            AaveOracle aaveOracle = aave.getAddressesProvider().getPriceOracle();
+            uint256 inETH = aaveOracle.getAssetPrice(collateral.fiatcoin());
+            uint256 ethNorm = aaveOracle.getAssetPrice(aaveOracle.WETH());
+            uint256 ethInUsd = compound.oracle().price("ETH");
+            return inETH * ethInUsd * padding / ethNorm;
+        } else if (keccak256(bytes(collateral.oracle())) == keccak256("COMP")) {
+            return compound.oracle().price(IERC20Metadata(collateral.fiatcoin()).symbol()) * padding;
+        } else {
+            assert(false);
         }
-        return _prices[token][period];
     }
 }

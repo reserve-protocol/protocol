@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "../libraries/CommonErrors.sol";
 import "./libraries/Auction.sol";
 import "./libraries/SlowMinting.sol";
 import "./libraries/MathHelpers.sol";
@@ -29,8 +30,6 @@ struct Config {
     uint256 rewardPeriod; // the duration of time between reward events
     uint256 auctionPeriod; // the length of an auction
     uint256 stakingWithdrawalDelay; // the "thawing time" of staked RSR before withdrawal
-    uint256 shortVWAPPeriod; // the VWAP length used during the raising of the default flag
-    uint256 longVWAPPeriod; // the VWAP length used during the lowering of the default flag
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Percentage values (relative to SCALE)
     uint256 maxTradeSlippage; // the maximum amount of slippage in percentage terms we will accept in a trade
@@ -48,8 +47,6 @@ struct Config {
     // rewardPeriod = 604800 (1 week)
     // auctionPeriod = 1800 (30 minutes)
     // stakingWithdrawalDelay = 1209600 (2 weeks)
-    // shortVWAPPeriod = 300 (5 minutes)
-    // longVWAPPeriod = 21600 (6 hours)
     // defaultDelay = 86400 (24 hours)
     // maxTradeSlippage = 5e16 (5%)
     // maxAuctionSize = 1e16 (1%)
@@ -171,8 +168,7 @@ contract ManagerP0 is IManager, Ownable {
         // Check if already in default
         if (!inDefault) {
             (bool _defaulted, ICollateral[] memory _defaultCollateral) = _detectDefaultInVault(
-                vault,
-                _config.shortVWAPPeriod
+                vault
             );
 
             // If Default detected - simply set timestamp and flag
@@ -183,11 +179,10 @@ contract ManagerP0 is IManager, Ownable {
                 _setDefaultedCollateral(_defaultCollateral);
             }
         } else {
-            // If Default already flagged - Check of long TWAP period has passed
-            if (block.timestamp >= lastDefault + _config.longVWAPPeriod) {
+            // If Default already flagged
+            if (block.timestamp >= lastDefault) {
                 (bool _defaulted, ICollateral[] memory _defaultCollateral) = _detectDefaultInVault(
-                    vault,
-                    _config.longVWAPPeriod
+                    vault
                 );
 
                 // If No Default anymore,  lower default flag and cleanup
@@ -208,7 +203,7 @@ contract ManagerP0 is IManager, Ownable {
 
     function issue(uint256 amount) external override notPaused before {
         require(amount > 0, "Cannot issue zero");
-        uint256 issuanceRate = _issuanceRate(amount);
+        uint256 issuanceRate = _issuanceRate();
         uint256 numBlocks = Math.ceilDiv(amount, issuanceRate);
 
         // Mint the RToken now and hold onto it while the slow minting vests
@@ -278,7 +273,7 @@ contract ManagerP0 is IManager, Ownable {
         return (amount * _meltingRatio) / _basketDilutionRatio;
     }
 
-    function _issuanceRate(uint256 amount) internal view returns (uint256) {
+    function _issuanceRate() internal view returns (uint256) {
         // Lower-bound of 10_000 per block
         return Math.max(10_000 * 10**rToken.decimals(), (rToken.totalSupply() * _config.issuanceRate) / SCALE);
     }
@@ -427,54 +422,50 @@ contract ManagerP0 is IManager, Ownable {
             uint256 minBuyAmount
         )
     {
-        _updateRedemptionRates();
-
-        // Compute a target number of basket units we could create if we could trade with 0 slippage.
-        uint256 sumInFiatcoins;
+        // Calculate how many BUs we could create from each collateral if we could trade with 0 slippage
+        uint256 totalValue;
+        uint256[] memory prices = new uint256[](_approvedCollateral.length()); // USD with 18 decimals
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            uint256 bal = IERC20(ICollateral(_approvedCollateral.at(i)).erc20()).balanceOf(address(this));
-            sumInFiatcoins += bal * _prevRedemptionRates[ICollateral(_approvedCollateral.at(i)).erc20()] / SCALE;
+            ICollateral c = ICollateral(_approvedCollateral.at(i));
+            prices[i] = c.redemptionRate() * oracle.fiatcoinPrice(c) / SCALE;
+            totalValue += IERC20(c.erc20()).balanceOf(address(this)) * prices[i];
         }
-        uint256 targetBUs = sumInFiatcoins * SCALE / vault.basketFiatcoinRate();
+        uint256 BUTarget = totalValue * SCALE / vault.basketFiatcoinRate();
 
-        // Calculate surplus and deficits relative to the BU target in terms of fiatcoins.
+        // Calculate surplus and deficits relative to the BU target.
         uint256[] memory surplus = new uint256[](_approvedCollateral.length());
         uint256[] memory deficit = new uint256[](_approvedCollateral.length());
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
             ICollateral c = ICollateral(_approvedCollateral.at(i));
             uint256 bal = IERC20(c.erc20()).balanceOf(address(this));
-            uint256 target = (vault.quantity(c) * targetBUs) / SCALE;
+            uint256 target = (vault.quantity(c) * BUTarget) / SCALE;
             if (bal > target) {
-                surplus[i] = (bal - target) * _prevRedemptionRates[c.erc20()] / SCALE;
+                surplus[i] = (bal - target) * prices[i] / SCALE;
             } else if (bal < target) {
-                deficit[i] = (target - bal) * _prevRedemptionRates[c.erc20()] / SCALE;
+                deficit[i] = (target - bal) * prices[i] / SCALE;
             }
         }
 
-        // Compute the max of the surpluses and deficits (still in terms of fiatcoins).
         uint256 surplusMax; 
         uint256 deficitMax;
         {
+            // Compute the max of the surpluses and deficits.
             (sellIndex, surplusMax) = MathHelpers.max(surplus);
             (buyIndex, deficitMax) = MathHelpers.max(deficit);
-
 
             // Determine if the trade is large enough to be worth doing and calculate amounts. 
             uint256 minAuctionSizeInBUs = _toBUs((rToken.totalSupply() * _config.minAuctionSize) / SCALE);
             uint256 minAuctionSizeInFiatcoins = minAuctionSizeInBUs * vault.basketFiatcoinRate() / SCALE;
             shouldTrade = deficitMax > minAuctionSizeInFiatcoins && surplusMax > minAuctionSizeInFiatcoins;
-            minBuyAmount = deficitMax * SCALE / _prevRedemptionRates[_approvedCollateral.at(buyIndex)];
+            minBuyAmount = deficitMax * SCALE / prices[buyIndex];
         }
 
-        {
-            uint256 maxSell = (deficitMax * SCALE / (SCALE - _config.maxTradeSlippage));
-            uint256 sellAmount = Math.min(maxSell, surplusMax);
-            sellAmount =  sellAmount * SCALE / _prevRedemptionRates[_approvedCollateral.at(sellIndex)];
-        }
+        uint256 maxSell = (deficitMax * SCALE / (SCALE - _config.maxTradeSlippage));
+        sellAmount = Math.min(maxSell, surplusMax) * SCALE / _prevRedemptionRates[_approvedCollateral.at(sellIndex)];
         return (shouldTrade, sellIndex, sellAmount, buyIndex, minBuyAmount);
     }
 
-    function _detectDefaultInVault(IVault vault_, uint256 period) internal view returns (bool, ICollateral[] memory) {
+    function _detectDefaultInVault(IVault vault_) internal view returns (bool, ICollateral[] memory) {
         bool _defaulted = false;
         ICollateral[] memory _defaultCollateral = new ICollateral[](vault_.basketSize());
         uint256 _price;
@@ -489,9 +480,9 @@ contract ManagerP0 is IManager, Ownable {
                 _defaultCollateral[i] = c;
             }
 
-            // 2. Check oracle prices of fiatcoins for default (received a TWAP period)
+            // 2. Check oracle prices of fiatcoins for default 
             // If any fiatcoins are 5% (default threshold) below their stable price raise flag
-            _price = oracle.getPrice(c.fiatcoin(), period);
+            _price = oracle.fiatcoinPrice(c);
             // TODO: Apply correct calculation
             if (
                 _price < 10**IERC20Metadata(c.fiatcoin()).decimals() /*  - 5% */
@@ -520,7 +511,7 @@ contract ManagerP0 is IManager, Ownable {
                 continue;
             }
 
-            (bool _defaulted, ) = _detectDefaultInVault(v, _config.shortVWAPPeriod); // or longVWAPPeriod?
+            (bool _defaulted, ) = _detectDefaultInVault(v);
 
             if (!_defaulted) {
                 // Get basketFiatcoinRate()
@@ -548,7 +539,7 @@ contract ManagerP0 is IManager, Ownable {
             pastVaults.push(vault);
             vault = _newVault;
 
-            //  Lower default flag (keep defaulted tokens in list)
+            //  Lower default flag (keep defaulted collateral in list)
             inDefault = false;
         }
 
@@ -559,7 +550,7 @@ contract ManagerP0 is IManager, Ownable {
         _accumulateDilutionFactor();
     }
 
-    // Add tokens to the enumerable set - Cleans it up first
+    // Add collateral to the enumerable set - Cleans it up first
     function _setDefaultedCollateral(ICollateral[] memory _collateral) internal {
         _cleanupDefaultedCollateral();
         for (uint256 i = 0; i < _collateral.length; i++) {

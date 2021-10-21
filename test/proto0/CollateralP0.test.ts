@@ -42,13 +42,13 @@ describe('CollateralP0 contracts', () => {
 
     // Deploy Collaterals
     FiatCollateralFactory = await ethers.getContractFactory('CollateralP0')
-    collFiatToken = <CollateralP0>await FiatCollateralFactory.deploy(fiatUSDC.address, 6)
+    collFiatToken = <CollateralP0>await FiatCollateralFactory.deploy(fiatUSDC.address)
 
     ACollateralFactory = await ethers.getContractFactory('ATokenCollateralP0')
-    collAToken = <ATokenCollateralP0>await ACollateralFactory.deploy(aUSDT.address, 18)
+    collAToken = <ATokenCollateralP0>await ACollateralFactory.deploy(aUSDT.address)
 
     CCollateralFactory = await ethers.getContractFactory('CTokenCollateralP0')
-    collCToken = <CTokenCollateralP0>await CCollateralFactory.deploy(cDAI.address, 18)
+    collCToken = <CTokenCollateralP0>await CCollateralFactory.deploy(cDAI.address)
   })
 
   describe('Deployment', () => {
@@ -56,21 +56,18 @@ describe('CollateralP0 contracts', () => {
       // Fiat Token
       expect(await collFiatToken.redemptionRate()).to.equal(bn(1e18))
       expect(await collFiatToken.erc20()).to.equal(fiatUSDC.address)
-      expect(await collFiatToken.decimals()).to.equal(6)
       expect(await collFiatToken.fiatcoin()).to.equal(fiatUSDC.address)
       expect(await collFiatToken.isFiatcoin()).to.equal(true)
 
       // AToken
       expect(await collAToken.redemptionRate()).to.equal(bn(1e18))
       expect(await collAToken.erc20()).to.equal(aUSDT.address)
-      expect(await collAToken.decimals()).to.equal(18)
       expect(await collAToken.fiatcoin()).to.equal(fiatUSDC.address)
       expect(await collAToken.isFiatcoin()).to.equal(false)
 
       // CToken
       expect(await collCToken.redemptionRate()).to.equal(bn(1e18))
       expect(await collCToken.erc20()).to.equal(cDAI.address)
-      expect(await collCToken.decimals()).to.equal(18)
       expect(await collCToken.fiatcoin()).to.equal(fiatUSDC.address)
       expect(await collCToken.isFiatcoin()).to.equal(false)
     })

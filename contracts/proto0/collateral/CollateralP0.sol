@@ -11,14 +11,12 @@ contract CollateralP0 is ICollateral {
     using SafeERC20 for IERC20;
 
     address internal immutable _erc20;
-    uint8 internal immutable _decimals;
 
-    constructor(address erc20_, uint8 decimals_) {
+    constructor(address erc20_) {
         _erc20 = erc20_;
-        _decimals = decimals_;
     }
 
-    // Fiatcoins return 1e18. Lending tokens may have redemption rates > 1e18.
+    // Fiatcoins return 1e18. All redemption rates should have 18 zeroes. 
     function redemptionRate() external view virtual override returns (uint256) {
         return 1e18;
     }
@@ -28,14 +26,22 @@ contract CollateralP0 is ICollateral {
     }
 
     function decimals() external view override returns (uint8) {
-        return _decimals;
+        return IERC20Metadata(_erc20).decimals();
     }
 
-    function fiatcoin() external view virtual override returns (address) {
+    function fiatcoinDecimals() public view override returns (uint8) {
+        return IERC20Metadata(fiatcoin()).decimals();
+    }
+
+    function fiatcoin() public view virtual override returns (address) {
         return _erc20;
     }
 
     function isFiatcoin() external pure virtual override returns (bool) {
         return true;
+    }
+
+    function oracle() external pure virtual override returns (string memory) {
+        return "AAVE";
     }
 }
