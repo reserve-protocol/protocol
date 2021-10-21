@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./libraries/Auction.sol";
 import "./libraries/SlowMinting.sol";
+import "./libraries/MathHelpers.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IFaucet.sol";
 import "./interfaces/IVault.sol";
@@ -411,7 +412,11 @@ contract ManagerP0 is IManager, Ownable {
         return true;
     }
 
-    // Returns balance surpluses and deficits required to issue *BUs*, for each _approvedCollateral.
+    // Determines if a trade should be made and what it should be.
+    // Algorithm: 
+    //     1. Target a particular number of basket units based on total fiatcoins held across all collateral.
+    //     2. Swap the most-in-excess collateral for most-in-deficit.
+    //     3. Confirm swap is for a large enough volume. We don't want to trade endlessly. 
     function _selectTrade()
         internal
         returns (
@@ -422,55 +427,45 @@ contract ManagerP0 is IManager, Ownable {
             uint256 minBuyAmount
         )
     {
-        // TODO: This is wrong, I made a mistake. To return to and fix tomorrow morning.
+        _updateRedemptionRates();
 
-        // Calculate surplus and deficits in terms of unnormalized token quantities.
+        // Compute a target number of basket units we could create if we could trade with 0 slippage.
+        uint256 sumInFiatcoins;
+        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
+            uint256 bal = IERC20(ICollateral(_approvedCollateral.at(i)).erc20()).balanceOf(address(this));
+            sumInFiatcoins += bal * _prevRedemptionRates[ICollateral(_approvedCollateral.at(i)).erc20()] / SCALE;
+        }
+        uint256 targetBUs = sumInFiatcoins * SCALE / vault.basketFiatcoinRate();
+
+        // Calculate surplus and deficits relative to the BU target in terms of fiatcoins.
         uint256[] memory surplus = new uint256[](_approvedCollateral.length());
         uint256[] memory deficit = new uint256[](_approvedCollateral.length());
-        uint256 minAuctionSizeInBUs = _toBUs((rToken.totalSupply() * _config.minAuctionSize) / SCALE);
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
             ICollateral c = ICollateral(_approvedCollateral.at(i));
             uint256 bal = IERC20(c.erc20()).balanceOf(address(this));
-            uint256 needed = (vault.quantity(c) * minAuctionSizeInBUs) / SCALE;
-            if (bal > needed) {
-                surplus[i] = bal - needed;
-            } else if (bal < needed) {
-                deficit[i] = needed - bal;
+            uint256 target = (vault.quantity(c) * targetBUs) / SCALE;
+            if (bal > target) {
+                surplus[i] = (bal - target) * _prevRedemptionRates[c.erc20()] / SCALE;
+            } else if (bal < target) {
+                deficit[i] = (target - bal) * _prevRedemptionRates[c.erc20()] / SCALE;
             }
         }
 
-        // Normalize surplus/deficits by converting into fiatcoins.
-        _updateRedemptionRates();
-        uint256[] memory surplusInFiatcoins = new uint256[](_approvedCollateral.length());
-        uint256[] memory deficitInFiatcoins = new uint256[](_approvedCollateral.length());
-        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            address c = _approvedCollateral.at(i);
-            uint256 padding = 10**(rToken.decimals() - ICollateral(c).decimals());
-            surplusInFiatcoins[i] = (surplus[i] * _prevRedemptionRates[c] * padding) / SCALE;
-            deficitInFiatcoins[i] = (deficit[i] * _prevRedemptionRates[c] * padding) / SCALE;
+        {
+            // Compute the max of the surpluses and deficits (still in terms of fiatcoins).
+            (sellIndex, uint256 surplusMax) = MathHelpers.max(surplus);
+            (buyIndex, uint256 deficitMax) = MathHelpers.max(deficit);
+
+            // Determine if the trade is large enough to be worth doing and calculate amounts. 
+            uint256 minAuctionSizeInBUs = _toBUs((rToken.totalSupply() * _config.minAuctionSize) / SCALE);
+            uint256 minAuctionSizeInFiatcoins = minAuctionSizeInBUs * vault.basketFiatcoinRate() / SCALE;
+            shouldTrade = deficitMax > minAuctionSizeInFiatcoins && surplusMax > minAuctionSizeInFiatcoins;
+            minBuyAmount = deficitMax * SCALE / _prevRedemptionRates[_approvedCollateral.at(buyIndex)];
+            uint256 maxSell = (deficitMax * SCALE / (SCALE - _config.maxTradeSlippage));
+            uint256 sellAmount = Math.min(maxSell, surplusMax);
+            sellAmount =  sellAmount * SCALE / _prevRedemptionRates[_approvedCollateral.at(sellIndex)];
         }
-
-        // Compute the max of the surpluses and deficits.
-        uint256 surplusMax;
-        uint256 surplusIndex;
-        uint256 deficitMax;
-        uint256 deficitIndex;
-        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            if (surplusInFiatcoins[i] > surplusMax) {
-                surplusMax = surplusInFiatcoins[i];
-                surplusIndex = i;
-            } else if (deficitInFiatcoins[i] > deficitMax) {
-                deficitMax = deficitInFiatcoins[i];
-                deficitIndex = i;
-            }
-        }
-
-        // Finalize sell and buy amounts
-        sellAmount = surplus[surplusIndex];
-        minBuyAmount = (deficit[deficitIndex] * (SCALE - _config.maxTradeSlippage)) / SCALE;
-        shouldTrade = deficitMax > (minAuctionSizeInBUs * vault.basketFiatcoinRate()) / SCALE;
-
-        return (shouldTrade, surplusIndex, sellAmount, deficitIndex, minBuyAmount);
+        return (shouldTrade, sellIndex, sellAmount, buyIndex, minBuyAmount);
     }
 
     function _detectDefaultInVault(IVault vault_, uint256 period) internal view returns (bool, ICollateral[] memory) {
