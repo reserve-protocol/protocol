@@ -12,7 +12,6 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../libraries/CommonErrors.sol";
 import "./libraries/Auction.sol";
 import "./libraries/SlowMinting.sol";
-import "./libraries/MathHelpers.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IFaucet.sol";
 import "./interfaces/IVault.sol";
@@ -143,6 +142,7 @@ contract ManagerP0 is IManager, Ownable {
 
         pauser = _msgSender();
         prevBasketFiatcoinRate = vault.basketFiatcoinRate();
+        staking.rsr().approve(address(staking), type(uint256).max);
     }
 
     modifier notPaused() {
@@ -348,10 +348,10 @@ contract ManagerP0 is IManager, Ownable {
 
     // Continually runs auctions as long as there is a past non-empty vault.
     function _manageAuctions() internal {
-        // Try to launch an auction
+        // Try to launch a collateral for collateral auction
         bool auctionRunning = _tryLaunchCollateralAuction();
 
-        // Break a large chunk of BUs off the oldest vault if we need more collateral for trading
+        // If we still aren't running, break a large chunk of BUs off the oldest vault if we need more collateral for trading
         IVault oldVault = _oldestNonEmptyVault();
         if (!auctionRunning && address(oldVault) != address(vault)) {
             uint256 target = _toBUs(rToken.totalSupply());
@@ -359,21 +359,45 @@ contract ManagerP0 is IManager, Ownable {
             uint256 max = _toBUs((rToken.totalSupply() * _config.maxAuctionSize) / SCALE);
             uint256 chunk = Math.min(max, current < target ? target - current : oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
-            _tryLaunchCollateralAuction();
+            
+            // Try to launch a collateral for collateral auction
+            auctionRunning = _tryLaunchCollateralAuction();
         }
 
-        // Create as many BUs as we can in the current vault
+        // Final backstop: Use RSR to buy back RToken and burn it.
+        if (!auctionRunning && vault.basketUnits(address(this)) < _toBUs(rToken.totalSupply())) {
+            uint256 rsrUSD = oracle.consultAAVE(address(staking.rsr()));
+            uint256 rTokenUSDEstimate = vault.basketFiatcoinRate();
+            uint256 unbackedRToken = rToken.totalSupply() - _fromBUs(vault.basketUnits(address(this)));
+
+            uint256 minBuy = Math.min(unbackedRToken, (rToken.totalSupply() * _config.maxAuctionSize) / SCALE);
+            minBuy = Math.max(minBuy, (rToken.totalSupply() * _config.minAuctionSize) / SCALE);
+            uint256 sellAmount = minBuy * rTokenUSDEstimate / rsrUSD;
+            sellAmount = (sellAmount * SCALE / (SCALE - _config.maxTradeSlippage));
+
+            staking.seizeRSR(sellAmount - staking.rsr().balanceOf(address(this)));
+
+            Auction.Info storage auction = auctions[auctionCount];
+            auction.start(
+                address(staking.rsr()),
+                address(rToken),
+                sellAmount,
+                minBuy,
+                block.timestamp + _config.auctionPeriod
+            );
+            auctionCount++;
+        }
+    }
+
+    // Launches any collateral for collateral auctions and returns if there are any auctions running.
+    // Invariant: Only one auction is live at any given time.
+    function _tryLaunchCollateralAuction() internal returns (bool) {
+        // Create as many BUs as we can first
         uint256 issuable = vault.maxIssuable(address(this));
         if (issuable > 0) {
             vault.issue(issuable);
         }
 
-        // TODO: RSR recapitalization
-    }
-
-    // Launches any collateral for collateral auctions and returns if there are any auctions running.
-    // Note: Only one auction is live at any given time.
-    function _tryLaunchCollateralAuction() internal returns (bool) {
         // Closeout previous auctions
         Auction.Info storage prev = auctionCount > 0 ? auctions[auctionCount - 1] : auctions[0];
         if (prev.open) {
@@ -385,11 +409,15 @@ contract ManagerP0 is IManager, Ownable {
 
         // Are we capitalized?
         if (vault.basketUnits(address(this)) >= _toBUs(rToken.totalSupply())) {
+            uint256 rsrBal = staking.rsr().balanceOf(address(this));
+            if (rsrBal > 0) {
+                staking.addRSR(rsrBal);
+            }
             return false;
         }
 
         // Decide whether to trade and exactly which trade.
-        (bool trade, uint256 sellIndex, uint256 sellAmount, uint256 buyIndex, uint256 minBuyAmount) = _selectTrade();
+        (bool trade, uint256 sellIndex, uint256 sellAmount, uint256 buyIndex, uint256 minBuy) = _collateralTrade();
         if (!trade) {
             return false;
         }
@@ -400,7 +428,7 @@ contract ManagerP0 is IManager, Ownable {
             ICollateral(_approvedCollateral.at(sellIndex)).erc20(),
             ICollateral(_approvedCollateral.at(buyIndex)).erc20(),
             sellAmount,
-            minBuyAmount,
+            minBuy,
             block.timestamp + _config.auctionPeriod
         );
         auctionCount++;
@@ -412,7 +440,7 @@ contract ManagerP0 is IManager, Ownable {
     //     1. Target a particular number of basket units based on total fiatcoins held across all collateral.
     //     2. Swap the most-in-excess collateral for most-in-deficit.
     //     3. Confirm swap is for a large enough volume. We don't want to trade endlessly. 
-    function _selectTrade()
+    function _collateralTrade()
         internal
         returns (
             bool shouldTrade,
@@ -422,7 +450,8 @@ contract ManagerP0 is IManager, Ownable {
             uint256 minBuyAmount
         )
     {
-        // Calculate how many BUs we could create from each collateral if we could trade with 0 slippage
+
+        // Calculate how many BUs we could create from all collateral if we could trade with 0 slippage
         uint256 totalValue;
         uint256[] memory prices = new uint256[](_approvedCollateral.length()); // USD with 18 decimals
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
@@ -432,9 +461,11 @@ contract ManagerP0 is IManager, Ownable {
         }
         uint256 BUTarget = totalValue * SCALE / vault.basketFiatcoinRate();
 
-        // Calculate surplus and deficits relative to the BU target.
         uint256[] memory surplus = new uint256[](_approvedCollateral.length());
         uint256[] memory deficit = new uint256[](_approvedCollateral.length());
+        uint256 surplusMax;
+        uint256 deficitMax;
+        // Calculate surplus and deficits relative to the BU target.
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
             ICollateral c = ICollateral(_approvedCollateral.at(i));
             uint256 bal = IERC20(c.erc20()).balanceOf(address(this));
@@ -446,14 +477,20 @@ contract ManagerP0 is IManager, Ownable {
             }
         }
 
-        uint256 surplusMax; 
-        uint256 deficitMax;
-        {
-            // Compute the max of the surpluses and deficits.
-            (sellIndex, surplusMax) = MathHelpers.max(surplus);
-            (buyIndex, deficitMax) = MathHelpers.max(deficit);
+        // Calculate the maximums. 
+        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
+            if (surplus[i] > surplusMax) {
+                surplusMax = surplus[i];
+                sellIndex = i;
+            }
+            if (deficit[i] > deficitMax) {
+                deficitMax = deficit[i];
+                buyIndex = i;
+            }
+        }
 
-            // Determine if the trade is large enough to be worth doing and calculate amounts. 
+        // Determine if the trade is large enough to be worth doing and calculate amounts. 
+        {
             uint256 minAuctionSizeInBUs = _toBUs((rToken.totalSupply() * _config.minAuctionSize) / SCALE);
             uint256 minAuctionSizeInFiatcoins = minAuctionSizeInBUs * vault.basketFiatcoinRate() / SCALE;
             shouldTrade = deficitMax > minAuctionSizeInFiatcoins && surplusMax > minAuctionSizeInFiatcoins;

@@ -30,6 +30,8 @@ interface AaveOracle {
 
 contract OracleP0 is IOracle {
 
+    uint256 constant padding = 10**12;
+    
     Comptroller public compound;
     AaveLendingPool public aave;
 
@@ -40,18 +42,26 @@ contract OracleP0 is IOracle {
 
     // Returns the USD price using 18 decimals
     function fiatcoinPrice(ICollateral collateral) external view override returns (uint256) {
-        uint256 padding = 10**12;
         if (keccak256(bytes(collateral.oracle())) == keccak256("AAVE")) {
-            // Aave keeps their prices in terms of ETH
-            AaveOracle aaveOracle = aave.getAddressesProvider().getPriceOracle();
-            uint256 inETH = aaveOracle.getAssetPrice(collateral.fiatcoin());
-            uint256 ethNorm = aaveOracle.getAssetPrice(aaveOracle.WETH());
-            uint256 ethInUsd = compound.oracle().price("ETH");
-            return inETH * ethInUsd * padding / ethNorm;
+            return consultAAVE(collateral.fiatcoin());
         } else if (keccak256(bytes(collateral.oracle())) == keccak256("COMP")) {
-            return compound.oracle().price(IERC20Metadata(collateral.fiatcoin()).symbol()) * padding;
-        } else {
-            assert(false);
+            return consultCOMP(collateral.fiatcoin());
         }
+        assert(false);
+    }
+
+    // Returns the USD price using 18 decimals
+    function consultAAVE(address token) public view override returns (uint256) {
+        // Aave keeps their prices in terms of ETH
+        AaveOracle aaveOracle = aave.getAddressesProvider().getPriceOracle();
+        uint256 inETH = aaveOracle.getAssetPrice(token);
+        uint256 ethNorm = aaveOracle.getAssetPrice(aaveOracle.WETH());
+        uint256 ethInUsd = compound.oracle().price("ETH");
+        return inETH * ethInUsd * padding / ethNorm;        
+    }
+
+    // Returns the USD price using 18 decimals
+    function consultCOMP(address token) public view override returns (uint256) {
+        return compound.oracle().price(IERC20Metadata(token).symbol()) * padding;
     }
 }

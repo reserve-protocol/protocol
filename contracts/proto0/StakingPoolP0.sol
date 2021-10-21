@@ -21,7 +21,7 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     IRToken public rToken;
-    IERC20 public rsr;
+    IERC20 public override rsr;
 
     // Staking Token Name and Symbol
     string private _name;
