@@ -3,7 +3,7 @@ import { ethers } from 'hardhat'
 import hre from 'hardhat'
 import { BigNumber, ContractFactory, Contract } from 'ethers'
 import { bn } from '../../common/numbers'
-import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
+import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { RTokenMockP0 } from '../../typechain/RTokenMockP0'
@@ -70,7 +70,7 @@ describe('FaucetP0 contract', () => {
     faucet = <FaucetP0>await FaucetFactory.deploy(beneficiary.address, rToken.address)
 
     // Take snapshot to be able to revert to this point
-    snapshotId = await ethers.provider.send('evm_snapshot', [])
+    //snapshotId = await ethers.provider.send('evm_snapshot', [])
   })
 
   describe('Deployment', () => {
@@ -278,7 +278,7 @@ describe('FaucetP0 contract', () => {
 
     it('Should allow drips - two equal parts', async () => {
       // Revert to snapshot to ensure test runs independent
-      await ethers.provider.send('evm_revert', [snapshotId])
+      //await ethers.provider.send('evm_revert', [snapshotId])
 
       const hndAmt: BigNumber = bn(10e18)
       const timePeriod: number = 60 * 60 * 24 // 1 day
@@ -296,7 +296,8 @@ describe('FaucetP0 contract', () => {
       expect(await rToken.balanceOf(beneficiary.address)).to.equal(0)
 
       // Advance to the middle of period
-      await advanceTime(timePeriod / 2 - 1)
+      //await advanceTime(timePeriod / 2 - 1)
+      await advanceToTimestamp(hndTimestamp + timePeriod / 2 - 1)
 
       // Drip
       await faucet.connect(addr1).drip()
@@ -314,7 +315,8 @@ describe('FaucetP0 contract', () => {
       expect(await rToken.balanceOf(beneficiary.address)).to.equal(hndAmt.div(2))
 
       // Advance to the end
-      await advanceTime(timePeriod / 2)
+      //await advanceTime(timePeriod / 2)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + timePeriod / 2)
 
       // Drip with any account
       await faucet.connect(addr2).drip()
@@ -334,7 +336,7 @@ describe('FaucetP0 contract', () => {
 
     it('Should allow drips - for multiple handouts', async () => {
       // Revert to snapshot to ensure test runs independent
-      await ethers.provider.send('evm_revert', [snapshotId])
+      //await ethers.provider.send('evm_revert', [snapshotId])
 
       const hndAmt: BigNumber = bn(10e18)
       const timePeriod: number = 60 * 60 * 24 // 1 day
@@ -359,7 +361,8 @@ describe('FaucetP0 contract', () => {
       const hndTimestamp1 = await getLatestBlockTimestamp()
 
       // Advance to the middle of period
-      await advanceTime(timePeriod / 2 - 3) // already 2 additional blocks processed
+      // await advanceTime(timePeriod / 2 - 3) // already 2 additional blocks processed
+      await advanceToTimestamp(hndTimestamp1 + timePeriod / 2 - 3)
 
       // Drip with any account
       await faucet.connect(addr2).drip()
@@ -385,7 +388,8 @@ describe('FaucetP0 contract', () => {
       expect(await rToken.balanceOf(beneficiary.address)).to.equal(hndAmt2.add(hndAmt.div(2)))
 
       // Advance to the 75% of largest period
-      await advanceTime(timePeriod / 4 - 1)
+      //await advanceTime(timePeriod / 4 - 1)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + timePeriod / 4 - 1)
 
       // Drip with any account
       await faucet.connect(addr2).drip()
@@ -419,7 +423,8 @@ describe('FaucetP0 contract', () => {
       })
 
       // Advance to the end of largest period, shoeuld process half of the last handout
-      await advanceTime(timePeriod / 4 - 1)
+      // await advanceTime(timePeriod / 4 - 1)
+      await advanceToTimestamp(hndTimestamp2 + timePeriod / 4 - 1)
 
       // Drip with any account
       await faucet.connect(addr2).drip()

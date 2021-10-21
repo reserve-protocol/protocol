@@ -4,7 +4,7 @@ import { BigNumber, ContractFactory } from 'ethers'
 import { bn } from '../../common/numbers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { Collateral } from '../../typechain/Collateral'
+import { CollateralP0 } from '../../typechain/CollateralP0'
 import { VaultP0 } from '../../typechain/VaultP0'
 
 interface ICollateralInfo {
@@ -25,10 +25,10 @@ describe('VaultP0 contract', () => {
   let tkn2: ERC20Mock
   let tkn3: ERC20Mock
   let CollateralFactory: ContractFactory
-  let collateral0: Collateral
-  let collateral1: Collateral
-  let collateral2: Collateral
-  let collateral3: Collateral
+  let collateral0: CollateralP0
+  let collateral1: CollateralP0
+  let collateral2: CollateralP0
+  let collateral3: CollateralP0
   let quantity0: BigNumber
   let quantity1: BigNumber
   let quantity2: BigNumber
@@ -63,11 +63,11 @@ describe('VaultP0 contract', () => {
     await tkn3.connect(owner).mint(addr1.address, initialBal)
 
     // Set Collaterals and Quantities
-    CollateralFactory = await ethers.getContractFactory('Collateral')
-    collateral0 = <Collateral>await CollateralFactory.deploy(tkn0.address, tkn0.decimals())
-    collateral1 = <Collateral>await CollateralFactory.deploy(tkn1.address, tkn0.decimals())
-    collateral2 = <Collateral>await CollateralFactory.deploy(tkn2.address, tkn0.decimals())
-    collateral3 = <Collateral>await CollateralFactory.deploy(tkn3.address, tkn0.decimals())
+    CollateralFactory = await ethers.getContractFactory('CollateralP0')
+    collateral0 = <CollateralP0>await CollateralFactory.deploy(tkn0.address, tkn0.decimals())
+    collateral1 = <CollateralP0>await CollateralFactory.deploy(tkn1.address, tkn0.decimals())
+    collateral2 = <CollateralP0>await CollateralFactory.deploy(tkn2.address, tkn0.decimals())
+    collateral3 = <CollateralP0>await CollateralFactory.deploy(tkn3.address, tkn0.decimals())
 
     quantity0 = qtyHalf
     quantity1 = qtyHalf
@@ -85,7 +85,7 @@ describe('VaultP0 contract', () => {
   describe('Deployment', () => {
     const expectCollateral = async (index: number, collateralInfo: Partial<ICollateralInfo>) => {
       const collateralAddress = await vault.collateralAt(index)
-      const collateralInstance = await ethers.getContractAt('Collateral', collateralAddress)
+      const collateralInstance = <CollateralP0>await ethers.getContractAt('CollateralP0', collateralAddress)
       expect(await collateralInstance.erc20()).to.equal(collateralInfo.erc20)
       expect(await collateralInstance.decimals()).to.equal(collateralInfo.decimals)
       expect(await vault.quantity(collateralInstance.address)).to.equal(collateralInfo.quantity)
