@@ -473,7 +473,7 @@ contract ManagerP0 is IManager, Ownable {
         return (shouldTrade, surplusIndex, sellAmount, deficitIndex, minBuyAmount);
     }
 
-    function _detectDefaultInVault(IVault vault_, uint256 period) internal view returns (bool, ICollateral[] memory) {
+    function _detectDefaultInVault(IVault vault_, uint256 period) internal returns (bool, ICollateral[] memory) {
         bool _defaulted = false;
         ICollateral[] memory _defaultCollateral = new ICollateral[](vault_.basketSize());
         uint256 _price;

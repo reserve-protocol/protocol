@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 interface ICollateral {
-    function redemptionRate() external view returns (uint256);
+    function redemptionRate() external returns (uint256);
 
     function erc20() external view returns (address);
 

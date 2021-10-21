@@ -14,7 +14,7 @@ interface ICToken {
 contract CTokenCollateral is Collateral {
     constructor(address erc20_, uint8 decimals) Collateral(erc20_, decimals) {}
 
-    function redemptionRate() external view override returns (uint256) {
+    function redemptionRate() external override returns (uint256) {
         return ICToken(_erc20).exchangeRateCurrent();
     }
 
