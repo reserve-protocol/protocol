@@ -451,16 +451,22 @@ contract ManagerP0 is IManager, Ownable {
             }
         }
 
+        // Compute the max of the surpluses and deficits (still in terms of fiatcoins).
+        uint256 surplusMax; 
+        uint256 deficitMax;
         {
-            // Compute the max of the surpluses and deficits (still in terms of fiatcoins).
-            (sellIndex, uint256 surplusMax) = MathHelpers.max(surplus);
-            (buyIndex, uint256 deficitMax) = MathHelpers.max(deficit);
+            (sellIndex, surplusMax) = MathHelpers.max(surplus);
+            (buyIndex, deficitMax) = MathHelpers.max(deficit);
+
 
             // Determine if the trade is large enough to be worth doing and calculate amounts. 
             uint256 minAuctionSizeInBUs = _toBUs((rToken.totalSupply() * _config.minAuctionSize) / SCALE);
             uint256 minAuctionSizeInFiatcoins = minAuctionSizeInBUs * vault.basketFiatcoinRate() / SCALE;
             shouldTrade = deficitMax > minAuctionSizeInFiatcoins && surplusMax > minAuctionSizeInFiatcoins;
             minBuyAmount = deficitMax * SCALE / _prevRedemptionRates[_approvedCollateral.at(buyIndex)];
+        }
+
+        {
             uint256 maxSell = (deficitMax * SCALE / (SCALE - _config.maxTradeSlippage));
             uint256 sellAmount = Math.min(maxSell, surplusMax);
             sellAmount =  sellAmount * SCALE / _prevRedemptionRates[_approvedCollateral.at(sellIndex)];
