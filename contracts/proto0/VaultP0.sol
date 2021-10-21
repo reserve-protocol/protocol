@@ -47,15 +47,6 @@ contract VaultP0 is IVault, Ownable {
         }
     }
 
-    // Returns the number of BUs that the caller could create for each collateral token, if that collateral token
-    // were the limiting factor and nothing else mattered. Useful for auction calculations.
-    function calculateBUsPerCollateral(address issuer) public view override returns (uint256[] memory BUs) {
-        for (uint256 i = 0; i < _basket.size; i++) {
-            ICollateral c = _basket.collateral[i];
-            BUs[i] = (IERC20(c.erc20()).balanceOf(issuer) * 10**c.decimals()) / _basket.quantities[i];
-        }
-    }
-
     //
 
     function issue(uint256 amount) external override {
@@ -91,7 +82,7 @@ contract VaultP0 is IVault, Ownable {
     // Can't be a view because the cToken and aToken could cause state changes to their Defi protocols.
     function basketFiatcoinRate() external override returns (uint256 sum) {
         for (uint256 i = 0; i < _basket.size; i++) {
-            ICollateral c = ICollateral(_basket.collateral[i]);
+            ICollateral c = _basket.collateral[i];
             sum += (_basket.quantities[i] * c.redemptionRate()) / c.decimals();
         }
     }
@@ -100,10 +91,10 @@ contract VaultP0 is IVault, Ownable {
 
     function maxIssuable(address issuer) external view override returns (uint256) {
         uint256 min = type(uint256).max;
-        uint256[] memory BUs = calculateBUsPerCollateral(issuer);
         for (uint256 i = 0; i < _basket.size; i++) {
-            if (BUs[i] < min) {
-                min = BUs[i];
+            uint256 BUs = IERC20(_basket.collateral[i].erc20()).balanceOf(issuer) / _basket.quantities[i];
+            if (BUs < min) {
+                min = BUs;
             }
         }
         return min;
@@ -117,27 +108,15 @@ contract VaultP0 is IVault, Ownable {
         return _basket.collateral[index];
     }
 
-    // // Returns the basket quantity for the collateral with erc20 equal to *token*.
-    // // Note that *token* here is the underlying erc20, not one of our Collateral instances.
-    // function basketQuantity(address token) external view override returns (uint256) {
-    //     for (uint i = 0; i < _basket.size; i++) {
-    //         if (_basket.collateral[i].erc20() == token) {
-    //             return _basket.quantities[i];
-    //         }
-    //     }
-    //     return 0;
-    // }
-
-    // // Returns the redemption rate for the collateral with erc20 equal to *token*.
-    // // Note that *token* here is the underlying erc20, not one of our Collateral instances.
-    // function redemptionRate(address token) external view override returns (uint256) {
-    //     for (uint i = 0; i < _basket.size; i++) {
-    //         if (_basket.collateral[i].erc20() == token) {
-    //             return _basket.collateral[i].redemptionRate();
-    //         }
-    //     }
-    //     return 0;
-    // }
+    // Returns the basket quantity for the given collateral.
+    function quantity(ICollateral collateral) external view override returns (uint256) {
+        for (uint256 i = 0; i < _basket.size; i++) {
+            if (_basket.collateral[i] == collateral) {
+                return _basket.quantities[i];
+            }
+        }
+        return 0;
+    }
 
     function setBackups(IVault[] memory backupVaults) external onlyOwner {
         backups = backupVaults;
@@ -150,16 +129,4 @@ contract VaultP0 is IVault, Ownable {
     function backupAt(uint256 index) external view override returns (IVault) {
         return backups[index];
     }
-
-    // // Returns the quantities of tokens missing from *other's* basket.
-    // function basketDelta(IVault other) external view override returns (uint256[] memory missing) {
-    //     missing = new uint256[](_basket.size);
-    //     for (uint i = 0; i < _basket.size; i++) {
-    //         uint256 q = _basket.collateral[i].quantity();
-    //         uint256 otherQ = other.basketQuantity(_basket.collateral[i].erc20());
-    //         if (q > otherQ) {
-    //             missing[i] = q - otherQ;
-    //         }
-    //     }
-    // }
 }

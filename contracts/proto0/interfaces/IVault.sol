@@ -16,8 +16,6 @@ interface IVault {
 
     function basketFiatcoinRate() external returns (uint256);
 
-    function calculateBUsPerCollateral(address issuer) external view returns (uint256[] memory);
-
     function maxIssuable(address issuer) external view returns (uint256);
 
     function tokenAmounts(uint256 amount) external view returns (uint256[] memory);
@@ -28,7 +26,7 @@ interface IVault {
 
     function basketUnits(address account) external view returns (uint256);
 
-    // function basketQuantity(address token) external view returns (uint256);
+    function quantity(ICollateral collateral) external view returns (uint256);
 
     function getBackups() external view returns (IVault[] memory);
 

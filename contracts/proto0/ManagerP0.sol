@@ -32,6 +32,7 @@ struct Config {
     uint256 longVWAPPeriod; // the VWAP length used during the lowering of the default flag
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Percentage values (relative to SCALE)
+    uint256 maxTradeSlippage; // the maximum amount of slippage in percentage terms we will accept in a trade
     uint256 maxAuctionSize; // the size of an auction, as a fraction of RToken supply
     uint256 minAuctionSize; // the size of an auction, as a fraction of RToken supply
     uint256 migrationChunk; // how much backing to migrate at a time, as a fraction of RToken supply
@@ -49,6 +50,7 @@ struct Config {
     // shortVWAPPeriod = 300 (5 minutes)
     // longVWAPPeriod = 21600 (6 hours)
     // defaultDelay = 86400 (24 hours)
+    // maxTradeSlippage = 5e16 (5%)
     // maxAuctionSize = 1e16 (1%)
     // minAuctionSize = 1e15 (0.1%)
     // migrationChunk = 2e17 (20%)
@@ -156,7 +158,7 @@ contract ManagerP0 is IManager, Ownable {
         _diluteBasket();
         _processSlowMintings();
         _;
-        _saveRedemptionRates();
+        _updateRedemptionRates();
     }
 
     function poke() external override notPaused before {
@@ -308,7 +310,7 @@ contract ManagerP0 is IManager, Ownable {
         return true;
     }
 
-    function _saveRedemptionRates() internal {
+    function _updateRedemptionRates() internal {
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
             ICollateral c = ICollateral(_approvedCollateral.at(i));
             _prevRedemptionRates[address(c)] = c.redemptionRate();
@@ -390,21 +392,85 @@ contract ManagerP0 is IManager, Ownable {
             return false;
         }
 
-        // Is the slush fund large enough to merit an auction?
-        bool onlyDustLeft = true;
-        uint256[] memory redemptionRates = new uint256[](_approvedCollateral.length());
-        for (uint256 i = 0; i < redemptionRates.length; i++) {
-            ICollateral c = ICollateral(_approvedCollateral.at(i));
-            redemptionRates[i] = c.redemptionRate();
+        // Decide whether to trade and exactly which trade.
+        (bool trade, uint256 sellIndex, uint256 sellAmount, uint256 buyIndex, uint256 minBuyAmount) = _selectTrade();
+        if (!trade) {
+            return false;
         }
 
-        // uint256[] memory BUs = vault.calculateBUsPerCollateral(address(this));
-        // for (uint i = 0; i < BUs.length; i++) {
-        //     if (BUs[i] > _toBUs((rToken.totalSupply() * _config.minAuctionSize) / SCALE)) {
-
-        //     }
-        // }
+        // Launch auction
+        Auction.Info storage auction = auctions[auctionCount];
+        auction.start(
+            ICollateral(_approvedCollateral.at(sellIndex)).erc20(),
+            ICollateral(_approvedCollateral.at(buyIndex)).erc20(),
+            sellAmount,
+            minBuyAmount,
+            block.timestamp + _config.auctionPeriod
+        );
+        auctionCount++;
         return true;
+    }
+
+    // Returns balance surpluses and deficits required to issue *BUs*, for each _approvedCollateral.
+    function _selectTrade()
+        internal
+        returns (
+            bool shouldTrade,
+            uint256 sellIndex,
+            uint256 sellAmount,
+            uint256 buyIndex,
+            uint256 minBuyAmount
+        )
+    {
+        // TODO: This is wrong, I made a mistake. To return to and fix tomorrow morning.
+
+        // Calculate surplus and deficits in terms of unnormalized token quantities.
+        uint256[] memory surplus = new uint256[](_approvedCollateral.length());
+        uint256[] memory deficit = new uint256[](_approvedCollateral.length());
+        uint256 minAuctionSizeInBUs = _toBUs((rToken.totalSupply() * _config.minAuctionSize) / SCALE);
+        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
+            ICollateral c = ICollateral(_approvedCollateral.at(i));
+            uint256 bal = IERC20(c.erc20()).balanceOf(address(this));
+            uint256 needed = (vault.quantity(c) * minAuctionSizeInBUs) / SCALE;
+            if (bal > needed) {
+                surplus[i] = bal - needed;
+            } else if (bal < needed) {
+                deficit[i] = needed - bal;
+            }
+        }
+
+        // Normalize surplus/deficits by converting into fiatcoins.
+        _updateRedemptionRates();
+        uint256[] memory surplusInFiatcoins = new uint256[](_approvedCollateral.length());
+        uint256[] memory deficitInFiatcoins = new uint256[](_approvedCollateral.length());
+        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
+            address c = _approvedCollateral.at(i);
+            uint256 padding = 10**(rToken.decimals() - ICollateral(c).decimals());
+            surplusInFiatcoins[i] = (surplus[i] * _prevRedemptionRates[c] * padding) / SCALE;
+            deficitInFiatcoins[i] = (deficit[i] * _prevRedemptionRates[c] * padding) / SCALE;
+        }
+
+        // Compute the max of the surpluses and deficits.
+        uint256 surplusMax;
+        uint256 surplusIndex;
+        uint256 deficitMax;
+        uint256 deficitIndex;
+        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
+            if (surplusInFiatcoins[i] > surplusMax) {
+                surplusMax = surplusInFiatcoins[i];
+                surplusIndex = i;
+            } else if (deficitInFiatcoins[i] > deficitMax) {
+                deficitMax = deficitInFiatcoins[i];
+                deficitIndex = i;
+            }
+        }
+
+        // Finalize sell and buy amounts
+        sellAmount = surplus[surplusIndex];
+        minBuyAmount = (deficit[deficitIndex] * (SCALE - _config.maxTradeSlippage)) / SCALE;
+        shouldTrade = deficitMax > (minAuctionSizeInBUs * vault.basketFiatcoinRate()) / SCALE;
+
+        return (shouldTrade, surplusIndex, sellAmount, deficitIndex, minBuyAmount);
     }
 
     function _detectDefaultInVault(IVault vault_, uint256 period) internal view returns (bool, ICollateral[] memory) {
