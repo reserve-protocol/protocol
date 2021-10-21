@@ -42,8 +42,9 @@ describe('StakingPoolP0 contract', () => {
     // Deploy StakingPool_Sys0
     const StakingPool = await ethers.getContractFactory('StakingPoolP0')
     stkPool = <StakingPoolP0>(
-      await StakingPool.connect(owner).deploy('Staked RSR', 'stRSR', rToken.address, rsr.address, 0)
+      await StakingPool.connect(owner).deploy('Staked RSR', 'stRSR', owner.address, rToken.address, rsr.address, 0)
     )
+
     await rToken.connect(owner).setStakingPool(stkPool.address)
   })
 

@@ -4,10 +4,12 @@ import { BigNumber, ContractFactory } from 'ethers'
 import { bn } from '../../common/numbers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
+import { Collateral } from '../../typechain/Collateral'
 import { VaultP0 } from '../../typechain/VaultP0'
 
-interface ITokenInfo {
-  tokenAddress: string
+interface ICollateralInfo {
+  erc20: string
+  decimals: number
   quantity: BigNumber
 }
 
@@ -22,11 +24,17 @@ describe('VaultP0 contract', () => {
   let tkn1: ERC20Mock
   let tkn2: ERC20Mock
   let tkn3: ERC20Mock
-  let tokenInfo0: ITokenInfo
-  let tokenInfo1: ITokenInfo
-  let tokenInfo2: ITokenInfo
-  let tokenInfo3: ITokenInfo
-  let basketTokens: ITokenInfo[]
+  let CollateralFactory: ContractFactory
+  let collateral0: Collateral
+  let collateral1: Collateral
+  let collateral2: Collateral
+  let collateral3: Collateral
+  let quantity0: BigNumber
+  let quantity1: BigNumber
+  let quantity2: BigNumber
+  let quantity3: BigNumber
+  let collaterals: string[]
+  let quantities: BigNumber[]
   let initialBal: BigNumber
   let qtyHalf: BigNumber
   let qtyThird: BigNumber
@@ -54,40 +62,33 @@ describe('VaultP0 contract', () => {
     await tkn2.connect(owner).mint(addr1.address, initialBal)
     await tkn3.connect(owner).mint(addr1.address, initialBal)
 
-    // Set Basket Tokens
-    tokenInfo0 = {
-      tokenAddress: tkn0.address,
-      quantity: qtyHalf,
-    }
+    // Set Collaterals and Quantities
+    CollateralFactory = await ethers.getContractFactory('Collateral')
+    collateral0 = <Collateral>await CollateralFactory.deploy(tkn0.address, tkn0.decimals())
+    collateral1 = <Collateral>await CollateralFactory.deploy(tkn1.address, tkn0.decimals())
+    collateral2 = <Collateral>await CollateralFactory.deploy(tkn2.address, tkn0.decimals())
+    collateral3 = <Collateral>await CollateralFactory.deploy(tkn3.address, tkn0.decimals())
 
-    tokenInfo1 = {
-      tokenAddress: tkn1.address,
-      quantity: qtyHalf,
-    }
+    quantity0 = qtyHalf
+    quantity1 = qtyHalf
+    quantity2 = qtyThird
+    quantity3 = qtyDouble
 
-    tokenInfo2 = {
-      tokenAddress: tkn2.address,
-      quantity: qtyThird,
-    }
-
-    tokenInfo3 = {
-      tokenAddress: tkn3.address,
-      quantity: qtyDouble,
-    }
-
-    basketTokens = [tokenInfo0, tokenInfo1, tokenInfo2, tokenInfo3]
+    collaterals = [collateral0.address, collateral1.address, collateral2.address, collateral3.address]
+    quantities = [quantity0, quantity1, quantity2, quantity3]
 
     // Deploy Main Vault
     VaultFactory = await ethers.getContractFactory('VaultP0')
-    vault = <VaultP0>await VaultFactory.deploy(basketTokens, [])
+    vault = <VaultP0>await VaultFactory.deploy(collaterals, quantities, [])
   })
 
   describe('Deployment', () => {
-    const expectTokenInfo = async (index: number, tokenInfo: Partial<ITokenInfo>) => {
-      const { tokenAddress, quantity } = await vault.tokenAt(index)
-
-      expect(tokenAddress).to.equal(tokenInfo.tokenAddress)
-      expect(quantity).to.equal(tokenInfo.quantity)
+    const expectCollateral = async (index: number, collateralInfo: Partial<ICollateralInfo>) => {
+      const collateralAddress = await vault.collateralAt(index)
+      const collateralInstance = await ethers.getContractAt('Collateral', collateralAddress)
+      expect(await collateralInstance.erc20()).to.equal(collateralInfo.erc20)
+      expect(await collateralInstance.decimals()).to.equal(collateralInfo.decimals)
+      expect(await vault.quantity(collateralInstance.address)).to.equal(collateralInfo.quantity)
     }
 
     it('Deployment should setup basket correctly', async () => {
@@ -95,34 +96,38 @@ describe('VaultP0 contract', () => {
       expect(await vault.getBackups()).to.be.empty
 
       // Token at 0
-      expectTokenInfo(0, {
-        tokenAddress: tokenInfo0.tokenAddress,
+      expectCollateral(0, {
+        erc20: tkn0.address,
+        decimals: await tkn0.decimals(),
         quantity: qtyHalf,
       })
 
       // Token at 1
-      expectTokenInfo(1, {
-        tokenAddress: tokenInfo1.tokenAddress,
+      expectCollateral(1, {
+        erc20: tkn1.address,
+        decimals: await tkn1.decimals(),
         quantity: qtyHalf,
       })
 
       // Token at 2
-      expectTokenInfo(2, {
-        tokenAddress: tokenInfo2.tokenAddress,
+      expectCollateral(2, {
+        erc20: tkn2.address,
+        decimals: await tkn2.decimals(),
         quantity: qtyThird,
       })
 
-      // Token at 1
-      expectTokenInfo(3, {
-        tokenAddress: tokenInfo3.tokenAddress,
+      // Token at 3
+      expectCollateral(3, {
+        erc20: tkn3.address,
+        decimals: await tkn3.decimals(),
         quantity: qtyDouble,
       })
     })
 
     it('Deployment should setup backup vaults correctly', async () => {
       // Setup a simple backup vault with single token
-      const backupVault: VaultP0 = <VaultP0>await VaultFactory.deploy([basketTokens[0]], [])
-      const newVault: VaultP0 = <VaultP0>await VaultFactory.deploy(basketTokens, [backupVault.address])
+      const backupVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collaterals[0]], [quantities[0]], [])
+      const newVault: VaultP0 = <VaultP0>await VaultFactory.deploy(collaterals, quantities, [backupVault.address])
 
       expect((await newVault.getBackups()).length).to.equal(1)
       expect(await newVault.backups(0)).to.equal(backupVault.address)
@@ -220,7 +225,7 @@ describe('VaultP0 contract', () => {
       const zero: BigNumber = bn(0)
 
       // Redeem
-      await expect(vault.connect(addr1).redeem(zero)).to.be.revertedWith('Cannot redeem zero')
+      await expect(vault.connect(addr1).redeem(addr1.address, zero)).to.be.revertedWith('Cannot redeem zero')
 
       // No units redeemed
       expect(await vault.totalUnits()).to.equal(issueAmount)
@@ -230,7 +235,7 @@ describe('VaultP0 contract', () => {
     it('Should revert if user does not have the required BUs', async function () {
       const redeemAmount = bn(2e18)
 
-      await expect(vault.connect(addr1).redeem(redeemAmount)).to.be.revertedWith('Not enough units')
+      await expect(vault.connect(addr1).redeem(addr1.address, redeemAmount)).to.be.revertedWith('Not enough units')
 
       // No units redeemed
       expect(await vault.totalUnits()).to.equal(issueAmount)
@@ -241,7 +246,7 @@ describe('VaultP0 contract', () => {
       const redeemAmount = bn(1e18)
 
       // Redeem BUs
-      await vault.connect(addr1).redeem(redeemAmount)
+      await vault.connect(addr1).redeem(addr1.address, redeemAmount)
 
       // Check balance after redeem go to initial state
       expect(await tkn0.balanceOf(vault.address)).to.equal(bn(0))
@@ -264,7 +269,9 @@ describe('VaultP0 contract', () => {
 
     beforeEach(async () => {
       // Setup a simple backup vault with two tokens
-      backupVault = <VaultP0>await VaultFactory.deploy([basketTokens[0], basketTokens[1]], [])
+      backupVault = <VaultP0>(
+        await VaultFactory.deploy([collaterals[0], collaterals[1]], [quantities[0], quantities[1]], [])
+      )
     })
 
     it('Should not allow to setup backup vaults if not owner', async () => {
