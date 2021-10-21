@@ -5,6 +5,7 @@ import "../interfaces/ICollateral.sol";
 
 struct Basket {
     mapping(uint256 => ICollateral) collateral;
+    mapping(uint256 => uint256) quantities;
     uint256 size;
 }
 
@@ -25,7 +26,7 @@ interface IVault {
 
     function basketUnits(address account) external view returns (uint256);
 
-    function basketQuantity(address token) external view returns (uint256);
+    function quantity(ICollateral collateral) external view returns (uint256);
 
     function getBackups() external view returns (IVault[] memory);
 

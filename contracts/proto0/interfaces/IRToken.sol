@@ -7,6 +7,4 @@ interface IRToken is IERC20Metadata {
     function mint(address recipient, uint256 amount) external returns (bool);
 
     function burn(address recipient, uint256 amount) external returns (bool);
-
-    function withdrawToken(address token, uint256 amount) external;
 }

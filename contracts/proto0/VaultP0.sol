@@ -13,7 +13,7 @@ import "./interfaces/IVault.sol";
 contract VaultP0 is IVault, Ownable {
     using SafeERC20 for IERC20;
 
-    uint8 public constant decimals = 18;
+    uint8 public constant rTokenDecimals = 18;
 
     Basket internal _basket;
 
@@ -22,11 +22,18 @@ contract VaultP0 is IVault, Ownable {
 
     IVault[] public backups;
 
-    constructor(ICollateral[] memory collateral, IVault[] memory backupVaults) {
+    constructor(
+        ICollateral[] memory collateral,
+        uint256[] memory quantities,
+        IVault[] memory backupVaults
+    ) {
+        require(collateral.length == quantities.length, "arrays must match in length");
+
         // Set default immutable basket
         _basket.size = collateral.length;
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.collateral[i] = collateral[i];
+            _basket.quantities[i] = quantities[i];
         }
 
         backups = backupVaults;
@@ -36,7 +43,7 @@ contract VaultP0 is IVault, Ownable {
     function tokenAmounts(uint256 amount) public view override returns (uint256[] memory parts) {
         parts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
-            parts[i] = (amount * _basket.collateral[i].quantity()) / 10**decimals;
+            parts[i] = (amount * _basket.quantities[i]) / 10**rTokenDecimals;
         }
     }
 
@@ -74,10 +81,9 @@ contract VaultP0 is IVault, Ownable {
     // Returns how many fiatcoins a single BU can be redeemed for.
     // Can't be a view because the cToken and aToken could cause state changes to their Defi protocols.
     function basketFiatcoinRate() external override returns (uint256 sum) {
-        ICollateral c;
         for (uint256 i = 0; i < _basket.size; i++) {
-            c = ICollateral(_basket.collateral[i]);
-            sum += (c.quantity() * c.getRedemptionRate()) / c.decimals();
+            ICollateral c = _basket.collateral[i];
+            sum += (_basket.quantities[i] * c.redemptionRate()) / c.decimals();
         }
     }
 
@@ -86,10 +92,9 @@ contract VaultP0 is IVault, Ownable {
     function maxIssuable(address issuer) external view override returns (uint256) {
         uint256 min = type(uint256).max;
         for (uint256 i = 0; i < _basket.size; i++) {
-            ICollateral c = _basket.collateral[i];
-            uint256 cur = (IERC20(c.erc20()).balanceOf(issuer) * 10**c.decimals()) / c.quantity();
-            if (cur < min) {
-                min = cur;
+            uint256 BUs = IERC20(_basket.collateral[i].erc20()).balanceOf(issuer) / _basket.quantities[i];
+            if (BUs < min) {
+                min = BUs;
             }
         }
         return min;
@@ -103,12 +108,11 @@ contract VaultP0 is IVault, Ownable {
         return _basket.collateral[index];
     }
 
-    // Returns the basket quantity for the collateral with erc20 equal to *token*.
-    // Note that *token* here is the underlying erc20, not one of our Collateral instances.
-    function basketQuantity(address token) external view override returns (uint256) {
+    // Returns the basket quantity for the given collateral.
+    function quantity(ICollateral collateral) external view override returns (uint256) {
         for (uint256 i = 0; i < _basket.size; i++) {
-            if (_basket.collateral[i].erc20() == token) {
-                return _basket.collateral[i].quantity();
+            if (_basket.collateral[i] == collateral) {
+                return _basket.quantities[i];
             }
         }
         return 0;
@@ -125,16 +129,4 @@ contract VaultP0 is IVault, Ownable {
     function backupAt(uint256 index) external view override returns (IVault) {
         return backups[index];
     }
-
-    // // Returns the quantities of tokens missing from *other's* basket.
-    // function basketDelta(IVault other) external view override returns (uint256[] memory missing) {
-    //     missing = new uint256[](_basket.size);
-    //     for (uint i = 0; i < _basket.size; i++) {
-    //         uint256 q = _basket.collateral[i].quantity();
-    //         uint256 otherQ = other.basketQuantity(_basket.collateral[i].erc20());
-    //         if (q > otherQ) {
-    //             missing[i] = q - otherQ;
-    //         }
-    //     }
-    // }
 }
