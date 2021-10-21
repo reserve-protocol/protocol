@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/ICollateral.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
-contract Collateral is ICollateral {
+contract CollateralP0 is ICollateral {
     using SafeERC20 for IERC20;
 
     address internal immutable _erc20;

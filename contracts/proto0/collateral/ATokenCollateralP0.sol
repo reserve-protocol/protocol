@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./Collateral.sol";
+import "./CollateralP0.sol";
 
 // https://github.com/aave/protocol-v2/blob/feat-atoken-wrapper-liquidity-mining/contracts/protocol/tokenization/StaticATokenLM.sol
 interface IStaticAToken {
@@ -11,8 +11,8 @@ interface IStaticAToken {
     function UNDERLYING_ASSET_ADDRESS() external view returns (address);
 }
 
-contract ATokenCollateral is Collateral {
-    constructor(address erc20_, uint8 decimals) Collateral(erc20_, decimals) {}
+contract ATokenCollateralP0 is CollateralP0 {
+    constructor(address erc20_, uint8 decimals) CollateralP0(erc20_, decimals) {}
 
     function redemptionRate() external view override returns (uint256) {
         return IStaticAToken(_erc20).rate();

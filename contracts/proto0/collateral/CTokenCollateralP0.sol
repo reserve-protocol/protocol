@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./Collateral.sol";
+import "./CollateralP0.sol";
 
 // https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 interface ICToken {
@@ -11,8 +11,8 @@ interface ICToken {
     function underlying() external view returns (address);
 }
 
-contract CTokenCollateral is Collateral {
-    constructor(address erc20_, uint8 decimals) Collateral(erc20_, decimals) {}
+contract CTokenCollateralP0 is CollateralP0 {
+    constructor(address erc20_, uint8 decimals) CollateralP0(erc20_, decimals) {}
 
     function redemptionRate() external view override returns (uint256) {
         return ICToken(_erc20).exchangeRateCurrent();
