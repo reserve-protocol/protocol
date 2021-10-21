@@ -510,6 +510,7 @@ contract ManagerP0 is IManager, Ownable {
     function _getBestBackupVault() internal returns (IVault) {
         uint256 _maxRate;
         uint256 indexMax = 0;
+        bool backupFound = false;
 
         // Loop through backups to find the best
         for (uint256 i = 0; i < vault.getBackups().length; i++) {
@@ -529,12 +530,13 @@ contract ManagerP0 is IManager, Ownable {
                 if (_rate > _maxRate) {
                     _maxRate = _rate;
                     indexMax = i;
+                    backupFound = true;
                 }
             }
         }
 
         // Return selected vault index
-        if (indexMax > 0) {
+        if (backupFound) {
             return vault.backupAt(indexMax);
         } else {
             return IVault(address(0));
