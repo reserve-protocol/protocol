@@ -15,6 +15,10 @@ import "./interfaces/IRToken.sol";
  * @title StakingPool
  * @dev The StakingPool is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken. System-0 version.
+ *
+ * There's an important assymetry in the StakingPool. When RSR is added, it must be split only
+ * across non-withdrawing balances, while when RSR is seized, it must be seized from both
+ * balances that are in the process of being withdrawn and those that are not.
  */
 contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
     using SafeERC20 for IERC20;
@@ -41,7 +45,7 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
     struct Withdrawal {
         address account;
         uint256 amount;
-        uint256 timestamp;
+        uint256 availableAt;
     }
 
     Withdrawal[] public withdrawals;
@@ -87,10 +91,12 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
         require(amount > 0, "Cannot withdraw zero");
         require(_balances[_msgSender()] >= amount, "Not enough balance");
 
-        // TODO: When a staker unstakes, this should remove their ability to sell stRSR to someone else
+        // Take it out up front
+        _balances[_msgSender()] -= amount;
+        _totalSupply -= amount;
 
         // Submit delayed withdrawal
-        withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp));
+        withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp + stakingWithdrawalDelay));
     }
 
     function balanceOf(address account) external view override returns (uint256) {
@@ -101,14 +107,11 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
     function processWithdrawals() public {
         // Process all pending withdrawals
         for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
-            if (block.timestamp > withdrawals[withdrawalIndex].timestamp + stakingWithdrawalDelay) {
+            if (block.timestamp > withdrawals[withdrawalIndex].availableAt) {
                 Withdrawal storage withdrawal = withdrawals[withdrawalIndex];
-                uint256 amount = Math.min(_balances[withdrawal.account], withdrawal.amount);
 
-                if (amount > 0) {
-                    _balances[withdrawal.account] -= amount;
-                    _totalSupply -= amount;
-                    rsr.safeTransfer(withdrawal.account, amount);
+                if (withdrawal.amount > 0) {
+                    rsr.safeTransfer(withdrawal.account, withdrawal.amount);
                 }
 
                 delete withdrawals[withdrawalIndex];
@@ -119,8 +122,8 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
         }
     }
 
+    // Adding RSR adds RSR only to current stakers (not withdrawers)
     function addRSR(uint256 amount) external override {
-        require(_msgSender() == address(rToken), "Caller is not RToken");
         require(amount > 0, "Amount cannot be zero");
 
         // Process pending withdrawals
@@ -128,18 +131,19 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
 
         rsr.safeTransferFrom(address(rToken), address(this), amount);
 
-        uint256 _snapshotTotalStaked = _totalSupply;
+        uint256 snapshotTotalStaked = _totalSupply;
         _totalSupply += amount;
 
-        // Redistribute RSR to stakers
-        if (_snapshotTotalStaked > 0) {
+        // Redistribute RSR to stakers, but not to withdrawers
+        if (snapshotTotalStaked > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
-                uint256 amtToAdd = (amount * _balances[_accounts.at(index)]) / _snapshotTotalStaked;
+                uint256 amtToAdd = (amount * _balances[_accounts.at(index)]) / snapshotTotalStaked;
                 _balances[_accounts.at(index)] += amtToAdd;
             }
         }
     }
 
+    // Seizing RSR pulls RSR from all current stakers + withdrawers
     function seizeRSR(uint256 amount) external override {
         require(_msgSender() == address(rToken), "Caller is not RToken");
         require(amount > 0, "Amount cannot be zero");
@@ -147,14 +151,19 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
         // Process pending withdrawals
         processWithdrawals();
 
-        uint256 _snapshotTotalStaked = _totalSupply;
+        uint256 snapshotTotalStakedPlus = _totalSupply + _amountBeingWithdrawn();
         _totalSupply -= amount;
 
-        // Remove RSR for stakers
-        if (_snapshotTotalStaked > 0) {
+        // Remove RSR for stakers and from withdrawals too
+        if (snapshotTotalStakedPlus > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
-                uint256 amtToRemove = (amount * _balances[_accounts.at(index)]) / _snapshotTotalStaked;
+                uint256 amtToRemove = (amount * _balances[_accounts.at(index)]) / snapshotTotalStakedPlus;
                 _balances[_accounts.at(index)] -= amtToRemove;
+            }
+
+            for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
+                uint256 amtToRemove = (amount * withdrawals[index].amount) / snapshotTotalStakedPlus;
+                withdrawals[index].amount -= amtToRemove;
             }
         }
         // Transfer RSR to RToken
@@ -236,5 +245,11 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
         require(spender != address(0), "ERC20: approve to the zero address");
 
         _allowances[owner_][spender] = amount;
+    }
+
+    function _amountBeingWithdrawn() internal view returns (uint256 total) {
+        for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
+            total += withdrawals[index].amount;
+        }
     }
 }
