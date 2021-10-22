@@ -4,10 +4,12 @@ pragma solidity 0.8.4;
 import "../Ownable.sol"; // temporary
 // import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./interfaces/ICollateral.sol";
+import "./interfaces/IOracle.sol";
 import "./interfaces/IVault.sol";
 
 contract VaultP0 is IVault, Ownable {
@@ -87,7 +89,66 @@ contract VaultP0 is IVault, Ownable {
         }
     }
 
+    // Get best backup vault that does not contain defaulting tokens.
+    // Returns the zero address if there are no vaults that fit the criteria.
+    function selectBackup(
+        address[] memory approvedCollateral,
+        IOracle oracle,
+        uint256 defaultThreshold
+    ) external override returns (IVault) {
+        uint256 maxRate;
+        uint256 indexMax = 0;
+
+        // Loop through backups to find the highest value one that doesn't contain defaulting collateral
+        for (uint256 i = 0; i < backups.length; i++) {
+            if (!backups[i].containsOnly(approvedCollateral)) {
+                continue;
+            }
+
+            if (!backups[i].hasDefaultingCollateral(oracle, defaultThreshold)) {
+                uint256 rate = backups[i].basketFiatcoinRate();
+
+                // See if it has the highest basket rate
+                if (rate > maxRate) {
+                    maxRate = rate;
+                    indexMax = i;
+                }
+            }
+        }
+
+        if (maxRate == 0) {
+            return IVault(address(0));
+        }
+        return backups[indexMax];
+    }
+
     //
+
+    // Returns whether the vault consists of only tokens from the *collateral* set.
+    function containsOnly(address[] memory collateral) external view override returns (bool) {
+        for (uint256 i = 0; i < _basket.size; i++) {
+            bool found = false;
+            for (uint256 j = 0; j < collateral.length; j++) {
+                if (address(_basket.collateral[i]) == collateral[j]) {
+                    found = true;
+                }
+            }
+            if (!found) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Returns whether the vault contains any defaulting tokens.
+    function hasDefaultingCollateral(IOracle oracle, uint256 defaultThreshold) external view override returns (bool) {
+        for (uint256 i = 0; i < _basket.size; i++) {
+            if (oracle.fiatcoinPrice(_basket.collateral[i]) < defaultThreshold) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     function maxIssuable(address issuer) external view override returns (uint256) {
         uint256 min = type(uint256).max;
@@ -120,13 +181,5 @@ contract VaultP0 is IVault, Ownable {
 
     function setBackups(IVault[] memory backupVaults) external onlyOwner {
         backups = backupVaults;
-    }
-
-    function getBackups() external view override returns (IVault[] memory) {
-        return backups;
-    }
-
-    function backupAt(uint256 index) external view override returns (IVault) {
-        return backups[index];
     }
 }

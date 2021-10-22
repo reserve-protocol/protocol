@@ -135,7 +135,7 @@ contract ManagerP0 is IManager, Ownable {
         for (uint256 i = 0; i < approvedCollateral_.length; i++) {
             approveCollateral(approvedCollateral_[i]);
         }
-        if (!_approvedTokensOnly(vault)) {
+        if (!vault.containsOnly(_approvedCollateral.values())) {
             revert CommonErrors.UnapprovedToken();
         }
 
@@ -173,12 +173,13 @@ contract ManagerP0 is IManager, Ownable {
     // Default check (on-demand)
     function detectDefault() external override notPaused before {
         // Check if already in default
-        if (!inDoubt && _vaultContainsDoubt(vault)) {
+        uint256 defaultThreshold = (_medianFiatcoinPrice() * (SCALE - _config.defaultThreshold)) / SCALE;
+        if (!inDoubt && vault.hasDefaultingCollateral(oracle, defaultThreshold)) {
             inDoubt = true;
             doubtRaisedAt = block.timestamp;
         } else if (block.timestamp >= doubtRaisedAt) {
             // If no doubt anymore
-            if (!_vaultContainsDoubt(vault)) {
+            if (!vault.hasDefaultingCollateral(oracle, defaultThreshold)) {
                 inDoubt = false;
             } else {
                 // If doubt has been raised for 24 (default delay) hours, select new vault
@@ -297,15 +298,6 @@ contract ManagerP0 is IManager, Ownable {
         return vault;
     }
 
-    function _approvedTokensOnly(IVault v) internal view returns (bool) {
-        for (uint256 i = 0; i < v.basketSize(); i++) {
-            if (!_approvedCollateral.contains(address(v.collateralAt(i)))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     //
 
     function _redemptionRatesDecreased(IVault v) internal returns (bool decreased) {
@@ -344,6 +336,7 @@ contract ManagerP0 is IManager, Ownable {
         _meltingRatio = (SCALE * (rToken.totalSupply() + _melted)) / rToken.totalSupply();
     }
 
+    // Idempotent
     function _diluteBasket() internal {
         uint256 current = vault.basketFiatcoinRate();
         _currentBasketDilution = SCALE + _config.f * ((SCALE * current) / _prevBasketFiatcoinRate - SCALE);
@@ -351,8 +344,10 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     // Upon vault change or change to *f*, we accumulate the historical dilution factor.
+    // Idempotent
     function _accumulateDilutionFactor() internal {
         _diluteBasket();
+        // TODO: Is this acceptable? There's compounding error but so few number of times.
         _historicalBasketDilution = (_historicalBasketDilution * _currentBasketDilution) / SCALE;
         _currentBasketDilution = SCALE;
         _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
@@ -360,54 +355,9 @@ contract ManagerP0 is IManager, Ownable {
 
     //
 
-    // TODO: When rates decrease, we jump right to full default recognization. Probably need append-only record.
-    // Returns whether a vault contains a defaulting token.
-    function _vaultContainsDoubt(IVault vault_) internal view returns (bool) {
-        uint256 defaultThreshold = (_medianFiatcoinPrice() * (SCALE - _config.defaultThreshold)) / SCALE;
-        for (uint256 i = 0; i < vault_.basketSize(); i++) {
-            ICollateral c = vault_.collateralAt(i);
-
-            // Check oracle prices of fiatcoins for doubt
-            if (oracle.fiatcoinPrice(c) < defaultThreshold) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // Get best backup vault after defaul
-    // Criteria: Highest basketFiatcoinRate value, and no defaulted tokens
-    function _getBestBackupVault() internal returns (IVault) {
-        uint256 maxRate;
-        uint256 indexMax = 0;
-
-        // Loop through backups to find the best
-        for (uint256 i = 0; i < vault.getBackups().length; i++) {
-            IVault v = vault.backupAt(i);
-
-            if (!_approvedTokensOnly(v)) {
-                continue;
-            }
-
-            if (!_vaultContainsDoubt(v)) {
-                uint256 rate = v.basketFiatcoinRate();
-
-                // See if it has the highest basket rate
-                if (rate > maxRate) {
-                    maxRate = rate;
-                    indexMax = i;
-                }
-            }
-        }
-
-        if (maxRate == 0) {
-            return IVault(address(0));
-        }
-        return vault.backupAt(indexMax);
-    }
-
     function _switchVaults() internal {
-        IVault newVault = _getBestBackupVault();
+        uint256 defaultThreshold = (_medianFiatcoinPrice() * (SCALE - _config.defaultThreshold)) / SCALE;
+        IVault newVault = vault.selectBackup(_approvedCollateral.values(), oracle, defaultThreshold);
         if (address(newVault) != address(0)) {
             pastVaults.push(vault);
             vault = newVault;
