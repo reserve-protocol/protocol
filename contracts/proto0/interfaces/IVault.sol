@@ -26,7 +26,10 @@ interface IVault {
 
     function containsOnly(address[] memory collateral) external view returns (bool);
 
-    function hasDefaultingCollateral(IOracle oracle, uint256 defaultThreshold) external view returns (bool);
+    function softDefaultingCollateral(IOracle oracle, uint256 defaultThreshold)
+        external
+        view
+        returns (ICollateral[] memory);
 
     function maxIssuable(address issuer) external view returns (uint256);
 

@@ -155,10 +155,12 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     modifier before() {
-        // If redemption rates decreased we don't need to wait 24h
-        if (_redemptionRatesDecreased(vault)) {
-            _switchVaults();
+        // Check for hard default (ie redemption rates fail to increase monotonically)
+        ICollateral[] memory hardDefaulting = _checkForHardDefault();
+        if (hardDefaulting.length > 0) {
+            _switchVaults(hardDefaulting);
         }
+
         faucet.drip();
         _melt();
         _diluteBasket();
@@ -172,19 +174,22 @@ contract ManagerP0 is IManager, Ownable {
 
     // Default check (on-demand)
     function detectDefault() external override notPaused before {
-        // Check if already in default
-        uint256 defaultThreshold = (_medianFiatcoinPrice() * (SCALE - _config.defaultThreshold)) / SCALE;
-        if (!inDoubt && vault.hasDefaultingCollateral(oracle, defaultThreshold)) {
+        // Note that _before_ checks for hard default.
+
+        // Check for soft default
+        ICollateral[] memory softDefaulting = vault.softDefaultingCollateral(oracle, _defaultThreshold());
+        if (!inDoubt && softDefaulting.length > 0) {
             inDoubt = true;
             doubtRaisedAt = block.timestamp;
         } else if (block.timestamp >= doubtRaisedAt) {
             // If no doubt anymore
-            if (!vault.hasDefaultingCollateral(oracle, defaultThreshold)) {
+            if (softDefaulting.length == 0) {
                 inDoubt = false;
             } else {
                 // If doubt has been raised for 24 (default delay) hours, select new vault
                 if (block.timestamp >= doubtRaisedAt + _config.defaultDelay) {
-                    _switchVaults();
+                    _switchVaults(softDefaulting);
+                    inDoubt = false;
                 }
             }
         }
@@ -298,19 +303,59 @@ contract ManagerP0 is IManager, Ownable {
         return vault;
     }
 
+    // Computes the USD price (18 decimals) at which a fiatcoin should be considered to be defaulting.
+    function _defaultThreshold() internal view returns (uint256) {
+        // Collect prices
+        uint256[] memory prices = new uint256[](_fiatcoins.length());
+        for (uint256 i = 0; i < _fiatcoins.length(); i++) {
+            prices[i] = oracle.fiatcoinPrice(ICollateral(_fiatcoins.at(i)));
+        }
+
+        // Sort
+        for (uint256 i = 1; i < prices.length; i++) {
+            uint256 key = prices[i];
+            uint256 j = i - 1;
+            while (j >= 0 && prices[j] > key) {
+                prices[j + 1] = prices[j];
+                j--;
+            }
+            prices[j + 1] = key;
+        }
+
+        // Take the median
+        uint256 price;
+        if (prices.length % 2 == 0) {
+            price = (prices[prices.length / 2 - 1] + prices[prices.length / 2]) / 2;
+        } else {
+            price = prices[prices.length / 2];
+        }
+
+        return (price * (SCALE - _config.defaultThreshold)) / SCALE;
+    }
+
     //
 
-    function _redemptionRatesDecreased(IVault v) internal returns (bool decreased) {
-        // Check fiatcoin redemption rates for vault collateral has not decreased since last time.
-        for (uint256 i = 0; i < v.basketSize(); i++) {
-            if (v.collateralAt(i).redemptionRate() + 1 < _redemptionRates[address(v.collateralAt(i))]) {
-                decreased = true;
+    // Returns a list of the collateral that are hard defaulting, meaning we should immediately jump ship.
+    function _checkForHardDefault() internal returns (ICollateral[] memory defaulting) {
+        ICollateral[] memory all = new ICollateral[](vault.basketSize());
+        uint256 count;
+        for (uint256 i = 0; i < vault.basketSize(); i++) {
+            ICollateral c = vault.collateralAt(i);
+            if (c.redemptionRate() + 1 < _redemptionRates[address(c)]) {
+                all[count] = c;
+                count++;
             }
         }
-        // Update the redemption rates.
-        for (uint256 i = 0; i < _allKnownCollateral.length(); i++) {
-            ICollateral c = ICollateral(_allKnownCollateral.at(i));
-            _redemptionRates[address(c)] = c.redemptionRate();
+        defaulting = new ICollateral[](count);
+        for (uint256 i = 0; i < count; i++) {
+            defaulting[i] = all[i];
+        }
+
+        if (count == 0) {
+            for (uint256 i = 0; i < _allKnownCollateral.length(); i++) {
+                ICollateral c = ICollateral(_allKnownCollateral.at(i));
+                _redemptionRates[address(c)] = c.redemptionRate();
+            }
         }
     }
 
@@ -355,15 +400,16 @@ contract ManagerP0 is IManager, Ownable {
 
     //
 
-    function _switchVaults() internal {
-        uint256 defaultThreshold = (_medianFiatcoinPrice() * (SCALE - _config.defaultThreshold)) / SCALE;
-        IVault newVault = vault.selectBackup(_approvedCollateral.values(), oracle, defaultThreshold);
+    // Unapproves the defaulting collateral and switches the RToken over to a new Vault.
+    function _switchVaults(ICollateral[] memory defaulting) internal {
+        for (uint256 i = 0; i < defaulting.length; i++) {
+            unapproveCollateral(defaulting[i]);
+        }
+
+        IVault newVault = vault.selectBackup(_approvedCollateral.values(), oracle, _defaultThreshold());
         if (address(newVault) != address(0)) {
             pastVaults.push(vault);
             vault = newVault;
-
-            //  Lower default flag (keep defaulted collateral in list)
-            inDoubt = false;
         }
 
         // Undo all live slowmintings
@@ -506,28 +552,5 @@ contract ManagerP0 is IManager, Ownable {
         uint256 maxSell = ((deficitMax * SCALE) / (SCALE - _config.maxTradeSlippage));
         sellAmount = (Math.min(maxSell, surplusMax) * SCALE) / _redemptionRates[sellToken];
         return (shouldTrade, sellToken, sellAmount, buyToken, minBuyAmount);
-    }
-
-    // Computes the price of the median fiatcoin in USD, 18 decimals.
-    function _medianFiatcoinPrice() internal view returns (uint256) {
-        uint256[] memory prices = new uint256[](_fiatcoins.length());
-        for (uint256 i = 0; i < _fiatcoins.length(); i++) {
-            prices[i] = oracle.fiatcoinPrice(ICollateral(_fiatcoins.at(i)));
-        }
-
-        for (uint256 i = 1; i < prices.length; i++) {
-            uint256 key = prices[i];
-            uint256 j = i - 1;
-            while (j >= 0 && prices[j] > key) {
-                prices[j + 1] = prices[j];
-                j--;
-            }
-            prices[j + 1] = key;
-        }
-
-        if (prices.length % 2 == 0) {
-            return (prices[prices.length / 2 - 1] + prices[prices.length / 2]) / 2;
-        }
-        return prices[prices.length / 2];
     }
 }

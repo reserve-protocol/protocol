@@ -101,11 +101,10 @@ contract VaultP0 is IVault, Ownable {
 
         // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
-            if (!backups[i].containsOnly(approvedCollateral)) {
-                continue;
-            }
-
-            if (!backups[i].hasDefaultingCollateral(oracle, defaultThreshold)) {
+            if (
+                backups[i].containsOnly(approvedCollateral) &&
+                backups[i].softDefaultingCollateral(oracle, defaultThreshold).length == 0
+            ) {
                 uint256 rate = backups[i].basketFiatcoinRate();
 
                 // See if it has the highest basket rate
@@ -140,14 +139,25 @@ contract VaultP0 is IVault, Ownable {
         return true;
     }
 
-    // Returns whether the vault contains any defaulting tokens.
-    function hasDefaultingCollateral(IOracle oracle, uint256 defaultThreshold) external view override returns (bool) {
+    // Returns a list of the collateral tokens that are soft defaulting, meaning we should monitor for 24h.
+    function softDefaultingCollateral(IOracle oracle, uint256 defaultThreshold)
+        external
+        view
+        override
+        returns (ICollateral[] memory defaulting)
+    {
+        ICollateral[] memory all = new ICollateral[](_basket.size);
+        uint256 count;
         for (uint256 i = 0; i < _basket.size; i++) {
             if (oracle.fiatcoinPrice(_basket.collateral[i]) < defaultThreshold) {
-                return true;
+                all[count] = _basket.collateral[i];
+                count++;
             }
         }
-        return false;
+        defaulting = new ICollateral[](count);
+        for (uint256 i = 0; i < count; i++) {
+            defaulting[i] = all[i];
+        }
     }
 
     function maxIssuable(address issuer) external view override returns (uint256) {
