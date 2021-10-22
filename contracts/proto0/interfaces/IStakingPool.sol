@@ -3,7 +3,6 @@ pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
 interface IStakingPool {
     function stake(uint256 amount) external;
 

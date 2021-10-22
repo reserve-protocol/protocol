@@ -72,12 +72,15 @@ contract ManagerP0 is IManager, Ownable {
     // <RToken> = b * <Basket Unit Vector>
     // #RTokens <= #BUs / b
     // #BUs = vault.basketUnits(address(this))
+    // Cycle: Normal -> Doubt -> Default -> Migration -> Normal
 
     Config internal _config;
     uint256 internal _meltingRatio = 1e18;
     uint256 internal _basketDilutionRatio = 1e18; // _currentBasketDilution * _historicalBasketDilution
     uint256 internal _currentBasketDilution = 1e18; // for this current vault, since the last time *f* was changed
     uint256 internal _historicalBasketDilution = 1e18; // the product of all historical basket dilutions
+    uint256 internal _prevBasketFiatcoinRate; // redemption value of the basket in fiatcoins last update
+    uint256 internal _melted; // how many RTokens have been melted
 
     // Deployed by Manager
     IRToken public rToken;
@@ -95,21 +98,17 @@ contract ManagerP0 is IManager, Ownable {
     mapping(uint256 => Auction.Info) public auctions;
     uint256 auctionCount;
 
-    // Accounting
-    uint256 public prevBasketFiatcoinRate; // redemption value of the basket in fiatcoins last update
-    uint256 public lastAuction; // timestamp of the last auction
-    uint256 public melted; // how many RTokens have been melted
-
-    // Default detection
-    bool public inDefault;
-    uint256 public lastDefault; // timestamp when default occurred
-    EnumerableSet.AddressSet internal _defaultedCollateral;
-    EnumerableSet.AddressSet internal _approvedCollateral;
-    mapping(address => uint256) internal _prevRedemptionRates; // the redemption rates for each collateral last time it was checked
-
     // Pausing
     address public pauser;
     bool public paused;
+
+    // Default detection.
+    bool public inDoubt;
+    uint256 public doubtRaisedAt; // timestamp when default occurred
+    EnumerableSet.AddressSet internal _approvedCollateral;
+    EnumerableSet.AddressSet internal _allKnownCollateral;
+    EnumerableSet.AddressSet internal _fiatcoins;
+    mapping(address => uint256) internal _redemptionRates; // the redemption rates for all known collateral last time it was checked
 
     constructor(
         string memory name_,
@@ -118,7 +117,7 @@ contract ManagerP0 is IManager, Ownable {
         IOracle oracle_,
         IERC20 rsr_,
         Config memory config_,
-        address[] memory approvedCollateral_
+        ICollateral[] memory approvedCollateral_
     ) {
         rToken = new RTokenP0(name_, symbol_, _msgSender(), address(this));
         faucet = new FaucetP0(address(this), address(rToken));
@@ -134,14 +133,14 @@ contract ManagerP0 is IManager, Ownable {
         oracle = oracle_;
         _config = config_;
         for (uint256 i = 0; i < approvedCollateral_.length; i++) {
-            _approvedCollateral.add(approvedCollateral_[i]);
+            approveCollateral(approvedCollateral_[i]);
         }
         if (!_approvedTokensOnly(vault)) {
             revert CommonErrors.UnapprovedToken();
         }
 
         pauser = _msgSender();
-        prevBasketFiatcoinRate = vault.basketFiatcoinRate();
+        _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
         staking.rsr().approve(address(staking), type(uint256).max);
     }
 
@@ -150,58 +149,47 @@ contract ManagerP0 is IManager, Ownable {
         _;
     }
 
+    modifier notInDoubt() {
+        require(!inDoubt, "in doubt");
+        _;
+    }
+
     modifier before() {
+        // If redemption rates decreased we don't need to wait 24h
+        if (_redemptionRatesDecreased(vault)) {
+            _switchVaults();
+        }
         faucet.drip();
         _melt();
         _diluteBasket();
         _processSlowMintings();
         _;
-        _updateRedemptionRates();
     }
 
-    function poke() external override notPaused before {
+    function poke() external override notPaused notInDoubt before {
         _manageAuctions();
     }
 
     // Default check (on-demand)
-    function detectDefault() external override notPaused {
+    function detectDefault() external override notPaused before {
         // Check if already in default
-        if (!inDefault) {
-            (bool _defaulted, ICollateral[] memory _defaultCollateral) = _detectDefaultInVault(
-                vault
-            );
-
-            // If Default detected - simply set timestamp and flag
-            if (_defaulted) {
-                // Raise default flag
-                inDefault = true;
-                lastDefault = block.timestamp;
-                _setDefaultedCollateral(_defaultCollateral);
-            }
-        } else {
-            // If Default already flagged
-            if (block.timestamp >= lastDefault) {
-                (bool _defaulted, ICollateral[] memory _defaultCollateral) = _detectDefaultInVault(
-                    vault
-                );
-
-                // If No Default anymore,  lower default flag and cleanup
-                if (!_defaulted) {
-                    inDefault = false;
-                    _cleanupDefaultedCollateral();
-                } else {
-                    _setDefaultedCollateral(_defaultCollateral);
-
-                    // If the default flag has been raised for 24 (default delay) hours, select new vault
-                    if (block.timestamp >= lastDefault + _config.defaultDelay) {
-                        _switchVaults();
-                    }
+        if (!inDoubt && _vaultContainsDoubt(vault)) {
+            inDoubt = true;
+            doubtRaisedAt = block.timestamp;
+        } else if (block.timestamp >= doubtRaisedAt) {
+            // If no doubt anymore
+            if (!_vaultContainsDoubt(vault)) {
+                inDoubt = false;
+            } else {
+                // If doubt has been raised for 24 (default delay) hours, select new vault
+                if (block.timestamp >= doubtRaisedAt + _config.defaultDelay) {
+                    _switchVaults();
                 }
             }
         }
     }
 
-    function issue(uint256 amount) external override notPaused before {
+    function issue(uint256 amount) external override notPaused notInDoubt before {
         require(amount > 0, "Cannot issue zero");
         uint256 issuanceRate = _issuanceRate();
         uint256 numBlocks = Math.ceilDiv(amount, issuanceRate);
@@ -229,6 +217,8 @@ contract ManagerP0 is IManager, Ownable {
         paused = false;
     }
 
+    //
+
     function setPauser(address pauser_) external onlyOwner {
         pauser = pauser_;
     }
@@ -245,13 +235,23 @@ contract ManagerP0 is IManager, Ownable {
         _config = config_;
     }
 
-    function approveCollateral(ICollateral collateral) external onlyOwner {
+    function approveCollateral(ICollateral collateral) public onlyOwner {
         _approvedCollateral.add(address(collateral));
+        _allKnownCollateral.add(address(collateral));
+        if (collateral.isFiatcoin()) {
+            _fiatcoins.add(address(collateral));
+        }
     }
 
-    function unapproveCollateral(ICollateral collateral) external onlyOwner {
+    function unapproveCollateral(ICollateral collateral) public onlyOwner {
         _approvedCollateral.remove(address(collateral));
+        _allKnownCollateral.remove(address(collateral));
+        if (collateral.isFiatcoin()) {
+            _fiatcoins.remove(address(collateral));
+        }
     }
+
+    //
 
     function quoteIssue(uint256 amount) public view override returns (uint256[] memory) {
         require(amount > 0, "Cannot quote issue zero");
@@ -306,14 +306,26 @@ contract ManagerP0 is IManager, Ownable {
         return true;
     }
 
-    function _updateRedemptionRates() internal {
-        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            ICollateral c = ICollateral(_approvedCollateral.at(i));
-            _prevRedemptionRates[address(c)] = c.redemptionRate();
+    //
+
+    function _redemptionRatesDecreased(IVault v) internal returns (bool decreased) {
+        // Check fiatcoin redemption rates for vault collateral has not decreased since last time.
+        for (uint256 i = 0; i < v.basketSize(); i++) {
+            if (v.collateralAt(i).redemptionRate() + 1 < _redemptionRates[address(v.collateralAt(i))]) {
+                decreased = true;
+            }
+        }
+        // Update the redemption rates.
+        for (uint256 i = 0; i < _allKnownCollateral.length(); i++) {
+            ICollateral c = ICollateral(_allKnownCollateral.at(i));
+            _redemptionRates[address(c)] = c.redemptionRate();
         }
     }
 
     function _processSlowMintings() internal {
+        if (inDoubt) {
+            return;
+        }
         for (uint256 i = 0; i < mintingCount; i++) {
             if (!mintings[i].processed && address(mintings[i].vault) != address(vault)) {
                 rToken.burn(address(this), mintings[i].amount);
@@ -328,13 +340,13 @@ contract ManagerP0 is IManager, Ownable {
     function _melt() internal {
         uint256 amount = rToken.balanceOf(address(this));
         rToken.burn(address(this), amount);
-        melted += amount;
-        _meltingRatio = (SCALE * (rToken.totalSupply() + melted)) / rToken.totalSupply();
+        _melted += amount;
+        _meltingRatio = (SCALE * (rToken.totalSupply() + _melted)) / rToken.totalSupply();
     }
 
     function _diluteBasket() internal {
         uint256 current = vault.basketFiatcoinRate();
-        _currentBasketDilution = SCALE + _config.f * ((SCALE * current) / prevBasketFiatcoinRate - SCALE);
+        _currentBasketDilution = SCALE + _config.f * ((SCALE * current) / _prevBasketFiatcoinRate - SCALE);
         _basketDilutionRatio = (_currentBasketDilution * _historicalBasketDilution) / SCALE;
     }
 
@@ -343,8 +355,75 @@ contract ManagerP0 is IManager, Ownable {
         _diluteBasket();
         _historicalBasketDilution = (_historicalBasketDilution * _currentBasketDilution) / SCALE;
         _currentBasketDilution = SCALE;
-        prevBasketFiatcoinRate = vault.basketFiatcoinRate();
+        _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
     }
+
+    //
+
+    // TODO: When rates decrease, we jump right to full default recognization. Probably need append-only record.
+    // Returns whether a vault contains a defaulting token.
+    function _vaultContainsDoubt(IVault vault_) internal view returns (bool) {
+        uint256 defaultThreshold = (_medianFiatcoinPrice() * (SCALE - _config.defaultThreshold)) / SCALE;
+        for (uint256 i = 0; i < vault_.basketSize(); i++) {
+            ICollateral c = vault_.collateralAt(i);
+
+            // Check oracle prices of fiatcoins for doubt
+            if (oracle.fiatcoinPrice(c) < defaultThreshold) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Get best backup vault after defaul
+    // Criteria: Highest basketFiatcoinRate value, and no defaulted tokens
+    function _getBestBackupVault() internal returns (IVault) {
+        uint256 maxRate;
+        uint256 indexMax = 0;
+
+        // Loop through backups to find the best
+        for (uint256 i = 0; i < vault.getBackups().length; i++) {
+            IVault v = vault.backupAt(i);
+
+            if (!_approvedTokensOnly(v)) {
+                continue;
+            }
+
+            if (!_vaultContainsDoubt(v)) {
+                uint256 rate = v.basketFiatcoinRate();
+
+                // See if it has the highest basket rate
+                if (rate > maxRate) {
+                    maxRate = rate;
+                    indexMax = i;
+                }
+            }
+        }
+
+        if (maxRate == 0) {
+            return IVault(address(0));
+        }
+        return vault.backupAt(indexMax);
+    }
+
+    function _switchVaults() internal {
+        IVault newVault = _getBestBackupVault();
+        if (address(newVault) != address(0)) {
+            pastVaults.push(vault);
+            vault = newVault;
+
+            //  Lower default flag (keep defaulted collateral in list)
+            inDoubt = false;
+        }
+
+        // Undo all live slowmintings
+        _processSlowMintings();
+
+        // Accumulate the basket dilution factor to enable forward accounting
+        _accumulateDilutionFactor();
+    }
+
+    //
 
     // Continually runs auctions as long as there is a past non-empty vault.
     function _manageAuctions() internal {
@@ -359,7 +438,7 @@ contract ManagerP0 is IManager, Ownable {
             uint256 max = _toBUs((rToken.totalSupply() * _config.maxAuctionSize) / SCALE);
             uint256 chunk = Math.min(max, current < target ? target - current : oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
-            
+
             // Try to launch a collateral for collateral auction
             auctionRunning = _tryLaunchCollateralAuction();
         }
@@ -372,8 +451,8 @@ contract ManagerP0 is IManager, Ownable {
 
             uint256 minBuy = Math.min(unbackedRToken, (rToken.totalSupply() * _config.maxAuctionSize) / SCALE);
             minBuy = Math.max(minBuy, (rToken.totalSupply() * _config.minAuctionSize) / SCALE);
-            uint256 sellAmount = minBuy * rTokenUSDEstimate / rsrUSD;
-            sellAmount = (sellAmount * SCALE / (SCALE - _config.maxTradeSlippage));
+            uint256 sellAmount = (minBuy * rTokenUSDEstimate) / rsrUSD;
+            sellAmount = ((sellAmount * SCALE) / (SCALE - _config.maxTradeSlippage));
 
             staking.seizeRSR(sellAmount - staking.rsr().balanceOf(address(this)));
 
@@ -417,68 +496,63 @@ contract ManagerP0 is IManager, Ownable {
         }
 
         // Decide whether to trade and exactly which trade.
-        (bool trade, uint256 sellIndex, uint256 sellAmount, uint256 buyIndex, uint256 minBuy) = _collateralTrade();
+        (bool trade, address sellToken, uint256 sellAmount, address buyToken, uint256 minBuy) = _getTrade();
         if (!trade) {
             return false;
         }
 
         // Launch auction
         Auction.Info storage auction = auctions[auctionCount];
-        auction.start(
-            ICollateral(_approvedCollateral.at(sellIndex)).erc20(),
-            ICollateral(_approvedCollateral.at(buyIndex)).erc20(),
-            sellAmount,
-            minBuy,
-            block.timestamp + _config.auctionPeriod
-        );
+        auction.start(sellToken, buyToken, sellAmount, minBuy, block.timestamp + _config.auctionPeriod);
         auctionCount++;
         return true;
     }
 
     // Determines if a trade should be made and what it should be.
-    // Algorithm: 
+    // Algorithm:
     //     1. Target a particular number of basket units based on total fiatcoins held across all collateral.
     //     2. Swap the most-in-excess collateral for most-in-deficit.
-    //     3. Confirm swap is for a large enough volume. We don't want to trade endlessly. 
-    function _collateralTrade()
+    //     3. Confirm swap is for a large enough volume. We don't want to trade endlessly.
+    function _getTrade()
         internal
         returns (
             bool shouldTrade,
-            uint256 sellIndex,
+            address sellToken,
             uint256 sellAmount,
-            uint256 buyIndex,
+            address buyToken,
             uint256 minBuyAmount
         )
     {
-
         // Calculate how many BUs we could create from all collateral if we could trade with 0 slippage
         uint256 totalValue;
-        uint256[] memory prices = new uint256[](_approvedCollateral.length()); // USD with 18 decimals
-        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            ICollateral c = ICollateral(_approvedCollateral.at(i));
-            prices[i] = c.redemptionRate() * oracle.fiatcoinPrice(c) / SCALE;
+        uint256[] memory prices = new uint256[](_allKnownCollateral.length()); // USD with 18 decimals
+        for (uint256 i = 0; i < _allKnownCollateral.length(); i++) {
+            ICollateral c = ICollateral(_allKnownCollateral.at(i));
+            prices[i] = (c.redemptionRate() * oracle.fiatcoinPrice(c)) / SCALE;
             totalValue += IERC20(c.erc20()).balanceOf(address(this)) * prices[i];
         }
-        uint256 BUTarget = totalValue * SCALE / vault.basketFiatcoinRate();
+        uint256 BUTarget = (totalValue * SCALE) / vault.basketFiatcoinRate();
 
-        uint256[] memory surplus = new uint256[](_approvedCollateral.length());
-        uint256[] memory deficit = new uint256[](_approvedCollateral.length());
+        uint256[] memory surplus = new uint256[](_allKnownCollateral.length());
+        uint256[] memory deficit = new uint256[](_allKnownCollateral.length());
         uint256 surplusMax;
         uint256 deficitMax;
         // Calculate surplus and deficits relative to the BU target.
-        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            ICollateral c = ICollateral(_approvedCollateral.at(i));
+        for (uint256 i = 0; i < _allKnownCollateral.length(); i++) {
+            ICollateral c = ICollateral(_allKnownCollateral.at(i));
             uint256 bal = IERC20(c.erc20()).balanceOf(address(this));
             uint256 target = (vault.quantity(c) * BUTarget) / SCALE;
             if (bal > target) {
-                surplus[i] = (bal - target) * prices[i] / SCALE;
+                surplus[i] = ((bal - target) * prices[i]) / SCALE;
             } else if (bal < target) {
-                deficit[i] = (target - bal) * prices[i] / SCALE;
+                deficit[i] = ((target - bal) * prices[i]) / SCALE;
             }
         }
 
-        // Calculate the maximums. 
-        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
+        // Calculate the maximums.
+        uint256 sellIndex;
+        uint256 buyIndex;
+        for (uint256 i = 0; i < _allKnownCollateral.length(); i++) {
             if (surplus[i] > surplusMax) {
                 surplusMax = surplus[i];
                 sellIndex = i;
@@ -489,116 +563,41 @@ contract ManagerP0 is IManager, Ownable {
             }
         }
 
-        // Determine if the trade is large enough to be worth doing and calculate amounts. 
+        // Determine if the trade is large enough to be worth doing and calculate amounts.
         {
             uint256 minAuctionSizeInBUs = _toBUs((rToken.totalSupply() * _config.minAuctionSize) / SCALE);
-            uint256 minAuctionSizeInFiatcoins = minAuctionSizeInBUs * vault.basketFiatcoinRate() / SCALE;
+            uint256 minAuctionSizeInFiatcoins = (minAuctionSizeInBUs * vault.basketFiatcoinRate()) / SCALE;
             shouldTrade = deficitMax > minAuctionSizeInFiatcoins && surplusMax > minAuctionSizeInFiatcoins;
-            minBuyAmount = deficitMax * SCALE / prices[buyIndex];
+            minBuyAmount = (deficitMax * SCALE) / prices[buyIndex];
+            sellToken = _allKnownCollateral.at(sellIndex);
+            buyToken = _allKnownCollateral.at(buyIndex);
         }
 
-        uint256 maxSell = (deficitMax * SCALE / (SCALE - _config.maxTradeSlippage));
-        sellAmount = Math.min(maxSell, surplusMax) * SCALE / _prevRedemptionRates[_approvedCollateral.at(sellIndex)];
-        return (shouldTrade, sellIndex, sellAmount, buyIndex, minBuyAmount);
+        uint256 maxSell = ((deficitMax * SCALE) / (SCALE - _config.maxTradeSlippage));
+        sellAmount = (Math.min(maxSell, surplusMax) * SCALE) / _redemptionRates[sellToken];
+        return (shouldTrade, sellToken, sellAmount, buyToken, minBuyAmount);
     }
 
-    function _detectDefaultInVault(IVault vault_) internal view returns (bool, ICollateral[] memory) {
-        bool _defaulted = false;
-        ICollateral[] memory _defaultCollateral = new ICollateral[](vault_.basketSize());
-        uint256 _price;
+    // Computes the price of the median fiatcoin in USD, 18 decimals.
+    function _medianFiatcoinPrice() internal view returns (uint256) {
+        uint256[] memory prices = new uint256[](_fiatcoins.length());
+        for (uint256 i = 0; i < _fiatcoins.length(); i++) {
+            prices[i] = oracle.fiatcoinPrice(ICollateral(_fiatcoins.at(i)));
+        }
 
-        for (uint256 i = 0; i < vault_.basketSize(); i++) {
-            ICollateral c = vault_.collateralAt(i);
-
-            // 1. Check fiatcoin redemption rates have not decreased since last time.
-            if (c.redemptionRate() + 1 < _prevRedemptionRates[address(c)]) {
-                // Set default detected
-                _defaulted = true;
-                _defaultCollateral[i] = c;
+        for (uint256 i = 1; i < prices.length; i++) {
+            uint256 key = prices[i];
+            uint256 j = i - 1;
+            while (j >= 0 && prices[j] > key) {
+                prices[j + 1] = prices[j];
+                j--;
             }
-
-            // 2. Check oracle prices of fiatcoins for default 
-            // If any fiatcoins are 5% (default threshold) below their stable price raise flag
-            _price = oracle.fiatcoinPrice(c);
-            // TODO: Apply correct calculation
-            if (
-                _price < 10**IERC20Metadata(c.fiatcoin()).decimals() /*  - 5% */
-            ) {
-                // Set default detected
-                _defaulted = true;
-                // Add tokens to defaulted set
-                _defaultCollateral[i] = c;
-            }
+            prices[j + 1] = key;
         }
 
-        return (_defaulted, _defaultCollateral);
-    }
-
-    // Get best backup vault after defaul
-    // Criteria: Highest basketFiatcoinRate value, and no defaulted tokens
-    function _getBestBackupVault() internal returns (IVault) {
-        uint256 _maxRate;
-        uint256 indexMax = 0;
-
-        // Loop through backups to find the best
-        for (uint256 i = 0; i < vault.getBackups().length; i++) {
-            IVault v = vault.backupAt(i);
-
-            if (!_approvedTokensOnly(v)) {
-                continue;
-            }
-
-            (bool _defaulted, ) = _detectDefaultInVault(v);
-
-            if (!_defaulted) {
-                // Get basketFiatcoinRate()
-                uint256 _rate = v.basketFiatcoinRate();
-
-                // See if it has the highest basket rate
-                if (_rate > _maxRate) {
-                    _maxRate = _rate;
-                    indexMax = i;
-                }
-            }
+        if (prices.length % 2 == 0) {
+            return (prices[prices.length / 2 - 1] + prices[prices.length / 2]) / 2;
         }
-
-        // Return selected vault index
-        if (indexMax > 0) {
-            return vault.backupAt(indexMax);
-        } else {
-            return IVault(address(0));
-        }
-    }
-
-    function _switchVaults() internal {
-        IVault _newVault = _getBestBackupVault();
-        if (address(_newVault) != address(0)) {
-            pastVaults.push(vault);
-            vault = _newVault;
-
-            //  Lower default flag (keep defaulted collateral in list)
-            inDefault = false;
-        }
-
-        // Undo all live slowmintings
-        _processSlowMintings();
-
-        // Accumulate the basket dilution factor to enable forward accounting
-        _accumulateDilutionFactor();
-    }
-
-    // Add collateral to the enumerable set - Cleans it up first
-    function _setDefaultedCollateral(ICollateral[] memory _collateral) internal {
-        _cleanupDefaultedCollateral();
-        for (uint256 i = 0; i < _collateral.length; i++) {
-            _defaultedCollateral.add(address(_collateral[i]));
-        }
-    }
-
-    // Cleanup the enumerable set
-    function _cleanupDefaultedCollateral() internal {
-        for (uint256 i = 0; i < _defaultedCollateral.length(); i++) {
-            _defaultedCollateral.remove(_defaultedCollateral.at(i));
-        }
+        return prices[prices.length / 2];
     }
 }

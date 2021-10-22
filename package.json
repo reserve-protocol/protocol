@@ -19,7 +19,8 @@
         "slither": "./slither.sh",
         "mythril": "./mythril.sh",
         "echidna": "rm -rf crytic-export && ./echidna.sh",
-        "flatten": "waffle flatten"
+        "flatten": "waffle flatten",
+        "postinstall": "husky install"
     },
     "repository": {
         "type": "git",

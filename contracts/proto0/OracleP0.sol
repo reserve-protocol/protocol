@@ -25,13 +25,13 @@ interface ILendingPoolAddressesProvider {
 
 interface AaveOracle {
     function WETH() external view returns (address);
+
     function getAssetPrice(address oracle) external view returns (uint256);
 }
 
 contract OracleP0 is IOracle {
-
     uint256 constant padding = 10**12;
-    
+
     Comptroller public compound;
     AaveLendingPool public aave;
 
@@ -48,6 +48,7 @@ contract OracleP0 is IOracle {
             return consultCOMP(collateral.fiatcoin());
         }
         assert(false);
+        return 0;
     }
 
     // Returns the USD price using 18 decimals
@@ -57,7 +58,7 @@ contract OracleP0 is IOracle {
         uint256 inETH = aaveOracle.getAssetPrice(token);
         uint256 ethNorm = aaveOracle.getAssetPrice(aaveOracle.WETH());
         uint256 ethInUsd = compound.oracle().price("ETH");
-        return inETH * ethInUsd * padding / ethNorm;        
+        return (inETH * ethInUsd * padding) / ethNorm;
     }
 
     // Returns the USD price using 18 decimals

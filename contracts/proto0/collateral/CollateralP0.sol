@@ -16,7 +16,7 @@ contract CollateralP0 is ICollateral {
         _erc20 = erc20_;
     }
 
-    // Fiatcoins return 1e18. All redemption rates should have 18 zeroes. 
+    // Fiatcoins return 1e18. All redemption rates should have 18 zeroes.
     function redemptionRate() external view virtual override returns (uint256) {
         return 1e18;
     }

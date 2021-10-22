@@ -83,7 +83,7 @@ contract VaultP0 is IVault, Ownable {
     function basketFiatcoinRate() external override returns (uint256 sum) {
         for (uint256 i = 0; i < _basket.size; i++) {
             ICollateral c = _basket.collateral[i];
-            sum += (_basket.quantities[i] * c.redemptionRate()) / c.decimals();
+            sum += (_basket.quantities[i] * c.redemptionRate()) / 10**c.decimals();
         }
     }
 
