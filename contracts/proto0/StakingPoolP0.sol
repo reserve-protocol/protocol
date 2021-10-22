@@ -39,7 +39,7 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
     EnumerableSet.AddressSet internal _accounts;
 
     // Total staked
-    uint256 internal _totalSupply;
+    uint256 internal _totalStaked;
 
     // Delayed Withdrawals
     struct Withdrawal {
@@ -81,7 +81,7 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
         rsr.safeTransferFrom(_msgSender(), address(this), amount);
         _accounts.add(_msgSender());
         _balances[_msgSender()] += amount;
-        _totalSupply += amount;
+        _totalStaked += amount;
     }
 
     function unstake(uint256 amount) external override {
@@ -93,7 +93,7 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
 
         // Take it out up front
         _balances[_msgSender()] -= amount;
-        _totalSupply -= amount;
+        _totalStaked -= amount;
 
         // Submit delayed withdrawal
         withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp + stakingWithdrawalDelay));
@@ -131,8 +131,8 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
 
         rsr.safeTransferFrom(address(rToken), address(this), amount);
 
-        uint256 snapshotTotalStaked = _totalSupply;
-        _totalSupply += amount;
+        uint256 snapshotTotalStaked = _totalStaked;
+        _totalStaked += amount;
 
         // Redistribute RSR to stakers, but not to withdrawers
         if (snapshotTotalStaked > 0) {
@@ -151,8 +151,8 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
         // Process pending withdrawals
         processWithdrawals();
 
-        uint256 snapshotTotalStakedPlus = _totalSupply + _amountBeingWithdrawn();
-        _totalSupply -= amount;
+        uint256 snapshotTotalStakedPlus = _totalStaked + _amountBeingWithdrawn();
+        _totalStaked -= amount;
 
         // Remove RSR for stakers and from withdrawals too
         if (snapshotTotalStakedPlus > 0) {
@@ -188,7 +188,7 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
     }
 
     function totalSupply() external view override returns (uint256) {
-        return _totalSupply;
+        return _totalStaked + _amountBeingWithdrawn();
     }
 
     function transfer(address recipient, uint256 amount) external override returns (bool) {
