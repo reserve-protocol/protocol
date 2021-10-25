@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./interfaces/IStakingPool.sol";
-import "./interfaces/IRToken.sol";
+import "./interfaces/IManager.sol";
 
 /*
  * @title StakingPool
@@ -24,7 +24,7 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    IRToken public rToken;
+    IManager public manager;
     IERC20 public override rsr;
 
     // Staking Token Name and Symbol
@@ -58,17 +58,17 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
         string memory name_,
         string memory symbol_,
         address owner_,
-        address rToken_,
+        address manager_,
         address rsr_,
         uint256 stakingWithdrawalDelay_
     ) {
         _name = name_;
         _symbol = symbol_;
         _transferOwnership(owner_);
-        rToken = IRToken(rToken_);
+        manager = IManager(manager_);
         rsr = IERC20(rsr_);
         stakingWithdrawalDelay = stakingWithdrawalDelay_;
-        rsr.safeApprove(rToken_, type(uint256).max);
+        rsr.safeApprove(manager_, type(uint256).max);
     }
 
     // Stake RSR
@@ -105,6 +105,9 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
     }
 
     function processWithdrawals() public {
+        if (manager.paused() || !manager.fullyCapitalized()) {
+            return;
+        }
         // Process all pending withdrawals
         for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
             if (block.timestamp > withdrawals[withdrawalIndex].availableAt) {
@@ -129,7 +132,7 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
         // Process pending withdrawals
         processWithdrawals();
 
-        rsr.safeTransferFrom(address(rToken), address(this), amount);
+        rsr.safeTransferFrom(address(manager), address(this), amount);
 
         uint256 snapshotTotalStaked = _totalStaked;
         _totalStaked += amount;
@@ -145,7 +148,7 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
 
     // Seizing RSR pulls RSR from all current stakers + withdrawers
     function seizeRSR(uint256 amount) external override {
-        require(_msgSender() == address(rToken), "Caller is not RToken");
+        require(_msgSender() == address(manager), "Caller is not RToken");
         require(amount > 0, "Amount cannot be zero");
 
         // Process pending withdrawals
@@ -167,7 +170,7 @@ contract StakingPoolP0 is IStakingPool, IERC20, Ownable {
             }
         }
         // Transfer RSR to RToken
-        rsr.safeTransfer(address(rToken), amount);
+        rsr.safeTransfer(address(manager), amount);
     }
 
     function setStakingWithdrawalDelay(uint256 stakingWithdrawalDelay_) external onlyOwner {

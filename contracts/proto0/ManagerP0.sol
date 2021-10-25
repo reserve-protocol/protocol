@@ -32,6 +32,7 @@ struct Config {
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Percentage values (relative to SCALE)
     uint256 maxTradeSlippage; // the maximum amount of slippage in percentage terms we will accept in a trade
+    uint256 auctionClearingTolerance; // the maximum % difference between auction clearing price and oracle data allowed. 
     uint256 maxAuctionSize; // the size of an auction, as a fraction of RToken supply
     uint256 minAuctionSize; // the size of an auction, as a fraction of RToken supply
     uint256 migrationChunk; // how much backing to migrate at a time, as a fraction of RToken supply
@@ -48,6 +49,7 @@ struct Config {
     // stakingWithdrawalDelay = 1209600 (2 weeks)
     // defaultDelay = 86400 (24 hours)
     // maxTradeSlippage = 5e16 (5%)
+    // auctionClearingTolerance = 5e16 (5%)
     // maxAuctionSize = 1e16 (1%)
     // minAuctionSize = 1e15 (0.1%)
     // migrationChunk = 2e17 (20%)
@@ -100,7 +102,7 @@ contract ManagerP0 is IManager, Ownable {
 
     // Pausing
     address public pauser;
-    bool public paused;
+    bool public override paused; // caution state = paused
 
     // Default detection.
     bool public inDoubt;
@@ -149,39 +151,36 @@ contract ManagerP0 is IManager, Ownable {
         _;
     }
 
-    modifier notInDoubt() {
-        require(!inDoubt, "in doubt");
-        _;
-    }
-
-    modifier before() {
+    // This modifier runs before every function including redemption, so it needs to be very safe. 
+    modifier always() {
         // Check for hard default (ie redemption rates fail to increase monotonically)
         ICollateral[] memory hardDefaulting = _checkForHardDefault();
-        if (hardDefaulting.length > 0) {
+        if (!paused && hardDefaulting.length > 0) {
             _switchVaults(hardDefaulting);
         }
-
         faucet.drip();
         _melt();
         _diluteBasket();
-        _processSlowMintings();
         _;
     }
 
-    function poke() external override notPaused notInDoubt before {
+    function poke() external override notPaused always {
+        require(!inDoubt, "in doubt");
+        _processSlowMintings();
         _manageAuctions();
     }
 
     // Default check (on-demand)
-    function detectDefault() external override notPaused before {
-        // Note that _before_ checks for hard default.
+    function detectDefault() external override notPaused always {
+        // Note that _always_ checks for hard default.
 
         // Check for soft default
         ICollateral[] memory softDefaulting = vault.softDefaultingCollateral(oracle, _defaultThreshold());
         if (!inDoubt && softDefaulting.length > 0) {
+            _processSlowMintings();
             inDoubt = true;
             doubtRaisedAt = block.timestamp;
-        } else if (block.timestamp >= doubtRaisedAt) {
+        } else if (inDoubt && block.timestamp >= doubtRaisedAt) {
             // If no doubt anymore
             if (softDefaulting.length == 0) {
                 inDoubt = false;
@@ -195,8 +194,10 @@ contract ManagerP0 is IManager, Ownable {
         }
     }
 
-    function issue(uint256 amount) external override notPaused notInDoubt before {
+    function issue(uint256 amount) external override notPaused always {
+        require(!inDoubt, "in doubt");
         require(amount > 0, "Cannot issue zero");
+        _processSlowMintings();
         uint256 issuanceRate = _issuanceRate();
         uint256 numBlocks = Math.ceilDiv(amount, issuanceRate);
 
@@ -207,7 +208,7 @@ contract ManagerP0 is IManager, Ownable {
         mintingCount++;
     }
 
-    function redeem(uint256 amount) external override notPaused before {
+    function redeem(uint256 amount) external override always {
         require(amount > 0, "Cannot redeem zero");
         rToken.burn(_msgSender(), amount);
         _oldestNonEmptyVault().redeem(_msgSender(), _toBUs(amount));
@@ -267,6 +268,10 @@ contract ManagerP0 is IManager, Ownable {
     function quoteRedeem(uint256 amount) public view override returns (uint256[] memory) {
         require(amount > 0, "Cannot quote redeem zero");
         return vault.tokenAmounts(_toBUs(amount));
+    }
+
+    function fullyCapitalized() public view override returns (bool) {
+        return vault.basketUnits(address(this)) >= _toBUs(rToken.totalSupply());
     }
 
     //
@@ -360,9 +365,6 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     function _processSlowMintings() internal {
-        if (inDoubt) {
-            return;
-        }
         for (uint256 i = 0; i < mintingCount; i++) {
             if (!mintings[i].processed && address(mintings[i].vault) != address(vault)) {
                 rToken.burn(address(this), mintings[i].amount);
@@ -429,7 +431,13 @@ contract ManagerP0 is IManager, Ownable {
             if (block.timestamp <= prev.endTime) {
                 return;
             }
-            prev.closeOut();
+
+            // Closeout auction and check that prices are reasonable (for non-RSR-RToken auctions).
+            uint256 buyAmount = prev.closeOut();
+            if (address(prev.buyCollateral) != address(0) && !prev.clearedCloseToOraclePrice(oracle, SCALE, buyAmount, _config.auctionClearingTolerance)) {
+                // Enter Caution state and pause everything
+                paused = true;
+            }
         }
 
         // Create as many BUs as we can
@@ -438,12 +446,12 @@ contract ManagerP0 is IManager, Ownable {
             vault.issue(issuable);
         }
 
-        // Check for capitalization
-        if (vault.basketUnits(address(this)) >= _toBUs(rToken.totalSupply())) {
+        // Halt if paused or capitalized
+        if (paused || fullyCapitalized()) {
             return;
         }
 
-        // If vaults are still different, redeem BUs to open up spare collateral
+        // If we are in the Migration state, redeem BUs to open up spare collateral
         IVault oldVault = _oldestNonEmptyVault();
         if (address(oldVault) != address(vault)) {
             uint256 target = _toBUs(rToken.totalSupply());
@@ -454,7 +462,10 @@ contract ManagerP0 is IManager, Ownable {
         }
 
         // Decide whether to trade and exactly which trade.
-        (bool trade, address sellToken, uint256 sellAmount, address buyToken, uint256 minBuy) = _collateralTrade();
+        // trade=false when the differences between collateral are too small to merit trading. 
+        (bool trade, ICollateral sell, ICollateral buy, uint256 sellAmount, uint256 minBuy) = _collateralTrade();
+        address sellToken = sell.erc20();
+        address buyToken = buy.erc20();
 
         uint256 stakedRSR = staking.rsr().balanceOf(address(staking));
         if (!trade && stakedRSR > 0) {
@@ -480,7 +491,7 @@ contract ManagerP0 is IManager, Ownable {
 
         // At this point in the code this is either a collateral-for-collateral trade or an RSR-for-RToken trade.
         Auction.Info storage auction = auctions[auctionCount];
-        auction.start(sellToken, buyToken, sellAmount, minBuy, block.timestamp + _config.auctionPeriod);
+        auction.start(sell, buy, sellToken, buyToken, sellAmount, minBuy, block.timestamp + _config.auctionPeriod);
         auctionCount++;
     }
 
@@ -493,9 +504,9 @@ contract ManagerP0 is IManager, Ownable {
         internal
         returns (
             bool shouldTrade,
-            address sellToken,
+            ICollateral sell,
+            ICollateral buy,
             uint256 sellAmount,
-            address buyToken,
             uint256 minBuyAmount
         )
     {
@@ -545,12 +556,12 @@ contract ManagerP0 is IManager, Ownable {
             uint256 minAuctionSizeInFiatcoins = (minAuctionSizeInBUs * vault.basketFiatcoinRate()) / SCALE;
             shouldTrade = deficitMax > minAuctionSizeInFiatcoins && surplusMax > minAuctionSizeInFiatcoins;
             minBuyAmount = (deficitMax * SCALE) / prices[buyIndex];
-            sellToken = _allKnownCollateral.at(sellIndex);
-            buyToken = _allKnownCollateral.at(buyIndex);
+            sell = ICollateral(_allKnownCollateral.at(sellIndex));
+            buy = ICollateral(_allKnownCollateral.at(buyIndex));
         }
 
         uint256 maxSell = ((deficitMax * SCALE) / (SCALE - _config.maxTradeSlippage));
-        sellAmount = (Math.min(maxSell, surplusMax) * SCALE) / _redemptionRates[sellToken];
-        return (shouldTrade, sellToken, sellAmount, buyToken, minBuyAmount);
+        sellAmount = (Math.min(maxSell, surplusMax) * SCALE) / sell.redemptionRate();
+        return (shouldTrade, sell, buy, sellAmount, minBuyAmount);
     }
 }

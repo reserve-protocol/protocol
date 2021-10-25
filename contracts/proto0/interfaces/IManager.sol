@@ -17,4 +17,8 @@ interface IManager {
     function quoteIssue(uint256 amount) external view returns (uint256[] memory);
 
     function quoteRedeem(uint256 amount) external view returns (uint256[] memory);
+
+    function fullyCapitalized() external view returns (bool);
+
+    function paused() external view returns (bool);
 }
