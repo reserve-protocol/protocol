@@ -10,6 +10,7 @@ This is Prototype 0, the _simplest_ version of our system we can possibly imagin
 - Vault: Issues an accounting token called a BU (Basket Unit) and maintains an immutable basket definition. Multiple vaults per system.
 - Faucet: Drips RToken back to the Manager at a slow rate.
 - Oracle: Provides a simple unified interface for the Compound/Aave oracle.
+- Collateral: Immutable wrapper-contracts for cTokens/aTokens/fiatcoins that the Manager leverages as a single unified interface for our collateral tokens.
 
 ### Token Balances
 

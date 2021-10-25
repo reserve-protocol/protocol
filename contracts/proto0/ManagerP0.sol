@@ -186,7 +186,7 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     // Default check
-    function detectDefault() external override notPaused always {
+    function noticeDefault() external override notPaused always {
         // Note that _always()_ checks for hard default.
 
         // Check for soft default
@@ -267,7 +267,6 @@ contract ManagerP0 is IManager, Ownable {
 
     function unapproveCollateral(ICollateral collateral) public onlyOwner {
         _approvedCollateral.remove(address(collateral));
-        _allKnownCollateral.remove(address(collateral));
         if (collateral.isFiatcoin()) {
             _fiatcoins.remove(address(collateral));
         }
@@ -485,19 +484,19 @@ contract ManagerP0 is IManager, Ownable {
             return;
         }
 
+        // Are we able to trade sideways, or is it all dust?
+        (bool trade, ICollateral sell, ICollateral buy, uint256 sellAmount, uint256 minBuy) = _collateralTrade();
+
         // If we are in the Migration state, redeem BUs to open up spare collateral
         IVault oldVault = _oldestNonEmptyVault();
-        if (address(oldVault) != address(vault)) {
-            uint256 target = _toBUs(rToken.totalSupply());
-            uint256 current = vault.basketUnits(address(this));
-            uint256 max = _toBUs((rToken.totalSupply() * _config.maxAuctionSize) / SCALE);
-            uint256 chunk = Math.min(max, current < target ? target - current : oldVault.basketUnits(address(this)));
+        if (!trade && address(oldVault) != address(vault)) {
+            uint256 max = _toBUs((rToken.totalSupply()) * _config.migrationChunk / SCALE);
+            uint256 chunk = Math.min(max, oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
-        }
 
-        // Decide whether to trade and exactly which trade.
-        // trade=false when the differences between collateral are too small to merit trading.
-        (bool trade, ICollateral sell, ICollateral buy, uint256 sellAmount, uint256 minBuy) = _collateralTrade();
+            // Decide whether to trade and exactly which trade.
+            (trade, sell, buy, sellAmount, minBuy) = _collateralTrade();
+        }
         address sellToken = sell.erc20();
         address buyToken = buy.erc20();
         address destination = address(this);
@@ -509,7 +508,7 @@ contract ManagerP0 is IManager, Ownable {
             buyToken = address(rToken);
             destination = address(0);
 
-            uint256 rsrUSD = oracle.consultAAVE(address(staking.rsr()));
+            uint256 rsrUSD = oracle.consultAave(address(staking.rsr()));
             uint256 rTokenUSDEstimate = vault.basketFiatcoinRate();
             uint256 unbackedRToken = rToken.totalSupply() - _fromBUs(vault.basketUnits(address(this)));
             minBuy = Math.min(unbackedRToken, (rToken.totalSupply() * _config.maxAuctionSize) / SCALE);
@@ -559,8 +558,6 @@ contract ManagerP0 is IManager, Ownable {
 
         uint256[] memory surplus = new uint256[](_allKnownCollateral.length());
         uint256[] memory deficit = new uint256[](_allKnownCollateral.length());
-        uint256 surplusMax;
-        uint256 deficitMax;
         // Calculate surplus and deficits relative to the BU target.
         for (uint256 i = 0; i < _allKnownCollateral.length(); i++) {
             ICollateral c = ICollateral(_allKnownCollateral.at(i));
@@ -576,6 +573,8 @@ contract ManagerP0 is IManager, Ownable {
         // Calculate the maximums.
         uint256 sellIndex;
         uint256 buyIndex;
+        uint256 surplusMax;
+        uint256 deficitMax;
         for (uint256 i = 0; i < _allKnownCollateral.length(); i++) {
             if (surplus[i] > surplusMax) {
                 surplusMax = surplus[i];
