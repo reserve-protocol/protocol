@@ -29,6 +29,11 @@ interface AaveOracle {
     function getAssetPrice(address oracle) external view returns (uint256);
 }
 
+
+/*
+ * @title OracleP0
+ * @dev A very simple oracle that delegates to the Compound or Aave oracles. 
+ */
 contract OracleP0 is IOracle {
     uint256 constant padding = 10**12;
 

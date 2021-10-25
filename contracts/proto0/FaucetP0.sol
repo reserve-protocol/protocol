@@ -6,6 +6,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./interfaces/IFaucet.sol";
 
+/**
+ * @title FaucetP0
+ * @dev A helper contract to drip RToken back to the Manager at a steady rate. 
+ */
 contract FaucetP0 is IFaucet {
     using SafeERC20 for IERC20;
 
