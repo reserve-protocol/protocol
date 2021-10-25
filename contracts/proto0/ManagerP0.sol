@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../libraries/CommonErrors.sol";
 import "./libraries/Auction.sol";
-import "./libraries/SlowMinting.sol";
+import "./libraries/SlowIssuance.sol";
 import "./interfaces/IRToken.sol";
 import "./interfaces/IFaucet.sol";
 import "./interfaces/IVault.sol";
@@ -76,7 +76,7 @@ struct Config {
  */
 contract ManagerP0 is IManager, Ownable {
     using SafeERC20 for IERC20;
-    using SlowMinting for SlowMinting.Info;
+    using SlowIssuance for SlowIssuance.Info;
     using Auction for Auction.Info;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -109,8 +109,8 @@ contract ManagerP0 is IManager, Ownable {
 
     // Append-only record keeping
     IVault[] public pastVaults;
-    mapping(uint256 => SlowMinting.Info) public mintings;
-    uint256 public mintingCount;
+    mapping(uint256 => SlowIssuance.Info) public issuances;
+    uint256 public issuanceCount;
     mapping(uint256 => Auction.Info) public auctions;
     uint256 public auctionCount;
 
@@ -220,7 +220,7 @@ contract ManagerP0 is IManager, Ownable {
         SlowMinting.Info storage minting = mintings[mintingCount];
         minting.start(vault, amount, _toBUs(amount), _msgSender(), _slowMintingEnd() + numBlocks * issuanceRate);
         rToken.mint(address(this), amount);
-        mintingCount++;
+        issuanceCount++;
     }
 
     function redeem(uint256 amount) external override always {
@@ -307,10 +307,10 @@ contract ManagerP0 is IManager, Ownable {
 
     // Returns the timestamp at which the latest slow minting ends. Worst-case: Current timestamp.
     function _slowMintingEnd() internal view returns (uint256) {
-        if (mintingCount == 0) {
+        if (issuanceCount == 0) {
             return block.timestamp;
         }
-        return Math.max(block.timestamp, mintings[mintingCount - 1].availableAt);
+        return Math.max(block.timestamp, issuances[issuanceCount - 1].availableAt);
     }
 
     // Returns the oldest vault that contains nonzero BUs.
@@ -381,15 +381,11 @@ contract ManagerP0 is IManager, Ownable {
         }
     }
 
-    // Processes all slow mintings that have fully vested, or undoes them if the vault has been changed.
+    // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowMintings() internal {
-        for (uint256 i = 0; i < mintingCount; i++) {
-            if (!mintings[i].processed && address(mintings[i].vault) != address(vault)) {
-                rToken.burn(address(this), mintings[i].amount);
-                mintings[i].undo();
-            } else if (!mintings[i].processed && mintings[i].availableAt <= block.timestamp) {
-                IERC20(rToken).safeTransfer(mintings[i].minter, mintings[i].amount);
-                mintings[i].complete();
+        for (uint256 i = 0; i < issuanceCount; i++) {
+            if (!issuances[i].processed && issuances[i].availableAt >= block.timestamp) {
+                issuances[i].process(rToken, vault);
             }
         }
     }
@@ -492,7 +488,7 @@ contract ManagerP0 is IManager, Ownable {
         // If we are in the Migration state, redeem BUs to open up spare collateral
         IVault oldVault = _oldestNonEmptyVault();
         if (!trade && address(oldVault) != address(vault)) {
-            uint256 max = _toBUs((rToken.totalSupply()) * _config.migrationChunk / SCALE);
+            uint256 max = _toBUs(((rToken.totalSupply()) * _config.migrationChunk) / SCALE);
             uint256 chunk = Math.min(max, oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
 

@@ -3,9 +3,10 @@ pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../interfaces/IRToken.sol";
 import "../interfaces/IVault.sol";
 
-library SlowMinting {
+library SlowIssuance {
     using SafeERC20 for IERC20;
 
     struct Info {
@@ -19,7 +20,7 @@ library SlowMinting {
     }
 
     function start(
-        SlowMinting.Info storage self,
+        SlowIssuance.Info storage self,
         IVault vault,
         uint256 amount,
         uint256 BUs,
@@ -40,17 +41,22 @@ library SlowMinting {
         self.vault.issue(self.BUs);
     }
 
-    function complete(SlowMinting.Info storage self) internal {
+    function process(
+        SlowIssuance.Info storage self,
+        IRToken rToken,
+        IVault vault
+    ) internal {
         require(!self.processed, "slow minting already processed");
         require(self.availableAt <= block.timestamp, "slow minting needs more time");
 
-        self.processed = true;
-    }
-
-    function undo(SlowMinting.Info storage self) internal {
-        require(!self.processed, "slow minting already processed");
-
-        self.vault.redeem(self.minter, self.BUs);
+        if (address(self.vault) != address(vault)) {
+            // Revert Issuance
+            rToken.burn(address(this), self.amount);
+            self.vault.redeem(self.minter, self.BUs);
+        } else if (self.availableAt >= block.timestamp) {
+            // Complete Issuance
+            rToken.transfer(self.minter, self.amount);
+        }
         self.processed = true;
     }
 }

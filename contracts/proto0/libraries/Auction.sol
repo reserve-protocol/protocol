@@ -52,7 +52,6 @@ library Auction {
     function closeOut(Auction.Info storage self, uint256 rewardPeriod) internal returns (uint256 buyAmount) {
         require(self.open, "already closed out");
         require(self.endTime <= block.timestamp, "auction not over");
-        uint256 buyAmount;
         // TODO: buyAmount = batchAuction.claim();
         uint256 bal = IERC20(self.buyToken).balanceOf(address(this));
         if (self.destination == address(0)) {

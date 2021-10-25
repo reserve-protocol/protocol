@@ -7,6 +7,7 @@ import "./interfaces/IOracle.sol";
 
 interface IComptroller {
     function oracle() external view returns (ICompoundOracle);
+
     function claimComp(address holder) external;
 }
 
@@ -29,7 +30,6 @@ interface IAaveOracle {
 
     function getAssetPrice(address oracle) external view returns (uint256);
 }
-
 
 /*
  * @title OracleP0
