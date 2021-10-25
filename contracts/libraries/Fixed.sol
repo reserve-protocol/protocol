@@ -79,12 +79,12 @@ library FixLib {
          return fix.wrap(fix.unwrap(x) + fix.unwrap(y));
      }
      /// Add to an int. Fail if the result is out of bounds.
-     function plusi(Fix x, int256 y) internal pure returns (Fix) {
-         return fix.wrap( int128(Fix.unwrap(x) + y * SCALE) );
+     function plus(Fix x, int256 y) internal pure returns (Fix) {
+         return fix.wrap( uint128(Fix.unwrap(x) + y * SCALE) );
      }
      /// Add to a uint. Fail if the result is out of bounds.
      function plusu(Fix x, uint256 y) internal pure returns (Fix) {
-         return fix.wrap( uint128(Fix.unwrap(x) + y * SCALE) );
+         return fix.wrap( int128(Fix.unwrap(x) + y * SCALE) );
      }
 
      /// Subtract one Fix from another. Fail if the result is out of bounds.
@@ -92,14 +92,26 @@ library FixLib {
          return fix.wrap(fix.unwrap(x) - fix.unwrap(y));
      }
      /// Subtract away an int. Fail if the result is out of bounds.
-     function minusi(Fix x, int256 y) internal pure returns (Fix) {
-         return fix.wrap( int128(Fix.unwrap(x) - y * SCALE) );
+     function minus(Fix x, int256 y) internal pure returns (Fix) {
+         return fix.wrap( uint128(Fix.unwrap(x) - y * SCALE) );
      }
      /// Subtract away a uint. Fail if the result is out of bounds.
      function minusu(Fix x, uint256 y) internal pure returns (Fix) {
-         return fix.wrap( uint128(Fix.unwrap(x) - y * SCALE) );
+         return fix.wrap( int128(Fix.unwrap(x) - y * SCALE) );
      }
 
      /// Multiply two Fixes. Fail if the result is out of bounds.
-     // HERE TODO
+     function times(Fix x, Fix y) internal pure returns (Fix) {
+         return fix.wrap(fix.unwrap(x) * fix.unwrap(y) / SCALE);
+         // rounding? HERE
+     }
+     /// Multi an int. Fail if the result is out of bounds.
+     function minus(Fix x, int256 y) internal pure returns (Fix) {
+         return fix.wrap( uint128(Fix.unwrap(x) - y * SCALE) );
+     }
+     /// Subtract away a uint. Fail if the result is out of bounds.
+     function minusu(Fix x, uint256 y) internal pure returns (Fix) {
+         return fix.wrap( int128(Fix.unwrap(x) - y * SCALE) );
+     }
+
  }
