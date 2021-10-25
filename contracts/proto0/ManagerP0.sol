@@ -60,12 +60,12 @@ struct Config {
 
 /**
  * @title ManagerP0
- * @dev The Manager for a particular RToken + StakingPool. 
+ * @dev The Manager for a particular RToken + StakingPool.
  *
  * This contract:
- *    - Provides RToken issuance/redemption. 
+ *    - Provides RToken issuance/redemption.
  *    - Manages the choice of backing of an RToken via Vault selection.
- *    - Defines the exchange rate between Vault BUs and RToken supply, via the base factor. 
+ *    - Defines the exchange rate between Vault BUs and RToken supply, via the base factor.
  *    - Monitors Vault collateral for default. There are two types:
  *          A. Hard default - A strong invariant is broken; default immediately.
  *          B. Soft default - A weak invariant is broken; default after waiting (say 24h).
@@ -299,7 +299,7 @@ contract ManagerP0 is IManager, Ownable {
         return (amount * _meltingRatio) / _basketDilutionRatio;
     }
 
-    // Calculates the block-by-block RToken issuance rate for slow minting. 
+    // Calculates the block-by-block RToken issuance rate for slow minting.
     function _issuanceRate() internal view returns (uint256) {
         // Lower-bound of 10_000 per block
         return Math.max(10_000 * 10**rToken.decimals(), (rToken.totalSupply() * _config.issuanceRate) / SCALE);
@@ -381,7 +381,7 @@ contract ManagerP0 is IManager, Ownable {
         }
     }
 
-    // Processes all slow mintings that have fully vested, or undoes them if the vault has been changed. 
+    // Processes all slow mintings that have fully vested, or undoes them if the vault has been changed.
     function _processSlowMintings() internal {
         for (uint256 i = 0; i < mintingCount; i++) {
             if (!mintings[i].processed && address(mintings[i].vault) != address(vault)) {
@@ -394,7 +394,7 @@ contract ManagerP0 is IManager, Ownable {
         }
     }
 
-    // Melts RToken, increasing the base factor and thereby causing an RToken to appreciate. 
+    // Melts RToken, increasing the base factor and thereby causing an RToken to appreciate.
     function _melt() internal {
         uint256 amount = rToken.balanceOf(address(this));
         rToken.burn(address(this), amount);
@@ -404,7 +404,7 @@ contract ManagerP0 is IManager, Ownable {
         }
     }
 
-    // Reduces basket quantities slightly in order to pass through basket appreciation to stakers. 
+    // Reduces basket quantities slightly in order to pass through basket appreciation to stakers.
     // Uses a closed-form calculation that is anchored to the last time the vault or *f* was changed.
     function _diluteBasket() internal {
         // Idempotent
@@ -447,7 +447,7 @@ contract ManagerP0 is IManager, Ownable {
     //
 
     // Continually runs auctions as long as we are undercollateralized.
-    // Algorithm: 
+    // Algorithm:
     //     1. Closeout previous auctions
     //     2. Create BUs from collateral
     //     3. Break off BUs from the old vault for collateral
@@ -465,7 +465,8 @@ contract ManagerP0 is IManager, Ownable {
             // Closeout auction and check that prices are reasonable (for collateral-for-collateral auctions).
             uint256 buyAmount = prev.closeOut(_config.rewardPeriod);
             if (
-                address(prev.sellCollateral) != address(0) && address(prev.buyCollateral) != address(0) &&
+                address(prev.sellCollateral) != address(0) &&
+                address(prev.buyCollateral) != address(0) &&
                 !prev.clearedCloseToOraclePrice(oracle, SCALE, buyAmount, _config.auctionClearingTolerance)
             ) {
                 // Enter Caution state and pause everything

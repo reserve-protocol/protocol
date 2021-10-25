@@ -14,7 +14,7 @@ import "./interfaces/IManager.sol";
 /*
  * @title StakingPoolP0
  * @dev The StakingPool is where people can stake their RSR in order to provide insurance and
- * benefit from the supply expansion of an RToken. 
+ * benefit from the supply expansion of an RToken.
  *
  * There's an important assymetry in the StakingPool. When RSR is added, it must be split only
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both

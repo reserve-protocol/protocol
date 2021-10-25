@@ -55,7 +55,7 @@ library Auction {
         uint256 buyAmount;
         // TODO: buyAmount = batchAuction.claim();
         uint256 bal = IERC20(self.buyToken).balanceOf(address(this));
-        if (self.destination == address(0)) { 
+        if (self.destination == address(0)) {
             // Burn
             IERC20(self.buyToken).safeTransfer(address(0), bal);
         } else if (self.destination != address(this)) {
@@ -67,7 +67,7 @@ library Auction {
         return buyAmount;
     }
 
-    // Returns false if the auction buyAmount is > *threshold* of the expected buyAmount. 
+    // Returns false if the auction buyAmount is > *threshold* of the expected buyAmount.
     function clearedCloseToOraclePrice(
         Auction.Info storage self,
         IOracle oracle,
