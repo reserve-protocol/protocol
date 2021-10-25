@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "../Ownable.sol"; // temporary
 // import "@openzeppelin/contracts/access/Ownable.sol";
@@ -359,7 +359,7 @@ contract ManagerP0 is IManager, Ownable {
             uint256 max = _toBUs((rToken.totalSupply() * _config.maxAuctionSize) / SCALE);
             uint256 chunk = Math.min(max, current < target ? target - current : oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
-            
+
             // Try to launch a collateral for collateral auction
             auctionRunning = _tryLaunchCollateralAuction();
         }
@@ -436,10 +436,10 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     // Determines if a trade should be made and what it should be.
-    // Algorithm: 
+    // Algorithm:
     //     1. Target a particular number of basket units based on total fiatcoins held across all collateral.
     //     2. Swap the most-in-excess collateral for most-in-deficit.
-    //     3. Confirm swap is for a large enough volume. We don't want to trade endlessly. 
+    //     3. Confirm swap is for a large enough volume. We don't want to trade endlessly.
     function _collateralTrade()
         internal
         returns (
@@ -477,7 +477,7 @@ contract ManagerP0 is IManager, Ownable {
             }
         }
 
-        // Calculate the maximums. 
+        // Calculate the maximums.
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
             if (surplus[i] > surplusMax) {
                 surplusMax = surplus[i];
@@ -489,7 +489,7 @@ contract ManagerP0 is IManager, Ownable {
             }
         }
 
-        // Determine if the trade is large enough to be worth doing and calculate amounts. 
+        // Determine if the trade is large enough to be worth doing and calculate amounts.
         {
             uint256 minAuctionSizeInBUs = _toBUs((rToken.totalSupply() * _config.minAuctionSize) / SCALE);
             uint256 minAuctionSizeInFiatcoins = minAuctionSizeInBUs * vault.basketFiatcoinRate() / SCALE;
@@ -517,7 +517,7 @@ contract ManagerP0 is IManager, Ownable {
                 _defaultCollateral[i] = c;
             }
 
-            // 2. Check oracle prices of fiatcoins for default 
+            // 2. Check oracle prices of fiatcoins for default
             // If any fiatcoins are 5% (default threshold) below their stable price raise flag
             _price = oracle.fiatcoinPrice(c);
             // TODO: Apply correct calculation

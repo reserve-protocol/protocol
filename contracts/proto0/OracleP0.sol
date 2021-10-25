@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./interfaces/ICollateral.sol";
@@ -31,7 +31,7 @@ interface AaveOracle {
 contract OracleP0 is IOracle {
 
     uint256 constant padding = 10**12;
-    
+
     Comptroller public compound;
     AaveLendingPool public aave;
 
@@ -57,7 +57,7 @@ contract OracleP0 is IOracle {
         uint256 inETH = aaveOracle.getAssetPrice(token);
         uint256 ethNorm = aaveOracle.getAssetPrice(aaveOracle.WETH());
         uint256 ethInUsd = compound.oracle().price("ETH");
-        return inETH * ethInUsd * padding / ethNorm;        
+        return inETH * ethInUsd * padding / ethNorm;
     }
 
     // Returns the USD price using 18 decimals

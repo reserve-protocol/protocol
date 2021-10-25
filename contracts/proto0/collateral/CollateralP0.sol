@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -16,7 +16,7 @@ contract CollateralP0 is ICollateral {
         _erc20 = erc20_;
     }
 
-    // Fiatcoins return 1e18. All redemption rates should have 18 zeroes. 
+    // Fiatcoins return 1e18. All redemption rates should have 18 zeroes.
     function redemptionRate() external view virtual override returns (uint256) {
         return 1e18;
     }
