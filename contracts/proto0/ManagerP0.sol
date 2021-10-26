@@ -387,7 +387,7 @@ contract ManagerP0 is IManager, Ownable {
             if (!mintings[i].processed && address(mintings[i].vault) != address(vault)) {
                 rToken.burn(address(this), mintings[i].amount);
                 mintings[i].undo();
-            } else if (!mintings[i].processed && mintings[i].availableAt < block.timestamp) {
+            } else if (!mintings[i].processed && mintings[i].availableAt <= block.timestamp) {
                 IERC20(rToken).safeTransfer(mintings[i].minter, mintings[i].amount);
                 mintings[i].complete();
             }
