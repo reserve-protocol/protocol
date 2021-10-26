@@ -53,7 +53,7 @@ library SlowIssuance {
             // Revert Issuance
             rToken.burn(address(this), self.amount);
             self.vault.redeem(self.minter, self.BUs);
-        } else if (self.availableAt >= block.timestamp) {
+        } else {
             // Complete Issuance
             rToken.transfer(self.minter, self.amount);
         }

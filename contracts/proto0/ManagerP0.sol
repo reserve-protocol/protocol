@@ -181,7 +181,7 @@ contract ManagerP0 is IManager, Ownable {
     // Runs auctions
     function poke() external override notPaused always {
         require(!inDoubt, "in doubt");
-        _processSlowMintings();
+        _processSlowIssuance();
         _manageAuctions();
     }
 
@@ -192,7 +192,7 @@ contract ManagerP0 is IManager, Ownable {
         // Check for soft default
         ICollateral[] memory softDefaulting = vault.softDefaultingCollateral(oracle, _defaultThreshold());
         if (!inDoubt && softDefaulting.length > 0) {
-            _processSlowMintings();
+            _processSlowIssuance();
             inDoubt = true;
             doubtRaisedAt = block.timestamp;
         } else if (inDoubt && block.timestamp >= doubtRaisedAt) {
@@ -212,7 +212,7 @@ contract ManagerP0 is IManager, Ownable {
     function issue(uint256 amount) external override notPaused always {
         require(!inDoubt, "in doubt");
         require(amount > 0, "Cannot issue zero");
-        _processSlowMintings();
+        _processSlowIssuance();
         uint256 issuanceRate = _issuanceRate();
         uint256 numBlocks = Math.ceilDiv(amount, issuanceRate);
 
@@ -225,6 +225,9 @@ contract ManagerP0 is IManager, Ownable {
 
     function redeem(uint256 amount) external override always {
         require(amount > 0, "Cannot redeem zero");
+        if (!paused) {
+            _processSlowIssuance();
+        }
         rToken.burn(_msgSender(), amount);
         _oldestNonEmptyVault().redeem(_msgSender(), _toBUs(amount));
     }
@@ -382,9 +385,9 @@ contract ManagerP0 is IManager, Ownable {
     }
 
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
-    function _processSlowMintings() internal {
+    function _processSlowIssuance() internal {
         for (uint256 i = 0; i < issuanceCount; i++) {
-            if (!issuances[i].processed && issuances[i].availableAt >= block.timestamp) {
+            if (!issuances[i].processed && issuances[i].availableAt <= block.timestamp) {
                 issuances[i].process(rToken, vault);
             }
         }
@@ -435,7 +438,7 @@ contract ManagerP0 is IManager, Ownable {
         }
 
         // Undo all open slowmintings
-        _processSlowMintings();
+        _processSlowIssuance();
 
         // Accumulate the basket dilution factor to enable correct forward accounting
         _accumulateDilutionFactor();
