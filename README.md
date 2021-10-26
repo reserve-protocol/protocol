@@ -15,7 +15,7 @@ As with any smart contract application, the actual behavior may vary from the in
 For a much more detailed explanation of the economic design, see [the Reserve website](https://reserve.org/protocol/2021_version/).
 
 ## Development
-Developers: See setup and repository usage notes at [docs/developers.md][].
+Developers: See setup and repository usage notes at [docs/developers.md](docs/developers.md).
 
 ## Repository Structure
 
