@@ -173,7 +173,7 @@ contract ManagerP0 is IManager, Ownable {
             _switchVaults(hardDefaulting);
         }
         faucet.drip();
-        //_melt(); TODO: Fix to avoid burning all tokens that are held for slow minting
+        //_melt(); TODO: Fix to avoid burning all tokens that are held for slow issuance
         _diluteBasket();
         _;
     }
@@ -216,9 +216,9 @@ contract ManagerP0 is IManager, Ownable {
         uint256 issuanceRate = _issuanceRate();
         uint256 numBlocks = Math.ceilDiv(amount, issuanceRate);
 
-        // Mint the RToken now and hold onto it while the slow minting vests
-        SlowMinting.Info storage minting = mintings[mintingCount];
-        minting.start(vault, amount, _toBUs(amount), _msgSender(), _slowMintingEnd() + numBlocks * issuanceRate);
+        // Mint the RToken now and hold onto it while the slow issuance vests
+        SlowIssuance.Info storage issuance = issuances[issuanceCount];
+        issuance.start(vault, amount, _toBUs(amount), _msgSender(), _slowMintingEnd() + numBlocks * issuanceRate);
         rToken.mint(address(this), amount);
         issuanceCount++;
     }
@@ -299,13 +299,13 @@ contract ManagerP0 is IManager, Ownable {
         return (amount * _meltingRatio) / _basketDilutionRatio;
     }
 
-    // Calculates the block-by-block RToken issuance rate for slow minting.
+    // Calculates the block-by-block RToken issuance rate for slow issuance.
     function _issuanceRate() internal view returns (uint256) {
         // Lower-bound of 10_000 per block
         return Math.max(10_000 * 10**rToken.decimals(), (rToken.totalSupply() * _config.issuanceRate) / SCALE);
     }
 
-    // Returns the timestamp at which the latest slow minting ends. Worst-case: Current timestamp.
+    // Returns the timestamp at which the latest slow issuance ends. Worst-case: Current timestamp.
     function _slowMintingEnd() internal view returns (uint256) {
         if (issuanceCount == 0) {
             return block.timestamp;
