@@ -12,10 +12,15 @@ import "./interfaces/ICollateral.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IVault.sol";
 
+/*
+ * @title VaultP0
+ * @dev The Manager backs an RToken by some number of Vaults, each with an immutable basket definition.
+ *  A Vault issues Basket Units (BUs) to the Manager for internal bookkeeping and provides helpers.
+ */
 contract VaultP0 is IVault, Ownable {
     using SafeERC20 for IERC20;
 
-    uint8 public constant rTokenDecimals = 18;
+    uint8 public constant BUDecimals = 18;
 
     Basket internal _basket;
 
@@ -45,7 +50,7 @@ contract VaultP0 is IVault, Ownable {
     function tokenAmounts(uint256 amount) public view override returns (uint256[] memory parts) {
         parts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
-            parts[i] = (amount * _basket.quantities[i]) / 10**rTokenDecimals;
+            parts[i] = (amount * _basket.quantities[i]) / 10**BUDecimals;
         }
     }
 

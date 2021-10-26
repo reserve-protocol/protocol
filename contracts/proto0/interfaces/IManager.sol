@@ -8,7 +8,7 @@ interface IManager {
 
     function poke() external;
 
-    function detectDefault() external;
+    function noticeDefault() external;
 
     function pause() external;
 

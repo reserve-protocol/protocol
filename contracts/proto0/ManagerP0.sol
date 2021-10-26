@@ -49,7 +49,7 @@ struct Config {
     // stakingWithdrawalDelay = 1209600 (2 weeks)
     // defaultDelay = 86400 (24 hours)
     // maxTradeSlippage = 5e16 (5%)
-    // auctionClearingTolerance = 5e16 (5%)
+    // auctionClearingTolerance = 1e17 (10%)
     // maxAuctionSize = 1e16 (1%)
     // minAuctionSize = 1e15 (0.1%)
     // migrationChunk = 2e17 (20%)
@@ -58,6 +58,22 @@ struct Config {
     // f = 6e17 (60% to stakers)
 }
 
+/**
+ * @title ManagerP0
+ * @dev The Manager for a particular RToken + StakingPool.
+ *
+ * This contract:
+ *    - Provides RToken issuance/redemption.
+ *    - Manages the choice of backing of an RToken via Vault selection.
+ *    - Defines the exchange rate between Vault BUs and RToken supply, via the base factor.
+ *    - Monitors Vault collateral for default. There are two types:
+ *          A. Hard default - A strong invariant is broken; default immediately.
+ *          B. Soft default - A weak invariant is broken; default after waiting (say 24h).
+ *    - Runs 3 types of auctions:
+ *          A. Collateral-for-collateral   (Migration auctions)
+ *          B. RSR-for-RToken              (Recapitalization auctions)
+ *          C. COMP/AAVE-for-RToken        (Revenue auctions)
+ */
 contract ManagerP0 is IManager, Ownable {
     using SafeERC20 for IERC20;
     using SlowMinting for SlowMinting.Info;
@@ -69,12 +85,10 @@ contract ManagerP0 is IManager, Ownable {
     // ECONOMICS (Note that SCALE is ignored here. These are the abstract mathematical relationships)
     //
     // base factor = exchange rate between Vault BUs and RTokens
-    // base factor = b = _meltingRatio / basketDilutionRatio
-    // basketDilutionRatio = _currentBasketDilution * _historicalBasketDilution
+    // base factor = b = _meltingRatio / _basketDilutionRatio
+    // _basketDilutionRatio = _currentBasketDilution * _historicalBasketDilution
     // <RToken> = b * <Basket Unit Vector>
-    // #RTokens <= #BUs / b
-    // #BUs = vault.basketUnits(address(this))
-    // Cycle: Normal -> Doubt -> Default -> Migration -> Normal
+    // Fully capitalized: #RTokens <= #BUs / b
 
     Config internal _config;
     uint256 internal _meltingRatio = 1e18;
@@ -84,7 +98,7 @@ contract ManagerP0 is IManager, Ownable {
     uint256 internal _prevBasketFiatcoinRate; // redemption value of the basket in fiatcoins last update
     uint256 internal _melted; // how many RTokens have been melted
 
-    // Deployed by Manager
+    // Deployed by Manager, maybe pull out later
     IRToken public rToken;
     IFaucet public faucet;
     IStakingPool public staking;
@@ -100,9 +114,9 @@ contract ManagerP0 is IManager, Ownable {
     mapping(uint256 => Auction.Info) public auctions;
     uint256 public auctionCount;
 
-    // Pausing
+    // Pausing (Isomorphic to "Caution" state)
     address public pauser;
-    bool public override paused; // caution state = paused
+    bool public override paused;
 
     // Default detection.
     bool public inDoubt;
@@ -164,15 +178,16 @@ contract ManagerP0 is IManager, Ownable {
         _;
     }
 
+    // Runs auctions
     function poke() external override notPaused always {
         require(!inDoubt, "in doubt");
         _processSlowMintings();
         _manageAuctions();
     }
 
-    // Default check (on-demand)
-    function detectDefault() external override notPaused always {
-        // Note that _always_ checks for hard default.
+    // Default check
+    function noticeDefault() external override notPaused always {
+        // Note that _always()_ checks for hard default.
 
         // Check for soft default
         ICollateral[] memory softDefaulting = vault.softDefaultingCollateral(oracle, _defaultThreshold());
@@ -253,7 +268,6 @@ contract ManagerP0 is IManager, Ownable {
 
     function unapproveCollateral(ICollateral collateral) public onlyOwner {
         _approvedCollateral.remove(address(collateral));
-        _allKnownCollateral.remove(address(collateral));
         if (collateral.isFiatcoin()) {
             _fiatcoins.remove(address(collateral));
         }
@@ -285,11 +299,13 @@ contract ManagerP0 is IManager, Ownable {
         return (amount * _meltingRatio) / _basketDilutionRatio;
     }
 
+    // Calculates the block-by-block RToken issuance rate for slow minting.
     function _issuanceRate() internal view returns (uint256) {
         // Lower-bound of 10_000 per block
         return Math.max(10_000 * 10**rToken.decimals(), (rToken.totalSupply() * _config.issuanceRate) / SCALE);
     }
 
+    // Returns the timestamp at which the latest slow minting ends. Worst-case: Current timestamp.
     function _slowMintingEnd() internal view returns (uint256) {
         if (mintingCount == 0) {
             return block.timestamp;
@@ -297,7 +313,7 @@ contract ManagerP0 is IManager, Ownable {
         return Math.max(block.timestamp, mintings[mintingCount - 1].availableAt);
     }
 
-    // Returns the oldest vault that contains at nonzero BUs
+    // Returns the oldest vault that contains nonzero BUs.
     // Note that this will pass over vaults with uneven holdings, it does not necessarily mean the vault
     // contains no collateral tokens.
     function _oldestNonEmptyVault() internal view returns (IVault) {
@@ -365,6 +381,7 @@ contract ManagerP0 is IManager, Ownable {
         }
     }
 
+    // Processes all slow mintings that have fully vested, or undoes them if the vault has been changed.
     function _processSlowMintings() internal {
         for (uint256 i = 0; i < mintingCount; i++) {
             if (!mintings[i].processed && address(mintings[i].vault) != address(vault)) {
@@ -377,6 +394,7 @@ contract ManagerP0 is IManager, Ownable {
         }
     }
 
+    // Melts RToken, increasing the base factor and thereby causing an RToken to appreciate.
     function _melt() internal {
         uint256 amount = rToken.balanceOf(address(this));
         rToken.burn(address(this), amount);
@@ -386,16 +404,18 @@ contract ManagerP0 is IManager, Ownable {
         }
     }
 
-    // Idempotent
+    // Reduces basket quantities slightly in order to pass through basket appreciation to stakers.
+    // Uses a closed-form calculation that is anchored to the last time the vault or *f* was changed.
     function _diluteBasket() internal {
+        // Idempotent
         uint256 current = vault.basketFiatcoinRate();
         _currentBasketDilution = SCALE + _config.f * ((SCALE * current) / _prevBasketFiatcoinRate - SCALE);
         _basketDilutionRatio = (_currentBasketDilution * _historicalBasketDilution) / SCALE;
     }
 
     // Upon vault change or change to *f*, we accumulate the historical dilution factor.
-    // Idempotent
     function _accumulateDilutionFactor() internal {
+        // Idempotent
         _diluteBasket();
         // TODO: Is this acceptable? There's compounding error but so few number of times.
         _historicalBasketDilution = (_historicalBasketDilution * _currentBasketDilution) / SCALE;
@@ -417,16 +437,24 @@ contract ManagerP0 is IManager, Ownable {
             vault = newVault;
             _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
         }
-        // Undo all live slowmintings
+
+        // Undo all open slowmintings
         _processSlowMintings();
 
-        // Accumulate the basket dilution factor to enable forward accounting
+        // Accumulate the basket dilution factor to enable correct forward accounting
         _accumulateDilutionFactor();
     }
 
     //
 
     // Continually runs auctions as long as we are undercollateralized.
+    // Algorithm:
+    //     1. Closeout previous auctions
+    //     2. Create BUs from collateral
+    //     3. Break off BUs from the old vault for collateral
+    //     4. Launch a collateral-for-collateral auction until we are left with dust
+    //     5. If it's all dust: sell RSR and buy RToken and burn it
+    //     6. If we run out of RSR: give RToken holders a haircut to get back to capitalized
     function _manageAuctions() internal {
         // Halt if an auction is ongoing
         Auction.Info storage prev = auctionCount > 0 ? auctions[auctionCount - 1] : auctions[0];
@@ -435,9 +463,10 @@ contract ManagerP0 is IManager, Ownable {
                 return;
             }
 
-            // Closeout auction and check that prices are reasonable (for non-RSR-RToken auctions).
-            uint256 buyAmount = prev.closeOut();
+            // Closeout auction and check that prices are reasonable (for collateral-for-collateral auctions).
+            uint256 buyAmount = prev.closeOut(_config.rewardPeriod);
             if (
+                address(prev.sellCollateral) != address(0) &&
                 address(prev.buyCollateral) != address(0) &&
                 !prev.clearedCloseToOraclePrice(oracle, SCALE, buyAmount, _config.auctionClearingTolerance)
             ) {
@@ -457,29 +486,31 @@ contract ManagerP0 is IManager, Ownable {
             return;
         }
 
+        // Are we able to trade sideways, or is it all dust?
+        (bool trade, ICollateral sell, ICollateral buy, uint256 sellAmount, uint256 minBuy) = _collateralTrade();
+
         // If we are in the Migration state, redeem BUs to open up spare collateral
         IVault oldVault = _oldestNonEmptyVault();
-        if (address(oldVault) != address(vault)) {
-            uint256 target = _toBUs(rToken.totalSupply());
-            uint256 current = vault.basketUnits(address(this));
-            uint256 max = _toBUs((rToken.totalSupply() * _config.maxAuctionSize) / SCALE);
-            uint256 chunk = Math.min(max, current < target ? target - current : oldVault.basketUnits(address(this)));
+        if (!trade && address(oldVault) != address(vault)) {
+            uint256 max = _toBUs((rToken.totalSupply()) * _config.migrationChunk / SCALE);
+            uint256 chunk = Math.min(max, oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
-        }
 
-        // Decide whether to trade and exactly which trade.
-        // trade=false when the differences between collateral are too small to merit trading.
-        (bool trade, ICollateral sell, ICollateral buy, uint256 sellAmount, uint256 minBuy) = _collateralTrade();
+            // Decide whether to trade and exactly which trade.
+            (trade, sell, buy, sellAmount, minBuy) = _collateralTrade();
+        }
         address sellToken = sell.erc20();
         address buyToken = buy.erc20();
+        address destination = address(this);
 
         uint256 stakedRSR = staking.rsr().balanceOf(address(staking));
         if (!trade && stakedRSR > 0) {
             // Final backstop: Use RSR to buy back RToken and burn it.
             sellToken = address(staking.rsr());
             buyToken = address(rToken);
+            destination = address(0);
 
-            uint256 rsrUSD = oracle.consultAAVE(address(staking.rsr()));
+            uint256 rsrUSD = oracle.consultAave(address(staking.rsr()));
             uint256 rTokenUSDEstimate = vault.basketFiatcoinRate();
             uint256 unbackedRToken = rToken.totalSupply() - _fromBUs(vault.basketUnits(address(this)));
             minBuy = Math.min(unbackedRToken, (rToken.totalSupply() * _config.maxAuctionSize) / SCALE);
@@ -496,8 +527,9 @@ contract ManagerP0 is IManager, Ownable {
         }
 
         // At this point in the code this is either a collateral-for-collateral trade or an RSR-for-RToken trade.
+        uint256 auctionEnd = block.timestamp + _config.auctionPeriod;
         Auction.Info storage auction = auctions[auctionCount];
-        auction.start(sell, buy, sellToken, buyToken, sellAmount, minBuy, block.timestamp + _config.auctionPeriod);
+        auction.start(sell, buy, sellToken, buyToken, sellAmount, minBuy, auctionEnd, destination);
         auctionCount++;
     }
 
@@ -528,8 +560,6 @@ contract ManagerP0 is IManager, Ownable {
 
         uint256[] memory surplus = new uint256[](_allKnownCollateral.length());
         uint256[] memory deficit = new uint256[](_allKnownCollateral.length());
-        uint256 surplusMax;
-        uint256 deficitMax;
         // Calculate surplus and deficits relative to the BU target.
         for (uint256 i = 0; i < _allKnownCollateral.length(); i++) {
             ICollateral c = ICollateral(_allKnownCollateral.at(i));
@@ -545,6 +575,8 @@ contract ManagerP0 is IManager, Ownable {
         // Calculate the maximums.
         uint256 sellIndex;
         uint256 buyIndex;
+        uint256 surplusMax;
+        uint256 deficitMax;
         for (uint256 i = 0; i < _allKnownCollateral.length(); i++) {
             if (surplus[i] > surplusMax) {
                 surplusMax = surplus[i];

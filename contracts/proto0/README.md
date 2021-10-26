@@ -4,7 +4,13 @@ This is Prototype 0, the _simplest_ version of our system we can possibly imagin
 
 ## Architecture
 
-TODO: More
+- RToken: The stablecoin ERC-20 provided by the protocol. Holds ERC-20 details like metatransactions, but otherwise simple.
+- StakingPool: An insurance staking pool that doubles as a tradeable ERC-20 staking derivative. Distributes RSR dividends and seizes RSR to pay for default.
+- Manager: The coordinator of the entire system. Has authority over RToken and StakingPool. Performs auctions, detects default, and controls the exchange rate between RToken and BUs.
+- Vault: Issues an accounting token called a BU (Basket Unit) and maintains an immutable basket definition. Multiple vaults per system.
+- Faucet: Drips RToken back to the Manager at a slow rate.
+- Oracle: Provides a simple unified interface for the Compound/Aave oracle.
+- Collateral: Immutable wrapper-contracts for cTokens/aTokens/fiatcoins that the Manager leverages as a single unified interface for our collateral tokens.
 
 ### Token Balances
 
