@@ -24,18 +24,17 @@ contract RTokenP0 is IRToken, ERC20, Ownable {
         manager = manager_;
     }
 
-    modifier onlyManager {
+    // Only the Manager can mint.
+    function mint(address recipient, uint256 amount) external override returns (bool) {
         require(_msgSender() == manager, "only manager");
-        _;
-    }
-
-    function mint(address recipient, uint256 amount) external override onlyManager returns (bool) {
         _mint(recipient, amount);
         return true;
     }
 
-    function burn(address recipient, uint256 amount) external override onlyManager returns (bool) {
-        _burn(recipient, amount);
+    // The Manager can burn from any account. Anyone can burn from their own account.
+    function burn(address from, uint256 amount) external override returns (bool) {
+        require(_msgSender() == manager || _msgSender() == from);
+        _burn(from, amount);
         return true;
     }
 

@@ -1,10 +1,10 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { BigNumber, ContractFactory, Contract } from 'ethers'
+import { ContractFactory, Contract } from 'ethers'
 import { bn } from '../../common/numbers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { ATokenMock } from '../../typechain/ATokenMock'
+import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { CollateralP0 } from '../../typechain/CollateralP0'
 import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
@@ -25,7 +25,7 @@ describe('CollateralP0 contracts', () => {
   let collAToken: ATokenCollateralP0
   let collCToken: CTokenCollateralP0
   let fiatUSDC: ERC20Mock
-  let aUSDT: ATokenMock
+  let aUSDT: StaticATokenMock
   let cDAI: CTokenMock
 
   beforeEach(async () => {
@@ -33,11 +33,11 @@ describe('CollateralP0 contracts', () => {
 
     // Deploy underlying tokens
     ERC20 = await ethers.getContractFactory('ERC20Mock')
-    AToken = await ethers.getContractFactory('ATokenMock')
+    AToken = await ethers.getContractFactory('StaticATokenMock')
     CToken = await ethers.getContractFactory('CTokenMock')
 
     fiatUSDC = <ERC20Mock>await ERC20.deploy('Fiat USDC', 'USDC')
-    aUSDT = <ATokenMock>await AToken.deploy('AToken USDT', 'aUSDT', fiatUSDC.address)
+    aUSDT = <StaticATokenMock>await AToken.deploy('Static AToken USDT', 'aUSDT', fiatUSDC.address)
     cDAI = <CTokenMock>await CToken.deploy('CToken DAI', 'cDAI', fiatUSDC.address)
 
     // Deploy Collaterals

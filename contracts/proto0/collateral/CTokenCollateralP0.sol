@@ -7,6 +7,8 @@ import "./CollateralP0.sol";
 
 // https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 interface ICToken {
+    // function exchangeRateCurrent() external returns (uint256);
+
     function exchangeRateStored() external view returns (uint256);
 
     function underlying() external view returns (address);

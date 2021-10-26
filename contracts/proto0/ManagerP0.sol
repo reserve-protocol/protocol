@@ -13,12 +13,12 @@ import "../libraries/CommonErrors.sol";
 import "./libraries/Auction.sol";
 import "./libraries/SlowIssuance.sol";
 import "./interfaces/IRToken.sol";
-import "./interfaces/IFaucet.sol";
+import "./interfaces/IFurnace.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/ICollateral.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IManager.sol";
-import "./FaucetP0.sol";
+import "./FurnaceP0.sol";
 import "./RTokenP0.sol";
 import "./OracleP0.sol";
 import "./StakingPoolP0.sol";
@@ -96,11 +96,10 @@ contract ManagerP0 is IManager, Ownable {
     uint256 internal _currentBasketDilution = 1e18; // for this current vault, since the last time *f* was changed
     uint256 internal _historicalBasketDilution = 1e18; // the product of all historical basket dilutions
     uint256 internal _prevBasketFiatcoinRate; // redemption value of the basket in fiatcoins last update
-    uint256 internal _melted; // how many RTokens have been melted
 
     // Deployed by Manager, maybe pull out later
     IRToken public rToken;
-    IFaucet public faucet;
+    IFurnace public furnace;
     IStakingPool public staking;
 
     // Pre-existing deployments
@@ -136,7 +135,7 @@ contract ManagerP0 is IManager, Ownable {
         ICollateral[] memory approvedCollateral_
     ) {
         rToken = new RTokenP0(name_, symbol_, _msgSender(), address(this));
-        faucet = new FaucetP0(address(this), address(rToken));
+        furnace = new FurnaceP0(address(rToken));
         staking = new StakingPoolP0(
             string(abi.encodePacked("Staked RSR - ", name_)),
             string(abi.encodePacked("st", symbol_, "RSR")),
@@ -172,8 +171,7 @@ contract ManagerP0 is IManager, Ownable {
         if (!paused && hardDefaulting.length > 0) {
             _switchVaults(hardDefaulting);
         }
-        faucet.drip();
-        //_melt(); TODO: Fix to avoid burning all tokens that are held for slow issuance
+        _melt();
         _diluteBasket();
         _;
     }
@@ -395,11 +393,9 @@ contract ManagerP0 is IManager, Ownable {
 
     // Melts RToken, increasing the base factor and thereby causing an RToken to appreciate.
     function _melt() internal {
-        uint256 amount = rToken.balanceOf(address(this));
-        rToken.burn(address(this), amount);
-        _melted += amount;
+        furnace.doBurn();
         if (rToken.totalSupply() > 0) {
-            _meltingRatio = (SCALE * (rToken.totalSupply() + _melted)) / rToken.totalSupply();
+            _meltingRatio = (SCALE * (rToken.totalSupply() + furnace.totalBurnt())) / rToken.totalSupply();
         }
     }
 

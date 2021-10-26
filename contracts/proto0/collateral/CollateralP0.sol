@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/ICollateral.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
 contract CollateralP0 is ICollateral {
-    using SafeERC20 for IERC20;
-
     address internal immutable _erc20;
 
     constructor(address erc20_) {

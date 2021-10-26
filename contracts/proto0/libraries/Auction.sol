@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/ICollateral.sol";
-import "../interfaces/IFaucet.sol";
+import "../interfaces/IFurnace.sol";
 import "../interfaces/IOracle.sol";
 
 library Auction {
@@ -58,9 +58,9 @@ library Auction {
             // Burn
             IERC20(self.buyToken).safeTransfer(address(0), bal);
         } else if (self.destination != address(this)) {
-            // Send to the Faucet for handout
+            // Send to the Furnace for slow burning
             IERC20(self.buyToken).safeApprove(self.destination, bal);
-            IFaucet(self.destination).handout(bal, rewardPeriod);
+            IFurnace(self.destination).burnOverPeriod(bal, rewardPeriod);
         }
         self.open = false;
         return buyAmount;
@@ -73,7 +73,7 @@ library Auction {
         uint256 SCALE,
         uint256 buyAmount,
         uint256 tolerance
-    ) internal view returns (bool) {
+    ) internal returns (bool) {
         assert(address(self.sellCollateral) == address(0) && address(self.buyCollateral) == address(0));
 
         uint256 sellAmountNormalized = self.sellAmount * 10**(SCALE - self.sellCollateral.decimals());

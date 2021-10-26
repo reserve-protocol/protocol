@@ -93,7 +93,6 @@ describe('VaultP0 contract', () => {
 
     it('Deployment should setup basket correctly', async () => {
       expect(await vault.basketSize()).to.equal(4)
-      expect(await vault.getBackups()).to.be.empty
 
       // Token at 0
       expectCollateral(0, {
@@ -129,7 +128,6 @@ describe('VaultP0 contract', () => {
       const backupVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collaterals[0]], [quantities[0]], [])
       const newVault: VaultP0 = <VaultP0>await VaultFactory.deploy(collaterals, quantities, [backupVault.address])
 
-      expect((await newVault.getBackups()).length).to.equal(1)
       expect(await newVault.backups(0)).to.equal(backupVault.address)
     })
   })
@@ -278,15 +276,12 @@ describe('VaultP0 contract', () => {
       await expect(vault.connect(addr1).setBackups([backupVault.address])).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
-
-      expect(await vault.getBackups()).to.be.empty
     })
 
     it('Should allow to setup backup vaults if owner', async () => {
       // Set a new backup with two tokens
       await vault.connect(owner).setBackups([backupVault.address])
 
-      expect((await vault.getBackups()).length).to.equal(1)
       expect(await vault.backups(0)).to.equal(backupVault.address)
     })
   })
