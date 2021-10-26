@@ -42,7 +42,7 @@ library SlowMinting {
 
     function complete(SlowMinting.Info storage self) internal {
         require(!self.processed, "slow minting already processed");
-        require(self.availableAt >= block.timestamp, "slow minting needs more time");
+        require(self.availableAt <= block.timestamp, "slow minting needs more time");
 
         self.processed = true;
     }

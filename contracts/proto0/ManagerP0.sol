@@ -141,7 +141,7 @@ contract ManagerP0 is IManager, Ownable {
             string(abi.encodePacked("Staked RSR - ", name_)),
             string(abi.encodePacked("st", symbol_, "RSR")),
             _msgSender(),
-            address(rToken),
+            address(this),
             address(rsr_),
             config_.stakingWithdrawalDelay
         );
@@ -173,7 +173,7 @@ contract ManagerP0 is IManager, Ownable {
             _switchVaults(hardDefaulting);
         }
         faucet.drip();
-        _melt();
+        //_melt(); TODO: Fix to avoid burning all tokens that are held for slow minting
         _diluteBasket();
         _;
     }
@@ -217,7 +217,7 @@ contract ManagerP0 is IManager, Ownable {
         uint256 numBlocks = Math.ceilDiv(amount, issuanceRate);
 
         // Mint the RToken now and hold onto it while the slow minting vests
-        SlowMinting.Info storage minting = mintings[mintingCount + 1];
+        SlowMinting.Info storage minting = mintings[mintingCount];
         minting.start(vault, amount, _toBUs(amount), _msgSender(), _slowMintingEnd() + numBlocks * issuanceRate);
         rToken.mint(address(this), amount);
         mintingCount++;
@@ -247,6 +247,7 @@ contract ManagerP0 is IManager, Ownable {
 
     function setVault(IVault vault_) external onlyOwner {
         vault = vault_;
+        _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
     }
 
     function setConfig(Config memory config_) external onlyOwner {
@@ -386,8 +387,8 @@ contract ManagerP0 is IManager, Ownable {
             if (!mintings[i].processed && address(mintings[i].vault) != address(vault)) {
                 rToken.burn(address(this), mintings[i].amount);
                 mintings[i].undo();
-            } else if (!mintings[i].processed && mintings[i].availableAt >= block.timestamp) {
-                rToken.transfer(mintings[i].minter, mintings[i].amount);
+            } else if (!mintings[i].processed && mintings[i].availableAt <= block.timestamp) {
+                IERC20(rToken).safeTransfer(mintings[i].minter, mintings[i].amount);
                 mintings[i].complete();
             }
         }
@@ -434,6 +435,7 @@ contract ManagerP0 is IManager, Ownable {
         if (address(newVault) != address(0)) {
             pastVaults.push(vault);
             vault = newVault;
+            _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
         }
 
         // Undo all open slowmintings
