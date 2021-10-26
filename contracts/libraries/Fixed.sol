@@ -19,42 +19,57 @@ pragma solidity ^0.8.9;
     Fixed.ofInt(-1) == Fix.wrap(-1e18)
 */
 
-/// An int value passed to this library was out of bounds for Fix operations
+// An int value passed to this library was out of bounds for Fix operations
 error IntOutOfBounds(int value);
-/// A uint value passed to this library was out of bounds for Fix operations
+// A uint value passed to this library was out of bounds for Fix operations
 error UIntOutOfBounds(uint value);
 
-/// The central type this library provides. You'll declare values of this type.
+// The central type this library provides. You'll declare values of this type.
 type Fix is int128;
 
-/// If a particular Fix is represented by the int128 n, then the Fix represents the
-/// value n/FIX_SCALE.
-uint internal constant FIX_SCALE = 1e18;
+// If a particular Fix is represented by the int128 n, then the Fix represents the
+// value n/FIX_SCALE.
+int128 constant FIX_SCALE = 1e18;
 
-/// The largest integer that can be converted to Fix.
-uint internal constant FIX_MAX_INT = type(int128).max / FIX_SCALE;
+// The largest integer that can be converted to Fix.
+int128 constant FIX_MAX_INT = type(int128).max / FIX_SCALE;
 
-/// The smallest integer that can be converted to Fix.
-int internal constant FIX_MIN_INT = type(int128).min / FIX_SCALE;
+// The smallest integer that can be converted to Fix.
+int128 constant FIX_MIN_INT = type(int128).min / FIX_SCALE;
 
 
-Fix internal constant FIX_ZERO = Fix.wrap(0);               /// The Fix representation of zero.
-Fix internal constant FIX_ONE = Fix.wrap(FIX_SCALE);            /// The Fix representation of one.
-Fix internal constant FIX_MAX = Fix.wrap(type(int128).max); /// The largest Fix. (Not an integer!)
-Fix internal constant FIX_MIN = Fix.wrap(type(int128).min); /// The smallest Fix.
+Fix constant FIX_ZERO = Fix.wrap(0);               // The Fix representation of zero.
+Fix constant FIX_ONE = Fix.wrap(FIX_SCALE);        // The Fix representation of one.
+Fix constant FIX_MAX = Fix.wrap(type(int128).max); // The largest Fix. (Not an integer!)
+Fix constant FIX_MIN = Fix.wrap(type(int128).min); // The smallest Fix.
+
+/* @dev To understand the tedious-looking double conversions (e.g, uint256(uint128(foo))) herein:
+   Solidity 0.8.x only allows you to type-convert _one_ of type or size per conversion.
+   See: https://docs.soliditylang.org/en/v0.8.9/080-breaking-changes.html#new-restrictions
+ */
+
+/// Explicitly convert int256 x to an int128; but revert if x is out of bounds.
+function _safe_int128(int256 x) pure returns (int128) {
+    if (x < type(int128).min || type(int128).max < x) {
+        revert IntOutOfBounds(x);
+    }
+    return int128(x);
+}
 
 /// Convert a uint to its Fix representation. Fails if x is outside Fix's representable range.
-function toFix(uint256 x) internal pure returns (Fix) {
-    if (MAX_FIXABLE_INT < x) { revert UIntOutOfBounds(x); }
-    return Fix.wrap(int128(x * FIX_SCALE));
+function toFix(uint256 x) pure returns (Fix) {
+    if (uint256(uint128(FIX_MAX_INT)) < x ) {
+        revert UIntOutOfBounds(x);
+    }
+    int128 x_ = int128(uint128(x));
+    return Fix.wrap(x_ * FIX_SCALE);
 }
 /// Convert an int to its Fix representation. Fails if x is outside Fix's representable range.
-function intToFix(int256 x) internal pure returns (Fix) {
-    if (x < MIN_FIXABLE_INT || MAX_FIXABLE_INT < x) { revert IntOutOfBounds(x); }.
-    return Fix.wrap(int128(x * FIX_SCALE));
+function intToFix(int256 x) pure returns (Fix) {
+    return Fix.wrap(_safe_int128(x * FIX_SCALE));
 }
 
- library FixLib {
+library FixLib {
      /// All arithmetic functions fail if and only if the result is out of bounds.
 
      /// Convert this Fix to an int. Round the fractional part towards zero.
@@ -65,12 +80,14 @@ function intToFix(int256 x) internal pure returns (Fix) {
      function toUint(Fix x) internal pure returns (uint128) {
          int128 n = Fix.unwrap(x);
          if (n < 0) { revert IntOutOfBounds(n); }
-         return uint128(n) / FIX_SCALE;
+         return uint128(n) / uint128(FIX_SCALE);
      }
-     /// Round this Fix to the nearest int. Round 5e-19 towards zero.
+     /// Round this Fix to the nearest int. If equidistant to both
+     /// adjacent ints, round towards zero.
      function round(Fix x) internal pure returns (int128) {
-         int128 rounding_adjustment = (x >= 0 ? 1 : -1) * FIX_SCALE/2;
-         return Fix.unwrap((x + rounding_adjustment) / FIX_SCALE);
+         int128 x_ = Fix.unwrap(x);
+         int128 rounding_adjustment = (x_ >= 0 ? int128(1) : int128(-1)) * FIX_SCALE/2;
+         return (x_ + rounding_adjustment) / FIX_SCALE;
      }
 
      /// Add a Fix to this Fix.
@@ -79,11 +96,15 @@ function intToFix(int256 x) internal pure returns (Fix) {
      }
      /// Add an int to this Fix.
      function plusi(Fix x, int256 y) internal pure returns (Fix) {
-         return Fix.wrap( int128(Fix.unwrap(x) + y * FIX_SCALE) );
+         int256 result = Fix.unwrap(x) + y * FIX_SCALE;
+         return Fix.wrap(_safe_int128(result));
      }
      /// Add a uint to this Fix.
      function plusu(Fix x, uint256 y) internal pure returns (Fix) {
-         return Fix.wrap( int128(Fix.unwrap(x) + y * FIX_SCALE) );
+         if (y > type(uint256).max / 2 ) {
+             revert UIntOutOfBounds(y);
+         }
+         return plusi(x, int256(y));
      }
 
      /// Subtract a Fix from this Fix.
@@ -92,42 +113,51 @@ function intToFix(int256 x) internal pure returns (Fix) {
      }
      /// Subtract an int from this Fix.
      function minusi(Fix x, int256 y) internal pure returns (Fix) {
-         return Fix.wrap( int128(Fix.unwrap(x) - y * FIX_SCALE) );
+         return Fix.wrap(_safe_int128(Fix.unwrap(x) - y * FIX_SCALE) );
      }
      /// Subtract a uint from this Fix.
      function minusu(Fix x, uint256 y) internal pure returns (Fix) {
-         return Fix.wrap( int128(Fix.unwrap(x) - y * FIX_SCALE) );
+         if (y > type(uint256).max / 2 ) {
+             revert UIntOutOfBounds(y);
+         }
+         return minusi(x, int256(y));
      }
 
      /// Multiply this Fix by a Fix.
      /// Round truncated values to the nearest available value. 5e-19 rounds towards zero.
      function times(Fix x, Fix y) internal pure returns (Fix) {
-         int256 naive_prod = Fix.unwrap(x) * Fix.unwrap(y);
-         int256 rounding_adjustment = (naive_prod >= 0 ? 1 : -1) * FIX_SCALE/2;
-         return Fix.wrap(int128(naive_prod + rounding_adjustment / FIX_SCALE));
+         int256 naive_prod = int256(Fix.unwrap(x)) * int256(Fix.unwrap(y));
+         int256 rounding_adjustment = (naive_prod >= 0 ? int8(1) : int8(-1)) * FIX_SCALE/2;
+         return Fix.wrap(_safe_int128(naive_prod + rounding_adjustment / FIX_SCALE));
      }
      /// Multiply this Fix by an int.
      function timesi(Fix x, int256 y) internal pure returns (Fix) {
-         return Fix.wrap(int128(Fix.unwrap(x) * y));
+         return Fix.wrap(_safe_int128(Fix.unwrap(x) * y));
      }
      /// Multiply this Fix by a uint.
      function timesu(Fix x, uint256 y) internal pure returns (Fix) {
-         return Fix.wrap(int128(Fix.unwrap(x) * y));
+         if (y > type(uint256).max / 2 ) {
+             revert UIntOutOfBounds(y);
+         }
+         return timesi(x, int256(y));
      }
 
      /// Divide this Fix by a Fix; round the fractional part towards zero.
      function div(Fix x, Fix y) internal pure returns (Fix) {
          // Multiply-in FIX_SCALE before dividing by y to preserve right-hand digits of result.
          int256 shift_x = int256(Fix.unwrap(x)) * FIX_SCALE;
-         return Fix.wrap(int128(shift_x / Fix.unwrap(y)))
+         return Fix.wrap(_safe_int128(shift_x / Fix.unwrap(y)));
      }
      /// Divide this Fix by an int.
      function divi(Fix x, int256 y) internal pure returns (Fix) {
-         return Fix.wrap(int128(Fix.unwrap(x) / y));
+         return Fix.wrap(_safe_int128(Fix.unwrap(x) / y));
      }
      /// Divide this Fix by a uint.
      function divu(Fix x, uint256 y) internal pure returns (Fix) {
-         return Fix.wrap(int128(Fix.unwrap(x) / y));
+         if (y > type(uint256).max / 2) {
+             return FIX_ZERO;
+         }
+         return divi(x, int256(y));
      }
 
      /// Raise this Fix to a (positive integer) power.
@@ -138,10 +168,10 @@ function intToFix(int256 x) internal pure returns (Fix) {
          Fix res = FIX_ONE;
          Fix square = x;
          for (; y > 0; y = y >> 1) {
-             if (y & 0x1) {
-                 res = res.times(square);
+             if (y & 1 == 1) {
+                 res = times(res, square);
              }
-             square = square.times(square);
+             square = times(square, square);
          }
          return res;
      }
@@ -152,7 +182,7 @@ function intToFix(int256 x) internal pure returns (Fix) {
      function gt(Fix x, Fix y) internal pure returns(bool) { return Fix.unwrap(x) > Fix.unwrap(y); }
      function gte(Fix x, Fix y) internal pure returns(bool) { return Fix.unwrap(x) >= Fix.unwrap(y); }
      function eq(Fix x, Fix y) internal pure returns(bool) { return Fix.unwrap(x) == Fix.unwrap(y); }
-     function neq(Fix x, Fix y) internal pure returns(bool) { return Fix.unwrap(x) !== Fix.unwrap(y); }
+     function neq(Fix x, Fix y) internal pure returns(bool) { return Fix.unwrap(x) != Fix.unwrap(y); }
 
      /// Return whether or not this Fix is within epsilon of y.
      function near(Fix x, Fix y, Fix epsilon) internal pure returns (bool) {
