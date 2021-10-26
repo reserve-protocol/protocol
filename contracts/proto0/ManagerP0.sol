@@ -32,7 +32,7 @@ struct Config {
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Percentage values (relative to SCALE)
     uint256 maxTradeSlippage; // the maximum amount of slippage in percentage terms we will accept in a trade
-    uint256 auctionClearingTolerance; // the maximum % difference between auction clearing price and oracle data allowed. 
+    uint256 auctionClearingTolerance; // the maximum % difference between auction clearing price and oracle data allowed.
     uint256 maxAuctionSize; // the size of an auction, as a fraction of RToken supply
     uint256 minAuctionSize; // the size of an auction, as a fraction of RToken supply
     uint256 migrationChunk; // how much backing to migrate at a time, as a fraction of RToken supply
@@ -96,9 +96,9 @@ contract ManagerP0 is IManager, Ownable {
     // Append-only record keeping
     IVault[] public pastVaults;
     mapping(uint256 => SlowMinting.Info) public mintings;
-    uint256 mintingCount;
+    uint256 public mintingCount;
     mapping(uint256 => Auction.Info) public auctions;
-    uint256 auctionCount;
+    uint256 public auctionCount;
 
     // Pausing
     address public pauser;
@@ -127,7 +127,7 @@ contract ManagerP0 is IManager, Ownable {
             string(abi.encodePacked("Staked RSR - ", name_)),
             string(abi.encodePacked("st", symbol_, "RSR")),
             _msgSender(),
-            address(rToken),
+            address(this),
             address(rsr_),
             config_.stakingWithdrawalDelay
         );
@@ -151,7 +151,7 @@ contract ManagerP0 is IManager, Ownable {
         _;
     }
 
-    // This modifier runs before every function including redemption, so it needs to be very safe. 
+    // This modifier runs before every function including redemption, so it needs to be very safe.
     modifier always() {
         // Check for hard default (ie redemption rates fail to increase monotonically)
         ICollateral[] memory hardDefaulting = _checkForHardDefault();
@@ -159,7 +159,7 @@ contract ManagerP0 is IManager, Ownable {
             _switchVaults(hardDefaulting);
         }
         faucet.drip();
-        _melt();
+        //_melt(); TODO: Fix to avoid burning all tokens that are held for slow minting
         _diluteBasket();
         _;
     }
@@ -202,7 +202,7 @@ contract ManagerP0 is IManager, Ownable {
         uint256 numBlocks = Math.ceilDiv(amount, issuanceRate);
 
         // Mint the RToken now and hold onto it while the slow minting vests
-        SlowMinting.Info storage minting = mintings[mintingCount + 1];
+        SlowMinting.Info storage minting = mintings[mintingCount];
         minting.start(vault, amount, _toBUs(amount), _msgSender(), _slowMintingEnd() + numBlocks * issuanceRate);
         rToken.mint(address(this), amount);
         mintingCount++;
@@ -232,6 +232,7 @@ contract ManagerP0 is IManager, Ownable {
 
     function setVault(IVault vault_) external onlyOwner {
         vault = vault_;
+        _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
     }
 
     function setConfig(Config memory config_) external onlyOwner {
@@ -369,8 +370,8 @@ contract ManagerP0 is IManager, Ownable {
             if (!mintings[i].processed && address(mintings[i].vault) != address(vault)) {
                 rToken.burn(address(this), mintings[i].amount);
                 mintings[i].undo();
-            } else if (!mintings[i].processed && mintings[i].availableAt >= block.timestamp) {
-                rToken.transfer(mintings[i].minter, mintings[i].amount);
+            } else if (!mintings[i].processed && mintings[i].availableAt < block.timestamp) {
+                IERC20(rToken).safeTransfer(mintings[i].minter, mintings[i].amount);
                 mintings[i].complete();
             }
         }
@@ -380,7 +381,9 @@ contract ManagerP0 is IManager, Ownable {
         uint256 amount = rToken.balanceOf(address(this));
         rToken.burn(address(this), amount);
         _melted += amount;
-        _meltingRatio = (SCALE * (rToken.totalSupply() + _melted)) / rToken.totalSupply();
+        if (rToken.totalSupply() > 0) {
+            _meltingRatio = (SCALE * (rToken.totalSupply() + _melted)) / rToken.totalSupply();
+        }
     }
 
     // Idempotent
@@ -412,8 +415,8 @@ contract ManagerP0 is IManager, Ownable {
         if (address(newVault) != address(0)) {
             pastVaults.push(vault);
             vault = newVault;
+            _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
         }
-
         // Undo all live slowmintings
         _processSlowMintings();
 
@@ -434,7 +437,10 @@ contract ManagerP0 is IManager, Ownable {
 
             // Closeout auction and check that prices are reasonable (for non-RSR-RToken auctions).
             uint256 buyAmount = prev.closeOut();
-            if (address(prev.buyCollateral) != address(0) && !prev.clearedCloseToOraclePrice(oracle, SCALE, buyAmount, _config.auctionClearingTolerance)) {
+            if (
+                address(prev.buyCollateral) != address(0) &&
+                !prev.clearedCloseToOraclePrice(oracle, SCALE, buyAmount, _config.auctionClearingTolerance)
+            ) {
                 // Enter Caution state and pause everything
                 paused = true;
             }
@@ -462,7 +468,7 @@ contract ManagerP0 is IManager, Ownable {
         }
 
         // Decide whether to trade and exactly which trade.
-        // trade=false when the differences between collateral are too small to merit trading. 
+        // trade=false when the differences between collateral are too small to merit trading.
         (bool trade, ICollateral sell, ICollateral buy, uint256 sellAmount, uint256 minBuy) = _collateralTrade();
         address sellToken = sell.erc20();
         address buyToken = buy.erc20();
