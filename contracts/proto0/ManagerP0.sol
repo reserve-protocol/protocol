@@ -167,9 +167,7 @@ contract ManagerP0 is IManager, Ownable {
     function detectDefault() external override notPaused {
         // Check if already in default
         if (!inDefault) {
-            (bool _defaulted, ICollateral[] memory _defaultCollateral) = _detectDefaultInVault(
-                vault
-            );
+            (bool _defaulted, ICollateral[] memory _defaultCollateral) = _detectDefaultInVault(vault);
 
             // If Default detected - simply set timestamp and flag
             if (_defaulted) {
@@ -181,9 +179,7 @@ contract ManagerP0 is IManager, Ownable {
         } else {
             // If Default already flagged
             if (block.timestamp >= lastDefault) {
-                (bool _defaulted, ICollateral[] memory _defaultCollateral) = _detectDefaultInVault(
-                    vault
-                );
+                (bool _defaulted, ICollateral[] memory _defaultCollateral) = _detectDefaultInVault(vault);
 
                 // If No Default anymore,  lower default flag and cleanup
                 if (!_defaulted) {
@@ -372,8 +368,8 @@ contract ManagerP0 is IManager, Ownable {
 
             uint256 minBuy = Math.min(unbackedRToken, (rToken.totalSupply() * _config.maxAuctionSize) / SCALE);
             minBuy = Math.max(minBuy, (rToken.totalSupply() * _config.minAuctionSize) / SCALE);
-            uint256 sellAmount = minBuy * rTokenUSDEstimate / rsrUSD;
-            sellAmount = (sellAmount * SCALE / (SCALE - _config.maxTradeSlippage));
+            uint256 sellAmount = (minBuy * rTokenUSDEstimate) / rsrUSD;
+            sellAmount = ((sellAmount * SCALE) / (SCALE - _config.maxTradeSlippage));
 
             staking.seizeRSR(sellAmount - staking.rsr().balanceOf(address(this)));
 
@@ -450,16 +446,15 @@ contract ManagerP0 is IManager, Ownable {
             uint256 minBuyAmount
         )
     {
-
         // Calculate how many BUs we could create from all collateral if we could trade with 0 slippage
         uint256 totalValue;
         uint256[] memory prices = new uint256[](_approvedCollateral.length()); // USD with 18 decimals
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
             ICollateral c = ICollateral(_approvedCollateral.at(i));
-            prices[i] = c.redemptionRate() * oracle.fiatcoinPrice(c) / SCALE;
+            prices[i] = (c.redemptionRate() * oracle.fiatcoinPrice(c)) / SCALE;
             totalValue += IERC20(c.erc20()).balanceOf(address(this)) * prices[i];
         }
-        uint256 BUTarget = totalValue * SCALE / vault.basketFiatcoinRate();
+        uint256 BUTarget = (totalValue * SCALE) / vault.basketFiatcoinRate();
 
         uint256[] memory surplus = new uint256[](_approvedCollateral.length());
         uint256[] memory deficit = new uint256[](_approvedCollateral.length());
@@ -471,9 +466,9 @@ contract ManagerP0 is IManager, Ownable {
             uint256 bal = IERC20(c.erc20()).balanceOf(address(this));
             uint256 target = (vault.quantity(c) * BUTarget) / SCALE;
             if (bal > target) {
-                surplus[i] = (bal - target) * prices[i] / SCALE;
+                surplus[i] = ((bal - target) * prices[i]) / SCALE;
             } else if (bal < target) {
-                deficit[i] = (target - bal) * prices[i] / SCALE;
+                deficit[i] = ((target - bal) * prices[i]) / SCALE;
             }
         }
 
@@ -492,13 +487,13 @@ contract ManagerP0 is IManager, Ownable {
         // Determine if the trade is large enough to be worth doing and calculate amounts.
         {
             uint256 minAuctionSizeInBUs = _toBUs((rToken.totalSupply() * _config.minAuctionSize) / SCALE);
-            uint256 minAuctionSizeInFiatcoins = minAuctionSizeInBUs * vault.basketFiatcoinRate() / SCALE;
+            uint256 minAuctionSizeInFiatcoins = (minAuctionSizeInBUs * vault.basketFiatcoinRate()) / SCALE;
             shouldTrade = deficitMax > minAuctionSizeInFiatcoins && surplusMax > minAuctionSizeInFiatcoins;
-            minBuyAmount = deficitMax * SCALE / prices[buyIndex];
+            minBuyAmount = (deficitMax * SCALE) / prices[buyIndex];
         }
 
-        uint256 maxSell = (deficitMax * SCALE / (SCALE - _config.maxTradeSlippage));
-        sellAmount = Math.min(maxSell, surplusMax) * SCALE / _prevRedemptionRates[_approvedCollateral.at(sellIndex)];
+        uint256 maxSell = ((deficitMax * SCALE) / (SCALE - _config.maxTradeSlippage));
+        sellAmount = (Math.min(maxSell, surplusMax) * SCALE) / _prevRedemptionRates[_approvedCollateral.at(sellIndex)];
         return (shouldTrade, sellIndex, sellAmount, buyIndex, minBuyAmount);
     }
 
