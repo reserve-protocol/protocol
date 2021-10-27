@@ -2,14 +2,22 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "../interfaces/ICollateral.sol";
+import "../interfaces/IAsset.sol";
+import "../libraries/Oracle.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
-contract CollateralP0 is ICollateral {
+contract AssetP0 is IAsset {
+    using Oracle for Oracle.Info;
+
+    uint256 public constant SCALE = 1e18;
+
     address internal immutable _erc20;
 
-    constructor(address erc20_) {
+    Oracle.Info internal _oracle;
+
+    constructor(address erc20_, Oracle.Info memory oracle_) {
         _erc20 = erc20_;
+        _oracle = oracle_;
     }
 
     // Fiatcoins return 1e18. All redemption rates should have 18 zeroes.
@@ -33,11 +41,15 @@ contract CollateralP0 is ICollateral {
         return _erc20;
     }
 
-    function isFiatcoin() external pure virtual override returns (bool) {
-        return true;
+    function priceUSD() public view virtual override returns (uint256) {
+        return redemptionRate() * _oracle.consultAave(erc20()) / SCALE;
     }
 
-    function oracle() external pure virtual override returns (string memory) {
-        return "AAVE";
+    function fiatcoinPriceUSD() public view virtual override returns (uint256) {
+        return _oracle.consultAave(fiatcoin());
+    }
+
+    function isFiatcoin() external pure virtual override returns (bool) {
+        return true;
     }
 }

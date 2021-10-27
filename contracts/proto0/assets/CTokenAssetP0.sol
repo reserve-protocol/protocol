@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./CollateralP0.sol";
+import "../libraries/Oracle.sol";
+import "./AssetP0.sol";
 
 // https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 interface ICToken {
-    // function exchangeRateCurrent() external returns (uint256);
+    // function exchangeRateCurrent() external returns (uint256); // this one is a mutator
 
     function exchangeRateStored() external view returns (uint256);
 
     function underlying() external view returns (address);
 }
 
-contract CTokenCollateralP0 is CollateralP0 {
+contract CTokenAssetP0 is AssetP0 {
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
-    constructor(address erc20_) CollateralP0(erc20_) {}
+    constructor(address erc20_, Oracle.Info memory oracle) AssetP0(erc20_, oracle_) {}
 
     function redemptionRate() external view override returns (uint256) {
         return ICToken(_erc20).exchangeRateStored() * 10**(18 - fiatcoinDecimals());
@@ -26,11 +25,15 @@ contract CTokenCollateralP0 is CollateralP0 {
         return ICToken(_erc20).underlying();
     }
 
-    function isFiatcoin() external pure override returns (bool) {
-        return false;
+    function priceUSD() public view virtual override returns (uint256) {
+        return redemptionRate() * _oracle.consultCompound(erc20()) / SCALE;
     }
 
-    function oracle() external pure virtual override returns (string memory) {
-        return "COMP";
+    function fiatcoinPriceUSD() public view virtual override returns (uint256) {
+        return _oracle.consultCompound(fiatcoin());
+    }
+    
+    function isFiatcoin() external pure override returns (bool) {
+        return false;
     }
 }

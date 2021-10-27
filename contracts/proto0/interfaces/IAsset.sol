@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-interface ICollateral {
+interface IAsset {
     function redemptionRate() external view returns (uint256);
 
     function erc20() external view returns (address);
@@ -12,7 +12,9 @@ interface ICollateral {
 
     function fiatcoin() external view returns (address);
 
-    function isFiatcoin() external view returns (bool);
+    function priceUSD() external view returns (uint256);
 
-    function oracle() external view returns (string memory);
+    function fiatcoinPriceUSD() external view returns (uint256);
+
+    function isFiatcoin() external view returns (bool);
 }

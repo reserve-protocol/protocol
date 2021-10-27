@@ -26,10 +26,10 @@ contract Owner is IOwner, TimelockControllerUpgradeable {
         uint256 insuranceTokenPrice,
         uint256[] calldata collateralTokenPrices
     ) external override onlyRoleOrOpenRole(PRICES_ROLE) {
-        uint16 basketSize = IRToken(rTokenAddress).basketSize();
-        require(collateralTokenPrices.length == basketSize, "mismatch to basket");
+        uint16 size = IRToken(rTokenAddress).size();
+        require(collateralTokenPrices.length == size, "mismatch to basket");
 
-        for (uint16 i = 0; i < basketSize; i++) {
+        for (uint16 i = 0; i < size; i++) {
             IRToken(rTokenAddress).setBasketTokenPriceInRToken(i, collateralTokenPrices[i]);
         }
         IRToken(rTokenAddress).setRSRPriceInRToken(insuranceTokenPrice);

@@ -4,9 +4,11 @@ This is Prototype 0, the _simplest_ version of our system we can possibly imagin
 
 ## Architecture
 
+- Main: The main coordinator of the entire system of contracts. Holds configuration of the system as well as global system state.
 - RToken: The stablecoin ERC-20 provided by the protocol. Holds ERC-20 details like metatransactions, but otherwise simple.
 - StakingPool: An insurance staking pool that doubles as a tradeable ERC-20 staking derivative. Distributes RSR dividends and seizes RSR to pay for default.
-- Manager: The coordinator of the entire system. Has authority over RToken and StakingPool. Performs auctions, detects default, and controls the exchange rate between RToken and BUs.
+- AssetManager: Manages assets and performs auctions.
+- DefaultMonitor: Monitors for default.
 - Vault: Issues an accounting token called a BU (Basket Unit) and maintains an immutable basket definition. Multiple vaults per system.
 - Furnace: Permisionless. Accepts batches to be burnt over a time period and block-by-block allows burning.
 - Oracle: Provides a simple unified interface for the Compound/Aave oracle.
