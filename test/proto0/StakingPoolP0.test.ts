@@ -50,7 +50,6 @@ describe('StakingPoolP0 contract', () => {
 
   describe('Deployment', () => {
     it('Deployment should setup initial addresses and values correctly', async () => {
-      expect(await stkPool.rToken()).to.equal(rToken.address)
       expect(await stkPool.rsr()).to.equal(rsr.address)
       expect(await rsr.balanceOf(stkPool.address)).to.equal(0)
       expect(await rsr.allowance(stkPool.address, rToken.address)).to.equal(MAX_UINT256)
@@ -143,7 +142,7 @@ describe('StakingPoolP0 contract', () => {
       expect(await rsr.balanceOf(stkPool.address)).to.equal(amount)
       expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      expect(await stkPool.balanceOf(addr1.address)).to.equal(amount)
+      expect(await stkPool.balanceOf(addr1.address)).to.equal(0)
     })
 
     it('Should not allow to unstake amount = 0', async () => {
@@ -230,7 +229,7 @@ describe('StakingPoolP0 contract', () => {
         expect(await stkPool.withdrawalIndex()).to.equal(0)
         expect(await stkPool.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
-        expect(await stkPool.balanceOf(addr1.address)).to.equal(amount1)
+        expect(await stkPool.balanceOf(addr1.address)).to.equal(0)
 
         // Process unstakes after certain time (still before stakingWithdrawalDelay)
         await advanceTime(15000)
@@ -242,7 +241,7 @@ describe('StakingPoolP0 contract', () => {
         expect(await stkPool.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
         expect(await rsr.balanceOf(stkPool.address)).to.equal(await stkPool.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
-        expect(await stkPool.balanceOf(addr1.address)).to.equal(amount1)
+        expect(await stkPool.balanceOf(addr1.address)).to.equal(0)
       })
 
       it('Should process withdrawals after stakingWithdrawalDelay', async () => {
@@ -308,12 +307,9 @@ describe('StakingPoolP0 contract', () => {
   })
 
   describe('Add/Remove RSR', () => {
-    it('Should not allow to add/remove RSR if caller is not Rtoken', async () => {
+    it('Should not allow to remove RSR if caller is not Rtoken', async () => {
       const amount: BigNumber = bn(1e18)
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stkPool.address)
-
-      await expect(stkPool.connect(other).addRSR(amount)).to.be.revertedWith('Caller is not RToken')
-      expect(await rsr.balanceOf(stkPool.address)).to.equal(prevPoolBalance)
 
       await expect(stkPool.connect(other).seizeRSR(amount)).to.be.revertedWith('Caller is not RToken')
       expect(await rsr.balanceOf(stkPool.address)).to.equal(prevPoolBalance)

@@ -14,7 +14,7 @@ contract CTokenMock is ERC20Mock {
         _underlyingAsset = underlyingAsset;
     }
 
-    function exchangeRateCurrent() external view returns (uint256) {
+    function exchangeRateStored() external view returns (uint256) {
         return 1e18;
     }
 
