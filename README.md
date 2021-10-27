@@ -27,7 +27,7 @@ The central directories in this repository are `contracts` and `test`.
 
 - `libraries`: Common `DELEGATECALL` libraries
 - `prod`: The real Reserve Protocol implementation
-- `proto0`, `proto1`, `proto2`: [Progressive prototypes][#differential_testing]
+- `proto0`, `proto1`, `proto2`: [Progressive prototypes](#differential_testing)
 - `mocks`: Mock contracts for testing
 
 Each implementation directory (`prod`, `proto0`, `proto1`, `proto2`) contains the following:
@@ -44,6 +44,7 @@ The less-central folders in the repository are dedicated to project management, 
 - `tasks`: [Hardhat tasks](https://hardhat.org/getting-started/)
 - `scripts`: [Hardhat scripts](https://hardhat.org/guides/scripts.html)
 - `types`: Typescript annotations; currently just `export interface Address {}`
+
 ## Differential Testing
 
 This protocol is complex enough, in a demanding enough space, and has a high enough need for correctness, that it's worth thinking about it and implementing it using the method of *progressive specification*. In progressive specification, you implement (and maintain!) several versions of your overall system:
