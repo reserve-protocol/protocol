@@ -78,7 +78,7 @@ interface IRToken {
 
     /// =========================== Views =================================
 
-    function size() external view returns (uint16);
+    function basketSize() external view returns (uint16);
 
     function basketToken(uint16 i) external view returns (Token.Info memory);
 

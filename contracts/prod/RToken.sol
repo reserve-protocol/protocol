@@ -283,7 +283,7 @@ contract RToken is ERC20VotesUpgradeable, IRToken, OwnableUpgradeable, UUPSUpgra
         return address(config.insurancePool);
     }
 
-    function size() external view override returns (uint16) {
+    function basketSize() external view override returns (uint16) {
         return basket.size;
     }
 
