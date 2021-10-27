@@ -52,8 +52,8 @@ The [Trail of Bits tools][tob-suite] require solc-select. Check [these installat
 
 ```bash
 pip3 install solc-select
-solc-select install 0.8.4
-solc-select use 0.8.4
+solc-select install 0.8.9
+solc-select use 0.8.9
 ```
 
 ### Slither
