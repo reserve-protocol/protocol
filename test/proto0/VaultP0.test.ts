@@ -6,6 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { CollateralP0 } from '../../typechain/CollateralP0'
 import { VaultP0 } from '../../typechain/VaultP0'
+import { BN_SCALE_FACTOR } from '../../common/constants'
 
 interface ICollateralInfo {
   erc20: string
@@ -65,9 +66,9 @@ describe('VaultP0 contract', () => {
     // Set Collaterals and Quantities
     CollateralFactory = await ethers.getContractFactory('CollateralP0')
     collateral0 = <CollateralP0>await CollateralFactory.deploy(tkn0.address, tkn0.decimals())
-    collateral1 = <CollateralP0>await CollateralFactory.deploy(tkn1.address, tkn0.decimals())
-    collateral2 = <CollateralP0>await CollateralFactory.deploy(tkn2.address, tkn0.decimals())
-    collateral3 = <CollateralP0>await CollateralFactory.deploy(tkn3.address, tkn0.decimals())
+    collateral1 = <CollateralP0>await CollateralFactory.deploy(tkn1.address, tkn1.decimals())
+    collateral2 = <CollateralP0>await CollateralFactory.deploy(tkn2.address, tkn2.decimals())
+    collateral3 = <CollateralP0>await CollateralFactory.deploy(tkn3.address, tkn3.decimals())
 
     quantity0 = qtyHalf
     quantity1 = qtyHalf
@@ -130,9 +131,68 @@ describe('VaultP0 contract', () => {
 
       expect(await newVault.backups(0)).to.equal(backupVault.address)
     })
+
+    it('Deployment should revert if basket parameters have different lenght', async () => {
+      // Setup a simple backup vault with single token
+      await expect(VaultFactory.deploy([collaterals[0]], [quantities[0], quantities[1]], [])).to.be.revertedWith(
+        'arrays must match in length'
+      )
+    })
+
+    it('Should return quantities for each Collateral', async function () {
+      // Get Collateral quantity
+      expect(await vault.quantity(collaterals[0])).to.equal(qtyHalf)
+      expect(await vault.quantity(collaterals[1])).to.equal(qtyHalf)
+      expect(await vault.quantity(collaterals[2])).to.equal(qtyThird)
+      expect(await vault.quantity(collaterals[3])).to.equal(qtyDouble)
+
+      // If collateral does not exist return 0
+      expect(await vault.quantity(addr1.address)).to.equal(0)
+    })
   })
 
   describe('Issuance', () => {
+    it('Should return basketFiatcoinRate and tokenAmounts for fiatcoins', async function () {
+      // For simple vault with one token (1 to 1)
+      const ONE: BigNumber = bn(1e18)
+      const TWO: BigNumber = bn(2e18)
+
+      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collaterals[0]], [bn(1e18)], [])
+      expect(await newVault.callStatic.basketFiatcoinRate()).to.equal(bn(1e18))
+      expect(await newVault.tokenAmounts(ONE)).to.eql([bn(1e18)])
+
+      // For a vault with one token half the value
+      newVault = <VaultP0>await VaultFactory.deploy([collaterals[0]], [qtyHalf], [])
+      expect(await newVault.callStatic.basketFiatcoinRate()).to.equal(qtyHalf)
+      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf])
+
+      // For a vault with two token half each
+      newVault = <VaultP0>await VaultFactory.deploy([collaterals[0], collaterals[1]], [qtyHalf, qtyHalf], [])
+      expect(await newVault.callStatic.basketFiatcoinRate()).to.equal(bn(1e18))
+      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
+
+      // For the vault used by default in these tests (four fiatcoin tokens) - Redemption = 1e18
+      expect(await vault.callStatic.basketFiatcoinRate()).to.equal(qtyHalf.mul(2).add(qtyThird.add(qtyDouble)))
+      expect(await vault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf, qtyThird, qtyDouble])
+      expect(await vault.tokenAmounts(TWO)).to.eql([qtyHalf.mul(2), qtyHalf.mul(2), qtyThird.mul(2), qtyDouble.mul(2)])
+    })
+
+    it.skip('Should adjust basketFiatcoinRate for ATokens and CTokens', async function () {
+      // TODO: AToken or CToken with different redcemption rate
+    })
+
+    it('Should return max Issuable for user', async function () {
+      // Calculate max issuable for user with no tokens
+      expect(await vault.maxIssuable(owner.address)).to.equal(0)
+
+      // Max issuable for user with tokens (Half of balance because a token requires qtyDouble)
+      expect(await vault.maxIssuable(addr1.address)).to.equal(initialBal.div(2).div(BN_SCALE_FACTOR))
+
+      // Remove that token and recalculate
+      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collaterals[0]], [bn(1e18)], [])
+      expect(await newVault.maxIssuable(addr1.address)).to.equal(initialBal.div(BN_SCALE_FACTOR))
+    })
+
     it('Should not issue BU if amount is zero', async function () {
       const zero: BigNumber = bn(0)
 
