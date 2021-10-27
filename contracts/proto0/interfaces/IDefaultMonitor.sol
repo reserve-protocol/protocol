@@ -5,13 +5,13 @@ import "./IAsset.sol";
 import "./IVault.sol";
 
 interface IDefaultMonitor {
-    function checkForHardDefault(IVault vault, address[] memory allAssets) external override returns (IAsset[] memory);
+    function checkForHardDefault(IVault vault) external returns (IAsset[] memory);
 
-    function checkForSoftDefault(IVault vault, address[] memory fiatcoins) external override returns (IAsset[] memory);
+    function checkForSoftDefault(IVault vault, address[] memory fiatcoins) external view returns (IAsset[] memory);
 
     function getNextVault(
         IVault vault,
         address[] memory approvedCollateral,
         address[] memory fiatcoins
-    ) external override returns (IVault);
+    ) external view returns (IVault);
 }

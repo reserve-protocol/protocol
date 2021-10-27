@@ -22,9 +22,5 @@ interface IAssetManager {
 
     function vault() external view returns (IVault);
 
-    function allAssets() external view returns (address[] memory);
-
-    function approvedAssets() external view returns (address[] memory);
-
-    function fiatcoins() external view returns (address[] memory);
+    function approvedFiatcoinAssets() external view returns (address[] memory);
 }

@@ -2,19 +2,18 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../libraries/Oracle.sol";
 import "./IAsset.sol";
 import "./IAssetManager.sol";
 import "./IDefaultMonitor.sol";
 import "./IFurnace.sol";
-import "./IMain.sol";
 import "./IRToken.sol";
 import "./IStakingPool.sol";
-import "./IVault.sol";
 
 enum State {
     CALM,
     DOUBT,
-    MIGRATION,
+    TRADING,
     PRECAUTIONARY
 }
 
@@ -76,9 +75,23 @@ interface IMain {
 
     function staking() external view returns (IStakingPool);
 
-    function assetManager() external view returns (IAssetManager);
+    function manager() external view returns (IAssetManager);
 
-    function defaultMonitor() external view returns (IDefaultMonitor);
+    function monitor() external view returns (IDefaultMonitor);
+
+    function consultAaveOracle(address token) external view returns (uint256);
+
+    function consultCompoundOracle(address token) external view returns (uint256);
+
+    function rTokenAsset() external view returns (IAsset);
+
+    function rsrAsset() external view returns (IAsset);
+
+    function compAsset() external view returns (IAsset);
+
+    function aaveAsset() external view returns (IAsset);
+
+    function SCALE() external view returns (uint256);
 
     // Governance Params
 

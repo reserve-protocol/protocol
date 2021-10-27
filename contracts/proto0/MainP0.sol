@@ -5,6 +5,11 @@ import "../Ownable.sol"; // temporary
 // import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./assets/RTokenAssetP0.sol";
+import "./assets/RSRAssetP0.sol";
+import "./assets/AAVEAssetP0.sol";
+import "./assets/COMPAssetP0.sol";
+import "./libraries/Oracle.sol";
 import "./interfaces/IAsset.sol";
 import "./interfaces/IAssetManager.sol";
 import "./interfaces/IDefaultMonitor.sol";
@@ -18,9 +23,11 @@ import "./interfaces/IRToken.sol";
  *
  */
 contract MainP0 is IMain, Ownable {
-    uint256 public constant SCALE = 1e18;
+    using Oracle for Oracle.Info;
+    uint256 public constant override SCALE = 1e18;
 
     Config internal _config;
+    Oracle.Info internal _oracle;
 
     IERC20 public override rsr;
     IRToken public override rToken;
@@ -28,6 +35,12 @@ contract MainP0 is IMain, Ownable {
     IStakingPool public override staking;
     IAssetManager public override manager;
     IDefaultMonitor public override monitor;
+
+    // Assets
+    IAsset public override rTokenAsset;
+    IAsset public override rsrAsset;
+    IAsset public override compAsset;
+    IAsset public override aaveAsset;
 
     address public pauser;
     bool public override paused;
@@ -38,23 +51,23 @@ contract MainP0 is IMain, Ownable {
 
     constructor(
         address owner,
+        Oracle.Info memory oracle_,
         Config memory config_,
-        IERC20 rsr_,
-        IFurnace furnace_
+        IERC20 rsr_
     ) {
         _transferOwnership(owner);
+        _oracle = oracle_;
         _config = config_;
         rsr = rsr_;
-        furnace = furnace_;
     }
 
     // This modifier runs before every function including redemption, so it needs to be very safe.
     modifier always() {
         // Check for hard default (anything that is 100% indicative of a default)
-        IAsset[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault(), manager.allAssets());
+        IAsset[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
         if (hardDefaulting.length > 0) {
             manager.switchVaults(hardDefaulting);
-            state = STATE.MIGRATION;
+            state = State.TRADING;
         }
         _;
     }
@@ -65,7 +78,7 @@ contract MainP0 is IMain, Ownable {
     }
 
     function issue(uint256 amount) external override notPaused always {
-        require(state == STATE.CALM || state == STATE.MIGRATION, "only during calm + migration");
+        require(state == State.CALM || state == State.TRADING, "only during calm + migration");
         require(amount > 0, "Cannot issue zero");
         manager.issue(_msgSender(), amount);
     }
@@ -77,36 +90,36 @@ contract MainP0 is IMain, Ownable {
 
     // Runs auctions
     function poke() external override notPaused always {
-        require(state == STATE.CALM || state == STATE.MIGRATION, "only during calm + migration");
+        require(state == State.CALM || state == State.TRADING, "only during calm + migration");
         state = manager.runAuctions();
     }
 
     // Default check
     function noticeDefault() external override notPaused always {
-        IAsset[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.fiatcoins());
+        IAsset[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoinAssets());
 
-        // If no defaults, walk back the default and enter CALM/MIGRATION
+        // If no defaults, walk back the default and enter CALM/TRADING
         if (softDefaulting.length == 0) {
-            state = manager.fullyCapitalized() ? STATE.CALM : STATE.MIGRATION;
+            state = manager.fullyCapitalized() ? State.CALM : State.TRADING;
             return;
         }
 
         // If state is DOUBT for >24h (default delay), switch vaults
-        if (state == STATE.DOUBT && block.timestamp >= stateRaisedAt + _config.defaultDelay) {
-            assetManager.switchVaults(softDefaulting);
-            state = STATE.MIGRATION;
-        } else if (state == STATE.CALM || STATE.MIGRATION) {
-            state = STATE.DOUBT;
+        if (state == State.DOUBT && block.timestamp >= stateRaisedAt + _config.defaultDelay) {
+            manager.switchVaults(softDefaulting);
+            state = State.TRADING;
+        } else if (state == State.CALM || state == State.TRADING) {
+            state = State.DOUBT;
             stateRaisedAt = block.timestamp;
         }
     }
 
-    function pause() external override {
+    function pause() external {
         require(_msgSender() == pauser, "only pauser");
         paused = true;
     }
 
-    function unpause() external override {
+    function unpause() external {
         require(_msgSender() == pauser, "only pauser");
         paused = false;
     }
@@ -125,19 +138,59 @@ contract MainP0 is IMain, Ownable {
         _config = config_;
     }
 
-    //
+    function setRToken(IRToken rToken_) external onlyOwner {
+        rToken = rToken_;
+    }
+
+    function setMonitor(IDefaultMonitor monitor_) external onlyOwner {
+        monitor = monitor_;
+    }
+
+    function setManager(IAssetManager manager_) external onlyOwner {
+        manager = manager_;
+    }
+
+    function setStakingPool(IStakingPool staking_) external onlyOwner {
+        staking = staking_;
+    }
+
+    function setFurnace(IFurnace furnace_) external onlyOwner {
+        furnace = furnace_;
+    }
+
+    function setAssets(
+        RTokenAssetP0 rToken_,
+        RSRAssetP0 rsr_,
+        COMPAssetP0 comp_,
+        AAVEAssetP0 aave_
+    ) external onlyOwner {
+        rTokenAsset = rToken_;
+        rsrAsset = rsr_;
+        compAsset = comp_;
+        aaveAsset = aave_;
+    }
+
+    // ==================================== Views ====================================
 
     function quoteIssue(uint256 amount) public view override returns (uint256[] memory) {
         require(amount > 0, "Cannot quote issue zero");
-        return manager.quote(_toBUs(amount));
+        return manager.quote(amount);
     }
 
     function quoteRedeem(uint256 amount) public view override returns (uint256[] memory) {
         require(amount > 0, "Cannot quote redeem zero");
-        return manager.quote(_toBUs(amount));
+        return manager.quote(amount);
     }
 
-    // Config getters
+    function consultAaveOracle(address token) external view override returns (uint256) {
+        return _oracle.consultAave(token);
+    }
+
+    function consultCompoundOracle(address token) external view override returns (uint256) {
+        return _oracle.consultCompound(token);
+    }
+
+    // Config
 
     function rewardStart() external view override returns (uint256) {
         return _config.rewardStart;

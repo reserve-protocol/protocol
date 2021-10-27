@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../libraries/Oracle.sol";
+import "../interfaces/IMain.sol";
 import "./AssetP0.sol";
 
 // https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
@@ -15,9 +15,9 @@ interface ICToken {
 
 contract CTokenAssetP0 is AssetP0 {
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
-    constructor(address erc20_, Oracle.Info memory oracle) AssetP0(erc20_, oracle_) {}
+    constructor(address erc20_) AssetP0(erc20_) {}
 
-    function redemptionRate() external view override returns (uint256) {
+    function redemptionRate() public view override returns (uint256) {
         return ICToken(_erc20).exchangeRateStored() * 10**(18 - fiatcoinDecimals());
     }
 
@@ -25,12 +25,12 @@ contract CTokenAssetP0 is AssetP0 {
         return ICToken(_erc20).underlying();
     }
 
-    function priceUSD() public view virtual override returns (uint256) {
-        return (redemptionRate() * _oracle.consultCompound(erc20())) / SCALE;
+    function priceUSD(IMain main) public view virtual override returns (uint256) {
+        return (redemptionRate() * main.consultCompoundOracle(erc20())) / SCALE;
     }
 
-    function fiatcoinPriceUSD() public view virtual override returns (uint256) {
-        return _oracle.consultCompound(fiatcoin());
+    function fiatcoinPriceUSD(IMain main) public view virtual override returns (uint256) {
+        return main.consultCompoundOracle(fiatcoin());
     }
 
     function isFiatcoin() external pure override returns (bool) {

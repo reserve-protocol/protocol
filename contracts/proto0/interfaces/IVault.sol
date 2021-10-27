@@ -14,7 +14,7 @@ interface IVault {
 
     function redeem(address redeemer, uint256 amount) external;
 
-    function basketFiatcoinRate() external returns (uint256);
+    function basketFiatcoinRate() external view returns (uint256);
 
     function containsOnly(address[] memory assets) external view returns (bool);
 
@@ -29,4 +29,6 @@ interface IVault {
     function basketUnits(address account) external view returns (uint256);
 
     function quantity(IAsset asset) external view returns (uint256);
+
+    function getBackups() external view returns (IVault[] memory);
 }

@@ -35,8 +35,8 @@ library SlowIssuance {
         self.blockAvailableAt = blockAvailableAt;
 
         for (uint256 i = 0; i < vault.size(); i++) {
-            IERC20(vault.collateralAt(i).erc20()).safeTransferFrom(minter, address(this), self.basketAmounts[i]);
-            IERC20(self.vault.collateralAt(i).erc20()).safeApprove(address(self.vault), self.basketAmounts[i]);
+            IERC20(vault.assetAt(i).erc20()).safeTransferFrom(minter, address(this), self.basketAmounts[i]);
+            IERC20(self.vault.assetAt(i).erc20()).safeApprove(address(self.vault), self.basketAmounts[i]);
         }
         self.vault.issue(self.BUs);
     }
@@ -47,7 +47,7 @@ library SlowIssuance {
         IVault vault
     ) internal {
         require(!self.processed, "slow minting already processed");
-        require(self.blockAvailableAt <= block.timestamp, "slow minting needs more time");
+        require(self.blockAvailableAt <= block.number, "slow minting needs more time");
 
         if (address(self.vault) != address(vault)) {
             // Revert Issuance

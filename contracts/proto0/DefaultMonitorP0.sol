@@ -21,12 +21,7 @@ contract DefaultMonitorP0 is IDefaultMonitor {
         main = main_;
     }
 
-    function checkForHardDefault(IVault vault, address[] memory allAssets)
-        external
-        view
-        override
-        returns (IAsset[] memory defaulting)
-    {
+    function checkForHardDefault(IVault vault) external override returns (IAsset[] memory defaulting) {
         IAsset[] memory vaultAssets = new IAsset[](vault.size());
         uint256 count;
         for (uint256 i = 0; i < vault.size(); i++) {
@@ -55,7 +50,7 @@ contract DefaultMonitorP0 is IDefaultMonitor {
         uint256 count;
         for (uint256 i = 0; i < vaultAssets.length; i++) {
             IAsset a = vault.assetAt(i);
-            if (a.fiatcoinPriceUSD() < defaultThreshold) {
+            if (a.fiatcoinPriceUSD(main) < defaultThreshold) {
                 vaultAssets[count] = a;
                 count++;
             }
@@ -100,7 +95,7 @@ contract DefaultMonitorP0 is IDefaultMonitor {
         // Collect prices
         uint256[] memory prices = new uint256[](fiatcoins.length);
         for (uint256 i = 0; i < fiatcoins.length; i++) {
-            prices[i] = IAsset(fiatcoins[i]).fiatcoinPriceUSD();
+            prices[i] = IAsset(fiatcoins[i]).fiatcoinPriceUSD(main);
         }
 
         // Sort
@@ -122,6 +117,6 @@ contract DefaultMonitorP0 is IDefaultMonitor {
             price = prices[prices.length / 2];
         }
 
-        return (price * (SCALE - main.configDefaultThreshold)) / SCALE;
+        return (price * (SCALE - main.defaultThreshold())) / SCALE;
     }
 }

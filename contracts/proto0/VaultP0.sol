@@ -85,8 +85,7 @@ contract VaultP0 is IVault, Ownable {
     }
 
     // Returns how many fiatcoins a single BU can be redeemed for.
-    // Can't be a view because the cToken and aToken could cause state changes to their Defi protocols.
-    function basketFiatcoinRate() external override returns (uint256 sum) {
+    function basketFiatcoinRate() external view override returns (uint256 sum) {
         for (uint256 i = 0; i < _basket.size; i++) {
             IAsset c = _basket.assets[i];
             sum += (_basket.quantities[i] * c.redemptionRate()) / 10**c.decimals();
@@ -131,16 +130,16 @@ contract VaultP0 is IVault, Ownable {
     }
 
     // Returns the basket quantity for the given assets.
-    function quantity(IAsset assets) external view override returns (uint256) {
+    function quantity(IAsset asset) external view override returns (uint256) {
         for (uint256 i = 0; i < _basket.size; i++) {
-            if (_basket.assets[i] == assets) {
+            if (_basket.assets[i] == asset) {
                 return _basket.quantities[i];
             }
         }
         return 0;
     }
 
-    function getBackups() external view returns (IVault[] memory) {
+    function getBackups() external view override returns (IVault[] memory) {
         return backups;
     }
 

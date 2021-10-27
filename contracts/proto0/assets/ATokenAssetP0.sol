@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../libraries/Oracle.sol";
 import "./AssetP0.sol";
 
 // https://github.com/aave/protocol-v2/blob/feat-atoken-wrapper-liquidity-mining/contracts/protocol/tokenization/StaticATokenLM.sol
@@ -17,9 +16,9 @@ interface AToken {
 
 contract ATokenAssetP0 is AssetP0 {
     // All aTokens have 18 decimals.
-    constructor(address erc20_, Oracle.Info memory oracle) AssetP0(erc20_, oracle_) {}
+    constructor(address erc20_) AssetP0(erc20_) {}
 
-    function redemptionRate() external view override returns (uint256) {
+    function redemptionRate() public view override returns (uint256) {
         return IStaticAToken(_erc20).rate() * 10**(18 - fiatcoinDecimals());
     }
 

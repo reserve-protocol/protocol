@@ -5,15 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IAsset.sol";
 import "../interfaces/IFurnace.sol";
+import "../interfaces/IMain.sol";
 
 library Auction {
     using SafeERC20 for IERC20;
 
     struct Info {
-        IAsset sellAsset; // empty if selling RSR or COMP/AAVE
-        IAsset buyAsset; // empty if buying RToken
-        address sellToken;
-        address buyToken;
+        IAsset sellAsset;
+        IAsset buyAsset;
         uint256 sellAmount;
         uint256 minBuyAmount;
         uint256 startTime;
@@ -26,8 +25,6 @@ library Auction {
         Auction.Info storage self,
         IAsset sellAsset,
         IAsset buyAsset,
-        address sellToken,
-        address buyToken,
         uint256 sellAmount,
         uint256 minBuyAmount,
         uint256 endTime,
@@ -35,8 +32,6 @@ library Auction {
     ) internal {
         self.sellAsset = sellAsset;
         self.buyAsset = buyAsset;
-        self.sellToken = sellToken;
-        self.buyToken = buyToken;
         self.sellAmount = sellAmount;
         self.minBuyAmount = minBuyAmount;
         self.startTime = block.timestamp;
@@ -52,13 +47,13 @@ library Auction {
         require(self.open, "already closed out");
         require(self.endTime <= block.timestamp, "auction not over");
         // TODO: buyAmount = batchAuction.claim();
-        uint256 bal = IERC20(self.buyToken).balanceOf(address(this));
+        uint256 bal = IERC20(self.buyAsset.erc20()).balanceOf(address(this));
         if (self.destination == address(0)) {
             // Burn
-            IERC20(self.buyToken).safeTransfer(address(0), bal);
+            IERC20(self.buyAsset.erc20()).safeTransfer(address(0), bal);
         } else if (self.destination != address(this)) {
             // Send to the Furnace for slow burning
-            IERC20(self.buyToken).safeApprove(self.destination, bal);
+            IERC20(self.buyAsset.erc20()).safeApprove(self.destination, bal);
             IFurnace(self.destination).burnOverPeriod(bal, rewardPeriod);
         }
         self.open = false;
@@ -68,17 +63,15 @@ library Auction {
     // Returns false if the auction buyAmount is > *threshold* of the expected buyAmount.
     function clearedCloseToOraclePrice(
         Auction.Info storage self,
-        uint256 SCALE,
-        uint256 buyAmount,
-        uint256 tolerance
+        IMain main,
+        uint256 buyAmount
     ) internal view returns (bool) {
-        assert(address(self.sellAsset) == address(0) && address(self.buyAsset) == address(0));
-
+        uint256 SCALE = main.SCALE();
         uint256 sellAmountNormalized = self.sellAmount * 10**(SCALE - self.sellAsset.decimals());
         uint256 buyAmountNormalized = buyAmount * 10**(SCALE - self.buyAsset.decimals());
         uint256 ratio = (buyAmountNormalized * SCALE) / sellAmountNormalized;
-        uint256 expectedRatio = (self.sellAsset.priceUSD() * SCALE) / self.buyAsset.priceUSD();
+        uint256 expectedRatio = (self.sellAsset.priceUSD(main) * SCALE) / self.buyAsset.priceUSD(main);
 
-        return (ratio >= expectedRatio || expectedRatio - ratio <= tolerance);
+        return (ratio >= expectedRatio || expectedRatio - ratio <= main.auctionClearingTolerance());
     }
 }

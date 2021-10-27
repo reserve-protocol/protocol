@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
+import "./IMain.sol";
+
 interface IAsset {
     function redemptionRate() external view returns (uint256);
 
@@ -12,9 +14,9 @@ interface IAsset {
 
     function fiatcoin() external view returns (address);
 
-    function priceUSD() external view returns (uint256);
+    function priceUSD(IMain main) external view returns (uint256);
 
-    function fiatcoinPriceUSD() external view returns (uint256);
+    function fiatcoinPriceUSD(IMain main) external view returns (uint256);
 
     function isFiatcoin() external view returns (bool);
 }
