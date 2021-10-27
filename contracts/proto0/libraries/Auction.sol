@@ -65,7 +65,7 @@ library Auction {
         Auction.Info storage self,
         IMain main,
         uint256 buyAmount
-    ) internal view returns (bool) {
+    ) internal returns (bool) {
         uint256 SCALE = main.SCALE();
         uint256 sellAmountNormalized = self.sellAmount * 10**(SCALE - self.sellAsset.decimals());
         uint256 buyAmountNormalized = buyAmount * 10**(SCALE - self.buyAsset.decimals());
