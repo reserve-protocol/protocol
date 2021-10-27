@@ -42,7 +42,7 @@ contract AssetP0 is IAsset {
     }
 
     function priceUSD() public view virtual override returns (uint256) {
-        return redemptionRate() * _oracle.consultAave(erc20()) / SCALE;
+        return (redemptionRate() * _oracle.consultAave(erc20())) / SCALE;
     }
 
     function fiatcoinPriceUSD() public view virtual override returns (uint256) {

@@ -6,7 +6,6 @@ import "./AssetP0.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
 contract RSRAssetP0 is AssetP0 {
-
     constructor(address erc20_, Oracle.Info memory oracle) AssetP0(erc20_, oracle_) {}
 
     // Fiatcoins return 1e18. All redemption rates should have 18 zeroes.

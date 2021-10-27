@@ -142,10 +142,9 @@ contract VaultP0 is IVault, Ownable {
 
     function getBackups() external view returns (IVault[] memory) {
         return backups;
-    } 
+    }
 
     function setBackups(IVault[] memory backupVaults) external onlyOwner {
         backups = backupVaults;
     }
-
 }

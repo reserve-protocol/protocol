@@ -11,21 +11,22 @@ import "./MainP0.sol";
  * @dev The default monitor checks for default states in other systems.
  */
 contract DefaultMonitorP0 is IDefaultMonitor {
-
     uint256 public constant SCALE = 1e18;
-
 
     IMain public main;
 
     mapping(address => uint256) public redemptionRates;
 
-    constructor(
-        IMain main_
-    ) {
+    constructor(IMain main_) {
         main = main_;
     }
 
-    function checkForHardDefault(IVault vault, address[] memory allAssets) external view override returns (IAsset[] memory defaulting) {
+    function checkForHardDefault(IVault vault, address[] memory allAssets)
+        external
+        view
+        override
+        returns (IAsset[] memory defaulting)
+    {
         IAsset[] memory vaultAssets = new IAsset[](vault.size());
         uint256 count;
         for (uint256 i = 0; i < vault.size(); i++) {
@@ -43,7 +44,12 @@ contract DefaultMonitorP0 is IDefaultMonitor {
         }
     }
 
-    function checkForSoftDefault(IVault vault, address[] memory fiatcoins) public view override returns (IAsset[] memory defaulting) {
+    function checkForSoftDefault(IVault vault, address[] memory fiatcoins)
+        public
+        view
+        override
+        returns (IAsset[] memory defaulting)
+    {
         uint256 defaultThreshold = _defaultThreshold(fiatcoins);
         IAsset[] memory vaultAssets = new IAsset[](vault.size());
         uint256 count;
@@ -61,17 +67,18 @@ contract DefaultMonitorP0 is IDefaultMonitor {
     }
 
     // Returns the vault that should replace the current vault, or the zero address if no options are available.
-    function getNextVault(IVault vault, address[] memory approvedCollateral, address[] memory fiatcoins) external view override returns (IVault) {
+    function getNextVault(
+        IVault vault,
+        address[] memory approvedCollateral,
+        address[] memory fiatcoins
+    ) external view override returns (IVault) {
         uint256 maxRate;
         uint256 indexMax = 0;
 
         // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         IVault[] memory backups = vault.getBackups();
         for (uint256 i = 0; i < backups.length; i++) {
-            if (
-                backups[i].containsOnly(approvedCollateral) &&
-                checkForSoftDefault(backups[i], fiatcoins).length == 0
-            ) {
+            if (backups[i].containsOnly(approvedCollateral) && checkForSoftDefault(backups[i], fiatcoins).length == 0) {
                 uint256 rate = backups[i].basketFiatcoinRate();
 
                 // See if it has the highest basket rate

@@ -9,5 +9,9 @@ interface IDefaultMonitor {
 
     function checkForSoftDefault(IVault vault, address[] memory fiatcoins) external override returns (IAsset[] memory);
 
-    function getNextVault(IVault vault, address[] memory approvedCollateral, address[] memory fiatcoins) external override returns (IVault);
+    function getNextVault(
+        IVault vault,
+        address[] memory approvedCollateral,
+        address[] memory fiatcoins
+    ) external override returns (IVault);
 }

@@ -26,13 +26,13 @@ contract CTokenAssetP0 is AssetP0 {
     }
 
     function priceUSD() public view virtual override returns (uint256) {
-        return redemptionRate() * _oracle.consultCompound(erc20()) / SCALE;
+        return (redemptionRate() * _oracle.consultCompound(erc20())) / SCALE;
     }
 
     function fiatcoinPriceUSD() public view virtual override returns (uint256) {
         return _oracle.consultCompound(fiatcoin());
     }
-    
+
     function isFiatcoin() external pure override returns (bool) {
         return false;
     }

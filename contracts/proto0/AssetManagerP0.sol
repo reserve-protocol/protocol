@@ -21,7 +21,7 @@ import "./StakingPoolP0.sol";
 
 /**
  * @title AssetManagerP0
- * @dev Handles the transfer and trade of assets. 
+ * @dev Handles the transfer and trade of assets.
  *
  * This contract:
  *    - Manages the choice of backing of an RToken via Vault selection.
@@ -319,7 +319,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     //
-
 
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowIssuance() internal {

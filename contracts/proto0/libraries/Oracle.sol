@@ -30,7 +30,6 @@ interface IAaveOracle {
 }
 
 library Oracle {
-
     struct Info {
         IComptroller compound;
         IAaveLendingPool aave;

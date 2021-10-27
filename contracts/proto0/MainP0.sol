@@ -14,11 +14,10 @@ import "./interfaces/IRToken.sol";
 
 /**
  * @title MainP0
- * @dev The central coordinator for the entire system, as well as the point of contact. 
+ * @dev The central coordinator for the entire system, as well as the point of contact.
  *
  */
 contract MainP0 is IMain, Ownable {
-
     uint256 public constant SCALE = 1e18;
 
     Config internal _config;
@@ -36,7 +35,6 @@ contract MainP0 is IMain, Ownable {
     // Default detection.
     State public state;
     uint256 public stateRaisedAt; // timestamp when default occurred
-
 
     constructor(
         address owner,
@@ -91,7 +89,7 @@ contract MainP0 is IMain, Ownable {
         if (softDefaulting.length == 0) {
             state = manager.fullyCapitalized() ? STATE.CALM : STATE.MIGRATION;
             return;
-        } 
+        }
 
         // If state is DOUBT for >24h (default delay), switch vaults
         if (state == STATE.DOUBT && block.timestamp >= stateRaisedAt + _config.defaultDelay) {
@@ -141,55 +139,55 @@ contract MainP0 is IMain, Ownable {
 
     // Config getters
 
-    function rewardStart() external override view returns (uint256) {
+    function rewardStart() external view override returns (uint256) {
         return _config.rewardStart;
     }
 
-    function rewardPeriod() external override view returns (uint256) {
+    function rewardPeriod() external view override returns (uint256) {
         return _config.rewardPeriod;
     }
 
-    function auctionPeriod() external override view returns (uint256) {
+    function auctionPeriod() external view override returns (uint256) {
         return _config.auctionPeriod;
     }
-    
-    function stakingWithdrawalDelay() external override view returns (uint256) {
+
+    function stakingWithdrawalDelay() external view override returns (uint256) {
         return _config.stakingWithdrawalDelay;
     }
 
-    function defaultDelay() external override view returns (uint256) {
+    function defaultDelay() external view override returns (uint256) {
         return _config.defaultDelay;
     }
-    
-    function maxTradeSlippage() external override view returns (uint256) {
+
+    function maxTradeSlippage() external view override returns (uint256) {
         return _config.maxTradeSlippage;
     }
-    
-    function auctionClearingTolerance() external override view returns (uint256) {
+
+    function auctionClearingTolerance() external view override returns (uint256) {
         return _config.auctionClearingTolerance;
     }
-    
-    function maxAuctionSize() external override view returns (uint256) {
+
+    function maxAuctionSize() external view override returns (uint256) {
         return _config.maxAuctionSize;
     }
-    
-    function minAuctionSize() external override view returns (uint256) {
+
+    function minAuctionSize() external view override returns (uint256) {
         return _config.minAuctionSize;
     }
-    
-    function migrationChunk() external override view returns (uint256) {
+
+    function migrationChunk() external view override returns (uint256) {
         return _config.migrationChunk;
     }
-    
-    function issuanceRate() external override view returns (uint256) {
+
+    function issuanceRate() external view override returns (uint256) {
         return _config.issuanceRate;
     }
-    
-    function defaultThreshold() external override view returns (uint256) {
+
+    function defaultThreshold() external view override returns (uint256) {
         return _config.defaultThreshold;
     }
-    
-    function f() external override view returns (uint256) {
+
+    function f() external view override returns (uint256) {
         return _config.f;
     }
 }
