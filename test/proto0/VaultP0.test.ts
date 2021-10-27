@@ -5,8 +5,9 @@ import { bn } from '../../common/numbers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { CollateralP0 } from '../../typechain/CollateralP0'
+import { OracleMockP0 } from '../../typechain/OracleMockP0'
 import { VaultP0 } from '../../typechain/VaultP0'
-import { BN_SCALE_FACTOR } from '../../common/constants'
+import { BN_SCALE_FACTOR, ZERO_ADDRESS } from '../../common/constants'
 
 interface ICollateralInfo {
   erc20: string
@@ -20,6 +21,7 @@ describe('VaultP0 contract', () => {
 
   let ERC20: ContractFactory
   let VaultFactory: ContractFactory
+  let OracleMockFactory: ContractFactory
   let vault: VaultP0
   let tkn0: ERC20Mock
   let tkn1: ERC20Mock
@@ -30,6 +32,7 @@ describe('VaultP0 contract', () => {
   let collateral1: CollateralP0
   let collateral2: CollateralP0
   let collateral3: CollateralP0
+  let oracleMock: OracleMockP0
   let quantity0: BigNumber
   let quantity1: BigNumber
   let quantity2: BigNumber
@@ -77,6 +80,10 @@ describe('VaultP0 contract', () => {
 
     collaterals = [collateral0.address, collateral1.address, collateral2.address, collateral3.address]
     quantities = [quantity0, quantity1, quantity2, quantity3]
+
+    // Deploy Oracle Mock
+    OracleMockFactory = await ethers.getContractFactory('OracleMockP0')
+    oracleMock = <OracleMockP0>await OracleMockFactory.deploy(collaterals, bn(1e18))
 
     // Deploy Main Vault
     VaultFactory = await ethers.getContractFactory('VaultP0')
@@ -343,6 +350,112 @@ describe('VaultP0 contract', () => {
       await vault.connect(owner).setBackups([backupVault.address])
 
       expect(await vault.backups(0)).to.equal(backupVault.address)
+    })
+
+    context('With Backup vaults defined', async function () {
+      let backupVault1: VaultP0
+      let backupVault2: VaultP0
+      let backupVault3: VaultP0
+      let defaultThreshold: BigNumber
+
+      beforeEach(async function () {
+        // Deploy backup Vaults
+        backupVault1 = <VaultP0>(
+          await VaultFactory.deploy(
+            [collaterals[0], collaterals[1], collaterals[2]],
+            [quantities[0], quantities[1], quantities[2]],
+            []
+          )
+        )
+        backupVault2 = <VaultP0>(
+          await VaultFactory.deploy([collaterals[0], collaterals[1]], [quantities[0], quantities[1]], [])
+        )
+
+        backupVault3 = <VaultP0>await VaultFactory.deploy([collaterals[0]], [quantities[0]], [])
+
+        // Set backups
+        await vault.connect(owner).setBackups([backupVault1.address, backupVault2.address, backupVault3.address])
+      })
+
+      it('Should identify if vault containsOnly a list of collateral', async () => {
+        // Check if contains only from collaterals
+        expect(await vault.connect(owner).containsOnly(collaterals)).to.equal(true)
+
+        expect(await vault.connect(owner).containsOnly([collaterals[0], collaterals[1], collaterals[2]])).to.equal(
+          false
+        )
+
+        expect(await vault.connect(owner).containsOnly([collaterals[0]])).to.equal(false)
+
+        // With a smaller vault
+        let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collaterals[0]], [bn(1e18)], [])
+        expect(await newVault.connect(owner).containsOnly(collaterals)).to.equal(true)
+        expect(await newVault.connect(owner).containsOnly([collaterals[0]])).to.equal(true)
+        expect(await newVault.connect(owner).containsOnly([collaterals[1]])).to.equal(false)
+      })
+
+      it('Should return zero address if no backup found based on approved Collateral', async () => {
+        // Provide approved token which does not exist in any backup vault
+        defaultThreshold = bn(1e18)
+
+        const backupAddr: string = await vault
+          .connect(owner)
+          .callStatic.selectBackup([collaterals[3]], oracleMock.address, defaultThreshold)
+
+        expect(backupAddr).to.equal(ZERO_ADDRESS)
+      })
+
+      it('Should return the only vault that meets criteria', async () => {
+        defaultThreshold = bn(1e18)
+
+        // Only the last backup  (backupVault3) contains this single tokens
+        const backupAddr: string = await vault
+          .connect(owner)
+          .callStatic.selectBackup([collaterals[0]], oracleMock.address, defaultThreshold)
+
+        expect(backupAddr).to.equal(backupVault3.address)
+      })
+
+      it('Should return vault with highest rate if multiple are found', async () => {
+        defaultThreshold = bn(1e18)
+
+        // The first backup (backupVault1) contains the highest rate between the three that meet criteria
+        let backupAddr: string = await vault
+          .connect(owner)
+          .callStatic.selectBackup(
+            [collaterals[0], collaterals[1], collaterals[2]],
+            oracleMock.address,
+            defaultThreshold
+          )
+
+        expect(backupAddr).to.equal(backupVault1.address)
+
+        // If we remove the last token then backupVault2 becomes the highest
+        backupAddr = await vault
+          .connect(owner)
+          .callStatic.selectBackup([collaterals[0], collaterals[1]], oracleMock.address, defaultThreshold)
+
+        expect(backupAddr).to.equal(backupVault2.address)
+
+        // For single token
+        backupAddr = await vault
+          .connect(owner)
+          .callStatic.selectBackup([collaterals[0]], oracleMock.address, defaultThreshold)
+
+        expect(backupAddr).to.equal(backupVault3.address)
+
+        // Add now a competing vault to backupVault3 with higher rate
+        const competingVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collaterals[0]], [bn(1e18)], [])
+        await vault.connect(owner).setBackups([backupVault3.address, competingVault.address])
+
+        // Get selected backup (should be now backup4)
+        // For single token
+        backupAddr = await vault
+          .connect(owner)
+          .callStatic.selectBackup([collaterals[0]], oracleMock.address, defaultThreshold)
+
+        expect(backupAddr).to.equal(competingVault.address)
+      })
     })
   })
 })
