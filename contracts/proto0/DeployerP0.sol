@@ -22,6 +22,13 @@ import "./StakingPoolP0.sol";
  * @title DeployerP0
  * @dev The deployer for the entire system.
  */
+
+struct ParamsAssets {
+    RSRAssetP0 rsrAsset;
+    COMPAssetP0 compAsset;
+    AAVEAssetP0 aaveAsset;
+}
+
 contract DeployerP0 {
     function deploy(
         string memory name,
@@ -32,13 +39,12 @@ contract DeployerP0 {
         Config memory config,
         IComptroller compound,
         IAaveLendingPool aave,
-        RSRAssetP0 rsrAsset,
-        COMPAssetP0 compAsset,
-        AAVEAssetP0 aaveAsset,
+        ParamsAssets memory assets,
         IAsset[] memory approvedCollateralAssets
-    ) external {
+    ) external returns (address) {
         Oracle.Info memory oracle = Oracle.Info(compound, aave);
-        MainP0 main = new MainP0(owner, oracle, config, rsr);
+
+        MainP0 main = new MainP0(oracle, config, rsr);
 
         {
             DefaultMonitorP0 monitor = new DefaultMonitorP0(main);
@@ -49,14 +55,9 @@ contract DeployerP0 {
             RTokenP0 rToken = new RTokenP0(main, name, symbol);
             main.setRToken(rToken);
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken));
-            main.setAssets(rTokenAsset, rsrAsset, compAsset, aaveAsset);
+            main.setAssets(rTokenAsset, assets.rsrAsset, assets.compAsset, assets.aaveAsset);
             FurnaceP0 furnace = new FurnaceP0(address(rToken));
             main.setFurnace(furnace);
-        }
-
-        {
-            AssetManagerP0 manager = new AssetManagerP0(main, vault, owner, approvedCollateralAssets);
-            main.setManager(manager);
         }
 
         {
@@ -68,7 +69,12 @@ contract DeployerP0 {
             main.setStakingPool(staking);
         }
 
+        {
+            AssetManagerP0 manager = new AssetManagerP0(main, vault, owner, approvedCollateralAssets);
+            main.setManager(manager);
+        }
         main.transferOwnership(owner);
+
+        return (address(main));
     }
 }
-
