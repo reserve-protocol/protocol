@@ -5,19 +5,19 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "./interfaces/IStakingPool.sol";
+import "./interfaces/IStRSR.sol";
 import "./interfaces/IMain.sol";
 
 /*
- * @title StakingPoolP0
- * @dev The StakingPool is where people can stake their RSR in order to provide insurance and
+ * @title StRSRP0
+ * @dev The StRSR is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken.
  *
- * There's an important assymetry in the StakingPool. When RSR is added, it must be split only
+ * There's an important assymetry in the StRSR. When RSR is added, it must be split only
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both
  * balances that are in the process of being withdrawn and those that are not.
  */
-contract StakingPoolP0 is IStakingPool, Context {
+contract StRSRP0 is IStRSR, Context {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -82,7 +82,7 @@ contract StakingPoolP0 is IStakingPool, Context {
         _totalStaked -= amount;
 
         // Submit delayed withdrawal
-        withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp + main.config().stakingWithdrawalDelay));
+        withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp + main.config().stRSRWithdrawalDelay));
     }
 
     function balanceOf(address account) external view override returns (uint256) {

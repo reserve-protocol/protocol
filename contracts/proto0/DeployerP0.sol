@@ -16,7 +16,7 @@ import "./DefaultMonitorP0.sol";
 import "./FurnaceP0.sol";
 import "./MainP0.sol";
 import "./RTokenP0.sol";
-import "./StakingPoolP0.sol";
+import "./StRSRP0.sol";
 
 /**
  * @title DeployerP0
@@ -61,12 +61,12 @@ contract DeployerP0 {
         }
 
         {
-            StakingPoolP0 staking = new StakingPoolP0(
+            StRSRP0 stRSR = new StRSRP0(
                 main,
                 string(abi.encodePacked("Staked RSR - ", name)),
                 string(abi.encodePacked("st", symbol, "RSR"))
             );
-            main.setStakingPool(staking);
+            main.setStRSR(stRSR);
         }
 
         {

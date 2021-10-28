@@ -18,7 +18,7 @@ import "./interfaces/IRToken.sol";
 import "./interfaces/IVault.sol";
 import "./FurnaceP0.sol";
 import "./RTokenP0.sol";
-import "./StakingPoolP0.sol";
+import "./StRSRP0.sol";
 
 /**
  * @title AssetManagerP0
@@ -89,7 +89,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
         _accumulate();
 
-        main.rsr().approve(address(main.staking()), type(uint256).max);
+        main.rsr().approve(address(main.stRSR()), type(uint256).max);
         _transferOwnership(owner_);
     }
 
@@ -188,7 +188,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
         Fate fate = Fate.Stay;
 
-        if (!trade && main.rsr().balanceOf(address(main.staking())) > 0) {
+        if (!trade && main.rsr().balanceOf(address(main.stRSR())) > 0) {
             // Final backstop: Use RSR to buy back RToken and burn it.
             fate = Fate.Burn;
             sell = main.rsrAsset();
@@ -202,7 +202,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             sellAmount = (minBuy * rTokenUSD) / rsrUSD;
             sellAmount = ((sellAmount * SCALE) / (SCALE - main.config().maxTradeSlippage));
 
-            main.staking().seizeRSR(sellAmount - main.rsr().balanceOf(address(this)));
+            main.stRSR().seizeRSR(sellAmount - main.rsr().balanceOf(address(this)));
         } else if (!trade) {
             // We've reached the endgame...time to concede and give RToken holders a haircut.
             _accumulate();

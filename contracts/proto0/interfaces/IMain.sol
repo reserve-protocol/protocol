@@ -8,7 +8,7 @@ import "./IAssetManager.sol";
 import "./IDefaultMonitor.sol";
 import "./IFurnace.sol";
 import "./IRToken.sol";
-import "./IStakingPool.sol";
+import "./IStRSR.sol";
 
 enum State {
     CALM,
@@ -22,7 +22,7 @@ struct Config {
     uint256 rewardStart; // the timestamp of the very first weekly reward handout
     uint256 rewardPeriod; // the duration of time between reward events
     uint256 auctionPeriod; // the length of an auction
-    uint256 stakingWithdrawalDelay; // the "thawing time" of staked RSR before withdrawal
+    uint256 stRSRWithdrawalDelay; // the "thawing time" of staked RSR before withdrawal
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Percentage values (relative to SCALE)
     uint256 maxTradeSlippage; // the maximum amount of slippage in percentage terms we will accept in a trade
@@ -40,7 +40,7 @@ struct Config {
     // rewardStart = timestamp of first weekly handout
     // rewardPeriod = 604800 (1 week)
     // auctionPeriod = 1800 (30 minutes)
-    // stakingWithdrawalDelay = 1209600 (2 weeks)
+    // stRSRWithdrawalDelay = 1209600 (2 weeks)
     // defaultDelay = 86400 (24 hours)
     // maxTradeSlippage = 1e17 (10%)
     // auctionClearingTolerance = 1e17 (10%)
@@ -86,7 +86,7 @@ interface IMain {
 
     function furnace() external view returns (IFurnace);
 
-    function staking() external view returns (IStakingPool);
+    function stRSR() external view returns (IStRSR);
 
     function manager() external view returns (IAssetManager);
 

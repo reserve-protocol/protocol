@@ -7,9 +7,9 @@ import { advanceTime } from '../utils/time'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { RTokenMockP0 } from '../../typechain/RTokenMockP0'
-import { StakingPoolP0 } from '../../typechain/StakingPoolP0'
+import { StRSRP0 } from '../../typechain/StRSRP0'
 
-describe('StakingPoolP0 contract', () => {
+describe('StRSRP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -19,7 +19,7 @@ describe('StakingPoolP0 contract', () => {
   let ERC20, RToken: ContractFactory
   let rToken: RTokenMockP0
   let rsr: ERC20Mock
-  let stkPool: StakingPoolP0
+  let stkPool: StRSRP0
   let initialBal: BigNumber
 
   beforeEach(async () => {
@@ -39,13 +39,13 @@ describe('StakingPoolP0 contract', () => {
     await rsr.connect(owner).mint(addr3.address, initialBal)
     await rsr.connect(owner).mint(rToken.address, initialBal)
 
-    // Deploy StakingPool_Sys0
-    const StakingPool = await ethers.getContractFactory('StakingPoolP0')
-    stkPool = <StakingPoolP0>(
-      await StakingPool.connect(owner).deploy('Staked RSR', 'stRSR', owner.address, rToken.address, rsr.address, 0)
+    // Deploy StRSR_Sys0
+    const StRSR = await ethers.getContractFactory('StRSRP0')
+    stkPool = <StRSRP0>(
+      await StRSR.connect(owner).deploy('Staked RSR', 'stRSR', owner.address, rToken.address, rsr.address, 0)
     )
 
-    await rToken.connect(owner).setStakingPool(stkPool.address)
+    await rToken.connect(owner).setStRSR(stkPool.address)
   })
 
   describe('Deployment', () => {

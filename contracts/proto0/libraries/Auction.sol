@@ -62,8 +62,8 @@ library Auction {
             self.buyAsset.erc20().safeApprove(address(main.furnace()), bal);
             main.furnace().burnOverPeriod(bal, main.config().rewardPeriod);
         } else if (self.fate == Fate.Stake) {
-            self.buyAsset.erc20().safeApprove(address(main.staking()), bal);
-            main.staking().addRSR(bal);
+            self.buyAsset.erc20().safeApprove(address(main.stRSR()), bal);
+            main.stRSR().addRSR(bal);
         } else if (self.fate == Fate.Stay) {
             // Do nothing; token is already in the right place
         } else {

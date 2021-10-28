@@ -4,12 +4,12 @@ This is Prototype 0, the _simplest_ version of our system we can possibly imagin
 
 ## Architecture
 
-Prototype 0 uses a hub-and-spoke model. There is a central coordinator called `Main` that holds system-wide state as well as holds handles for all modules. `Main` may have elevated privileges over modules. Modules should not be allowed to even mutate `Main`. Modules should not have elevated privileges over modules, for the most part, though there is a single exception in the `AssetManager`-`StakingPool` relationship so that RSR can be seized.
+Prototype 0 uses a hub-and-spoke model. There is a central coordinator called `Main` that holds system-wide state as well as holds handles for all modules. `Main` may have elevated privileges over modules. Modules should not be allowed to even mutate `Main`. Modules should not have elevated privileges over modules, for the most part, though there is a single exception in the `AssetManager`-`stRSR` relationship so that RSR can be seized.
 
 - `Main`: The main coordinator of the entire system of contracts. Holds configuration of the system as well as global system state. Has elevated privileges on all modules.
 
 - `RToken` Module: The stablecoin ERC-20 provided by the protocol. Holds ERC-20 details like metatransactions, and allows the `AssetManager` to burn/mint, but otherwise simple.
-- `StakingPool` Module: An insurance staking pool that doubles as a tradeable ERC-20 staking derivative. Distributes RSR dividends and seizes RSR to pay for default.
+- `stRSR` Module: A rebasing ERC-20 stRSR derivative token that allows the `AssetManager` to seize RSR, as well as hands out RSR dividends.
 - `AssetManager` Module: Manages assets and performs auctions.
 - `DefaultMonitor` Module: Monitors for default.
 - `Furnace` Module: Permisionless. Accepts batches to be burnt over a time period and block-by-block allows burning.
@@ -22,7 +22,7 @@ Prototype 0 uses a hub-and-spoke model. There is a central coordinator called `M
 - `Vault`: holds exactly the collateral to back its own BU issuance
 - `AssetManager`: holds RToken that is slow minting, and slush fund for collateral (ie intermediate location for collateral during vault migrations)
 - `Furnace`: holds revenue RToken to be melted
-- `StakingPool`: holds staked RSR
+- `stRSR`: holds staked RSR
 
 ## Invariants
 

@@ -32,7 +32,7 @@ contract MainP0 is IMain, Ownable {
     IERC20 public override rsr;
     IRToken public override rToken;
     IFurnace public override furnace;
-    IStakingPool public override staking;
+    IStRSR public override stRSR;
     IAssetManager public override manager;
     IDefaultMonitor public override monitor;
 
@@ -158,8 +158,8 @@ contract MainP0 is IMain, Ownable {
         manager = manager_;
     }
 
-    function setStakingPool(IStakingPool staking_) external onlyOwner {
-        staking = staking_;
+    function setStRSR(IStRSR stRSR_) external onlyOwner {
+        stRSR = stRSR_;
     }
 
     function setFurnace(IFurnace furnace_) external onlyOwner {
@@ -215,7 +215,7 @@ contract MainP0 is IMain, Ownable {
                 rewardStart: _config.rewardStart,
                 rewardPeriod: _config.rewardPeriod,
                 auctionPeriod: _config.auctionPeriod,
-                stakingWithdrawalDelay: _config.stakingWithdrawalDelay,
+                stRSRWithdrawalDelay: _config.stRSRWithdrawalDelay,
                 defaultDelay: _config.defaultDelay,
                 maxTradeSlippage: _config.maxTradeSlippage,
                 auctionClearingTolerance: _config.auctionClearingTolerance,
