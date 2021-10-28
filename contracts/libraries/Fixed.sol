@@ -69,6 +69,13 @@ function intToFix(int256 x) pure returns (Fix) {
     return Fix.wrap(_safe_int128(x * FIX_SCALE));
 }
 
+
+/// Divide a uint by a Fix.
+/// I've done nothing to ensure that truncation happens well here.
+function divFix(uint256 x, Fix y) pure returns (Fix) {
+    return FixLib.div(toFix(x), y);
+}
+
 library FixLib {
     /// All arithmetic functions fail if and only if the result is out of bounds.
 
@@ -170,6 +177,11 @@ library FixLib {
             return FIX_ZERO;
         }
         return divi(x, int256(y));
+    }
+
+    /// Compute 1 / (this Fix).
+    function inv(Fix x) internal pure returns (Fix) {
+        return FIX_ONE.div(x);
     }
 
     /// Raise this Fix to a (positive integer) power.
