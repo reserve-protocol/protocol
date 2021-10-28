@@ -2,6 +2,7 @@
 pragma solidity 0.8.4;
 
 import "../interfaces/IAsset.sol";
+import "../interfaces/IMain.sol";
 
 struct Basket {
     mapping(uint256 => IAsset) assets;
@@ -13,6 +14,8 @@ interface IVault {
     function issue(uint256 amount) external;
 
     function redeem(address redeemer, uint256 amount) external;
+
+    function claimAndSweepRewardsToManager(IMain main) external;
 
     function basketFiatcoinRate() external view returns (uint256);
 

@@ -12,6 +12,8 @@ interface IAssetManager {
 
     function runAuctions() external returns (State);
 
+    function runPeriodicActions() external;
+
     function accumulate() external;
 
     function switchVaults(IAsset[] memory defaulting) external;

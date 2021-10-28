@@ -26,7 +26,7 @@ contract CTokenAssetP0 is AssetP0 {
     }
 
     function priceUSD(IMain main) public view virtual override returns (uint256) {
-        return (redemptionRate() * main.consultCompoundOracle(erc20())) / SCALE;
+        return (redemptionRate() * main.consultCompoundOracle(address(erc20()))) / SCALE;
     }
 
     function fiatcoinPriceUSD(IMain main) public view virtual override returns (uint256) {

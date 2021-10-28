@@ -137,17 +137,19 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         _processSlowIssuance();
 
         // Halt if an auction is ongoing
-        Auction.Info storage prev = auctionCount > 0 ? auctions[auctionCount - 1] : auctions[0];
-        if (prev.open) {
-            if (block.timestamp <= prev.endTime) {
-                return State.TRADING;
-            }
+        Auction.Info storage auction;
+        for (uint256 i = 0; i < auctionCount; i++) {
+            auction = auctions[i];
+            if (auction.open) {
+                if (block.timestamp <= auction.endTime) {
+                    return fullyCapitalized() ? State.CALM : State.RECAPITALIZING;
+                }
 
-            // Closeout auction and check that prices are reasonable (for asset-for-asset auctions).
-            uint256 buyAmount = prev.closeOut(main.rewardPeriod());
-            if (!prev.clearedCloseToOraclePrice(main, buyAmount)) {
-                // Enter precautionary state
-                return State.PRECAUTIONARY;
+                uint256 buyAmount = auction.process(main);
+                if (!auction.clearedCloseToOraclePrice(main, buyAmount)) {
+                    // Enter precautionary state
+                    return State.PRECAUTIONARY;
+                }
             }
         }
 
@@ -202,11 +204,46 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
 
         // At this point in the code this is either a asset-for-asset trade or an RSR-for-RToken trade.
-        uint256 auctionEnd = block.timestamp + main.auctionPeriod();
-        Auction.Info storage auction = auctions[auctionCount];
-        auction.start(sell, buy, sellAmount, minBuy, auctionEnd, destination);
-        auctionCount++;
-        return State.TRADING;
+        _launchAuction(sell, buy, sellAmount, minBuy, destination);
+        return State.RECAPITALIZING;
+    }
+
+    // Does all our periodic actions:
+    // - Expand RToken supply and sell it for dividend RSR
+    // - Claim COMP/AAAVE rewards for both the AssetManager and its Vault
+    // - Trade COMP for melting RToken + dividend RSR
+    // - Trade AAVE for melting RToken + dividend RSR
+    function runPeriodicActions() external override onlyMain {
+        // TODO: Consider having a minBuy, but this would also mean sometimes having to re-execute period auctions
+        IAsset sell;
+        uint256 sellAmount;
+
+        // Expand the supply and trade RToken for dividend RSR
+        uint256 possible = _fromBUs(vault.basketUnits(address(this)));
+        if (fullyCapitalized() && possible > main.rToken().totalSupply()) {
+            sellAmount = possible - main.rToken().totalSupply();
+            main.rToken().mint(address(this), sellAmount);
+            _launchAuction(main.rTokenAsset(), main.rsrAsset(), sellAmount, 0, address(main.staking()));
+        }
+
+        // Claim and sweep rewards
+        vault.claimAndSweepRewardsToManager(main);
+        main.comptroller().claimComp(address(this));
+        IStaticAToken(address(main.aaveAsset().erc20())).claimRewardsToSelf(true);
+
+        // Trade COMP for RToken-to-be-melted and dividend RSR
+        sell = main.compAsset();
+        sellAmount = (main.f() * sell.erc20().balanceOf(address(this))) / SCALE;
+        _launchAuction(sell, main.rsrAsset(), sellAmount, 0, address(main.staking()));
+        sellAmount = sell.erc20().balanceOf(address(this));
+        _launchAuction(sell, main.rTokenAsset(), sellAmount, 0, address(main.furnace()));
+
+        // Trade AAVE for RToken-to-be-melted and dividend RSR
+        sell = main.aaveAsset();
+        sellAmount = (main.f() * sell.erc20().balanceOf(address(this))) / SCALE;
+        _launchAuction(sell, main.rsrAsset(), sellAmount, 0, address(main.staking()));
+        sellAmount = sell.erc20().balanceOf(address(this));
+        _launchAuction(sell, main.rTokenAsset(), sellAmount, 0, address(main.furnace()));
     }
 
     //
@@ -226,6 +263,17 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
     }
 
+    function switchVault(IVault vault_) public onlyOwner {
+        pastVaults.push(vault_);
+        vault = vault_;
+
+        // Accumulate the basket dilution factor to enable correct forward accounting
+        accumulate();
+
+        // Undo all open slowmintings
+        _processSlowIssuance();
+    }
+
     // Unapproves the defaulting asset and switches the RToken over to a new Vault.
     function switchVaults(IAsset[] memory defaulting) public override onlyMain {
         for (uint256 i = 0; i < defaulting.length; i++) {
@@ -234,14 +282,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
         IVault newVault = main.monitor().getNextVault(vault, _approvedCollateralAssets.values(), _fiatcoins.values());
         if (address(newVault) != address(0)) {
-            pastVaults.push(vault);
-            vault = newVault;
-
-            // Accumulate the basket dilution factor to enable correct forward accounting
-            accumulate();
-
-            // Undo all open slowmintings
-            _processSlowIssuance();
+            switchVault(newVault);
         }
     }
 
@@ -307,6 +348,18 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     //
+
+    function _launchAuction(
+        IAsset sell,
+        IAsset buy,
+        uint256 sellAmount,
+        uint256 minBuy,
+        address dest
+    ) internal {
+        Auction.Info storage auction = auctions[auctionCount];
+        auction.start(sell, buy, sellAmount, minBuy, block.timestamp + main.auctionPeriod(), dest);
+        auctionCount++;
+    }
 
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowIssuance() internal {

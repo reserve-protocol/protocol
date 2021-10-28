@@ -8,7 +8,9 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "./assets/AAVEAssetP0.sol";
 import "./interfaces/IAsset.sol";
+import "./interfaces/IMain.sol";
 import "./interfaces/IVault.sol";
 
 /*
@@ -62,7 +64,7 @@ contract VaultP0 is IVault, Ownable {
         uint256[] memory amounts = tokenAmounts(amount);
 
         for (uint256 i = 0; i < _basket.size; i++) {
-            IERC20(_basket.assets[i].erc20()).safeTransferFrom(_msgSender(), address(this), amounts[i]);
+            _basket.assets[i].erc20().safeTransferFrom(_msgSender(), address(this), amounts[i]);
         }
 
         basketUnits[_msgSender()] += amount;
@@ -80,7 +82,24 @@ contract VaultP0 is IVault, Ownable {
         totalUnits -= amount;
 
         for (uint256 i = 0; i < _basket.size; i++) {
-            IERC20(_basket.assets[i].erc20()).safeTransfer(redeemer, amounts[i]);
+            _basket.assets[i].erc20().safeTransfer(redeemer, amounts[i]);
+        }
+    }
+
+    // Claims COMP/AAVE and sweeps any balance to the Asset Manager.
+    function claimAndSweepRewardsToManager(IMain main) external override {
+        // Claim
+        main.comptroller().claimComp(address(this));
+        IStaticAToken(address(main.aaveAsset().erc20())).claimRewardsToSelf(true);
+
+        // Sweep
+        IERC20 comp = main.compAsset().erc20();
+        IERC20 aave = main.aaveAsset().erc20();
+        if (comp.balanceOf(address(this)) > 0) {
+            comp.safeTransfer(address(main.manager()), comp.balanceOf(address(this)));
+        }
+        if (aave.balanceOf(address(this)) > 0) {
+            aave.safeTransfer(address(main.manager()), aave.balanceOf(address(this)));
         }
     }
 
@@ -113,7 +132,7 @@ contract VaultP0 is IVault, Ownable {
     function maxIssuable(address issuer) external view override returns (uint256) {
         uint256 min = type(uint256).max;
         for (uint256 i = 0; i < _basket.size; i++) {
-            uint256 BUs = IERC20(_basket.assets[i].erc20()).balanceOf(issuer) / _basket.quantities[i];
+            uint256 BUs = _basket.assets[i].erc20().balanceOf(issuer) / _basket.quantities[i];
             if (BUs < min) {
                 min = BUs;
             }
