@@ -71,8 +71,8 @@ library Auction {
         uint256 buyAmount
     ) internal returns (bool) {
         uint256 SCALE = main.SCALE();
-        uint256 sellAmountNormalized = self.sellAmount * 10**(SCALE - self.sellAsset.decimals());
-        uint256 buyAmountNormalized = buyAmount * 10**(SCALE - self.buyAsset.decimals());
+        uint256 sellAmountNormalized = self.sellAmount * SCALE / 10**(self.sellAsset.decimals());
+        uint256 buyAmountNormalized = buyAmount * SCALE / 10**(self.buyAsset.decimals());
         uint256 ratio = (buyAmountNormalized * SCALE) / sellAmountNormalized;
         uint256 expectedRatio = (self.sellAsset.priceUSD(main) * SCALE) / self.buyAsset.priceUSD(main);
 
