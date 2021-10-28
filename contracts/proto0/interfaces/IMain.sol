@@ -13,7 +13,7 @@ import "./IStakingPool.sol";
 enum State {
     CALM,
     DOUBT,
-    TRADING,
+    RECAPITALIZING,
     PRECAUTIONARY
 }
 
@@ -42,7 +42,7 @@ struct Config {
     // auctionPeriod = 1800 (30 minutes)
     // stakingWithdrawalDelay = 1209600 (2 weeks)
     // defaultDelay = 86400 (24 hours)
-    // maxTradeSlippage = 5e16 (5%)
+    // maxTradeSlippage = 1e17 (10%)
     // auctionClearingTolerance = 1e17 (10%)
     // maxAuctionSize = 1e16 (1%)
     // minAuctionSize = 1e15 (0.1%)
@@ -50,6 +50,19 @@ struct Config {
     // issuanceRate = 25e13 (0.025% per block, or ~0.1% per minute)
     // defaultThreshold = 5e16 (5% deviation)
     // f = 6e17 (60% to stakers)
+}
+
+// https://github.com/aave/protocol-v2/blob/feat-atoken-wrapper-liquidity-mining/contracts/protocol/tokenization/StaticATokenLM.sol
+interface IStaticAToken is IERC20 {
+    function rate() external view returns (uint256);
+
+    function ATOKEN() external view returns (AToken);
+
+    function claimRewardsToSelf(bool forceUpdate) external;
+}
+
+interface AToken {
+    function UNDERLYING_ASSET_ADDRESS() external view returns (address);
 }
 
 interface IMain {
@@ -82,6 +95,8 @@ interface IMain {
     function consultAaveOracle(address token) external view returns (uint256);
 
     function consultCompoundOracle(address token) external view returns (uint256);
+
+    function comptroller() external view returns (IComptroller);
 
     function rTokenAsset() external view returns (IAsset);
 
@@ -121,3 +136,4 @@ interface IMain {
 
     function f() external view returns (uint256);
 }
+

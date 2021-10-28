@@ -2,6 +2,7 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IAsset.sol";
 import "../interfaces/IMain.sol";
 
@@ -20,8 +21,8 @@ contract AssetP0 is IAsset {
         return 1e18;
     }
 
-    function erc20() public view override returns (address) {
-        return _erc20;
+    function erc20() public view virtual override returns (IERC20) {
+        return IERC20(_erc20);
     }
 
     function decimals() external view override returns (uint8) {
@@ -37,7 +38,7 @@ contract AssetP0 is IAsset {
     }
 
     function priceUSD(IMain main) public view virtual override returns (uint256) {
-        return (redemptionRate() * main.consultAaveOracle(erc20())) / SCALE;
+        return (redemptionRate() * main.consultAaveOracle(address(erc20()))) / SCALE;
     }
 
     function fiatcoinPriceUSD(IMain main) public view virtual override returns (uint256) {

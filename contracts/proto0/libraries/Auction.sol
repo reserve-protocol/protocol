@@ -43,18 +43,22 @@ library Auction {
     }
 
     // Returns the buyAmount for the auction after clearing.
-    function closeOut(Auction.Info storage self, uint256 rewardPeriod) internal returns (uint256 buyAmount) {
+    function process(Auction.Info storage self, IMain main) internal returns (uint256 buyAmount) {
         require(self.open, "already closed out");
         require(self.endTime <= block.timestamp, "auction not over");
         // TODO: buyAmount = batchAuction.claim();
-        uint256 bal = IERC20(self.buyAsset.erc20()).balanceOf(address(this));
+        uint256 bal = self.buyAsset.erc20().balanceOf(address(this));
+        self.buyAsset.erc20().safeApprove(self.destination, bal);
+
         if (self.destination == address(0)) {
-            // Burn
-            IERC20(self.buyAsset.erc20()).safeTransfer(address(0), bal);
-        } else if (self.destination != address(this)) {
-            // Send to the Furnace for slow burning
-            IERC20(self.buyAsset.erc20()).safeApprove(self.destination, bal);
-            IFurnace(self.destination).burnOverPeriod(bal, rewardPeriod);
+            // burn
+            self.buyAsset.erc20().safeTransfer(address(0), bal);
+        } else if (self.destination == address(main.furnace())) {
+            // melt
+            main.furnace().burnOverPeriod(bal, main.rewardPeriod());
+        } else if (self.destination == address(main.staking())) {
+            // addRSR
+            main.staking().addRSR(bal);
         }
         self.open = false;
         return buyAmount;

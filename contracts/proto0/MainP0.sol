@@ -42,8 +42,11 @@ contract MainP0 is IMain, Ownable {
     IAsset public override compAsset;
     IAsset public override aaveAsset;
 
+    // Pausing
     address public pauser;
     bool public override paused;
+
+    mapping(uint256 => bool) rewardsProcessed; // timestamp of rewards
 
     // Default detection.
     State public state;
@@ -67,7 +70,7 @@ contract MainP0 is IMain, Ownable {
         IAsset[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
         if (hardDefaulting.length > 0) {
             manager.switchVaults(hardDefaulting);
-            state = State.TRADING;
+            state = State.RECAPITALIZING;
         }
         _;
     }
@@ -78,7 +81,7 @@ contract MainP0 is IMain, Ownable {
     }
 
     function issue(uint256 amount) external override notPaused always {
-        require(state == State.CALM || state == State.TRADING, "only during calm + migration");
+        require(state == State.CALM || state == State.RECAPITALIZING, "only during calm + migration");
         require(amount > 0, "Cannot issue zero");
         manager.issue(_msgSender(), amount);
     }
@@ -90,43 +93,50 @@ contract MainP0 is IMain, Ownable {
 
     // Runs auctions
     function poke() external override notPaused always {
-        require(state == State.CALM || state == State.TRADING, "only during calm + migration");
+        require(state == State.CALM || state == State.RECAPITALIZING, "only during calm + migration");
         state = manager.runAuctions();
+
+        if (state == State.CALM) {
+            (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
+            if (!rewardsProcessed[prevRewards]) {
+                rewardsProcessed[prevRewards] = true;
+                manager.runPeriodicActions();
+            }
+        }
     }
 
     // Default check
     function noticeDefault() external override notPaused always {
         IAsset[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoinAssets());
 
-        // If no defaults, walk back the default and enter CALM/TRADING
+        // If no defaults, walk back the default and enter CALM/RECAPITALIZING
         if (softDefaulting.length == 0) {
-            state = manager.fullyCapitalized() ? State.CALM : State.TRADING;
+            state = manager.fullyCapitalized() ? State.CALM : State.RECAPITALIZING;
             return;
         }
 
         // If state is DOUBT for >24h (default delay), switch vaults
         if (state == State.DOUBT && block.timestamp >= stateRaisedAt + _config.defaultDelay) {
             manager.switchVaults(softDefaulting);
-            state = State.TRADING;
-        } else if (state == State.CALM || state == State.TRADING) {
+            state = State.RECAPITALIZING;
+        } else if (state == State.CALM || state == State.RECAPITALIZING) {
             state = State.DOUBT;
             stateRaisedAt = block.timestamp;
         }
     }
 
     function pause() external {
-        require(_msgSender() == pauser, "only pauser");
+        require(_msgSender() == pauser || _msgSender() == owner(), "only pauser or owner");
         paused = true;
     }
 
     function unpause() external {
-        require(_msgSender() == pauser, "only pauser");
+        require(_msgSender() == pauser || _msgSender() == owner(), "only pauser or owner");
         paused = false;
     }
 
-    //
-
-    function setPauser(address pauser_) external onlyOwner {
+    function setPauser(address pauser_) external {
+        require(_msgSender() == pauser || _msgSender() == owner(), "only pauser or owner");
         pauser = pauser_;
     }
 
@@ -172,6 +182,11 @@ contract MainP0 is IMain, Ownable {
 
     // ==================================== Views ====================================
 
+    function nextRewards() public view returns (uint256) {
+        (, uint256 next) = _rewardsAdjacent(block.timestamp);
+        return next;
+    }
+
     function quoteIssue(uint256 amount) public view override returns (uint256[] memory) {
         require(amount > 0, "Cannot quote issue zero");
         return manager.quote(amount);
@@ -188,6 +203,10 @@ contract MainP0 is IMain, Ownable {
 
     function consultCompoundOracle(address token) external view override returns (uint256) {
         return _oracle.consultCompound(token);
+    }
+
+    function comptroller() external view override returns (IComptroller) {
+        return _oracle.compound;
     }
 
     // Config
@@ -243,4 +262,14 @@ contract MainP0 is IMain, Ownable {
     function f() external view override returns (uint256) {
         return _config.f;
     }
+
+    // ==================================== Internal ====================================
+
+    // Returns the rewards boundaries on either side of *time*.
+    function _rewardsAdjacent(uint256 time) internal view returns (uint256 left, uint256 right) {
+        int256 reps = (int256(time) - int256(_config.rewardStart)) / int256(_config.rewardPeriod);
+        left = uint256(reps * int256(_config.rewardPeriod) + int256(_config.rewardStart));
+        right = left + _config.rewardPeriod;
+    }
 }
+

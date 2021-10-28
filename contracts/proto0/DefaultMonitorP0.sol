@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
+import "@openzeppelin/contracts/utils/Context.sol";
 import "./interfaces/IAsset.sol";
 import "./interfaces/IDefaultMonitor.sol";
 import "./interfaces/IMain.sol";
@@ -10,7 +11,7 @@ import "./MainP0.sol";
  * @title DefaultMonitorP0
  * @dev The default monitor checks for default states in other systems.
  */
-contract DefaultMonitorP0 is IDefaultMonitor {
+contract DefaultMonitorP0 is Context, IDefaultMonitor {
     uint256 public constant SCALE = 1e18;
 
     IMain public main;
@@ -22,6 +23,7 @@ contract DefaultMonitorP0 is IDefaultMonitor {
     }
 
     function checkForHardDefault(IVault vault) external override returns (IAsset[] memory defaulting) {
+        require(_msgSender() == address(main), "main only");
         IAsset[] memory vaultAssets = new IAsset[](vault.size());
         uint256 count;
         for (uint256 i = 0; i < vault.size(); i++) {
@@ -120,3 +122,4 @@ contract DefaultMonitorP0 is IDefaultMonitor {
         return (price * (SCALE - main.defaultThreshold())) / SCALE;
     }
 }
+

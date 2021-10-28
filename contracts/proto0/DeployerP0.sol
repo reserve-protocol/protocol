@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../Ownable.sol"; // temporary
-// import "@openzeppelin/contracts/access/Ownable.sol";
-
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./assets/RTokenAssetP0.sol";
 import "./assets/RSRAssetP0.sol";
@@ -74,3 +71,4 @@ contract DeployerP0 {
         main.transferOwnership(owner);
     }
 }
+
