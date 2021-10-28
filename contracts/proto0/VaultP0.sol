@@ -8,8 +8,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "./interfaces/ICollateral.sol";
-import "./interfaces/IOracle.sol";
+import "./interfaces/IAsset.sol";
 import "./interfaces/IVault.sol";
 
 /*
@@ -30,23 +29,23 @@ contract VaultP0 is IVault, Ownable {
     IVault[] public backups;
 
     constructor(
-        ICollateral[] memory collateral,
+        IAsset[] memory assets,
         uint256[] memory quantities,
         IVault[] memory backupVaults
     ) {
-        require(collateral.length == quantities.length, "arrays must match in length");
+        require(assets.length == quantities.length, "arrays must match in length");
 
         // Set default immutable basket
-        _basket.size = collateral.length;
+        _basket.size = assets.length;
         for (uint256 i = 0; i < _basket.size; i++) {
-            _basket.collateral[i] = collateral[i];
+            _basket.assets[i] = assets[i];
             _basket.quantities[i] = quantities[i];
         }
 
         backups = backupVaults;
     }
 
-    // Returns the collateral token quantities required to issue/redeem a Basket Unit
+    // Returns the assets token quantities required to issue/redeem a Basket Unit
     function tokenAmounts(uint256 amount) public view override returns (uint256[] memory parts) {
         parts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
@@ -63,7 +62,7 @@ contract VaultP0 is IVault, Ownable {
         uint256[] memory amounts = tokenAmounts(amount);
 
         for (uint256 i = 0; i < _basket.size; i++) {
-            IERC20(_basket.collateral[i].erc20()).safeTransferFrom(_msgSender(), address(this), amounts[i]);
+            IERC20(_basket.assets[i].erc20()).safeTransferFrom(_msgSender(), address(this), amounts[i]);
         }
 
         basketUnits[_msgSender()] += amount;
@@ -81,59 +80,26 @@ contract VaultP0 is IVault, Ownable {
         totalUnits -= amount;
 
         for (uint256 i = 0; i < _basket.size; i++) {
-            IERC20(_basket.collateral[i].erc20()).safeTransfer(redeemer, amounts[i]);
+            IERC20(_basket.assets[i].erc20()).safeTransfer(redeemer, amounts[i]);
         }
     }
 
     // Returns how many fiatcoins a single BU can be redeemed for.
-    // Can't be a view because the cToken and aToken could cause state changes to their Defi protocols.
-    function basketFiatcoinRate() external override returns (uint256 sum) {
+    function basketFiatcoinRate() external view override returns (uint256 sum) {
         for (uint256 i = 0; i < _basket.size; i++) {
-            ICollateral c = _basket.collateral[i];
+            IAsset c = _basket.assets[i];
             sum += (_basket.quantities[i] * c.redemptionRate()) / 10**c.decimals();
         }
     }
 
-    // Get best backup vault that does not contain defaulting tokens.
-    // Returns the zero address if there are no vaults that fit the criteria.
-    function selectBackup(
-        address[] memory approvedCollateral,
-        IOracle oracle,
-        uint256 defaultThreshold
-    ) external override returns (IVault) {
-        uint256 maxRate;
-        uint256 indexMax = 0;
-
-        // Loop through backups to find the highest value one that doesn't contain defaulting collateral
-        for (uint256 i = 0; i < backups.length; i++) {
-            if (
-                backups[i].containsOnly(approvedCollateral) &&
-                backups[i].softDefaultingCollateral(oracle, defaultThreshold).length == 0
-            ) {
-                uint256 rate = backups[i].basketFiatcoinRate();
-
-                // See if it has the highest basket rate
-                if (rate > maxRate) {
-                    maxRate = rate;
-                    indexMax = i;
-                }
-            }
-        }
-
-        if (maxRate == 0) {
-            return IVault(address(0));
-        }
-        return backups[indexMax];
-    }
-
     //
 
-    // Returns whether the vault consists of only tokens from the *collateral* set.
-    function containsOnly(address[] memory collateral) external view override returns (bool) {
+    // Returns whether the vault consists of only tokens from the *assets* set.
+    function containsOnly(address[] memory assets) external view override returns (bool) {
         for (uint256 i = 0; i < _basket.size; i++) {
             bool found = false;
-            for (uint256 j = 0; j < collateral.length; j++) {
-                if (address(_basket.collateral[i]) == collateral[j]) {
+            for (uint256 j = 0; j < assets.length; j++) {
+                if (address(_basket.assets[i]) == assets[j]) {
                     found = true;
                 }
             }
@@ -144,31 +110,10 @@ contract VaultP0 is IVault, Ownable {
         return true;
     }
 
-    // Returns a list of the collateral tokens that are soft defaulting, meaning we should monitor for 24h.
-    function softDefaultingCollateral(IOracle oracle, uint256 defaultThreshold)
-        external
-        view
-        override
-        returns (ICollateral[] memory defaulting)
-    {
-        ICollateral[] memory all = new ICollateral[](_basket.size);
-        uint256 count;
-        for (uint256 i = 0; i < _basket.size; i++) {
-            if (oracle.fiatcoinPrice(_basket.collateral[i]) < defaultThreshold) {
-                all[count] = _basket.collateral[i];
-                count++;
-            }
-        }
-        defaulting = new ICollateral[](count);
-        for (uint256 i = 0; i < count; i++) {
-            defaulting[i] = all[i];
-        }
-    }
-
     function maxIssuable(address issuer) external view override returns (uint256) {
         uint256 min = type(uint256).max;
         for (uint256 i = 0; i < _basket.size; i++) {
-            uint256 BUs = IERC20(_basket.collateral[i].erc20()).balanceOf(issuer) / _basket.quantities[i];
+            uint256 BUs = IERC20(_basket.assets[i].erc20()).balanceOf(issuer) / _basket.quantities[i];
             if (BUs < min) {
                 min = BUs;
             }
@@ -176,22 +121,26 @@ contract VaultP0 is IVault, Ownable {
         return min;
     }
 
-    function basketSize() external view override returns (uint256) {
+    function size() external view override returns (uint256) {
         return _basket.size;
     }
 
-    function collateralAt(uint256 index) external view override returns (ICollateral) {
-        return _basket.collateral[index];
+    function assetAt(uint256 index) external view override returns (IAsset) {
+        return _basket.assets[index];
     }
 
-    // Returns the basket quantity for the given collateral.
-    function quantity(ICollateral collateral) external view override returns (uint256) {
+    // Returns the basket quantity for the given assets.
+    function quantity(IAsset asset) external view override returns (uint256) {
         for (uint256 i = 0; i < _basket.size; i++) {
-            if (_basket.collateral[i] == collateral) {
+            if (_basket.assets[i] == asset) {
                 return _basket.quantities[i];
             }
         }
         return 0;
+    }
+
+    function getBackups() external view override returns (IVault[] memory) {
+        return backups;
     }
 
     function setBackups(IVault[] memory backupVaults) external onlyOwner {
