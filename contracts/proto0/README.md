@@ -4,7 +4,7 @@ This is Prototype 0, the _simplest_ version of our system we can possibly imagin
 
 ## Architecture
 
-Prototype 0 uses a hub-and-spoke model. There is a central coordinator called `Main` that holds system-wide state as well as holds handles for all modules. `Main` may have elevated privileges over modules. Modules should not be allowed to even mutatae `Main`. Modules should not have elevated privileges over modules, for the most part, though there is a single exception in the `AssetManager`-`StakingPool` relationship so that RSR can be seized.
+Prototype 0 uses a hub-and-spoke model. There is a central coordinator called `Main` that holds system-wide state as well as holds handles for all modules. `Main` may have elevated privileges over modules. Modules should not be allowed to even mutate `Main`. Modules should not have elevated privileges over modules, for the most part, though there is a single exception in the `AssetManager`-`StakingPool` relationship so that RSR can be seized.
 
 - `Main`: The main coordinator of the entire system of contracts. Holds configuration of the system as well as global system state. Has elevated privileges on all modules.
 

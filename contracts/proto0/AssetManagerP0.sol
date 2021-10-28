@@ -108,7 +108,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function issue(address issuer, uint256 amount) external override onlyMain always {
         _processSlowIssuance();
         IRToken r = main.rToken();
-        uint256 issuanceRate = Math.max(10_000 * 10**r.decimals(), (r.totalSupply() * main.issuanceRate()) / SCALE);
+        uint256 issuanceRate = Math.max(
+            10_000 * 10**r.decimals(),
+            (r.totalSupply() * main.config().issuanceRate) / SCALE
+        );
         uint256 numBlocks = Math.ceilDiv(amount, issuanceRate);
 
         // Calculate block the issuance should be made available.
@@ -176,7 +179,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         uint256 totalSupply = main.rToken().totalSupply();
         IVault oldVault = _oldestNonEmptyVault();
         if (!trade && oldVault != vault) {
-            uint256 max = _toBUs(((totalSupply) * main.migrationChunk()) / SCALE);
+            uint256 max = _toBUs(((totalSupply) * main.config().migrationChunk) / SCALE);
             uint256 chunk = Math.min(max, oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
 
@@ -194,10 +197,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             uint256 rsrUSD = sell.priceUSD(main);
             uint256 rTokenUSD = buy.priceUSD(main);
             uint256 unbackedRToken = totalSupply - _fromBUs(vault.basketUnits(address(this)));
-            minBuy = Math.min(unbackedRToken, (totalSupply * main.maxAuctionSize()) / SCALE);
-            minBuy = Math.max(minBuy, (totalSupply * main.minAuctionSize()) / SCALE);
+            minBuy = Math.min(unbackedRToken, (totalSupply * main.config().maxAuctionSize) / SCALE);
+            minBuy = Math.max(minBuy, (totalSupply * main.config().minAuctionSize) / SCALE);
             sellAmount = (minBuy * rTokenUSD) / rsrUSD;
-            sellAmount = ((sellAmount * SCALE) / (SCALE - main.maxTradeSlippage()));
+            sellAmount = ((sellAmount * SCALE) / (SCALE - main.config().maxTradeSlippage));
 
             main.staking().seizeRSR(sellAmount - main.rsr().balanceOf(address(this)));
         } else if (!trade) {
@@ -215,7 +218,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     // Does all our periodic actions:
     // - Expand RToken supply and sell it for dividend RSR
-    // - Claim COMP/AAAVE rewards for both the AssetManager and its Vault
+    // - Claim COMP/AAVE rewards for both the AssetManager and its Vault
     // - Trade COMP for melting RToken + dividend RSR
     // - Trade AAVE for melting RToken + dividend RSR
     function runPeriodicActions() external override onlyMain {
@@ -238,14 +241,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
         // Trade COMP for RToken-to-be-melted and dividend RSR
         sell = main.compAsset();
-        sellAmount = (main.f() * sell.erc20().balanceOf(address(this))) / SCALE;
+        sellAmount = (main.config().f * sell.erc20().balanceOf(address(this))) / SCALE;
         _launchAuction(sell, main.rsrAsset(), sellAmount, 0, address(main.staking()));
         sellAmount = sell.erc20().balanceOf(address(this));
         _launchAuction(sell, main.rTokenAsset(), sellAmount, 0, address(main.furnace()));
 
         // Trade AAVE for RToken-to-be-melted and dividend RSR
         sell = main.aaveAsset();
-        sellAmount = (main.f() * sell.erc20().balanceOf(address(this))) / SCALE;
+        sellAmount = (main.config().f * sell.erc20().balanceOf(address(this))) / SCALE;
         _launchAuction(sell, main.rsrAsset(), sellAmount, 0, address(main.staking()));
         sellAmount = sell.erc20().balanceOf(address(this));
         _launchAuction(sell, main.rTokenAsset(), sellAmount, 0, address(main.furnace()));
@@ -356,7 +359,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         address dest
     ) internal {
         Auction.Info storage auction = auctions[auctionCount];
-        auction.start(sell, buy, sellAmount, minBuy, block.timestamp + main.auctionPeriod(), dest);
+        auction.start(sell, buy, sellAmount, minBuy, block.timestamp + main.config().auctionPeriod, dest);
         auctionCount++;
     }
 
@@ -375,7 +378,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function _diluteBasket() internal {
         if (_prevBasketFiatcoinRate - SCALE > 0) {
             uint256 current = vault.basketFiatcoinRate();
-            _currentBasketDilution = SCALE + main.f() * ((SCALE * current) / _prevBasketFiatcoinRate - SCALE);
+            _currentBasketDilution = SCALE + main.config().f * ((SCALE * current) / _prevBasketFiatcoinRate - SCALE);
         }
     }
 
@@ -437,7 +440,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
         // Determine if the trade is large enough to be worth doing and calculate amounts.
         {
-            uint256 minAuctionSizeInBUs = _toBUs((main.rToken().totalSupply() * main.minAuctionSize()) / SCALE);
+            uint256 minAuctionSizeInBUs = _toBUs((main.rToken().totalSupply() * main.config().minAuctionSize) / SCALE);
             uint256 minAuctionSizeInFiatcoins = (minAuctionSizeInBUs * vault.basketFiatcoinRate()) / SCALE;
             shouldTrade = deficitMax > minAuctionSizeInFiatcoins && surplusMax > minAuctionSizeInFiatcoins;
             minBuyAmount = (deficitMax * SCALE) / prices[buyIndex];
@@ -445,7 +448,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             buy = IAsset(_allCollateralAssets.at(buyIndex));
         }
 
-        uint256 maxSell = ((deficitMax * SCALE) / (SCALE - main.maxTradeSlippage()));
+        uint256 maxSell = ((deficitMax * SCALE) / (SCALE - main.config().maxTradeSlippage));
         sellAmount = (Math.min(maxSell, surplusMax) * SCALE) / sell.redemptionRate();
         return (shouldTrade, sell, buy, sellAmount, minBuyAmount);
     }

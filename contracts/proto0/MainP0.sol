@@ -209,56 +209,23 @@ contract MainP0 is IMain, Ownable {
 
     // Config
 
-    function rewardStart() external view override returns (uint256) {
-        return _config.rewardStart;
-    }
-
-    function rewardPeriod() external view override returns (uint256) {
-        return _config.rewardPeriod;
-    }
-
-    function auctionPeriod() external view override returns (uint256) {
-        return _config.auctionPeriod;
-    }
-
-    function stakingWithdrawalDelay() external view override returns (uint256) {
-        return _config.stakingWithdrawalDelay;
-    }
-
-    function defaultDelay() external view override returns (uint256) {
-        return _config.defaultDelay;
-    }
-
-    function maxTradeSlippage() external view override returns (uint256) {
-        return _config.maxTradeSlippage;
-    }
-
-    function auctionClearingTolerance() external view override returns (uint256) {
-        return _config.auctionClearingTolerance;
-    }
-
-    function maxAuctionSize() external view override returns (uint256) {
-        return _config.maxAuctionSize;
-    }
-
-    function minAuctionSize() external view override returns (uint256) {
-        return _config.minAuctionSize;
-    }
-
-    function migrationChunk() external view override returns (uint256) {
-        return _config.migrationChunk;
-    }
-
-    function issuanceRate() external view override returns (uint256) {
-        return _config.issuanceRate;
-    }
-
-    function defaultThreshold() external view override returns (uint256) {
-        return _config.defaultThreshold;
-    }
-
-    function f() external view override returns (uint256) {
-        return _config.f;
+    function config() external view override returns (Config memory c) {
+        return
+            Config({
+                rewardStart: _config.rewardStart,
+                rewardPeriod: _config.rewardPeriod,
+                auctionPeriod: _config.auctionPeriod,
+                stakingWithdrawalDelay: _config.stakingWithdrawalDelay,
+                defaultDelay: _config.defaultDelay,
+                maxTradeSlippage: _config.maxTradeSlippage,
+                auctionClearingTolerance: _config.auctionClearingTolerance,
+                maxAuctionSize: _config.maxAuctionSize,
+                minAuctionSize: _config.minAuctionSize,
+                migrationChunk: _config.migrationChunk,
+                issuanceRate: _config.issuanceRate,
+                defaultThreshold: _config.defaultThreshold,
+                f: _config.f
+            });
     }
 
     // ==================================== Internal ====================================

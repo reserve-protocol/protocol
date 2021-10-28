@@ -27,4 +27,3 @@ contract COMPAssetP0 is AssetP0 {
         return false;
     }
 }
-

@@ -119,7 +119,6 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
             price = prices[prices.length / 2];
         }
 
-        return (price * (SCALE - main.defaultThreshold())) / SCALE;
+        return (price * (SCALE - main.config().defaultThreshold)) / SCALE;
     }
 }
-

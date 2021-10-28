@@ -82,7 +82,7 @@ contract StakingPoolP0 is IStakingPool, Context {
         _totalStaked -= amount;
 
         // Submit delayed withdrawal
-        withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp + main.stakingWithdrawalDelay()));
+        withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp + main.config().stakingWithdrawalDelay));
     }
 
     function balanceOf(address account) external view override returns (uint256) {

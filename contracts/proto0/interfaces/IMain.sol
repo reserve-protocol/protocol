@@ -108,31 +108,5 @@ interface IMain {
 
     function SCALE() external view returns (uint256);
 
-    // Governance Params
-
-    function rewardStart() external view returns (uint256);
-
-    function rewardPeriod() external view returns (uint256);
-
-    function auctionPeriod() external view returns (uint256);
-
-    function stakingWithdrawalDelay() external view returns (uint256);
-
-    function defaultDelay() external view returns (uint256);
-
-    function maxTradeSlippage() external view returns (uint256);
-
-    function auctionClearingTolerance() external view returns (uint256);
-
-    function maxAuctionSize() external view returns (uint256);
-
-    function minAuctionSize() external view returns (uint256);
-
-    function migrationChunk() external view returns (uint256);
-
-    function issuanceRate() external view returns (uint256);
-
-    function defaultThreshold() external view returns (uint256);
-
-    function f() external view returns (uint256);
+    function config() external view returns (Config memory);
 }
