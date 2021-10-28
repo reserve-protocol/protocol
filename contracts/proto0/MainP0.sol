@@ -210,22 +210,7 @@ contract MainP0 is IMain, Ownable {
     // Config
 
     function config() external view override returns (Config memory c) {
-        return
-            Config({
-                rewardStart: _config.rewardStart,
-                rewardPeriod: _config.rewardPeriod,
-                auctionPeriod: _config.auctionPeriod,
-                stRSRWithdrawalDelay: _config.stRSRWithdrawalDelay,
-                defaultDelay: _config.defaultDelay,
-                maxTradeSlippage: _config.maxTradeSlippage,
-                auctionClearingTolerance: _config.auctionClearingTolerance,
-                maxAuctionSize: _config.maxAuctionSize,
-                minAuctionSize: _config.minAuctionSize,
-                migrationChunk: _config.migrationChunk,
-                issuanceRate: _config.issuanceRate,
-                defaultThreshold: _config.defaultThreshold,
-                f: _config.f
-            });
+        return _config;
     }
 
     // ==================================== Internal ====================================
