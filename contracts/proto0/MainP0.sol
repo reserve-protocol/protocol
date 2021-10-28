@@ -272,3 +272,4 @@ contract MainP0 is IMain, Ownable {
         right = left + _config.rewardPeriod;
     }
 }
+

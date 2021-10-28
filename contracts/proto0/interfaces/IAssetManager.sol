@@ -26,3 +26,4 @@ interface IAssetManager {
 
     function approvedFiatcoinAssets() external view returns (address[] memory);
 }
+
