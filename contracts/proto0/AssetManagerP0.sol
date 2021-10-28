@@ -186,11 +186,11 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             // Decide whether to trade and exactly which trade.
             (trade, sell, buy, sellAmount, minBuy) = _getCollateralTrade();
         }
-        address destination = address(this);
+        Fate fate = Fate.Stay;
 
         if (!trade && main.rsr().balanceOf(address(main.staking())) > 0) {
             // Final backstop: Use RSR to buy back RToken and burn it.
-            destination = address(0);
+            fate = Fate.Burn;
             sell = main.rsrAsset();
             buy = main.rTokenAsset();
 
@@ -205,14 +205,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             main.staking().seizeRSR(sellAmount - main.rsr().balanceOf(address(this)));
         } else if (!trade) {
             // We've reached the endgame...time to concede and give RToken holders a haircut.
-            accumulate();
+            _accumulate();
             uint256 melting = (SCALE * (totalSupply + main.furnace().totalBurnt())) / totalSupply;
             _historicalBasketDilution = (melting * vault.basketUnits(address(this))) / totalSupply;
             return State.CALM;
         }
 
         // At this point in the code this is either a asset-for-asset trade or an RSR-for-RToken trade.
-        _launchAuction(sell, buy, sellAmount, minBuy, destination);
+        _launchAuction(sell, buy, sellAmount, minBuy, fate);
         return State.RECAPITALIZING;
     }
 
@@ -231,7 +231,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         if (fullyCapitalized() && possible > main.rToken().totalSupply()) {
             sellAmount = possible - main.rToken().totalSupply();
             main.rToken().mint(address(this), sellAmount);
-            _launchAuction(main.rTokenAsset(), main.rsrAsset(), sellAmount, 0, address(main.staking()));
+            _launchAuction(main.rTokenAsset(), main.rsrAsset(), sellAmount, 0, Fate.Stake);
         }
 
         // Claim and sweep rewards
@@ -242,16 +242,16 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         // Trade COMP for RToken-to-be-melted and dividend RSR
         sell = main.compAsset();
         sellAmount = (main.config().f * sell.erc20().balanceOf(address(this))) / SCALE;
-        _launchAuction(sell, main.rsrAsset(), sellAmount, 0, address(main.staking()));
+        _launchAuction(sell, main.rsrAsset(), sellAmount, 0, Fate.Stake);
         sellAmount = sell.erc20().balanceOf(address(this));
-        _launchAuction(sell, main.rTokenAsset(), sellAmount, 0, address(main.furnace()));
+        _launchAuction(sell, main.rTokenAsset(), sellAmount, 0, Fate.Melt);
 
         // Trade AAVE for RToken-to-be-melted and dividend RSR
         sell = main.aaveAsset();
         sellAmount = (main.config().f * sell.erc20().balanceOf(address(this))) / SCALE;
-        _launchAuction(sell, main.rsrAsset(), sellAmount, 0, address(main.staking()));
+        _launchAuction(sell, main.rsrAsset(), sellAmount, 0, Fate.Stake);
         sellAmount = sell.erc20().balanceOf(address(this));
-        _launchAuction(sell, main.rTokenAsset(), sellAmount, 0, address(main.furnace()));
+        _launchAuction(sell, main.rTokenAsset(), sellAmount, 0, Fate.Melt);
     }
 
     //
@@ -356,10 +356,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         IAsset buy,
         uint256 sellAmount,
         uint256 minBuy,
-        address dest
+        Fate fate
     ) internal {
         Auction.Info storage auction = auctions[auctionCount];
-        auction.start(sell, buy, sellAmount, minBuy, block.timestamp + main.config().auctionPeriod, dest);
+        auction.start(sell, buy, sellAmount, minBuy, block.timestamp + main.config().auctionPeriod, fate);
         auctionCount++;
     }
 

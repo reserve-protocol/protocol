@@ -7,6 +7,13 @@ import "../interfaces/IAsset.sol";
 import "../interfaces/IFurnace.sol";
 import "../interfaces/IMain.sol";
 
+enum Fate {
+    Melt, // RToken melting in the furnace
+    Stake, // RSR dividend to stRSR
+    Burn, // RToken burning
+    Stay // No action needs to be taken; tokens can be left at the callers address
+}
+
 library Auction {
     using SafeERC20 for IERC20;
 
@@ -17,7 +24,7 @@ library Auction {
         uint256 minBuyAmount;
         uint256 startTime;
         uint256 endTime;
-        address destination;
+        Fate fate;
         bool open;
     }
 
@@ -28,7 +35,7 @@ library Auction {
         uint256 sellAmount,
         uint256 minBuyAmount,
         uint256 endTime,
-        address destination
+        Fate fate
     ) internal {
         self.sellAsset = sellAsset;
         self.buyAsset = buyAsset;
@@ -36,7 +43,7 @@ library Auction {
         self.minBuyAmount = minBuyAmount;
         self.startTime = block.timestamp;
         self.endTime = endTime;
-        self.destination = destination;
+        self.fate = fate;
         self.open = true;
 
         // TODO: batchAuction.initiateAuction()
@@ -48,17 +55,19 @@ library Auction {
         require(self.endTime <= block.timestamp, "auction not over");
         // TODO: buyAmount = batchAuction.claim();
         uint256 bal = self.buyAsset.erc20().balanceOf(address(this));
-        self.buyAsset.erc20().safeApprove(self.destination, bal);
 
-        if (self.destination == address(0)) {
-            // burn
+        if (self.fate == Fate.Burn) {
             self.buyAsset.erc20().safeTransfer(address(0), bal);
-        } else if (self.destination == address(main.furnace())) {
-            // melt
+        } else if (self.fate == Fate.Melt) {
+            self.buyAsset.erc20().safeApprove(address(main.furnace()), bal);
             main.furnace().burnOverPeriod(bal, main.config().rewardPeriod);
-        } else if (self.destination == address(main.staking())) {
-            // addRSR
+        } else if (self.fate == Fate.Stake) {
+            self.buyAsset.erc20().safeApprove(address(main.staking()), bal);
             main.staking().addRSR(bal);
+        } else if (self.fate == Fate.Stay) {
+            // Do nothing; token is already in the right place
+        } else {
+            assert(false);
         }
         self.open = false;
         return buyAmount;
