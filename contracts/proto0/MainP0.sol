@@ -53,12 +53,10 @@ contract MainP0 is IMain, Ownable {
     uint256 public stateRaisedAt; // timestamp when default occurred
 
     constructor(
-        address owner,
         Oracle.Info memory oracle_,
         Config memory config_,
         IERC20 rsr_
     ) {
-        _transferOwnership(owner);
         _oracle = oracle_;
         _config = config_;
         rsr = rsr_;
@@ -272,4 +270,3 @@ contract MainP0 is IMain, Ownable {
         right = left + _config.rewardPeriod;
     }
 }
-

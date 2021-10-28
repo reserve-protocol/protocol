@@ -76,16 +76,21 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         IAsset[] memory approvedAssets_
     ) {
         main = main_;
-        _transferOwnership(owner_);
         vault = vault_;
+        _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
+
         for (uint256 i = 0; i < approvedAssets_.length; i++) {
             approveAsset(approvedAssets_[i]);
         }
+
         if (!vault.containsOnly(_approvedCollateralAssets.values())) {
             revert CommonErrors.UnapprovedAsset();
         }
-        accumulate();
+
+        _accumulate();
+
         main.rsr().approve(address(main.staking()), type(uint256).max);
+        _transferOwnership(owner_);
     }
 
     modifier onlyMain() {
@@ -289,14 +294,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     // Upon vault change or change to *f*, we accumulate the historical dilution factor.
     // TODO: Is this acceptable? There's compounding error but so few number of times.
     function accumulate() public override onlyMain {
-        // Idempotent
-        _diluteBasket();
-        _historicalBasketDilution = (_historicalBasketDilution * _currentBasketDilution) / SCALE;
-        _currentBasketDilution = SCALE;
-        _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
+        _accumulate();
     }
-
-    //
 
     function quote(uint256 amount) public view override returns (uint256[] memory) {
         require(amount > 0, "Cannot quote redeem zero");
@@ -374,8 +373,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     // Uses a closed-form calculation that is anchored to the last time the vault or *f* was changed.
     // Idempotent
     function _diluteBasket() internal {
-        uint256 current = vault.basketFiatcoinRate();
-        _currentBasketDilution = SCALE + main.f() * ((SCALE * current) / _prevBasketFiatcoinRate - SCALE);
+        if (_prevBasketFiatcoinRate - SCALE > 0) {
+            uint256 current = vault.basketFiatcoinRate();
+            _currentBasketDilution = SCALE + main.f() * ((SCALE * current) / _prevBasketFiatcoinRate - SCALE);
+        }
     }
 
     // Determines if a trade should be made and what it should be.
@@ -447,5 +448,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         uint256 maxSell = ((deficitMax * SCALE) / (SCALE - main.maxTradeSlippage()));
         sellAmount = (Math.min(maxSell, surplusMax) * SCALE) / sell.redemptionRate();
         return (shouldTrade, sell, buy, sellAmount, minBuyAmount);
+    }
+
+    //  Internal helper to accumulate the historical dilution factor.
+    function _accumulate() internal {
+        // Idempotent
+        _diluteBasket();
+        _historicalBasketDilution = (_historicalBasketDilution * _currentBasketDilution) / SCALE;
+        _currentBasketDilution = SCALE;
+        _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
     }
 }
