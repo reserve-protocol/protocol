@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./interfaces/IStRSR.sol";
 import "./interfaces/IMain.sol";
 
+
 /*
  * @title StRSRP0
  * @dev The StRSR is where people can stake their RSR in order to provide insurance and
