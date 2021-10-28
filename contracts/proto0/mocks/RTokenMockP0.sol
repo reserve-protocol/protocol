@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../interfaces/IStakingPool.sol";
+import "../interfaces/IStRSR.sol";
 
 interface IRToken is IERC20 {}
 
@@ -12,7 +12,7 @@ contract RTokenMockP0 is ERC20, IRToken {
     using SafeERC20 for IERC20;
     using SafeERC20 for IRToken;
 
-    IStakingPool public stakingPool;
+    IStRSR public stRSR;
     IERC20 public rsr;
 
     constructor(
@@ -23,17 +23,17 @@ contract RTokenMockP0 is ERC20, IRToken {
         rsr = IERC20(rsr_);
     }
 
-    function setStakingPool(address stakingPool_) external {
-        stakingPool = IStakingPool(stakingPool_);
+    function setStRSR(address stRSR_) external {
+        stRSR = IStRSR(stRSR_);
     }
 
     function addRSR(uint256 amount) external {
-        rsr.safeApprove(address(stakingPool), amount);
-        stakingPool.addRSR(amount);
+        rsr.safeApprove(address(stRSR), amount);
+        stRSR.addRSR(amount);
     }
 
     function seizeRSR(uint256 amount) external {
-        stakingPool.seizeRSR(amount);
+        stRSR.seizeRSR(amount);
     }
 
     function mint(address recipient, uint256 amount) external returns (bool) {

@@ -15,7 +15,7 @@ library SlowIssuance {
         uint256 BUs;
         uint256[] basketAmounts;
         address minter;
-        uint256 availableAt;
+        uint256 blockAvailableAt;
         bool processed;
     }
 
@@ -25,18 +25,18 @@ library SlowIssuance {
         uint256 amount,
         uint256 BUs,
         address minter,
-        uint256 availableAt
+        uint256 blockAvailableAt
     ) internal {
         self.vault = vault;
         self.amount = amount;
         self.BUs = BUs;
         self.basketAmounts = vault.tokenAmounts(BUs);
         self.minter = minter;
-        self.availableAt = availableAt;
+        self.blockAvailableAt = blockAvailableAt;
 
-        for (uint256 i = 0; i < vault.basketSize(); i++) {
-            IERC20(vault.collateralAt(i).erc20()).safeTransferFrom(minter, address(this), self.basketAmounts[i]);
-            IERC20(self.vault.collateralAt(i).erc20()).safeApprove(address(self.vault), self.basketAmounts[i]);
+        for (uint256 i = 0; i < vault.size(); i++) {
+            IERC20(vault.assetAt(i).erc20()).safeTransferFrom(minter, address(this), self.basketAmounts[i]);
+            IERC20(self.vault.assetAt(i).erc20()).safeApprove(address(self.vault), self.basketAmounts[i]);
         }
         self.vault.issue(self.BUs);
     }
@@ -47,7 +47,7 @@ library SlowIssuance {
         IVault vault
     ) internal {
         require(!self.processed, "slow minting already processed");
-        require(self.availableAt <= block.timestamp, "slow minting needs more time");
+        require(self.blockAvailableAt <= block.number, "slow minting needs more time");
 
         if (address(self.vault) != address(vault)) {
             // Revert Issuance
