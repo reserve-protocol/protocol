@@ -163,10 +163,12 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     // Algorithm:
     //     1. Closeout previous auctions
     //     2. Create BUs from spare assets
-    //     3. Break off BUs from the old vault for more assets, if we
-    //     4. Launch a asset-for-asset auction until we are left with dust
+    //     3. Break off BUs from the old vault for more assets if we are undercapitalized
+    //     4. Launch asset-for-asset auctions until we are left with only dust
     //     5. If it's all dust: sell RSR and buy RToken and burn it
     //     6. If we run out of RSR: give RToken holders a haircut to get back to capitalized
+    // That's all just to get to the point of capitalization. 
+    // Once we are capitalized we perform revenue auctions. 
     function runAuctions() external override onlyMain always returns (State) {
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctionCount; i++) {
@@ -229,6 +231,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                     Fate.Stay
                 );
             } else if (!worth && main.rsr().balanceOf(address(main.stRSR())) > 0) {
+                // Recapitalization: RSR -> RToken
                 (worth, auction) = _prepareTargetBuyAuction(
                     config.minRecapitalizationAuctionSize,
                     main.rsrAsset(),
