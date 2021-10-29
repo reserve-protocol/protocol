@@ -94,7 +94,7 @@ contract MainP0 is IMain, Ownable {
 
         // During SlowIssuance, BUs are created up front and held by `Main` until the issuance vests,
         // at which point the BUs are transferred to the AssetManager and RToken is minted to the issuer.
-        issuances[issuanceCount] = manager.startIssuance(_msgSender(), amount);
+        issuances[issuanceCount] = manager.beginIssuance(_msgSender(), amount);
         issuances[issuanceCount].blockAvailableAt = _nextIssuanceBlockAvailable(amount);
 
         SlowIssuance storage iss = issuances[issuanceCount];

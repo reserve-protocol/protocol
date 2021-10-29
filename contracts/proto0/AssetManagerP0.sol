@@ -62,8 +62,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     // Append-only record keeping
     IVault[] public pastVaults;
-    mapping(uint256 => Auction.Info) public auctions;
-    uint256 public auctionCount;
+    Auction.Info[] public auctions;
 
     constructor(
         IMain main_,
@@ -171,7 +170,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     // Once we are capitalized we perform revenue auctions. 
     function runAuctions() external override onlyMain always returns (State) {
         // Closeout open auctions or sleep if they are still ongoing.
-        for (uint256 i = 0; i < auctionCount; i++) {
+        for (uint256 i = 0; i < auctions.length; i++) {
             Auction.Info storage auction = auctions[i];
             if (auction.open) {
                 if (block.timestamp <= auction.endTime) {
@@ -252,9 +251,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 return State.CALM;
             }
 
-            auctions[auctionCount] = auction;
-            auctions[auctionCount].launch();
-            auctionCount++;
+            auctions.push(auction);
+            auctions[auctions.length - 1].launch();
             return State.TRADING;
         }
 
@@ -274,9 +272,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             Fate.Stake
         );
         if (worth) {
-            auctions[auctionCount] = auction;
-            auctions[auctionCount].launch();
-            auctionCount++;
+            auctions.push(auction);
+            auctions[auctions.length - 1].launch();
             return State.TRADING;
         }
 
@@ -319,12 +316,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
 
         if (worth && worth2) {
-            auctions[auctionCount] = auction;
-            auctions[auctionCount].launch();
-            auctionCount++;
-            auctions[auctionCount] = auction2;
-            auctions[auctionCount].launch();
-            auctionCount++;
+            auctions.push(auction);
+            auctions[auctions.length - 1].launch();
+            auctions.push(auction2);
+            auctions[auctions.length - 1].launch();
             return State.TRADING;
         }
         return State.CALM;
