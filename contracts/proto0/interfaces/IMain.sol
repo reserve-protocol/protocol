@@ -9,6 +9,7 @@ import "./IDefaultMonitor.sol";
 import "./IFurnace.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
+import "contracts/libraries/Fixed.sol";
 
 enum State {
     CALM,
@@ -26,7 +27,7 @@ struct Config {
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Percentage values (relative to SCALE)
     uint256 maxTradeSlippage; // the maximum amount of slippage in percentage terms we will accept in a trade
-    uint256 auctionClearingTolerance; // the maximum % difference between auction clearing price and oracle data allowed.
+    Fix auctionClearingTolerance; // the maximum % difference between auction clearing price and oracle data allowed.
     uint256 maxAuctionSize; // the size of an auction, as a fraction of RToken supply
     uint256 minAuctionSize; // the size of an auction, as a fraction of RToken supply
     uint256 migrationChunk; // how much backing to migrate at a time, as a fraction of RToken supply
@@ -43,7 +44,7 @@ struct Config {
     // stRSRWithdrawalDelay = 1209600 (2 weeks)
     // defaultDelay = 86400 (24 hours)
     // maxTradeSlippage = 1e17 (10%)
-    // auctionClearingTolerance = 1e17 (10%)
+    // auctionClearingTolerance = 0.1 (10%)
     // maxAuctionSize = 1e16 (1%)
     // minAuctionSize = 1e15 (0.1%)
     // migrationChunk = 2e17 (20%)

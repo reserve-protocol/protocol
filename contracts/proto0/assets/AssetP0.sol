@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IAsset.sol";
 import "../interfaces/IMain.sol";
+import "contracts/libraries/Fixed.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
 contract AssetP0 is IAsset {
@@ -37,8 +38,8 @@ contract AssetP0 is IAsset {
         return _erc20;
     }
 
-    function priceUSD(IMain main) public view virtual override returns (uint256) {
-        return (redemptionRate() * main.consultAaveOracle(address(erc20()))) / SCALE;
+    function priceUSD(IMain main) public view virtual override returns (Fix) {
+        return toFix(redemptionRate() * main.consultAaveOracle(address(erc20())));
     }
 
     function fiatcoinPriceUSD(IMain main) public view virtual override returns (uint256) {

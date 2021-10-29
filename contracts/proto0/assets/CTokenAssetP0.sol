@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "../interfaces/IMain.sol";
 import "./AssetP0.sol";
+import "contracts/libraries/Fixed.sol";
 
 // https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 interface ICToken {
@@ -25,8 +26,8 @@ contract CTokenAssetP0 is AssetP0 {
         return ICToken(_erc20).underlying();
     }
 
-    function priceUSD(IMain main) public view virtual override returns (uint256) {
-        return (redemptionRate() * main.consultCompoundOracle(address(erc20()))) / SCALE;
+    function priceUSD(IMain main) public view virtual override returns (Fix) {
+        return (redemptionRate() * main.consultCompoundOracle(address(erc20())));
     }
 
     function fiatcoinPriceUSD(IMain main) public view virtual override returns (uint256) {

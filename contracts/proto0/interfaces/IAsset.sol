@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IMain.sol";
+import "contracts/libraries/Fixed.sol";
 
 interface IAsset {
     function redemptionRate() external view returns (uint256);
@@ -15,7 +16,9 @@ interface IAsset {
 
     function fiatcoin() external view returns (address);
 
-    function priceUSD(IMain main) external view returns (uint256);
+    // Returns the price of one lot of this token, in USD
+    // (A "lot" is 1e18 token quanta)
+    function priceUSD(IMain main) external view returns (Fix);
 
     function fiatcoinPriceUSD(IMain main) external view returns (uint256);
 

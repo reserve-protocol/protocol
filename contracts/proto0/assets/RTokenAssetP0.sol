@@ -4,6 +4,7 @@ pragma solidity 0.8.4;
 import "../interfaces/IMain.sol";
 import "../interfaces/IVault.sol";
 import "./AssetP0.sol";
+import "contracts/libraries/Fixed.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
 contract RTokenAssetP0 is AssetP0 {
@@ -15,11 +16,13 @@ contract RTokenAssetP0 is AssetP0 {
         return 0;
     }
 
-    function priceUSD(IMain main) public view override returns (uint256 sum) {
+    // Return the price of one lot of this token in USD.
+    // (Here, 1 lot *is* 1 RToken, because RToken has 18 decimals.)
+    function priceUSD(IMain main) public view override returns (Fix sum) {
         IVault v = main.manager().vault();
         for (uint256 i = 0; i < v.size(); i++) {
-            IAsset a = v.assetAt(i);
-            sum += (v.quantity(a) * a.priceUSD(main)) / 10**a.decimals();
+            Fix asset_quantity = v.quantity(v.assetAt(i));
+            sum = sum.plus( asset_quantity.times(a.priceUSD(main)) );
         }
     }
 

@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IAsset.sol";
 import "../interfaces/IFurnace.sol";
 import "../interfaces/IMain.sol";
+import "contracts/libraries/Fixed.sol";
 
 enum Fate {
     Melt, // RToken melting in the furnace
@@ -20,10 +21,10 @@ library Auction {
     struct Info {
         IAsset sellAsset;
         IAsset buyAsset;
-        uint256 sellAmount;
-        uint256 minBuyAmount;
-        uint256 startTime;
-        uint256 endTime;
+        uint256 sellAmount;   // dim: qSellToken
+        uint256 minBuyAmount; // dim: qBuyToken
+        uint256 startTime;    // dim: seconds since epoch
+        uint256 endTime;      // dim: seconds since epoch
         Fate fate;
         bool open;
     }
@@ -74,17 +75,17 @@ library Auction {
     }
 
     // Returns false if the auction buyAmount is > *threshold* of the expected buyAmount.
-    function clearedCloseToOraclePrice(
-        Auction.Info storage self,
-        IMain main,
-        uint256 buyAmount
-    ) internal returns (bool) {
-        uint256 SCALE = main.SCALE();
-        uint256 sellAmountNormalized = (self.sellAmount * SCALE) / 10**(self.sellAsset.decimals());
-        uint256 buyAmountNormalized = (buyAmount * SCALE) / 10**(self.buyAsset.decimals());
-        uint256 ratio = (buyAmountNormalized * SCALE) / sellAmountNormalized;
-        uint256 expectedRatio = (self.sellAsset.priceUSD(main) * SCALE) / self.buyAsset.priceUSD(main);
+    function clearedCloseToOraclePrice(Auction.Info storage self, IMain main, uint256 buyAmount)
+        internal returns (bool) {
+        // dim: qBuyToken / qSellToken
+        // clearedRate = buyAmount / sellAmount
+        Fix clearedRate = toFix(buyAmount).divu(self.sellAmount);
 
-        return (ratio >= expectedRatio || expectedRatio - ratio <= main.config().auctionClearingTolerance);
+        // dim: (USD/qSellToken lot) / (USD/qBuyToken lot)  =  qBuyToken / qSellToken
+        // expectedRate = sellAsset.priceUSD / buyAsset.priceUSD
+        Fix expectedRate = (self.sellAsset.priceUSD(main)).div(self.buyAsset.priceUSD(main));
+
+        // return 1 - clearedRate/expectedRate <= auctionClearingTolerance
+        return FIX_ONE.minus( (clearedRate).div(expectedRate) ).lte(main.config().auctionClearingTolerance);
     }
 }

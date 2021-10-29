@@ -3,6 +3,7 @@ pragma solidity 0.8.4;
 
 import "../interfaces/IMain.sol";
 import "./AssetP0.sol";
+import "contracts/libraries/Fixed.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
 contract COMPAssetP0 is AssetP0 {
@@ -14,8 +15,8 @@ contract COMPAssetP0 is AssetP0 {
         return 0;
     }
 
-    function priceUSD(IMain main) public view virtual override returns (uint256) {
-        return (redemptionRate() * main.consultCompoundOracle(address(erc20()))) / SCALE;
+    function priceUSD(IMain main) public view virtual override returns (Fix) {
+        return (redemptionRate() * main.consultCompoundOracle(address(erc20())));
     }
 
     function fiatcoinPriceUSD(IMain) public view virtual override returns (uint256) {
