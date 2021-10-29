@@ -8,6 +8,8 @@ import "contracts/libraries/Fixed.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
 contract RTokenAssetP0 is AssetP0 {
+    using FixLib for Fix;
+
     constructor(address erc20_) AssetP0(erc20_) {}
 
     // Fiatcoins return 1e18. All redemption rates should have 18 zeroes.
@@ -21,7 +23,8 @@ contract RTokenAssetP0 is AssetP0 {
     function priceUSD(IMain main) public view override returns (Fix sum) {
         IVault v = main.manager().vault();
         for (uint256 i = 0; i < v.size(); i++) {
-            Fix asset_quantity = v.quantity(v.assetAt(i));
+            IAsset a = v.assetAt(i);
+            Fix asset_quantity = toFix(v.quantity(a));
             sum = sum.plus( asset_quantity.times(a.priceUSD(main)) );
         }
     }

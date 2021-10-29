@@ -17,14 +17,15 @@ enum Fate {
 
 library Auction {
     using SafeERC20 for IERC20;
+    using FixLib for Fix;
 
     struct Info {
         IAsset sellAsset;
         IAsset buyAsset;
-        uint256 sellAmount;   // dim: qSellToken
-        uint256 minBuyAmount; // dim: qBuyToken
-        uint256 startTime;    // dim: seconds since epoch
-        uint256 endTime;      // dim: seconds since epoch
+        uint256 sellAmount;   // {qTok}
+        uint256 minBuyAmount; // {qTok}
+        uint256 startTime;    // {sec}
+        uint256 endTime;      // {sec}
         Fate fate;
         bool open;
     }
@@ -77,12 +78,10 @@ library Auction {
     // Returns false if the auction buyAmount is > *threshold* of the expected buyAmount.
     function clearedCloseToOraclePrice(Auction.Info storage self, IMain main, uint256 buyAmount)
         internal returns (bool) {
-        // dim: qBuyToken / qSellToken
-        // clearedRate = buyAmount / sellAmount
+        // clearedRate{qBuyTok/qSellTok} = buyAmount{qBuyTok} / sellAmount{qSellTok}
         Fix clearedRate = toFix(buyAmount).divu(self.sellAmount);
 
-        // dim: (USD/qSellToken lot) / (USD/qBuyToken lot)  =  qBuyToken / qSellToken
-        // expectedRate = sellAsset.priceUSD / buyAsset.priceUSD
+        // expectedRate{qBuyTok/qSellTok} = sellAsset.priceUSD{USD/lotSellTok} / buyAsset.priceUSD{USD/lotBuyTok}
         Fix expectedRate = (self.sellAsset.priceUSD(main)).div(self.buyAsset.priceUSD(main));
 
         // return 1 - clearedRate/expectedRate <= auctionClearingTolerance

@@ -38,6 +38,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     using Auction for Auction.Info;
     using EnumerableSet for EnumerableSet.AddressSet;
     using Oracle for Oracle.Info;
+    using FixLib for Fix;
 
     uint256 public constant SCALE = 1e18;
 
@@ -194,8 +195,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             sell = main.rsrAsset();
             buy = main.rTokenAsset();
 
-            uint256 rsrUSD = sell.priceUSD(main);
-            uint256 rTokenUSD = buy.priceUSD(main);
+            uint256 rsrUSD = sell.priceUSD(main).toUint();
+            uint256 rTokenUSD = buy.priceUSD(main).toUint();
             uint256 unbackedRToken = totalSupply - _fromBUs(vault.basketUnits(address(this)));
             minBuy = Math.min(unbackedRToken, (totalSupply * main.config().maxAuctionSize) / SCALE);
             minBuy = Math.max(minBuy, (totalSupply * main.config().minAuctionSize) / SCALE);
@@ -403,7 +404,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         uint256[] memory prices = new uint256[](_allCollateralAssets.length()); // USD with 18 decimals
         for (uint256 i = 0; i < _allCollateralAssets.length(); i++) {
             IAsset a = IAsset(_allCollateralAssets.at(i));
-            prices[i] = a.priceUSD(main);
+            prices[i] = a.priceUSD(main).toUint();
             totalValue += IERC20(a.erc20()).balanceOf(address(this)) * prices[i];
         }
         uint256 BUTarget = (totalValue * SCALE) / vault.basketFiatcoinRate();

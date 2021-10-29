@@ -181,7 +181,7 @@ library FixLib {
 
     /// Compute 1 / (this Fix).
     function inv(Fix x) internal pure returns (Fix) {
-        return FIX_ONE.div(x);
+        return div(FIX_ONE,(x));
     }
 
     /// Raise this Fix to a (positive integer) power.
