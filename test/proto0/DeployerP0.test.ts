@@ -34,7 +34,8 @@ interface IManagerConfig {
   maxTradeSlippage: BigNumber
   auctionClearingTolerance: BigNumber
   maxAuctionSize: BigNumber
-  minAuctionSize: BigNumber
+  minRecapitalizationAuctionSize: BigNumber
+  minRevenueAuctionSize: BigNumber
   migrationChunk: BigNumber
   issuanceRate: BigNumber
   defaultThreshold: BigNumber
@@ -114,7 +115,8 @@ describe('DeployerP0 contract', () => {
   const maxTradeSlippage: BigNumber = bn(5e16) // 5%
   const auctionClearingTolerance: BigNumber = bn(5e16) // 5%
   const maxAuctionSize: BigNumber = bn(1e16) // 1%
-  const minAuctionSize: BigNumber = bn(1e15) // 0.1%
+  const minRecapitalizationAuctionSize: BigNumber = bn(1e15) // 0.1%
+  const minRevenueAuctionSize: BigNumber = bn(1e14) // 0.01%
   const migrationChunk: BigNumber = bn(2e17) // 20%
   const issuanceRate: BigNumber = bn(25e13) // 0.025% per block or ~0.1% per minute
   const defaultThreshold: BigNumber = bn(5e16) // 5% deviation
@@ -221,7 +223,8 @@ describe('DeployerP0 contract', () => {
       auctionClearingTolerance: auctionClearingTolerance,
       maxTradeSlippage: maxTradeSlippage,
       maxAuctionSize: maxAuctionSize,
-      minAuctionSize: minAuctionSize,
+      minRecapitalizationAuctionSize: minRecapitalizationAuctionSize,
+      minRevenueAuctionSize: minRevenueAuctionSize,
       migrationChunk: migrationChunk,
       issuanceRate: issuanceRate,
       defaultThreshold: defaultThreshold,

@@ -31,6 +31,8 @@ contract VaultP0 is IVault, Ownable {
 
     IVault[] public backups;
 
+    IMain public main;
+
     constructor(
         IAsset[] memory assets,
         uint256[] memory quantities,
@@ -101,7 +103,9 @@ contract VaultP0 is IVault, Ownable {
     }
 
     // Claims COMP/AAVE and sweeps any balance to the Asset Manager.
-    function claimAndSweepRewardsToManager(IMain main) external override {
+    function claimAndSweepRewardsToManager() external override {
+        require(address(main) != address(0), "main not set");
+
         // Claim
         main.comptroller().claimComp(address(this));
         IStaticAToken(address(main.aaveAsset().erc20())).claimRewardsToSelf(true);
@@ -178,5 +182,9 @@ contract VaultP0 is IVault, Ownable {
 
     function setBackups(IVault[] memory backupVaults) external onlyOwner {
         backups = backupVaults;
+    }
+
+    function setMain(IMain main_) external onlyOwner {
+        main = main_;
     }
 }

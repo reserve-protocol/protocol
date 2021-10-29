@@ -28,25 +28,9 @@ library Auction {
         bool open;
     }
 
-    function start(
-        Auction.Info storage self,
-        IAsset sellAsset,
-        IAsset buyAsset,
-        uint256 sellAmount,
-        uint256 minBuyAmount,
-        uint256 endTime,
-        Fate fate
-    ) internal {
-        self.sellAsset = sellAsset;
-        self.buyAsset = buyAsset;
-        self.sellAmount = sellAmount;
-        self.minBuyAmount = minBuyAmount;
-        self.startTime = block.timestamp;
-        self.endTime = endTime;
-        self.fate = fate;
-        self.open = true;
-
+    function launch(Auction.Info storage self) internal {
         // TODO: batchAuction.initiateAuction()
+        self.open = true;
     }
 
     // Returns the buyAmount for the auction after clearing.

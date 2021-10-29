@@ -14,7 +14,7 @@ interface IAssetManager {
 
     function runAuctions() external returns (State);
 
-    function runPeriodicActions() external;
+    function collectRevenue() external;
 
     function accumulate() external;
 

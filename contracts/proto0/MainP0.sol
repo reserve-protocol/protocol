@@ -50,7 +50,8 @@ contract MainP0 is IMain, Ownable {
     address public pauser;
     bool public override paused;
 
-    mapping(uint256 => bool) rewardsProcessed; // timestamp of rewards
+    // timestamp -> whether rewards have been claimed.
+    mapping(uint256 => bool) rewardsClaimed;
 
     // Slow Issuance
     mapping(uint256 => SlowIssuance) public issuances;
@@ -76,7 +77,7 @@ contract MainP0 is IMain, Ownable {
         IAsset[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
         if (hardDefaulting.length > 0) {
             manager.switchVaults(hardDefaulting);
-            state = State.RECAPITALIZING;
+            state = State.TRADING;
         }
         _;
     }
@@ -87,7 +88,7 @@ contract MainP0 is IMain, Ownable {
     }
 
     function issue(uint256 amount) external override notPaused always {
-        require(state == State.CALM || state == State.RECAPITALIZING, "only during calm + migration");
+        require(state == State.CALM || state == State.TRADING, "only during calm + migration");
         require(amount > 0, "Cannot issue zero");
         _processSlowIssuance();
 
@@ -115,35 +116,34 @@ contract MainP0 is IMain, Ownable {
 
     // Runs auctions
     function poke() external override notPaused always {
-        require(state == State.CALM || state == State.RECAPITALIZING, "only during calm + migration");
+        require(state == State.CALM || state == State.TRADING, "only during calm + migration");
         _processSlowIssuance();
-
-        state = manager.runAuctions();
 
         if (state == State.CALM) {
             (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
-            if (!rewardsProcessed[prevRewards]) {
-                rewardsProcessed[prevRewards] = true;
-                manager.runPeriodicActions();
+            if (!rewardsClaimed[prevRewards]) {
+                manager.collectRevenue();
+                rewardsClaimed[prevRewards] = true;
             }
         }
+        state = manager.runAuctions();
     }
 
     // Default check
     function noticeDefault() external override notPaused always {
         IAsset[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoinAssets());
 
-        // If no defaults, walk back the default and enter CALM/RECAPITALIZING
+        // If no defaults, walk back the default and enter CALM/TRADING
         if (softDefaulting.length == 0) {
-            state = manager.fullyCapitalized() ? State.CALM : State.RECAPITALIZING;
+            state = manager.fullyCapitalized() ? State.CALM : State.TRADING;
             return;
         }
 
         // If state is DOUBT for >24h (default delay), switch vaults
         if (state == State.DOUBT && block.timestamp >= stateRaisedAt + _config.defaultDelay) {
             manager.switchVaults(softDefaulting);
-            state = State.RECAPITALIZING;
-        } else if (state == State.CALM || state == State.RECAPITALIZING) {
+            state = State.TRADING;
+        } else if (state == State.CALM || state == State.TRADING) {
             state = State.DOUBT;
             stateRaisedAt = block.timestamp;
         }
