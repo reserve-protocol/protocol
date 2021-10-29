@@ -260,7 +260,7 @@ describe('VaultP0 contract', () => {
       expect(await vault.tokenAmounts(TWO)).to.eql([qtyHalf.mul(2), qtyHalf.mul(2), qtyThird.mul(2), qtyDouble.mul(2)])
     })
 
-    it('Should adjust basketFiatcoinRate and tokenAmounts for decimals', async function () {
+    it('Should adjust basketFiatcoinRate and tokenAmounts for decimals (USDC)', async function () {
       // New Vault with USDC tokens
       let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assetUSDC.address], [bn(1e6)], [])
       expect(await newVault.callStatic.basketFiatcoinRate()).to.equal(bn(1e18))
@@ -284,6 +284,12 @@ describe('VaultP0 contract', () => {
       await cTkn.setExchangeRate(bn(2e18))
       expect(await newVault.callStatic.basketFiatcoinRate()).to.equal(bn(1e18).mul(2))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
+
+      // Set new Vault with sinlge AToken - reduce redemption rate to a half
+      await aTkn.setExchangeRate(bn(5e17))
+      newVault = <VaultP0>await VaultFactory.deploy([assetAToken.address], [bn(1e18)], [])
+      expect(await newVault.callStatic.basketFiatcoinRate()).to.equal(qtyHalf)
+      expect(await newVault.tokenAmounts(ONE)).to.eql([bn(1e18)])
     })
 
     it('Should return max Issuable for user', async function () {
@@ -398,7 +404,11 @@ describe('VaultP0 contract', () => {
   })
 
   describe('Rewards', () => {
-    it.skip('Should claim and sweep rewards to Manager', async function () {})
+    it.skip('Should claim and sweep rewards to Manager', async function () {
+      // Claim and Sweep rewards
+      // TODO: Load or mock main, with Comptroller. Review how to implement `claimComp` in mock.
+      //await vault.claimAndSweepRewardsToManager(main.address)
+    })
   })
 
   describe('Backups', () => {
