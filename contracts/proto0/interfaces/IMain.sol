@@ -9,6 +9,7 @@ import "./IDefaultMonitor.sol";
 import "./IFurnace.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
+import "./IVault.sol";
 
 enum State {
     CALM,
@@ -50,6 +51,16 @@ struct Config {
     // issuanceRate = 25e13 (0.025% per block, or ~0.1% per minute)
     // defaultThreshold = 5e16 (5% deviation)
     // f = 6e17 (60% to stakers)
+}
+
+struct SlowIssuance {
+    IVault vault;
+    uint256 amount;
+    uint256 BUs;
+    uint256[] basketAmounts;
+    address issuer;
+    uint256 blockAvailableAt;
+    bool processed;
 }
 
 // https://github.com/aave/protocol-v2/blob/feat-atoken-wrapper-liquidity-mining/contracts/protocol/tokenization/StaticATokenLM.sol

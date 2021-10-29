@@ -15,6 +15,10 @@ interface IVault {
 
     function redeem(address redeemer, uint256 amount) external;
 
+    function setAllowance(address spender, uint256 amount) external;
+
+    function pullBUs(address from, uint256 amount) external;
+
     function claimAndSweepRewardsToManager(IMain main) external;
 
     function basketFiatcoinRate() external view returns (uint256);

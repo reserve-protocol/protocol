@@ -6,7 +6,9 @@ import "./IMain.sol";
 import "./IVault.sol";
 
 interface IAssetManager {
-    function issue(address issuer, uint256 amount) external;
+    function startIssuance(address issuer, uint256 amount) external returns (SlowIssuance memory);
+
+    function completeIssuance(SlowIssuance memory issuance) external;
 
     function redeem(address redeemer, uint256 amount) external;
 

@@ -42,7 +42,7 @@ contract StaticATokenMock is ERC20Mock {
     function setExchangeRate(uint256 rate) external {
         _exchangeRate = rate;
     }
-    
+
     function ATOKEN() external view returns (ATokenMock) {
         return aToken;
     }

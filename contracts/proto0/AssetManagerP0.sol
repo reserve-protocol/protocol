@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../libraries/CommonErrors.sol";
 import "./libraries/Auction.sol";
-import "./libraries/SlowIssuance.sol";
 import "./interfaces/IAsset.sol";
 import "./interfaces/IAssetManager.sol";
 import "./interfaces/IMain.sol";
@@ -34,7 +33,6 @@ import "./StRSRP0.sol";
  */
 contract AssetManagerP0 is IAssetManager, Ownable {
     using SafeERC20 for IERC20;
-    using SlowIssuance for SlowIssuance.Info;
     using Auction for Auction.Info;
     using EnumerableSet for EnumerableSet.AddressSet;
     using Oracle for Oracle.Info;
@@ -64,8 +62,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     // Append-only record keeping
     IVault[] public pastVaults;
-    mapping(uint256 => SlowIssuance.Info) public issuances;
-    uint256 public issuanceCount;
     mapping(uint256 => Auction.Info) public auctions;
     uint256 public auctionCount;
 
@@ -80,7 +76,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
 
         for (uint256 i = 0; i < approvedAssets_.length; i++) {
-            approveAsset(approvedAssets_[i]);
+            _approveAsset(approvedAssets_[i]);
         }
 
         if (!vault.containsOnly(_approvedCollateralAssets.values())) {
@@ -105,30 +101,30 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         _;
     }
 
-    function issue(address issuer, uint256 amount) external override onlyMain always {
-        _processSlowIssuance();
-        IRToken r = main.rToken();
-        uint256 issuanceRate = Math.max(
-            10_000 * 10**r.decimals(),
-            (r.totalSupply() * main.config().issuanceRate) / SCALE
-        );
-        uint256 numBlocks = Math.ceilDiv(amount, issuanceRate);
-
-        // Calculate block the issuance should be made available.
-        uint256 blockStart = issuanceCount == 0 ? block.number : issuances[issuanceCount - 1].blockAvailableAt;
-        uint256 blockEnd = Math.max(blockStart, block.number) + numBlocks;
-
-        // Mint the RToken now and hold onto it while the slow issuance vests
-        SlowIssuance.Info storage issuance = issuances[issuanceCount];
-        issuance.start(vault, amount, _toBUs(amount), issuer, blockEnd);
-        r.mint(address(this), amount);
-        issuanceCount++;
+    // Begins an issuance by saving parameters of the current system to a SlowIssuance struct.
+    // Does not set *blockAvailableAt*.
+    function startIssuance(address issuer, uint256 amount)
+        external
+        override
+        onlyMain
+        always
+        returns (SlowIssuance memory issuance)
+    {
+        issuance.vault = vault;
+        issuance.amount = amount;
+        issuance.BUs = _toBUs(amount);
+        issuance.basketAmounts = vault.tokenAmounts(_toBUs(amount));
+        issuance.issuer = issuer;
     }
 
+    // Pulls BUs over from Main and mints RToken to the issuer. Called at the end of SlowIssuance.
+    function completeIssuance(SlowIssuance memory issuance) external override onlyMain always {
+        issuance.vault.pullBUs(address(main), issuance.BUs);
+        main.rToken().mint(issuance.issuer, issuance.amount);
+    }
+
+    // Transfers collateral to the redeemers account at the current BU exchange rate.
     function redeem(address redeemer, uint256 amount) external override onlyMain always {
-        if (!main.paused()) {
-            _processSlowIssuance();
-        }
         main.rToken().burn(redeemer, amount);
         _oldestNonEmptyVault().redeem(redeemer, _toBUs(amount));
     }
@@ -142,8 +138,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     //     5. If it's all dust: sell RSR and buy RToken and burn it
     //     6. If we run out of RSR: give RToken holders a haircut to get back to capitalized
     function runAuctions() external override onlyMain always returns (State) {
-        _processSlowIssuance();
-
         // Halt if an auction is ongoing
         Auction.Info storage auction;
         for (uint256 i = 0; i < auctionCount; i++) {
@@ -254,51 +248,37 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         _launchAuction(sell, main.rTokenAsset(), sellAmount, 0, Fate.Melt);
     }
 
-    //
-
-    function approveAsset(IAsset asset) public onlyOwner {
-        _approvedCollateralAssets.add(address(asset));
-        _allCollateralAssets.add(address(asset));
-        if (asset.isFiatcoin()) {
-            _fiatcoins.add(address(asset));
-        }
-    }
-
-    function unapproveAsset(IAsset asset) public onlyOwner {
-        _approvedCollateralAssets.remove(address(asset));
-        if (asset.isFiatcoin()) {
-            _fiatcoins.remove(address(asset));
-        }
-    }
-
-    function switchVault(IVault vault_) public onlyOwner {
-        pastVaults.push(vault_);
-        vault = vault_;
-
-        // Accumulate the basket dilution factor to enable correct forward accounting
-        accumulate();
-
-        // Undo all open slowmintings
-        _processSlowIssuance();
-    }
-
     // Unapproves the defaulting asset and switches the RToken over to a new Vault.
-    function switchVaults(IAsset[] memory defaulting) public override onlyMain {
+    function switchVaults(IAsset[] memory defaulting) external override onlyMain {
         for (uint256 i = 0; i < defaulting.length; i++) {
-            unapproveAsset(defaulting[i]);
+            _unapproveAsset(defaulting[i]);
         }
 
         IVault newVault = main.monitor().getNextVault(vault, _approvedCollateralAssets.values(), _fiatcoins.values());
         if (address(newVault) != address(0)) {
-            switchVault(newVault);
+            _switchVault(newVault);
         }
     }
 
     // Upon vault change or change to *f*, we accumulate the historical dilution factor.
     // TODO: Is this acceptable? There's compounding error but so few number of times.
-    function accumulate() public override onlyMain {
+    function accumulate() external override onlyMain {
         _accumulate();
     }
+
+    function approveAsset(IAsset asset) external onlyOwner {
+        _approveAsset(asset);
+    }
+
+    function unapproveAsset(IAsset asset) external onlyOwner {
+        _unapproveAsset(asset);
+    }
+
+    function switchVault(IVault vault_) external onlyOwner {
+        _switchVault(vault_);
+    }
+
+    //
 
     function quote(uint256 amount) public view override returns (uint256[] memory) {
         require(amount > 0, "Cannot quote redeem zero");
@@ -351,6 +331,29 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     //
 
+    function _switchVault(IVault vault_) internal {
+        pastVaults.push(vault_);
+        vault = vault_;
+
+        // Accumulate the basket dilution factor to enable correct forward accounting
+        _accumulate();
+    }
+
+    function _approveAsset(IAsset asset) internal {
+        _approvedCollateralAssets.add(address(asset));
+        _allCollateralAssets.add(address(asset));
+        if (asset.isFiatcoin()) {
+            _fiatcoins.add(address(asset));
+        }
+    }
+
+    function _unapproveAsset(IAsset asset) internal {
+        _approvedCollateralAssets.remove(address(asset));
+        if (asset.isFiatcoin()) {
+            _fiatcoins.remove(address(asset));
+        }
+    }
+
     function _launchAuction(
         IAsset sell,
         IAsset buy,
@@ -361,15 +364,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         Auction.Info storage auction = auctions[auctionCount];
         auction.start(sell, buy, sellAmount, minBuy, block.timestamp + main.config().auctionPeriod, fate);
         auctionCount++;
-    }
-
-    // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
-    function _processSlowIssuance() internal {
-        for (uint256 i = 0; i < issuanceCount; i++) {
-            if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
-                issuances[i].process(main.rToken(), vault);
-            }
-        }
     }
 
     // Reduces basket quantities slightly in order to pass through basket appreciation to stakers.

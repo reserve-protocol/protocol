@@ -25,6 +25,7 @@ contract VaultP0 is IVault, Ownable {
 
     Basket internal _basket;
 
+    mapping(address => mapping(address => uint256)) internal _allowances;
     mapping(address => uint256) public override basketUnits;
     uint256 public totalUnits;
 
@@ -84,6 +85,19 @@ contract VaultP0 is IVault, Ownable {
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.assets[i].erc20().safeTransfer(redeemer, amounts[i]);
         }
+    }
+
+    function setAllowance(address spender, uint256 amount) external override {
+        _allowances[_msgSender()][spender] = amount;
+    }
+
+    // Pulls BUs from *from* to *msg.sender* if enough allowance is available.
+    function pullBUs(address from, uint256 amount) external override {
+        require(basketUnits[from] >= amount, "not enough to transfer");
+        require(_allowances[from][_msgSender()] >= amount, "not enough allowance");
+        _allowances[from][_msgSender()] -= amount;
+        basketUnits[from] -= amount;
+        basketUnits[_msgSender()] += amount;
     }
 
     // Claims COMP/AAVE and sweeps any balance to the Asset Manager.

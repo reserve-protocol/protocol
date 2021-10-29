@@ -4,7 +4,9 @@ pragma solidity 0.8.4;
 import "../Ownable.sol"; // temporary
 // import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./assets/RTokenAssetP0.sol";
 import "./assets/RSRAssetP0.sol";
 import "./assets/AAVEAssetP0.sol";
@@ -23,7 +25,9 @@ import "./interfaces/IRToken.sol";
  *
  */
 contract MainP0 is IMain, Ownable {
+    using SafeERC20 for IERC20;
     using Oracle for Oracle.Info;
+
     uint256 public constant override SCALE = 1e18;
 
     Config internal _config;
@@ -47,6 +51,10 @@ contract MainP0 is IMain, Ownable {
     bool public override paused;
 
     mapping(uint256 => bool) rewardsProcessed; // timestamp of rewards
+
+    // Slow Issuance
+    mapping(uint256 => SlowIssuance) public issuances;
+    uint256 public issuanceCount;
 
     // Default detection.
     State public state;
@@ -81,17 +89,35 @@ contract MainP0 is IMain, Ownable {
     function issue(uint256 amount) external override notPaused always {
         require(state == State.CALM || state == State.RECAPITALIZING, "only during calm + migration");
         require(amount > 0, "Cannot issue zero");
-        manager.issue(_msgSender(), amount);
+        _processSlowIssuance();
+
+        // During SlowIssuance, BUs are created up front and held by `Main` until the issuance vests,
+        // at which point the BUs are transferred to the AssetManager and RToken is minted to the issuer.
+        issuances[issuanceCount] = manager.startIssuance(_msgSender(), amount);
+        issuances[issuanceCount].blockAvailableAt = _nextIssuanceBlockAvailable(amount);
+
+        SlowIssuance storage iss = issuances[issuanceCount];
+        for (uint256 i = 0; i < iss.vault.size(); i++) {
+            IERC20(iss.vault.assetAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.basketAmounts[i]);
+            IERC20(iss.vault.assetAt(i).erc20()).safeApprove(address(iss.vault), iss.basketAmounts[i]);
+        }
+        iss.vault.issue(iss.BUs);
+        issuanceCount++;
     }
 
     function redeem(uint256 amount) external override always {
         require(amount > 0, "Cannot redeem zero");
+        if (!paused) {
+            _processSlowIssuance();
+        }
         manager.redeem(_msgSender(), amount);
     }
 
     // Runs auctions
     function poke() external override notPaused always {
         require(state == State.CALM || state == State.RECAPITALIZING, "only during calm + migration");
+        _processSlowIssuance();
+
         state = manager.runAuctions();
 
         if (state == State.CALM) {
@@ -207,13 +233,36 @@ contract MainP0 is IMain, Ownable {
         return _oracle.compound;
     }
 
-    // Config
-
     function config() external view override returns (Config memory c) {
         return _config;
     }
 
     // ==================================== Internal ====================================
+
+    function _nextIssuanceBlockAvailable(uint256 amount) internal view returns (uint256) {
+        uint256 issuanceRate = Math.max(
+            10_000 * 10**rToken.decimals(),
+            (rToken.totalSupply() * _config.issuanceRate) / SCALE
+        );
+        uint256 blockStart = issuanceCount == 0 ? block.number : issuances[issuanceCount - 1].blockAvailableAt;
+        return Math.max(blockStart, block.number) + Math.ceilDiv(amount, issuanceRate);
+    }
+
+    // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
+    function _processSlowIssuance() internal {
+        for (uint256 i = 0; i < issuanceCount; i++) {
+            if (!issuances[i].processed && issuances[i].vault != manager.vault()) {
+                issuances[i].vault.redeem(issuances[i].issuer, issuances[i].BUs);
+            }
+
+            if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
+                issuances[i].vault.setAllowance(address(manager), issuances[i].BUs);
+                manager.completeIssuance(issuances[i]);
+            }
+
+            issuances[i].processed = true;
+        }
+    }
 
     // Returns the rewards boundaries on either side of *time*.
     function _rewardsAdjacent(uint256 time) internal view returns (uint256 left, uint256 right) {
