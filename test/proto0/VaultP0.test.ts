@@ -5,7 +5,12 @@ import { bn } from '../../common/numbers'
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
+import { USDCMock } from '../../typechain/USDCMock'
+import { StaticATokenMock } from '../../typechain/StaticATokenMock'
+import { CTokenMock } from '../../typechain/CTokenMock'
 import { AssetP0 } from '../../typechain/AssetP0'
+import { ATokenAssetP0 } from '../../typechain/ATokenAssetP0'
+import { CTokenAssetP0 } from '../../typechain/CTokenAssetP0'
 import { VaultP0 } from '../../typechain/VaultP0'
 
 interface IAssetInfo {
@@ -24,16 +29,30 @@ describe('VaultP0 contract', () => {
 
   // Tokens/Assets
   let ERC20: ContractFactory
+  let USDCMockFactory: ContractFactory
   let tkn0: ERC20Mock
   let tkn1: ERC20Mock
   let tkn2: ERC20Mock
   let tkn3: ERC20Mock
+  let usdc: USDCMock
+
   let AssetFactory: ContractFactory
   let asset0: AssetP0
   let asset1: AssetP0
   let asset2: AssetP0
   let asset3: AssetP0
+  let assetUSDC: AssetP0
   let assets: string[]
+
+  // AToken and CTokens
+  let ATokenMockFactory: ContractFactory
+  let CTokenMockFactory: ContractFactory
+  let ATokenAssetFactory: ContractFactory
+  let CTokenAssetFactory: ContractFactory
+  let aTkn: StaticATokenMock
+  let cTkn: CTokenMock
+  let assetAToken: ATokenAssetP0
+  let assetCToken: CTokenAssetP0
 
   // Quantities
   let quantity0: BigNumber
@@ -46,6 +65,9 @@ describe('VaultP0 contract', () => {
   let qtyThird: BigNumber
   let qtyDouble: BigNumber
 
+  const ONE: BigNumber = bn(1e18)
+  const TWO: BigNumber = bn(2e18)
+
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
 
@@ -55,6 +77,9 @@ describe('VaultP0 contract', () => {
     tkn1 = <ERC20Mock>await ERC20.deploy('Token 1', 'TKN1')
     tkn2 = <ERC20Mock>await ERC20.deploy('Token 2', 'TKN2')
     tkn3 = <ERC20Mock>await ERC20.deploy('Token 3', 'TKN2')
+
+    USDCMockFactory = await ethers.getContractFactory('USDCMock')
+    usdc = <USDCMock>await USDCMockFactory.deploy('USDC Dollar', 'USDC')
 
     // Set initial amounts and set quantities
     initialBal = bn(100000e18)
@@ -74,7 +99,20 @@ describe('VaultP0 contract', () => {
     asset1 = <AssetP0>await AssetFactory.deploy(tkn1.address, tkn1.decimals())
     asset2 = <AssetP0>await AssetFactory.deploy(tkn2.address, tkn2.decimals())
     asset3 = <AssetP0>await AssetFactory.deploy(tkn3.address, tkn3.decimals())
+    assetUSDC = <AssetP0>await AssetFactory.deploy(usdc.address, usdc.decimals())
 
+    // ATokens and CTokens
+    ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
+    aTkn = <StaticATokenMock>await ATokenMockFactory.deploy('AToken', 'ATKN0', tkn0.address)
+    ATokenAssetFactory = await ethers.getContractFactory('ATokenAssetP0')
+    assetAToken = <ATokenAssetP0>await ATokenAssetFactory.deploy(aTkn.address, aTkn.decimals())
+
+    CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
+    cTkn = <CTokenMock>await CTokenMockFactory.deploy('CToken', 'CTKN1', tkn1.address)
+    CTokenAssetFactory = await ethers.getContractFactory('CTokenAssetP0')
+    assetCToken = <CTokenAssetP0>await CTokenAssetFactory.deploy(cTkn.address, cTkn.decimals())
+
+    // Quantities
     quantity0 = qtyHalf
     quantity1 = qtyHalf
     quantity2 = qtyThird
@@ -202,9 +240,6 @@ describe('VaultP0 contract', () => {
 
     it('Should return basketFiatcoinRate and tokenAmounts for fiatcoins', async function () {
       // For simple vault with one token (1 to 1)
-      const ONE: BigNumber = bn(1e18)
-      const TWO: BigNumber = bn(2e18)
-
       let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [bn(1e18)], [])
       expect(await newVault.callStatic.basketFiatcoinRate()).to.equal(bn(1e18))
       expect(await newVault.tokenAmounts(ONE)).to.eql([bn(1e18)])
@@ -225,8 +260,30 @@ describe('VaultP0 contract', () => {
       expect(await vault.tokenAmounts(TWO)).to.eql([qtyHalf.mul(2), qtyHalf.mul(2), qtyThird.mul(2), qtyDouble.mul(2)])
     })
 
-    it.skip('Should adjust basketFiatcoinRate for ATokens and CTokens', async function () {
-      // TODO: AToken or CToken with different redcemption rate
+    it('Should adjust basketFiatcoinRate and tokenAmounts for decimals', async function () {
+      // New Vault with USDC tokens
+      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assetUSDC.address], [bn(1e6)], [])
+      expect(await newVault.callStatic.basketFiatcoinRate()).to.equal(bn(1e18))
+      expect(await newVault.tokenAmounts(ONE)).to.eql([bn(1e6)])
+    })
+
+    it('Should adjust basketFiatcoinRate and tokenAmounts for ATokens and CTokens', async function () {
+      // Set new Vault with Atokens and CTokens
+      let newVault: VaultP0 = <VaultP0>(
+        await VaultFactory.deploy([assetAToken.address, assetCToken.address], [qtyHalf, qtyHalf], [])
+      )
+      expect(await newVault.callStatic.basketFiatcoinRate()).to.equal(bn(1e18))
+      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
+
+      // Change redemption rate for AToken to double (rate increases by an additional half)
+      await aTkn.setExchangeRate(bn(2e18))
+      expect(await newVault.callStatic.basketFiatcoinRate()).to.equal(bn(1e18).add(qtyHalf))
+      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
+
+      // Change also redemption rate for CToken to double (rate doubles)
+      await cTkn.setExchangeRate(bn(2e18))
+      expect(await newVault.callStatic.basketFiatcoinRate()).to.equal(bn(1e18).mul(2))
+      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
     })
 
     it('Should return max Issuable for user', async function () {
