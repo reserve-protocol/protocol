@@ -19,6 +19,7 @@ import { DeployerP0 } from '../../typechain/DeployerP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { VaultP0 } from '../../typechain/VaultP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
+import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { AssetManagerP0 } from '../../typechain/AssetManagerP0'
@@ -280,6 +281,8 @@ describe('DeployerP0 contract', () => {
       expect(await main.rsr()).to.equal(rsr.address)
       expect(await main.comptroller()).to.equal(compoundMock.address)
       expect(await main.config()).to.eql(Object.values(config))
+      const rTokenAsset = <RTokenAssetP0>await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+      expect(await rTokenAsset.erc20()).to.equal(rToken.address)
     })
 
     it('Should setup RToken correctly', async () => {
@@ -290,26 +293,30 @@ describe('DeployerP0 contract', () => {
       expect(await rToken.main()).to.equal(main.address)
     })
 
+    it('Should setup DefaultMonitor correctly', async () => {
+      expect(await defaultMonitor.main()).to.equal(main.address)
+    })
+
     it('Should setup Furnace correctly', async () => {
-      //   const faucetAddress = await manager.faucet()
-      //   const faucet = <FaucetP0>await ethers.getContractAt('FaucetP0', faucetAddress)
-      //   expect(await faucet.beneficiary()).to.equal(manager.address)
-      //   expect(await faucet.token()).to.equal(await manager.rToken())
+      expect(await furnace.rToken()).to.equal(rToken.address)
     })
 
-    it('Should setup StakingPool correctly', async () => {
-      //   const stakingAddress = await manager.staking()
-      //   const staking = <StakingPoolP0>await ethers.getContractAt('StakingPoolP0', stakingAddress)
-      //   expect(await staking.manager()).to.equal(manager.address)
-      //   expect(await staking.rsr()).to.equal(rsr.address)
-      //   expect(await staking.name()).to.equal('Staked RSR - RToken')
-      //   expect(await staking.symbol()).to.equal('stRTKNRSR')
-      //   expect(await staking.decimals()).to.equal(18)
-      //   expect(await staking.totalSupply()).to.equal(0)
-      //   expect(await rsr.allowance(manager.address, staking.address)).to.equal(MAX_UINT256)
+    it('Should setup stRSR correctly', async () => {
+      expect(await stRSR.main()).to.equal(main.address)
+      expect(await stRSR.name()).to.equal('Staked RSR - RToken')
+      expect(await stRSR.symbol()).to.equal('stRTKNRSR')
+      expect(await stRSR.decimals()).to.equal(18)
+      expect(await stRSR.totalSupply()).to.equal(0)
     })
 
-    it('Deployment should revert if Vault has unapproved assets', async () => {
+    it('Should setup AssetManager correctly', async () => {
+      expect(await assetManager.main()).to.equal(main.address)
+      expect(await assetManager.vault()).to.equal(vault.address)
+      expect(await assetManager.owner()).to.equal(owner.address)
+      expect(await rsr.allowance(assetManager.address, stRSR.address)).to.equal(MAX_UINT256)
+    })
+
+    it('Should revert if Vault has unapproved assets', async () => {
       const approvedAssets = [asset0.address]
       await expect(
         deployer.deploy(
