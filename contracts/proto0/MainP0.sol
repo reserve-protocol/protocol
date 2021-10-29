@@ -88,7 +88,7 @@ contract MainP0 is IMain, Ownable {
     }
 
     function issue(uint256 amount) external override notPaused always {
-        require(state == State.CALM || state == State.TRADING, "only during calm + migration");
+        require(state == State.CALM || state == State.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
         _processSlowIssuance();
 
@@ -116,7 +116,7 @@ contract MainP0 is IMain, Ownable {
 
     // Runs auctions
     function poke() external override notPaused always {
-        require(state == State.CALM || state == State.TRADING, "only during calm + migration");
+        require(state == State.CALM || state == State.TRADING, "only during calm + trading");
         _processSlowIssuance();
 
         if (state == State.CALM) {

@@ -6,7 +6,7 @@ import "./IMain.sol";
 import "./IVault.sol";
 
 interface IAssetManager {
-    function startIssuance(address issuer, uint256 amount) external returns (SlowIssuance memory);
+    function beginIssuance(address issuer, uint256 amount) external returns (SlowIssuance memory);
 
     function completeIssuance(SlowIssuance memory issuance) external;
 

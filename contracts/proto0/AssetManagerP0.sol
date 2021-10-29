@@ -103,7 +103,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     // Begins an issuance by saving parameters of the current system to a SlowIssuance struct.
     // Does not set *blockAvailableAt*.
-    function startIssuance(address issuer, uint256 amount)
+    function beginIssuance(address issuer, uint256 amount)
         external
         override
         onlyMain
@@ -119,7 +119,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     // Pulls BUs over from Main and mints RToken to the issuer. Called at the end of SlowIssuance.
     function completeIssuance(SlowIssuance memory issuance) external override onlyMain always {
-        issuance.vault.pullBUs(address(main), issuance.BUs);
+        issuance.vault.pullBUs(address(main), issuance.BUs); // Main should have set an allowance
         main.rToken().mint(issuance.issuer, issuance.amount);
     }
 
@@ -127,6 +127,36 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function redeem(address redeemer, uint256 amount) external override onlyMain always {
         main.rToken().burn(redeemer, amount);
         _oldestNonEmptyVault().redeem(redeemer, _toBUs(amount));
+    }
+
+    // Claims COMP + AAVE from Vault + Manager and expands the RToken supply.
+    function collectRevenue() external override onlyMain {
+        vault.claimAndSweepRewardsToManager();
+        main.comptroller().claimComp(address(this));
+        IStaticAToken(address(main.aaveAsset().erc20())).claimRewardsToSelf(true);
+
+        // Expand the RToken supply to self
+        uint256 possible = _fromBUs(vault.basketUnits(address(this)));
+        if (fullyCapitalized() && possible > main.rToken().totalSupply()) {
+            main.rToken().mint(address(this), possible - main.rToken().totalSupply());
+        }
+    }
+
+    // Unapproves the defaulting asset and switches the RToken over to a new Vault.
+    function switchVaults(IAsset[] memory defaulting) external override onlyMain {
+        for (uint256 i = 0; i < defaulting.length; i++) {
+            _unapproveAsset(defaulting[i]);
+        }
+
+        IVault newVault = main.monitor().getNextVault(vault, _approvedCollateralAssets.values(), _fiatcoins.values());
+        if (address(newVault) != address(0)) {
+            _switchVault(newVault);
+        }
+    }
+
+    // Upon vault change or change to *f*, we accumulate the historical dilution factor.
+    function accumulate() external override onlyMain {
+        _accumulate();
     }
 
     // Continually runs auctions as long as we are undercollateralized.
@@ -225,11 +255,9 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             return State.TRADING;
         }
 
-        // AT THIS POINT WE ARE CAPITALIZED ALREADY
+        // AT THIS POINT WE ARE CAPITALIZED ALREADY...time for Revenue auctions!
 
-        // Time for: Revenue auctions!
-
-        // Empty old vault of BUs
+        // First entirely empty old vault of BUs
         if (oldVault != vault) {
             oldVault.redeem(address(this), oldVault.basketUnits(address(this)));
         }
@@ -267,7 +295,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             Fate.Melt
         );
 
-        if (!worth && !worth2) {
+        if (!worth || !worth2) {
             // AAVE -> dividend RSR + melting RToken
             amountTimesF = (main.aaveAsset().erc20().balanceOf(address(this)) * config.f) / SCALE;
             amountTimesOneMinusF = main.aaveAsset().erc20().balanceOf(address(this)) - amountTimesF;
@@ -299,36 +327,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         return State.CALM;
     }
 
-    // Claims COMP + AAVE from Vault + Manager and expands the RToken supply.
-    function collectRevenue() external override onlyMain {
-        vault.claimAndSweepRewardsToManager();
-        main.comptroller().claimComp(address(this));
-        IStaticAToken(address(main.aaveAsset().erc20())).claimRewardsToSelf(true);
-
-        // Expand the RToken supply to self
-        uint256 possible = _fromBUs(vault.basketUnits(address(this)));
-        if (fullyCapitalized() && possible > main.rToken().totalSupply()) {
-            main.rToken().mint(address(this), possible - main.rToken().totalSupply());
-        }
-    }
-
-    // Unapproves the defaulting asset and switches the RToken over to a new Vault.
-    function switchVaults(IAsset[] memory defaulting) external override onlyMain {
-        for (uint256 i = 0; i < defaulting.length; i++) {
-            _unapproveAsset(defaulting[i]);
-        }
-
-        IVault newVault = main.monitor().getNextVault(vault, _approvedCollateralAssets.values(), _fiatcoins.values());
-        if (address(newVault) != address(0)) {
-            _switchVault(newVault);
-        }
-    }
-
-    // Upon vault change or change to *f*, we accumulate the historical dilution factor.
-    // TODO: Is this acceptable? There's compounding error but so few number of times.
-    function accumulate() external override onlyMain {
-        _accumulate();
-    }
+    //
 
     function approveAsset(IAsset asset) external onlyOwner {
         _approveAsset(asset);
@@ -394,6 +393,15 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     //
+
+    //  Internal helper to accumulate the historical dilution factor.
+    function _accumulate() internal {
+        // Idempotent
+        _diluteBasket();
+        _historicalBasketDilution = (_historicalBasketDilution * _currentBasketDilution) / SCALE;
+        _currentBasketDilution = SCALE;
+        _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
+    }
 
     function _switchVault(IVault vault_) internal {
         pastVaults.push(vault_);
@@ -486,15 +494,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         uint256 maxSellAmount = (surplusMax * SCALE) / sell.priceUSD(main);
         uint256 buyAmount = (deficitMax * SCALE) / buy.priceUSD(main);
         return (sell, buy, maxSellAmount, buyAmount);
-    }
-
-    //  Internal helper to accumulate the historical dilution factor.
-    function _accumulate() internal {
-        // Idempotent
-        _diluteBasket();
-        _historicalBasketDilution = (_historicalBasketDilution * _currentBasketDilution) / SCALE;
-        _currentBasketDilution = SCALE;
-        _prevBasketFiatcoinRate = vault.basketFiatcoinRate();
     }
 
     // Prepares an auction where *sellAmount* is the independent variable and *minBuyAmount* is dependent.
