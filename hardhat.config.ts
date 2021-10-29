@@ -2,7 +2,7 @@ import { HardhatUserConfig } from 'hardhat/types'
 
 import '@nomiclabs/hardhat-waffle'
 import '@nomiclabs/hardhat-ethers'
-import '@openzeppelin/hardhat-upgrades'
+// import '@openzeppelin/hardhat-upgrades'
 import '@typechain/hardhat'
 import 'solidity-coverage'
 import 'hardhat-gas-reporter'
