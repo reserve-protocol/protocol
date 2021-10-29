@@ -25,7 +25,7 @@ import { StRSRP0 } from '../../typechain/StRSRP0'
 import { AssetManagerP0 } from '../../typechain/AssetManagerP0'
 import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
 
-interface IManagerConfig {
+export interface IManagerConfig {
   rewardStart: BigNumber
   rewardPeriod: BigNumber
   auctionPeriod: BigNumber
