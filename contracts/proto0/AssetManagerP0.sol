@@ -125,7 +125,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     // Transfers collateral to the redeemers account at the current BU exchange rate.
     function redeem(address redeemer, uint256 amount) external override onlyMain always {
         main.rToken().burn(redeemer, amount);
-        _oldestNonEmptyVault().redeem(redeemer, _toBUs(amount));
+        _oldestVault().redeem(redeemer, _toBUs(amount));
     }
 
     // Claims COMP + AAVE from Vault + Manager and expands the RToken supply.
@@ -197,7 +197,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         bool worth;
         Auction.Info memory auction;
         Config memory config = main.config();
-        IVault oldVault = _oldestNonEmptyVault();
+        IVault oldVault = _oldestVault();
 
         // If we are not fully capitalized, prioritize recapitalization auctions
         if (!fullyCapitalized()) {
@@ -381,7 +381,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     // Returns the oldest vault that contains nonzero BUs.
     // Note that this will pass over vaults with uneven holdings, it does not necessarily mean the vault
     // contains no asset tokens.
-    function _oldestNonEmptyVault() internal view returns (IVault) {
+    function _oldestVault() internal view returns (IVault) {
         for (uint256 i = 0; i < pastVaults.length; i++) {
             if (pastVaults[i].basketUnits(address(this)) > 0) {
                 return pastVaults[i];

@@ -54,8 +54,7 @@ contract MainP0 is IMain, Ownable {
     mapping(uint256 => bool) rewardsClaimed;
 
     // Slow Issuance
-    mapping(uint256 => SlowIssuance) public issuances;
-    uint256 public issuanceCount;
+    SlowIssuance[] public issuances;
 
     // Default detection.
     State public state;
@@ -94,16 +93,15 @@ contract MainP0 is IMain, Ownable {
 
         // During SlowIssuance, BUs are created up front and held by `Main` until the issuance vests,
         // at which point the BUs are transferred to the AssetManager and RToken is minted to the issuer.
-        issuances[issuanceCount] = manager.beginIssuance(_msgSender(), amount);
-        issuances[issuanceCount].blockAvailableAt = _nextIssuanceBlockAvailable(amount);
+        issuances.push(manager.beginIssuance(_msgSender(), amount));
+        SlowIssuance storage iss = issuances[issuances.length - 1];
+        iss.blockAvailableAt = _nextIssuanceBlockAvailable(amount);
 
-        SlowIssuance storage iss = issuances[issuanceCount];
         for (uint256 i = 0; i < iss.vault.size(); i++) {
             IERC20(iss.vault.assetAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.basketAmounts[i]);
             IERC20(iss.vault.assetAt(i).erc20()).safeApprove(address(iss.vault), iss.basketAmounts[i]);
         }
         iss.vault.issue(iss.BUs);
-        issuanceCount++;
     }
 
     function redeem(uint256 amount) external override always {
@@ -239,18 +237,19 @@ contract MainP0 is IMain, Ownable {
 
     // ==================================== Internal ====================================
 
+    // Returns the block number at which an issuance for *amount* that begins now
     function _nextIssuanceBlockAvailable(uint256 amount) internal view returns (uint256) {
         uint256 issuanceRate = Math.max(
             10_000 * 10**rToken.decimals(),
             (rToken.totalSupply() * _config.issuanceRate) / SCALE
         );
-        uint256 blockStart = issuanceCount == 0 ? block.number : issuances[issuanceCount - 1].blockAvailableAt;
+        uint256 blockStart = issuances.length == 0 ? block.number : issuances[issuances.length - 1].blockAvailableAt;
         return Math.max(blockStart, block.number) + Math.ceilDiv(amount, issuanceRate);
     }
 
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowIssuance() internal {
-        for (uint256 i = 0; i < issuanceCount; i++) {
+        for (uint256 i = 0; i < issuances.length; i++) {
             if (!issuances[i].processed && issuances[i].vault != manager.vault()) {
                 issuances[i].vault.redeem(issuances[i].issuer, issuances[i].BUs);
             }
