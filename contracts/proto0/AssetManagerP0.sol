@@ -172,12 +172,12 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctions.length; i++) {
             Auction.Info storage auction = auctions[i];
-            if (auction.open) {
+            if (auction.isOpen) {
                 if (block.timestamp <= auction.endTime) {
                     return State.TRADING;
                 }
 
-                uint256 boughtAmount = auction.process(main);
+                uint256 boughtAmount = auction.close(main);
                 if (!auction.clearedCloseToOraclePrice(main, boughtAmount)) {
                     return State.PRECAUTIONARY;
                 }
@@ -194,7 +194,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         IAsset buy;
         uint256 maxSell;
         uint256 targetBuy;
-        bool worth;
+        bool trade;
         Auction.Info memory auction;
         Config memory config = main.config();
         IVault oldVault = _oldestVault();
@@ -203,7 +203,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         if (!fullyCapitalized()) {
             // Are we able to trade sideways, or is it all dust?
             (sell, buy, maxSell, targetBuy) = _largestCollateralForCollateralTrade();
-            (worth, auction) = _prepareTargetBuyAuction(
+            (trade, auction) = _prepareAuctionTargetBuy(
                 config.minRecapitalizationAuctionSize,
                 sell,
                 buy,
@@ -214,14 +214,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
             // Redeem BUs to open up spare collateral assets
             uint256 totalSupply = main.rToken().totalSupply();
-            if (!worth && oldVault != vault) {
+            if (!trade && oldVault != vault) {
                 uint256 max = _toBUs(((totalSupply) * config.migrationChunk) / SCALE);
                 uint256 chunk = Math.min(max, oldVault.basketUnits(address(this)));
                 oldVault.redeem(address(this), chunk);
 
                 // Are we able to trade sideways, or is it all dust?
                 (sell, buy, maxSell, targetBuy) = _largestCollateralForCollateralTrade();
-                (worth, auction) = _prepareTargetBuyAuction(
+                (trade, auction) = _prepareAuctionTargetBuy(
                     config.minRecapitalizationAuctionSize,
                     sell,
                     buy,
@@ -229,9 +229,9 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                     targetBuy,
                     Fate.Stay
                 );
-            } else if (!worth && main.rsr().balanceOf(address(main.stRSR())) > 0) {
+            } else if (!trade && main.rsr().balanceOf(address(main.stRSR())) > 0) {
                 // Recapitalization: RSR -> RToken
-                (worth, auction) = _prepareTargetBuyAuction(
+                (trade, auction) = _prepareAuctionTargetBuy(
                     config.minRecapitalizationAuctionSize,
                     main.rsrAsset(),
                     main.rTokenAsset(),
@@ -240,10 +240,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                     Fate.Burn
                 );
 
-                if (worth) {
+                if (trade) {
                     main.stRSR().seizeRSR(auction.sellAmount - main.rsr().balanceOf(address(this)));
                 }
-            } else if (!worth) {
+            } else if (!trade) {
                 // We've reached the endgame...time to concede and give RToken holders a haircut.
                 _accumulate();
                 uint256 melting = (SCALE * (totalSupply + main.furnace().totalBurnt())) / totalSupply;
@@ -252,7 +252,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             }
 
             auctions.push(auction);
-            auctions[auctions.length - 1].launch();
+            auctions[auctions.length - 1].open();
             return State.TRADING;
         }
 
@@ -264,62 +264,62 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
 
         // RToken -> dividend RSR
-        (worth, auction) = _prepareTargetSellAuction(
+        (trade, auction) = _prepareAuctionTargetSell(
             config.minRevenueAuctionSize,
             main.rTokenAsset(),
             main.rsrAsset(),
             main.rToken().balanceOf(address(this)),
             Fate.Stake
         );
-        if (worth) {
+        if (trade) {
             auctions.push(auction);
-            auctions[auctions.length - 1].launch();
+            auctions[auctions.length - 1].open();
             return State.TRADING;
         }
 
         // COMP -> dividend RSR + melting RToken
-        uint256 amountTimesF = (main.compAsset().erc20().balanceOf(address(this)) * config.f) / SCALE;
-        uint256 amountTimesOneMinusF = main.compAsset().erc20().balanceOf(address(this)) - amountTimesF;
-        (worth, auction) = _prepareTargetSellAuction(
+        uint256 amountForRSR = (main.compAsset().erc20().balanceOf(address(this)) * config.f) / SCALE;
+        uint256 amountForRToken = main.compAsset().erc20().balanceOf(address(this)) - amountForRSR;
+        (trade, auction) = _prepareAuctionTargetSell(
             config.minRevenueAuctionSize,
             main.compAsset(),
             main.rsrAsset(),
-            amountTimesF,
+            amountForRSR,
             Fate.Stake
         );
-        (bool worth2, Auction.Info memory auction2) = _prepareTargetSellAuction(
+        (bool trade2, Auction.Info memory auction2) = _prepareAuctionTargetSell(
             config.minRevenueAuctionSize,
             main.compAsset(),
             main.rTokenAsset(),
-            amountTimesOneMinusF,
+            amountForRToken,
             Fate.Melt
         );
 
-        if (!worth || !worth2) {
+        if (!trade || !trade2) {
             // AAVE -> dividend RSR + melting RToken
-            amountTimesF = (main.aaveAsset().erc20().balanceOf(address(this)) * config.f) / SCALE;
-            amountTimesOneMinusF = main.aaveAsset().erc20().balanceOf(address(this)) - amountTimesF;
-            (worth, auction) = _prepareTargetSellAuction(
+            amountForRSR = (main.aaveAsset().erc20().balanceOf(address(this)) * config.f) / SCALE;
+            amountForRToken = main.aaveAsset().erc20().balanceOf(address(this)) - amountForRSR;
+            (trade, auction) = _prepareAuctionTargetSell(
                 config.minRevenueAuctionSize,
                 main.aaveAsset(),
                 main.rsrAsset(),
-                amountTimesF,
+                amountForRSR,
                 Fate.Stake
             );
-            (worth2, auction2) = _prepareTargetSellAuction(
+            (trade2, auction2) = _prepareAuctionTargetSell(
                 config.minRevenueAuctionSize,
                 main.aaveAsset(),
                 main.rTokenAsset(),
-                amountTimesOneMinusF,
+                amountForRToken,
                 Fate.Melt
             );
         }
 
-        if (worth && worth2) {
+        if (trade && trade2) {
             auctions.push(auction);
-            auctions[auctions.length - 1].launch();
+            auctions[auctions.length - 1].open();
             auctions.push(auction2);
-            auctions[auctions.length - 1].launch();
+            auctions[auctions.length - 1].open();
             return State.TRADING;
         }
         return State.CALM;
@@ -496,7 +496,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     // Prepares an auction where *sellAmount* is the independent variable and *minBuyAmount* is dependent.
     // Returns false as the first parameter if *sellAmount* is only dust.
-    function _prepareTargetSellAuction(
+    function _prepareAuctionTargetSell(
         uint256 minAuctionSize,
         IAsset sell,
         IAsset buy,
@@ -526,14 +526,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 startTime: block.timestamp,
                 endTime: block.timestamp + main.config().auctionPeriod,
                 fate: fate,
-                open: false
+                isOpen: false
             })
         );
     }
 
     // Prepares an auction where *minBuyAmount* is the independent variable and *sellAmount* is dependent.
     // Returns false as the first parameter if the corresponding *sellAmount* is only dust.
-    function _prepareTargetBuyAuction(
+    function _prepareAuctionTargetBuy(
         uint256 minAuctionSize,
         IAsset sell,
         IAsset buy,
@@ -541,14 +541,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         uint256 targetBuyAmount,
         Fate fate
     ) internal returns (bool, Auction.Info memory emptyAuction) {
-        (bool worth, Auction.Info memory auction) = _prepareTargetSellAuction(
+        (bool trade, Auction.Info memory auction) = _prepareAuctionTargetSell(
             minAuctionSize,
             sell,
             buy,
             maxSellAmount,
             fate
         );
-        if (!worth) {
+        if (!trade) {
             return (false, emptyAuction);
         }
 
