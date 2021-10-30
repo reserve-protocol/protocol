@@ -229,7 +229,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                     targetBuy,
                     Fate.Stay
                 );
-            } else if (!trade && main.rsr().balanceOf(address(main.stRSR())) > 0) {
+            } 
+            if (!trade && main.rsr().balanceOf(address(main.stRSR())) > 0) {
                 // Recapitalization: RSR -> RToken
                 (trade, auction) = _prepareAuctionTargetBuy(
                     config.minRecapitalizationAuctionSize,
@@ -243,7 +244,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 if (trade) {
                     main.stRSR().seizeRSR(auction.sellAmount - main.rsr().balanceOf(address(this)));
                 }
-            } else if (!trade) {
+            } 
+            if (!trade) {
                 // We've reached the endgame...time to concede and give RToken holders a haircut.
                 _accumulate();
                 uint256 melting = (SCALE * (totalSupply + main.furnace().totalBurnt())) / totalSupply;
