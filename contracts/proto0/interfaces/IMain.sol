@@ -89,9 +89,7 @@ interface IMain {
 
     function paused() external view returns (bool);
 
-    function quoteIssue(uint256 amount) external view returns (uint256[] memory);
-
-    function quoteRedeem(uint256 amount) external view returns (uint256[] memory);
+    function quote(uint256 amount) external view returns (uint256[] memory);
 
     function rsr() external view returns (IERC20);
 

@@ -78,6 +78,7 @@ contract MainP0 is IMain, Ownable {
             manager.switchVaults(hardDefaulting);
             state = State.TRADING;
         }
+        manager.update();
         _;
     }
 
@@ -93,9 +94,14 @@ contract MainP0 is IMain, Ownable {
 
         // During SlowIssuance, BUs are created up front and held by `Main` until the issuance vests,
         // at which point the BUs are transferred to the AssetManager and RToken is minted to the issuer.
-        issuances.push(manager.beginIssuance(_msgSender(), amount));
         SlowIssuance storage iss = issuances[issuances.length - 1];
+        iss.vault = manager.vault();
+        iss.amount = amount;
+        iss.BUs = manager.toBUs(amount);
+        iss.basketAmounts = manager.vault().tokenAmounts(iss.BUs);
+        iss.issuer = _msgSender();
         iss.blockAvailableAt = _nextIssuanceBlockAvailable(amount);
+        issuances.push(iss);
 
         for (uint256 i = 0; i < iss.vault.size(); i++) {
             IERC20(iss.vault.assetAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.basketAmounts[i]);
@@ -209,14 +215,9 @@ contract MainP0 is IMain, Ownable {
         return next;
     }
 
-    function quoteIssue(uint256 amount) public view override returns (uint256[] memory) {
-        require(amount > 0, "Cannot quote issue zero");
-        return manager.quote(amount);
-    }
-
-    function quoteRedeem(uint256 amount) public view override returns (uint256[] memory) {
-        require(amount > 0, "Cannot quote redeem zero");
-        return manager.quote(amount);
+    function quote(uint256 amount) public view override returns (uint256[] memory) {
+        require(amount > 0, "Cannot quote zero");
+        return manager.vault().tokenAmounts(manager.toBUs(amount));
     }
 
     function consultAaveOracle(address token) external view override returns (uint256) {

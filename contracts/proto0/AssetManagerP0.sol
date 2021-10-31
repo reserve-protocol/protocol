@@ -84,47 +84,36 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     modifier sideEffects() {
-        require(_msgSender() == address(main), "only main can mutate the asset manager");
         main.furnace().doBurn();
         vault.updateCompoundAaveRates();
         _;
     }
 
-    // Begins an issuance by saving parameters of the current system to a SlowIssuance struct.
-    // Does not set *blockAvailableAt*.
-    function beginIssuance(address issuer, uint256 amount)
-        external
-        override
-        sideEffects
-        returns (SlowIssuance memory issuance)
-    {
-        issuance.vault = vault;
-        issuance.amount = amount;
-        issuance.BUs = _toBUs(amount);
-        issuance.basketAmounts = vault.tokenAmounts(_toBUs(amount));
-        issuance.issuer = issuer;
-    }
+    function update() external override sideEffects {}
 
     // Pulls BUs over from Main and mints RToken to the issuer. Called at the end of SlowIssuance.
     function completeIssuance(SlowIssuance memory issuance) external override sideEffects {
+        require(_msgSender() == address(main), "only main can mutate the asset manager");
         issuance.vault.pullBUs(address(main), issuance.BUs); // Main should have set an allowance
         main.rToken().mint(issuance.issuer, issuance.amount);
     }
 
     // Transfers collateral to the redeemers account at the current BU exchange rate.
     function redeem(address redeemer, uint256 amount) external override sideEffects {
+        require(_msgSender() == address(main), "only main can mutate the asset manager");
         main.rToken().burn(redeemer, amount);
-        _oldestVault().redeem(redeemer, _toBUs(amount));
+        _oldestVault().redeem(redeemer, toBUs(amount));
     }
 
     // Claims COMP + AAVE from Vault + Manager and expands the RToken supply.
     function collectRevenue() external override sideEffects {
+        require(_msgSender() == address(main), "only main can mutate the asset manager");
         vault.claimAndSweepRewardsToManager();
         main.comptroller().claimComp(address(this));
         IStaticAToken(address(main.aaveAsset().erc20())).claimRewardsToSelf(true);
 
         // Expand the RToken supply to self
-        uint256 possible = _fromBUs(vault.basketUnits(address(this)));
+        uint256 possible = fromBUs(vault.basketUnits(address(this)));
         if (fullyCapitalized() && possible > main.rToken().totalSupply()) {
             main.rToken().mint(address(this), possible - main.rToken().totalSupply());
         }
@@ -132,6 +121,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     // Unapproves the defaulting asset and switches the RToken over to a new Vault.
     function switchVaults(IAsset[] memory defaulting) external override sideEffects {
+        require(_msgSender() == address(main), "only main can mutate the asset manager");
         for (uint256 i = 0; i < defaulting.length; i++) {
             _unapproveAsset(defaulting[i]);
         }
@@ -144,6 +134,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     // Upon vault change or change to *f*, we accumulate the historical dilution factor.
     function accumulate() external override sideEffects {
+        require(_msgSender() == address(main), "only main can mutate the asset manager");
         _accumulate();
     }
 
@@ -153,6 +144,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     //    3. Break apart old BUs and trade toward new basket
     //    4. Run revenue auctions
     function doAuctions() external override sideEffects returns (State) {
+        require(_msgSender() == address(main), "only main can mutate the asset manager");
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctions.length; i++) {
             Auction.Info storage auction = auctions[i];
@@ -197,23 +189,16 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     //
 
-    function quote(uint256 amount) public view override returns (uint256[] memory) {
-        require(amount > 0, "Cannot quote redeem zero");
-        return vault.tokenAmounts(_toBUs(amount));
-    }
-
     function fullyCapitalized() public view override returns (bool) {
-        return vault.basketUnits(address(this)) >= _toBUs(main.rToken().totalSupply());
+        return vault.basketUnits(address(this)) >= toBUs(main.rToken().totalSupply());
     }
 
     function approvedFiatcoinAssets() external view override returns (address[] memory) {
         return _fiatcoins.values();
     }
 
-    //
-
     // RToken -> BUs
-    function _toBUs(uint256 amount) internal view returns (uint256) {
+    function toBUs(uint256 amount) public view override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
             return amount;
         }
@@ -221,12 +206,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     // BUs -> RToken
-    function _fromBUs(uint256 amount) internal view returns (uint256) {
+    function fromBUs(uint256 amount) public view override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
             return amount;
         }
         return (amount * _meltingFactor()) / _basketDilutionFactor();
     }
+
+    //
 
     // base factor: numerator
     function _meltingFactor() internal view returns (uint256) {
@@ -310,7 +297,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         uint256 totalSupply = main.rToken().totalSupply();
         IVault oldVault = _oldestVault();
         if (oldVault != vault) {
-            uint256 max = _toBUs(((totalSupply) * main.config().migrationChunk) / SCALE);
+            uint256 max = toBUs(((totalSupply) * main.config().migrationChunk) / SCALE);
             uint256 chunk = Math.min(max, oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
         }
@@ -337,7 +324,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 main.rsrAsset(),
                 main.rTokenAsset(),
                 main.rsr().balanceOf(address(main.stRSR())),
-                totalSupply - _fromBUs(vault.basketUnits(address(this))),
+                totalSupply - fromBUs(vault.basketUnits(address(this))),
                 Fate.Burn
             );
 

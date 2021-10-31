@@ -6,11 +6,11 @@ import "./IMain.sol";
 import "./IVault.sol";
 
 interface IAssetManager {
-    function beginIssuance(address issuer, uint256 amount) external returns (SlowIssuance memory);
+    function update() external; // block-by-block idempotent updates
 
     function completeIssuance(SlowIssuance memory issuance) external;
 
-    function redeem(address redeemer, uint256 amount) external;
+    function redeem(address redeemer, uint256 rTokenAmount) external;
 
     function doAuctions() external returns (State);
 
@@ -20,7 +20,9 @@ interface IAssetManager {
 
     function switchVaults(IAsset[] memory defaulting) external;
 
-    function quote(uint256 amount) external view returns (uint256[] memory);
+    function toBUs(uint256 rTokenAmount) external view returns (uint256);
+
+    function fromBUs(uint256 BUs) external view returns (uint256);
 
     function fullyCapitalized() external view returns (bool);
 
