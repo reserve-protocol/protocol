@@ -13,5 +13,5 @@ interface IDefaultMonitor {
         IVault vault,
         address[] memory approvedCollateral,
         address[] memory fiatcoins
-    ) external view returns (IVault);
+    ) external returns (IVault);
 }

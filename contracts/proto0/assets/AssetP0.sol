@@ -16,6 +16,8 @@ contract AssetP0 is IAsset {
         _erc20 = erc20_;
     }
 
+    function updateRedemptionRate() external virtual override {}
+
     // Fiatcoins return 1e18. All redemption rates should have 18 zeroes.
     function redemptionRate() public view virtual override returns (uint256) {
         return 1e18;

@@ -121,8 +121,15 @@ contract VaultP0 is IVault, Ownable {
         }
     }
 
+    // Forces an update in Compound/Aave
+    function updateCompoundAaveRates() external override {
+        for (uint256 i = 0; i < _basket.size; i++) {
+            _basket.assets[i].updateRedemptionRate();
+        }
+    }
+
     // Returns how many fiatcoins a single BU can be redeemed for.
-    function basketFiatcoinRate() external view override returns (uint256 sum) {
+    function basketRate() external view override returns (uint256 sum) {
         for (uint256 i = 0; i < _basket.size; i++) {
             IAsset c = _basket.assets[i];
             sum += (_basket.quantities[i] * c.redemptionRate()) / 10**c.decimals();

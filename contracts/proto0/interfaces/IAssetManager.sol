@@ -12,7 +12,7 @@ interface IAssetManager {
 
     function redeem(address redeemer, uint256 amount) external;
 
-    function runAuctions() external returns (State);
+    function doAuctions() external returns (State);
 
     function collectRevenue() external;
 

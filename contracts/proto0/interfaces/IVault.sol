@@ -21,7 +21,9 @@ interface IVault {
 
     function claimAndSweepRewardsToManager() external;
 
-    function basketFiatcoinRate() external view returns (uint256);
+    function updateCompoundAaveRates() external;
+
+    function basketRate() external view returns (uint256);
 
     function containsOnly(address[] memory assets) external view returns (bool);
 

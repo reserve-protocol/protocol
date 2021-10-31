@@ -68,7 +68,7 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         IVault vault,
         address[] memory approvedCollateral,
         address[] memory fiatcoins
-    ) external view override returns (IVault) {
+    ) external override returns (IVault) {
         uint256 maxRate;
         uint256 indexMax = 0;
 
@@ -76,7 +76,7 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         IVault[] memory backups = vault.getBackups();
         for (uint256 i = 0; i < backups.length; i++) {
             if (backups[i].containsOnly(approvedCollateral) && checkForSoftDefault(backups[i], fiatcoins).length == 0) {
-                uint256 rate = backups[i].basketFiatcoinRate();
+                uint256 rate = backups[i].basketRate();
 
                 // See if it has the highest basket rate
                 if (rate > maxRate) {

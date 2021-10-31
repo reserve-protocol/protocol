@@ -124,7 +124,7 @@ contract MainP0 is IMain, Ownable {
                 rewardsClaimed[prevRewards] = true;
             }
         }
-        state = manager.runAuctions();
+        state = manager.doAuctions();
     }
 
     // Default check
