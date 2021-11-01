@@ -612,7 +612,7 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr3.address)).to.equal(amount.sub(amount2.div(3)))
     })
 
-    it('Should also remove RSR from Withdrawers', async () => {
+    it('Should remove RSR from Withdrawers', async () => {
       const amount: BigNumber = bn(10e18)
       const amount2: BigNumber = bn(1e18)
 
@@ -657,6 +657,64 @@ describe('StRSRP0 contract', () => {
       ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(0)
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount.sub(amount2))
+    })
+
+    it('Should remove RSR proportionally from Stakers and Withdrawers', async () => {
+      const amount: BigNumber = bn(10e18)
+      const amount2: BigNumber = bn(1e18)
+
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, amount)
+      await stRSR.connect(addr1).stake(amount)
+
+      await rsr.connect(addr2).approve(stRSR.address, amount)
+      await stRSR.connect(addr2).stake(amount)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2))
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
+
+      // Unstake with delay
+      const stkWithdrawalDelay = 20000
+      await main.connect(owner).setStRSRWithdrawalDelay(stkWithdrawalDelay)
+
+      // Unstake
+      await stRSR.connect(addr1).unstake(amount)
+
+      // Check withdrawal properly registered
+      let [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(0)
+      expect(unstakeAcc).to.equal(addr1.address)
+      expect(unstakeAmt).to.equal(amount)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2))
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
+
+      // Seize RSR
+      await assetManager.connect(owner).seizeRSR(amount2)
+
+      // Check balances, stakes, and withdrawals
+      const proportionalAmountToSeize: BigNumber = amount2.div(2)
+
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2).sub(amount2))
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount.sub(proportionalAmountToSeize))
+
+      // // Check impacted withdrawal
+      ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(0)
+      expect(unstakeAcc).to.equal(addr1.address)
+      expect(unstakeAmt).to.equal(amount.sub(proportionalAmountToSeize))
     })
   })
 
