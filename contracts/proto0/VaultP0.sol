@@ -44,7 +44,7 @@ contract VaultP0 is IVault, Ownable {
         _basket.size = assets.length;
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.assets[i] = assets[i];
-            _basket.quantities[i] = quantities[i];
+            _basket.quantities[assets[i]] = quantities[i];
         }
 
         backups = backupVaults;
@@ -54,7 +54,7 @@ contract VaultP0 is IVault, Ownable {
     function tokenAmounts(uint256 amount) public view override returns (uint256[] memory parts) {
         parts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
-            parts[i] = (amount * _basket.quantities[i]) / 10**BUDecimals;
+            parts[i] = (amount * _basket.quantities[_basket.assets[i]]) / 10**BUDecimals;
         }
     }
 
@@ -132,7 +132,7 @@ contract VaultP0 is IVault, Ownable {
     function basketRate() external view override returns (uint256 sum) {
         for (uint256 i = 0; i < _basket.size; i++) {
             IAsset c = _basket.assets[i];
-            sum += (_basket.quantities[i] * c.redemptionRate()) / 10**c.decimals();
+            sum += (_basket.quantities[c] * c.redemptionRate()) / 10**c.decimals();
         }
     }
 
@@ -157,7 +157,7 @@ contract VaultP0 is IVault, Ownable {
     function maxIssuable(address issuer) external view override returns (uint256) {
         uint256 min = type(uint256).max;
         for (uint256 i = 0; i < _basket.size; i++) {
-            uint256 BUs = _basket.assets[i].erc20().balanceOf(issuer) / _basket.quantities[i];
+            uint256 BUs = _basket.assets[i].erc20().balanceOf(issuer) / _basket.quantities[_basket.assets[i]];
             if (BUs < min) {
                 min = BUs;
             }
@@ -175,12 +175,7 @@ contract VaultP0 is IVault, Ownable {
 
     // Returns the basket quantity for the given assets.
     function quantity(IAsset asset) external view override returns (uint256) {
-        for (uint256 i = 0; i < _basket.size; i++) {
-            if (_basket.assets[i] == asset) {
-                return _basket.quantities[i];
-            }
-        }
-        return 0;
+        return _basket.quantities[asset];
     }
 
     function getBackups() external view override returns (IVault[] memory) {

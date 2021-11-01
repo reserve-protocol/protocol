@@ -4,9 +4,12 @@ pragma solidity 0.8.4;
 import "../interfaces/IAsset.sol";
 import "../interfaces/IMain.sol";
 
+/// @param assets Mapping from an incremental index to asset
+/// @param quantities Mapping from asset to quantity of asset that is in one BU (1e18)
+/// @param size The number of assets in the basket
 struct Basket {
     mapping(uint256 => IAsset) assets;
-    mapping(uint256 => uint256) quantities;
+    mapping(IAsset => uint256) quantities;
     uint256 size;
 }
 
