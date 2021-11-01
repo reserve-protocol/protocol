@@ -58,4 +58,14 @@ contract MainMockP0 {
     function config() external view returns (Config memory) {
         return _config;
     }
+
+    // Return USD Price in 18 decimals
+    function consultAaveOracle(address token) external view returns (uint256) {
+        return 1e18;
+    }
+
+    // Return USD Price in 18 decimals
+    function consultCompoundOracle(address token) external view returns (uint256) {
+        return 1e18;
+    }
 }
