@@ -141,13 +141,13 @@ contract StRSRP0 is IStRSR, Context {
         processWithdrawals();
 
         uint256 snapshotTotalStakedPlus = _totalStaked + _amountBeingWithdrawn();
+        _totalStaked -= _totalStaked * _totalStaked / snapshotTotalStakedPlus;
 
         // Remove RSR for stakers and from withdrawals too
         if (snapshotTotalStakedPlus > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
                 uint256 amtToRemove = (amount * _balances[_accounts.at(index)]) / snapshotTotalStakedPlus;
                 _balances[_accounts.at(index)] -= amtToRemove;
-                _totalStaked -= amtToRemove;
             }
 
             for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
