@@ -163,7 +163,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         // Create new BUs
         uint256 issuable = vault.maxIssuable(address(this));
         if (issuable > 0) {
-            vault.issue(issuable);
+            vault.issue(address(this), issuable);
         }
 
         // Recapitalization auctions (break apart old BUs)

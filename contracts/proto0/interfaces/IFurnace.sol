@@ -25,7 +25,6 @@ interface IFurnace {
     /// @notice Performs any burning that has vested since last call. Idempotent
     function doBurn() external;
 
-    /// @notice Returns how much RToken has been burnt
     /// @return The total amount of RToken {qRToken} that been burnt
     function totalBurnt() external view returns (uint256);
 }

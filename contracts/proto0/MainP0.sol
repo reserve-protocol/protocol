@@ -109,7 +109,7 @@ contract MainP0 is IMain, Ownable {
             IERC20(iss.vault.assetAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.basketAmounts[i]);
             IERC20(iss.vault.assetAt(i).erc20()).safeApprove(address(iss.vault), iss.basketAmounts[i]);
         }
-        iss.vault.issue(iss.BUs);
+        iss.vault.issue(address(this), iss.BUs);
     }
 
     function redeem(uint256 amount) external override always {
