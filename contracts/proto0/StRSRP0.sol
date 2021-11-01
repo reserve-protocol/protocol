@@ -68,6 +68,7 @@ contract StRSRP0 is IStRSR, Context {
         _accounts.add(_msgSender());
         _balances[_msgSender()] += amount;
         _totalStaked += amount;
+        emit Staked(_msgSender(), amount);
     }
 
     function unstake(uint256 amount) external override {
@@ -83,6 +84,7 @@ contract StRSRP0 is IStRSR, Context {
 
         // Submit delayed withdrawal
         withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp + main.config().stRSRWithdrawalDelay));
+        emit UnstakingStarted(_msgSender(), amount, block.timestamp + main.config().stRSRWithdrawalDelay);
     }
 
     function balanceOf(address account) external view override returns (uint256) {
@@ -105,6 +107,7 @@ contract StRSRP0 is IStRSR, Context {
 
                 delete withdrawals[withdrawalIndex];
                 withdrawalIndex += 1;
+                emit UnstakingCompleted(withdrawal.account, withdrawal.amount, block.timestamp);
             } else {
                 break;
             }
@@ -130,6 +133,7 @@ contract StRSRP0 is IStRSR, Context {
                 _balances[_accounts.at(index)] += amtToAdd;
             }
         }
+        emit RSRAdded(_msgSender(), amount);
     }
 
     // Seizing RSR pulls RSR from all current stakers + withdrawers
@@ -157,6 +161,7 @@ contract StRSRP0 is IStRSR, Context {
         }
         // Transfer RSR to RToken
         main.rsr().safeTransfer(address(main), amount);
+        emit RSRSeized(_msgSender(), amount);
     }
 
     // ERC20 Interface
