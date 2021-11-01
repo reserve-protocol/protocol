@@ -151,16 +151,12 @@ contract StRSRP0 is IStRSR, Context {
 
         uint256 snapshotTotalStakedPlus = _totalStaked + _amountBeingWithdrawn();
 
-        // Only decrease if there are enough Staked funds
-        if (_totalStaked >= amount) {
-            _totalStaked -= amount;
-        }
-
         // Remove RSR for stakers and from withdrawals too
         if (snapshotTotalStakedPlus > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
                 uint256 amtToRemove = (amount * _balances[_accounts.at(index)]) / snapshotTotalStakedPlus;
                 _balances[_accounts.at(index)] -= amtToRemove;
+                _totalStaked -= amtToRemove;
             }
 
             for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
@@ -168,6 +164,7 @@ contract StRSRP0 is IStRSR, Context {
                 withdrawals[index].amount -= amtToRemove;
             }
         }
+
         // Transfer RSR to RToken
         main.rsr().safeTransfer(address(main), amount);
         emit RSRSeized(_msgSender(), amount);
