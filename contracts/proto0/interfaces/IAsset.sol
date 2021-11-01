@@ -5,6 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IMain.sol";
 
 interface IAsset {
+    function updateRedemptionRate() external;
+
+    // Call `updateRedemptionRate()` before to ensure the latest rates
     function redemptionRate() external view returns (uint256);
 
     function erc20() external view returns (IERC20);

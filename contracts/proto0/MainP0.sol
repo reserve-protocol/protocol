@@ -50,11 +50,11 @@ contract MainP0 is IMain, Ownable {
     address public pauser;
     bool public override paused;
 
-    mapping(uint256 => bool) rewardsProcessed; // timestamp of rewards
+    // timestamp -> whether rewards have been claimed.
+    mapping(uint256 => bool) rewardsClaimed;
 
     // Slow Issuance
-    mapping(uint256 => SlowIssuance) public issuances;
-    uint256 public issuanceCount;
+    SlowIssuance[] public issuances;
 
     // Default detection.
     State public state;
@@ -76,8 +76,9 @@ contract MainP0 is IMain, Ownable {
         IAsset[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
         if (hardDefaulting.length > 0) {
             manager.switchVaults(hardDefaulting);
-            state = State.RECAPITALIZING;
+            state = State.TRADING;
         }
+        manager.update();
         _;
     }
 
@@ -87,22 +88,26 @@ contract MainP0 is IMain, Ownable {
     }
 
     function issue(uint256 amount) external override notPaused always {
-        require(state == State.CALM || state == State.RECAPITALIZING, "only during calm + migration");
+        require(state == State.CALM || state == State.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
         _processSlowIssuance();
 
         // During SlowIssuance, BUs are created up front and held by `Main` until the issuance vests,
         // at which point the BUs are transferred to the AssetManager and RToken is minted to the issuer.
-        issuances[issuanceCount] = manager.startIssuance(_msgSender(), amount);
-        issuances[issuanceCount].blockAvailableAt = _nextIssuanceBlockAvailable(amount);
+        SlowIssuance storage iss = issuances[issuances.length - 1];
+        iss.vault = manager.vault();
+        iss.amount = amount;
+        iss.BUs = manager.toBUs(amount);
+        iss.basketAmounts = manager.vault().tokenAmounts(iss.BUs);
+        iss.issuer = _msgSender();
+        iss.blockAvailableAt = _nextIssuanceBlockAvailable(amount);
+        issuances.push(iss);
 
-        SlowIssuance storage iss = issuances[issuanceCount];
         for (uint256 i = 0; i < iss.vault.size(); i++) {
             IERC20(iss.vault.assetAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.basketAmounts[i]);
             IERC20(iss.vault.assetAt(i).erc20()).safeApprove(address(iss.vault), iss.basketAmounts[i]);
         }
         iss.vault.issue(iss.BUs);
-        issuanceCount++;
     }
 
     function redeem(uint256 amount) external override always {
@@ -115,35 +120,34 @@ contract MainP0 is IMain, Ownable {
 
     // Runs auctions
     function poke() external override notPaused always {
-        require(state == State.CALM || state == State.RECAPITALIZING, "only during calm + migration");
+        require(state == State.CALM || state == State.TRADING, "only during calm + trading");
         _processSlowIssuance();
-
-        state = manager.runAuctions();
 
         if (state == State.CALM) {
             (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
-            if (!rewardsProcessed[prevRewards]) {
-                rewardsProcessed[prevRewards] = true;
-                manager.runPeriodicActions();
+            if (!rewardsClaimed[prevRewards]) {
+                manager.collectRevenue();
+                rewardsClaimed[prevRewards] = true;
             }
         }
+        state = manager.doAuctions();
     }
 
     // Default check
     function noticeDefault() external override notPaused always {
         IAsset[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoinAssets());
 
-        // If no defaults, walk back the default and enter CALM/RECAPITALIZING
+        // If no defaults, walk back the default and enter CALM/TRADING
         if (softDefaulting.length == 0) {
-            state = manager.fullyCapitalized() ? State.CALM : State.RECAPITALIZING;
+            state = manager.fullyCapitalized() ? State.CALM : State.TRADING;
             return;
         }
 
         // If state is DOUBT for >24h (default delay), switch vaults
         if (state == State.DOUBT && block.timestamp >= stateRaisedAt + _config.defaultDelay) {
             manager.switchVaults(softDefaulting);
-            state = State.RECAPITALIZING;
-        } else if (state == State.CALM || state == State.RECAPITALIZING) {
+            state = State.TRADING;
+        } else if (state == State.CALM || state == State.TRADING) {
             state = State.DOUBT;
             stateRaisedAt = block.timestamp;
         }
@@ -211,14 +215,9 @@ contract MainP0 is IMain, Ownable {
         return next;
     }
 
-    function quoteIssue(uint256 amount) public view override returns (uint256[] memory) {
-        require(amount > 0, "Cannot quote issue zero");
-        return manager.quote(amount);
-    }
-
-    function quoteRedeem(uint256 amount) public view override returns (uint256[] memory) {
-        require(amount > 0, "Cannot quote redeem zero");
-        return manager.quote(amount);
+    function quote(uint256 amount) public view override returns (uint256[] memory) {
+        require(amount > 0, "Cannot quote zero");
+        return manager.vault().tokenAmounts(manager.toBUs(amount));
     }
 
     function consultAaveOracle(address token) external view override returns (uint256) {
@@ -239,18 +238,19 @@ contract MainP0 is IMain, Ownable {
 
     // ==================================== Internal ====================================
 
+    // Returns the block number at which an issuance for *amount* that begins now
     function _nextIssuanceBlockAvailable(uint256 amount) internal view returns (uint256) {
         uint256 issuanceRate = Math.max(
             10_000 * 10**rToken.decimals(),
             (rToken.totalSupply() * _config.issuanceRate) / SCALE
         );
-        uint256 blockStart = issuanceCount == 0 ? block.number : issuances[issuanceCount - 1].blockAvailableAt;
+        uint256 blockStart = issuances.length == 0 ? block.number : issuances[issuances.length - 1].blockAvailableAt;
         return Math.max(blockStart, block.number) + Math.ceilDiv(amount, issuanceRate);
     }
 
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowIssuance() internal {
-        for (uint256 i = 0; i < issuanceCount; i++) {
+        for (uint256 i = 0; i < issuances.length; i++) {
             if (!issuances[i].processed && issuances[i].vault != manager.vault()) {
                 issuances[i].vault.redeem(issuances[i].issuer, issuances[i].BUs);
             }

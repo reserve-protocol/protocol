@@ -19,9 +19,11 @@ interface IVault {
 
     function pullBUs(address from, uint256 amount) external;
 
-    function claimAndSweepRewardsToManager(IMain main) external;
+    function claimAndSweepRewardsToManager() external;
 
-    function basketFiatcoinRate() external view returns (uint256);
+    function updateCompoundAaveRates() external;
+
+    function basketRate() external view returns (uint256);
 
     function containsOnly(address[] memory assets) external view returns (bool);
 

@@ -12,10 +12,10 @@ import "./IStRSR.sol";
 import "./IVault.sol";
 
 enum State {
-    CALM,
-    DOUBT,
-    RECAPITALIZING,
-    PRECAUTIONARY
+    CALM, // 100% capitalized + no auctions
+    DOUBT, // in this state for 24h before default, no auctions or unstaking
+    TRADING, // auctions in progress, no unstaking
+    PRECAUTIONARY // no auctions, no issuance, no unstaking
 }
 
 struct Config {
@@ -28,8 +28,9 @@ struct Config {
     // Percentage values (relative to SCALE)
     uint256 maxTradeSlippage; // the maximum amount of slippage in percentage terms we will accept in a trade
     uint256 auctionClearingTolerance; // the maximum % difference between auction clearing price and oracle data allowed.
-    uint256 maxAuctionSize; // the size of an auction, as a fraction of RToken supply
-    uint256 minAuctionSize; // the size of an auction, as a fraction of RToken supply
+    uint256 maxAuctionSize; // the max size of an auction, as a fraction of RToken supply
+    uint256 minRecapitalizationAuctionSize; // the min size of a recapitalization auction, as a fraction of RToken supply
+    uint256 minRevenueAuctionSize; // the min size of a revenue auction (RToken/COMP/AAVE), as a fraction of RToken supply
     uint256 migrationChunk; // how much backing to migrate at a time, as a fraction of RToken supply
     uint256 issuanceRate; // the number of RToken to issue per block, as a fraction of RToken supply
     uint256 defaultThreshold; // the percent deviation required before a token is marked as in-default
@@ -46,7 +47,8 @@ struct Config {
     // maxTradeSlippage = 1e17 (10%)
     // auctionClearingTolerance = 1e17 (10%)
     // maxAuctionSize = 1e16 (1%)
-    // minAuctionSize = 1e15 (0.1%)
+    // minRecapitalizationAuctionSize = 1e15 (0.1%)
+    // minRevenueAuctionSize = 1e14 (0.01%)
     // migrationChunk = 2e17 (20%)
     // issuanceRate = 25e13 (0.025% per block, or ~0.1% per minute)
     // defaultThreshold = 5e16 (5% deviation)
@@ -87,9 +89,7 @@ interface IMain {
 
     function paused() external view returns (bool);
 
-    function quoteIssue(uint256 amount) external view returns (uint256[] memory);
-
-    function quoteRedeem(uint256 amount) external view returns (uint256[] memory);
+    function quote(uint256 amount) external view returns (uint256[] memory);
 
     function rsr() external view returns (IERC20);
 

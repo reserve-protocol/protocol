@@ -6,21 +6,23 @@ import "./IMain.sol";
 import "./IVault.sol";
 
 interface IAssetManager {
-    function startIssuance(address issuer, uint256 amount) external returns (SlowIssuance memory);
+    function update() external; // block-by-block idempotent updates
 
     function completeIssuance(SlowIssuance memory issuance) external;
 
-    function redeem(address redeemer, uint256 amount) external;
+    function redeem(address redeemer, uint256 rTokenAmount) external;
 
-    function runAuctions() external returns (State);
+    function doAuctions() external returns (State);
 
-    function runPeriodicActions() external;
+    function collectRevenue() external;
 
     function accumulate() external;
 
     function switchVaults(IAsset[] memory defaulting) external;
 
-    function quote(uint256 amount) external view returns (uint256[] memory);
+    function toBUs(uint256 rTokenAmount) external view returns (uint256);
+
+    function fromBUs(uint256 BUs) external view returns (uint256);
 
     function fullyCapitalized() external view returns (bool);
 

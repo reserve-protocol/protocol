@@ -25,33 +25,17 @@ library Auction {
         uint256 startTime;
         uint256 endTime;
         Fate fate;
-        bool open;
+        bool isOpen;
     }
 
-    function start(
-        Auction.Info storage self,
-        IAsset sellAsset,
-        IAsset buyAsset,
-        uint256 sellAmount,
-        uint256 minBuyAmount,
-        uint256 endTime,
-        Fate fate
-    ) internal {
-        self.sellAsset = sellAsset;
-        self.buyAsset = buyAsset;
-        self.sellAmount = sellAmount;
-        self.minBuyAmount = minBuyAmount;
-        self.startTime = block.timestamp;
-        self.endTime = endTime;
-        self.fate = fate;
-        self.open = true;
-
+    function open(Auction.Info storage self) internal {
         // TODO: batchAuction.initiateAuction()
+        self.isOpen = true;
     }
 
     // Returns the buyAmount for the auction after clearing.
-    function process(Auction.Info storage self, IMain main) internal returns (uint256 buyAmount) {
-        require(self.open, "already closed out");
+    function close(Auction.Info storage self, IMain main) internal returns (uint256 buyAmount) {
+        require(self.isOpen, "already closed out");
         require(self.endTime <= block.timestamp, "auction not over");
         // TODO: buyAmount = batchAuction.claim();
         uint256 bal = self.buyAsset.erc20().balanceOf(address(this));
@@ -69,11 +53,11 @@ library Auction {
         } else {
             assert(false);
         }
-        self.open = false;
+        self.isOpen = false;
         return buyAmount;
     }
 
-    // Returns false if the auction buyAmount is > *threshold* of the expected buyAmount.
+    // Returns false if the auction buyAmount is > *auctionClearingTolerance* of the expected buyAmount.
     function clearedCloseToOraclePrice(
         Auction.Info storage self,
         IMain main,
