@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /**
- * @title RTokenP0
+ * @title IRToken
  * @notice An ERC20 with an elastic supply.
  */
 interface IRToken is IERC20Metadata {

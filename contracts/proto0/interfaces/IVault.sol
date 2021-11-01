@@ -14,7 +14,7 @@ struct Basket {
 }
 
 /*
- * @title VaultP0
+ * @title IVault
  * @notice An issuer of an internal bookkeeping unit called a BU or basket unit.
  */
 interface IVault {

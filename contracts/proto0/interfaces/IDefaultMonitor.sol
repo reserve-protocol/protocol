@@ -5,7 +5,7 @@ import "./IAsset.sol";
 import "./IVault.sol";
 
 /**
- * @title DefaultMonitorP0
+ * @title IDefaultMonitor
  * @notice Provides the logic to check for collateral default.
  */
 interface IDefaultMonitor {

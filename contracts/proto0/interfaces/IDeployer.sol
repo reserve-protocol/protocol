@@ -9,7 +9,7 @@ import "./IAsset.sol";
 import "./IVault.sol";
 
 /**
- * @title DeployerP0
+ * @title IDeployer
  * @notice The deployer for the entire system.
  */
 interface IDeployer {
