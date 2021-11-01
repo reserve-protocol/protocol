@@ -198,9 +198,12 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         return vault.basketUnits(address(this)) >= toBUs(main.rToken().totalSupply());
     }
 
-    /// @return An array of addresses of the approved fiatcoin assets used for oracle USD determination
-    function approvedFiatcoinAssets() external view override returns (address[] memory) {
-        return _fiatcoins.values();
+    /// @return fiatcoins An array of approved fiatcoin assets to be used for oracle USD determination
+    function approvedFiatcoins() external view override returns (IAsset[] memory fiatcoins) {
+        address[] memory addresses = _fiatcoins.values();
+        for (uint256 i = 0; i < addresses.length; i++) {
+            fiatcoins[i] = IAsset(addresses[i]);
+        }
     }
 
     /// @notice RToken -> BUs

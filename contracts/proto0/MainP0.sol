@@ -21,8 +21,7 @@ import "./interfaces/IRToken.sol";
 
 /**
  * @title MainP0
- * @notice The central coordinator for the entire system, as well as the point of contact.
- *
+ * @notice The central coordinator for the entire system, as well as the external interface.
  */
 contract MainP0 is IMain, Ownable {
     using SafeERC20 for IERC20;
@@ -137,7 +136,7 @@ contract MainP0 is IMain, Ownable {
 
     // Default check
     function noticeDefault() external override notPaused always {
-        IAsset[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoinAssets());
+        IAsset[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoins());
 
         // If no defaults, walk back the default and enter CALM/TRADING
         if (softDefaulting.length == 0) {

@@ -46,7 +46,7 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
     /// @notice Checks for soft default in a vault by checking oracle values for all fiatcoins in the vault
     /// @param vault The vault to inspect
     /// @param fiatcoins An array of addresses of fiatcoin assets to use for median USD calculation
-    function checkForSoftDefault(IVault vault, address[] memory fiatcoins)
+    function checkForSoftDefault(IVault vault, IAsset[] memory fiatcoins)
         public
         view
         override
@@ -79,11 +79,18 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
     ) external override returns (IVault) {
         uint256 maxRate;
         uint256 indexMax = 0;
+        IAsset[] memory fiatcoinAssets = new IAsset[](fiatcoins.length);
+        for (uint256 i = 0; i < fiatcoins.length; i++) {
+            fiatcoinAssets[i] = IAsset(fiatcoins[i]);
+        }
 
         // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         IVault[] memory backups = vault.getBackups();
         for (uint256 i = 0; i < backups.length; i++) {
-            if (backups[i].containsOnly(approvedCollateral) && checkForSoftDefault(backups[i], fiatcoins).length == 0) {
+            if (
+                backups[i].containsOnly(approvedCollateral) &&
+                checkForSoftDefault(backups[i], fiatcoinAssets).length == 0
+            ) {
                 uint256 rate = backups[i].basketRate();
 
                 // See if it has the highest basket rate
@@ -101,11 +108,11 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
     }
 
     // Computes the USD price (18 decimals) at which a fiatcoin should be considered to be defaulting.
-    function _defaultThreshold(address[] memory fiatcoins) internal view returns (uint256) {
+    function _defaultThreshold(IAsset[] memory fiatcoins) internal view returns (uint256) {
         // Collect prices
         uint256[] memory prices = new uint256[](fiatcoins.length);
         for (uint256 i = 0; i < fiatcoins.length; i++) {
-            prices[i] = IAsset(fiatcoins[i]).fiatcoinPriceUSD(main);
+            prices[i] = fiatcoins[i].fiatcoinPriceUSD(main);
         }
 
         // Sort

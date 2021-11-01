@@ -16,7 +16,7 @@ interface IDefaultMonitor {
     /// @notice Checks for soft default in a vault by checking oracle values for all fiatcoins in the vault
     /// @param vault The vault to inspect
     /// @param fiatcoins An array of addresses of fiatcoin assets to use for median USD calculation
-    function checkForSoftDefault(IVault vault, address[] memory fiatcoins) external view returns (IAsset[] memory);
+    function checkForSoftDefault(IVault vault, IAsset[] memory fiatcoins) external view returns (IAsset[] memory);
 
     /// @notice Returns a vault from the list of backup vaults that is not defaulting
     /// @param vault The vault that is currently defaulting

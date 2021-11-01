@@ -94,5 +94,5 @@ interface IAssetManager {
     function vault() external view returns (IVault);
 
     /// @return An array of addresses of the approved fiatcoin assets used for oracle USD determination
-    function approvedFiatcoinAssets() external view returns (address[] memory);
+    function approvedFiatcoins() external view returns (IAsset[] memory);
 }
