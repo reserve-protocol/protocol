@@ -259,7 +259,7 @@ contract MainP0 is IMain, Ownable {
 
             if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
                 issuances[i].vault.setAllowance(address(manager), issuances[i].BUs);
-                manager.completeIssuance(issuances[i]);
+                manager.issue(issuances[i]);
             }
 
             issuances[i].processed = true;

@@ -92,7 +92,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function update() external override sideEffects {}
 
     // Pulls BUs over from Main and mints RToken to the issuer. Called at the end of SlowIssuance.
-    function completeIssuance(SlowIssuance memory issuance) external override sideEffects {
+    function issue(SlowIssuance memory issuance) external override sideEffects {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         issuance.vault.pullBUs(address(main), issuance.BUs); // Main should have set an allowance
         main.rToken().mint(issuance.issuer, issuance.amount);

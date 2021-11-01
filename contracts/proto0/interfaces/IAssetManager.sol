@@ -8,7 +8,7 @@ import "./IVault.sol";
 interface IAssetManager {
     function update() external; // block-by-block idempotent updates
 
-    function completeIssuance(SlowIssuance memory issuance) external;
+    function issue(SlowIssuance memory issuance) external;
 
     function redeem(address redeemer, uint256 rTokenAmount) external;
 
