@@ -10,6 +10,7 @@ import "../libraries/CommonErrors.sol";
 import "./libraries/Oracle.sol";
 import "./interfaces/IAsset.sol";
 import "./interfaces/IDeployer.sol";
+import "./interfaces/IMain.sol";
 import "./interfaces/IVault.sol";
 import "./assets/RTokenAssetP0.sol";
 import "./AssetManagerP0.sol";
@@ -24,6 +25,8 @@ import "./StRSRP0.sol";
  * @notice The deployer for the entire system.
  */
 contract DeployerP0 is IDeployer {
+    IMain[] public deployments;
+
     /// @notice Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
@@ -51,6 +54,7 @@ contract DeployerP0 is IDeployer {
         Oracle.Info memory oracle = Oracle.Info(compound, aave);
 
         MainP0 main = new MainP0(oracle, config, rsr);
+        deployments.push(main);
 
         {
             DefaultMonitorP0 monitor = new DefaultMonitorP0(main);
@@ -81,6 +85,7 @@ contract DeployerP0 is IDeployer {
         }
         main.transferOwnership(owner);
 
+        emit RTokenCreated(address(main), address(main.rToken()), owner);
         return (address(main));
     }
 }

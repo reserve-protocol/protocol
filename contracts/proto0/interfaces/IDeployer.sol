@@ -13,6 +13,13 @@ import "./IVault.sol";
  * @notice The deployer for the entire system.
  */
 interface IDeployer {
+    /// @notice Emitted when a new RToken and accompanying system is deployed
+    /// @param main The address of `Main`
+    /// @param owner The owner of the newly deployed system
+    event RTokenCreated(address indexed main, address indexed rToken, address indexed owner);
+
+    //
+
     /// @param rsrAsset RSR as an IAsset
     /// @param compAsset COMP as an IAsset
     /// @param aaveAsset AAVE as an IAsset
