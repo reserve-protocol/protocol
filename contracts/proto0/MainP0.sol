@@ -94,13 +94,15 @@ contract MainP0 is IMain, Ownable {
 
         // During SlowIssuance, BUs are created up front and held by `Main` until the issuance vests,
         // at which point the BUs are transferred to the AssetManager and RToken is minted to the issuer.
-        SlowIssuance storage iss = issuances[issuances.length - 1];
-        iss.vault = manager.vault();
-        iss.amount = amount;
-        iss.BUs = manager.toBUs(amount);
-        iss.basketAmounts = manager.vault().tokenAmounts(iss.BUs);
-        iss.issuer = _msgSender();
-        iss.blockAvailableAt = _nextIssuanceBlockAvailable(amount);
+        SlowIssuance memory iss = SlowIssuance({
+            vault: manager.vault(),
+            amount: amount,
+            BUs: manager.toBUs(amount),
+            basketAmounts: manager.vault().tokenAmounts(manager.toBUs(amount)),
+            issuer: _msgSender(),
+            blockAvailableAt: _nextIssuanceBlockAvailable(amount),
+            processed: false
+        });
         issuances.push(iss);
 
         for (uint256 i = 0; i < iss.vault.size(); i++) {
