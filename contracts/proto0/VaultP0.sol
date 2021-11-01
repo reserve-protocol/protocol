@@ -15,7 +15,7 @@ import "./interfaces/IVault.sol";
 
 /*
  * @title VaultP0
- * @dev The Manager backs an RToken by some number of Vaults, each with an immutable basket definition.
+ * @notice The Manager backs an RToken by some number of Vaults, each with an immutable basket definition.
  *  A Vault issues Basket Units (BUs) to the Manager for internal bookkeeping and provides helpers.
  */
 contract VaultP0 is IVault, Ownable {

@@ -21,7 +21,7 @@ import "./StRSRP0.sol";
 
 /**
  * @title AssetManagerP0
- * @dev Handles the transfer and trade of assets.
+ * @notice Handles the transfer and trade of assets.
  *
  * This contract:
  *    - Manages the choice of backing of an RToken via Vault selection.

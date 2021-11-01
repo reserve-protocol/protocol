@@ -10,7 +10,7 @@ import "./interfaces/IMain.sol";
 
 /*
  * @title StRSRP0
- * @dev The StRSR is where people can stake their RSR in order to provide insurance and
+ * @notice The StRSR is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken.
  *
  * There's an important assymetry in the StRSR. When RSR is added, it must be split only
@@ -57,7 +57,8 @@ contract StRSRP0 is IStRSR, Context {
         _symbol = symbol_;
     }
 
-    // Stake RSR
+    /// @notice Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
+    /// @param amount {qRSR}
     function stake(uint256 amount) external override {
         // Process pending withdrawals
         processWithdrawals();
@@ -71,6 +72,8 @@ contract StRSRP0 is IStRSR, Context {
         emit Staked(_msgSender(), amount);
     }
 
+    /// @notice Begins a delayed unstaking for `amount` stRSR
+    /// @param amount {qRSR}
     function unstake(uint256 amount) external override {
         // Process pending withdrawals
         processWithdrawals();
@@ -83,8 +86,9 @@ contract StRSRP0 is IStRSR, Context {
         _totalStaked -= amount;
 
         // Submit delayed withdrawal
-        withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp + main.config().stRSRWithdrawalDelay));
-        emit UnstakingStarted(_msgSender(), amount, block.timestamp + main.config().stRSRWithdrawalDelay);
+        uint256 availableAt = block.timestamp + main.config().stRSRWithdrawalDelay;
+        withdrawals.push(Withdrawal(_msgSender(), amount, availableAt));
+        emit UnstakingStarted(withdrawals.length - 1, _msgSender(), amount, availableAt);
     }
 
     function balanceOf(address account) external view override returns (uint256) {
@@ -107,14 +111,14 @@ contract StRSRP0 is IStRSR, Context {
 
                 delete withdrawals[withdrawalIndex];
                 withdrawalIndex += 1;
-                emit UnstakingCompleted(withdrawal.account, withdrawal.amount, block.timestamp);
+                emit UnstakingCompleted(index, withdrawal.account, withdrawal.amount);
             } else {
                 break;
             }
         }
     }
 
-    // Adding RSR adds RSR only to current stakers (not withdrawers)
+    /// @param amount {qRSR}
     function addRSR(uint256 amount) external override {
         require(amount > 0, "Amount cannot be zero");
 
@@ -136,7 +140,8 @@ contract StRSRP0 is IStRSR, Context {
         emit RSRAdded(_msgSender(), amount);
     }
 
-    // Seizing RSR pulls RSR from all current stakers + withdrawers
+    /// @notice AssetManager only
+    /// @param amount {qRSR}
     function seizeRSR(uint256 amount) external override {
         require(_msgSender() == address(main.manager()), "Caller is not Asset Manager");
         require(amount > 0, "Amount cannot be zero");

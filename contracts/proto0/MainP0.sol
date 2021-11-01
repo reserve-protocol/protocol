@@ -21,7 +21,7 @@ import "./interfaces/IRToken.sol";
 
 /**
  * @title MainP0
- * @dev The central coordinator for the entire system, as well as the point of contact.
+ * @notice The central coordinator for the entire system, as well as the point of contact.
  *
  */
 contract MainP0 is IMain, Ownable {

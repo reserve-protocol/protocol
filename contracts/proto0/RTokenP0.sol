@@ -10,7 +10,7 @@ import "./interfaces/IRToken.sol";
 
 /**
  * @title RTokenP0
- * @dev A mintable/burnable ERC20 to be leveraged by the Manager to support a decentralized stablecoin.
+ * @notice A mintable/burnable ERC20 to be leveraged by the Manager to support a decentralized stablecoin.
  */
 contract RTokenP0 is IRToken, ERC20 {
     IMain public main;

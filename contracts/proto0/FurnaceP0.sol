@@ -8,7 +8,7 @@ import "./interfaces/IRToken.sol";
 
 /**
  * @title FurnaceP0
- * @dev A helper contract to burn RTokens slowly.
+ * @notice A helper contract to burn RTokens slowly.
  */
 contract FurnaceP0 is IFurnace {
     using SafeERC20 for IRToken;

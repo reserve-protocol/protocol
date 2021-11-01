@@ -9,7 +9,7 @@ import "./MainP0.sol";
 
 /**
  * @title DefaultMonitorP0
- * @dev The default monitor checks for default states in other systems.
+ * @notice The default monitor checks for default states in other systems.
  */
 contract DefaultMonitorP0 is Context, IDefaultMonitor {
     uint256 public constant SCALE = 1e18;
