@@ -78,7 +78,7 @@ contract MainP0 is IMain, Ownable {
             manager.switchVaults(hardDefaulting);
             state = State.TRADING;
         }
-        manager.update();
+        manager.updateBaseFactor();
         _;
     }
 

@@ -21,15 +21,10 @@ import "./StRSRP0.sol";
 
 /**
  * @title AssetManagerP0
- * @notice Handles the transfer and trade of assets.
- *
- * This contract:
- *    - Manages the choice of backing of an RToken via Vault selection.
- *    - Defines the exchange rate between Vault BUs and RToken supply, via the base factor.
- *    - Runs 3 types of auctions:
- *          A. Asset-for-asset             (Migration auctions)
- *          B. RSR-for-RToken              (Recapitalization auctions)
- *          C. COMP/AAVE-for-RToken        (Revenue auctions)
+ * @notice Handles the transfer and trade of assets
+ *    - Defines the exchange rate between Vault BUs and RToken supply, via the base factor
+ *    - Manages RToken backing via a Vault
+ *    - Runs recapitalization and revenue auctions
  */
 contract AssetManagerP0 is IAssetManager, Ownable {
     using SafeERC20 for IERC20;
@@ -89,23 +84,27 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         _;
     }
 
-    function update() external override sideEffects {}
+    /// @notice Runs block-by-block updates
+    function updateBaseFactor() external override sideEffects {}
 
-    // Pulls BUs over from Main and mints RToken to the issuer. Called at the end of SlowIssuance.
+    /// @notice Mints `issuance.amount` of RToken to `issuance.minter`
+    /// @param issuance The SlowIssuance to finalize by issuing RToken
     function issue(SlowIssuance memory issuance) external override sideEffects {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         issuance.vault.pullBUs(address(main), issuance.BUs); // Main should have set an allowance
         main.rToken().mint(issuance.issuer, issuance.amount);
     }
 
-    // Transfers collateral to the redeemers account at the current BU exchange rate.
+    /// @notice Redeems `amount` {qRToken} to `redeemer`
+    /// @param redeemer The account that should receive the collateral
+    /// @param amount The amount of RToken being redeemed {qRToken}
     function redeem(address redeemer, uint256 amount) external override sideEffects {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         main.rToken().burn(redeemer, amount);
         _oldestVault().redeem(redeemer, toBUs(amount));
     }
 
-    // Claims COMP + AAVE from Vault + Manager and expands the RToken supply.
+    /// @notice Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
     function collectRevenue() external override sideEffects {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         vault.claimAndSweepRewardsToManager();
@@ -119,7 +118,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
     }
 
-    // Unapproves the defaulting asset and switches the RToken over to a new Vault.
+    /// @notice Attempts to switch vaults to a backup vault that does not contain `defaulting` assets
+    /// @param defaulting The list of assets that are ineligible to be in the next vault
     function switchVaults(IAsset[] memory defaulting) external override sideEffects {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         for (uint256 i = 0; i < defaulting.length; i++) {
@@ -132,18 +132,21 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
     }
 
-    // Upon vault change or change to *f*, we accumulate the historical dilution factor.
+    /// @notice Accumulates current metrics into historical metrics
     function accumulate() external override sideEffects {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         _accumulate();
     }
 
-    // Central auction loop:
-    //    1. Closeout running auctions
-    //    2. Create new BUs from collateral
-    //    3. Break apart old BUs and trade toward new basket
-    //    4. Run revenue auctions
+    /// @notice Performs any and all auctions in the system
+    /// @return The current enum `State`
     function doAuctions() external override sideEffects returns (State) {
+        // Outline:
+        //   1. Closeout running auctions
+        //   2. Create new BUs from collateral
+        //   3. Break apart old BUs and trade toward new basket
+        //   4. Run revenue auctions
+
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctions.length; i++) {
@@ -154,6 +157,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 }
 
                 uint256 boughtAmount = auction.close(main);
+                emit AuctionEnd(i, auction.sellAmount, boughtAmount);
                 if (!auction.clearedCloseToOraclePrice(main, boughtAmount)) {
                     return State.PRECAUTIONARY;
                 }
@@ -189,15 +193,19 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     //
 
+    /// @return Whether the vault is fully capitalized
     function fullyCapitalized() public view override returns (bool) {
         return vault.basketUnits(address(this)) >= toBUs(main.rToken().totalSupply());
     }
 
+    /// @return An array of addresses of the approved fiatcoin assets used for oracle USD determination
     function approvedFiatcoinAssets() external view override returns (address[] memory) {
         return _fiatcoins.values();
     }
 
-    // RToken -> BUs
+    /// @notice RToken -> BUs
+    /// @param amount The quantity of RToken {qRToken} to convert to BUs
+    /// @return The equivalent amount of BUs at the current base factor
     function toBUs(uint256 amount) public view override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
             return amount;
@@ -205,12 +213,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         return (amount * _basketDilutionFactor()) / _meltingFactor();
     }
 
-    // BUs -> RToken
-    function fromBUs(uint256 amount) public view override returns (uint256) {
+    /// @notice BUs -> RToken
+    /// @param BUs The quantity of BUs {qBUs} to convert to RToken
+    /// @return The equivalent amount of RToken at the current base factor
+    function fromBUs(uint256 BUs) public view override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
-            return amount;
+            return BUs;
         }
-        return (amount * _meltingFactor()) / _basketDilutionFactor();
+        return (BUs * _meltingFactor()) / _basketDilutionFactor();
     }
 
     //
@@ -250,6 +260,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     function _switchVault(IVault vault_) internal {
         pastVaults.push(vault_);
+        emit NewVault(address(vault), address(vault_));
         vault = vault_;
 
         // Accumulate the basket dilution factor to enable correct forward accounting
@@ -274,6 +285,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function _launchAuction(Auction.Info memory auction) internal returns (State) {
         auctions.push(auction);
         auctions[auctions.length - 1].open();
+        emit AuctionStart(
+            auctions.length - 1,
+            address(auction.sellAsset),
+            address(auction.buyAsset),
+            auction.sellAmount,
+            auction.minBuyAmount,
+            auction.fate
+        );
         return State.TRADING;
     }
 

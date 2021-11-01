@@ -11,13 +11,6 @@ import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./IVault.sol";
 
-enum State {
-    CALM, // 100% capitalized + no auctions
-    DOUBT, // in this state for 24h before default, no auctions or unstaking
-    TRADING, // auctions in progress, no unstaking
-    PRECAUTIONARY // no auctions, no issuance, no unstaking
-}
-
 struct Config {
     // Time (seconds)
     uint256 rewardStart; // the timestamp of the very first weekly reward handout
