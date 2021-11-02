@@ -8,7 +8,7 @@ import "./interfaces/IRToken.sol";
 
 /**
  * @title FurnaceP0
- * @dev A helper contract to burn RTokens slowly.
+ * @notice A helper contract to burn RTokens slowly and permisionlessly.
  */
 contract FurnaceP0 is IFurnace {
     using SafeERC20 for IRToken;
@@ -32,6 +32,9 @@ contract FurnaceP0 is IFurnace {
         rToken = IRToken(rToken_);
     }
 
+    /// @notice Sets aside `amount` of RToken to be burnt over `timePeriod` seconds.
+    /// @param amount The amount of RToken to be burnt {qRToken}
+    /// @param timePeriod The number of seconds to spread the burn over
     function burnOverPeriod(uint256 amount, uint256 timePeriod) external override {
         require(amount > 0, "Cannot burn a batch of zero");
 
@@ -39,15 +42,16 @@ contract FurnaceP0 is IFurnace {
 
         // Register handout
         batches.push(Batch(amount, block.timestamp, timePeriod, 0));
+        emit Distribution(amount, timePeriod, msg.sender);
     }
 
-    // Burns all releasable rToken and returns the amount burnt.
-    // Idempotent in the same block
+    /// @notice Performs any burning that has vested since last call. Idempotent
     function doBurn() external override {
         uint256 amount = _burnable(block.timestamp);
         if (amount > 0) {
             require(rToken.burn(address(this), amount), "should burn from self successfully");
             totalBurnt += amount;
+            emit Burn(amount);
         }
     }
 

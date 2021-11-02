@@ -21,8 +21,7 @@ import "./interfaces/IRToken.sol";
 
 /**
  * @title MainP0
- * @dev The central coordinator for the entire system, as well as the point of contact.
- *
+ * @notice The central coordinator for the entire system, as well as the external interface.
  */
 contract MainP0 is IMain, Ownable {
     using SafeERC20 for IERC20;
@@ -70,15 +69,14 @@ contract MainP0 is IMain, Ownable {
         rsr = rsr_;
     }
 
-    // This modifier runs before every function including redemption, so it needs to be very safe.
+    /// This modifier runs before every function including redemption, so it should be very safe.
     modifier always() {
-        // Check for hard default (anything that is 100% indicative of a default)
         IAsset[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
         if (hardDefaulting.length > 0) {
             manager.switchVaults(hardDefaulting);
             state = State.TRADING;
         }
-        manager.update();
+        manager.updateBaseFactor();
         _;
     }
 
@@ -87,6 +85,8 @@ contract MainP0 is IMain, Ownable {
         _;
     }
 
+    /// @notice Begin a time-delayed issuance of RToken for basket collateral
+    /// @param amount The quantity {qRToken} of RToken to issue
     function issue(uint256 amount) external override notPaused always {
         require(state == State.CALM || state == State.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
@@ -109,18 +109,22 @@ contract MainP0 is IMain, Ownable {
             IERC20(iss.vault.assetAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.basketAmounts[i]);
             IERC20(iss.vault.assetAt(i).erc20()).safeApprove(address(iss.vault), iss.basketAmounts[i]);
         }
-        iss.vault.issue(iss.BUs);
+        iss.vault.issue(address(this), iss.BUs);
+        emit IssuanceStart(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
     }
 
+    /// @notice Redeem RToken for basket collateral
+    /// @param amount The quantity {qRToken} of RToken to redeem
     function redeem(uint256 amount) external override always {
         require(amount > 0, "Cannot redeem zero");
         if (!paused) {
             _processSlowIssuance();
         }
         manager.redeem(_msgSender(), amount);
+        emit Redemption(_msgSender(), amount);
     }
 
-    // Runs auctions
+    /// @notice Runs the central auction loop
     function poke() external override notPaused always {
         require(state == State.CALM || state == State.TRADING, "only during calm + trading");
         _processSlowIssuance();
@@ -132,24 +136,35 @@ contract MainP0 is IMain, Ownable {
                 rewardsClaimed[prevRewards] = true;
             }
         }
-        state = manager.doAuctions();
+
+        State newState = manager.doAuctions();
+        if (newState != state) {
+            emit StateChange(state, newState);
+            state = newState;
+        }
     }
 
-    // Default check
+    /// @notice Performs the expensive checks for default, such as calculating VWAPs
     function noticeDefault() external override notPaused always {
-        IAsset[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoinAssets());
+        IAsset[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoins());
 
         // If no defaults, walk back the default and enter CALM/TRADING
         if (softDefaulting.length == 0) {
-            state = manager.fullyCapitalized() ? State.CALM : State.TRADING;
+            State newState = manager.fullyCapitalized() ? State.CALM : State.TRADING;
+            if (newState != state) {
+                emit StateChange(state, newState);
+                state = newState;
+            }
             return;
         }
 
         // If state is DOUBT for >24h (default delay), switch vaults
         if (state == State.DOUBT && block.timestamp >= stateRaisedAt + _config.defaultDelay) {
             manager.switchVaults(softDefaulting);
+            emit StateChange(state, State.TRADING);
             state = State.TRADING;
         } else if (state == State.CALM || state == State.TRADING) {
+            emit StateChange(state, State.DOUBT);
             state = State.DOUBT;
             stateRaisedAt = block.timestamp;
         }
@@ -212,29 +227,42 @@ contract MainP0 is IMain, Ownable {
 
     // ==================================== Views ====================================
 
-    function nextRewards() public view returns (uint256) {
+    /// @return The timestamp of the next rewards event
+    function nextRewards() public view override returns (uint256) {
         (, uint256 next) = _rewardsAdjacent(block.timestamp);
         return next;
     }
 
+    /// @return The quantities of collateral tokens that would be required to issue `amount` RToken
     function quote(uint256 amount) public view override returns (uint256[] memory) {
         require(amount > 0, "Cannot quote zero");
         return manager.vault().tokenAmounts(manager.toBUs(amount));
     }
 
+    /// @return erc20s The addresses of the ERC20s backing the RToken
+    function backingTokens() external view override returns (address[] memory erc20s) {
+        for (uint256 i = 0; i < manager.vault().size(); i++) {
+            erc20s[i] = address(manager.vault().assetAt(i).erc20());
+        }
+    }
+
+    /// @return The price in USD of `token` on Aave {UNITS}
     function consultAaveOracle(address token) external view override returns (uint256) {
         return _oracle.consultAave(token);
     }
 
+    /// @return The price in USD of `token` on Compound {UNITS}
     function consultCompoundOracle(address token) external view override returns (uint256) {
         return _oracle.consultCompound(token);
     }
 
+    /// @return The deployment of the comptroller on this chain
     function comptroller() external view override returns (IComptroller) {
         return _oracle.compound;
     }
 
-    function config() external view override returns (Config memory c) {
+    /// @return The system configuration
+    function config() external view override returns (Config memory) {
         return _config;
     }
 
@@ -255,11 +283,13 @@ contract MainP0 is IMain, Ownable {
         for (uint256 i = 0; i < issuances.length; i++) {
             if (!issuances[i].processed && issuances[i].vault != manager.vault()) {
                 issuances[i].vault.redeem(issuances[i].issuer, issuances[i].BUs);
+                emit IssuanceCancel(i);
             }
 
             if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
                 issuances[i].vault.setAllowance(address(manager), issuances[i].BUs);
-                manager.completeIssuance(issuances[i]);
+                manager.issue(issuances[i]);
+                emit IssuanceComplete(i);
             }
 
             issuances[i].processed = true;

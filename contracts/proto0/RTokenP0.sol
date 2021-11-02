@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.4;
 
-import "../Ownable.sol"; // temporary
-// import "@openzeppelin/contracts/access/Ownable.sol";
-
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./interfaces/IMain.sol";
 import "./interfaces/IRToken.sol";
 
 /**
  * @title RTokenP0
- * @dev A mintable/burnable ERC20 to be leveraged by the Manager to support a decentralized stablecoin.
+ * @notice An ERC20 with an elastic supply.
  */
 contract RTokenP0 is IRToken, ERC20 {
     IMain public main;
@@ -23,14 +20,20 @@ contract RTokenP0 is IRToken, ERC20 {
         main = main_;
     }
 
-    // Only the Manager can mint.
+    /// @notice Mints a quantity of RToken to the `recipient`, only callable by AssetManager
+    /// @param recipient The recipient of the newly minted RToken
+    /// @param amount The amount to be minted {qRToken}
+    /// @return true
     function mint(address recipient, uint256 amount) external override returns (bool) {
         require(_msgSender() == address(main.manager()), "only asset manager");
         _mint(recipient, amount);
         return true;
     }
 
-    // The Manager can burn from any account. Anyone can burn from their own account.
+    /// @notice Burns a quantity of RToken from an account, only callable by AssetManager or `from`
+    /// @param from The account from which RToken should be burned
+    /// @param amount The amount to be burned {qRToken}
+    /// @return true
     function burn(address from, uint256 amount) external override returns (bool) {
         require(_msgSender() == address(main.manager()) || _msgSender() == from, "only asset manager or self");
         _burn(from, amount);
