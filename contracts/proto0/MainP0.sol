@@ -150,15 +150,21 @@ contract MainP0 is IMain, Ownable {
 
         // If no defaults, walk back the default and enter CALM/TRADING
         if (softDefaulting.length == 0) {
-            state = manager.fullyCapitalized() ? State.CALM : State.TRADING;
+            State newState = manager.fullyCapitalized() ? State.CALM : State.TRADING;
+            if (newState != state) {
+                emit StateChange(state, newState);
+                state = newState;
+            }
             return;
         }
 
         // If state is DOUBT for >24h (default delay), switch vaults
         if (state == State.DOUBT && block.timestamp >= stateRaisedAt + _config.defaultDelay) {
             manager.switchVaults(softDefaulting);
+            emit StateChange(state, State.TRADING);
             state = State.TRADING;
         } else if (state == State.CALM || state == State.TRADING) {
+            emit StateChange(state, State.DOUBT);
             state = State.DOUBT;
             stateRaisedAt = block.timestamp;
         }
