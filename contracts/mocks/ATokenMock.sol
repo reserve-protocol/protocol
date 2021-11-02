@@ -24,16 +24,23 @@ contract ATokenMock is ERC20Mock {
 contract StaticATokenMock is ERC20Mock {
     ATokenMock internal immutable aToken;
 
+    uint256 internal _exchangeRate;
+
     constructor(
         string memory name,
         string memory symbol,
         address underlyingAsset
     ) ERC20Mock(name, symbol) {
         aToken = new ATokenMock(name, symbol, underlyingAsset);
+        _exchangeRate = 1e18;
     }
 
     function rate() external view returns (uint256) {
-        return 1e18;
+        return _exchangeRate;
+    }
+
+    function setExchangeRate(uint256 rate) external {
+        _exchangeRate = rate;
     }
 
     function ATOKEN() external view returns (ATokenMock) {

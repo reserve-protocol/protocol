@@ -7,7 +7,7 @@ import "contracts/libraries/Fixed.sol";
 
 // https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 interface ICToken {
-    // function exchangeRateCurrent() external returns (uint256); // this one is a mutator
+    function exchangeRateCurrent() external returns (uint256);
 
     function exchangeRateStored() external view returns (uint256);
 
@@ -17,6 +17,10 @@ interface ICToken {
 contract CTokenAssetP0 is AssetP0 {
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
     constructor(address erc20_) AssetP0(erc20_) {}
+
+    function updateRedemptionRate() external virtual override {
+        ICToken(_erc20).exchangeRateCurrent();
+    }
 
     function redemptionRate() public view override returns (uint256) {
         return ICToken(_erc20).exchangeRateStored() * 10**(18 - fiatcoinDecimals());

@@ -36,7 +36,7 @@ library Oracle {
     }
 
     // Returns the USD price with 18 decimals
-    function consultAave(Oracle.Info storage self, address token) public view returns (uint256) {
+    function consultAave(Oracle.Info storage self, address token) internal view returns (uint256) {
         // Aave keeps their prices in terms of ETH
         IAaveOracle aaveOracle = self.aave.getAddressesProvider().getPriceOracle();
         uint256 inETH = aaveOracle.getAssetPrice(token);
@@ -46,7 +46,7 @@ library Oracle {
     }
 
     // Returns the USD price with 18 decimals
-    function consultCompound(Oracle.Info storage self, address token) public view returns (uint256) {
+    function consultCompound(Oracle.Info storage self, address token) internal view returns (uint256) {
         return self.compound.oracle().price(IERC20Metadata(token).symbol()) * 10**12;
     }
 }
