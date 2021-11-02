@@ -212,7 +212,7 @@ describe('VaultP0 contract', () => {
       const zero: BigNumber = bn(0)
 
       // Issue
-      await expect(vault.connect(addr1).issue(zero)).to.be.revertedWith('Cannot issue zero')
+      await expect(vault.connect(addr1).issue(addr1.address, zero)).to.be.revertedWith('Cannot issue zero')
 
       // No units created
       expect(await vault.totalUnits()).to.equal(bn(0))
@@ -221,7 +221,7 @@ describe('VaultP0 contract', () => {
 
     it('Should revert if user did not provide approval for Token transfer', async function () {
       const issueAmount: BigNumber = bn(1e18)
-      await expect(vault.connect(addr1).issue(issueAmount)).to.be.revertedWith(
+      await expect(vault.connect(addr1).issue(addr1.address, issueAmount)).to.be.revertedWith(
         'ERC20: transfer amount exceeds allowance'
       )
 
@@ -232,7 +232,9 @@ describe('VaultP0 contract', () => {
 
     it('Should revert if user does not have the required Tokens', async function () {
       const issueAmount: BigNumber = bn(5000000e18)
-      await expect(vault.connect(addr1).issue(issueAmount)).to.be.revertedWith('ERC20: transfer amount exceeds balance')
+      await expect(vault.connect(addr1).issue(addr1.address, issueAmount)).to.be.revertedWith(
+        'ERC20: transfer amount exceeds balance'
+      )
 
       expect(await vault.totalUnits()).to.equal(bn(0))
       expect(await vault.basketUnits(addr1.address)).to.equal(bn(0))
@@ -328,7 +330,7 @@ describe('VaultP0 contract', () => {
       expect(await vault.basketUnits(addr1.address)).to.equal(bn(0))
 
       // Issue BUs
-      await vault.connect(addr1).issue(issueAmount)
+      await vault.connect(addr1).issue(addr1.address, issueAmount)
 
       // Check funds were transferred
       expect(await tkn0.balanceOf(vault.address)).to.equal(qtyHalf)
@@ -357,7 +359,7 @@ describe('VaultP0 contract', () => {
       await tkn3.connect(addr1).approve(vault.address, qtyDouble)
 
       // Issue BUs
-      await vault.connect(addr1).issue(issueAmount)
+      await vault.connect(addr1).issue(addr1.address, issueAmount)
     })
 
     it('Should not redeem BU if amount is zero', async function () {
