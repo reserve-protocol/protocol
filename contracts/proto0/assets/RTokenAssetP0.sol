@@ -25,7 +25,7 @@ contract RTokenAssetP0 is AssetP0 {
         for (uint256 i = 0; i < v.size(); i++) {
             IAsset a = v.assetAt(i);
             Fix asset_quantity = toFix(v.quantity(a));
-            sum = sum.plus( asset_quantity.times(a.priceUSD(main)) );
+            sum = sum.plus(asset_quantity.times(a.priceUSD(main)));
         }
     }
 

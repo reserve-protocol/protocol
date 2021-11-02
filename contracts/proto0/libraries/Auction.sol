@@ -22,10 +22,10 @@ library Auction {
     struct Info {
         IAsset sellAsset;
         IAsset buyAsset;
-        uint256 sellAmount;   // {qTok}
+        uint256 sellAmount; // {qTok}
         uint256 minBuyAmount; // {qTok}
-        uint256 startTime;    // {sec}
-        uint256 endTime;      // {sec}
+        uint256 startTime; // {sec}
+        uint256 endTime; // {sec}
         Fate fate;
         bool isOpen;
     }
@@ -60,8 +60,11 @@ library Auction {
     }
 
     // Returns false if the auction buyAmount is > *auctionClearingTolerance* of the expected buyAmount.
-    function clearedCloseToOraclePrice(Auction.Info storage self, IMain main, uint256 buyAmount)
-        internal returns (bool) {
+    function clearedCloseToOraclePrice(
+        Auction.Info storage self,
+        IMain main,
+        uint256 buyAmount
+    ) internal returns (bool) {
         // clearedRate{qBuyTok/qSellTok} = buyAmount{qBuyTok} / sellAmount{qSellTok}
         Fix clearedRate = toFix(buyAmount).divu(self.sellAmount);
 
@@ -69,6 +72,6 @@ library Auction {
         Fix expectedRate = (self.sellAsset.priceUSD(main)).div(self.buyAsset.priceUSD(main));
 
         // return 1 - clearedRate/expectedRate <= auctionClearingTolerance
-        return FIX_ONE.minus( (clearedRate).div(expectedRate) ).lte(main.config().auctionClearingTolerance);
+        return FIX_ONE.minus((clearedRate).div(expectedRate)).lte(main.config().auctionClearingTolerance);
     }
 }
