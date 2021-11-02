@@ -6,14 +6,6 @@ import "./IAsset.sol";
 import "./IMain.sol";
 import "./IVault.sol";
 
-/// @notice The 4 canonical states of the AssetManager
-enum State {
-    CALM, // 100% capitalized + no auctions
-    DOUBT, // in this state for 24h before default, no auctions or unstaking
-    TRADING, // auctions in progress, no unstaking
-    PRECAUTIONARY // no auctions, no issuance, no unstaking
-}
-
 /**
  * @title IAssetManager
  * @notice Handles the transfer and trade of assets

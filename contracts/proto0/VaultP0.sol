@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./assets/AAVEAssetP0.sol";
+import "./assets/ATokenAssetP0.sol";
 import "./interfaces/IAsset.sol";
 import "./interfaces/IMain.sol";
 import "./interfaces/IVault.sol";
