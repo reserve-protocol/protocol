@@ -2,6 +2,7 @@ import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { BigNumber, ContractFactory } from 'ethers'
 import { bn, divCeil, ZERO } from '../../common/numbers'
+import { expectInReceipt } from '../../common/events'
 import { MAX_UINT256, ZERO_ADDRESS, BN_SCALE_FACTOR } from '../../common/constants'
 import { getLatestBlockTimestamp } from '../utils/time'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -231,34 +232,23 @@ describe('DeployerP0 contract', () => {
       f: f,
     }
 
-    // Get address that will be deployed
-    // TO-DO: To be replaced by emitted event
-    const mainAddr: string = await deployer.callStatic.deploy(
-      'RToken',
-      'RTKN',
-      owner.address,
-      vault.address,
-      rsr.address,
-      config,
-      compoundMock.address,
-      aaveMock.address,
-      paramsAssets,
-      assets
-    )
-
     // Deploy actual contracts
-    await deployer.deploy(
-      'RToken',
-      'RTKN',
-      owner.address,
-      vault.address,
-      rsr.address,
-      config,
-      compoundMock.address,
-      aaveMock.address,
-      paramsAssets,
-      assets
-    )
+    const receipt = await (
+      await deployer.deploy(
+        'RToken',
+        'RTKN',
+        owner.address,
+        vault.address,
+        rsr.address,
+        config,
+        compoundMock.address,
+        aaveMock.address,
+        paramsAssets,
+        assets
+      )
+    ).wait()
+
+    const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
 
     // Get Components
     main = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
