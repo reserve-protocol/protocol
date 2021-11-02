@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Note: This script requires echidna and slither installed using solc 0.8.4
+# Note: This script requires echidna and slither installed using solc 0.8.9
 if ! command -v slither >/dev/null
 then
     echo "slither could not be found"

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IAsset.sol";
 import "../interfaces/IFurnace.sol";
 import "../interfaces/IMain.sol";
+import "contracts/libraries/Fixed.sol";
 
 enum Fate {
     Melt, // RToken melting in the furnace
@@ -16,14 +17,15 @@ enum Fate {
 
 library Auction {
     using SafeERC20 for IERC20;
+    using FixLib for Fix;
 
     struct Info {
         IAsset sellAsset;
         IAsset buyAsset;
-        uint256 sellAmount;
-        uint256 minBuyAmount;
-        uint256 startTime;
-        uint256 endTime;
+        uint256 sellAmount; // {qTok}
+        uint256 minBuyAmount; // {qTok}
+        uint256 startTime; // {sec}
+        uint256 endTime; // {sec}
         Fate fate;
         bool isOpen;
     }
@@ -63,12 +65,13 @@ library Auction {
         IMain main,
         uint256 buyAmount
     ) internal returns (bool) {
-        uint256 SCALE = main.SCALE();
-        uint256 sellAmountNormalized = (self.sellAmount * SCALE) / 10**(self.sellAsset.decimals());
-        uint256 buyAmountNormalized = (buyAmount * SCALE) / 10**(self.buyAsset.decimals());
-        uint256 ratio = (buyAmountNormalized * SCALE) / sellAmountNormalized;
-        uint256 expectedRatio = (self.sellAsset.priceUSD(main) * SCALE) / self.buyAsset.priceUSD(main);
+        // clearedRate{qBuyTok/qSellTok} = buyAmount{qBuyTok} / sellAmount{qSellTok}
+        Fix clearedRate = toFix(buyAmount).divu(self.sellAmount);
 
-        return (ratio >= expectedRatio || expectedRatio - ratio <= main.config().auctionClearingTolerance);
+        // expectedRate{qBuyTok/qSellTok} = sellAsset.priceUSD{USD/lotSellTok} / buyAsset.priceUSD{USD/lotBuyTok}
+        Fix expectedRate = (self.sellAsset.priceUSD(main)).div(self.buyAsset.priceUSD(main));
+
+        // return 1 - clearedRate/expectedRate <= auctionClearingTolerance
+        return FIX_ONE.minus((clearedRate).div(expectedRate)).lte(main.config().auctionClearingTolerance);
     }
 }

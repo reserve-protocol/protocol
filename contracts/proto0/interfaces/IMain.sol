@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../libraries/Oracle.sol";
@@ -29,7 +29,7 @@ struct Config {
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Percentage values (relative to SCALE)
     uint256 maxTradeSlippage; // the maximum amount of slippage in percentage terms we will accept in a trade
-    uint256 auctionClearingTolerance; // the maximum % difference between auction clearing price and oracle data allowed.
+    Fix auctionClearingTolerance; // the maximum % difference between auction clearing price and oracle data allowed.
     uint256 maxAuctionSize; // the max size of an auction, as a fraction of RToken supply
     uint256 minRecapitalizationAuctionSize; // the min size of a recapitalization auction, as a fraction of RToken supply
     uint256 minRevenueAuctionSize; // the min size of a revenue auction (RToken/COMP/AAVE), as a fraction of RToken supply
@@ -47,7 +47,7 @@ struct Config {
     // stRSRWithdrawalDelay = 1209600 (2 weeks)
     // defaultDelay = 86400 (24 hours)
     // maxTradeSlippage = 1e17 (10%)
-    // auctionClearingTolerance = 1e17 (10%)
+    // auctionClearingTolerance = 0.1 (10%)
     // maxAuctionSize = 1e16 (1%)
     // minRecapitalizationAuctionSize = 1e15 (0.1%)
     // minRevenueAuctionSize = 1e14 (0.01%)

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "../Ownable.sol"; // temporary
 // import "@openzeppelin/contracts/access/Ownable.sol";
@@ -32,6 +32,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     using Auction for Auction.Info;
     using EnumerableSet for EnumerableSet.AddressSet;
     using Oracle for Oracle.Info;
+    using FixLib for Fix;
 
     uint256 public constant SCALE = 1e18;
 
