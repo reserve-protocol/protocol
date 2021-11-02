@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 /// @title FixedPoint, a fixed-point arithmetic library defining the custom type Fix
 /// @author Matt Elder <matt.elder@reserve.org> and the Reserve Team <https://reserve.org>
 
-/** @notice The type `Fix` is a 128 bit value, representing an 18-decimal Fixed-point
+/** The type `Fix` is a 128 bit value, representing an 18-decimal Fixed-point
     fractional value.  This is what's described in the Solidity documentation as
     "fixed128x18" -- a value represented by 128 bits, that makes 18 digits available to
     the right of the decimal point.

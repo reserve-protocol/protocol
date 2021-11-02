@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "../Fixed.sol";
+import {Fix, FixLib, toFix as libToFix, intToFix as libIntToFix, divFix as libDivFix} from "../Fixed.sol";
 
 // Simple mock for Fixed library.
 contract FixedCallerMock {
-    function toFix(uint256 x) public pure returns (Fix) { return toFix(x); }
-    function intToFix(int256 x) public pure returns (Fix) { return intToFix(x); }
-    function divFix(uint256 x, Fix y) public pure returns (Fix) {return divFix(x,y); }
+    function toFix(uint256 x) public pure returns (Fix) { return libToFix(x); }
+    function intToFix(int256 x) public pure returns (Fix) { return libIntToFix(x); }
+    function divFix(uint256 x, Fix y) public pure returns (Fix) {return libDivFix(x,y); }
 
     function toInt(Fix x) public pure returns (int128) { return FixLib.toInt(x); }
     function toUint(Fix x) public pure returns (uint128) { return FixLib.toUint(x); }
