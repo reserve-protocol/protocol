@@ -150,7 +150,7 @@ contract StRSRP0 is IStRSR, Context {
         processWithdrawals();
 
         uint256 snapshotTotalStakedPlus = _totalStaked + _amountBeingWithdrawn();
-        _totalStaked -= amount;
+        _totalStaked -= (amount * _totalStaked) / snapshotTotalStakedPlus;
 
         // Remove RSR for stakers and from withdrawals too
         if (snapshotTotalStakedPlus > 0) {
