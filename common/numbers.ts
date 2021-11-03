@@ -29,6 +29,7 @@ export const divCeil = (x: BigNumber, y: BigNumber): BigNumber =>
 // where s is a string in decimal or scientific notation,
 // and scale is a BigNumberish indicating a number of additional zeroes to add to the right,
 // Fractional digits in the result are truncated.
+// TODO: Maybe we should error if we're truncating digits instead?
 //
 // A few examples:
 //     _parseScientific('1.4e2') == BigNumber.from(140)
@@ -39,27 +40,29 @@ function _parseScientific(s: string, scale: BigNumberish = 0): BigNumber {
   // Scientific Notation: <INT>(.<DIGITS>)?(e<INT>)?
   // INT: [+-]?DIGITS
   // DIGITS: \d+
-  const match = s.match(/^(?<integer>[+-]?\d+)(\.(?<mantissa>\d+))?(e(?<exponent>[+-]?\d+))?$/)
-  if (!match || !match.groups) throw new Error(`fromSciNotation: Illegal floating-point value ${s}`)
+  const match = s.match(/^(?<int_part>[+-]?\d+)(\.(?<frac_part>\d+))?(e(?<exponent>[+-]?\d+))?$/)
+  if (!match || !match.groups) throw new Error(`Illegal decimal string ${s}`)
 
-  let int_part = BigNumber.from(match.groups.integer)
-  // The mantissa is the "fractional part" of a decimal-notation value
-  const mantissa = match.groups.mantissa ? BigNumber.from(match.groups.mantissa) : ZERO
+  let int_part = BigNumber.from(match.groups.int_part)
+  const frac_part = match.groups.frac_part ? BigNumber.from(match.groups.frac_part) : ZERO
   let exponent = match.groups.exponent ? BigNumber.from(match.groups.exponent) : ZERO
   exponent = exponent.add(scale)
 
-  // "zero" the mantissa by shifting it into int_part, keeping the overall value equal
-  if (mantissa) {
-    const shift_digits = match.groups.mantissa.length
-    int_part = int_part.mul(pow10(shift_digits)).add(mantissa)
+  // If this is negative, do our work in the positive domain, but remember the negation.
+  const is_negative = int_part.lt(0)
+  int_part = int_part.abs()
+
+  // "zero" the fractional part by shifting it into int_part, keeping the overall value equal
+  if (!frac_part.eq(ZERO)) {
+    const shift_digits = match.groups.frac_part.length
+    int_part = int_part.mul(pow10(shift_digits)).add(frac_part)
     exponent = exponent.sub(shift_digits)
   }
 
-  if (exponent.gte(ZERO)) {
-    // If remaining exponent is positive, shift int_part left
-    return int_part.mul(pow10(exponent))
-  } else {
-    // If remaining exponent is negative, shift int_part right
-    return int_part.div(pow10(exponent.abs()))
-  }
+  // Shift int_part left or right as exponent requires
+  const positive_output: BigNumber = exponent.gte(ZERO)
+    ? int_part.mul(pow10(exponent))
+    : int_part.div(pow10(exponent.abs()))
+
+  return is_negative ? positive_output.mul(-1) : positive_output
 }
