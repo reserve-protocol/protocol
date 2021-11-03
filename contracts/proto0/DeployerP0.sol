@@ -83,6 +83,7 @@ contract DeployerP0 is IDeployer {
             AssetManagerP0 manager = new AssetManagerP0(main, vault, owner, collateral);
             main.setManager(manager);
         }
+        main.setPauser(owner);
         main.transferOwnership(owner);
 
         emit RTokenCreated(address(main), address(main.rToken()), owner);
