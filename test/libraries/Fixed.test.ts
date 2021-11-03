@@ -1,23 +1,22 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { BN_SCALE_FACTOR } from '../../common/constants'
-import { bn, fp } from '../../common/numbers'
+import { bn, fp, pow10 } from '../../common/numbers'
 
 import { ContractFactory } from 'ethers'
 import { BigNumber, BigNumberish } from 'ethers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
-describe('This test harness', () => {
-  it('should pass a corrected test', () => {
-    expect(false).not.to.equal(true)
-  })
-})
-
 describe('In FixLib,', async () => {
   let owner: SignerWithAddress
   let FixedCaller: ContractFactory
   let caller: FixedCallerMock
+
+  const MAX_INT128 = BigNumber.from(2).pow(127).sub(1)
+  const MIN_INT128 = BigNumber.from(2).pow(127).mul(-1)
+  const MAX_FIX_INT = MAX_INT128.div(pow10(18)) // biggest integer N st toFix(N) exists
+  const MIN_FIX_INT = MIN_INT128.div(pow10(18)) // smallest integer N st toFix(N) exists
 
   before(async () => {
     ;[owner] = await ethers.getSigners()
@@ -25,12 +24,18 @@ describe('In FixLib,', async () => {
     caller = await (<Promise<FixedCallerMock>>FixedCaller.deploy())
   })
 
-  describe('toFix', async () => {
-    it('correctly converts integer values', async () => {
-      const values: (BigNumber | number | string)[] = [0, 1, '1e37']
-      for (let v of values) {
-        expect(await caller.toFix(bn(v))).to.equal(fp(v))
+  describe('intToFix', async () => {
+    it('correctly converts int values', async () => {
+      const table = [0, 1, -1, MAX_FIX_INT, MIN_FIX_INT, MAX_FIX_INT.sub(1), MIN_FIX_INT.add(1)]
+      for (let input of table) {
+        expect(await caller.intToFix(bn(input)), `toFix(${input})`).to.equal(fp(input))
       }
+    })
+    it('fails on values outside its domain', async () => {
+      expect(await caller.intToFix(MAX_FIX_INT.add(1))).to.throw('/VM Exception/')
+      expect(await caller.intToFix(MIN_FIX_INT.sub(1))).to.throw('/VM Exception/')
+      expect(await caller.intToFix(MAX_FIX_INT.mul(25))).to.throw('/VM Exception/')
+      // HERE -- how do I check that the txn correctly reverts?
     })
   })
 

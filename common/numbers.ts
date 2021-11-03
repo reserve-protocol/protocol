@@ -19,7 +19,7 @@ export const pow10 = (exponent: BigNumberish): BigNumber => {
 //     If the arg is a fractional JS number, it will be rounded to 9 decimal places (!) and used that way
 //     If the arg is a string, it can be in decimal or scientific notation, and will be handled appropriately
 
-export const fp = (x: string | BigNumberish): BigNumber => {
+export const fp = (x: BigNumberish): BigNumber => {
   if (typeof x === 'string') return _parseScientific(x, SCALE_DECIMALS)
   if (typeof x === 'number' && !Number.isInteger(x)) return _parseScientific(x.toFixed(9), SCALE_DECIMALS)
   return BigNumber.from(x).mul(pow10(SCALE_DECIMALS))
