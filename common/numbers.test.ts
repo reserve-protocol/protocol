@@ -53,3 +53,31 @@ describe('bn', () => {
     }
   })
 })
+
+describe('fp', () => {
+  // z(n,zeroes) is n followed by `zeroes` zeroes
+  const BN = BigNumber.from
+  const z = (n: BigNumberish, zeroes: BigNumberish): BigNumber => BN(n).mul(BN(10).pow(zeroes))
+
+  it('correctly expands values', () => {
+    const table = [
+      ['3.7', z(37, 17)],
+      [3.9, z(39, 17)],
+      ['0.32e2', z(32, 18)],
+      [-1.5, z(-15, 17)],
+      [0, 0],
+      [0.0, 0],
+      ['0.0', 0],
+      ['123.4567e89', z(1234567, 103)],
+      ['1e-18', 1],
+      ['9e-19', 0],
+      [0.1 + 0.2, z(3, 17)], // fp() rounds to 9 decimal places! 0.1 + 0.2 > 0.30000000000000004
+      [1e-10, 0], // fp() rounds to 9 decimal places!
+      ['-1e-18', -1],
+    ]
+
+    for (const [input, output] of table) {
+      expect(fp(input), `fp(${input})`).to.equal(BN(output))
+    }
+  })
+})
