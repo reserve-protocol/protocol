@@ -12,6 +12,9 @@ interface IAsset {
     /// @notice Forces an update in asset's underlying DeFi protocol
     function updateRedemptionRate() external;
 
+    /// Claims any rewards such as COMP/AAVE for the asset
+    function claimRewards() external;
+
     /// @dev `updateRedemptionRate()` before to ensure the latest rates
     /// @return The latest fiatcoin redemption rate
     function redemptionRate() external view returns (uint256);

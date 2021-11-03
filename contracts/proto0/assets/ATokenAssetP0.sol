@@ -21,6 +21,11 @@ contract ATokenAssetP0 is AssetP0 {
     // All aTokens have 18 decimals.
     constructor(address erc20_) AssetP0(erc20_) {}
 
+    /// Claims any rewards such as COMP/AAVE for the asset
+    function claimRewards() external override {
+        IStaticAToken(address(erc20())).claimRewardsToSelf(true);
+    }
+
     function redemptionRate() public view override returns (uint256) {
         return IStaticAToken(address(erc20())).rate() * 10**(18 - fiatcoinDecimals());
     }

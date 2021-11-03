@@ -110,8 +110,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         vault.claimAndSweepRewardsToManager();
         main.comptroller().claimComp(address(this));
-        IStaticAToken(address(main.aaveAsset().erc20())).claimRewardsToSelf(true);
-
+        for (uint256 i = 0; i < vault.size(); i++) {
+            // Only aTokens need to be claimed at the asset level
+            vault.assetAt(i).claimRewards();
+        }
         // Expand the RToken supply to self
         uint256 possible = fromBUs(vault.basketUnits(address(this)));
         if (fullyCapitalized() && possible > main.rToken().totalSupply()) {

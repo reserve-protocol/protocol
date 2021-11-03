@@ -22,6 +22,9 @@ contract AssetP0 is IAsset {
     /// @notice Forces an update in asset's underlying DeFi protocol
     function updateRedemptionRate() external virtual override {}
 
+    /// Claims any rewards such as COMP/AAVE for the asset
+    function claimRewards() external virtual override {}
+
     /// @dev `updateRedemptionRate()` before to ensure the latest rates
     /// @return The latest fiatcoin redemption rate
     function redemptionRate() public view virtual override returns (uint256) {
