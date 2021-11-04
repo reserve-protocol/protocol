@@ -13,6 +13,7 @@ describe('In FixLib,', async () => {
   let FixedCaller: ContractFactory
   let caller: FixedCallerMock
 
+  const SCALE = BN_SCALE_FACTOR
   const MAX_INT128 = BigNumber.from(2).pow(127).sub(1)
   const MIN_INT128 = BigNumber.from(2).pow(127).mul(-1)
   const MAX_UINT128 = BigNumber.from(2).pow(128).sub(1)
@@ -50,9 +51,9 @@ describe('In FixLib,', async () => {
       }
     })
     it('fails on values outside its domain', async () => {
-      expect(caller.intToFix(MAX_FIX_INT.add(1))).revertedWith('IntOutOfBounds')
-      expect(caller.intToFix(MIN_FIX_INT.sub(1))).revertedWith('IntOutOfBounds')
-      expect(caller.intToFix(MAX_FIX_INT.mul(25))).revertedWith('IntOutOfBounds')
+      await expect(caller.intToFix(MAX_FIX_INT.add(1))).to.be.revertedWith('IntOutOfBounds')
+      await expect(caller.intToFix(MIN_FIX_INT.sub(1))).to.be.revertedWith('IntOutOfBounds')
+      await expect(caller.intToFix(MAX_FIX_INT.mul(25))).to.be.revertedWith('IntOutOfBounds')
     })
   })
 
@@ -65,8 +66,8 @@ describe('In FixLib,', async () => {
     })
 
     it('fails on inputs outside its domain', async () => {
-      expect(caller.toFix(MAX_FIX_INT.add(1))).revertedWith('UIntOutOfBounds')
-      expect(caller.toFix(MAX_FIX_INT.mul(17))).revertedWith('UIntOutOfBounds')
+      await expect(caller.toFix(MAX_FIX_INT.add(1))).to.be.revertedWith('UIntOutOfBounds')
+      await expect(caller.toFix(MAX_FIX_INT.mul(17))).to.be.revertedWith('UIntOutOfBounds')
     })
   })
 
@@ -100,13 +101,13 @@ describe('In FixLib,', async () => {
       expect(await caller.divFix(MAX_INT128.sub(51), fp('1e18'))).to.equal(MAX_INT128.sub(51))
     })
     it('fails when results fall outside its range', async () => {
-      expect(caller.divFix(MAX_INT128.add(1), fp('1e18'))).revertedWith('IntOutOfBounds')
-      expect(caller.divFix(MAX_INT128.div(5), fp('0.199e18'))).revertedWith('IntOutOfBounds')
+      await expect(caller.divFix(MAX_INT128.add(1), fp('1e18'))).to.be.revertedWith('IntOutOfBounds')
+      await expect(caller.divFix(MAX_INT128.div(5), fp('0.199e18'))).to.be.revertedWith('IntOutOfBounds')
     })
     it('fails on division by zero', async () => {
-      expect(caller.divFix(17, fp(0))).revertedWith('panic code 0x12')
-      expect(caller.divFix(0, fp(0))).revertedWith('panic code 0x12')
-      expect(caller.divFix(MAX_INT128, fp(0))).revertedWith('panic code 0x12')
+      await expect(caller.divFix(17, fp(0))).to.be.revertedWith('panic code 0x12')
+      await expect(caller.divFix(0, fp(0))).to.be.revertedWith('panic code 0x12')
+      await expect(caller.divFix(MAX_INT128, fp(0))).to.be.revertedWith('panic code 0x12')
     })
   })
 
@@ -150,7 +151,7 @@ describe('In FixLib,', async () => {
     it('fails on negative Fixes', async () => {
       const table = [-1, fp(MIN_FIX_INT), MIN_INT128, fp(-986349)]
       for (let val of table) {
-        expect(caller.toUint(val), `${val}`).revertedWith('IntOutOfBounds')
+        await expect(caller.toUint(val), `${val}`).to.be.revertedWith('IntOutOfBounds')
       }
     })
     it('rounds towards zero', async () => {
@@ -211,6 +212,8 @@ describe('In FixLib,', async () => {
         [0.1, 0.2, 0.3],
         [1, -1, 0],
         [5040, 301, 5341],
+        [0, 0, 0],
+        [0.1, -0.1, 0],
       ]
       let table = []
       for (let [a, b, c] of table_init) table.push([a, b, c], [-a, -b, -c], [b, a, c], [-b, -a, -c])
@@ -230,10 +233,51 @@ describe('In FixLib,', async () => {
       expect(await caller.plus(MAX_INT128, MIN_INT128)).to.equal(-1)
     })
     it('fails outside its range', async () => {
-      expect(caller.plus(MAX_INT128, 1)).revertedWith('bounds')
-      expect(caller.plus(MAX_INT128.div(2), MAX_INT128.div(2).add(1))).revertedWith('bounds')
-      expect(caller.plus(MIN_INT128, -1)).revertedWith('bounds')
-      expect(caller.plus(MIN_INT128.div(2), MIN_INT128.div(2).sub(1))).revertedWith('bounds')
+      await expect(caller.plus(MAX_INT128, 1), 'plus(MAX, 1)').to.be.reverted
+      const half_max = MAX_INT128.add(1).div(2)
+      await expect(caller.plus(half_max, half_max), 'plus((MAX+1)/2, (MAX+1)/2)').to.be.reverted
+      await expect(caller.plus(MIN_INT128, -1), 'plus(MIN, -1)').to.be.reverted
+      await expect(caller.plus(MIN_INT128.div(2), MIN_INT128.div(2).sub(1)), 'plus(MIN/2, MIN/2 -1)').to.be.reverted
+    })
+  })
+
+  describe('plusi', async () => {
+    it('correctly adds in its range', async () => {
+      const table_init = [
+        [13, 25, 38],
+        [0.1, 0, 0.1],
+        [1, -1, 0],
+        [5040, 301, 5341],
+        [0, 0, 0],
+        [0.1, 3, 3.1],
+      ]
+      let table = []
+      for (let [a, b, c] of table_init) {
+        table.push([a, b, c], [-a, -b, -c])
+      }
+      for (let [a, b, c] of table) {
+        expect(await caller.plusi(fp(a), b), `plusi(${a}, ${b})`).to.equal(fp(c))
+      }
+    })
+
+    it('correctly adds at the extremes of its range', async () => {
+      expect(await caller.plusi(MAX_INT128.sub(SCALE.mul(3)), 3), 'plusi(MAX-3, 3)').to.equal(MAX_INT128)
+      const max_mantissa = MAX_INT128.mod(SCALE)
+      expect(
+        await caller.plusi(max_mantissa.sub(fp(12345)), MAX_FIX_INT.add(12345)),
+        'plusi(max_mantissa - 12345, MAX_FIX_INT + 12345)'
+      ).to.equal(MAX_INT128)
+
+      expect(await caller.plusi(MIN_INT128.add(SCALE.mul(3)), -3), 'plusi(MIN+3, -3)').to.equal(MIN_INT128)
+    })
+
+    it('failus outside its range', async () => {
+      await expect(caller.plusi(MAX_INT128.sub(SCALE.mul(3)).add(1), 3), 'plusi(MAX-3+eps, 3)').to.be.reverted
+      await expect(caller.plusi(MAX_INT128.sub(SCALE.mul(3)), 4), 'plusi(MAX-3, 4)').to.be.reverted
+      await expect(caller.plusi(0, MAX_FIX_INT.add(1)), 'plusi(0, MAX_FIX + 1)').to.be.reverted
+      await expect(caller.plusi(0, MIN_FIX_INT.sub(1)), 'plusi(0, MIN_FIX - 1)').to.be.reverted
+      await expect(caller.plusi(MIN_INT128, -1), 'plusi(MIN, -1)').to.be.reverted
+      await expect(caller.plusi(MIN_INT128.add(SCALE.mul(3)).sub(1), -3), 'plusi(MIN+3-eps, -3)').to.be.reverted
     })
   })
 
