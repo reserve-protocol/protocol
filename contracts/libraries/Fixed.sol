@@ -4,15 +4,12 @@ pragma solidity ^0.8.9;
 /// @title FixedPoint, a fixed-point arithmetic library defining the custom type Fix
 /// @author Matt Elder <matt.elder@reserve.org> and the Reserve Team <https://reserve.org>
 
-/** @notice The type `Fix` is a 128 bit value, representing an 18-decimal Fixed-point
+/** The type `Fix` is a 128 bit value, representing an 18-decimal Fixed-point
     fractional value.  This is what's described in the Solidity documentation as
     "fixed128x18" -- a value represented by 128 bits, that makes 18 digits available to
     the right of the decimal point.
-
     The range of values that Fix can represent is about [-1.7e20, 1.7e20].
-
     Unless a function explicitly says otherwise, it will fail on overflow.
-
     To be clear, the following should hold:
     Fixed.ofInt(0) == Fix.wrap(0)
     Fixed.ofInt(1) == Fix.wrap(1e18)
@@ -32,9 +29,11 @@ type Fix is int128;
 int128 constant FIX_SCALE = 1e18;
 
 // The largest integer that can be converted to Fix.
+// This is about 1.7e20
 int128 constant FIX_MAX_INT = type(int128).max / FIX_SCALE;
 
 // The smallest integer that can be converted to Fix.
+// This is about -1.7e20
 int128 constant FIX_MIN_INT = type(int128).min / FIX_SCALE;
 
 Fix constant FIX_ZERO = Fix.wrap(0); // The Fix representation of zero.
@@ -70,10 +69,16 @@ function intToFix(int256 x) pure returns (Fix) {
 }
 
 
-/// Divide a uint by a Fix.
-/// I've done nothing to ensure that truncation happens well here.
+/// Divide a uint by a Fix. Fails if the result is outside Fix's representable range.
+
+/** @dev This is about this simplest way to do this. It also Just Works in all cases where the
+ * result fits in Fix, which may be surprising. See docs/fixlib-reasoning.md in this repo for the
+ * worked logic by which this case is correct, and also the principles by which you can reason that
+ * all these other functions are similarly correct.
+ */
 function divFix(uint256 x, Fix y) pure returns (Fix) {
-    return FixLib.div(toFix(x), y);
+    int128 _y = Fix.unwrap(y);
+    return Fix.wrap(_safe_int128(int256(x * uint128(FIX_SCALE * FIX_SCALE)) / int256(_y)));
 }
 
 library FixLib {
@@ -83,8 +88,7 @@ library FixLib {
     function toInt(Fix x) internal pure returns (int128) {
         return Fix.unwrap(x) / FIX_SCALE;
     }
-
-    /// Convert this Fix to a uint. Round the fractional part towards zero.
+    /// Convert this Fix to a uint. Fail if x is negative. Round the fractional part towards zero.
     function toUint(Fix x) internal pure returns (uint128) {
         int128 n = Fix.unwrap(x);
         if (n < 0) {
@@ -94,10 +98,10 @@ library FixLib {
     }
 
     /// Round this Fix to the nearest int. If equidistant to both
-    /// adjacent ints, round towards zero.
+    /// adjacent ints, round up, away from zero.
     function round(Fix x) internal pure returns (int128) {
         int128 x_ = Fix.unwrap(x);
-        int128 rounding_adjustment = ((x_ >= 0 ? int128(1) : int128(-1)) * FIX_SCALE) / 2;
+        int128 rounding_adjustment = x_ >= 0 ? FIX_SCALE/2 : -FIX_SCALE/2;
         return (x_ + rounding_adjustment) / FIX_SCALE;
     }
 
@@ -139,11 +143,11 @@ library FixLib {
     }
 
     /// Multiply this Fix by a Fix.
-    /// Round truncated values to the nearest available value. 5e-19 rounds towards zero.
+    /// Round truncated values to the nearest available value. 5e-19 rounds away from zero.
     function mul(Fix x, Fix y) internal pure returns (Fix) {
         int256 naive_prod = int256(Fix.unwrap(x)) * int256(Fix.unwrap(y));
         int256 rounding_adjustment = ((naive_prod >= 0 ? int8(1) : int8(-1)) * FIX_SCALE) / 2;
-        return Fix.wrap(_safe_int128(naive_prod + rounding_adjustment / FIX_SCALE));
+        return Fix.wrap(_safe_int128((naive_prod + rounding_adjustment) / FIX_SCALE));
     }
 
     /// Multiply this Fix by an int.
