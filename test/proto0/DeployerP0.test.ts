@@ -43,7 +43,7 @@ export interface IManagerConfig {
   f: BigNumber
 }
 
-interface IParamsAssets {
+export interface IParamsAssets {
   rsrAsset: string
   compAsset: string
   aaveAsset: string
