@@ -428,10 +428,72 @@ describe('In FixLib,', async () => {
     })
   })
 
-  /* Binary functions:
-     - Value classes to test:
-       - At and around MIN
-       - At and around MAX
-       - At and around ZERO
-  */
+  // timesu_table: numeric triples where a * b == c, and b is a positive integer
+  const timesu_table = [
+    [1, 1, 1],
+    [0.763, 1, 0.763],
+    [3.4, 7, 23.8],
+    [0.001, 1000, 1],
+    [1.001, 999, 999.999],
+    [12, 13, 156],
+  ]
+  describe('times', async () => {
+    it('correctly multiplies inside its range', async () => {
+      let commutes = timesu_table.flatMap(([a, b, c]) => [
+        [a, b, c],
+        [b, a, c],
+      ])
+      let table = commutes.flatMap(([a, b, c]) => [
+        [a, b, c],
+        [-a, b, -c],
+        [a, -b, -c],
+        [-a, -b, c],
+      ])
+      for (let [a, b, c] of table) {
+        expect(await caller.times(fp(a), fp(b)), `times(fp(${a}), fp(${b}))`).to.equal(fp(c))
+      }
+    })
+    it('rounds results as intended', async () => {
+      expect(await caller.times(fp('0.5e-9'), fp('1e-9'))).to.equal(fp('1e-18'))
+      expect(await caller.times(fp('-0.5e-9'), fp('1e-9'))).to.equal(fp('-1e-18'))
+      expect(await caller.times(fp('0.5e-9'), fp('-1e-9'))).to.equal(fp('-1e-18'))
+      expect(await caller.times(fp('-0.5e-9'), fp('-1e-9'))).to.equal(fp('1e-18'))
+      expect(await caller.times(fp('0.49e-9'), fp('1e-9'))).to.equal(fp('0'))
+      expect(await caller.times(fp('-0.49e-9'), fp('1e-9'))).to.equal(fp('0'))
+      expect(await caller.times(fp('0.49e-9'), fp('-1e-9'))).to.equal(fp('0'))
+      expect(await caller.times(fp('-0.49e-9'), fp('-1e-9'))).to.equal(fp('0'))
+      expect(await caller.times(fp('1.5e-9'), fp('4.5e-8'))).to.equal(fp('68e-18'))
+    })
+    it('correctly multiplies at the extremes of its range', async () => {
+      const table = [
+        [MAX_INT128, fp(1), MAX_INT128],
+        [MIN_INT128, fp(1), MIN_INT128],
+        [MIN_INT128.div(256), fp(256), MIN_INT128],
+        [MAX_INT128.sub(1).div(2), fp(2), MAX_INT128.sub(1)],
+        [MAX_INT128, fp(-1), MIN_INT128.add(1)],
+      ]
+      for (let [a, b, c] of table) {
+        expect(await caller.times(a, b), `times(${a}, ${b})`).to.equal(c)
+        expect(await caller.times(b, a), `times(${b}, ${a})`).to.equal(c)
+      }
+    })
+    it('fails outside its range', async () => {
+      await expect(caller.times(MIN_INT128, fp(-1)), `times(MIN, -1)`).to.be.reverted
+      await expect(caller.times(MAX_INT128.div(2).add(1), fp(2)), `times(MAX/2 + 2, 2)`).to.be.reverted
+    })
+  })
+  describe('timesi', async () => {})
+  describe('timesu', async () => {})
+  describe('div', async () => {})
+  describe('divi', async () => {})
+  describe('divu', async () => {})
+  describe('inv', async () => {})
+  describe('powu', async () => {})
+  describe('lt', async () => {})
+  describe('lte', async () => {})
+  describe('gt', async () => {})
+  describe('gte', async () => {})
+  describe('eq', async () => {})
+  describe('neq', async () => {})
+  describe('near', async () => {})
 })
