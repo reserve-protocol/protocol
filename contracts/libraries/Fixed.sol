@@ -101,7 +101,7 @@ library FixLib {
     }
 
     /// Round this Fix to the nearest int. If equidistant to both
-    /// adjacent ints, round towards zero.
+    /// adjacent ints, round up, away from zero.
     function round(Fix x) internal pure returns (int128) {
         int128 x_ = Fix.unwrap(x);
         int128 rounding_adjustment = x_ >= 0 ? FIX_SCALE/2 : -FIX_SCALE/2;
@@ -146,11 +146,11 @@ library FixLib {
     }
 
     /// Multiply this Fix by a Fix.
-    /// Round truncated values to the nearest available value. 5e-19 rounds towards zero.
+    /// Round truncated values to the nearest available value. 5e-19 rounds away from zero.
     function times(Fix x, Fix y) internal pure returns (Fix) {
         int256 naive_prod = int256(Fix.unwrap(x)) * int256(Fix.unwrap(y));
         int256 rounding_adjustment = ((naive_prod >= 0 ? int8(1) : int8(-1)) * FIX_SCALE) / 2;
-        return Fix.wrap(_safe_int128(naive_prod + rounding_adjustment / FIX_SCALE));
+        return Fix.wrap(_safe_int128((naive_prod + rounding_adjustment) / FIX_SCALE));
     }
 
     /// Multiply this Fix by an int.
