@@ -75,6 +75,8 @@ describe('fp', () => {
       [0.1 + 0.2, z(3, 17)], // fp() rounds to 9 decimal places! 0.1 + 0.2 > 0.30000000000000004
       [1e-10, 0], // fp() rounds to 9 decimal places!
       ['-1e-18', -1],
+      ['2e-18', 2],
+      ['3e-18', 3],
     ]
 
     for (const [input, output] of table) {

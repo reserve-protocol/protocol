@@ -91,8 +91,7 @@ library FixLib {
     function toInt(Fix x) internal pure returns (int128) {
         return Fix.unwrap(x) / FIX_SCALE;
     }
-
-    /// Convert this Fix to a uint. Round the fractional part towards zero.
+    /// Convert this Fix to a uint. Fail if x is negative. Round the fractional part towards zero.
     function toUint(Fix x) internal pure returns (uint128) {
         int128 n = Fix.unwrap(x);
         if (n < 0) {
@@ -105,7 +104,7 @@ library FixLib {
     /// adjacent ints, round towards zero.
     function round(Fix x) internal pure returns (int128) {
         int128 x_ = Fix.unwrap(x);
-        int128 rounding_adjustment = ((x_ >= 0 ? int128(1) : int128(-1)) * FIX_SCALE) / 2;
+        int128 rounding_adjustment = x_ >= 0 ? FIX_SCALE/2 : -FIX_SCALE/2;
         return (x_ + rounding_adjustment) / FIX_SCALE;
     }
 
