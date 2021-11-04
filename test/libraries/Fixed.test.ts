@@ -216,7 +216,8 @@ describe('In FixLib,', async () => {
         [0.1, -0.1, 0],
       ]
       let table = []
-      for (let [a, b, c] of table_init) table.push([a, b, c], [-a, -b, -c], [b, a, c], [-b, -a, -c])
+      for (let [a, b, c] of table_init)
+        table.push([a, b, c], [-a, -b, -c], [b, a, c], [-b, -a, -c], [c, -a, b], [c, -b, a], [-c, a, -b], [-c, b, -a])
       table.push(
         ['1e-18', '2e-18', '3e-18'],
         [MAX_FIX_INT, 0, MAX_FIX_INT],
@@ -253,7 +254,7 @@ describe('In FixLib,', async () => {
       ]
       let table = []
       for (let [a, b, c] of table_init) {
-        table.push([a, b, c], [-a, -b, -c])
+        table.push([a, b, c], [-a, -b, -c], [c, -b, a], [-c, b, -a])
       }
       for (let [a, b, c] of table) {
         expect(await caller.plusi(fp(a), b), `plusi(${a}, ${b})`).to.equal(fp(c))
@@ -314,6 +315,116 @@ describe('In FixLib,', async () => {
       await expect(caller.plusu(MAX_INT128.sub(SCALE.mul(3)), 4), 'plusu(MAX-3, 4)').to.be.reverted
       await expect(caller.plusu(0, MAX_FIX_INT.add(1)), 'plusu(0, MAX_FIX + 1)').to.be.reverted
       await expect(caller.plusu(0, MAX_UINT128), 'plusu(0, MAX_UINT)').to.be.reverted
+    })
+  })
+
+  describe('minus', async () => {
+    it('correctly subtracts in its range', async () => {
+      const table_init = [
+        [13, -25, 38],
+        [0.1, -0.2, 0.3],
+        [1, 1, 0],
+        [5040, -301, 5341],
+        [0, 0, 0],
+        [0.1, 0.1, 0],
+      ]
+      let table = []
+      for (let [a, b, c] of table_init)
+        table.push([a, b, c], [-a, -b, -c], [b, a, -c], [-b, -a, c], [a, c, b], [-a, -c, -b], [c, a, -b], [-c, -a, b])
+      table.push(
+        ['3e-18', '2e-18', '1e-18'],
+        [MAX_FIX_INT, 0, MAX_FIX_INT],
+        [MAX_FIX_INT, MAX_FIX_INT, 0],
+        [MAX_FIX_INT.div(8).mul(5), MAX_FIX_INT.div(8).mul(-3), MAX_FIX_INT.div(8).mul(8)]
+      )
+      for (let [a, b, c] of table) expect(await caller.minus(fp(a), fp(b)), `${a} + ${b}`).to.equal(fp(c))
+    })
+    it('correctly subtracts at the extremes of its range', async () => {
+      expect(await caller.minus(MAX_INT128, 1)).to.equal(MAX_INT128.sub(1))
+      expect(await caller.minus(MAX_INT128.sub(1), -1)).to.equal(MAX_INT128)
+      expect(await caller.minus(MIN_INT128.add(1), 1)).to.equal(MIN_INT128)
+      expect(await caller.minus(MIN_INT128.div(2), MIN_INT128.div(2).mul(-1))).to.equal(MIN_INT128)
+      expect(await caller.minus(MAX_INT128, MAX_INT128)).to.equal(0)
+      expect(await caller.minus(MIN_INT128, MIN_INT128)).to.equal(0)
+    })
+    it('fails outside its range', async () => {
+      await expect(caller.minus(MAX_INT128, -1), 'minus(MAX, -1)').to.be.reverted
+      const half_max = MAX_INT128.add(1).div(2)
+      await expect(caller.minus(half_max, half_max.mul(-1)), 'minus((MAX+1)/2, -(MAX+1)/2)').to.be.reverted
+      await expect(caller.minus(MIN_INT128, 1), 'minus(MIN, 1)').to.be.reverted
+      const half_min = MIN_INT128.div(2)
+      await expect(caller.minus(half_min, half_min.sub(1).mul(-1)), 'minus(MIN/2, -MIN/2 +1)').to.be.reverted
+    })
+  })
+  describe('minusi', async () => {
+    it('correctly subtracts in its range', async () => {
+      const table_init = [
+        [13, -25, 38],
+        [0.1, 0, 0.1],
+        [1, 1, 0],
+        [5040, -301, 5341],
+        [0, 0, 0],
+        [0.1, -3, 3.1],
+        [11.37, 2, 9.37],
+      ]
+      let table = []
+      for (let [a, b, c] of table_init) {
+        table.push([a, b, c], [-a, -b, -c], [-c, b, -a], [c, -b, a])
+      }
+      for (let [a, b, c] of table) {
+        expect(await caller.minusi(fp(a), b), `minusi(${a}, ${b})`).to.equal(fp(c))
+      }
+    })
+
+    it('correctly subtacts at the extremes of its range', async () => {
+      expect(await caller.minusi(MAX_INT128.sub(SCALE.mul(3)), -3), 'minusi(MAX-3, -3)').to.equal(MAX_INT128)
+      const max_mantissa = MAX_INT128.mod(SCALE)
+      expect(
+        await caller.minusi(max_mantissa.sub(fp(12349)), MAX_FIX_INT.add(12349).mul(-1)),
+        'minusi(max_mantissa - 12349, -(MAX_FIX_INT + 12349))'
+      ).to.equal(MAX_INT128)
+
+      expect(await caller.minusi(MIN_INT128.add(SCALE.mul(7)), 7), 'minusi(MIN+7, 7)').to.equal(MIN_INT128)
+    })
+
+    it('fails outside its range', async () => {
+      await expect(caller.minusi(MAX_INT128.sub(SCALE.mul(3)).add(1), -3), 'minusi(MAX-3+eps, -3)').to.be.reverted
+      await expect(caller.minusi(MAX_INT128.sub(SCALE.mul(3)), -4), 'minusi(MAX-3, -4)').to.be.reverted
+      await expect(caller.minusi(0, MAX_FIX_INT.add(1).mul(-1)), 'minusi(0, -(MAX_FIX + 1))').to.be.reverted
+      await expect(caller.minusi(0, MIN_FIX_INT.mul(-1).add(1)), 'minusi(0, -MIN_FIX +1)').to.be.reverted
+      await expect(caller.minusi(MIN_INT128, 1), 'minusi(MIN, 1)').to.be.reverted
+      await expect(caller.minusi(MIN_INT128.add(SCALE.mul(3)).sub(1), 3), 'minusi(MIN+3-eps, 3)').to.be.reverted
+    })
+  })
+
+  describe('minusu', async () => {
+    it('correctly subtracts in its range', async () => {
+      const table = [
+        [38, 25, 13],
+        [38, 13, 25],
+        [0.7, 0, 0.7],
+        [5342, 301, 5041],
+        [118, 96, 22],
+        [0, 0, 0],
+        [999.8, 999, 0.8],
+        [-1000, 234, -1234],
+        [5, 12, -7],
+      ]
+      for (let [a, b, c] of table) {
+        expect(await caller.minusu(fp(a), b), `minusu(${a}, ${b})`).to.equal(fp(c))
+      }
+    })
+    it('correctly subtracts at the extremes of its range', async () => {
+      expect(await caller.minusu(MIN_INT128.add(SCALE.mul(81)), 81), 'minusu(MIN + 81, 81)').to.equal(MIN_INT128)
+      expect(await caller.minusu(MAX_INT128, 0), 'minusu(MAX, 0)').to.equal(MAX_INT128)
+      expect(await caller.minusu(MIN_INT128, 0), 'minusu(MIN, 0)').to.equal(MIN_INT128)
+    })
+
+    it('fails outside its range', async () => {
+      await expect(caller.minusu(MAX_INT128, MAX_FIX_INT.mul(2).add(3)), 'minusu(MAX, MAX_FIX*2+3)').to.be.reverted
+      await expect(caller.minusu(MIN_INT128, 1), 'minusu(MIN, 1)').to.be.reverted
+      await expect(caller.minusu(0, MAX_FIX_INT.add(1)), 'minusu(0, MAX_FIX + 1)').to.be.reverted
+      await expect(caller.minusu(0, MAX_UINT128), 'minusu(0, MAX_UINT)').to.be.reverted
     })
   })
 
