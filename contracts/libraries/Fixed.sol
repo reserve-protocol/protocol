@@ -32,9 +32,11 @@ type Fix is int128;
 int128 constant FIX_SCALE = 1e18;
 
 // The largest integer that can be converted to Fix.
+// This is about 1.7e20
 int128 constant FIX_MAX_INT = type(int128).max / FIX_SCALE;
 
 // The smallest integer that can be converted to Fix.
+// This is about -1.7e20
 int128 constant FIX_MIN_INT = type(int128).min / FIX_SCALE;
 
 Fix constant FIX_ZERO = Fix.wrap(0); // The Fix representation of zero.
@@ -70,10 +72,17 @@ function intToFix(int256 x) pure returns (Fix) {
 }
 
 
-/// Divide a uint by a Fix.
-/// I've done nothing to ensure that truncation happens well here.
+/// Divide a uint by a Fix. Fails if the result is outside Fix's representable range.
+
+/** @dev This is about this simplest way to do this. It also Just Works in all cases where the
+ * result fits in Fix, which may be surprising. See docs/fixlib-reasoning.md in this repo for the
+ * worked logic by which this case is correct, and also the principles by which you can reason that
+ * all these other functions are similarly correct.
+ */
+
 function divFix(uint256 x, Fix y) pure returns (Fix) {
-    return FixLib.div(toFix(x), y);
+    constant int128 _y = Fix.unwrap(y);
+    return Fix.wrap(_safe_int128(int256(x * uint128(FIX_SCALE * FIX_SCALE)) / int256(_y)));
 }
 
 library FixLib {
