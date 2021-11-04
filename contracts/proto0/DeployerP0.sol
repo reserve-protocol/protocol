@@ -27,7 +27,7 @@ import "./StRSRP0.sol";
 contract DeployerP0 is IDeployer {
     IMain[] public deployments;
 
-    /// @notice Deploys an instance of the entire system
+    /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
     /// @param owner The address that should own the entire system, hopefully a governance contract

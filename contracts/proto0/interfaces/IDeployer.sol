@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../assets/RSRAssetP0.sol";
@@ -13,7 +13,7 @@ import "./IVault.sol";
  * @notice The deployer for the entire system.
  */
 interface IDeployer {
-    /// @notice Emitted when a new RToken and accompanying system is deployed
+    /// Emitted when a new RToken and accompanying system is deployed
     /// @param main The address of `Main`
     /// @param owner The owner of the newly deployed system
     event RTokenCreated(address indexed main, address indexed rToken, address indexed owner);
@@ -29,7 +29,7 @@ interface IDeployer {
         AAVEAssetP0 aaveAsset;
     }
 
-    /// @notice Deploys an instance of the entire system
+    /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
     /// @param owner The address that should own the entire system, hopefully a governance contract

@@ -140,23 +140,23 @@ library FixLib {
 
     /// Multiply this Fix by a Fix.
     /// Round truncated values to the nearest available value. 5e-19 rounds towards zero.
-    function times(Fix x, Fix y) internal pure returns (Fix) {
+    function mul(Fix x, Fix y) internal pure returns (Fix) {
         int256 naive_prod = int256(Fix.unwrap(x)) * int256(Fix.unwrap(y));
         int256 rounding_adjustment = ((naive_prod >= 0 ? int8(1) : int8(-1)) * FIX_SCALE) / 2;
         return Fix.wrap(_safe_int128(naive_prod + rounding_adjustment / FIX_SCALE));
     }
 
     /// Multiply this Fix by an int.
-    function timesi(Fix x, int256 y) internal pure returns (Fix) {
+    function muli(Fix x, int256 y) internal pure returns (Fix) {
         return Fix.wrap(_safe_int128(Fix.unwrap(x) * y));
     }
 
     /// Multiply this Fix by a uint.
-    function timesu(Fix x, uint256 y) internal pure returns (Fix) {
+    function mulu(Fix x, uint256 y) internal pure returns (Fix) {
         if (y > type(uint256).max / 2) {
             revert UIntOutOfBounds(y);
         }
-        return timesi(x, int256(y));
+        return muli(x, int256(y));
     }
 
     /// Divide this Fix by a Fix; round the fractional part towards zero.
@@ -193,9 +193,9 @@ library FixLib {
         Fix square = x;
         for (; y > 0; y = y >> 1) {
             if (y & 1 == 1) {
-                res = times(res, square);
+                res = mul(res, square);
             }
-            square = times(square, square);
+            square = mul(square, square);
         }
         return res;
     }

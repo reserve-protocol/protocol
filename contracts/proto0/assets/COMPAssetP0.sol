@@ -7,21 +7,29 @@ import "contracts/libraries/Fixed.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
 contract COMPAssetP0 is AssetP0 {
+    using FixLib for Fix;
+
     constructor(address erc20_) AssetP0(erc20_) {}
 
-    // Fiatcoins return 1e18. All redemption rates should have 18 zeroes.
-    function redemptionRate() public view override returns (uint256) {
+    function rateFiatcoin() public view override returns (Fix) {
         assert(false);
-        return 0;
+        return FIX_ZERO;
     }
 
+    function rateUSD() public view override returns (Fix) {
+        assert(false);
+        return FIX_ZERO;
+    }
+
+    // @return {USD/qCOMP}
     function priceUSD(IMain main) public view virtual override returns (Fix) {
-        return toFix(redemptionRate() * main.consultCompoundOracle(address(erc20())));
+        // {USD/wholeCOMP} * {wholeCOMP/qCOMP}
+        return main.consultCompoundOracle(_erc20).mulu(10**decimals());
     }
 
-    function fiatcoinPriceUSD(IMain) public view virtual override returns (uint256) {
+    function fiatcoinPriceUSD(IMain) public view virtual override returns (Fix) {
         assert(false);
-        return 0;
+        return FIX_ZERO;
     }
 
     function isFiatcoin() external pure override returns (bool) {

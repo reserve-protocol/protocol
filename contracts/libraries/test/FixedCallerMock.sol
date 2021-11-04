@@ -53,16 +53,16 @@ contract FixedCallerMock {
         return FixLib.minusu(x, y);
     }
 
-    function times(Fix x, Fix y) public pure returns (Fix) {
-        return FixLib.times(x, y);
+    function mul(Fix x, Fix y) public pure returns (Fix) {
+        return FixLib.mul(x, y);
     }
 
-    function timesi(Fix x, int256 y) public pure returns (Fix) {
-        return FixLib.timesi(x, y);
+    function muli(Fix x, int256 y) public pure returns (Fix) {
+        return FixLib.muli(x, y);
     }
 
-    function timesu(Fix x, uint256 y) public pure returns (Fix) {
-        return FixLib.timesu(x, y);
+    function mulu(Fix x, uint256 y) public pure returns (Fix) {
+        return FixLib.mulu(x, y);
     }
 
     function div(Fix x, Fix y) public pure returns (Fix) {

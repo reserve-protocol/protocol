@@ -8,17 +8,18 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "./assets/ATokenAssetP0.sol";
-import "../libraries/CommonErrors.sol";
-import "./libraries/Auction.sol";
-import "./interfaces/IAsset.sol";
-import "./interfaces/IAssetManager.sol";
-import "./interfaces/IMain.sol";
-import "./interfaces/IRToken.sol";
-import "./interfaces/IVault.sol";
-import "./FurnaceP0.sol";
-import "./RTokenP0.sol";
-import "./StRSRP0.sol";
+import "contracts/libraries/CommonErrors.sol";
+import "contracts/proto0/assets/ATokenAssetP0.sol";
+import "contracts/proto0/libraries/Auction.sol";
+import "contracts/proto0/interfaces/IAsset.sol";
+import "contracts/proto0/interfaces/IAssetManager.sol";
+import "contracts/proto0/interfaces/IMain.sol";
+import "contracts/proto0/interfaces/IRToken.sol";
+import "contracts/proto0/interfaces/IVault.sol";
+import "contracts/proto0/FurnaceP0.sol";
+import "contracts/proto0/RTokenP0.sol";
+import "contracts/proto0/StRSRP0.sol";
+import "contracts/libraries/Fixed.sol";
 
 /**
  * @title AssetManagerP0
@@ -34,17 +35,15 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     using Oracle for Oracle.Info;
     using FixLib for Fix;
 
-    uint256 public constant SCALE = 1e18;
-
-    // ECONOMICS (Note that SCALE is ignored here. These are the abstract mathematical relationships)
+    // ECONOMICS
     //
     // base factor = exchange rate between Vault BUs and RTokens
     // base factor = b = _meltingFactor / _basketDilutionFactor
     // <RToken> = b * <Basket Unit Vector>
     // Fully capitalized: #RTokens <= #BUs / b
 
-    uint256 internal _historicalBasketDilution = 1e18; // the product of all historical basket dilutions
-    uint256 internal _prevBasketValue; // redemption value of the basket in fiatcoins last update
+    Fix internal _historicalBasketDilution = FIX_ONE; // the product of all historical basket dilutions
+    Fix internal _prevBasketRate; // redemption value of the basket in fiatcoins last update
 
     EnumerableSet.AddressSet internal _approvedCollateral;
     EnumerableSet.AddressSet internal _alltimeCollateral;
@@ -64,7 +63,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     ) {
         main = main_;
         vault = vault_;
-        _prevBasketValue = vault.basketRate();
+        _prevBasketRate = vault.basketRate();
 
         for (uint256 i = 0; i < approvedAssets_.length; i++) {
             _approveAsset(approvedAssets_[i]);
@@ -82,31 +81,31 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     modifier sideEffects() {
         main.furnace().doBurn();
-        vault.updateCompoundAaveRates();
+        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
+            IAsset(_approvedCollateral.at(i)).updateRates();
+        }
         _;
     }
 
-    /// @notice Runs block-by-block updates
+    /// Runs block-by-block updates
     function updateBaseFactor() external override sideEffects {}
 
-    /// @notice Mints `issuance.amount` of RToken to `issuance.minter`
-    /// @param issuance The SlowIssuance to finalize by issuing RToken
+    /// Mints `issuance.amount` of RToken to `issuance.minter`
     function issue(SlowIssuance memory issuance) external override sideEffects {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
+        require(!issuance.processed, "already processed");
         issuance.vault.pullBUs(address(main), issuance.BUs); // Main should have set an allowance
         main.rToken().mint(issuance.issuer, issuance.amount);
     }
 
-    /// @notice Redeems `amount` {qRToken} to `redeemer`
-    /// @param redeemer The account that should receive the collateral
-    /// @param amount The amount of RToken being redeemed {qRToken}
+    /// Redeems `amount` {RTok} to `redeemer`
     function redeem(address redeemer, uint256 amount) external override sideEffects {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         main.rToken().burn(redeemer, amount);
         _oldestVault().redeem(redeemer, toBUs(amount));
     }
 
-    /// @notice Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
+    /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
     function collectRevenue() external override sideEffects {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         vault.claimAndSweepRewardsToManager();
@@ -115,13 +114,13 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
         // Expand the RToken supply to self
         uint256 possible = fromBUs(vault.basketUnits(address(this)));
-        if (fullyCapitalized() && possible > main.rToken().totalSupply()) {
-            main.rToken().mint(address(this), possible - main.rToken().totalSupply());
+        uint256 totalSupply = main.rToken().totalSupply();
+        if (fullyCapitalized() && possible > totalSupply) {
+            main.rToken().mint(address(this), possible - totalSupply);
         }
     }
 
-    /// @notice Attempts to switch vaults to a backup vault that does not contain `defaulting` assets
-    /// @param defaulting The list of assets that are ineligible to be in the next vault
+    /// Attempts to switch vaults to a backup vault that does not contain `defaulting` assets
     function switchVaults(IAsset[] memory defaulting) external override sideEffects {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         for (uint256 i = 0; i < defaulting.length; i++) {
@@ -134,20 +133,20 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
     }
 
-    /// @notice Accumulates current metrics into historical metrics
+    /// Accumulates current metrics into historical metrics
     function accumulate() external override sideEffects {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         _accumulate();
     }
 
-    /// @notice Performs any and all auctions in the system
+    /// Performs any and all auctions in the system
     /// @return The current enum `State`
     function doAuctions() external override sideEffects returns (State) {
         // Outline:
-        //   1. Closeout running auctions
-        //   2. Create new BUs from collateral
-        //   3. Break apart old BUs and trade toward new basket
-        //   4. Run revenue auctions
+        //  1. Closeout running auctions
+        //  2. Create new BUs from collateral
+        //  3. Break apart old BUs and trade toward new basket
+        //  4. Run revenue auctions
 
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         // Closeout open auctions or sleep if they are still ongoing.
@@ -197,6 +196,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() public view override returns (bool) {
+        // vault.basketUnits(address(this)) >= rToken.totalSupply()
         return vault.basketUnits(address(this)) >= toBUs(main.rToken().totalSupply());
     }
 
@@ -208,44 +208,51 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
     }
 
-    /// @notice RToken -> BUs
-    /// @param amount The quantity of RToken {qRToken} to convert to BUs
-    /// @return The equivalent amount of BUs at the current base factor
+    /// {RTok} -> {BU}
     function toBUs(uint256 amount) public view override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
             return amount;
         }
-        return (amount * _basketDilutionFactor()) / _meltingFactor();
+
+        // (_basketDilutionFactor() / _meltingFactor()) * amount
+        return _basketDilutionFactor().div(_meltingFactor()).mulu(amount).toUint();
     }
 
-    /// @notice BUs -> RToken
-    /// @param BUs The quantity of BUs {qBUs} to convert to RToken
-    /// @return The equivalent amount of RToken at the current base factor
+    /// {BU} -> {RTok}
     function fromBUs(uint256 BUs) public view override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
             return BUs;
         }
-        return (BUs * _meltingFactor()) / _basketDilutionFactor();
+
+        // (_meltingFactor() / _basketDilutionFactor()) * BUs
+        return _meltingFactor().div(_basketDilutionFactor()).mulu(BUs).toUint();
     }
 
     //
 
-    // base factor: numerator
-    function _meltingFactor() internal view returns (uint256) {
-        uint256 totalBurnt = main.furnace().totalBurnt();
-        return (SCALE * (main.rToken().totalSupply() + totalBurnt)) / main.rToken().totalSupply();
+    /// base factor: numerator
+    /// @return A unitless ratio as a Fix
+    function _meltingFactor() internal view returns (Fix) {
+        Fix totalSupply = toFix(main.rToken().totalSupply()); // {RTok}
+        Fix totalBurnt = toFix(main.furnace().totalBurnt()); // {RTok}
+
+        // (totalSupply + totalBurnt) / totalSupply
+        return totalSupply.plus(totalBurnt).div(totalSupply);
     }
 
-    // base factor: denominator
-    function _basketDilutionFactor() internal view returns (uint256) {
-        uint256 currentRate = vault.basketRate();
-        uint256 currentDilution = SCALE + main.config().f * ((SCALE * currentRate) / _prevBasketValue - SCALE);
-        return _historicalBasketDilution * currentDilution;
+    /// base factor: denominator
+    /// @return A unitless ratio as a Fix
+    function _basketDilutionFactor() internal view returns (Fix) {
+        Fix currentRate = vault.basketRate();
+
+        // currentDilution = (f * ((currentRate / _prevBasketRate) - 1)) + 1
+        Fix currentDilution = main.config().f.mul(currentRate.div(_prevBasketRate).minus(FIX_ONE)).plus(FIX_ONE);
+        return _historicalBasketDilution.mul(currentDilution);
     }
 
-    // Returns the oldest vault that contains nonzero BUs.
-    // Note that this will pass over vaults with uneven holdings, it does not necessarily mean the vault
-    // contains no asset tokens.
+    /// Returns the oldest vault that contains nonzero BUs.
+    /// Note that this will pass over vaults with uneven holdings, it does not necessarily mean the vault
+    /// contains no asset tokens.
     function _oldestVault() internal view returns (IVault) {
         for (uint256 i = 0; i < pastVaults.length; i++) {
             if (pastVaults[i].basketUnits(address(this)) > 0) {
@@ -257,10 +264,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     //
 
-    // Internal helper that runs infrequently to accumulate the historical dilution factor.
+    /// Runs infrequently to accumulate the historical dilution factor
     function _accumulate() internal {
         _historicalBasketDilution = _basketDilutionFactor();
-        _prevBasketValue = vault.basketRate();
+        _prevBasketRate = vault.basketRate();
     }
 
     function _switchVault(IVault vault_) internal {
@@ -287,21 +294,21 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
     }
 
-    function _launchAuction(Auction.Info memory auction) internal returns (State) {
+    /// Opens an `auction`
+    function _launchAuction(Auction.Info memory auction) internal {
         auctions.push(auction);
         auctions[auctions.length - 1].open();
         emit AuctionStart(
             auctions.length - 1,
-            address(auction.sellAsset),
-            address(auction.buyAsset),
+            address(auction.sell),
+            address(auction.buy),
             auction.sellAmount,
             auction.minBuyAmount,
             auction.fate
         );
-        return State.TRADING;
     }
 
-    // Inner portion of `runAuction()` loop pt 1
+    /// Runs all auctions for recapitalization
     function _doRecapitalizationAuctions() internal returns (State) {
         // Are we able to trade sideways, or is it all dust?
         (IAsset sell, IAsset buy, uint256 maxSell, uint256 targetBuy) = _largestCollateralForCollateralTrade();
@@ -314,14 +321,15 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             Fate.Stay
         );
         if (trade) {
-            return _launchAuction(auction);
+            _launchAuction(auction);
+            return State.TRADING;
         }
 
         // Redeem BUs to open up spare collateral assets
         uint256 totalSupply = main.rToken().totalSupply();
         IVault oldVault = _oldestVault();
         if (oldVault != vault) {
-            uint256 max = toBUs(((totalSupply) * main.config().migrationChunk) / SCALE);
+            uint256 max = toBUs(main.config().migrationChunk.mulu(totalSupply).toUint());
             uint256 chunk = Math.min(max, oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
         }
@@ -337,7 +345,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             Fate.Stay
         );
         if (trade) {
-            return _launchAuction(auction);
+            _launchAuction(auction);
+            return State.TRADING;
         }
 
         // Fallback to seizing RSR stake
@@ -354,18 +363,19 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
             if (trade) {
                 main.stRSR().seizeRSR(auction.sellAmount - main.rsr().balanceOf(address(this)));
-                return _launchAuction(auction);
+                _launchAuction(auction);
+                return State.TRADING;
             }
         }
 
         // The ultimate endgame: a haircut for RToken holders.
         _accumulate();
-        uint256 melting = (SCALE * (totalSupply + main.furnace().totalBurnt())) / totalSupply;
-        _historicalBasketDilution = (melting * vault.basketUnits(address(this))) / totalSupply;
+        Fix melting = (toFix(totalSupply).plusu(main.furnace().totalBurnt())).divu(totalSupply);
+        _historicalBasketDilution = melting.mulu(vault.basketUnits(address(this))).divu(totalSupply);
         return State.CALM;
     }
 
-    // Inner portion of `runAuction()` loop pt 2
+    /// Runs all auctions for revenue
     function _doRevenueAuctions() internal returns (State) {
         uint256 auctionLenSnapshot = auctions.length;
 
@@ -388,20 +398,21 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
 
         // COMP -> dividend RSR + melting RToken
-        uint256 amountForRSR = (main.compAsset().erc20().balanceOf(address(this)) * main.config().f) / SCALE;
-        uint256 amountForRToken = main.compAsset().erc20().balanceOf(address(this)) - amountForRSR;
+        Fix compBal = toFix(main.compAsset().erc20().balanceOf(address(this)));
+        Fix amountForRSR = compBal.mul(main.config().f);
+        Fix amountForRToken = compBal.minus(amountForRSR);
         (launch, auction) = _prepareAuctionSell(
             main.config().minRevenueAuctionSize,
             main.compAsset(),
             main.rsrAsset(),
-            amountForRSR,
+            amountForRSR.toUint(),
             Fate.Stake
         );
         (bool launch2, Auction.Info memory auction2) = _prepareAuctionSell(
             main.config().minRevenueAuctionSize,
             main.compAsset(),
             main.rTokenAsset(),
-            amountForRToken,
+            amountForRToken.toUint(),
             Fate.Melt
         );
 
@@ -411,20 +422,21 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
 
         // AAVE -> dividend RSR + melting RToken
-        amountForRSR = (main.aaveAsset().erc20().balanceOf(address(this)) * main.config().f) / SCALE;
-        amountForRToken = main.aaveAsset().erc20().balanceOf(address(this)) - amountForRSR;
+        Fix aaveBal = toFix(main.compAsset().erc20().balanceOf(address(this)));
+        amountForRSR = aaveBal.mul(main.config().f);
+        amountForRToken = aaveBal.minus(amountForRSR);
         (launch, auction) = _prepareAuctionSell(
             main.config().minRevenueAuctionSize,
             main.aaveAsset(),
             main.rsrAsset(),
-            amountForRSR,
+            amountForRSR.toUint(),
             Fate.Stake
         );
         (launch2, auction2) = _prepareAuctionSell(
             main.config().minRevenueAuctionSize,
             main.aaveAsset(),
             main.rTokenAsset(),
-            amountForRToken,
+            amountForRToken.toUint(),
             Fate.Melt
         );
 
@@ -436,11 +448,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         return auctions.length == auctionLenSnapshot ? State.CALM : State.TRADING;
     }
 
-    // Determines what the largest collateral-for-collateral trade is.
-    // Algorithm:
-    //     1. Target a particular number of basket units based on total fiatcoins held across all asset.
-    //     2. Choose the most in-surplus and most in-deficit collateral assets for trading.
-    // Returns: (sell asset, buy asset, max sell amount, target buy amount)
+    /// Determines what the largest collateral-for-collateral trade is.
+    /// Algorithm:
+    ///    1. Target a particular number of basket units based on total fiatcoins held across all asset.
+    ///    2. Choose the most in-surplus and most in-deficit collateral assets for trading.
+    /// @return Sell asset
+    /// @return Buy asset
+    /// @return {sellTokLot} Sell amount
+    /// @return {buyTokLot} Buy amount
     function _largestCollateralForCollateralTrade()
         internal
         view
@@ -452,38 +467,46 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         )
     {
         // Calculate a BU target (if we could trade with 0 slippage)
-        uint256 totalValue;
+        Fix totalValue;
         for (uint256 i = 0; i < _alltimeCollateral.length(); i++) {
             IAsset a = IAsset(_alltimeCollateral.at(i));
-            totalValue += IERC20(a.erc20()).balanceOf(address(this)) * a.priceUSD(main);
+            Fix bal = toFix(IERC20(a.erc20()).balanceOf(address(this)));
+
+            // {USD} = {USD} + {USD/qTok} * {qTok}
+            totalValue = totalValue.plus(a.priceUSD(main).mul(bal));
         }
-        uint256 BUTarget = (totalValue * SCALE) / vault.basketRate();
+        // {BU} = {USD} / {USD/BU}
+        Fix BUTarget = totalValue.div(vault.basketRate());
 
         // Calculate surplus and deficits relative to the BU target.
-        uint256[] memory surplus = new uint256[](_alltimeCollateral.length());
-        uint256[] memory deficit = new uint256[](_alltimeCollateral.length());
+        Fix[] memory surplus = new Fix[](_alltimeCollateral.length());
+        Fix[] memory deficit = new Fix[](_alltimeCollateral.length());
         for (uint256 i = 0; i < _alltimeCollateral.length(); i++) {
             IAsset a = IAsset(_alltimeCollateral.at(i));
-            uint256 bal = IERC20(a.erc20()).balanceOf(address(this));
-            uint256 target = (vault.quantity(a) * BUTarget) / SCALE;
-            if (bal > target) {
-                surplus[i] = ((bal - target) * a.priceUSD(main)) / SCALE;
-            } else if (bal < target) {
-                deficit[i] = ((target - bal) * a.priceUSD(main)) / SCALE;
+            Fix bal = toFix(IERC20(a.erc20()).balanceOf(address(this))); // {qTok}
+
+            // {qTok} = {BU} * {qTok/BU}
+            Fix target = BUTarget.mul(vault.quantity(a));
+            if (bal.gt(target)) {
+                // {USD} = ({qTok} - {qTok}) * {USD/qTok}
+                surplus[i] = bal.minus(target).mul(a.priceUSD(main));
+            } else if (bal.lt(target)) {
+                // {USD} = ({qTok} - {qTok}) * {USD/qTok}
+                deficit[i] = target.minus(bal).mul(a.priceUSD(main));
             }
         }
 
         // Calculate the maximums.
         uint256 sellIndex;
         uint256 buyIndex;
-        uint256 surplusMax;
-        uint256 deficitMax;
+        Fix surplusMax; // {USD}
+        Fix deficitMax; // {USD}
         for (uint256 i = 0; i < _alltimeCollateral.length(); i++) {
-            if (surplus[i] > surplusMax) {
+            if (surplus[i].gt(surplusMax)) {
                 surplusMax = surplus[i];
                 sellIndex = i;
             }
-            if (deficit[i] > deficitMax) {
+            if (deficit[i].gt(deficitMax)) {
                 deficitMax = deficit[i];
                 buyIndex = i;
             }
@@ -491,40 +514,48 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
         IAsset sell = IAsset(_alltimeCollateral.at(sellIndex));
         IAsset buy = IAsset(_alltimeCollateral.at(buyIndex));
-        uint256 maxSellAmount = (surplusMax * SCALE) / sell.priceUSD(main);
-        uint256 buyAmount = (deficitMax * SCALE) / buy.priceUSD(main);
-        return (sell, buy, maxSellAmount, buyAmount);
+
+        // {qSellTok} = {USD} / {USD/qSellTok}
+        Fix sellAmount = surplusMax.div(sell.priceUSD(main));
+
+        // {qBuyTok} = {USD} / {USD/qBuyTok}
+        Fix buyAmount = deficitMax.div(buy.priceUSD(main));
+        return (sell, buy, sellAmount.toUint(), buyAmount.toUint());
     }
 
-    // Prepares an auction where *sellAmount* is the independent variable and *minBuyAmount* is dependent.
-    // Returns false as the first parameter if *sellAmount* is only dust.
+    /// Prepares an auction where *sellAmount* is the independent variable and *minBuyAmount* is dependent.
+    /// @param minAuctionSize {null}
+    /// @param sellAmount {qSellTok}
+    /// @return false if it is a dust trade
     function _prepareAuctionSell(
-        uint256 minAuctionSize,
+        Fix minAuctionSize,
         IAsset sell,
         IAsset buy,
         uint256 sellAmount,
         Fate fate
-    ) internal returns (bool, Auction.Info memory emptyAuction) {
+    ) internal returns (bool, Auction.Info memory auction) {
         sellAmount = Math.min(sellAmount, sell.erc20().balanceOf(address(this)));
 
-        uint256 rTokenMarketCapUSD = (main.rTokenAsset().priceUSD(main) * main.rToken().totalSupply()) / SCALE;
-        uint256 maxSellUSD = (rTokenMarketCapUSD * main.config().maxAuctionSize) / SCALE;
-        uint256 minSellUSD = (rTokenMarketCapUSD * minAuctionSize) / SCALE;
+        // {USD} = {USD/qSellTok} * {qSellTok}
+        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(main).mulu(main.rToken().totalSupply());
+        Fix maxSellUSD = rTokenMarketCapUSD.mul(main.config().maxAuctionSize); // {USD}
+        Fix minSellUSD = rTokenMarketCapUSD.mul(minAuctionSize); // {USD}
 
-        if (sellAmount < (minSellUSD * SCALE) / sell.priceUSD(main)) {
-            return (false, emptyAuction);
+        // {qSellTok} < {USD} / {USD/qSellTok}
+        if (sellAmount < minSellUSD.div(sell.priceUSD(main)).toUint()) {
+            return (false, auction);
         }
 
-        sellAmount = Math.min(sellAmount, (maxSellUSD * SCALE) / sell.priceUSD(main));
-        uint256 exactBuyAmount = (sellAmount * sell.priceUSD(main)) / buy.priceUSD(main);
-        uint256 minBuyAmount = (exactBuyAmount * (SCALE - main.config().maxTradeSlippage)) / SCALE;
+        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(main)).toUint()); // {qSellTok}
+        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(main)).div(buy.priceUSD(main)); // {qBuyTok}
+        Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.config().maxTradeSlippage)); // {qBuyTok}
         return (
             true,
             Auction.Info({
-                sellAsset: sell,
-                buyAsset: buy,
+                sell: sell,
+                buy: buy,
                 sellAmount: sellAmount,
-                minBuyAmount: minBuyAmount,
+                minBuyAmount: minBuyAmount.toUint(),
                 startTime: block.timestamp,
                 endTime: block.timestamp + main.config().auctionPeriod,
                 fate: fate,
@@ -533,10 +564,12 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         );
     }
 
-    // Prepares an auction where *minBuyAmount* is the independent variable and *sellAmount* is dependent.
-    // Returns false as the first parameter if the corresponding *sellAmount* is only dust.
+    /// Prepares an auction where *minBuyAmount* is the independent variable and *sellAmount* is dependent.
+    /// @param maxSellAmount {qSellTok}
+    /// @param targetBuyAmount {qBuyTok}
+    /// @return false if it is a dust trade
     function _prepareAuctionBuy(
-        uint256 minAuctionSize,
+        Fix minAuctionSize,
         IAsset sell,
         IAsset buy,
         uint256 maxSellAmount,
@@ -551,14 +584,20 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         if (auction.minBuyAmount > targetBuyAmount) {
             auction.minBuyAmount = targetBuyAmount;
 
-            uint256 exactSellAmount = (auction.minBuyAmount * buy.priceUSD(main)) / sell.priceUSD(main);
-            auction.sellAmount = (exactSellAmount * SCALE) / (SCALE - main.config().maxTradeSlippage);
+            // {qSellTok} = {qBuyTok} * {USD/qBuyTok} / {USD/qSellTok}
+            Fix exactSellAmount = toFix(auction.minBuyAmount).mul(buy.priceUSD(main)).div(sell.priceUSD(main));
+
+            // {qSellTok} = {qSellTok} / {null}
+            auction.sellAmount = exactSellAmount.div(FIX_ONE.minus(main.config().maxTradeSlippage)).toUint();
             assert(auction.sellAmount < maxSellAmount);
 
-            uint256 rTokenMarketCapUSD = (main.rTokenAsset().priceUSD(main) * main.rToken().totalSupply()) / SCALE;
-            uint256 minSellUSD = (rTokenMarketCapUSD * minAuctionSize) / SCALE;
+            // {USD} = {USD/qRTok} * {qRTok}
+            Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(main).mulu(main.rToken().totalSupply());
+            Fix minSellUSD = rTokenMarketCapUSD.mul(minAuctionSize);
 
-            if (auction.sellAmount < (minSellUSD * SCALE) / sell.priceUSD(main)) {
+            // {qSellTok} = {USD} / {USD/qSellTok}
+            uint256 minSellAmount = minSellUSD.div(sell.priceUSD(main)).toUint();
+            if (auction.sellAmount < minSellAmount) {
                 return (false, emptyAuction);
             }
         }
