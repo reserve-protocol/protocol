@@ -271,13 +271,49 @@ describe('In FixLib,', async () => {
       expect(await caller.plusi(MIN_INT128.add(SCALE.mul(3)), -3), 'plusi(MIN+3, -3)').to.equal(MIN_INT128)
     })
 
-    it('failus outside its range', async () => {
+    it('fails outside its range', async () => {
       await expect(caller.plusi(MAX_INT128.sub(SCALE.mul(3)).add(1), 3), 'plusi(MAX-3+eps, 3)').to.be.reverted
       await expect(caller.plusi(MAX_INT128.sub(SCALE.mul(3)), 4), 'plusi(MAX-3, 4)').to.be.reverted
       await expect(caller.plusi(0, MAX_FIX_INT.add(1)), 'plusi(0, MAX_FIX + 1)').to.be.reverted
       await expect(caller.plusi(0, MIN_FIX_INT.sub(1)), 'plusi(0, MIN_FIX - 1)').to.be.reverted
       await expect(caller.plusi(MIN_INT128, -1), 'plusi(MIN, -1)').to.be.reverted
       await expect(caller.plusi(MIN_INT128.add(SCALE.mul(3)).sub(1), -3), 'plusi(MIN+3-eps, -3)').to.be.reverted
+    })
+  })
+
+  describe('plusu', async () => {
+    it('correctly adds in its range', async () => {
+      const table = [
+        [13, 25, 38],
+        [25, 13, 38],
+        [0.7, 0, 0.7],
+        [5040, 301, 5341],
+        [22, 96, 118],
+        [0, 0, 0],
+        [0.1, 3, 3.1],
+        [-999.8, 999, -0.8],
+      ]
+      for (let [a, b, c] of table) {
+        expect(await caller.plusu(fp(a), b), `plusu(${a}, ${b})`).to.equal(fp(c))
+      }
+    })
+
+    it('correctly adds at the extremes of its range', async () => {
+      expect(await caller.plusu(MAX_INT128.sub(SCALE.mul(3)), 3), 'plusu(MAX-3, 3)').to.equal(MAX_INT128)
+      const max_mantissa = MAX_INT128.mod(SCALE)
+      expect(
+        await caller.plusu(max_mantissa.sub(fp(12345)), MAX_FIX_INT.add(12345)),
+        'plusu(max_mantissa - 12345, MAX_FIX_INT + 12345)'
+      ).to.equal(MAX_INT128)
+
+      expect(await caller.plusu(MIN_INT128, 0), 'plusu(MIN, 0)').to.equal(MIN_INT128)
+    })
+
+    it('fails outside its range', async () => {
+      await expect(caller.plusu(MAX_INT128.sub(SCALE.mul(3)).add(1), 3), 'plusu(MAX-3+eps, 3)').to.be.reverted
+      await expect(caller.plusu(MAX_INT128.sub(SCALE.mul(3)), 4), 'plusu(MAX-3, 4)').to.be.reverted
+      await expect(caller.plusu(0, MAX_FIX_INT.add(1)), 'plusu(0, MAX_FIX + 1)').to.be.reverted
+      await expect(caller.plusu(0, MAX_UINT128), 'plusu(0, MAX_UINT)').to.be.reverted
     })
   })
 
