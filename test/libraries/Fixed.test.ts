@@ -518,7 +518,37 @@ describe('In FixLib,', async () => {
       for (let [a, b, c] of table) await expect(caller.timesi(a, b), `timesi(${a}, ${b})`).to.be.reverted
     })
   })
-  describe('timesu', async () => {})
+  describe('timesu', async () => {
+    it('correctly multiplies inside its range', async () => {
+      let table = timesu_table.flatMap(([a, b, c]) => [
+        [a, b, c],
+        [-a, b, -c],
+      ])
+      for (let [a, b, c] of table) expect(await caller.timesu(fp(a), b), `timesu(fp(${a}), ${b})`).to.equal(fp(c))
+    })
+    it('correctly multiplies at the extremes of its range', async () => {
+      const table = [
+        [MAX_INT128, 1, MAX_INT128],
+        [MIN_INT128, 1, MIN_INT128],
+        [fp(1), MAX_FIX_INT, fp(MAX_FIX_INT)],
+        [MIN_INT128.div(256), 256, MIN_INT128],
+        [MAX_INT128.sub(1).div(2), 2, MAX_INT128.sub(1)],
+        [fp(0.25), bn(2).pow(69), fp(bn(2).pow(67))],
+      ]
+      for (let [a, b, c] of table) expect(await caller.timesu(a, b), `timesu(${a}, ${b})`).to.equal(c)
+    })
+    it('fails outside its range', async () => {
+      const table = [
+        [MAX_INT128.div(2).add(1), 2],
+        [fp(bn(2).pow(68)), bn(2).pow(68)],
+        [MAX_INT128, MAX_INT128],
+        [MIN_INT128, MAX_INT128],
+        [fp(1), MAX_UINT128],
+        [fp(0.25), bn(2).pow(70)],
+      ]
+      for (let [a, b, c] of table) await expect(caller.timesu(a, b), `timesu(${a}, ${b})`).to.be.reverted
+    })
+  })
   describe('div', async () => {})
   describe('divi', async () => {})
   describe('divu', async () => {})
