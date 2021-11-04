@@ -86,15 +86,21 @@ describe('In FixLib,', async () => {
     it('works for extreme results', async () => {
       // uint(MAX_INT128) / 1e18 == Fix(MAX_INT128) (largest possible Fix value)
       expect(await caller.divFix(MAX_INT128, fp('1e18'))).to.equal(MAX_INT128)
-
       // 171e18 > MAX_FIX_INT > 170e18, so we use 170e18 here.
       expect(await caller.divFix(MAX_INT128.mul(170), fp('170e18'))).to.equal(MAX_INT128)
 
       expect(await caller.divFix(MAX_INT128.sub(1), fp('1e18'))).to.equal(MAX_INT128.sub(1))
       expect(await caller.divFix(MAX_INT128.sub(51), fp('1e18'))).to.equal(MAX_INT128.sub(51))
     })
-    it('fails when results fall outside its domain', async () => {})
-    it('fails on division by zero', async () => {})
+    it('fails when results fall outside its domain', async () => {
+      await expect(caller.divFix(MAX_INT128.add(1), fp('1e18'))).revertedWith('IntOutOfBounds')
+      await expect(caller.divFix(MAX_INT128.div(5), fp('0.199e18'))).revertedWith('IntOutOfBounds')
+    })
+    it('fails on division by zero', async () => {
+      await expect(caller.divFix(17, fp(0))).revertedWith('panic code 0x12')
+      await expect(caller.divFix(0, fp(0))).revertedWith('panic code 0x12')
+      await expect(caller.divFix(MAX_INT128, fp(0))).revertedWith('panic code 0x12')
+    })
   })
 
   describe('plus', async () => {

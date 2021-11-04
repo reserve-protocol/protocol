@@ -79,9 +79,8 @@ function intToFix(int256 x) pure returns (Fix) {
  * worked logic by which this case is correct, and also the principles by which you can reason that
  * all these other functions are similarly correct.
  */
-
 function divFix(uint256 x, Fix y) pure returns (Fix) {
-    constant int128 _y = Fix.unwrap(y);
+    int128 _y = Fix.unwrap(y);
     return Fix.wrap(_safe_int128(int256(x * uint128(FIX_SCALE * FIX_SCALE)) / int256(_y)));
 }
 
