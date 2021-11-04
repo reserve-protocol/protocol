@@ -44,17 +44,14 @@ function _parseScientific(s: string, scale: BigNumberish = 0): BigNumber {
   // Scientific Notation: <INT>(.<DIGITS>)?(e<INT>)?
   // INT: [+-]?DIGITS
   // DIGITS: \d+
-  const match = s.match(/^(?<int_part>[+-]?\d+)(\.(?<frac_part>\d+))?(e(?<exponent>[+-]?\d+))?$/)
+  const match = s.match(/^(?<sign>[+-]?)(?<int_part>\d+)(\.(?<frac_part>\d+))?(e(?<exponent>[+-]?\d+))?$/)
   if (!match || !match.groups) throw new Error(`Illegal decimal string ${s}`)
 
+  let sign = match.groups.sign === '-' ? -1 : 1
   let int_part = BigNumber.from(match.groups.int_part)
   const frac_part = match.groups.frac_part ? BigNumber.from(match.groups.frac_part) : ZERO
   let exponent = match.groups.exponent ? BigNumber.from(match.groups.exponent) : ZERO
   exponent = exponent.add(scale)
-
-  // If this is negative, do our work in the positive domain, but remember the negation.
-  const is_negative = int_part.lt(0)
-  int_part = int_part.abs()
 
   // "zero" the fractional part by shifting it into int_part, keeping the overall value equal
   if (!frac_part.eq(ZERO)) {
@@ -68,5 +65,5 @@ function _parseScientific(s: string, scale: BigNumberish = 0): BigNumber {
     ? int_part.mul(pow10(exponent))
     : int_part.div(pow10(exponent.abs()))
 
-  return is_negative ? positive_output.mul(-1) : positive_output
+  return positive_output.mul(sign)
 }
