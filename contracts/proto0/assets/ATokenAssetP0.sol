@@ -25,6 +25,11 @@ contract ATokenAssetP0 is AssetP0 {
 
     constructor(address erc20_) AssetP0(erc20_) {}
 
+    /// Claims any rewards such as COMP/AAVE for the asset
+    function claimRewards() external override {
+        IStaticAToken(address(erc20())).claimRewardsToSelf(true);
+    }
+
     // @return {USD/tok}
     function rateUSD() public view override returns (Fix) {
         // {qTok/tok} * {RAY/qTok} / {RAY/USD}

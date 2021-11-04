@@ -67,6 +67,7 @@ contract MainP0 is IMain, Ownable {
         _oracle = oracle_;
         _config = config_;
         rsr = rsr_;
+        pauser = _msgSender();
     }
 
     /// This modifier runs before every function including redemption, so it should be very safe.

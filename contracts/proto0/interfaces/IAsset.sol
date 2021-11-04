@@ -13,6 +13,9 @@ interface IAsset {
     /// @dev Call `updateRates()` before to ensure the latest rates
     function updateRates() external;
 
+    /// Claims any rewards such as COMP/AAVE for the asset
+    function claimRewards() external;
+
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
     function rateFiatcoin() external view returns (Fix);
 

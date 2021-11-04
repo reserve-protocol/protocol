@@ -23,6 +23,9 @@ contract AssetP0 is IAsset {
     /// @dev Call `updateRates()` before `rateFiatcoin` and `rateUSD` to ensure the latest rates
     function updateRates() external virtual override {}
 
+    /// Claims any rewards such as COMP/AAVE for the asset
+    function claimRewards() external virtual override {}
+
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
     function rateFiatcoin() public view virtual override returns (Fix) {
         return toFix(10**fiatcoinDecimals()).divu(10**decimals());

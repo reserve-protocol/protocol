@@ -114,7 +114,10 @@ contract VaultP0 is IVault, Ownable {
 
         // Claim
         main.comptroller().claimComp(address(this));
-        IStaticAToken(address(main.aaveAsset().erc20())).claimRewardsToSelf(true);
+        for (uint256 i = 0; i < _basket.size; i++) {
+            // Only aTokens need to be claimed at the asset level
+            _basket.assets[i].claimRewards();
+        }
 
         // Sweep
         IERC20 comp = main.compAsset().erc20();
