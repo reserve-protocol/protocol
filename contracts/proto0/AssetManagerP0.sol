@@ -241,7 +241,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function _basketDilutionFactor() internal view returns (uint256) {
         uint256 currentRate = vault.basketRate();
         uint256 currentDilution = SCALE + main.config().f * ((SCALE * currentRate) / _prevBasketValue - SCALE);
-        return _historicalBasketDilution * currentDilution;
+        return (_historicalBasketDilution * currentDilution) / SCALE;
     }
 
     // Returns the oldest vault that contains nonzero BUs.
@@ -268,6 +268,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         pastVaults.push(vault_);
         emit NewVault(address(vault), address(vault_));
         vault = vault_;
+        _prevBasketValue = vault.basketRate();
 
         // Accumulate the basket dilution factor to enable correct forward accounting
         _accumulate();
@@ -384,6 +385,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             main.rToken().balanceOf(address(this)),
             Fate.Stake
         );
+
         if (launch) {
             _launchAuction(auction);
         }

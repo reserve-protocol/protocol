@@ -54,7 +54,9 @@ contract AssetP0 is IAsset {
     /// @return The price in USD of the asset as a function of DeFi redemption rates + oracle data
     function priceUSD(IMain main) public view virtual override returns (uint256) {
         // Aave has all 4 of the fiatcoins we are considering
-        return (redemptionRate() * main.consultAaveOracle(address(erc20()))) / SCALE;
+        uint256 price = (redemptionRate() * main.consultAaveOracle(address(erc20()))) / SCALE;
+        assert(price > 0);
+        return price;
     }
 
     /// @return The price in USD of the fiatcoin underlying the ERC20 (or the price of the ERC20 itself)

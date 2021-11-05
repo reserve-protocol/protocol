@@ -37,11 +37,12 @@ library Oracle {
 
     // Returns the USD price with 18 decimals
     function consultAave(Oracle.Info storage self, address token) internal view returns (uint256) {
-        // Aave keeps their prices in terms of ETH
         IAaveOracle aaveOracle = self.aave.getAddressesProvider().getPriceOracle();
         uint256 inETH = aaveOracle.getAssetPrice(token);
         uint256 ethNorm = aaveOracle.getAssetPrice(aaveOracle.WETH());
+
         uint256 ethInUsd = self.compound.oracle().price("ETH");
+
         return (inETH * ethInUsd * 10**12) / ethNorm;
     }
 

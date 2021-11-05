@@ -242,6 +242,7 @@ contract MainP0 is IMain, Ownable {
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
     function backingTokens() external view override returns (address[] memory erc20s) {
+        erc20s = new address[](manager.vault().size());
         for (uint256 i = 0; i < manager.vault().size(); i++) {
             erc20s[i] = address(manager.vault().assetAt(i).erc20());
         }
@@ -285,15 +286,17 @@ contract MainP0 is IMain, Ownable {
             if (!issuances[i].processed && issuances[i].vault != manager.vault()) {
                 issuances[i].vault.redeem(issuances[i].issuer, issuances[i].BUs);
                 emit IssuanceCancel(i);
+
+                issuances[i].processed = true;
             }
 
             if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
                 issuances[i].vault.setAllowance(address(manager), issuances[i].BUs);
                 manager.issue(issuances[i]);
                 emit IssuanceComplete(i);
-            }
 
-            issuances[i].processed = true;
+                issuances[i].processed = true;
+            }
         }
     }
 

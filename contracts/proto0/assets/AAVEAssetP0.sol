@@ -14,6 +14,12 @@ contract AAVEAssetP0 is AssetP0 {
         return 0;
     }
 
+    function priceUSD(IMain main) public view virtual override returns (uint256) {
+        uint256 price = main.consultAaveOracle(address(erc20())); //)) / SCALE;
+        assert(price > 0);
+        return price;
+    }
+
     function fiatcoinPriceUSD(IMain) public view virtual override returns (uint256) {
         assert(false);
         return 0;
