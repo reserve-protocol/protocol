@@ -21,7 +21,7 @@ contract CTokenMock is ERC20Mock {
         /// From Compound Docs: The current exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
         Fix start = toFix(2, -2); // 0.02
         int8 leftShift = 18 - int8(decimals()) + int8(IERC20Metadata(underlyingAsset).decimals());
-        _exchangeRate = start.mul(toFix(1, leftShift)).toUint();
+        _exchangeRate = toFix(1, leftShift).mul(start).toUint();
     }
 
     function decimals() public view override returns (uint8) {

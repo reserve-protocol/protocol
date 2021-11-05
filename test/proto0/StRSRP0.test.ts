@@ -116,8 +116,8 @@ describe('StRSRP0 contract', () => {
     it('Should allow multiple stakes/deposits in RSR', async () => {
       // Perform stake
       const amount1: BigNumber = bn('1e18')
-      const amount2: BigNumber = bn(2e18)
-      const amount3: BigNumber = bn(3e18)
+      const amount2: BigNumber = bn('2e18')
+      const amount3: BigNumber = bn('3e18')
 
       // Approve transfer and stake twice
       await rsr.connect(addr1).approve(stRSR.address, amount1.add(amount2))
@@ -180,8 +180,8 @@ describe('StRSRP0 contract', () => {
     it('Should allow multiple unstakes/withdrawals in RSR', async () => {
       // Perform stake
       const amount1: BigNumber = bn('1e18')
-      const amount2: BigNumber = bn(2e18)
-      const amount3: BigNumber = bn(3e18)
+      const amount2: BigNumber = bn('2e18')
+      const amount3: BigNumber = bn('3e18')
 
       // Approve transfers
       await rsr.connect(addr1).approve(stRSR.address, amount1.add(amount2))
@@ -233,8 +233,8 @@ describe('StRSRP0 contract', () => {
 
         // Perform stake
         amount1 = bn('1e18')
-        amount2 = bn(2e18)
-        amount3 = bn(3e18)
+        amount2 = bn('2e18')
+        amount3 = bn('3e18')
 
         // Approve transfers
         await rsr.connect(addr1).approve(stRSR.address, amount1)
