@@ -5,7 +5,6 @@ import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "./AssetP0.sol";
 
-// Immutable data contract, extended to implement cToken and aToken wrappers.
 contract AAVEAssetP0 is AssetP0 {
     using FixLib for Fix;
 
@@ -21,10 +20,10 @@ contract AAVEAssetP0 is AssetP0 {
         return FIX_ZERO;
     }
 
-    // @return {USD/qAAVE}
+    // @return {attoUSD/qAAVE}
     function priceUSD(IMain main) public view virtual override returns (Fix) {
-        // {USD/wholeFiatTok} * {wholeTok/qTok}
-        return main.consultAaveOracle(_erc20).mulu(10**decimals());
+        // {attoUSD/AAVE} / {qAAVE/AAVE}
+        return main.consultAaveOracle(_erc20).divu(10**decimals());
     }
 
     function fiatcoinPriceUSD(IMain) public view virtual override returns (Fix) {

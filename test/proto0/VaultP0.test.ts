@@ -72,8 +72,8 @@ describe('VaultP0 contract', () => {
   let qtyThird: BigNumber
   let qtyDouble: BigNumber
 
-  const ONE: BigNumber = bn(1e18)
-  const TWO: BigNumber = bn(2e18)
+  const ONE: BigNumber = bn('1e18')
+  const TWO: BigNumber = bn('2e18')
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
@@ -84,7 +84,7 @@ describe('VaultP0 contract', () => {
 
     // Deploy Main Mock
     MainMockFactory = await ethers.getContractFactory('MainMockP0')
-    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, bn(0))
+    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, bn('0'))
 
     // Deploy Tokens
     ERC20 = await ethers.getContractFactory('ERC20Mock')
@@ -97,10 +97,10 @@ describe('VaultP0 contract', () => {
     usdc = <USDCMock>await USDCMockFactory.deploy('USDC Dollar', 'USDC')
 
     // Set initial amounts and set quantities
-    initialBal = bn(100000e18)
-    qtyHalf = bn(1e18).div(2)
-    qtyThird = bn(1e18).div(3)
-    qtyDouble = bn(1e18).mul(2)
+    initialBal = bn('100000e18')
+    qtyHalf = bn('1e18').div(2)
+    qtyThird = bn('1e18').div(3)
+    qtyDouble = bn('1e18').mul(2)
 
     // Mint tokens
     await tkn0.connect(owner).mint(addr1.address, initialBal)
@@ -207,7 +207,7 @@ describe('VaultP0 contract', () => {
   describe('Configuration / State', () => {
     it('Should allow to update Main correctly if Owner', async () => {
       // Create a new Main mock
-      const newMain: MainMockP0 = <MainMockP0>await MainMockFactory.deploy(rsr.address, bn(0))
+      const newMain: MainMockP0 = <MainMockP0>await MainMockFactory.deploy(rsr.address, bn('0'))
 
       await vault.connect(owner).setMain(newMain.address)
 
@@ -236,7 +236,7 @@ describe('VaultP0 contract', () => {
       expect(await vault.connect(owner).containsOnly([assets[0]])).to.equal(false)
 
       // With a smaller vault
-      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [bn(1e18)], [])
+      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [bn('1e18')], [])
       expect(await newVault.connect(owner).containsOnly(assets)).to.equal(true)
       expect(await newVault.connect(owner).containsOnly([assets[0]])).to.equal(true)
       expect(await newVault.connect(owner).containsOnly([assets[1]])).to.equal(false)
@@ -250,42 +250,42 @@ describe('VaultP0 contract', () => {
 
   describe('Issuance', () => {
     it('Should not issue BU if amount is zero', async function () {
-      const zero: BigNumber = bn(0)
+      const zero: BigNumber = bn('0')
 
       // Issue
       await expect(vault.connect(addr1).issue(addr1.address, zero)).to.be.revertedWith('Cannot issue zero')
 
       // No units created
-      expect(await vault.totalUnits()).to.equal(bn(0))
-      expect(await vault.basketUnits(addr1.address)).to.equal(bn(0))
+      expect(await vault.totalUnits()).to.equal(bn('0'))
+      expect(await vault.basketUnits(addr1.address)).to.equal(bn('0'))
     })
 
     it('Should revert if user did not provide approval for Token transfer', async function () {
-      const issueAmount: BigNumber = bn(1e18)
+      const issueAmount: BigNumber = bn('1e18')
       await expect(vault.connect(addr1).issue(addr1.address, issueAmount)).to.be.revertedWith(
         'ERC20: transfer amount exceeds allowance'
       )
 
       // No units created
-      expect(await vault.totalUnits()).to.equal(bn(0))
-      expect(await vault.basketUnits(addr1.address)).to.equal(bn(0))
+      expect(await vault.totalUnits()).to.equal(bn('0'))
+      expect(await vault.basketUnits(addr1.address)).to.equal(bn('0'))
     })
 
     it('Should revert if user does not have the required Tokens', async function () {
-      const issueAmount: BigNumber = bn(5000000e18)
+      const issueAmount: BigNumber = bn('5000000e18')
       await expect(vault.connect(addr1).issue(addr1.address, issueAmount)).to.be.revertedWith(
         'ERC20: transfer amount exceeds balance'
       )
 
-      expect(await vault.totalUnits()).to.equal(bn(0))
-      expect(await vault.basketUnits(addr1.address)).to.equal(bn(0))
+      expect(await vault.totalUnits()).to.equal(bn('0'))
+      expect(await vault.basketUnits(addr1.address)).to.equal(bn('0'))
     })
 
     it('Should return basketRate and tokenAmounts for fiatcoins', async function () {
       // For simple vault with one token (1 to 1)
-      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [bn(1e18)], [])
-      expect(await newVault.callStatic.basketRate()).to.equal(bn(1e18))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([bn(1e18)])
+      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [bn('1e18')], [])
+      expect(await newVault.callStatic.basketRate()).to.equal(bn('1e18'))
+      expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e18')])
 
       // For a vault with one token half the value
       newVault = <VaultP0>await VaultFactory.deploy([assets[0]], [qtyHalf], [])
@@ -294,7 +294,7 @@ describe('VaultP0 contract', () => {
 
       // For a vault with two token half each
       newVault = <VaultP0>await VaultFactory.deploy([assets[0], assets[1]], [qtyHalf, qtyHalf], [])
-      expect(await newVault.callStatic.basketRate()).to.equal(bn(1e18))
+      expect(await newVault.callStatic.basketRate()).to.equal(bn('1e18'))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
 
       // For the vault used by default in these tests (four fiatcoin tokens) - Redemption = 1e18
@@ -305,9 +305,9 @@ describe('VaultP0 contract', () => {
 
     it('Should adjust basketRate and tokenAmounts for decimals (USDC)', async function () {
       // New Vault with USDC tokens
-      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assetUSDC.address], [bn(1e6)], [])
-      expect(await newVault.callStatic.basketRate()).to.equal(bn(1e18))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([bn(1e6)])
+      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assetUSDC.address], [bn('1e6')], [])
+      expect(await newVault.callStatic.basketRate()).to.equal(bn('1e18'))
+      expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e6')])
     })
 
     it('Should adjust basketRate and tokenAmounts for ATokens and CTokens', async function () {
@@ -315,24 +315,24 @@ describe('VaultP0 contract', () => {
       let newVault: VaultP0 = <VaultP0>(
         await VaultFactory.deploy([assetAToken.address, assetCToken.address], [qtyHalf, qtyHalf], [])
       )
-      expect(await newVault.callStatic.basketRate()).to.equal(bn(1e18))
+      expect(await newVault.callStatic.basketRate()).to.equal(bn('1e18'))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
 
       // Change redemption rate for AToken to double (rate increases by an additional half)
-      await aTkn.setExchangeRate(bn(2e18))
-      expect(await newVault.callStatic.basketRate()).to.equal(bn(1e18).add(qtyHalf))
+      await aTkn.setExchangeRate(bn('2e18'))
+      expect(await newVault.callStatic.basketRate()).to.equal(bn('1e18').add(qtyHalf))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
 
       // Change also redemption rate for CToken to double (rate doubles)
-      await cTkn.setExchangeRate(bn(2e18))
-      expect(await newVault.callStatic.basketRate()).to.equal(bn(1e18).mul(2))
+      await cTkn.setExchangeRate(bn('2e18'))
+      expect(await newVault.callStatic.basketRate()).to.equal(bn('1e18').mul(2))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
 
       // Set new Vault with sinlge AToken - reduce redemption rate to a half
-      await aTkn.setExchangeRate(bn(5e17))
-      newVault = <VaultP0>await VaultFactory.deploy([assetAToken.address], [bn(1e18)], [])
+      await aTkn.setExchangeRate(bn('5e17'))
+      newVault = <VaultP0>await VaultFactory.deploy([assetAToken.address], [bn('1e18')], [])
       expect(await newVault.callStatic.basketRate()).to.equal(qtyHalf)
-      expect(await newVault.tokenAmounts(ONE)).to.eql([bn(1e18)])
+      expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e18')])
     })
 
     it('Should return max Issuable for user', async function () {
@@ -343,12 +343,12 @@ describe('VaultP0 contract', () => {
       expect(await vault.maxIssuable(addr1.address)).to.equal(initialBal.div(2).div(BN_SCALE_FACTOR))
 
       // Remove that token and recalculate
-      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [bn(1e18)], [])
+      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [bn('1e18')], [])
       expect(await newVault.maxIssuable(addr1.address)).to.equal(initialBal.div(BN_SCALE_FACTOR))
     })
 
     it('Should issue BUs correctly', async function () {
-      const issueAmount: BigNumber = bn(1e18)
+      const issueAmount: BigNumber = bn('1e18')
 
       // Approvals
       await tkn0.connect(addr1).approve(vault.address, qtyHalf)
@@ -357,18 +357,18 @@ describe('VaultP0 contract', () => {
       await tkn3.connect(addr1).approve(vault.address, qtyDouble)
 
       // Check no balance in contract
-      expect(await tkn0.balanceOf(vault.address)).to.equal(bn(0))
-      expect(await tkn1.balanceOf(vault.address)).to.equal(bn(0))
-      expect(await tkn2.balanceOf(vault.address)).to.equal(bn(0))
-      expect(await tkn3.balanceOf(vault.address)).to.equal(bn(0))
+      expect(await tkn0.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await tkn1.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await tkn2.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await tkn3.balanceOf(vault.address)).to.equal(bn('0'))
 
       expect(await tkn0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await tkn1.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await tkn2.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await tkn3.balanceOf(addr1.address)).to.equal(initialBal)
 
-      expect(await vault.totalUnits()).to.equal(bn(0))
-      expect(await vault.basketUnits(addr1.address)).to.equal(bn(0))
+      expect(await vault.totalUnits()).to.equal(bn('0'))
+      expect(await vault.basketUnits(addr1.address)).to.equal(bn('0'))
 
       // Issue BUs
       await vault.connect(addr1).issue(addr1.address, issueAmount)
@@ -390,7 +390,7 @@ describe('VaultP0 contract', () => {
   })
 
   describe('Redeem', () => {
-    let issueAmount: BigNumber = bn(1e18)
+    let issueAmount: BigNumber = bn('1e18')
 
     beforeEach(async () => {
       // Approvals
@@ -404,7 +404,7 @@ describe('VaultP0 contract', () => {
     })
 
     it('Should not redeem BU if amount is zero', async function () {
-      const zero: BigNumber = bn(0)
+      const zero: BigNumber = bn('0')
 
       // Redeem
       await expect(vault.connect(addr1).redeem(addr1.address, zero)).to.be.revertedWith('Cannot redeem zero')
@@ -415,7 +415,7 @@ describe('VaultP0 contract', () => {
     })
 
     it('Should revert if user does not have the required BUs', async function () {
-      const redeemAmount = bn(2e18)
+      const redeemAmount = bn('2e18')
 
       await expect(vault.connect(addr1).redeem(addr1.address, redeemAmount)).to.be.revertedWith('Not enough units')
 
@@ -425,24 +425,24 @@ describe('VaultP0 contract', () => {
     })
 
     it('Should redeem BUs correctly', async function () {
-      const redeemAmount = bn(1e18)
+      const redeemAmount = bn('1e18')
 
       // Redeem BUs
       await vault.connect(addr1).redeem(addr1.address, redeemAmount)
 
       // Check balance after redeem go to initial state
-      expect(await tkn0.balanceOf(vault.address)).to.equal(bn(0))
-      expect(await tkn1.balanceOf(vault.address)).to.equal(bn(0))
-      expect(await tkn2.balanceOf(vault.address)).to.equal(bn(0))
-      expect(await tkn3.balanceOf(vault.address)).to.equal(bn(0))
+      expect(await tkn0.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await tkn1.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await tkn2.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await tkn3.balanceOf(vault.address)).to.equal(bn('0'))
 
       expect(await tkn0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await tkn1.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await tkn2.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await tkn3.balanceOf(addr1.address)).to.equal(initialBal)
 
-      expect(await vault.totalUnits()).to.equal(bn(0))
-      expect(await vault.basketUnits(addr1.address)).to.equal(bn(0))
+      expect(await vault.totalUnits()).to.equal(bn('0'))
+      expect(await vault.basketUnits(addr1.address)).to.equal(bn('0'))
     })
   })
 

@@ -109,19 +109,19 @@ describe('DeployerP0 contract', () => {
   let config: IManagerConfig
   let paramsAssets: IParamsAssets
   let rewardStart: BigNumber
-  const rewardPeriod: BigNumber = bn(604800) // 1 week
-  const auctionPeriod: BigNumber = bn(1800) // 30 minutes
-  const stRSRWithdrawalDelay: BigNumber = bn(1209600) // 2 weeks
-  const defaultDelay: BigNumber = bn(86400) // 24 hs
-  const maxTradeSlippage: BigNumber = bn(5e16) // 5%
-  const auctionClearingTolerance: BigNumber = bn(5e16) // 5%
-  const maxAuctionSize: BigNumber = bn(1e16) // 1%
-  const minRecapitalizationAuctionSize: BigNumber = bn(1e15) // 0.1%
-  const minRevenueAuctionSize: BigNumber = bn(1e14) // 0.01%
-  const migrationChunk: BigNumber = bn(2e17) // 20%
-  const issuanceRate: BigNumber = bn(25e13) // 0.025% per block or ~0.1% per minute
-  const defaultThreshold: BigNumber = bn(5e16) // 5% deviation
-  const f: BigNumber = bn(6e17) // 60% to stakers
+  const rewardPeriod: BigNumber = bn('604800') // 1 week
+  const auctionPeriod: BigNumber = bn('1800') // 30 minutes
+  const stRSRWithdrawalDelay: BigNumber = bn('1209600') // 2 weeks
+  const defaultDelay: BigNumber = bn('86400') // 24 hs
+  const maxTradeSlippage: BigNumber = bn('5e16') // 5%
+  const auctionClearingTolerance: BigNumber = bn('5e16') // 5%
+  const maxAuctionSize: BigNumber = bn('1e16') // 1%
+  const minRecapitalizationAuctionSize: BigNumber = bn('1e15') // 0.1%
+  const minRevenueAuctionSize: BigNumber = bn('1e14') // 0.01%
+  const migrationChunk: BigNumber = bn('2e17') // 20%
+  const issuanceRate: BigNumber = bn('25e13') // 0.025% per block or ~0.1% per minute
+  const defaultThreshold: BigNumber = bn('5e16') // 5% deviation
+  const f: BigNumber = bn('6e17') // 60% to stakers
 
   // Contracts to retrieve after deploy
   let rToken: RTokenP0
@@ -178,10 +178,10 @@ describe('DeployerP0 contract', () => {
     tkn3 = <ERC20Mock>await ERC20.deploy('Token 3', 'TKN2')
 
     // Set initial amounts and set quantities
-    initialBal = bn(100000e18)
-    qtyHalf = bn(1e18).div(2)
-    qtyThird = bn(1e18).div(3)
-    qtyDouble = bn(1e18).mul(2)
+    initialBal = bn('100000e18')
+    qtyHalf = bn('1e18').div(2)
+    qtyThird = bn('1e18').div(3)
+    qtyDouble = bn('1e18').mul(2)
 
     // Mint tokens
     await tkn0.connect(owner).mint(addr1.address, initialBal)

@@ -31,9 +31,11 @@ contract AssetP0 is IAsset {
         return toFix(10**fiatcoinDecimals()).divu(10**decimals());
     }
 
-    /// @return {USD/tok} Without using oracles, returns the expected USD value of one whole tok.
+    /// @return {attoUSD/qTok} Without using oracles, returns the expected attoUSD value of one qtok.
     function rateUSD() public view virtual override returns (Fix) {
-        return FIX_ONE;
+        // {attoUSD/tok} / {qTok/tok}
+        int128 shiftLeft = -int8(decimals());
+        return toFix(1e18, shiftLeft);
     }
 
     /// @return The ERC20 contract of the central token
@@ -56,20 +58,18 @@ contract AssetP0 is IAsset {
         return _erc20;
     }
 
-    /// @return {USD/qTok} The price in USD of the asset as a function of DeFi redemption rates + oracle data
+    /// @return {attoUSD/qTok} The price in attoUSD of the asset's smallest unit
     function priceUSD(IMain main) public view virtual override returns (Fix) {
-        // Aave has all 4 of the fiatcoins we are considering
-
-        // {USD/qFiatTok} = {USD/fiatTok} / {qFiatTok/fiatTok}
-        Fix qFiatTok = fiatcoinPriceUSD(main).divu(10**fiatcoinDecimals());
-
-        // {USD/qFiatTok} * {qFiatTok/qTok}
-        return qFiatTok.mul(rateFiatcoin());
+        // {attoUSD/qFiatTok} * {qFiatTok/qTok}
+        return fiatcoinPriceUSD(main).mul(rateFiatcoin());
     }
 
-    /// @return {USD/fiatTok} The price in USD of the fiatcoin underlying the ERC20
+    /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
     function fiatcoinPriceUSD(IMain main) public view virtual override returns (Fix) {
-        return main.consultAaveOracle(fiatcoin()); // {USD/fiatTok}
+        Fix p = main.consultAaveOracle(fiatcoin()); // {attoUSD/fiatTok}
+
+        // {attoUSD/fiatTok} / {qFiatTok/fiatTok}
+        return p.divu(10**fiatcoinDecimals());
     }
 
     /// @return Whether `_erc20` is a fiatcoin

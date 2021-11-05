@@ -70,15 +70,18 @@ interface IAssetManager {
     /// @param defaulting The list of assets that are ineligible to be in the next vault
     function switchVaults(IAsset[] memory defaulting) external;
 
+    /// @return {none} The base factor
+    function baseFactor() external view returns (Fix);
+
     /// BUs -> RToken
-    /// @param {qTok} amount The quantity of RToken to convert to BUs
+    /// @param {qRTok} amount The quantity of RToken to convert to BUs
     /// @return {qBU} The equivalent amount of BUs at the current base factor
-    function toBUs(uint256 amount) external view returns (uint256);
+    function toBUs(uint256 amount) external view returns (Fix);
 
     /// BUs -> RToken
     /// @param {qBU} BUs The quantity of BUs to convert to RToken
-    /// @return {qTok} The equivalent amount of RToken at the current base factor
-    function fromBUs(uint256 BUs) external view returns (uint256);
+    /// @return {qRTok} The equivalent amount of RToken at the current base factor
+    function fromBUs(Fix BUs) external view returns (uint256);
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() external view returns (bool);

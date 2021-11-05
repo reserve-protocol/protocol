@@ -26,7 +26,7 @@ type Fix is int128;
 
 // If a particular Fix is represented by the int128 n, then the Fix represents the
 // value n/FIX_SCALE.
-int128 constant FIX_SCALE = 1e18;
+int128 constant FIX_SCALE = int128(uint128(1e18));
 
 // The largest integer that can be converted to Fix.
 // This is about 1.7e20
@@ -47,7 +47,7 @@ Fix constant FIX_MIN = Fix.wrap(type(int128).min); // The smallest Fix.
  */
 
 /// Explicitly convert int256 x to an int128; but revert if x is out of bounds.
-function _safe_int128(int256 x) pure returns (int128) {
+function safe_int128(int256 x) pure returns (int128) {
     if (x < type(int128).min || type(int128).max < x) {
         revert IntOutOfBounds(x);
     }
@@ -63,11 +63,23 @@ function toFix(uint256 x) pure returns (Fix) {
     return Fix.wrap(x_ * FIX_SCALE);
 }
 
-/// Convert an int to its Fix representation. Fails if x is outside Fix's representable range.
-function intToFix(int256 x) pure returns (Fix) {
-    return Fix.wrap(_safe_int128(x * FIX_SCALE));
+/// Convert a uint to its Fix representation after shifting its value `shiftLeft` digits. 
+/// Fails if the shifted value is outside Fix's representable range.
+function toFix(uint256 x, int256 shiftLeft) pure returns (Fix) {
+    shiftLeft += 18;
+    uint256 shifted = (shiftLeft >= 0) ? x * 10**uint256(shiftLeft) : x / 10**(uint256(-shiftLeft));
+
+    if (uint256(uint128(FIX_MAX_INT * FIX_SCALE)) < shifted) {
+        revert UIntOutOfBounds(shifted);
+    }
+    int128 x_ = int128(uint128(shifted));
+    return Fix.wrap(x_);
 }
 
+/// Convert an int to its Fix representation. Fails if x is outside Fix's representable range.
+function intToFix(int256 x) pure returns (Fix) {
+    return Fix.wrap(safe_int128(x * FIX_SCALE));
+}
 
 /// Divide a uint by a Fix. Fails if the result is outside Fix's representable range.
 
@@ -78,7 +90,15 @@ function intToFix(int256 x) pure returns (Fix) {
  */
 function divFix(uint256 x, Fix y) pure returns (Fix) {
     int128 _y = Fix.unwrap(y);
-    return Fix.wrap(_safe_int128(int256(x * uint128(FIX_SCALE * FIX_SCALE)) / int256(_y)));
+    return Fix.wrap(safe_int128(int256(x * uint128(FIX_SCALE * FIX_SCALE)) / int256(_y)));
+}
+
+function fixMin(Fix x, Fix y) pure returns (Fix) {
+    return FixLib.lt(x, y) ? x : y;
+}
+
+function fixMax(Fix x, Fix y) pure returns (Fix) {
+    return FixLib.gt(x, y) ? x : y;
 }
 
 library FixLib {
@@ -113,7 +133,7 @@ library FixLib {
     /// Add an int to this Fix.
     function plusi(Fix x, int256 y) internal pure returns (Fix) {
         int256 result = Fix.unwrap(x) + y * FIX_SCALE;
-        return Fix.wrap(_safe_int128(result));
+        return Fix.wrap(safe_int128(result));
     }
 
     /// Add a uint to this Fix.
@@ -131,7 +151,7 @@ library FixLib {
 
     /// Subtract an int from this Fix.
     function minusi(Fix x, int256 y) internal pure returns (Fix) {
-        return Fix.wrap(_safe_int128(Fix.unwrap(x) - y * FIX_SCALE));
+        return Fix.wrap(safe_int128(Fix.unwrap(x) - y * FIX_SCALE));
     }
 
     /// Subtract a uint from this Fix.
@@ -147,12 +167,12 @@ library FixLib {
     function mul(Fix x, Fix y) internal pure returns (Fix) {
         int256 naive_prod = int256(Fix.unwrap(x)) * int256(Fix.unwrap(y));
         int256 rounding_adjustment = ((naive_prod >= 0 ? int8(1) : int8(-1)) * FIX_SCALE) / 2;
-        return Fix.wrap(_safe_int128((naive_prod + rounding_adjustment) / FIX_SCALE));
+        return Fix.wrap(safe_int128((naive_prod + rounding_adjustment) / FIX_SCALE));
     }
 
     /// Multiply this Fix by an int.
     function muli(Fix x, int256 y) internal pure returns (Fix) {
-        return Fix.wrap(_safe_int128(Fix.unwrap(x) * y));
+        return Fix.wrap(safe_int128(Fix.unwrap(x) * y));
     }
 
     /// Multiply this Fix by a uint.
@@ -167,12 +187,12 @@ library FixLib {
     function div(Fix x, Fix y) internal pure returns (Fix) {
         // Multiply-in FIX_SCALE before dividing by y to preserve right-hand digits of result.
         int256 shift_x = int256(Fix.unwrap(x)) * FIX_SCALE;
-        return Fix.wrap(_safe_int128(shift_x / Fix.unwrap(y)));
+        return Fix.wrap(safe_int128(shift_x / Fix.unwrap(y)));
     }
 
     /// Divide this Fix by an int.
     function divi(Fix x, int256 y) internal pure returns (Fix) {
-        return Fix.wrap(_safe_int128(Fix.unwrap(x) / y));
+        return Fix.wrap(safe_int128(Fix.unwrap(x) / y));
     }
 
     /// Divide this Fix by a uint.

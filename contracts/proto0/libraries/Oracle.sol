@@ -28,7 +28,7 @@ interface ILendingPoolAddressesProvider {
 interface IAaveOracle {
     function WETH() external view returns (address);
 
-    /// @return {qETH/wholeTok} The price of the `token` in ETH with 18 decimals
+    /// @return {qETH/tok} The price of the `token` in ETH with 18 decimals
     function getAssetPrice(address token) external view returns (uint256);
 }
 
@@ -40,23 +40,23 @@ library Oracle {
         IAaveLendingPool aave;
     }
 
-    /// Returns {USD/wholeTok} price of the `token` based on Aave oracles
+    /// Returns {attoUSD/tok} price of the `token` based on Aave oracles
     function consultAave(Oracle.Info storage self, address token) internal view returns (Fix) {
         // Aave keeps their prices in terms of ETH
         IAaveOracle aaveOracle = self.aave.getAddressesProvider().getPriceOracle();
-        Fix inETH = toFix(aaveOracle.getAssetPrice(token)); // {qETH/wholeTok}
+        Fix inETH = toFix(aaveOracle.getAssetPrice(token)); // {qETH/tok}
         Fix ethNorm = toFix(aaveOracle.getAssetPrice(aaveOracle.WETH())); // {qETH/wholeETH}
-        Fix ethInUsd = toFix(self.compound.oracle().price("ETH")).divu(10**6); // {USD_6/wholeETH} / {USD_6/USD}
+        Fix ethInUsd = toFix(self.compound.oracle().price("ETH")).divu(1e6); // {USD_6/wholeETH} / {USD_6/USD}
 
-        // ({qETH/wholeTok} * {USD/wholeETH}) / {qETH/wholeETH}
-        return inETH.mul(ethInUsd).div(ethNorm);
+        // ({qETH/tok} * {USD/wholeETH} * {attoUSD/USD}) / {qETH/wholeETH}
+        return inETH.mul(ethInUsd).mul(toFix(1e18).div(ethNorm));
     }
 
-    /// Returns {USD/wholeTok} price of the `token` based on compound oracles
+    /// Returns {attoUSD/tok} price of the `token` based on compound oracles
     function consultCompound(Oracle.Info storage self, address token) internal view returns (Fix) {
         // Compound stores prices with 6 decimals of precision
 
-        // {USD_6/wholeTok} / {USD_6/USD}
-        return toFix(self.compound.oracle().price(IERC20Metadata(token).symbol())).divu(10**6);
+        // ({USD_6/tok} * {attoUSD/USD})/ {USD_6/USD}
+        return toFix(self.compound.oracle().price(IERC20Metadata(token).symbol())).mulu(1e12);
     }
 }

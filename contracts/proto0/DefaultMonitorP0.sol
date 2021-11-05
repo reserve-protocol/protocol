@@ -14,7 +14,7 @@ import "contracts/libraries/Fixed.sol";
  */
 contract DefaultMonitorP0 is Context, IDefaultMonitor {
     using FixLib for Fix;
-    mapping(address => Fix) internal _ratesUSD; // {USD/tok}
+    mapping(address => Fix) internal _ratesUSD; // {attoUSD/qtok}
 
     IMain public main;
 
@@ -51,11 +51,12 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         override
         returns (IAsset[] memory defaulting)
     {
-        Fix defaultThreshold = _defaultThreshold(fiatcoins); // {USD}
+        Fix defaultThreshold = _defaultThreshold(fiatcoins); // {attoUSD/qTok}
         IAsset[] memory vaultAssets = new IAsset[](vault.size());
         uint256 count;
         for (uint256 i = 0; i < vaultAssets.length; i++) {
             IAsset a = vault.assetAt(i);
+
             if (a.fiatcoinPriceUSD(main).lt(defaultThreshold)) {
                 vaultAssets[count] = a;
                 count++;
@@ -107,12 +108,12 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         return backups[indexMax];
     }
 
-    /// @return {USD} The USD price at which a fiatcoin can be said to be defaulting
+    /// @return {attoUSD/qTok} The USD price at which a fiatcoin can be said to be defaulting
     function _defaultThreshold(IAsset[] memory fiatcoins) internal view returns (Fix) {
         // Collect prices
         Fix[] memory prices = new Fix[](fiatcoins.length);
         for (uint256 i = 0; i < fiatcoins.length; i++) {
-            prices[i] = fiatcoins[i].fiatcoinPriceUSD(main);
+            prices[i] = fiatcoins[i].fiatcoinPriceUSD(main); // {attoUSD/qTok}
         }
 
         // Sort

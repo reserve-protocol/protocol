@@ -21,9 +21,9 @@ contract RSRAssetP0 is AssetP0 {
         return FIX_ZERO;
     }
 
-    /// @return {USD/qTok}
+    /// @return {attoUSD/qRSR}
     function priceUSD(IMain main) public view override returns (Fix) {
-        // {USD/tok} / {qTok/tok}
+        // {attoUSD/RSR} / {qRSR/RSR}
         return main.consultAaveOracle(_erc20).divu(10**decimals());
     }
 

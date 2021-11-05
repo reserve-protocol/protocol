@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./ERC20Mock.sol";
 
 // This is the inner, rebasing ERC. It's not what we interact with.
@@ -32,7 +33,13 @@ contract StaticATokenMock is ERC20Mock {
         address underlyingAsset
     ) ERC20Mock(name, symbol) {
         aToken = new ATokenMock(name, symbol, underlyingAsset);
-        _exchangeRate = 1e18;
+
+        // In Aave all rates are in {RAYs/tok}, and they are independent of the underlying's decimals
+        _exchangeRate = 1e27;
+    }
+
+    function decimals() public view override returns (uint8) {
+        return 18;
     }
 
     function rate() external view returns (uint256) {

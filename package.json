@@ -12,6 +12,7 @@
         "deploy:ropsten": "npx hardhat run scripts/deploy_all.ts --network ropsten",
         "devchain": "npx hardhat node",
         "test": "npx hardhat test",
+        "test:proto0": "npx hardhat test test/proto0/*",
         "test:parallel": "mocha --require hardhat/register --recursive --parallel --exit",
         "test:recompile": "npx hardhat compile --force && mocha --require hardhat/register --recursive --exit",
         "lint:sol": "npx solhint 'contracts/**/*.sol'",

@@ -21,18 +21,22 @@ contract RTokenAssetP0 is AssetP0 {
         return FIX_ZERO;
     }
 
-    /// @return {USD/qRToken}
+    /// @return {attoUSD/qRTok}
     function priceUSD(IMain main) public view override returns (Fix) {
-        Fix sum; // {USD/BU}
+        Fix sum; // {attoUSD/BU}
         IVault v = main.manager().vault();
         for (uint256 i = 0; i < v.size(); i++) {
             IAsset a = v.assetAt(i);
 
-            // {USD/BU} = {USD/BU} + {qTok/BU} * {USD/qTok}
+            // {attoUSD/BU} = {attoUSD/BU} + {qTok/BU} * {attoUSD/qTok}
             sum = sum.plus(v.quantity(a).mul(a.priceUSD(main)));
         }
-        // fromBUs({USD/BU} * {qBU/BU})
-        return toFix(main.manager().fromBUs(sum.mulu(10**v.BU_DECIMALS()).toUint()));
+
+        // {attoUSD/qBU} = {attoUSD/BU} / {qBU/BU}
+        Fix perQBU = sum.divu(10**v.BU_DECIMALS());
+
+        // {attoUSD/qRTok} = {attoUSD/qBU} / {qRTok/qBU}
+        return perQBU.mul(main.manager().baseFactor());
     }
 
     function fiatcoinPriceUSD(IMain) public view override returns (Fix) {

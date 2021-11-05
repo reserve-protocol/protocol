@@ -19,7 +19,7 @@ interface IAsset {
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
     function rateFiatcoin() external view returns (Fix);
 
-    /// @return {USD/tok} Without using oracles, returns the expected USD value of one whole tok.
+    /// @return {attoUSD/qTok} Without using oracles, returns the expected attoUSD value of one qTok.
     function rateUSD() external view returns (Fix);
 
     /// @return The ERC20 contract of the central token
@@ -34,10 +34,10 @@ interface IAsset {
     /// @return The fiatcoin underlying the ERC20, or the erc20 itself if it is a fiatcoin
     function fiatcoin() external view returns (address);
 
-    /// @return {USD/qTok} The price in USD of the asset as a function of DeFi redemption rates + oracle data
+    /// @return {attoUSD/qTok} The price in USD of the asset as a function of DeFi redemption rates + oracle data
     function priceUSD(IMain main) external view returns (Fix);
 
-    /// @return {USD/qTok} The price in USD of the fiatcoin underlying the ERC20 (or the price of the ERC20 itself)
+    /// @return {attoUSD/qTok} The price in USD of the fiatcoin underlying the ERC20 (or the price of the ERC20 itself)
     function fiatcoinPriceUSD(IMain main) external view returns (Fix);
 
     /// @return Whether the asset is (directly) a fiatcoin

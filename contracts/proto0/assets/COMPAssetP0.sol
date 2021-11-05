@@ -21,10 +21,10 @@ contract COMPAssetP0 is AssetP0 {
         return FIX_ZERO;
     }
 
-    // @return {USD/qCOMP}
+    // @return {attoUSD/qCOMP}
     function priceUSD(IMain main) public view virtual override returns (Fix) {
-        // {USD/wholeCOMP} * {wholeCOMP/qCOMP}
-        return main.consultCompoundOracle(_erc20).mulu(10**decimals());
+        // {attoUSD/COMP} / {qComp/COMP}
+        return main.consultCompoundOracle(_erc20).divu(10**decimals());
     }
 
     function fiatcoinPriceUSD(IMain) public view virtual override returns (Fix) {

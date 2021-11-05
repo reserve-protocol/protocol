@@ -214,12 +214,17 @@ $ npx hardhat --network ropsten console
 
 ## Units
 
-The units of variables is tracked in comments in the implementation. Curly braces are used to denote units.
+The units of variables is tracked in comments in the implementation. Curly braces are used to denote units, e.g. `{attoUSD/qTok}`.
+
+The `q` prefix denotes "quanta", ie the smallest indivisible unit of the token.
+
+The `atto` prefix denotes 1e18.
 
 - {qTok} = token quanta
 - {tok} = whole token = 1e18{qTok}
 - {qBU} = BU quanta
 - {BU} = whole BU = 1e18{qBU}
+- {attoUSD} = smallest unit of USD
+- {USD} = largest unit of USD = 1e18{attoUSD}
 - {sec} = seconds
-- {null} = unitless
-- {USD} = US dollars
+- {none} = unitless

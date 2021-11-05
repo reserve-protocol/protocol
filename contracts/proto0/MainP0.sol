@@ -92,14 +92,15 @@ contract MainP0 is IMain, Ownable {
         require(state == State.CALM || state == State.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
         _processSlowIssuance();
+        Fix BUs = manager.toBUs(amount);
 
         // During SlowIssuance, BUs are created up front and held by `Main` until the issuance vests,
         // at which point the BUs are transferred to the AssetManager and RToken is minted to the issuer.
         SlowIssuance memory iss = SlowIssuance({
             vault: manager.vault(),
             amount: amount,
-            BUs: manager.toBUs(amount),
-            deposits: manager.vault().tokenAmounts(manager.toBUs(amount)),
+            BUs: BUs,
+            deposits: manager.vault().tokenAmounts(BUs),
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
@@ -247,12 +248,12 @@ contract MainP0 is IMain, Ownable {
         }
     }
 
-    /// @return {USD/wholeTok} The price in USD of `token` on Aave
+    /// @return {attoUSD/wholeTok} The price in attoUSD of `token` on Aave
     function consultAaveOracle(address token) external view override returns (Fix) {
         return _oracle.consultAave(token);
     }
 
-    /// @return {USD/wholeTok} The price in USD of `token` on Compound
+    /// @return {attoUSD/wholeTok} The price in attoUSD of `token` on Compound
     function consultCompoundOracle(address token) external view override returns (Fix) {
         return _oracle.consultCompound(token);
     }
