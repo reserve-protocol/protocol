@@ -13,31 +13,37 @@ describe('In FixLib,', async () => {
   let FixedCaller: ContractFactory
   let caller: FixedCallerMock
 
+  const neg = (x: BigNumber) => x.mul(-1)
+
   const SCALE = BN_SCALE_FACTOR
   const MAX_INT128 = BigNumber.from(2).pow(127).sub(1)
-  const MIN_INT128 = BigNumber.from(2).pow(127).mul(-1)
+  const MIN_INT128 = neg(BigNumber.from(2).pow(127))
   const MAX_UINT128 = BigNumber.from(2).pow(128).sub(1)
   const MAX_FIX_INT = MAX_INT128.div(pow10(18)) // biggest integer N st toFix(N) exists
   const MIN_FIX_INT = MIN_INT128.div(pow10(18)) // smallest integer N st toFix(N) exists
 
-  const fixable_ints: BigNumberish[] = [
-    0,
-    1,
-    -1,
-    MAX_FIX_INT,
-    MIN_FIX_INT,
-    MAX_FIX_INT.sub(1),
-    MIN_FIX_INT.add(1),
-    '38326665875765560393',
-    '-01942957121544002253',
+  // prettier-ignore
+  const fixable_ints: BigNumber[] = [
+    bn(0), bn(1), bn(-1), MAX_FIX_INT, MIN_FIX_INT, MAX_FIX_INT.sub(1), MIN_FIX_INT.add(1),
+    bn('38326665875765560393'), bn('-01942957121544002253'),
   ]
-  const unfixable_ints: BigNumberish[] = [
-    MAX_FIX_INT.add(1),
-    MIN_FIX_INT.sub(1),
-    MAX_FIX_INT.mul(2),
-    MAX_FIX_INT.mul(-27),
+  // prettier-ignore
+  const unfixable_ints: BigNumber[] = [
+    MAX_FIX_INT.add(1), MIN_FIX_INT.sub(1), MAX_FIX_INT.mul(2), MAX_FIX_INT.mul(-27)
   ]
 
+  // prettier-ignore
+  const positive_int128s: BigNumber[] = [
+    bn(1), bn(2), bn(3), bn('9.99e17'), fp(0.9991), fp(1), fp(1.0001), fp(2),
+    fp(MAX_FIX_INT), fp(MAX_FIX_INT).add(1), MAX_INT128.sub(1), MAX_INT128,
+  ]
+  let negative_int128s = positive_int128s.map(neg)
+  negative_int128s.reverse()
+
+  const int128s: BigNumber[] = [MIN_INT128, ...negative_int128s, bn(0), ...positive_int128s]
+
+  // This is before() instead of beforeEach():
+  // All of these functions are pure, so the contract state can be reused.
   before(async () => {
     ;[owner] = await ethers.getSigners()
     FixedCaller = await ethers.getContractFactory('FixedCallerMock')
@@ -46,23 +52,20 @@ describe('In FixLib,', async () => {
 
   describe('intToFix', async () => {
     it('correctly converts int values', async () => {
-      for (let input of fixable_ints) {
-        expect(await caller.intToFix(bn(input)), `intToFix(${input})`).to.equal(fp(input))
-      }
+      fixable_ints.forEach(async (x) => expect(await caller.intToFix(x), `${x}`).to.equal(fp(x)))
     })
     it('fails on values outside its domain', async () => {
-      await expect(caller.intToFix(MAX_FIX_INT.add(1))).to.be.revertedWith('IntOutOfBounds')
-      await expect(caller.intToFix(MIN_FIX_INT.sub(1))).to.be.revertedWith('IntOutOfBounds')
-      await expect(caller.intToFix(MAX_FIX_INT.mul(25))).to.be.revertedWith('IntOutOfBounds')
+      ;[MAX_FIX_INT.add(1), MIN_FIX_INT.sub(1), MAX_FIX_INT.mul(25)].forEach(
+        async (x) => await expect(caller.intToFix(x)).to.be.revertedWith('IntOutOfBounds')
+      )
     })
   })
 
   describe('toFix', async () => {
     it('correctly converts uint values', async () => {
-      const table = [0, 1, 2, '38326665875765560393', MAX_FIX_INT.sub(1), MAX_FIX_INT]
-      for (let input of table) {
-        expect(await caller.toFix(bn(input)), `toFix(${input})`).to.equal(fp(input))
-      }
+      ;[0, 1, 2, '38326665875765560393', MAX_FIX_INT.sub(1), MAX_FIX_INT]
+        .map(bn)
+        .forEach(async (x) => expect(await caller.toFix(x), `${x}`).to.equal(fp(x)))
     })
 
     it('fails on inputs outside its domain', async () => {
@@ -72,23 +75,14 @@ describe('In FixLib,', async () => {
   })
 
   describe('divFix', async () => {
-    it('correctly computes (uint x / Fix y)', async () => {
-      const table_init = [
-        [10, 1, 10],
-        [10, 2, 5],
-        [20, 2.5, 8],
-        [1, 5, 0.2],
-        [256, 256, 1],
-      ]
-      let table = []
-      // stretch table with equivalent tests
-      for (const [x, y, result] of table_init) {
-        table.push([x, y, result], [x, -y, -result], [x, result, y], [x, -result, -y])
-      }
-      table.push([0, 1, 0], [0, -1, 0])
-      for (const [x, y, result] of table) {
-        expect(await caller.divFix(x, fp(y)), `divFix(${x}, ${y}) == ${result}`).to.equal(fp(result))
-      }
+    it('correctly divides inside its range', async () => {
+      //prettier-ignore
+      [ [10, 1, 10], [10, 2, 5], [20, 2.5, 8], [1, 5, 0.2], [256, 256, 1], ]
+        .flatMap(([x, y, z]) => [ [x, y, z], [x, -y, -z], [x, z, y], [x, -z, -y], ])
+        .concat([[0, 1, 0], [0, -1, 0], ])
+        .forEach(async ([x, y, result]) =>
+          expect(await caller.divFix(x, fp(y)), `divFix(${x}, ${y}) == ${result}`).to.equal(fp(result))
+        )
     })
 
     it('works for extreme results', async () => {
@@ -143,7 +137,7 @@ describe('In FixLib,', async () => {
   describe('toUint', async () => {
     it('correctly converts positive Fixes to uint128', async () => {
       for (let result of fixable_ints) {
-        if (result >= 0) {
+        if (result.gte(0)) {
           expect(await caller.toUint(fp(result)), `fp(${result})`).to.equal(bn(result))
         }
       }
@@ -171,33 +165,16 @@ describe('In FixLib,', async () => {
 
   describe('round', async () => {
     it('correctly rounds to nearest int', async () => {
+      // prettier-ignore
       const table = [
-        [1.1, 1],
-        [-1.1, -1],
-        [1.9, 2],
-        [-1.9, -2],
-        [1, 1],
-        [-1, -1],
-        [0.1, 0],
-        [705811305.5207, 705811306],
-        [705811305.207, 705811305],
-        [-6536585.939, -6536586],
-        [-6536585.439, -6536585],
-        [3.4999, 3],
-        [-3.4999, -3],
-        [3.50001, 4],
-        [-3.50001, -4],
-        [MAX_FIX_INT, MAX_FIX_INT],
-        [MIN_FIX_INT, MIN_FIX_INT],
-        [9.99999, 10],
-        [-9.99999, -10],
-        [6.5, 7],
-        [5.5, 6],
-        [-6.5, -7],
-        [-5.5, -6],
-        [0, 0],
-        [0.5, 1],
-        [-0.5, -1],
+        [1.1, 1], [-1.1, -1], [1.9, 2], [-1.9, -2], [1, 1], [-1, -1], [0.1, 0],
+        [705811305.5207, 705811306], [705811305.207, 705811305],
+        [-6536585.939, -6536586], [-6536585.439, -6536585],
+        [3.4999, 3], [-3.4999, -3], [3.50001, 4], [-3.50001, -4],
+        [MAX_FIX_INT, MAX_FIX_INT], [MIN_FIX_INT, MIN_FIX_INT],
+        [9.99999, 10], [-9.99999, -10],
+        [6.5, 7], [5.5, 6], [-6.5, -7], [-5.5, -6],
+        [0, 0], [0.5, 1], [-0.5, -1],
       ]
       for (let [input, result] of table) {
         expect(await caller.round(fp(input)), `fp(${input})`).to.equal(result)
@@ -549,16 +526,254 @@ describe('In FixLib,', async () => {
       for (let [a, b, c] of table) await expect(caller.mulu(a, b), `mulu(${a}, ${b})`).to.be.reverted
     })
   })
-  describe('div', async () => {})
-  describe('divi', async () => {})
-  describe('divu', async () => {})
-  describe('inv', async () => {})
-  describe('powu', async () => {})
-  describe('lt', async () => {})
-  describe('lte', async () => {})
-  describe('gt', async () => {})
-  describe('gte', async () => {})
-  describe('eq', async () => {})
-  describe('neq', async () => {})
-  describe('near', async () => {})
+  describe('div', async () => {
+    it('correctly divides inside its range', async () => {
+      // prettier-ignore
+      const table: BigNumber[][] = [
+        [fp(100), fp(20), fp(5)],
+        [fp(1.0), fp(25), fp(0.04)],
+        [bn(50), fp(50), bn(1)],
+        [bn(2), bn(2), fp(1)],
+        [bn(3), bn(2), fp(1.5)],
+        [fp(1), bn(1), fp('1e18')],
+        [bn(1), fp(1), bn(1)],
+      ] .flatMap(([a,b,c]) => [ [a,b,c], [a,c,b], ])
+        .flatMap(([a,b,c]) => [ [a,b,c], [neg(a), b, neg(c)], ])
+        .flatMap(([a,b,c]) => [ [a,b,c], [a, neg(b), neg(c)], ])
+
+      table.forEach(async ([a, b, c]) => expect(await caller.div(a, b), `div(${a}, ${b})`).to.equal(c))
+    })
+    it('correctly divides at the extremes of its range', async () => {
+      // prettier-ignore
+      const table: BigNumber[][] = [
+        [MAX_INT128, fp(1), MAX_INT128],
+        [MAX_INT128, fp(-1), neg(MAX_INT128)],
+        [MIN_INT128, fp(2), MIN_INT128.div(2)],
+      ].flatMap(([a, b, c]) => [ [a, b, c], [a, c, b], ])
+
+      table.forEach(async ([a, b, c]) => expect(await caller.div(a, b), `div((${a}, ${b})`).to.equal(c))
+    })
+    it('correctly truncates results (towards zero)', async () => {
+      const table = [
+        [bn(5), fp(2), bn(2)],
+        [bn(-5), fp(2), bn(-2)],
+        [bn(29), fp(10), bn(2)],
+        [bn(-19), fp(10), bn(-1)],
+      ]
+      table.forEach(async ([a, b, c]) => expect(await caller.div(a, b), `div((${a}, ${b})`).to.equal(c))
+    })
+    it('fails outside its range', async () => {
+      // prettier-ignore
+      const table: BigNumber[][] = [
+        [MAX_INT128, fp(0.99)],
+        [MAX_INT128.div(5), fp(0.19)],
+        [MAX_INT128.div(pow10(16)), bn(1)],
+        [MIN_INT128, fp(0.99)],
+        [MIN_INT128.div(5), fp(0.19)],
+        [MIN_INT128.div(pow10(16)), bn(1)],
+      ].flatMap(([a,b]) => [[a,b], [a,neg(b)]])
+
+      table.forEach(async ([a, b]) => await expect(caller.div(a, b), `div((${a}, ${b})`).to.be.reverted)
+    })
+    it('fails to divide by zero', async () => {
+      // prettier-ignore
+      [ fp(1), fp(MAX_INT128), fp(MIN_INT128), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
+        . forEach(async (x) => await expect(caller.div(x, bn(0)), `div(${x}, 0`).to.be.reverted)
+    })
+  })
+  describe('divi', async () => {
+    it('correctly divides inside its range', async () => {
+      // prettier-ignore
+      [
+        [fp(100), bn(20), fp(5)],
+        [fp(1.0), bn(25), fp(0.04)],
+        [bn(50), bn(50), bn(1)],
+        [fp(2), bn(2), fp(1)],
+        [fp(3), bn(2), fp(1.5)],
+        [fp(1), bn(1), fp(1)],
+        [bn(1), bn(1), bn(1)],
+      ] .flatMap(([a,b,c]) => [ [a,b,c], [neg(a), b, neg(c)], ])
+        .flatMap(([a,b,c]) => [ [a,b,c], [a, neg(b), neg(c)], ])
+        .forEach(async ([a, b, c]) => expect(await caller.divi(a, b), `divi(${a}, ${b})`).to.equal(c))
+    })
+    it('correctly divides at the extremes of its range', async () => {
+      // prettier-ignore
+      [
+        [MAX_INT128, bn(1), MAX_INT128],
+        [MAX_INT128, bn(-1), neg(MAX_INT128)],
+        [MIN_INT128, bn(2), MIN_INT128.div(2)],
+      ] .flatMap(([a, b, c]) => [ [a, b, c], [a, c, b], ])
+        .forEach(async ([a, b, c]) => expect(await caller.divi(a, b), `divi(${a}, ${b})`).to.equal(c))
+    })
+    it('correctly truncates results towards zero', async () => {
+      // prettier-ignore
+      [
+        [bn(5), bn(2), bn(2)],
+        [bn(-5), bn(2), bn(-2)],
+        [bn(29), bn(10), bn(2)],
+        [bn(-19), bn(10), bn(-1)],
+      ] .forEach(async ([a, b, c]) => expect(await caller.divi(a, b), `divi((${a}, ${b})`).to.equal(c))
+    })
+    it('fails to divide by zero', async () => {
+      // prettier-ignore
+      [ fp(1), fp(MAX_INT128), fp(MIN_INT128), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
+        . forEach(async (x) => await expect(caller.divi(x, bn(0)), `divi(${x}, 0`).to.be.reverted)
+    })
+  })
+  describe('divu', async () => {
+    it('correctly divides inside its range', async () => {
+      // prettier-ignore
+      [
+        [fp(100), bn(20), fp(5)],
+        [fp(1.0), bn(25), fp(0.04)],
+        [bn(50), bn(50), bn(1)],
+        [fp(2), bn(2), fp(1)],
+        [fp(3), bn(2), fp(1.5)],
+        [fp(1), bn(1), fp(1)],
+        [bn(1), bn(1), bn(1)],
+      ].forEach(async ([a,b,c]) => expect(await caller.divu(a, b), `divu((${a}, ${b})`).to.equal(c))
+    })
+    it('correctly divides at the extremes of its range', async () => {
+      // prettier-ignore
+      [
+        [MAX_INT128, bn(1), MAX_INT128],
+        [MIN_INT128, bn(1), MIN_INT128],
+        [MIN_INT128, bn(2), MIN_INT128.div(2)],
+      ] .forEach(async ([a, b, c]) => expect(await caller.divu(a, b), `divu(${a}, ${b})`).to.equal(c))
+    })
+    it('correctly truncates results towards zero', async () => {
+      // prettier-ignore
+      [
+        [bn(5), bn(2), bn(2)],
+        [bn(-5), bn(2), bn(-2)],
+        [bn(29), bn(10), bn(2)],
+        [bn(-19), bn(10), bn(-1)],
+      ] .forEach(async ([a, b, c]) => expect(await caller.divu(a, b), `divu((${a}, ${b})`).to.equal(c))
+    })
+    it('fails to divide by zero', async () => {
+      // prettier-ignore
+      [ fp(1), fp(MAX_INT128), fp(MIN_INT128), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
+        . forEach(async (x) => await expect(caller.divu(x, bn(0)), `divu(${x}, 0`).to.be.reverted)
+    })
+  })
+  describe('inv', async () => {
+    it('correctly inverts inside its range', async () => {
+      // prettier-ignore
+      [
+        [fp(1), fp(1)],
+        [fp(2), fp(0.5)],
+        [bn(2), fp('0.5e18')],
+        [bn(1e9), fp(1e9)],
+      ] .flatMap(([a,b]) => [[a,b], [b,a], [neg(a), neg(b)], [neg(b), neg(a)]])
+        .forEach(async ([a,b]) => expect(await caller.inv(a), `inv(${a})`).to.equal(b))
+    })
+    it('correctly inverts at the extremes of its range', async () => {
+      // prettier-ignore
+      [
+        [MAX_INT128, 0],
+        [MIN_INT128, 0],
+        [fp('1e18'), bn(1)],
+        [fp('-1e18'), bn(-1)],
+        [bn(1), fp('1e18')],
+        [bn(-1), fp('-1e18')],
+      ] .forEach(async ([a,b]) => expect(await caller.inv(a), `inv(${a})`).to.equal(b))
+    })
+    it('fails to invert zero', async () => {
+      await expect(caller.inv(bn(0))).to.be.reverted
+    })
+  })
+  describe('powu', async () => {
+    it('correctly exponentiates inside its range', async () => {
+      // prettier-ignore
+      [
+        [fp(1.0), bn(1), fp(1.0)],
+        [fp(1.0), bn(15), fp(1.0)],
+        [fp(2), bn(7), fp(128)],
+        [fp(2), bn(63), fp('9223372036854775808')],
+        [fp(2), bn(64), fp('18446744073709551616')],
+        [fp(1.5), bn(7), fp(17.0859375)],
+        [fp(-1), bn(2), fp(1)],
+        [fp(-1), MAX_UINT128, fp(-1)],
+        [fp(-1), MAX_UINT128.sub(1), fp(1)],
+        [fp(1.1), bn(4), fp('1.4641')],
+        [fp(1.1), bn(5), fp('1.61051')],
+        [fp(0.23), bn(3), fp('0.012167')],
+        [bn(1), bn(2), bn(0)],
+        [fp('1e-9'), bn(2), fp('1e-18')],
+        [fp(0.1), bn(17), fp('1e-17')],
+        [fp(10), bn(19), fp('1e19')],
+      ] .forEach(async ([a,b,c]) => expect(await caller.powu(a,b), `powu(${a}, ${b})`).to.equal(c))
+    })
+    it('correctly exponentiates at the extremes of its range', async () => {
+      ;[
+        [MAX_INT128, bn(1), MAX_INT128],
+        [MIN_INT128, bn(1), MIN_INT128],
+        [MIN_INT128, bn(0), fp(1)],
+        [fp(0), bn(0), fp(1.0)],
+        [fp(987.0), bn(0), fp(1.0)],
+        [fp(1.0), bn(2).pow(256).sub(1), fp(1.0)],
+        [fp(-1.0), bn(2).pow(256).sub(1), fp(-1.0)],
+      ].forEach(async ([a, b, c]) => expect(await caller.powu(a, b), `powu(${a}, ${b})`).to.equal(c))
+    })
+    it('fails outside its range', async () => {
+      ;[
+        [fp(10), bn(21)],
+        [fp(-10), bn(21)],
+        [MAX_INT128, bn(2)],
+        [MIN_INT128, bn(2)],
+        [fp('2e10'), bn(2)],
+        [fp('5.6e6'), bn(3)],
+        [fp('1.15e5'), bn(4)],
+        [fp('1.12e4'), bn(5)],
+      ].forEach(async ([a, b]) => await expect(caller.powu(a, b), `powu(${a}, ${b})`).to.be.reverted)
+    })
+  })
+
+  describe('lt', async () => {
+    it('correctly evaluates <', async () => {
+      int128s.forEach(async (a) =>
+        int128s.forEach(async (b) => expect(await caller.lt(a, b), `lt(${a}, ${b})`).to.equal(a.lt(b)))
+      )
+    })
+  })
+  describe('lte', async () => {
+    it('correctly evaluates <=', async () => {
+      int128s.forEach(async (a) =>
+        int128s.forEach(async (b) => expect(await caller.lte(a, b), `lte(${a}, ${b})`).to.equal(a.lte(b)))
+      )
+    })
+  })
+  describe('gt', async () => {
+    it('correctly evaluates >', async () => {
+      int128s.forEach(async (a) =>
+        int128s.forEach(async (b) => expect(await caller.gt(a, b), `gt(${a}, ${b})`).to.equal(a.gt(b)))
+      )
+    })
+  })
+  describe('gte', async () => {
+    it('correctly evaluates >=', async () => {
+      int128s.forEach(async (a) =>
+        int128s.forEach(async (b) => expect(await caller.gte(a, b), `gte(${a}, ${b})`).to.equal(a.gte(b)))
+      )
+    })
+  })
+  describe('eq', async () => {
+    it('correctly evaluates ==', async () => {
+      int128s.forEach(async (a) =>
+        int128s.forEach(async (b) => expect(await caller.eq(a, b), `eq(${a}, ${b})`).to.equal(a.eq(b)))
+      )
+    })
+  })
+  describe('neq', async () => {
+    it('correctly evaluates !=', async () => {
+      int128s.forEach(async (a) =>
+        int128s.forEach(async (b) => expect(await caller.neq(a, b), `neq(${a}, ${b})`).to.equal(!a.eq(b)))
+      )
+    })
+  })
+  describe('near', async () => {
+    it('correctly evaluates approximate equality', async () => {})
+    it('correctly evaluates approximate equality at the extremes of its range', async () => {})
+    it('is equivalent to using add and lt correctly', async () => {})
+  })
 })

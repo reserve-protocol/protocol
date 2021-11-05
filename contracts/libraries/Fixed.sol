@@ -63,7 +63,7 @@ function toFix(uint256 x) pure returns (Fix) {
     return Fix.wrap(x_ * FIX_SCALE);
 }
 
-/// Convert a uint to its Fix representation after shifting its value `shiftLeft` digits. 
+/// Convert a uint to its Fix representation after shifting its value `shiftLeft` digits.
 /// Fails if the shifted value is outside Fix's representable range.
 function toFix(uint256 x, int256 shiftLeft) pure returns (Fix) {
     shiftLeft += 18;
@@ -208,20 +208,18 @@ library FixLib {
         return div(FIX_ONE,(x));
     }
 
-    /// Raise this Fix to a (positive integer) power.
-    /// @dev The gas cost is O(lg(y)). We can probably do better, but it will get fiddly.
+    /// Raise this Fix to a nonnegative integer power.
+    /// Presumes that powu(0.0, 0) = 1
+    /// @dev The gas cost is O(lg(y)). We can maybe do better but it will get very fiddly indeed.
     function powu(Fix x, uint256 y) internal pure returns (Fix) {
-        // Algorithm is exponentiation by squaring.
-        // see: https://en.wikipedia.org/wiki/Exponentiation_by_squaring
-        Fix res = FIX_ONE;
-        Fix square = x;
-        for (; y > 0; y = y >> 1) {
-            if (y & 1 == 1) {
-                res = mul(res, square);
-            }
-            square = mul(square, square);
+        // The algorithm is exponentiation by squaring. See: https://w.wiki/4LjE
+        Fix result = FIX_ONE;
+        while(true) {
+            if (y & 1 == 1) result = mul(result, x);
+            if (y <= 1) return result;
+            y = y >> 1;
+            x = mul(x, x);
         }
-        return res;
     }
 
     /// Comparison operators...
