@@ -772,8 +772,40 @@ describe('In FixLib,', async () => {
     })
   })
   describe('near', async () => {
-    it('correctly evaluates approximate equality', async () => {})
-    it('correctly evaluates approximate equality at the extremes of its range', async () => {})
-    it('is equivalent to using add and lt correctly', async () => {})
+    it('correctly evaluates approximate equality', async () => {
+      // prettier-ignore
+      [
+        [fp(0), fp(0.1), fp(0.10001)],
+        [fp(1), fp('1.00001'), fp('0.00001')],
+        [fp(1), fp('1.000014'), fp('0.00001')],
+        [fp(1), fp('1.000007'), fp('0.00001')],
+        [fp(1), fp('1.00001'), fp('0.000010001')],
+        [bn(87654), bn(87654), bn(1)],
+        [bn(87654), bn(87655), bn(1)],
+        [bn(87654), bn(87655), bn(2)],
+        [fp(1.0), fp(1.0), bn(1)],
+      ] .flatMap(([a,b,c])=>[ [a,b,c], [b,a,c], [neg(a), neg(b), c], [neg(b), neg(a), c]])
+        .forEach(async ([a, b, c]) =>
+          expect(await caller.near(a, b, c), `near(${a}, ${b}, ${c}`).to.equal(a.sub(b).abs().lt(c)) )
+    })
+    it('correctly evaluates approximate equality at the extremes of its range', async () => {
+      // prettier-ignore
+      [
+        [MAX_INT128, MAX_INT128, bn(1)],
+        [MAX_INT128, MIN_INT128, bn(1)],
+        [MIN_INT128, MAX_INT128, bn(1)],
+        [MIN_INT128, MIN_INT128, bn(1)],
+
+        [MAX_INT128, MAX_INT128.sub(1), bn(1)],
+        [MAX_INT128, MAX_INT128.sub(1), bn(2)],
+        [MIN_INT128, MIN_INT128.add(1), bn(1)],
+        [MIN_INT128, MIN_INT128.add(1), bn(2)],
+        [bn(-1000), MIN_INT128, MAX_INT128],
+        [bn(1000), MAX_INT128, MAX_INT128],
+
+      ] .flatMap(([a,b,c])=>[ [a,b,c], [b,a,c], ])
+        .forEach(async ([a, b, c]) =>
+          expect(await caller.near(a, b, c), `near(${a}, ${b}, ${c}`).to.equal(a.sub(b).abs().lt(c)) )
+    })
   })
 })

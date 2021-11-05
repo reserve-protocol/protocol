@@ -247,16 +247,16 @@ library FixLib {
         return Fix.unwrap(x) != Fix.unwrap(y);
     }
 
-    /// Return whether or not this Fix is within epsilon of y.
+    /// Return whether or not this Fix is less than epsilon away from y.
     function near(
         Fix x,
         Fix y,
         Fix epsilon
     ) internal pure returns (bool) {
-        int128 x_ = Fix.unwrap(x);
-        int128 y_ = Fix.unwrap(y);
+        int256 x_ = Fix.unwrap(x);
+        int256 y_ = Fix.unwrap(y);
 
-        int128 diff = (x_ <= y_) ? (y_ - x_) : (x_ - y_);
-        return diff <= Fix.unwrap(epsilon);
+        int256 diff = (x_ <= y_) ? (y_ - x_) : (x_ - y_);
+        return diff < Fix.unwrap(epsilon);
     }
 }
