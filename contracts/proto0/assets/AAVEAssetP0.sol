@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/proto0/libraries/Oracle.sol";
 import "./AssetP0.sol";
 
 contract AAVEAssetP0 is AssetP0 {
@@ -23,7 +24,7 @@ contract AAVEAssetP0 is AssetP0 {
     // @return {attoUSD/qAAVE}
     function priceUSD(IMain main) public view virtual override returns (Fix) {
         // {attoUSD/AAVE} / {qAAVE/AAVE}
-        return main.consultAaveOracle(_erc20).divu(10**decimals());
+        return main.consultOracle(Oracle.Source.AAVE, _erc20).divu(10**decimals());
     }
 
     function fiatcoinPriceUSD(IMain) public view virtual override returns (Fix) {

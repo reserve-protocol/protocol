@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/proto0/interfaces/IAsset.sol";
 import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/proto0/libraries/Oracle.sol";
 
 /**
  * @title AssetP0
@@ -66,7 +67,7 @@ contract AssetP0 is IAsset {
 
     /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
     function fiatcoinPriceUSD(IMain main) public view virtual override returns (Fix) {
-        Fix p = main.consultAaveOracle(fiatcoin()); // {attoUSD/fiatTok}
+        Fix p = main.consultOracle(Oracle.Source.AAVE, fiatcoin()); // {attoUSD/fiatTok}
 
         // {attoUSD/fiatTok} / {qFiatTok/fiatTok}
         return p.divu(10**fiatcoinDecimals());

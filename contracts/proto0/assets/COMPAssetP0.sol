@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "../interfaces/IMain.sol";
 import "./AssetP0.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/proto0/libraries/Oracle.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
 contract COMPAssetP0 is AssetP0 {
@@ -24,7 +25,7 @@ contract COMPAssetP0 is AssetP0 {
     // @return {attoUSD/qCOMP}
     function priceUSD(IMain main) public view virtual override returns (Fix) {
         // {attoUSD/COMP} / {qComp/COMP}
-        return main.consultCompoundOracle(_erc20).divu(10**decimals());
+        return main.consultOracle(Oracle.Source.COMPOUND, _erc20).divu(10**decimals());
     }
 
     function fiatcoinPriceUSD(IMain) public view virtual override returns (Fix) {

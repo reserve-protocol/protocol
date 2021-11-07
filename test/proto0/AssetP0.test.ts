@@ -95,6 +95,8 @@ describe('AssetP0 contracts', () => {
 
   describe('Deployment', () => {
     it('Deployment should setup assets correctly', async () => {
+      // TODO: Add `rateUSD` for top 4
+
       // Fiat Token Asset
       expect(await tokenAsset.erc20()).to.equal(token.address)
       expect(await tokenAsset.fiatcoin()).to.equal(token.address)
@@ -135,7 +137,7 @@ describe('AssetP0 contracts', () => {
       expect(await cTokenAsset.decimals()).to.equal(await cToken.decimals())
       expect(await cTokenAsset.decimals()).to.equal(8)
       expect(await cTokenAsset.fiatcoinDecimals()).to.equal(await usdc.decimals())
-      expect(await cTokenAsset.rateFiatcoin()).to.equal(fp('1e-2')) // 100 qUSDC per qcUSDC
+      expect(await cTokenAsset.rateFiatcoin()).to.equal(fp('1e-2')) // 1/100 qUSDC per qcUSDC
       expect(await cTokenAsset.priceUSD(main.address)).to.equal(fp('1e10')) // 18 - 8 decimals = 10
       expect(await cTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1e12'))
 

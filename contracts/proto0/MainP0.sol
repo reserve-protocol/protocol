@@ -248,14 +248,9 @@ contract MainP0 is IMain, Ownable {
         }
     }
 
-    /// @return {attoUSD/wholeTok} The price in attoUSD of `token` on Aave
-    function consultAaveOracle(address token) external view override returns (Fix) {
-        return _oracle.consultAave(token);
-    }
-
-    /// @return {attoUSD/wholeTok} The price in attoUSD of `token` on Compound
-    function consultCompoundOracle(address token) external view override returns (Fix) {
-        return _oracle.consultCompound(token);
+    /// @return {attoUSD/tok} The price in attoUSD of `token` on oracle `source`. 
+    function consultOracle(Oracle.Source source, address token) external view override returns (Fix) {
+        return _oracle.consult(source, token);
     }
 
     /// @return The deployment of the comptroller on this chain
@@ -285,16 +280,14 @@ contract MainP0 is IMain, Ownable {
         for (uint256 i = 0; i < issuances.length; i++) {
             if (!issuances[i].processed && issuances[i].vault != manager.vault()) {
                 issuances[i].vault.redeem(issuances[i].issuer, issuances[i].BUs);
+                issuances[i].processed = true;
                 emit IssuanceCancel(i);
-            }
-
-            if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
+            } else if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
                 issuances[i].vault.setAllowance(address(manager), issuances[i].BUs);
                 manager.issue(issuances[i]);
+                issuances[i].processed = true;
                 emit IssuanceComplete(i);
             }
-
-            issuances[i].processed = true;
         }
     }
 

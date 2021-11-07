@@ -530,7 +530,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     /// Prepares an auction where *sellAmount* is the independent variable and *minBuyAmount* is dependent.
-    /// @param minAuctionSize {null}
+    /// @param minAuctionSize {none}
     /// @param sellAmount {qSellTok}
     /// @return false if it is a dust trade
     function _prepareAuctionSell(
@@ -593,7 +593,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
             Fix exactSellAmount = toFix(auction.minBuyAmount).mul(buy.priceUSD(main)).div(sell.priceUSD(main));
 
-            // {qSellTok} = {qSellTok} / {null}
+            // {qSellTok} = {qSellTok} / {none}
             auction.sellAmount = exactSellAmount.div(FIX_ONE.minus(main.config().maxTradeSlippage)).toUint();
             assert(auction.sellAmount < maxSellAmount);
 

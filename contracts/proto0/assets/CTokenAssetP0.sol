@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/proto0/assets/AssetP0.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/proto0/libraries/Oracle.sol";
 
 // cToken initial exchange rate is 0.02
 
@@ -53,7 +54,7 @@ contract CTokenAssetP0 is AssetP0 {
 
     /// @return {attoUSD/qFiatTok}
     function fiatcoinPriceUSD(IMain main) public view virtual override returns (Fix) {
-        Fix p = main.consultCompoundOracle(fiatcoin()); // {attoUSD/fiatTok}
+        Fix p = main.consultOracle(Oracle.Source.COMPOUND, fiatcoin()); // {attoUSD/fiatTok}
         // {attoUSD/fiatTok} / {qFiatTok/fiatTok}
         return p.divu(10**fiatcoinDecimals());
     }

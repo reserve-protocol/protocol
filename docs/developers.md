@@ -221,7 +221,7 @@ The `q` prefix denotes "quanta", ie the smallest indivisible unit of the token.
 The `atto` prefix denotes 1e18.
 
 - {qTok} = token quanta
-- {tok} = whole token = 1e18{qTok}
+- {tok} = whole token = 1e6{qTok} (USDC)
 - {qBU} = BU quanta
 - {BU} = whole BU = 1e18{qBU}
 - {attoUSD} = smallest unit of USD

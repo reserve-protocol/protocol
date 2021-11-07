@@ -156,11 +156,8 @@ interface IMain {
     /// @return The DefaultMonitor associated with this RToken instance
     function monitor() external view returns (IDefaultMonitor);
 
-    /// @return {USD/wholeTok} The price in USD of `token` on Aave
-    function consultAaveOracle(address token) external view returns (Fix);
-
-    /// @return {USD/wholeTok} The price in USD of `token` on Compound
-    function consultCompoundOracle(address token) external view returns (Fix);
+    /// @return {attoUSD/tok} The price in attoUSD of `token` on oracle `source`. 
+    function consultOracle(Oracle.Source source, address token) external view returns (Fix);
 
     /// @return The deployment of the comptroller on this chain
     function comptroller() external view returns (IComptroller);

@@ -5,6 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
+import "contracts/proto0/libraries/Oracle.sol";
+
 
 contract ManagerInternalMockP0 {
     bool public fullyCapitalized;
@@ -60,13 +62,8 @@ contract MainMockP0 {
         return _config;
     }
 
-    /// @return {attoUSD/tok} The price in attoUSD of `token` on Aave
-    function consultAaveOracle(address token) external view returns (Fix) {
-        return toFix(1e18);
-    }
-
     /// @return {attoUSD/tok} The price in attoUSD of `token` on Compound
-    function consultCompoundOracle(address token) external view returns (Fix) {
+    function consultOracle(Oracle.Source source, address token) external view returns (Fix) {
         return toFix(1e18);
     }
 }
