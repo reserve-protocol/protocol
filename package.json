@@ -41,6 +41,7 @@
         "@typechain/hardhat": "^2.3.0",
         "@types/chai": "^4.2.21",
         "@types/mocha": "^9.0.0",
+        "axios": "^0.24.0",
         "chai": "^4.3.4",
         "ethereum-waffle": "^3.4.0",
         "ethers": "^5.4.1",
