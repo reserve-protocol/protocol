@@ -135,7 +135,7 @@ contract StRSRP0 is IStRSR, Context {
         if (snapshotTotalStaked > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
                 // amtToAdd = amount * _balances[_accounts.at(index)] / snapshotTotalStaked;
-                Fix amtToAdd = toFix(_balances[_accounts.at(index)]).divu(snapshotTotalStaked).mulu(amount);
+                Fix amtToAdd = toFix(_balances[_accounts.at(index)]).mulu(amount).divu(snapshotTotalStaked);
                 _balances[_accounts.at(index)] += amtToAdd.toUint();
             }
         }
@@ -159,12 +159,12 @@ contract StRSRP0 is IStRSR, Context {
         // Remove RSR for stakers and from withdrawals too
         if (snapshotTotalStakedPlus > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
-                Fix amtToRemove = toFix(_balances[_accounts.at(index)]).divu(snapshotTotalStakedPlus).mulu(amount);
+                Fix amtToRemove = toFix(_balances[_accounts.at(index)]).mulu(amount).divu(snapshotTotalStakedPlus);
                 _balances[_accounts.at(index)] -= amtToRemove.toUint();
             }
 
             for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
-                Fix amtToRemove = toFix(withdrawals[index].amount).divu(snapshotTotalStakedPlus).mulu(amount);
+                Fix amtToRemove = toFix(withdrawals[index].amount).mulu(amount).divu(snapshotTotalStakedPlus);
                 withdrawals[index].amount -= amtToRemove.toUint();
             }
         }

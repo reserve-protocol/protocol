@@ -45,7 +45,11 @@ library Oracle {
         IAaveLendingPool aave;
     }
 
-    function consult(Oracle.Info storage self, Source source, address token) internal view returns (Fix) {
+    function consult(
+        Oracle.Info storage self,
+        Source source,
+        address token
+    ) internal view returns (Fix) {
         if (source == Source.AAVE) {
             // Aave keeps their prices in terms of ETH
 

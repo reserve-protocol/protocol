@@ -7,7 +7,6 @@ import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "contracts/proto0/libraries/Oracle.sol";
 
-
 contract ManagerInternalMockP0 {
     bool public fullyCapitalized;
     IMain public main;

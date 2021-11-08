@@ -178,8 +178,7 @@ contract VaultP0 is IVault, Ownable {
         Fix min = FIX_MAX;
         for (uint256 i = 0; i < _basket.size; i++) {
             // {BU} = {qTok} / {qTok/BU}
-            Fix BUs = toFix(_basket.assets[i].erc20().balanceOf(issuer))
-            .div(_basket.quantities[_basket.assets[i]]);
+            Fix BUs = toFix(_basket.assets[i].erc20().balanceOf(issuer)).div(_basket.quantities[_basket.assets[i]]);
             if (BUs.lt(min)) {
                 min = BUs;
             }

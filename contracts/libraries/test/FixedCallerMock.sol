@@ -22,11 +22,11 @@ contract FixedCallerMock {
     }
 
     function fixMin(Fix x, Fix y) public pure returns (Fix) {
-        return libFixMin(x,y);
+        return libFixMin(x, y);
     }
 
     function fixMax(Fix x, Fix y) public pure returns (Fix) {
-        return libFixMax(x,y);
+        return libFixMax(x, y);
     }
 
     function toInt(Fix x) public pure returns (int128) {
