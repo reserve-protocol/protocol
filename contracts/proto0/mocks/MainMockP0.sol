@@ -61,8 +61,8 @@ contract MainMockP0 {
         return _config;
     }
 
-    /// @return {attoUSD/tok} The price in attoUSD of `token` on Compound
+    /// @return {attoUSD/qTok} The price in attoUSD of `token` on Compound
     function consultOracle(Oracle.Source source, address token) external view returns (Fix) {
-        return toFix(1e18);
+        return FIX_ONE;
     }
 }

@@ -67,10 +67,7 @@ contract AssetP0 is IAsset {
 
     /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
     function fiatcoinPriceUSD(IMain main) public view virtual override returns (Fix) {
-        Fix p = main.consultOracle(Oracle.Source.AAVE, fiatcoin()); // {attoUSD/fiatTok}
-
-        // {attoUSD/fiatTok} / {qFiatTok/fiatTok}
-        return p.divu(10**fiatcoinDecimals());
+        return main.consultOracle(Oracle.Source.AAVE, fiatcoin());
     }
 
     /// @return Whether `_erc20` is a fiatcoin

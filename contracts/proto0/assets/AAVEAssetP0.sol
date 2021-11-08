@@ -23,8 +23,7 @@ contract AAVEAssetP0 is AssetP0 {
 
     // @return {attoUSD/qAAVE}
     function priceUSD(IMain main) public view virtual override returns (Fix) {
-        // {attoUSD/AAVE} / {qAAVE/AAVE}
-        return main.consultOracle(Oracle.Source.AAVE, _erc20).divu(10**decimals());
+        return main.consultOracle(Oracle.Source.AAVE, _erc20);
     }
 
     function fiatcoinPriceUSD(IMain) public view virtual override returns (Fix) {

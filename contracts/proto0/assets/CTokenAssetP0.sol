@@ -54,9 +54,7 @@ contract CTokenAssetP0 is AssetP0 {
 
     /// @return {attoUSD/qFiatTok}
     function fiatcoinPriceUSD(IMain main) public view virtual override returns (Fix) {
-        Fix p = main.consultOracle(Oracle.Source.COMPOUND, fiatcoin()); // {attoUSD/fiatTok}
-        // {attoUSD/fiatTok} / {qFiatTok/fiatTok}
-        return p.divu(10**fiatcoinDecimals());
+        return main.consultOracle(Oracle.Source.COMPOUND, fiatcoin());
     }
 
     function isFiatcoin() external pure override returns (bool) {
