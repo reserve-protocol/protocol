@@ -22,7 +22,7 @@ task('create-RToken', 'Creates a new RToken from the RToken Deployer')
     const receipt = await (
       await deployerInstance.connect(deployer).deploy(owner, name, symbol, tokenconfig, basketinfo.tokens, rsrinfo)
     ).wait()
-    const rTokenAddr = expectInReceipt(receipt, 'RTokenDeployed')?.args?.rToken
+    const rTokenAddr = expectInReceipt(receipt, 'RTokenDeployed').args.rToken
 
     const rTokenInstance = await hre.ethers.getContractAt('RToken', rTokenAddr)
     const iPoolAddr = await rTokenInstance.insurancePool()
