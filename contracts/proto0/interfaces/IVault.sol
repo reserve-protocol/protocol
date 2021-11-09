@@ -23,17 +23,17 @@ interface IVault {
     /// @param to The account that earned the BUs
     /// @param by The account that paid for the BUs
     /// @param BUs {attoQBU} The quantity of BUs issued, as the raw Fix, i.e. 1e18{qBUs}
-    event BUIssuance(address indexed to, address indexed by, uint256 indexed BUs);
+    event BUIssuance(address indexed to, address indexed by, Fix indexed BUs);
     /// Emitted whenever BUs are redeemed
     /// @param to The account that received the resulting collateral
     /// @param by The account whose BUs are redeemed
     /// @param BUs {attoQBU} The quantity of BUs redeemed, as the raw Fix, i.e. 1e18{qBUs}
-    event BURedemption(address indexed to, address indexed by, uint256 indexed BUs);
+    event BURedemption(address indexed to, address indexed by, Fix indexed BUs);
     /// Emitted whenever BUs are transferred
     /// @param from The account that sent the BUs
     /// @param to The account that received for the BUs
     /// @param BUs {attoQBU} The quantity of BUs transferred, as the raw Fix, i.e. 1e18{qBUs}
-    event BUTransfer(address indexed from, address indexed to, uint256 indexed BUs);
+    event BUTransfer(address indexed from, address indexed to, Fix indexed BUs);
     /// Emitted whenever rewards are claimed
     /// @param compAmount {qCOMP} The amount of COMP claimed
     /// @param aaveAmount {qAAVE} The amount of COMP claimed
@@ -64,11 +64,11 @@ interface IVault {
     /// Claims all earned COMP/AAVE and sends it to the asset manager
     function claimAndSweepRewardsToManager() external;
 
+    /// @return {USD/BU} The USD value of 1 BU if all fiatcoins hold peg
+    function basketRate() external returns (Fix);
+
     /// @return {qTok} A list of token quantities required in order to issue `BUs`
     function tokenAmounts(Fix BUs) external view returns (uint256[] memory);
-
-    /// @return {USD/BU} The USD value of 1 BU if all fiatcoins hold peg
-    function basketRate() external view returns (Fix);
 
     /// @return Whether the vault is made up only of collateral in `assets`
     function containsOnly(address[] memory assets) external view returns (bool);

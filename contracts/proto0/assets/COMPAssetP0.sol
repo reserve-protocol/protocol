@@ -12,22 +12,22 @@ contract COMPAssetP0 is AssetP0 {
 
     constructor(address erc20_) AssetP0(erc20_) {}
 
-    function rateFiatcoin() public view override returns (Fix) {
+    function rateFiatcoin() public override returns (Fix) {
         assert(false);
         return FIX_ZERO;
     }
 
-    function rateUSD() public view override returns (Fix) {
+    function rateUSD() public override returns (Fix) {
         assert(false);
         return FIX_ZERO;
     }
 
     // @return {attoUSD/qCOMP}
-    function priceUSD(IMain main) public view virtual override returns (Fix) {
+    function priceUSD(IMain main) public override returns (Fix) {
         return main.consultOracle(Oracle.Source.COMPOUND, _erc20);
     }
 
-    function fiatcoinPriceUSD(IMain) public view virtual override returns (Fix) {
+    function fiatcoinPriceUSD(IMain) public view override returns (Fix) {
         assert(false);
         return FIX_ZERO;
     }

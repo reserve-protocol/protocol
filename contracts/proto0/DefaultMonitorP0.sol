@@ -24,7 +24,7 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
 
     /// Checks for hard default in a vault by inspecting the redemption rates of collateral tokens
     /// @param vault The vault to inspect
-    /// @returns All hard-defaulting tokens
+    /// @return defaulting All hard-defaulting tokens
     function checkForHardDefault(IVault vault) external override returns (IAsset[] memory defaulting) {
         require(_msgSender() == address(main), "main only");
         IAsset[] memory vaultAssets = new IAsset[](vault.size());
@@ -46,7 +46,7 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
     /// Checks for soft default in a vault by checking oracle values for all fiatcoins in the vault
     /// @param vault The vault to inspect
     /// @param fiatcoins An array of addresses of fiatcoin assets to use for median USD calculation
-    /// @return All soft-defaulting tokens
+    /// @return defaulting All soft-defaulting tokens
     function checkForSoftDefault(IVault vault, IAsset[] memory fiatcoins)
         public
         view

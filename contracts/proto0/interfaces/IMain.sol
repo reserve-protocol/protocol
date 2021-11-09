@@ -127,9 +127,6 @@ interface IMain {
     /// @return Whether the system is paused
     function paused() external view returns (bool);
 
-    /// @return The quantities of collateral tokens that would be required to issue `amount` RToken
-    function quote(uint256 amount) external view returns (uint256[] memory);
-
     /// @return erc20s The addresses of the ERC20s backing the RToken
     function backingTokens() external view returns (address[] memory);
 

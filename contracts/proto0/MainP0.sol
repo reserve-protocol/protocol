@@ -77,7 +77,6 @@ contract MainP0 is IMain, Ownable {
             manager.switchVaults(hardDefaulting);
             state = State.TRADING;
         }
-        manager.updateBaseFactor();
         _;
     }
 
@@ -233,12 +232,6 @@ contract MainP0 is IMain, Ownable {
     function nextRewards() public view override returns (uint256) {
         (, uint256 next) = _rewardsAdjacent(block.timestamp);
         return next;
-    }
-
-    /// @return The quantities of collateral tokens that would be required to issue `amount` RToken
-    function quote(uint256 amount) public view override returns (uint256[] memory) {
-        require(amount > 0, "Cannot quote zero");
-        return manager.vault().tokenAmounts(manager.toBUs(amount));
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
