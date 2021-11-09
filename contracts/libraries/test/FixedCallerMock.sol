@@ -17,7 +17,7 @@ contract FixedCallerMock {
         return libIntToFix(x);
     }
 
-    function divFix(uint256 x, Fix y) public returns (Fix) { //TODO: pure
+    function divFix(uint256 x, Fix y) public pure returns (Fix) {
         return libDivFix(x, y);
     }
 

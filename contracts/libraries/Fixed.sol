@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity ^0.8.9;
-import "hardhat/console.sol";
 
 /// @title FixedPoint, a fixed-point arithmetic library defining the custom type Fix
 /// @author Matt Elder <matt.elder@reserve.org> and the Reserve Team <https://reserve.org>
@@ -91,7 +90,7 @@ function intToFix(int256 x) pure returns (Fix) {
  * all these other functions are similarly correct.
  */
 
-function divFix(uint256 x, Fix y) returns (Fix) { //TODO pure
+function divFix(uint256 x, Fix y) pure returns (Fix) {
     int256 _y = int256(Fix.unwrap(y));
     /* If we didn't have to worry about overflow or precision loss, we'd just do:
        return x * 1e36 / _y.
@@ -100,8 +99,6 @@ function divFix(uint256 x, Fix y) returns (Fix) { //TODO pure
     if(x < type(uint256).max/FIX_SCALE_SQ_U) {
         return _safe_wrap(int256(x * FIX_SCALE_SQ_U) / _y);
     }
-    console.log("  - divFix slow path");
-
     /* If we're not in that safe range, there are still lots of situations where the output fits in
      * a Fix, but (x * 1e36) does not fit in a uint256. For instance, x = 2**255; _y = 2**190. For
      * such cases, we've got to compute result = [x * 1e36 / _y] in a way that only leaves the bounds
@@ -112,7 +109,6 @@ function divFix(uint256 x, Fix y) returns (Fix) { //TODO pure
 
     int256 sign = (_y < 0) ? int256(-1) : int256(1);  // sign = sign(_y)
     uint256 div = uint256(_y * sign);                 // div = abs(_y),
-    console.log("  - divFix div:", div);
     /* From starting conditions, we know that x in uint256, div in uint192, and 1e18 in uint64.
 
        We can't directly compute x * 1e18, because that might overflow a uint256. Instead,
@@ -131,8 +127,6 @@ function divFix(uint256 x, Fix y) returns (Fix) { //TODO pure
     uint256 r1 = (r0*FIX_SCALE_U) % div;             // r0 % div < div fits in uint192, so r1 fits in uint256
 
     uint256 q2 = r1 / div;                         // q2 <= result so fits in int192 if result does
-
-    console.log("  - divFix parts:", part0, part1, q2);
 
     return _safe_wrap(int256(part0 + part1 + q2) * sign);
 

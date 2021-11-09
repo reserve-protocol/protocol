@@ -139,11 +139,12 @@ describe('In FixLib,', async () => {
     })
 
     it('works for extreme results', async () => {
-      expect(await caller.divFix(MAX_FIX_INT.sub(1), fp(1)), 'MAX_FIX_INT / 1.0').to.equal(fp(MAX_FIX_INT))
-      // 171e18 > MAX_FIX_INT > 170e18, so we use 170e18 here.
-      expect(await caller.divFix(MAX_INT192.mul(170), fp(170)), 'MAX_INT*170 / 170').to.equal(MAX_INT192)
-      expect(await caller.divFix(MAX_INT192.sub(1), fp(1)), '(MAX_INT-1)/1').to.equal(MAX_INT192.sub(1))
-      expect(await caller.divFix(MAX_INT192.sub(51), fp(1)), '(MAX_INT-51)/1').to.equal(MAX_INT192.sub(51))
+      expect(await caller.divFix(MAX_FIX_INT, fp(1)), 'MAX_FIX_INT / 1.0').to.equal(fp(MAX_FIX_INT))
+      expect(await caller.divFix(MAX_FIX_INT.mul(170), fp(170)), 'MAX_FIX_INT*170 / 170').to.equal(fp(MAX_FIX_INT))
+      expect(await caller.divFix(MAX_INT192, fp('1e18')), '(MAX_INT-1)/1e18').to.equal(MAX_INT192)
+      expect(await caller.divFix(MAX_FIX_INT.sub(51), fp(1)), '(MAX_FIX_INT-51)/1').to.equal(fp(MAX_FIX_INT.sub(51)))
+
+      // TODO: add plenty of test cases that exercise the complicated path.
     })
 
     it('fails when results fall outside its range', async () => {
