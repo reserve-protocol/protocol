@@ -10,7 +10,7 @@ import "contracts/libraries/Fixed.sol";
  * @notice A handle for all tokens in our system, customized for DeFi USD derivatives.
  */
 interface IAsset {
-    /// @dev Call `updateRates()` before to ensure the latest rates
+    /// @dev Call `updateRates()` before other `rate` and `price` functions to ensure the latest rates
     function updateRates() external;
 
     /// Claims any rewards such as COMP/AAVE for the asset
