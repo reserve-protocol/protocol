@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "contracts/proto0/libraries/Oracle.sol";
+import "contracts/libraries/Fixed.sol";
 
 contract ManagerInternalMockP0 {
     bool public fullyCapitalized;
@@ -63,6 +64,6 @@ contract MainMockP0 {
 
     /// @return {attoUSD/qTok} The price in attoUSD of `token` on Compound
     function consultOracle(Oracle.Source source, address token) external view returns (Fix) {
-        return FIX_ONE;
+        return toFix(1, 18 - int8(IERC20Metadata(token).decimals()));
     }
 }
