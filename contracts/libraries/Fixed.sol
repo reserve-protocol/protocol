@@ -27,7 +27,7 @@ type Fix is int192;
 // If a particular Fix is represented by the int192 n, then the Fix represents the
 // value n/FIX_SCALE.
 int64 constant FIX_SCALE = 1e18;
-uint64 constant FIX_SCALE_U = uint64(FIX_SCALE_U);
+uint64 constant FIX_SCALE_U = uint64(FIX_SCALE);
 // FIX_SCALE Squared:
 int128 constant FIX_SCALE_SQ = 1e36;
 uint128 constant FIX_SCALE_SQ_U = uint128(FIX_SCALE_SQ);
