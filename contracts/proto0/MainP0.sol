@@ -265,7 +265,7 @@ contract MainP0 is IMain, Ownable {
 
     // ==================================== Internal ====================================
 
-    // Returns the block number at which an issuance for *amount* that begins now
+    // Returns the future block number at which an issuance for *amount* now can complete
     function _nextIssuanceBlockAvailable(uint256 amount) internal view returns (uint256) {
         uint256 perBlock = Math.max(
             10_000 * 10**rToken.decimals(), // lower-bound: 10k whole RToken per block
