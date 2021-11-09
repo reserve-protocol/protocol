@@ -24,6 +24,7 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
 
     /// Checks for hard default in a vault by inspecting the redemption rates of collateral tokens
     /// @param vault The vault to inspect
+    /// @returns All hard-defaulting tokens
     function checkForHardDefault(IVault vault) external override returns (IAsset[] memory defaulting) {
         require(_msgSender() == address(main), "main only");
         IAsset[] memory vaultAssets = new IAsset[](vault.size());
