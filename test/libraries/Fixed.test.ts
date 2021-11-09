@@ -34,8 +34,7 @@ describe('In FixLib,', async () => {
 
   // prettier-ignore
   const positive_int192s: BigNumber[] = [
-    bn(1), bn(2), bn(3), bn('9.99e17'), fp(0.9991), fp(1), fp(1.0001), fp(2),
-    fp(MAX_FIX_INT), fp(MAX_FIX_INT).add(1), MAX_INT192.sub(1), MAX_INT192,
+    bn(1), fp(0.9999), fp(1), fp(1.0001), MAX_INT192.sub(1), MAX_INT192,
   ]
   let negative_int192s = positive_int192s.map(neg)
   negative_int192s.reverse()
@@ -149,8 +148,8 @@ describe('In FixLib,', async () => {
         [neg(MIN_INT192), fp('-1e18'), MIN_INT192],
         [bn('8e60'), fp('2e30'), fp('4e30')],
         [bn('5e75'), fp('2.5e39'), fp('2e36')],
-        [bn('8e60'), fp('-2e30'), fp('4e30')],
-        [bn('5e75'), fp('-2.5e39'), fp('2e36')],
+        [bn('8e60'), fp('-2e30'), fp('-4e30')],
+        [bn('5e75'), fp('-2.5e39'), fp('-2e36')],
       ].forEach(async ([x, y, result]) =>
         expect(await caller.divFix(x, y), `divFix(${x}, ${y}) == ${result}`).to.equal(result)
       )
