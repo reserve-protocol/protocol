@@ -21,19 +21,16 @@ contract AssetP0 is IAsset {
         _erc20 = erc20_;
     }
 
-    /// @dev Call `updateRates()` before `rateFiatcoin` and `rateUSD` to ensure the latest rates
-    function updateRates() external virtual override {}
-
     /// Claims any rewards such as COMP/AAVE for the asset
     function claimRewards() external virtual override {}
 
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
-    function rateFiatcoin() public view virtual override returns (Fix) {
+    function rateFiatcoin() public virtual override returns (Fix) {
         return toFix(10**fiatcoinDecimals()).divu(10**decimals());
     }
 
     /// @return {attoUSD/qTok} Without using oracles, returns the expected attoUSD value of one qtok.
-    function rateUSD() public view virtual override returns (Fix) {
+    function rateUSD() public virtual override returns (Fix) {
         // {attoUSD/tok} / {qTok/tok}
         int128 shiftLeft = -int8(decimals());
         return toFix(1e18, shiftLeft);
@@ -60,17 +57,14 @@ contract AssetP0 is IAsset {
     }
 
     /// @return {attoUSD/qTok} The price in attoUSD of the asset's smallest unit
-    function priceUSD(IMain main) public view virtual override returns (Fix) {
+    function priceUSD(IMain main) public virtual override returns (Fix) {
         // {attoUSD/qFiatTok} * {qFiatTok/qTok}
         return fiatcoinPriceUSD(main).mul(rateFiatcoin());
     }
 
     /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
     function fiatcoinPriceUSD(IMain main) public view virtual override returns (Fix) {
-        Fix p = main.consultOracle(Oracle.Source.AAVE, fiatcoin()); // {attoUSD/fiatTok}
-
-        // {attoUSD/fiatTok} / {qFiatTok/fiatTok}
-        return p.divu(10**fiatcoinDecimals());
+        return main.consultOracle(Oracle.Source.AAVE, fiatcoin());
     }
 
     /// @return Whether `_erc20` is a fiatcoin

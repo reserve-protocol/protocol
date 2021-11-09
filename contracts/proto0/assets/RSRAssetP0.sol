@@ -12,23 +12,22 @@ contract RSRAssetP0 is AssetP0 {
 
     constructor(address erc20_) AssetP0(erc20_) {}
 
-    function rateFiatcoin() public view override returns (Fix) {
+    function rateFiatcoin() public override returns (Fix) {
         assert(false); // RSR does not have a redemption rate. Bad use of class.
         return FIX_ZERO;
     }
 
-    function rateUSD() public view override returns (Fix) {
+    function rateUSD() public override returns (Fix) {
         assert(false); // RSR does not have a usd rate. Bad use of class.
         return FIX_ZERO;
     }
 
     /// @return {attoUSD/qRSR}
-    function priceUSD(IMain main) public view override returns (Fix) {
-        // {attoUSD/RSR} / {qRSR/RSR}
-        return main.consultOracle(Oracle.Source.AAVE, _erc20).divu(10**decimals());
+    function priceUSD(IMain main) public override returns (Fix) {
+        return main.consultOracle(Oracle.Source.AAVE, _erc20);
     }
 
-    function fiatcoinPriceUSD(IMain) public view virtual override returns (Fix) {
+    function fiatcoinPriceUSD(IMain) public view override returns (Fix) {
         assert(false);
         return FIX_ZERO;
     }

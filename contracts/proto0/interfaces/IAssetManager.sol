@@ -44,9 +44,6 @@ interface IAssetManager {
 
     //
 
-    /// Runs block-by-block updates
-    function updateBaseFactor() external;
-
     /// Mints `issuance.amount` of RToken to `issuance.minter`
     /// @param issuance The SlowIssuance to finalize by issuing RToken
     function issue(SlowIssuance memory issuance) external;
@@ -57,7 +54,7 @@ interface IAssetManager {
     function redeem(address redeemer, uint256 amount) external;
 
     /// Performs any and all auctions in the system
-    /// @return A `State` enum
+    /// @return A `State` enum representing the current state the system is in.
     function doAuctions() external returns (State);
 
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
@@ -71,20 +68,20 @@ interface IAssetManager {
     function switchVaults(IAsset[] memory defaulting) external;
 
     /// @return {none} The base factor
-    function baseFactor() external view returns (Fix);
+    function baseFactor() external returns (Fix);
 
     /// BUs -> RToken
     /// @param {qRTok} amount The quantity of RToken to convert to BUs
     /// @return {qBU} The equivalent amount of BUs at the current base factor
-    function toBUs(uint256 amount) external view returns (Fix);
+    function toBUs(uint256 amount) external returns (Fix);
 
     /// BUs -> RToken
     /// @param {qBU} BUs The quantity of BUs to convert to RToken
     /// @return {qRTok} The equivalent amount of RToken at the current base factor
-    function fromBUs(Fix BUs) external view returns (uint256);
+    function fromBUs(Fix BUs) external returns (uint256);
 
     /// @return Whether the vault is fully capitalized
-    function fullyCapitalized() external view returns (bool);
+    function fullyCapitalized() external returns (bool);
 
     /// @return The current vault
     function vault() external view returns (IVault);

@@ -32,7 +32,7 @@ contract ATokenAssetP0 is AssetP0 {
     }
 
     /// @return {qFiatTok/qTok}
-    function rateFiatcoin() public view override returns (Fix) {
+    function rateFiatcoin() public override returns (Fix) {
         uint256 rateInRAYs = IStaticAToken(_erc20).rate(); // {ray fiatTok/tok}
 
         // Unit conversions:
@@ -48,7 +48,7 @@ contract ATokenAssetP0 is AssetP0 {
     }
 
     // @return {attoUSD/qTok}
-    function rateUSD() public view override returns (Fix) {
+    function rateUSD() public override returns (Fix) {
         uint256 rateInRAYs = IStaticAToken(_erc20).rate(); // {ray fiatTok/tok}
 
         // {attoUSD/qTok} = {ray fiatTok/tok} / {ray} * {attoUSD/fiatTok} / {qTok/tok}

@@ -14,7 +14,7 @@ import "contracts/libraries/Fixed.sol";
  */
 contract DefaultMonitorP0 is Context, IDefaultMonitor {
     using FixLib for Fix;
-    mapping(address => Fix) internal _ratesUSD; // {attoUSD/qtok}
+    mapping(address => Fix) internal _lastRatesUSD; // {attoUSD/qtok}
 
     IMain public main;
 
@@ -24,18 +24,18 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
 
     /// Checks for hard default in a vault by inspecting the redemption rates of collateral tokens
     /// @param vault The vault to inspect
-    /// @returns All hard-defaulting tokens
+    /// @return defaulting All hard-defaulting tokens
     function checkForHardDefault(IVault vault) external override returns (IAsset[] memory defaulting) {
         require(_msgSender() == address(main), "main only");
         IAsset[] memory vaultAssets = new IAsset[](vault.size());
         uint256 count;
         for (uint256 i = 0; i < vault.size(); i++) {
             IAsset a = vault.assetAt(i);
-            if (a.rateUSD().lt(_ratesUSD[address(a)])) {
+            if (a.rateUSD().lt(_lastRatesUSD[address(a)])) {
                 vaultAssets[count] = a;
                 count++;
             }
-            _ratesUSD[address(a)] = a.rateUSD();
+            _lastRatesUSD[address(a)] = a.rateUSD();
         }
         defaulting = new IAsset[](count);
         for (uint256 i = 0; i < count; i++) {
@@ -46,6 +46,7 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
     /// Checks for soft default in a vault by checking oracle values for all fiatcoins in the vault
     /// @param vault The vault to inspect
     /// @param fiatcoins An array of addresses of fiatcoin assets to use for median USD calculation
+    /// @return defaulting All soft-defaulting tokens
     function checkForSoftDefault(IVault vault, IAsset[] memory fiatcoins)
         public
         view

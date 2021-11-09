@@ -79,20 +79,9 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         _transferOwnership(owner_);
     }
 
-    modifier sideEffects() {
-        main.furnace().doBurn();
-        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            IAsset(_approvedCollateral.at(i)).updateRates();
-        }
-        _;
-    }
-
-    /// Runs block-by-block updates
-    function updateBaseFactor() external override sideEffects {}
-
     /// Mints `issuance.amount` of RToken to `issuance.minter`
     /// @dev Requires caller BU allowance
-    function issue(SlowIssuance memory issuance) external override sideEffects {
+    function issue(SlowIssuance memory issuance) external override {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         require(!issuance.processed, "already processed");
         issuance.vault.pullBUs(address(main), issuance.BUs); // Main should have set an allowance
@@ -100,14 +89,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     /// Redeems `amount` {RTok} to `redeemer`
-    function redeem(address redeemer, uint256 amount) external override sideEffects {
+    function redeem(address redeemer, uint256 amount) external override {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         main.rToken().burn(redeemer, amount);
         _oldestVault().redeem(redeemer, toBUs(amount));
     }
 
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
-    function collectRevenue() external override sideEffects {
+    function collectRevenue() external override {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         vault.claimAndSweepRewardsToManager();
         main.comptroller().claimComp(address(this));
@@ -124,7 +113,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     /// Attempts to switch vaults to a backup vault that does not contain `defaulting` assets
-    function switchVaults(IAsset[] memory defaulting) external override sideEffects {
+    function switchVaults(IAsset[] memory defaulting) external override {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         for (uint256 i = 0; i < defaulting.length; i++) {
             _unapproveAsset(defaulting[i]);
@@ -137,14 +126,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     /// Accumulates current metrics into historical metrics
-    function accumulate() external override sideEffects {
+    function accumulate() external override {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         _accumulate();
     }
 
     /// Performs any and all auctions in the system
     /// @return The current enum `State`
-    function doAuctions() external override sideEffects returns (State) {
+    function doAuctions() external override returns (State) {
         // Outline:
         //  1. Closeout running auctions
         //  2. Create new BUs from collateral
@@ -198,7 +187,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     //
 
     /// @return Whether the vault is fully capitalized
-    function fullyCapitalized() public view override returns (bool) {
+    function fullyCapitalized() public override returns (bool) {
         // vault.basketUnits(address(this)) >= rToken.totalSupply()
         return vault.basketUnits(address(this)).gte(toBUs(main.rToken().totalSupply()));
     }
@@ -212,12 +201,13 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     /// @return {none} The base factor
-    function baseFactor() public view override returns (Fix) {
+    function baseFactor() public override returns (Fix) {
+        main.furnace().doBurn();
         return _meltingFactor().div(_basketDilutionFactor());
     }
 
     /// {qRTok} -> {qBU}
-    function toBUs(uint256 amount) public view override returns (Fix) {
+    function toBUs(uint256 amount) public override returns (Fix) {
         if (main.rToken().totalSupply() == 0) {
             return toFix(amount);
         }
@@ -227,7 +217,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     /// {qBU} -> {qRTok}
-    function fromBUs(Fix BUs) public view override returns (uint256) {
+    function fromBUs(Fix BUs) public override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
             return BUs.toUint();
         }
@@ -248,7 +238,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     /// @return {none) Denominator of the base factor
-    function _basketDilutionFactor() internal view returns (Fix) {
+    function _basketDilutionFactor() internal returns (Fix) {
         Fix currentRate = vault.basketRate();
 
         // currentDilution = (f * ((currentRate / _prevBasketRate) - 1)) + 1
@@ -464,7 +454,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     /// @return {buyTokLot} Buy amount
     function _largestCollateralForCollateralTrade()
         internal
-        view
         returns (
             IAsset,
             IAsset,

@@ -67,7 +67,7 @@ contract VaultP0 is IVault, Ownable {
 
         basketUnits[to] = basketUnits[to].plus(BUs);
         totalUnits = totalUnits.plus(BUs);
-        emit BUIssuance(to, _msgSender(), uint128(Fix.unwrap(BUs)));
+        emit BUIssuance(to, _msgSender(), BUs);
     }
 
     /// Redeems a quantity of BUs and transfers collateral out
@@ -86,7 +86,7 @@ contract VaultP0 is IVault, Ownable {
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.assets[i].erc20().safeTransfer(to, amounts[i]);
         }
-        emit BURedemption(to, _msgSender(), uint128(Fix.unwrap(BUs)));
+        emit BURedemption(to, _msgSender(), BUs);
     }
 
     /// Allows `spender` to spend `BUs` from the callers account
@@ -105,7 +105,7 @@ contract VaultP0 is IVault, Ownable {
         _allowances[from][_msgSender()] = _allowances[from][_msgSender()].minus(BUs);
         basketUnits[from] = basketUnits[from].minus(BUs);
         basketUnits[_msgSender()] = basketUnits[_msgSender()].plus(BUs);
-        emit BUTransfer(from, _msgSender(), uint128(Fix.unwrap(BUs)));
+        emit BUTransfer(from, _msgSender(), BUs);
     }
 
     /// Claims all earned COMP/AAVE and sends it to the asset manager
@@ -148,7 +148,7 @@ contract VaultP0 is IVault, Ownable {
     }
 
     /// @return sum {attoUSD/BU} The attoUSD value of 1 BU if all fiatcoins hold peg
-    function basketRate() external view override returns (Fix sum) {
+    function basketRate() external override returns (Fix sum) {
         for (uint256 i = 0; i < _basket.size; i++) {
             IAsset c = _basket.assets[i];
 

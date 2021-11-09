@@ -77,7 +77,6 @@ contract MainP0 is IMain, Ownable {
             manager.switchVaults(hardDefaulting);
             state = State.TRADING;
         }
-        manager.updateBaseFactor();
         _;
     }
 
@@ -235,12 +234,6 @@ contract MainP0 is IMain, Ownable {
         return next;
     }
 
-    /// @return The quantities of collateral tokens that would be required to issue `amount` RToken
-    function quote(uint256 amount) public view override returns (uint256[] memory) {
-        require(amount > 0, "Cannot quote zero");
-        return manager.vault().tokenAmounts(manager.toBUs(amount));
-    }
-
     /// @return erc20s The addresses of the ERC20s backing the RToken
     function backingTokens() external view override returns (address[] memory erc20s) {
         for (uint256 i = 0; i < manager.vault().size(); i++) {
@@ -248,7 +241,7 @@ contract MainP0 is IMain, Ownable {
         }
     }
 
-    /// @return {attoUSD/tok} The price in attoUSD of `token` on oracle `source`.
+    /// @return {attoUSD/qTok} The price in attoUSD of a `qTok` on oracle `source`.
     function consultOracle(Oracle.Source source, address token) external view override returns (Fix) {
         return _oracle.consult(source, token);
     }
@@ -265,7 +258,7 @@ contract MainP0 is IMain, Ownable {
 
     // ==================================== Internal ====================================
 
-    // Returns the block number at which an issuance for *amount* that begins now
+    // Returns the future block number at which an issuance for *amount* now can complete
     function _nextIssuanceBlockAvailable(uint256 amount) internal view returns (uint256) {
         uint256 perBlock = Math.max(
             10_000 * 10**rToken.decimals(), // lower-bound: 10k whole RToken per block

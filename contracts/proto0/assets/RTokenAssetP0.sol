@@ -11,18 +11,18 @@ contract RTokenAssetP0 is AssetP0 {
 
     constructor(address erc20_) AssetP0(erc20_) {}
 
-    function rateFiatcoin() public view override returns (Fix) {
+    function rateFiatcoin() public override returns (Fix) {
         assert(false);
         return FIX_ZERO;
     }
 
-    function rateUSD() public view override returns (Fix) {
+    function rateUSD() public override returns (Fix) {
         assert(false);
         return FIX_ZERO;
     }
 
     /// @return {attoUSD/qRTok}
-    function priceUSD(IMain main) public view override returns (Fix) {
+    function priceUSD(IMain main) public override returns (Fix) {
         Fix sum; // {attoUSD/BU}
         IVault v = main.manager().vault();
         for (uint256 i = 0; i < v.size(); i++) {
