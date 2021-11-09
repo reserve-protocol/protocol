@@ -29,15 +29,15 @@ contract FixedCallerMock {
         return libFixMax(x, y);
     }
 
-    function toInt(Fix x) public pure returns (int128) {
+    function toInt(Fix x) public pure returns (int192) {
         return FixLib.toInt(x);
     }
 
-    function toUint(Fix x) public pure returns (uint128) {
+    function toUint(Fix x) public pure returns (uint192) {
         return FixLib.toUint(x);
     }
 
-    function round(Fix x) public pure returns (int128) {
+    function round(Fix x) public pure returns (int192) {
         return FixLib.round(x);
     }
 
