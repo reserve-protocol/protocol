@@ -67,7 +67,7 @@ interface IVault {
     /// @return {USD/BU} The USD value of 1 BU if all fiatcoins hold peg
     function basketRate() external returns (Fix);
 
-    /// @return {qTok} A list of token quantities required in order to issue `BUs`
+    /// @return {qTok} A list of token quantities required in order to issue `BUs`, in the order of the basket. 
     function tokenAmounts(Fix BUs) external view returns (uint256[] memory);
 
     /// @return Whether the vault is made up only of collateral in `assets`
