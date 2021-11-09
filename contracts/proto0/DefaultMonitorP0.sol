@@ -46,6 +46,7 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
     /// Checks for soft default in a vault by checking oracle values for all fiatcoins in the vault
     /// @param vault The vault to inspect
     /// @param fiatcoins An array of addresses of fiatcoin assets to use for median USD calculation
+    /// @return All soft-defaulting tokens
     function checkForSoftDefault(IVault vault, IAsset[] memory fiatcoins)
         public
         view
