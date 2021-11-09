@@ -77,7 +77,7 @@ describe('In FixLib,', async () => {
 
   describe('toFix(x, shiftLeft)', async () => {
     it('correctly converts uint values with no shifting', async () => {
-      const toFix = caller['toFix(uint256,int256)'].bind(caller)
+      const toFix = caller['toFixWithShift(uint256,int8)'].bind(caller)
 
       ;[0, 1, 2, '38326665875765560393', MAX_FIX_INT.sub(1), MAX_FIX_INT]
         .map(bn)
@@ -85,7 +85,7 @@ describe('In FixLib,', async () => {
     })
 
     it('correctly converts uint values with some shifting', async () => {
-      const toFix = caller['toFix(uint256,int256)'].bind(caller)
+      const toFix = caller['toFixWithShift(uint256,int8)'].bind(caller)
 
       ;[
         [0, 10],
@@ -110,7 +110,7 @@ describe('In FixLib,', async () => {
     })
 
     it('fails on inputs outside its domain', async () => {
-      const toFix = caller['toFix(uint256,int256)'].bind(caller)
+      const toFix = caller['toFixWithShift(uint256,int8)'].bind(caller)
       ;[
         [MAX_FIX_INT, 1],
         [MAX_FIX_INT.add(1), 0],
@@ -221,6 +221,34 @@ describe('In FixLib,', async () => {
       for (let [input, result] of table) {
         expect(await caller.toUint(fp(input)), `fp(${input})`).to.equal(result)
       }
+    })
+  })
+
+  describe('shiftLeft', async () => {
+    it('mirrors the behavior of `toFixWithShift`', async () => {
+      const toFix = caller['toFix(uint256)'].bind(caller)
+      const toFixWithShift = caller['toFixWithShift(uint256,int8)'].bind(caller)
+
+      ;[
+        [0, 10],
+        [1, 5],
+        [1, -7],
+        [2, 3],
+        [2, -3],
+        ['38326665875765560393', -10],
+        ['38326665875', 9],
+        [MAX_FIX_INT.sub(1), -2],
+        [MAX_FIX_INT.sub(1), -1],
+        [MAX_FIX_INT.sub(1), 0],
+        [MAX_FIX_INT, -9],
+        [MAX_FIX_INT, -1],
+      ]
+        .map(([x, s]) => [bn(x), bn(s)])
+        .forEach(async ([x, s]) =>
+          expect(caller.shiftLeft(await toFix(x), s), `toFix(${x}).shiftLeft(${s})`).to.equal(
+            await toFixWithShift(x, s)
+          )
+        )
     })
   })
 

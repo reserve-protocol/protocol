@@ -28,7 +28,7 @@ contract CTokenAssetP0 is AssetP0 {
         // {qFiatTok/qTok} = {fiatTok/tok} * {qFiatTok/fiatTok} / {qTok/tok}
 
         int8 shiftLeft = int8(fiatcoinDecimals()) - int8(decimals());
-        return rate.mul(toFix(1, shiftLeft));
+        return rate.mul(toFixWithShift(1, shiftLeft));
     }
 
     /// @return {attoUSD/qTok} Without using oracles, returns the expected USD value of one whole tok.
@@ -38,7 +38,7 @@ contract CTokenAssetP0 is AssetP0 {
         // {attoUSD/qTok} = {fiatTok/tok} * {attoUSD/fiatTok} / {qTok/tok}
 
         int8 shiftLeft = 18 - int8(decimals());
-        return rate.mul(toFix(1, shiftLeft));
+        return rate.mul(toFixWithShift(1, shiftLeft));
     }
 
     function fiatcoin() public view override returns (address) {
@@ -56,10 +56,10 @@ contract CTokenAssetP0 is AssetP0 {
 
     /// @return {fiatTok/tok}
     function _exchangeRateRelativeToGenesis() internal returns (Fix) {
-        Fix genesis = toFix(2, -2); // 0.02, their hardcoded starting rate
+        Fix genesis = toFixWithShift(2, -2); // 0.02, their hardcoded starting rate
         uint256 r = ICToken(_erc20).exchangeRateCurrent();
         int8 shiftLeft = int8(decimals()) - int8(fiatcoinDecimals()) - 18;
-        Fix rateNow = toFix(r, shiftLeft);
+        Fix rateNow = toFixWithShift(r, shiftLeft);
         return rateNow.div(genesis);
     }
 }
