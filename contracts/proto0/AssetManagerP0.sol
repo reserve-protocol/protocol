@@ -473,7 +473,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         )
     {
         // Calculate a BU target (if we could trade with 0 slippage)
-        Fix totalValue;
+        Fix totalValue; // {attoUSD}
         for (uint256 i = 0; i < _alltimeCollateral.length(); i++) {
             IAsset a = IAsset(_alltimeCollateral.at(i));
             Fix bal = toFix(IERC20(a.erc20()).balanceOf(address(this)));
