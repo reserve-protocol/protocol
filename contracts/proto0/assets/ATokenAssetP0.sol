@@ -49,9 +49,9 @@ contract ATokenAssetP0 is AssetP0 {
 
     // @return {attoUSD/qTok}
     function rateUSD() public view override returns (Fix) {
-        uint256 rateInRAYs = IStaticAToken(_erc20).rate(); // {fiatTok/tok} * 1e27
+        uint256 rateInRAYs = IStaticAToken(_erc20).rate(); // {ray fiatTok/tok}
 
-        // {attoUSD/qTok} = {fiatTok/tok} * 1e27 * {attoUSD/fiatTok} / {qTok/tok}
+        // {attoUSD/qTok} = {ray fiatTok/tok} / {ray} * {attoUSD/fiatTok} / {qTok/tok}
         // result = rateInRAYs / 1e27 * 1e18 / 10**decimals();
         int128 shiftLeft = -9 - int8(decimals());
 
