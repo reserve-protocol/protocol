@@ -139,12 +139,21 @@ describe('In FixLib,', async () => {
     })
 
     it('works for extreme results', async () => {
-      expect(await caller.divFix(MAX_FIX_INT, fp(1)), 'MAX_FIX_INT / 1.0').to.equal(fp(MAX_FIX_INT))
-      expect(await caller.divFix(MAX_FIX_INT.mul(170), fp(170)), 'MAX_FIX_INT*170 / 170').to.equal(fp(MAX_FIX_INT))
-      expect(await caller.divFix(MAX_INT192, fp('1e18')), '(MAX_INT-1)/1e18').to.equal(MAX_INT192)
-      expect(await caller.divFix(MAX_FIX_INT.sub(51), fp(1)), '(MAX_FIX_INT-51)/1').to.equal(fp(MAX_FIX_INT.sub(51)))
-
-      // TODO: add plenty of test cases that exercise the complicated path.
+      // For cases that exercise the complicated path, we need:
+      // 5.8e40 <= x < 5.8e76, fp(-3.14e39) <= y, result <= fp(3.14e39)
+      ;[
+        [MAX_FIX_INT, fp(1), fp(MAX_FIX_INT)],
+        [MAX_FIX_INT.sub(51), fp(1), fp(MAX_FIX_INT.sub(51))],
+        [MAX_FIX_INT.mul(173), fp(173), fp(MAX_FIX_INT)],
+        [MAX_INT192, fp('1e18'), MAX_INT192],
+        [neg(MIN_INT192), fp('-1e18'), MIN_INT192],
+        [bn('8e60'), fp('2e30'), fp('4e30')],
+        [bn('5e75'), fp('2.5e39'), fp('2e36')],
+        [bn('8e60'), fp('-2e30'), fp('4e30')],
+        [bn('5e75'), fp('-2.5e39'), fp('2e36')],
+      ].forEach(async ([x, y, result]) =>
+        expect(await caller.divFix(x, y), `divFix(${x}, ${y}) == ${result}`).to.equal(result)
+      )
     })
 
     it('fails when results fall outside its range', async () => {

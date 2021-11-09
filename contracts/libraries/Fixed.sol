@@ -96,7 +96,7 @@ function divFix(uint256 x, Fix y) pure returns (Fix) {
        return x * 1e36 / _y.
     */
     // If it's safe to do this operation the easy way, do it:
-    if(x < type(uint256).max/FIX_SCALE_SQ_U) {
+    if(x < uint256(type(int256).max/FIX_SCALE_SQ)) {
         return _safe_wrap(int256(x * FIX_SCALE_SQ_U) / _y);
     }
     /* If we're not in that safe range, there are still lots of situations where the output fits in
@@ -116,21 +116,22 @@ function divFix(uint256 x, Fix y) pure returns (Fix) {
        single zero per long divison step, we'll "bring down" 18 at a time.
     */
 
-                                                   // Each step overflows only if the result would overflow. Justifications follow:
+                                          // Each step overflows only if the result would overflow. Justifications follow:
 
-    uint256 q0 = x / div;                          // x/div fits in uint256
-    uint256 part0 = q0 * FIX_SCALE_SQ_U;    // part0 <= result, so fits in int192 if result does.
-    uint256 r0 = x % div;                          // x%div < div fits in uint192, so r0 fits in uint256
+    uint256 q0 = x / div;                 // x/div fits in uint256
+    uint256 part0 = q0 * FIX_SCALE_SQ_U;  // part0 <= result, so fits in int192 if result does
+    uint256 r0 = x % div;                 // x%div < div fits in uint192, so r0 fits in uint192
 
-    uint256 q1 = (r0*FIX_SCALE_U) / div;
-    uint256 part1 = q1 * FIX_SCALE_U;                // part1 <= result, so fits in int192 if result does.
-    uint256 r1 = (r0*FIX_SCALE_U) % div;             // r0 % div < div fits in uint192, so r1 fits in uint256
+    uint256 q1 = (r0*FIX_SCALE_U) / div;  // r0 in uint192 and 1e18 in uint64, so r0*1e18 in uint256
+    uint256 part1 = q1 * FIX_SCALE_U;     // part1 <= result, so fits in int192 if result does.
+    uint256 r1 = (r0*FIX_SCALE_U) % div;  // r0 % div < div fits in uint192, so r1*1e18 fits in uint256
 
-    uint256 q2 = r1 / div;                         // q2 <= result so fits in int192 if result does
+    uint256 q2 = (r1 * FIX_SCALE_U) / div;   // q2 <= result so fits in int192 if result does
 
     return _safe_wrap(int256(part0 + part1 + q2) * sign);
 
-    /* Abbreviate N == 1e18 (and N^2 == 1e36).
+    /* Let N == 1e18 (and N^2 == 1e36). Let's see that the above long-form division is correct:
+
        Claim: In arithmetic without overflow, q0*N^2 + q1*N + q2 = [x * 1e36 / div].
 
        Proof:
