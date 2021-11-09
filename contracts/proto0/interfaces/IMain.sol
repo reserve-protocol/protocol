@@ -60,7 +60,7 @@ struct Config {
 /// Tracks data for an issuance
 /// @param vault The vault the issuance is against
 /// @param amount {qTok} The quantity of RToken the issuance is for
-/// @param BUs {BU} The number of BUs that corresponded to `amount` at time of issuance
+/// @param BUs {qBU} The number of BUs that corresponded to `amount` at time of issuance
 /// @param deposits {qTok} The collateral token quantities that were used to pay for the issuance
 /// @param issuer The account issuing RToken
 /// @param blockAvailableAt {blockNumber} The block number at which the issuance can complete
