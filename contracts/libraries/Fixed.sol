@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity ^0.8.9;
+import "hardhat/console.sol";
 
 /// @title FixedPoint, a fixed-point arithmetic library defining the custom type Fix
 /// @author Matt Elder <matt.elder@reserve.org> and the Reserve Team <https://reserve.org>
@@ -90,7 +91,7 @@ function intToFix(int256 x) pure returns (Fix) {
  * all these other functions are similarly correct.
  */
 
-function divFix(uint256 x, Fix y) pure returns (Fix) {
+function divFix(uint256 x, Fix y) returns (Fix) { //TODO pure
     int256 _y = int256(Fix.unwrap(y));
     /* If we didn't have to worry about overflow or precision loss, we'd just do:
        return x * 1e36 / _y.
@@ -99,6 +100,7 @@ function divFix(uint256 x, Fix y) pure returns (Fix) {
     if(x < type(uint256).max/FIX_SCALE_SQ_U) {
         return _safe_wrap(int256(x * FIX_SCALE_SQ_U) / _y);
     }
+    console.log("  - divFix slow path");
 
     /* If we're not in that safe range, there are still lots of situations where the output fits in
      * a Fix, but (x * 1e36) does not fit in a uint256. For instance, x = 2**255; _y = 2**190. For
@@ -110,7 +112,7 @@ function divFix(uint256 x, Fix y) pure returns (Fix) {
 
     int256 sign = (_y < 0) ? int256(-1) : int256(1);  // sign = sign(_y)
     uint256 div = uint256(_y * sign);                 // div = abs(_y),
-
+    console.log("  - divFix div:", div);
     /* From starting conditions, we know that x in uint256, div in uint192, and 1e18 in uint64.
 
        We can't directly compute x * 1e18, because that might overflow a uint256. Instead,
@@ -129,6 +131,8 @@ function divFix(uint256 x, Fix y) pure returns (Fix) {
     uint256 r1 = (r0*FIX_SCALE_U) % div;             // r0 % div < div fits in uint192, so r1 fits in uint256
 
     uint256 q2 = r1 / div;                         // q2 <= result so fits in int192 if result does
+
+    console.log("  - divFix parts:", part0, part1, q2);
 
     return _safe_wrap(int256(part0 + part1 + q2) * sign);
 
@@ -178,9 +182,11 @@ library FixLib {
     /// Round this Fix to the nearest int. If equidistant to both
     /// adjacent ints, round up, away from zero.
     function round(Fix x) internal pure returns (int192) {
-        int192 x_ = Fix.unwrap(x);
-        int192 rounding_adjustment = x_ >= 0 ? FIX_SCALE/2 : -FIX_SCALE/2;
-        return (x_ + rounding_adjustment) / FIX_SCALE;
+        int256 x_ = Fix.unwrap(x);
+        int256 adjustment = x_ >= 0 ? FIX_SCALE/2 : -FIX_SCALE/2;
+        int256 rounded = (x_ + adjustment) / FIX_SCALE;
+        if (rounded < type(int192).min || type(int192).max < rounded) revert IntOutOfBounds(rounded);
+        return int192(rounded);
     }
 
     /// Add a Fix to this Fix.
@@ -224,7 +230,7 @@ library FixLib {
     /// Round truncated values to the nearest available value. 5e-19 rounds away from zero.
     function mul(Fix x, Fix y) internal pure returns (Fix) {
         int256 naive_prod = int256(Fix.unwrap(x)) * int256(Fix.unwrap(y));
-        int256 rounding_adjustment = ((naive_prod >= 0 ? int8(1) : int8(-1)) * FIX_SCALE) / 2;
+        int256 rounding_adjustment = naive_prod >= 0 ? FIX_SCALE/2 : -FIX_SCALE/2;
         return _safe_wrap((naive_prod + rounding_adjustment) / FIX_SCALE);
     }
 
