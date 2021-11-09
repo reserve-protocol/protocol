@@ -51,7 +51,8 @@ contract FurnaceP0 is IFurnace {
     function doBurn() external override {
         uint256 amount = _burnable(block.timestamp);
         if (amount > 0) {
-            require(rToken.burn(address(this), amount), "should burn from self successfully");
+            bool success = rToken.burn(address(this), amount);
+            require(success, "should burn from self successfully");
             totalBurnt += amount;
             emit Burn(amount);
         }
