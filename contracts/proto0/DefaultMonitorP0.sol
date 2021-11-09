@@ -14,7 +14,7 @@ import "contracts/libraries/Fixed.sol";
  */
 contract DefaultMonitorP0 is Context, IDefaultMonitor {
     using FixLib for Fix;
-    mapping(address => Fix) internal _ratesUSD; // {attoUSD/qtok}
+    mapping(address => Fix) internal _lastRatesUSD; // {attoUSD/qtok}
 
     IMain public main;
 
@@ -31,11 +31,11 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         uint256 count;
         for (uint256 i = 0; i < vault.size(); i++) {
             IAsset a = vault.assetAt(i);
-            if (a.rateUSD().lt(_ratesUSD[address(a)])) {
+            if (a.rateUSD().lt(_lastRatesUSD[address(a)])) {
                 vaultAssets[count] = a;
                 count++;
             }
-            _ratesUSD[address(a)] = a.rateUSD();
+            _lastRatesUSD[address(a)] = a.rateUSD();
         }
         defaulting = new IAsset[](count);
         for (uint256 i = 0; i < count; i++) {
