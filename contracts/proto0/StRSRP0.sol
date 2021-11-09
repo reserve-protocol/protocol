@@ -206,8 +206,7 @@ contract StRSRP0 is IStRSR, Context {
         // Process pending withdrawals
         processWithdrawals();
 
-        uint256 senderBalance = _balances[sender];
-        require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
+        require(_balances[sender] >= amount, "ERC20: transfer amount exceeds balance");
         _balances[sender] -= amount;
         _balances[recipient] += amount;
         _accounts.add(recipient);
