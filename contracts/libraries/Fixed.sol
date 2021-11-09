@@ -178,8 +178,8 @@ library FixLib {
     /// Similar to a bitshift but in base 10
     /// Equivalent to multiplying `x` by `10**decimal`
     function shiftLeft(Fix x, int8 decimals) internal pure returns (Fix) {
-        int256 multiplier = decimals >= 0 ? int256(10**uint8(decimals)) : int256(10**uint8(-decimals));
-        return _safe_wrap(Fix.unwrap(x) * multiplier);
+        int256 coeff = decimals >= 0 ? int256(10**uint8(decimals)) : int256(10**uint8(-decimals));
+        return _safe_wrap(decimals >= 0 ? Fix.unwrap(x) * coeff : Fix.unwrap(x) / coeff);
     }
 
     /// Round this Fix to the nearest int. If equidistant to both
