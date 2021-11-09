@@ -33,14 +33,14 @@ contract ATokenAssetP0 is AssetP0 {
 
     /// @return {qFiatTok/qTok}
     function rateFiatcoin() public view override returns (Fix) {
-        uint256 rateInRAYs = IStaticAToken(_erc20).rate(); // {fiatTok/tok} * 1e27
+        uint256 rateInRAYs = IStaticAToken(_erc20).rate(); // {ray fiatTok/tok}
 
         // Unit conversions:
         //   1{fiatTok} = 10**fiatcoinDecimals(){qFiatTok}
         //   1{tok} = 10**decimals(){qTok}
-        //   1 = 10**27{RAY}
+        //   1 = 1e27 {ray}
 
-        // {qFiatTok/qTok} = {fiatTok/tok} * 1e27 / 1e27 * {qFiatTok/fiatTok} / {qTok/tok}
+        // {qFiatTok/qTok} = {ray fiatTok/tok} / {ray} * {qFiatTok/fiatTok} / {qTok/tok}
         // result = rateInRAYs / 1e27 * 10**fiatcoinDecimals() / 10**decimals();
 
         int128 shiftLeft = -27 + int8(fiatcoinDecimals()) - int8(decimals());
