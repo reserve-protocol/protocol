@@ -618,7 +618,7 @@ describe('RToken contract', function () {
       expect(await rToken.balanceOf(owner.address)).to.equal(amount)
       expect(await rToken.totalSupply()).to.equal(amount)
       const currentBlock = (await ethers.provider.getBlock('latest')).number
-      expect(currentBlock).to.equal(bn(mintingBlock.toString()).add(blocks))
+      expect(currentBlock).to.equal(bn(mintingBlock).add(blocks))
     })
 
     it('Should process Mintings in multiple attempts (3 blocks)', async function () {
