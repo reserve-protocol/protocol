@@ -6,16 +6,16 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { CTokenMock } from '../../typechain/CTokenMock'
-import { AssetP0 } from '../../typechain/AssetP0'
-import { ATokenAssetP0 } from '../../typechain/ATokenAssetP0'
-import { CTokenAssetP0 } from '../../typechain/CTokenAssetP0'
+import { CollateralP0 } from '../../typechain/CollateralP0'
+import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
+import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
 import { MainMockP0 } from '../../typechain/MainMockP0'
 import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
 import { USDCMock } from '../../typechain/USDCMock'
 
-describe('AssetP0 contracts', () => {
+describe('Assets', () => {
   let owner: SignerWithAddress
 
   // Tokens
@@ -39,10 +39,10 @@ describe('AssetP0 contracts', () => {
   let RSRAssetFactory: ContractFactory
   let AAVEAssetFactory: ContractFactory
   let COMPAssetFactory: ContractFactory
-  let tokenAsset: AssetP0
-  let usdcAsset: AssetP0
-  let aTokenAsset: ATokenAssetP0
-  let cTokenAsset: CTokenAssetP0
+  let tokenAsset: CollateralP0
+  let usdcAsset: CollateralP0
+  let aTokenAsset: ATokenCollateralP0
+  let cTokenAsset: CTokenCollateralP0
   let rsrAsset: RSRAssetP0
   let compAsset: COMPAssetP0
   let aaveAsset: AAVEAssetP0
@@ -69,15 +69,15 @@ describe('AssetP0 contracts', () => {
     aave = <ERC20Mock>await ERC20.deploy('AAVE Token', 'AAVE')
 
     // Deploy Assets
-    AssetFactory = await ethers.getContractFactory('AssetP0')
-    tokenAsset = <AssetP0>await AssetFactory.deploy(token.address)
-    usdcAsset = <AssetP0>await AssetFactory.deploy(usdc.address)
+    AssetFactory = await ethers.getContractFactory('CollateralP0')
+    tokenAsset = <CollateralP0>await AssetFactory.deploy(token.address)
+    usdcAsset = <CollateralP0>await AssetFactory.deploy(usdc.address)
 
-    AAssetFactory = await ethers.getContractFactory('ATokenAssetP0')
-    aTokenAsset = <ATokenAssetP0>await AAssetFactory.deploy(aToken.address)
+    AAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
+    aTokenAsset = <ATokenCollateralP0>await AAssetFactory.deploy(aToken.address)
 
-    CAssetFactory = await ethers.getContractFactory('CTokenAssetP0')
-    cTokenAsset = <CTokenAssetP0>await CAssetFactory.deploy(cToken.address)
+    CAssetFactory = await ethers.getContractFactory('CTokenCollateralP0')
+    cTokenAsset = <CTokenCollateralP0>await CAssetFactory.deploy(cToken.address)
 
     RSRAssetFactory = await ethers.getContractFactory('RSRAssetP0')
     rsrAsset = <RSRAssetP0>await RSRAssetFactory.deploy(rsr.address)
@@ -95,8 +95,6 @@ describe('AssetP0 contracts', () => {
 
   describe('Deployment', () => {
     it('Deployment should setup assets correctly', async () => {
-      // TODO: Add `rateUSD` for top 4
-
       // Fiat Token Asset
       expect(await tokenAsset.erc20()).to.equal(token.address)
       expect(await tokenAsset.fiatcoin()).to.equal(token.address)
@@ -147,39 +145,21 @@ describe('AssetP0 contracts', () => {
 
       // RSR Asset
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
-      expect(await rsrAsset.fiatcoin()).to.equal(rsr.address)
-      expect(await rsrAsset.isFiatcoin()).to.equal(false)
       expect(await rsrAsset.decimals()).to.equal(await rsr.decimals())
       expect(await rsrAsset.decimals()).to.equal(18)
-      expect(await rsrAsset.fiatcoinDecimals()).to.equal(await rsr.decimals())
       expect(await rsrAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
-      await expect(rsrAsset.callStatic.rateFiatcoin()).to.be.reverted
-      await expect(rsrAsset.callStatic.rateUSD()).to.be.reverted
-      await expect(rsrAsset.fiatcoinPriceUSD(main.address)).to.be.reverted
 
       // COMP Token
       expect(await compAsset.erc20()).to.equal(comp.address)
-      expect(await compAsset.fiatcoin()).to.equal(comp.address)
-      expect(await compAsset.isFiatcoin()).to.equal(false)
       expect(await compAsset.decimals()).to.equal(await comp.decimals())
       expect(await compAsset.decimals()).to.equal(18)
-      expect(await compAsset.fiatcoinDecimals()).to.equal(await comp.decimals())
       expect(await compAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
-      await expect(compAsset.callStatic.rateFiatcoin()).to.be.reverted
-      await expect(compAsset.callStatic.rateUSD()).to.be.reverted
-      await expect(compAsset.fiatcoinPriceUSD(main.address)).to.be.reverted
 
       // AAVE Token
       expect(await aaveAsset.erc20()).to.equal(aave.address)
-      expect(await aaveAsset.fiatcoin()).to.equal(aave.address)
-      expect(await aaveAsset.isFiatcoin()).to.equal(false)
       expect(await aaveAsset.decimals()).to.equal(await aave.decimals())
       expect(await aaveAsset.decimals()).to.equal(18)
-      expect(await aaveAsset.fiatcoinDecimals()).to.equal(await aave.decimals())
       expect(await aaveAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
-      await expect(aaveAsset.callStatic.rateFiatcoin()).to.be.reverted
-      await expect(aaveAsset.callStatic.rateUSD()).to.be.reverted
-      await expect(aaveAsset.fiatcoinPriceUSD(main.address)).to.be.reverted
     })
   })
 })

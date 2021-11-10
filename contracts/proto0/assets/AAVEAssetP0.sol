@@ -1,24 +1,20 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "contracts/proto0/interfaces/IAsset.sol";
 import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/libraries/Fixed.sol";
 import "contracts/proto0/libraries/Oracle.sol";
-import "./AssetP0.sol";
+import "contracts/libraries/Fixed.sol";
 
-contract AAVEAssetP0 is AssetP0 {
+contract AAVEAssetP0 is IAsset {
     using FixLib for Fix;
 
-    constructor(address erc20_) AssetP0(erc20_) {}
+    address internal immutable _erc20;
 
-    function rateFiatcoin() public override returns (Fix) {
-        assert(false);
-        return FIX_ZERO;
-    }
-
-    function rateUSD() public override returns (Fix) {
-        assert(false);
-        return FIX_ZERO;
+    constructor(address erc20_) {
+        _erc20 = erc20_;
     }
 
     // @return {attoUSD/qAAVE}
@@ -26,12 +22,13 @@ contract AAVEAssetP0 is AssetP0 {
         return main.consultOracle(Oracle.Source.AAVE, _erc20);
     }
 
-    function fiatcoinPriceUSD(IMain) public view override returns (Fix) {
-        assert(false);
-        return FIX_ZERO;
+    /// @return The ERC20 contract of the central token
+    function erc20() public view virtual override returns (IERC20) {
+        return IERC20(_erc20);
     }
 
-    function isFiatcoin() external pure override returns (bool) {
-        return false;
+    /// @return The number of decimals in the central token
+    function decimals() public view override returns (uint8) {
+        return IERC20Metadata(_erc20).decimals();
     }
 }

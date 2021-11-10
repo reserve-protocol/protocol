@@ -25,19 +25,19 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
     /// Checks for hard default in a vault by inspecting the redemption rates of collateral tokens
     /// @param vault The vault to inspect
     /// @return defaulting All hard-defaulting tokens
-    function checkForHardDefault(IVault vault) external override returns (IAsset[] memory defaulting) {
+    function checkForHardDefault(IVault vault) external override returns (ICollateral[] memory defaulting) {
         require(_msgSender() == address(main), "main only");
-        IAsset[] memory vaultAssets = new IAsset[](vault.size());
+        ICollateral[] memory vaultAssets = new ICollateral[](vault.size());
         uint256 count;
         for (uint256 i = 0; i < vault.size(); i++) {
-            IAsset a = vault.assetAt(i);
+            ICollateral a = vault.collateralAt(i);
             if (a.rateUSD().lt(_lastRatesUSD[address(a)])) {
                 vaultAssets[count] = a;
                 count++;
             }
             _lastRatesUSD[address(a)] = a.rateUSD();
         }
-        defaulting = new IAsset[](count);
+        defaulting = new ICollateral[](count);
         for (uint256 i = 0; i < count; i++) {
             defaulting[i] = vaultAssets[i];
         }
@@ -47,24 +47,24 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
     /// @param vault The vault to inspect
     /// @param fiatcoins An array of addresses of fiatcoin assets to use for median USD calculation
     /// @return defaulting All soft-defaulting tokens
-    function checkForSoftDefault(IVault vault, IAsset[] memory fiatcoins)
+    function checkForSoftDefault(IVault vault, ICollateral[] memory fiatcoins)
         public
         view
         override
-        returns (IAsset[] memory defaulting)
+        returns (ICollateral[] memory defaulting)
     {
         Fix defaultThreshold = _defaultThreshold(fiatcoins); // {attoUSD/qTok}
-        IAsset[] memory vaultAssets = new IAsset[](vault.size());
+        ICollateral[] memory vaultAssets = new ICollateral[](vault.size());
         uint256 count;
         for (uint256 i = 0; i < vaultAssets.length; i++) {
-            IAsset a = vault.assetAt(i);
+            ICollateral a = vault.collateralAt(i);
 
             if (a.fiatcoinPriceUSD(main).lt(defaultThreshold)) {
                 vaultAssets[count] = a;
                 count++;
             }
         }
-        defaulting = new IAsset[](count);
+        defaulting = new ICollateral[](count);
         for (uint256 i = 0; i < count; i++) {
             defaulting[i] = vaultAssets[i];
         }
@@ -79,9 +79,9 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         address[] memory approvedCollateral,
         address[] memory fiatcoins
     ) external override returns (IVault) {
-        IAsset[] memory fiatcoinAssets = new IAsset[](fiatcoins.length);
+        ICollateral[] memory fiatcoinAssets = new ICollateral[](fiatcoins.length);
         for (uint256 i = 0; i < fiatcoins.length; i++) {
-            fiatcoinAssets[i] = IAsset(fiatcoins[i]);
+            fiatcoinAssets[i] = ICollateral(fiatcoins[i]);
         }
 
         Fix maxRate;
@@ -111,7 +111,7 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
     }
 
     /// @return {attoUSD/qTok} The USD price at which a fiatcoin can be said to be defaulting
-    function _defaultThreshold(IAsset[] memory fiatcoins) internal view returns (Fix) {
+    function _defaultThreshold(ICollateral[] memory fiatcoins) internal view returns (Fix) {
         // Collect prices
         Fix[] memory prices = new Fix[](fiatcoins.length);
         for (uint256 i = 0; i < fiatcoins.length; i++) {

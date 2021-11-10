@@ -3,13 +3,14 @@ pragma solidity 0.8.9;
 
 import "contracts/proto0/interfaces/IAsset.sol";
 import "contracts/proto0/interfaces/IMain.sol";
+import "contracts/libraries/Fixed.sol";
 
-/// @param assets Mapping from an incremental index to asset
+/// @param collateral Mapping from an incremental index to asset
 /// @param quantities {qTok/BU}
-/// @param size The number of assets in the basket
+/// @param size The number of collateral in the basket
 struct Basket {
-    mapping(uint256 => IAsset) assets; // index -> asset
-    mapping(IAsset => uint256) quantities; // {qTok/BU}
+    mapping(uint256 => ICollateral) collateral; // index -> asset
+    mapping(ICollateral => uint256) quantities; // {qTok/BU}
     uint256 size;
 }
 
@@ -36,7 +37,7 @@ interface IVault {
     /// Emitted whenever rewards are claimed
     /// @param compAmount {qCOMP} The amount of COMP claimed
     /// @param aaveAmount {qAAVE} The amount of COMP claimed
-    event RewardsClaimediiiiiiii(uint256 indexed compAmount, uint256 indexed aaveAmount);
+    event RewardsClaimed(uint256 indexed compAmount, uint256 indexed aaveAmount);
 
     //
 
@@ -69,14 +70,14 @@ interface IVault {
     /// @return {qTok} A list of token quantities required in order to issue `BUs`, in the order of the basket.
     function tokenAmounts(uint256 BUs) external view returns (uint256[] memory);
 
-    /// @return Whether the vault is made up only of collateral in `assets`
-    function containsOnly(address[] memory assets) external view returns (bool);
+    /// @return Whether the vault is made up only of collateral in `collateral`
+    function containsOnly(address[] memory collateral) external view returns (bool);
 
     /// @return {qBU} The maximum number of BUs the caller can issue
     function maxIssuable(address issuer) external view returns (uint256);
 
-    /// @return The asset at `index`
-    function assetAt(uint256 index) external view returns (IAsset);
+    /// @return The collateral asset at `index`
+    function collateralAt(uint256 index) external view returns (ICollateral);
 
     /// @return The size of the basket
     function size() external view returns (uint256);
@@ -85,7 +86,7 @@ interface IVault {
     function basketUnits(address account) external view returns (uint256);
 
     /// @return {qTok/BU} The quantity of tokens of `asset` required per whole BU
-    function quantity(IAsset asset) external view returns (uint256);
+    function quantity(ICollateral asset) external view returns (uint256);
 
     /// @return A list of eligible backup vaults
     function getBackups() external view returns (IVault[] memory);

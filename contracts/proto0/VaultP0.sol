@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/proto0/assets/AAVEAssetP0.sol";
-import "contracts/proto0/assets/ATokenAssetP0.sol";
 import "contracts/proto0/interfaces/IAsset.sol";
 import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/proto0/interfaces/IVault.sol";
@@ -38,17 +36,17 @@ contract VaultP0 is IVault, Ownable {
     // {BU} = 1e18{qBU}
 
     constructor(
-        IAsset[] memory assets,
+        ICollateral[] memory collateral,
         uint256[] memory quantities, // {qTok/BU}
         IVault[] memory backupVaults
     ) {
-        require(assets.length == quantities.length, "arrays must match in length");
+        require(collateral.length == quantities.length, "arrays must match in length");
 
         // Set default immutable basket
-        _basket.size = assets.length;
+        _basket.size = collateral.length;
         for (uint256 i = 0; i < _basket.size; i++) {
-            _basket.assets[i] = assets[i];
-            _basket.quantities[assets[i]] = quantities[i];
+            _basket.collateral[i] = collateral[i];
+            _basket.quantities[collateral[i]] = quantities[i];
         }
 
         backups = backupVaults;
@@ -64,7 +62,7 @@ contract VaultP0 is IVault, Ownable {
         uint256[] memory amounts = tokenAmounts(BUs);
 
         for (uint256 i = 0; i < _basket.size; i++) {
-            _basket.assets[i].erc20().safeTransferFrom(_msgSender(), address(this), amounts[i]);
+            _basket.collateral[i].erc20().safeTransferFrom(_msgSender(), address(this), amounts[i]);
         }
 
         basketUnits[to] += BUs;
@@ -86,7 +84,7 @@ contract VaultP0 is IVault, Ownable {
         totalUnits -= BUs;
 
         for (uint256 i = 0; i < _basket.size; i++) {
-            _basket.assets[i].erc20().safeTransfer(to, amounts[i]);
+            _basket.collateral[i].erc20().safeTransfer(to, amounts[i]);
         }
         emit BUsRedeemed(to, _msgSender(), BUs);
     }
@@ -118,7 +116,7 @@ contract VaultP0 is IVault, Ownable {
         main.comptroller().claimComp(address(this));
         for (uint256 i = 0; i < _basket.size; i++) {
             // Only aTokens need to be claimed at the asset level
-            _basket.assets[i].claimRewards();
+            _basket.collateral[i].claimRewards();
         }
 
         // Sweep
@@ -132,7 +130,7 @@ contract VaultP0 is IVault, Ownable {
         if (aaveBal > 0) {
             aave.safeTransfer(address(main.manager()), aaveBal);
         }
-        emit RewardsClaimediiiiiiii(compBal, aaveBal);
+        emit RewardsClaimed(compBal, aaveBal);
     }
 
     /// @param BUs {qBU}
@@ -141,31 +139,31 @@ contract VaultP0 is IVault, Ownable {
         amounts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
             // {qTok} = {qTok/BU} * {qBU} / {qBU/BU}
-            amounts[i] = toFix(BUs).divu(1e18).mulu(_basket.quantities[_basket.assets[i]]).toUint();
+            amounts[i] = toFix(BUs).divu(1e18).mulu(_basket.quantities[_basket.collateral[i]]).toUint();
         }
     }
 
-    /// @return {qTok/BU} The quantity of tokens of `asset` required per whole BU
-    function quantity(IAsset asset) external view override returns (uint256) {
-        return _basket.quantities[asset];
+    /// @return {qTok/BU} The quantity of tokens of `collateral` required per whole BU
+    function quantity(ICollateral collateral) external view override returns (uint256) {
+        return _basket.quantities[collateral];
     }
 
     /// @return sum {attoUSD/BU} The attoUSD value of 1 BU if all fiatcoins hold peg
     function basketRate() external override returns (Fix sum) {
         for (uint256 i = 0; i < _basket.size; i++) {
-            IAsset a = _basket.assets[i];
+            ICollateral a = _basket.collateral[i];
 
             // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
             sum = sum.plus(a.rateUSD().mulu(_basket.quantities[a]));
         }
     }
 
-    /// @return Whether the vault is made up only of collateral in `assets`
-    function containsOnly(address[] memory assets) external view override returns (bool) {
+    /// @return Whether the vault is made up only of collateral in `collateral`
+    function containsOnly(address[] memory collateral) external view override returns (bool) {
         for (uint256 i = 0; i < _basket.size; i++) {
             bool found = false;
-            for (uint256 j = 0; j < assets.length; j++) {
-                if (address(_basket.assets[i]) == assets[j]) {
+            for (uint256 j = 0; j < collateral.length; j++) {
+                if (address(_basket.collateral[i]) == collateral[j]) {
                     found = true;
                 }
             }
@@ -181,7 +179,9 @@ contract VaultP0 is IVault, Ownable {
         Fix min = FIX_MAX;
         for (uint256 i = 0; i < _basket.size; i++) {
             // {BU} = {qTok} / {qTok/BU}
-            Fix BUs = toFix(_basket.assets[i].erc20().balanceOf(issuer)).divu(_basket.quantities[_basket.assets[i]]);
+            Fix BUs = toFix(_basket.collateral[i].erc20().balanceOf(issuer)).divu(
+                _basket.quantities[_basket.collateral[i]]
+            );
             if (BUs.lt(min)) {
                 min = BUs;
             }
@@ -189,9 +189,9 @@ contract VaultP0 is IVault, Ownable {
         return min.toUint();
     }
 
-    /// @return The asset at `index`
-    function assetAt(uint256 index) external view override returns (IAsset) {
-        return _basket.assets[index];
+    /// @return The collateral asset at `index`
+    function collateralAt(uint256 index) external view override returns (ICollateral) {
+        return _basket.collateral[index];
     }
 
     /// @return The size of the basket

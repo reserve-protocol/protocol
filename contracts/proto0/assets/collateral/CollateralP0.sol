@@ -5,14 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/proto0/interfaces/IAsset.sol";
 import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/libraries/Fixed.sol";
 import "contracts/proto0/libraries/Oracle.sol";
+import "contracts/libraries/Fixed.sol";
 
 /**
- * @title AssetP0
+ * @title CollateralP0
  * @notice A vanilla asset such as a fiatcoin, to be extended by more complex assets such as cTokens.
  */
-contract AssetP0 is IAsset {
+contract CollateralP0 is ICollateral {
     using FixLib for Fix;
 
     address internal immutable _erc20;
@@ -36,6 +36,12 @@ contract AssetP0 is IAsset {
         return toFixWithShift(1e18, shiftLeft);
     }
 
+    /// @return {attoUSD/qTok} The price in attoUSD of the asset's smallest unit
+    function priceUSD(IMain main) public virtual override returns (Fix) {
+        // {attoUSD/qFiatTok} * {qFiatTok/qTok}
+        return fiatcoinPriceUSD(main).mul(rateFiatcoin());
+    }
+
     /// @return The ERC20 contract of the central token
     function erc20() public view virtual override returns (IERC20) {
         return IERC20(_erc20);
@@ -48,23 +54,17 @@ contract AssetP0 is IAsset {
 
     /// @return The number of decimals in the nested fiatcoin contract (or for the erc20 itself if it is a fiatcoin)
     function fiatcoinDecimals() public view override returns (uint8) {
-        return IERC20Metadata(fiatcoin()).decimals();
+        return IERC20Metadata(address(fiatcoin())).decimals();
     }
 
     /// @return The fiatcoin underlying the ERC20, or the erc20 itself if it is a fiatcoin
-    function fiatcoin() public view virtual override returns (address) {
-        return _erc20;
-    }
-
-    /// @return {attoUSD/qTok} The price in attoUSD of the asset's smallest unit
-    function priceUSD(IMain main) public virtual override returns (Fix) {
-        // {attoUSD/qFiatTok} * {qFiatTok/qTok}
-        return fiatcoinPriceUSD(main).mul(rateFiatcoin());
+    function fiatcoin() public view virtual override returns (IERC20) {
+        return IERC20(_erc20);
     }
 
     /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
     function fiatcoinPriceUSD(IMain main) public view virtual override returns (Fix) {
-        return main.consultOracle(Oracle.Source.AAVE, fiatcoin());
+        return main.consultOracle(Oracle.Source.AAVE, address(fiatcoin()));
     }
 
     /// @return Whether `_erc20` is a fiatcoin

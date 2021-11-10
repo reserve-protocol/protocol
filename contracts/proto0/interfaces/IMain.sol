@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../libraries/Oracle.sol";
+import "contracts/proto0/libraries/Oracle.sol";
 import "./IAsset.sol";
 import "./IAssetManager.sol";
 import "./IDefaultMonitor.sol";

@@ -4,7 +4,7 @@ import { bn, fp } from '../../../common/numbers'
 import { expectInReceipt } from '../../../common/events'
 import { getLatestBlockTimestamp } from '../../utils/time'
 import { ERC20Mock } from '../../../typechain/ERC20Mock'
-import { AssetP0 } from '../../../typechain/AssetP0'
+import { CollateralP0 } from '../../../typechain/CollateralP0'
 import { RSRAssetP0 } from '../../../typechain/RSRAssetP0'
 import { COMPAssetP0 } from '../../../typechain/COMPAssetP0'
 import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
@@ -116,11 +116,11 @@ interface VaultFixture {
   token1: ERC20Mock
   token2: ERC20Mock
   token3: ERC20Mock
-  asset0: AssetP0
-  asset1: AssetP0
-  asset2: AssetP0
-  asset3: AssetP0
-  assets: string[]
+  collateral0: CollateralP0
+  collateral1: CollateralP0
+  collateral2: CollateralP0
+  collateral3: CollateralP0
+  collateral: string[]
   vault: VaultP0
 }
 
@@ -139,19 +139,19 @@ async function vaultFixture(): Promise<VaultFixture> {
   const qtyDouble: BigNumber = bn('1e18').mul(2)
 
   // Set Collateral Assets and Quantities
-  const AssetFactory: ContractFactory = await ethers.getContractFactory('AssetP0')
-  const asset0: AssetP0 = <AssetP0>await AssetFactory.deploy(token0.address, token0.decimals())
-  const asset1: AssetP0 = <AssetP0>await AssetFactory.deploy(token1.address, token1.decimals())
-  const asset2: AssetP0 = <AssetP0>await AssetFactory.deploy(token2.address, token2.decimals())
-  const asset3: AssetP0 = <AssetP0>await AssetFactory.deploy(token3.address, token3.decimals())
+  const AssetFactory: ContractFactory = await ethers.getContractFactory('CollateralP0')
+  const collateral0: CollateralP0 = <CollateralP0>await AssetFactory.deploy(token0.address, token0.decimals())
+  const collateral1: CollateralP0 = <CollateralP0>await AssetFactory.deploy(token1.address, token1.decimals())
+  const collateral2: CollateralP0 = <CollateralP0>await AssetFactory.deploy(token2.address, token2.decimals())
+  const collateral3: CollateralP0 = <CollateralP0>await AssetFactory.deploy(token3.address, token3.decimals())
 
-  const assets: string[] = [asset0.address, asset1.address, asset2.address, asset3.address]
+  const collateral: string[] = [collateral0.address, collateral1.address, collateral2.address, collateral3.address]
   const quantities: BigNumber[] = [qtyHalf, qtyHalf, qtyThird, qtyDouble]
 
   const VaultFactory: ContractFactory = await ethers.getContractFactory('VaultP0')
-  const vault: VaultP0 = <VaultP0>await VaultFactory.deploy(assets, quantities, [])
+  const vault: VaultP0 = <VaultP0>await VaultFactory.deploy(collateral, quantities, [])
 
-  return { token0, token1, token2, token3, asset0, asset1, asset2, asset3, assets, vault }
+  return { token0, token1, token2, token3, collateral0, collateral1, collateral2, collateral3, collateral, vault }
 }
 
 type RSRAndCompAaveAndVaultFixture = RSRFixture & COMPAAVEFixture & VaultFixture
@@ -169,7 +169,8 @@ interface DeployerFixture extends RSRAndCompAaveAndVaultFixture {
 
 export const deployerFixture: Fixture<DeployerFixture> = async function ([owner]): Promise<DeployerFixture> {
   const { rsr, rsrAsset } = await rsrFixture()
-  const { token0, token1, token2, token3, asset0, asset1, asset2, asset3, assets, vault } = await vaultFixture()
+  const { token0, token1, token2, token3, collateral0, collateral1, collateral2, collateral3, collateral, vault } =
+    await vaultFixture()
   const { weth, compToken, compAsset, compoundOracle, compoundMock, aaveToken, aaveAsset, aaveOracle, aaveMock } =
     await compAaveFixture()
 
@@ -230,7 +231,7 @@ export const deployerFixture: Fixture<DeployerFixture> = async function ([owner]
       compoundMock.address,
       aaveMock.address,
       paramsAssets,
-      assets
+      collateral
     )
   ).wait()
 
@@ -264,11 +265,11 @@ export const deployerFixture: Fixture<DeployerFixture> = async function ([owner]
     token1,
     token2,
     token3,
-    asset0,
-    asset1,
-    asset2,
-    asset3,
-    assets,
+    collateral0,
+    collateral1,
+    collateral2,
+    collateral3,
+    collateral,
     vault,
     config,
     deployer,

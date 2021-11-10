@@ -40,7 +40,6 @@ library Auction {
     /// @param buyAmount {qBuyTok} The quantity of the token bought
     event AuctionEnded(address indexed sell, address indexed buy, uint256 sellAmount, uint256 buyAmount, Fate fate);
 
-
     struct Info {
         IAsset sell;
         IAsset buy;
@@ -52,17 +51,10 @@ library Auction {
         bool isOpen;
     }
 
-
     function open(Auction.Info storage self) internal {
         // TODO: batchAuction.initiateAuction()
         self.isOpen = true;
-        emit AuctionStarted(
-            address(self.sell),
-            address(self.buy),
-            self.sellAmount,
-            self.minBuyAmount,
-            self.fate
-        );
+        emit AuctionStarted(address(self.sell), address(self.buy), self.sellAmount, self.minBuyAmount, self.fate);
     }
 
     /// Closes out the auction and sends bought token to its fate

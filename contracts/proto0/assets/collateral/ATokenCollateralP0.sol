@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "./AssetP0.sol";
+import "./CollateralP0.sol";
 
 // https://github.com/aave/protocol-v2/blob/feat-atoken-wrapper-liquidity-mining/contracts/protocol/tokenization/StaticATokenLM.sol
 interface IStaticAToken is IERC20 {
@@ -21,10 +22,10 @@ interface AToken {
 
 /// @dev In Aave the number of decimals of the staticAToken is always 18, but the underlying rebasing
 /// AToken will have the same number of decimals as its fiatcoin.
-contract ATokenAssetP0 is AssetP0 {
+contract ATokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
 
-    constructor(address erc20_) AssetP0(erc20_) {}
+    constructor(address erc20_) CollateralP0(erc20_) {}
 
     /// Claims any rewards such as COMP/AAVE for the asset
     function claimRewards() external override {
@@ -59,8 +60,8 @@ contract ATokenAssetP0 is AssetP0 {
         return toFixWithShift(rateInRAYs, shiftLeft);
     }
 
-    function fiatcoin() public view override returns (address) {
-        return IStaticAToken(_erc20).ATOKEN().UNDERLYING_ASSET_ADDRESS();
+    function fiatcoin() public view override returns (IERC20) {
+        return IERC20(IStaticAToken(_erc20).ATOKEN().UNDERLYING_ASSET_ADDRESS());
     }
 
     function isFiatcoin() external pure override returns (bool) {

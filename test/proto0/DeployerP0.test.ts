@@ -29,9 +29,9 @@ describe('DeployerP0 contract', () => {
   // Deployer contract
   let deployer: DeployerP0
 
-  // Vault and Assets
+  // Vault and Collateral
   let vault: VaultP0
-  let assets: string[]
+  let collateral: string[]
 
   // RSR
   let rsr: ERC20Mock
@@ -73,7 +73,7 @@ describe('DeployerP0 contract', () => {
       aaveAsset,
       compoundMock,
       aaveMock,
-      assets,
+      collateral,
       vault,
       config,
       deployer,
@@ -135,8 +135,8 @@ describe('DeployerP0 contract', () => {
       expect(await rsr.allowance(assetManager.address, stRSR.address)).to.equal(MAX_UINT256)
     })
 
-    it('Should revert if Vault has unapproved assets', async () => {
-      const approvedAssets = [assets[0]]
+    it('Should revert if Vault has unapproved collateral', async () => {
+      const approvedCollateral = [collateral[0]]
       const paramsAssets: IParamsAssets = {
         rsrAsset: rsrAsset.address,
         compAsset: compAsset.address,
@@ -154,9 +154,9 @@ describe('DeployerP0 contract', () => {
           compoundMock.address,
           aaveMock.address,
           paramsAssets,
-          approvedAssets
+          approvedCollateral
         )
-      ).to.be.revertedWith('UnapprovedAsset()')
+      ).to.be.revertedWith('UnapprovedCollateral()')
     })
   })
 })
