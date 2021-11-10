@@ -11,7 +11,7 @@ interface IComptroller {
 }
 
 interface ICompoundOracle {
-    /// @return {USD_q6} The USD price of the corresponding token with 6 decimals.
+    /// @return {microUSD} The USD price of the corresponding token with 6 decimals.
     function price(string memory symbol) external view returns (uint256);
 }
 
@@ -45,6 +45,7 @@ library Oracle {
         IAaveLendingPool aave;
     }
 
+    // @return {attoUSD/qTok} The price in attoUSD of a `qTok` on oracle `source`
     function consult(
         Oracle.Info storage self,
         Source source,
@@ -58,10 +59,10 @@ library Oracle {
             assert(p > 0);
 
             Fix inETH = toFix(p); // {qETH/tok}
-            Fix ethNorm = toFix(aaveOracle.getAssetPrice(aaveOracle.WETH())); // {qETH/wholeETH}
-            Fix ethInUsd = toFix(self.compound.oracle().price("ETH")).divu(1e6); // {microUSD/wholeETH} / {microUSD/USD}
+            Fix ethNorm = toFix(aaveOracle.getAssetPrice(aaveOracle.WETH())); // {qETH/ETH}
+            Fix ethInUsd = toFix(self.compound.oracle().price("ETH")).divu(1e6); // {microUSD/ETH} / {microUSD/USD}
 
-            // ({qETH/tok} * {USD/wholeETH} * {attoUSD/USD}) / {qETH/wholeETH}
+            // ({qETH/tok} * {USD/ETH} * {attoUSD/USD}) / {qETH/ETH}
             return inETH.mul(ethInUsd).mul(toFix(1e18).div(ethNorm));
         } else if (source == Source.COMPOUND) {
             // Compound stores prices with 6 decimals of precision

@@ -431,7 +431,7 @@ describe('MainP0 contract', () => {
       expect(sm_proc).to.equal(false)
     })
 
-    it.skip('Should process issuances in multiple attempts (2 blocks)', async function () {
+    it.only('Should process issuances in multiple attempts (2 blocks)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
       const expectedTkn0: BigNumber = issueAmount.mul(await vault.quantity(asset0.address)).div(BN_SCALE_FACTOR)

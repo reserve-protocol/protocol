@@ -231,6 +231,9 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function _meltingFactor() internal view returns (Fix) {
         Fix totalSupply = toFix(main.rToken().totalSupply()); // {RTok}
         Fix totalBurnt = toFix(main.furnace().totalBurnt()); // {RTok}
+        if (totalSupply.eq(FIX_ZERO)) {
+            return FIX_ONE;
+        }
 
         // (totalSupply + totalBurnt) / totalSupply
         return totalSupply.plus(totalBurnt).div(totalSupply);
@@ -531,6 +534,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         sellAmount = Math.min(sellAmount, sell.erc20().balanceOf(address(this)));
 
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
+
         Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(main).mulu(main.rToken().totalSupply());
         Fix maxSellUSD = rTokenMarketCapUSD.mul(main.config().maxAuctionSize); // {attoUSD}
         Fix minSellUSD = rTokenMarketCapUSD.mul(minAuctionSize); // {attoUSD}

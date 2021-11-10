@@ -174,12 +174,12 @@ export const deployerFixture: Fixture<DeployerFixture> = async function ([owner]
     await compAaveFixture()
 
   // Set Default Oracle Prices
-  await compoundOracle.setPrice('TKN0', bn('1e18'))
-  await compoundOracle.setPrice('TKN1', bn('1e18'))
-  await compoundOracle.setPrice('TKN2', bn('1e18'))
-  await compoundOracle.setPrice('TKN3', bn('1e18'))
-  await compoundOracle.setPrice('ETH', bn('1e18'))
-  await compoundOracle.setPrice('COMP', bn('1e18'))
+  await compoundOracle.setPrice('TKN0', bn('1e6'))
+  await compoundOracle.setPrice('TKN1', bn('1e6'))
+  await compoundOracle.setPrice('TKN2', bn('1e6'))
+  await compoundOracle.setPrice('TKN3', bn('1e6'))
+  await compoundOracle.setPrice('ETH', bn('1e6'))
+  await compoundOracle.setPrice('COMP', bn('1e6'))
 
   await aaveOracle.setPrice(token0.address, bn('1e18'))
   await aaveOracle.setPrice(token1.address, bn('1e18'))
