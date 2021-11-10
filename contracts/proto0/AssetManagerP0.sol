@@ -150,7 +150,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 }
 
                 uint256 boughtAmount = auction.close(main);
-                emit AuctionEnded(i, auction.sellAmount, boughtAmount);
                 if (!auction.clearedCloseToOraclePrice(main, boughtAmount)) {
                     return State.PRECAUTIONARY;
                 }

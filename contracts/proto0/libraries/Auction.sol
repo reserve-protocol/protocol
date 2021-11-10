@@ -35,6 +35,12 @@ library Auction {
         Fate fate
     );
 
+    /// Emitted after an auction ends
+    /// @param sellAmount {qSellTok} The quantity of the token sold
+    /// @param buyAmount {qBuyTok} The quantity of the token bought
+    event AuctionEnded(address indexed sell, address indexed buy, uint256 sellAmount, uint256 buyAmount, Fate fate);
+
+
     struct Info {
         IAsset sell;
         IAsset buy;
@@ -82,6 +88,7 @@ library Auction {
             assert(false);
         }
         self.isOpen = false;
+        emit AuctionEnded(address(self.sell), address(self.buy), self.sellAmount, buyAmount, self.fate);
         return buyAmount;
     }
 
