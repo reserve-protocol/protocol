@@ -8,8 +8,8 @@ We're also using [Slither][] and [Echidna][], from the [Trail of Bits contract s
 
 To run our full compilation and testing environment, you'll need to set up all of these.
 
-[Echidna]: https://github.com/crytic/echidna
-[Slither]: https://github.com/crytic/slither
+[echidna]: https://github.com/crytic/echidna
+[slither]: https://github.com/crytic/slither
 [tob-suite]: https://blog.trailofbits.com/2018/03/23/use-our-suite-of-ethereum-security-tools/
 
 These instructions assume you already have standard installations of `node`, `npm`, and `python3`.
@@ -48,6 +48,7 @@ cp .env.example .env
 ## Setup Trail of Bits Tools
 
 ### solc-select
+
 The [Trail of Bits tools][tob-suite] require solc-select. Check [these installation instructions](https://github.com/crytic/solc-select) to ensure you have all pre-requisites. Then install solc-select, and set the version to `0.8.9`:
 
 ```bash
@@ -57,20 +58,22 @@ solc-select use 0.8.9
 ```
 
 ### Slither
+
 Slither depends on `solc-select`. Once it's set up, install slither with:
 
-``` bash
+```bash
 pip3 install slither-analyzer
 ```
 
 ### Echidna
+
 Echidna depends on both `solc-select` and `slither`. To handle recent Solidity language changes, we'll need Echidna 2.0, which is still in beta. Unless you have a Haskell toolchain all set up, you should install Echidna through precompiled binaries.
 
 Until Echidna 2.0 is fully released, you can get precompiled binaries from that repo's [latest binary build](https://github.com/crytic/echidna/actions/runs/1119937162).
 
 On MacOS, putting the contents of that build somewhere in your `PATH` will install it. However, that build is a binary plus a handful of dynamic libs that it's expecting to find as siblings in its directory. To keep things clean, I recommend the following:
 
-``` bash
+```bash
 # First, download and unpack echidna-test.zip somewhere. Then...
 mv echidna-test ~/local/echidna-test
 
@@ -206,3 +209,22 @@ Once contracts are deployed you can interact with them by running:
 ```bash
 $ npx hardhat --network ropsten console
 ```
+
+# Code/Documentation Style
+
+## Units
+
+The units of variables is tracked in comments in the implementation. Curly braces are used to denote units, e.g. `{attoUSD/qTok}`.
+
+The `q` prefix denotes "quanta", ie the smallest indivisible unit of the token.
+
+The `atto` prefix denotes 1e18.
+
+- {qTok} = token quanta
+- {tok} = whole token = 1e6{qTok} (USDC)
+- {qBU} = BU quanta
+- {BU} = whole BU = 1e18{qBU}
+- {attoUSD} = smallest unit of USD
+- {USD} = largest unit of USD = 1e18{attoUSD}
+- {sec} = seconds
+- {none} = unitless

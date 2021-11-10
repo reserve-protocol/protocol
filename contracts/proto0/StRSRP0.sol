@@ -5,13 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "./interfaces/IStRSR.sol";
-import "./interfaces/IMain.sol";
-
+import "contracts/proto0/interfaces/IStRSR.sol";
+import "contracts/proto0/interfaces/IMain.sol";
+import "contracts/libraries/Fixed.sol";
 
 /*
  * @title StRSRP0
- * @dev The StRSR is where people can stake their RSR in order to provide insurance and
+ * @notice The StRSR is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken.
  *
  * There's an important assymetry in the StRSR. When RSR is added, it must be split only
@@ -21,6 +21,7 @@ import "./interfaces/IMain.sol";
 contract StRSRP0 is IStRSR, Context {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using FixLib for Fix;
 
     IMain public main;
 
@@ -58,7 +59,8 @@ contract StRSRP0 is IStRSR, Context {
         _symbol = symbol_;
     }
 
-    // Stake RSR
+    /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
+    /// @param amount {qRSR}
     function stake(uint256 amount) external override {
         // Process pending withdrawals
         processWithdrawals();
@@ -69,8 +71,11 @@ contract StRSRP0 is IStRSR, Context {
         _accounts.add(_msgSender());
         _balances[_msgSender()] += amount;
         _totalStaked += amount;
+        emit Staked(_msgSender(), amount);
     }
 
+    /// Begins a delayed unstaking for `amount` stRSR
+    /// @param amount {qRSR}
     function unstake(uint256 amount) external override {
         // Process pending withdrawals
         processWithdrawals();
@@ -83,11 +88,12 @@ contract StRSRP0 is IStRSR, Context {
         _totalStaked -= amount;
 
         // Submit delayed withdrawal
-        withdrawals.push(Withdrawal(_msgSender(), amount, block.timestamp + main.config().stRSRWithdrawalDelay));
+        uint256 availableAt = block.timestamp + main.config().stRSRWithdrawalDelay;
+        withdrawals.push(Withdrawal(_msgSender(), amount, availableAt));
+        emit UnstakingStarted(withdrawals.length - 1, _msgSender(), amount, availableAt);
     }
 
     function balanceOf(address account) external view override returns (uint256) {
-        // Option A - ignore funds sent directly to contract
         return _balances[account];
     }
 
@@ -106,13 +112,14 @@ contract StRSRP0 is IStRSR, Context {
 
                 delete withdrawals[withdrawalIndex];
                 withdrawalIndex += 1;
+                emit UnstakingCompleted(index, withdrawal.account, withdrawal.amount);
             } else {
                 break;
             }
         }
     }
 
-    // Adding RSR adds RSR only to current stakers (not withdrawers)
+    /// @param amount {qRSR}
     function addRSR(uint256 amount) external override {
         require(amount > 0, "Amount cannot be zero");
 
@@ -127,13 +134,16 @@ contract StRSRP0 is IStRSR, Context {
         // Redistribute RSR to stakers, but not to withdrawers
         if (snapshotTotalStaked > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
-                uint256 amtToAdd = (amount * _balances[_accounts.at(index)]) / snapshotTotalStaked;
-                _balances[_accounts.at(index)] += amtToAdd;
+                // amtToAdd = amount * _balances[_accounts.at(index)] / snapshotTotalStaked;
+                Fix amtToAdd = toFix(_balances[_accounts.at(index)]).mulu(amount).divu(snapshotTotalStaked);
+                _balances[_accounts.at(index)] += amtToAdd.toUint();
             }
         }
+        emit RSRAdded(_msgSender(), amount);
     }
 
-    // Seizing RSR pulls RSR from all current stakers + withdrawers
+    /// auth: AssetManager only
+    /// @param amount {qRSR}
     function seizeRSR(uint256 amount) external override {
         require(_msgSender() == address(main.manager()), "Caller is not Asset Manager");
         require(amount > 0, "Amount cannot be zero");
@@ -142,22 +152,25 @@ contract StRSRP0 is IStRSR, Context {
         processWithdrawals();
 
         uint256 snapshotTotalStakedPlus = _totalStaked + _amountBeingWithdrawn();
-        _totalStaked -= amount;
+
+        // _totalStaked -= (amount * _totalStaked) / snapshotTotalStakedPlus;
+        _totalStaked -= toFix(amount).mulu(_totalStaked).divu(snapshotTotalStakedPlus).toUint();
 
         // Remove RSR for stakers and from withdrawals too
         if (snapshotTotalStakedPlus > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
-                uint256 amtToRemove = (amount * _balances[_accounts.at(index)]) / snapshotTotalStakedPlus;
-                _balances[_accounts.at(index)] -= amtToRemove;
+                Fix amtToRemove = toFix(_balances[_accounts.at(index)]).mulu(amount).divu(snapshotTotalStakedPlus);
+                _balances[_accounts.at(index)] -= amtToRemove.toUint();
             }
 
             for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
-                uint256 amtToRemove = (amount * withdrawals[index].amount) / snapshotTotalStakedPlus;
-                withdrawals[index].amount -= amtToRemove;
+                Fix amtToRemove = toFix(withdrawals[index].amount).mulu(amount).divu(snapshotTotalStakedPlus);
+                withdrawals[index].amount -= amtToRemove.toUint();
             }
         }
         // Transfer RSR to RToken
         main.rsr().safeTransfer(address(main), amount);
+        emit RSRSeized(_msgSender(), amount);
     }
 
     // ERC20 Interface
@@ -193,9 +206,8 @@ contract StRSRP0 is IStRSR, Context {
         // Process pending withdrawals
         processWithdrawals();
 
-        uint256 senderBalance = _balances[sender];
-        require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
-        _balances[sender] = senderBalance - amount;
+        require(_balances[sender] >= amount, "ERC20: transfer amount exceeds balance");
+        _balances[sender] -= amount;
         _balances[recipient] += amount;
         _accounts.add(recipient);
     }
@@ -233,6 +245,7 @@ contract StRSRP0 is IStRSR, Context {
         _allowances[owner_][spender] = amount;
     }
 
+    /// @return total {stRSR} Total amount of stRSR being withdrawn
     function _amountBeingWithdrawn() internal view returns (uint256 total) {
         for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
             total += withdrawals[index].amount;

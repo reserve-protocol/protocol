@@ -19,8 +19,9 @@ Prototype 0 uses a hub-and-spoke model. There is a central coordinator called `M
 
 ## Token Balances
 
+- `Main`: Holds BUs during SlowIssuance, which it then transfers to the `AssetManager` upon successful vesting.
 - `Vault`: holds exactly the collateral to back its own BU issuance
-- `AssetManager`: holds RToken that is slow minting, and slush fund for collateral (ie intermediate location for collateral during vault migrations)
+- `AssetManager`: holds revenue RToken from supply expansion as well as acts as a slush fund for collateral (ie it is the intermediate location for collateral during vault migrations). Also holds BUs to back the RToken supply.
 - `Furnace`: holds revenue RToken to be melted
 - `stRSR`: holds staked RSR
 

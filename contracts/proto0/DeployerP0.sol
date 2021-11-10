@@ -9,6 +9,8 @@ import "./assets/AAVEAssetP0.sol";
 import "../libraries/CommonErrors.sol";
 import "./libraries/Oracle.sol";
 import "./interfaces/IAsset.sol";
+import "./interfaces/IDeployer.sol";
+import "./interfaces/IMain.sol";
 import "./interfaces/IVault.sol";
 import "./assets/RTokenAssetP0.sol";
 import "./AssetManagerP0.sol";
@@ -20,16 +22,23 @@ import "./StRSRP0.sol";
 
 /**
  * @title DeployerP0
- * @dev The deployer for the entire system.
+ * @notice The deployer for the entire system.
  */
+contract DeployerP0 is IDeployer {
+    IMain[] public deployments;
 
-struct ParamsAssets {
-    RSRAssetP0 rsrAsset;
-    COMPAssetP0 compAsset;
-    AAVEAssetP0 aaveAsset;
-}
-
-contract DeployerP0 {
+    /// Deploys an instance of the entire system
+    /// @param name The name of the RToken to deploy
+    /// @param symbol The symbol of the RToken to deploy
+    /// @param owner The address that should own the entire system, hopefully a governance contract
+    /// @param vault The initial vault that backs the RToken
+    /// @param rsr The deployment of RSR on this chain
+    /// @param config Governance params
+    /// @param compound The deployment of the Comptroller on this chain
+    /// @param aave The deployment of the AaveLendingPool on this chain
+    /// @param nonCollateral The non-collateral assets in the system
+    /// @param collateral The collateral assets in the system
+    /// @return The address of the newly deployed Main instance.
     function deploy(
         string memory name,
         string memory symbol,
@@ -39,12 +48,13 @@ contract DeployerP0 {
         Config memory config,
         IComptroller compound,
         IAaveLendingPool aave,
-        ParamsAssets memory assets,
-        IAsset[] memory approvedCollateralAssets
-    ) external returns (address) {
+        ParamsAssets memory nonCollateral,
+        IAsset[] memory collateral
+    ) external override returns (address) {
         Oracle.Info memory oracle = Oracle.Info(compound, aave);
 
         MainP0 main = new MainP0(oracle, config, rsr);
+        deployments.push(main);
 
         {
             DefaultMonitorP0 monitor = new DefaultMonitorP0(main);
@@ -55,7 +65,7 @@ contract DeployerP0 {
             RTokenP0 rToken = new RTokenP0(main, name, symbol);
             main.setRToken(rToken);
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken));
-            main.setAssets(rTokenAsset, assets.rsrAsset, assets.compAsset, assets.aaveAsset);
+            main.setAssets(rTokenAsset, nonCollateral.rsrAsset, nonCollateral.compAsset, nonCollateral.aaveAsset);
             FurnaceP0 furnace = new FurnaceP0(address(rToken));
             main.setFurnace(furnace);
         }
@@ -70,11 +80,13 @@ contract DeployerP0 {
         }
 
         {
-            AssetManagerP0 manager = new AssetManagerP0(main, vault, owner, approvedCollateralAssets);
+            AssetManagerP0 manager = new AssetManagerP0(main, vault, owner, collateral);
             main.setManager(manager);
         }
+        main.setPauser(owner);
         main.transferOwnership(owner);
 
+        emit RTokenCreated(address(main), address(main.rToken()), owner);
         return (address(main));
     }
 }
