@@ -150,7 +150,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 }
 
                 uint256 boughtAmount = auction.close(main);
-                emit AuctionEnd(i, auction.sellAmount, boughtAmount);
+                emit AuctionEnded(i, auction.sellAmount, boughtAmount);
                 if (!auction.clearedCloseToOraclePrice(main, boughtAmount)) {
                     return State.PRECAUTIONARY;
                 }
@@ -270,7 +270,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     function _switchVault(IVault vault_) internal {
         pastVaults.push(vault_);
-        emit NewVault(address(vault), address(vault_));
+        emit NewVaultSet(address(vault), address(vault_));
         vault = vault_;
 
         // Accumulate the basket dilution factor to enable correct forward accounting
@@ -296,7 +296,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function _launchAuction(Auction.Info memory auction) internal {
         auctions.push(auction);
         auctions[auctions.length - 1].open();
-        emit AuctionStart(
+        emit AuctionStarted(
             auctions.length - 1,
             address(auction.sell),
             address(auction.buy),

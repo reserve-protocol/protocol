@@ -22,7 +22,7 @@ interface IAssetManager {
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
     /// @param fate The fate of the soon-to-be-purchased tokens
-    event AuctionStart(
+    event AuctionStarted(
         uint256 indexed auctionId,
         address indexed sell,
         address indexed buy,
@@ -35,12 +35,12 @@ interface IAssetManager {
     /// @param auctionId The index of the auction, a globally unique identifier
     /// @param sellAmount {qSellTok} The quantity of the token sold
     /// @param buyAmount {qBuyTok} The quantity of the token bought
-    event AuctionEnd(uint256 indexed auctionId, uint256 sellAmount, uint256 buyAmount);
+    event AuctionEnded(uint256 indexed auctionId, uint256 sellAmount, uint256 buyAmount);
 
     /// Emitted when the current vault is changed
     /// @param oldVault The address of the old vault
     /// @param newVault The address of the new vault
-    event NewVault(address indexed oldVault, address indexed newVault);
+    event NewVaultSet(address indexed oldVault, address indexed newVault);
 
     //
 

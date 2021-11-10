@@ -10,12 +10,12 @@ import "contracts/libraries/Fixed.sol";
 interface IFurnace {
     /// Emitted whenever RToken is burned
     /// @param amount {RTok} The amount burnt
-    event Burn(uint256 indexed amount);
+    event Burned(uint256 indexed amount);
     /// Emitted whenever a distribution of RToken is set to be burnt
     /// @param amount {RTok} The total amount to be burnt over the period
     /// @param timePeriod {sec} The number of seconds the burn occurs over
     /// @param who The account that created the distribution
-    event Distribution(uint256 indexed amount, uint256 indexed timePeriod, address who);
+    event DistributionCreated(uint256 indexed amount, uint256 indexed timePeriod, address who);
 
     //
 

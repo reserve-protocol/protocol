@@ -22,21 +22,21 @@ interface IVault {
     /// @param to The account that earned the BUs
     /// @param by The account that paid for the BUs
     /// @param BUs {qBU} The quantity of BUs issued
-    event BUIssuance(address indexed to, address indexed by, uint256 indexed BUs);
+    event BUsIssued(address indexed to, address indexed by, uint256 indexed BUs);
     /// Emitted whenever BUs are redeemed
     /// @param to The account that received the resulting collateral
     /// @param by The account whose BUs are redeemed
     /// @param BUs {qBU} The quantity of BUs redeemed
-    event BURedemption(address indexed to, address indexed by, uint256 indexed BUs);
+    event BUsRedeemed(address indexed to, address indexed by, uint256 indexed BUs);
     /// Emitted whenever BUs are transferred
     /// @param from The account that sent the BUs
     /// @param to The account that received for the BUs
     /// @param BUs {qBU} The quantity of BUs transferred
-    event BUTransfer(address indexed from, address indexed to, uint256 indexed BUs);
+    event BUsTransferred(address indexed from, address indexed to, uint256 indexed BUs);
     /// Emitted whenever rewards are claimed
     /// @param compAmount {qCOMP} The amount of COMP claimed
     /// @param aaveAmount {qAAVE} The amount of COMP claimed
-    event ClaimRewards(uint256 indexed compAmount, uint256 indexed aaveAmount);
+    event RewardsClaimediiiiiiii(uint256 indexed compAmount, uint256 indexed aaveAmount);
 
     //
 
