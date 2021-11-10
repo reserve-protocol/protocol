@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { BigNumber, ContractFactory } from 'ethers'
-import { bn } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
@@ -241,11 +241,6 @@ describe('VaultP0 contract', () => {
       expect(await newVault.connect(owner).containsOnly([assets[0]])).to.equal(true)
       expect(await newVault.connect(owner).containsOnly([assets[1]])).to.equal(false)
     })
-
-    it.skip('Should force update on Comp/AAVE', async function () {
-      // TODO: Implement once the logic is complete in the Assets contracts
-      // await vault.updateCompoundAaveRates()
-    })
   })
 
   describe('Issuance', () => {
@@ -284,21 +279,21 @@ describe('VaultP0 contract', () => {
     it('Should return basketRate and tokenAmounts for fiatcoins', async function () {
       // For simple vault with one token (1 to 1)
       let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [bn('1e18')], [])
-      expect(await newVault.callStatic.basketRate()).to.equal(bn('1e18'))
+      expect(await newVault.callStatic.basketRate()).to.equal(fp('1e18'))
       expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e18')])
 
       // For a vault with one token half the value
       newVault = <VaultP0>await VaultFactory.deploy([assets[0]], [qtyHalf], [])
-      expect(await newVault.callStatic.basketRate()).to.equal(qtyHalf)
+      expect(await newVault.callStatic.basketRate()).to.equal(fp(qtyHalf))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf])
 
       // For a vault with two token half each
       newVault = <VaultP0>await VaultFactory.deploy([assets[0], assets[1]], [qtyHalf, qtyHalf], [])
-      expect(await newVault.callStatic.basketRate()).to.equal(bn('1e18'))
+      expect(await newVault.callStatic.basketRate()).to.equal(fp('1e18'))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
 
       // For the vault used by default in these tests (four fiatcoin tokens) - Redemption = 1e18
-      expect(await vault.callStatic.basketRate()).to.equal(qtyHalf.mul(2).add(qtyThird.add(qtyDouble)))
+      expect(await vault.callStatic.basketRate()).to.equal(fp(qtyHalf.mul(2).add(qtyThird.add(qtyDouble))))
       expect(await vault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf, qtyThird, qtyDouble])
       expect(await vault.tokenAmounts(TWO)).to.eql([qtyHalf.mul(2), qtyHalf.mul(2), qtyThird.mul(2), qtyDouble.mul(2)])
     })
@@ -306,7 +301,7 @@ describe('VaultP0 contract', () => {
     it('Should adjust basketRate and tokenAmounts for decimals (USDC)', async function () {
       // New Vault with USDC tokens
       let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assetUSDC.address], [bn('1e6')], [])
-      expect(await newVault.callStatic.basketRate()).to.equal(bn('1e18'))
+      expect(await newVault.callStatic.basketRate()).to.equal(fp('1e18'))
       expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e6')])
     })
 
@@ -315,23 +310,23 @@ describe('VaultP0 contract', () => {
       let newVault: VaultP0 = <VaultP0>(
         await VaultFactory.deploy([assetAToken.address, assetCToken.address], [qtyHalf, qtyHalf], [])
       )
-      expect(await newVault.callStatic.basketRate()).to.equal(bn('1e18'))
+      expect(await newVault.callStatic.basketRate()).to.equal(fp('1e18'))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
 
       // Change redemption rate for AToken to double (rate increases by an additional half)
       await aTkn.setExchangeRate(bn('2e18'))
-      expect(await newVault.callStatic.basketRate()).to.equal(bn('1e18').add(qtyHalf))
+      expect(await newVault.callStatic.basketRate()).to.equal(fp('1e18').add(qtyHalf))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
 
       // Change also redemption rate for CToken to double (rate doubles)
       await cTkn.setExchangeRate(bn('2e18'))
-      expect(await newVault.callStatic.basketRate()).to.equal(bn('1e18').mul(2))
+      expect(await newVault.callStatic.basketRate()).to.equal(fp('1e18').mul(2))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
 
       // Set new Vault with sinlge AToken - reduce redemption rate to a half
       await aTkn.setExchangeRate(bn('5e17'))
       newVault = <VaultP0>await VaultFactory.deploy([assetAToken.address], [bn('1e18')], [])
-      expect(await newVault.callStatic.basketRate()).to.equal(qtyHalf)
+      expect(await newVault.callStatic.basketRate()).to.equal(fp(qtyHalf))
       expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e18')])
     })
 

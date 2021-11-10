@@ -158,8 +158,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
 
         // Create new BUs
-        Fix issuable = vault.maxIssuable(address(this));
-        if (issuable.gt(FIX_ZERO)) {
+        uint256 issuable = vault.maxIssuable(address(this));
+        if (issuable > 0) {
             vault.issue(address(this), issuable);
         }
 
@@ -188,8 +188,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() public override returns (bool) {
-        // vault.basketUnits(address(this)) >= rToken.totalSupply()
-        return vault.basketUnits(address(this)).gte(toBUs(main.rToken().totalSupply()));
+        return vault.basketUnits(address(this)) >= main.rToken().totalSupply();
     }
 
     /// @return fiatcoins An array of approved fiatcoin assets to be used for oracle USD determination
@@ -207,23 +206,23 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     /// {qRTok} -> {qBU}
-    function toBUs(uint256 amount) public override returns (Fix) {
+    function toBUs(uint256 amount) public override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
-            return toFix(amount);
+            return amount;
         }
 
         // (_basketDilutionFactor() / _meltingFactor()) * amount
-        return toFix(amount).div(baseFactor());
+        return toFix(amount).div(baseFactor()).toUint();
     }
 
     /// {qBU} -> {qRTok}
-    function fromBUs(Fix BUs) public override returns (uint256) {
+    function fromBUs(uint256 BUs) public override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
-            return BUs.toUint();
+            return BUs;
         }
 
         // (_meltingFactor() / _basketDilutionFactor()) * BUs
-        return BUs.mul(baseFactor()).toUint();
+        return baseFactor().mulu(BUs).toUint();
     }
 
     //
@@ -251,7 +250,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     /// contains no asset tokens.
     function _oldestVault() internal view returns (IVault) {
         for (uint256 i = 0; i < pastVaults.length; i++) {
-            if (pastVaults[i].basketUnits(address(this)).gt(FIX_ZERO)) {
+            if (pastVaults[i].basketUnits(address(this)) > 0) {
                 return pastVaults[i];
             }
         }
@@ -325,8 +324,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         uint256 totalSupply = main.rToken().totalSupply();
         IVault oldVault = _oldestVault();
         if (oldVault != vault) {
-            Fix max = toBUs(main.config().migrationChunk.mulu(totalSupply).toUint());
-            Fix chunk = fixMin(max, oldVault.basketUnits(address(this)));
+            uint256 max = main.config().migrationChunk.mulu(totalSupply).toUint();
+            uint256 chunk = Math.min(max, oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
         }
 
@@ -367,7 +366,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         // The ultimate endgame: a haircut for RToken holders.
         _accumulate();
         Fix melting = (toFix(totalSupply).plusu(main.furnace().totalBurnt())).divu(totalSupply);
-        _historicalBasketDilution = melting.mul(vault.basketUnits(address(this))).divu(totalSupply);
+        _historicalBasketDilution = melting.mulu(vault.basketUnits(address(this))).divu(totalSupply);
         return State.CALM;
     }
 
@@ -481,7 +480,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             Fix bal = toFix(IERC20(a.erc20()).balanceOf(address(this))); // {qTok}
 
             // {qTok} = {BU} * {qTok/BU}
-            Fix target = BUTarget.mul(vault.quantity(a));
+            Fix target = BUTarget.mulu(vault.quantity(a));
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
                 surplus[i] = bal.minus(target).mul(a.priceUSD(main));

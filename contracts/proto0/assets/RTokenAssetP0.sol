@@ -29,7 +29,7 @@ contract RTokenAssetP0 is AssetP0 {
             IAsset a = v.assetAt(i);
 
             // {attoUSD/BU} = {attoUSD/BU} + {qTok/BU} * {attoUSD/qTok}
-            sum = sum.plus(v.quantity(a).mul(a.priceUSD(main)));
+            sum = sum.plus(a.priceUSD(main).mulu(v.quantity(a)));
         }
 
         // {attoUSD/qBU} = {attoUSD/BU} / {qBU/BU}

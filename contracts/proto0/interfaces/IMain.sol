@@ -68,7 +68,7 @@ struct Config {
 struct SlowIssuance {
     IVault vault;
     uint256 amount; // {qTok}
-    Fix BUs; // {qBU}
+    uint256 BUs; // {qBU}
     uint256[] deposits; // {qTok}, same index as vault basket assets
     address issuer;
     uint256 blockAvailableAt; // {blockNumber}

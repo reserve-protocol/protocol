@@ -73,12 +73,12 @@ interface IAssetManager {
     /// BUs -> RToken
     /// @param {qRTok} amount The quantity of RToken to convert to BUs
     /// @return {qBU} The equivalent amount of BUs at the current base factor
-    function toBUs(uint256 amount) external returns (Fix);
+    function toBUs(uint256 amount) external returns (uint256);
 
     /// BUs -> RToken
     /// @param {qBU} BUs The quantity of BUs to convert to RToken
     /// @return {qRTok} The equivalent amount of RToken at the current base factor
-    function fromBUs(Fix BUs) external returns (uint256);
+    function fromBUs(uint256 BUs) external returns (uint256);
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() external returns (bool);
