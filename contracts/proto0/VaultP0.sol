@@ -27,17 +27,19 @@ contract VaultP0 is IVault, Ownable {
 
     Basket internal _basket;
 
-    mapping(address => mapping(address => Fix)) internal _allowances;
-    mapping(address => Fix) public override basketUnits;
-    Fix public totalUnits;
+    mapping(address => mapping(address => uint256)) internal _allowances;
+    mapping(address => uint256) public override basketUnits;
+    uint256 public totalUnits;
 
     IVault[] public backups;
 
     IMain public main;
 
+    // {BU} = 1e18{qBU}
+
     constructor(
         IAsset[] memory assets,
-        Fix[] memory quantities,
+        uint256[] memory quantities, // {qTok/BU}
         IVault[] memory backupVaults
     ) {
         require(assets.length == quantities.length, "arrays must match in length");
@@ -55,8 +57,8 @@ contract VaultP0 is IVault, Ownable {
     /// Transfers collateral in and issues a quantity of BUs to the caller
     /// @param to The account to transfer collateral to
     /// @param BUs {qBU} The quantity of BUs to issue
-    function issue(address to, Fix BUs) external override {
-        require(BUs.gt(FIX_ZERO), "Cannot issue zero");
+    function issue(address to, uint256 BUs) external override {
+        require(BUs > 0, "Cannot issue zero");
         require(_basket.size > 0, "Empty basket");
 
         uint256[] memory amounts = tokenAmounts(BUs);
@@ -65,47 +67,47 @@ contract VaultP0 is IVault, Ownable {
             _basket.assets[i].erc20().safeTransferFrom(_msgSender(), address(this), amounts[i]);
         }
 
-        basketUnits[to] = basketUnits[to].plus(BUs);
-        totalUnits = totalUnits.plus(BUs);
-        emit BUIssuance(to, _msgSender(), BUs);
+        basketUnits[to] += BUs;
+        totalUnits += BUs;
+        emit BUsIssued(to, _msgSender(), BUs);
     }
 
     /// Redeems a quantity of BUs and transfers collateral out
     /// @param to The account to transfer collateral to
     /// @param BUs {qBU} The quantity of BUs to redeem
-    function redeem(address to, Fix BUs) external override {
-        require(BUs.gt(FIX_ZERO), "Cannot redeem zero");
-        require(BUs.lte(basketUnits[_msgSender()]), "Not enough units");
+    function redeem(address to, uint256 BUs) external override {
+        require(BUs > 0, "Cannot redeem zero");
+        require(BUs <= basketUnits[_msgSender()], "Not enough units");
         require(_basket.size > 0, "Empty basket");
 
         uint256[] memory amounts = tokenAmounts(BUs);
 
-        basketUnits[_msgSender()] = basketUnits[_msgSender()].minus(BUs);
-        totalUnits = totalUnits.minus(BUs);
+        basketUnits[_msgSender()] -= BUs;
+        totalUnits -= BUs;
 
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.assets[i].erc20().safeTransfer(to, amounts[i]);
         }
-        emit BURedemption(to, _msgSender(), BUs);
+        emit BUsRedeemed(to, _msgSender(), BUs);
     }
 
     /// Allows `spender` to spend `BUs` from the callers account
     /// @param spender The account that is able to spend the `BUs`
     /// @param BUs {qBU} The quantity of BUs that should be spendable
-    function setAllowance(address spender, Fix BUs) external override {
+    function setAllowance(address spender, uint256 BUs) external override {
         _allowances[_msgSender()][spender] = BUs;
     }
 
     /// Pulls BUs over from one account to another (like `ERC20.transferFrom`), requiring allowance
     /// @param from The account to pull BUs from (must have set allowance)
     /// @param BUs {qBU} The quantity of BUs to pull
-    function pullBUs(address from, Fix BUs) external override {
-        require(basketUnits[from].gte(BUs), "not enough to transfer");
-        require(_allowances[from][_msgSender()].gte(BUs), "not enough allowance");
-        _allowances[from][_msgSender()] = _allowances[from][_msgSender()].minus(BUs);
-        basketUnits[from] = basketUnits[from].minus(BUs);
-        basketUnits[_msgSender()] = basketUnits[_msgSender()].plus(BUs);
-        emit BUTransfer(from, _msgSender(), BUs);
+    function pullBUs(address from, uint256 BUs) external override {
+        require(basketUnits[from] >= BUs, "not enough to transfer");
+        require(_allowances[from][_msgSender()] >= BUs, "not enough allowance");
+        _allowances[from][_msgSender()] -= BUs;
+        basketUnits[from] -= BUs;
+        basketUnits[_msgSender()] += BUs;
+        emit BUsTransferred(from, _msgSender(), BUs);
     }
 
     /// Claims all earned COMP/AAVE and sends it to the asset manager
@@ -130,30 +132,31 @@ contract VaultP0 is IVault, Ownable {
         if (aaveBal > 0) {
             aave.safeTransfer(address(main.manager()), aaveBal);
         }
-        emit ClaimRewards(compBal, aaveBal);
+        emit RewardsClaimediiiiiiii(compBal, aaveBal);
     }
 
     /// @param BUs {qBU}
     /// @return amounts {qTok} A list of token quantities required in order to issue `BUs`
-    function tokenAmounts(Fix BUs) public view override returns (uint256[] memory amounts) {
+    function tokenAmounts(uint256 BUs) public view override returns (uint256[] memory amounts) {
         amounts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
-            amounts[i] = _basket.quantities[_basket.assets[i]].mul(BUs).toUint();
+            // {qTok} = {qTok/BU} * {qBU} / {qBU/BU}
+            amounts[i] = toFix(BUs).divu(1e18).mulu(_basket.quantities[_basket.assets[i]]).toUint();
         }
     }
 
     /// @return {qTok/BU} The quantity of tokens of `asset` required per whole BU
-    function quantity(IAsset asset) external view override returns (Fix) {
+    function quantity(IAsset asset) external view override returns (uint256) {
         return _basket.quantities[asset];
     }
 
     /// @return sum {attoUSD/BU} The attoUSD value of 1 BU if all fiatcoins hold peg
     function basketRate() external override returns (Fix sum) {
         for (uint256 i = 0; i < _basket.size; i++) {
-            IAsset c = _basket.assets[i];
+            IAsset a = _basket.assets[i];
 
-            // {attoUSD/BU} = {attoUSD/BU} + {qTok/BU} * {attoUSD/qTok}
-            sum = sum.plus(_basket.quantities[c].mul(c.rateUSD()));
+            // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
+            sum = sum.plus(a.rateUSD().mulu(_basket.quantities[a]));
         }
     }
 
@@ -174,16 +177,16 @@ contract VaultP0 is IVault, Ownable {
     }
 
     /// @return {BU} The maximum number of BUs the caller can issue
-    function maxIssuable(address issuer) external view override returns (Fix) {
+    function maxIssuable(address issuer) external view override returns (uint256) {
         Fix min = FIX_MAX;
         for (uint256 i = 0; i < _basket.size; i++) {
             // {BU} = {qTok} / {qTok/BU}
-            Fix BUs = toFix(_basket.assets[i].erc20().balanceOf(issuer)).div(_basket.quantities[_basket.assets[i]]);
+            Fix BUs = toFix(_basket.assets[i].erc20().balanceOf(issuer)).divu(_basket.quantities[_basket.assets[i]]);
             if (BUs.lt(min)) {
                 min = BUs;
             }
         }
-        return min;
+        return min.toUint();
     }
 
     /// @return The asset at `index`

@@ -6,6 +6,8 @@ import "contracts/proto0/interfaces/IVault.sol";
 import "contracts/libraries/Fixed.sol";
 import "./AssetP0.sol";
 
+import "hardhat/console.sol";
+
 contract RTokenAssetP0 is AssetP0 {
     using FixLib for Fix;
 
@@ -28,8 +30,10 @@ contract RTokenAssetP0 is AssetP0 {
         for (uint256 i = 0; i < v.size(); i++) {
             IAsset a = v.assetAt(i);
 
-            // {attoUSD/BU} = {attoUSD/BU} + {qTok/BU} * {attoUSD/qTok}
-            sum = sum.plus(v.quantity(a).mul(a.priceUSD(main)));
+            // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
+            console.logUint(a.priceUSD(main).toUint()); // 1e30
+            console.logUint(v.quantity(a)); // 5e17
+            sum = sum.plus(a.priceUSD(main).mulu(v.quantity(a)));
         }
 
         // {attoUSD/qBU} = {attoUSD/BU} / {qBU/BU}

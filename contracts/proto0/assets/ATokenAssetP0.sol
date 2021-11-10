@@ -43,8 +43,8 @@ contract ATokenAssetP0 is AssetP0 {
         // {qFiatTok/qTok} = {ray fiatTok/tok} / {ray} * {qFiatTok/fiatTok} / {qTok/tok}
         // result = rateInRAYs / 1e27 * 10**fiatcoinDecimals() / 10**decimals();
 
-        int128 shiftLeft = -27 + int8(fiatcoinDecimals()) - int8(decimals());
-        return toFix(rateInRAYs, shiftLeft);
+        int8 shiftLeft = -27 + int8(fiatcoinDecimals()) - int8(decimals());
+        return toFixWithShift(rateInRAYs, shiftLeft);
     }
 
     // @return {attoUSD/qTok}
@@ -53,10 +53,10 @@ contract ATokenAssetP0 is AssetP0 {
 
         // {attoUSD/qTok} = {ray fiatTok/tok} / {ray} * {attoUSD/fiatTok} / {qTok/tok}
         // result = rateInRAYs / 1e27 * 1e18 / 10**decimals();
-        int128 shiftLeft = -9 - int8(decimals());
+        int8 shiftLeft = -9 - int8(decimals());
 
         // {attoUSD/qTok}
-        return toFix(rateInRAYs, shiftLeft);
+        return toFixWithShift(rateInRAYs, shiftLeft);
     }
 
     function fiatcoin() public view override returns (address) {

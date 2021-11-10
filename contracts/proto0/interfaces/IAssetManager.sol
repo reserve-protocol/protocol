@@ -16,14 +16,13 @@ import "./IVault.sol";
  */
 interface IAssetManager {
     /// Emitted when an auction is started
-    /// @param auctionId The index of the auction, a globally unique identifier
     /// @param sell The token to sell
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
     /// @param fate The fate of the soon-to-be-purchased tokens
-    event AuctionStart(
-        uint256 indexed auctionId,
+    /// @dev Must be kept in sync with its duplicate in `libraries/Auction.sol`
+    event AuctionStarted(
         address indexed sell,
         address indexed buy,
         uint256 sellAmount, // {qSellTok}
@@ -35,12 +34,12 @@ interface IAssetManager {
     /// @param auctionId The index of the auction, a globally unique identifier
     /// @param sellAmount {qSellTok} The quantity of the token sold
     /// @param buyAmount {qBuyTok} The quantity of the token bought
-    event AuctionEnd(uint256 indexed auctionId, uint256 sellAmount, uint256 buyAmount);
+    event AuctionEnded(uint256 indexed auctionId, uint256 sellAmount, uint256 buyAmount);
 
     /// Emitted when the current vault is changed
     /// @param oldVault The address of the old vault
     /// @param newVault The address of the new vault
-    event NewVault(address indexed oldVault, address indexed newVault);
+    event NewVaultSet(address indexed oldVault, address indexed newVault);
 
     //
 
@@ -73,12 +72,12 @@ interface IAssetManager {
     /// BUs -> RToken
     /// @param {qRTok} amount The quantity of RToken to convert to BUs
     /// @return {qBU} The equivalent amount of BUs at the current base factor
-    function toBUs(uint256 amount) external returns (Fix);
+    function toBUs(uint256 amount) external returns (uint256);
 
     /// BUs -> RToken
     /// @param {qBU} BUs The quantity of BUs to convert to RToken
     /// @return {qRTok} The equivalent amount of RToken at the current base factor
-    function fromBUs(Fix BUs) external returns (uint256);
+    function fromBUs(uint256 BUs) external returns (uint256);
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() external returns (bool);

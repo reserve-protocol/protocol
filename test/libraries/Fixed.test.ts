@@ -62,31 +62,25 @@ describe('In FixLib,', async () => {
 
   describe('toFix(x)', async () => {
     it('correctly converts uint values', async () => {
-      const toFix = caller['toFix(uint256)'].bind(caller)
       ;[0, 1, 2, '38326665875765560393', MAX_FIX_INT.sub(1), MAX_FIX_INT]
         .map(bn)
-        .forEach(async (x) => expect(await toFix(x), `${x}`).to.equal(fp(x)))
+        .forEach(async (x) => expect(await caller.toFix(x), `${x}`).to.equal(fp(x)))
     })
 
     it('fails on inputs outside its domain', async () => {
-      const toFix = caller['toFix(uint256)'].bind(caller)
-      await expect(toFix(MAX_FIX_INT.add(1))).to.be.revertedWith('UIntOutOfBounds')
-      await expect(toFix(MAX_FIX_INT.mul(17))).to.be.revertedWith('UIntOutOfBounds')
+      await expect(caller.toFix(MAX_FIX_INT.add(1))).to.be.revertedWith('UIntOutOfBounds')
+      await expect(caller.toFix(MAX_FIX_INT.mul(17))).to.be.revertedWith('UIntOutOfBounds')
     })
   })
 
   describe('toFix(x, shiftLeft)', async () => {
     it('correctly converts uint values with no shifting', async () => {
-      const toFix = caller['toFix(uint256,int256)'].bind(caller)
-
       ;[0, 1, 2, '38326665875765560393', MAX_FIX_INT.sub(1), MAX_FIX_INT]
         .map(bn)
-        .forEach(async (x) => expect(await toFix(x, bn(0)), `${x}`).to.equal(fp(x)))
+        .forEach(async (x) => expect(await caller.toFixWithShift(x, bn(0)), `${x}`).to.equal(fp(x)))
     })
 
     it('correctly converts uint values with some shifting', async () => {
-      const toFix = caller['toFix(uint256,int256)'].bind(caller)
-
       ;[
         [0, 10],
         [1, 5],
@@ -103,14 +97,13 @@ describe('In FixLib,', async () => {
       ]
         .map(([x, s]) => [bn(x), bn(s)])
         .forEach(async ([x, s]) =>
-          expect(await toFix(x, s), `toFix(${x}, ${s})`).to.equal(
+          expect(await caller.toFixWithShift(x, s), `toFixWithShift(${x}, ${s})`).to.equal(
             s.gte(0) ? fp(x).mul(pow10(s)) : fp(x).div(pow10(neg(s)))
           )
         )
     })
 
     it('fails on inputs outside its domain', async () => {
-      const toFix = caller['toFix(uint256,int256)'].bind(caller)
       ;[
         [MAX_FIX_INT, 1],
         [MAX_FIX_INT.add(1), 0],
@@ -122,7 +115,7 @@ describe('In FixLib,', async () => {
         [bn('-1e8'), 50],
         [bn('5e56'), 2],
         [bn('-5e56'), 2],
-      ].forEach(async ([x, s]) => await expect(toFix(x, s), `toFix(${x}, ${s})`).to.be.reverted)
+      ].forEach(async ([x, s]) => await expect(caller.toFixWithShift(x, s), `toFix(${x}, ${s})`).to.be.reverted)
     })
   })
 
@@ -221,6 +214,35 @@ describe('In FixLib,', async () => {
       for (let [input, result] of table) {
         expect(await caller.toUint(fp(input)), `fp(${input})`).to.equal(result)
       }
+    })
+  })
+
+  describe('shiftLeft', async () => {
+    it('mirrors the behavior of `toFixWithShift`', async () => {
+      ;[
+        [0, 10],
+        [1, 5],
+        [1, -7],
+        [2, 3],
+        [2, -3],
+        ['38326665875765560393', -10],
+        ['38326665875', 9],
+        [MAX_FIX_INT.sub(1), -2],
+        [MAX_FIX_INT.sub(1), -1],
+        [MAX_FIX_INT.sub(1), 0],
+        [MAX_FIX_INT, -9],
+        [MAX_FIX_INT, -1],
+      ]
+        .map(([x, s]) => [bn(x), bn(s)])
+        .forEach(async ([x, s]) => {
+          const xFix = await caller.toFix(x)
+          const a = await caller.shiftLeft(xFix, s)
+          const b = await caller.toFixWithShift(x, s)
+
+          await expect(await caller.shiftLeft(xFix, s), `toFix(${x}).shiftLeft(${s})`).to.equal(
+            await caller.toFixWithShift(x, s)
+          )
+        })
     })
   })
 

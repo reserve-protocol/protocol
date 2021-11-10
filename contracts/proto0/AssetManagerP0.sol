@@ -150,7 +150,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 }
 
                 uint256 boughtAmount = auction.close(main);
-                emit AuctionEnd(i, auction.sellAmount, boughtAmount);
+                emit AuctionEnded(i, auction.sellAmount, boughtAmount);
                 if (!auction.clearedCloseToOraclePrice(main, boughtAmount)) {
                     return State.PRECAUTIONARY;
                 }
@@ -158,8 +158,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
 
         // Create new BUs
-        Fix issuable = vault.maxIssuable(address(this));
-        if (issuable.gt(FIX_ZERO)) {
+        uint256 issuable = vault.maxIssuable(address(this));
+        if (issuable > 0) {
             vault.issue(address(this), issuable);
         }
 
@@ -188,8 +188,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() public override returns (bool) {
-        // vault.basketUnits(address(this)) >= rToken.totalSupply()
-        return vault.basketUnits(address(this)).gte(toBUs(main.rToken().totalSupply()));
+        return vault.basketUnits(address(this)) >= main.rToken().totalSupply();
     }
 
     /// @return fiatcoins An array of approved fiatcoin assets to be used for oracle USD determination
@@ -207,23 +206,23 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     /// {qRTok} -> {qBU}
-    function toBUs(uint256 amount) public override returns (Fix) {
+    function toBUs(uint256 amount) public override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
-            return toFix(amount);
+            return amount;
         }
 
         // (_basketDilutionFactor() / _meltingFactor()) * amount
-        return toFix(amount).div(baseFactor());
+        return toFix(amount).div(baseFactor()).toUint();
     }
 
     /// {qBU} -> {qRTok}
-    function fromBUs(Fix BUs) public override returns (uint256) {
+    function fromBUs(uint256 BUs) public override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
-            return BUs.toUint();
+            return BUs;
         }
 
         // (_meltingFactor() / _basketDilutionFactor()) * BUs
-        return BUs.mul(baseFactor()).toUint();
+        return baseFactor().mulu(BUs).toUint();
     }
 
     //
@@ -232,6 +231,9 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function _meltingFactor() internal view returns (Fix) {
         Fix totalSupply = toFix(main.rToken().totalSupply()); // {RTok}
         Fix totalBurnt = toFix(main.furnace().totalBurnt()); // {RTok}
+        if (totalSupply.eq(FIX_ZERO)) {
+            return FIX_ONE;
+        }
 
         // (totalSupply + totalBurnt) / totalSupply
         return totalSupply.plus(totalBurnt).div(totalSupply);
@@ -251,7 +253,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     /// contains no asset tokens.
     function _oldestVault() internal view returns (IVault) {
         for (uint256 i = 0; i < pastVaults.length; i++) {
-            if (pastVaults[i].basketUnits(address(this)).gt(FIX_ZERO)) {
+            if (pastVaults[i].basketUnits(address(this)) > 0) {
                 return pastVaults[i];
             }
         }
@@ -268,7 +270,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     function _switchVault(IVault vault_) internal {
         pastVaults.push(vault_);
-        emit NewVault(address(vault), address(vault_));
+        emit NewVaultSet(address(vault), address(vault_));
         vault = vault_;
 
         // Accumulate the basket dilution factor to enable correct forward accounting
@@ -294,14 +296,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function _launchAuction(Auction.Info memory auction) internal {
         auctions.push(auction);
         auctions[auctions.length - 1].open();
-        emit AuctionStart(
-            auctions.length - 1,
-            address(auction.sell),
-            address(auction.buy),
-            auction.sellAmount,
-            auction.minBuyAmount,
-            auction.fate
-        );
     }
 
     /// Runs all auctions for recapitalization
@@ -325,8 +319,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         uint256 totalSupply = main.rToken().totalSupply();
         IVault oldVault = _oldestVault();
         if (oldVault != vault) {
-            Fix max = toBUs(main.config().migrationChunk.mulu(totalSupply).toUint());
-            Fix chunk = fixMin(max, oldVault.basketUnits(address(this)));
+            uint256 max = main.config().migrationChunk.mulu(totalSupply).toUint();
+            uint256 chunk = Math.min(max, oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
         }
 
@@ -367,7 +361,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         // The ultimate endgame: a haircut for RToken holders.
         _accumulate();
         Fix melting = (toFix(totalSupply).plusu(main.furnace().totalBurnt())).divu(totalSupply);
-        _historicalBasketDilution = melting.mul(vault.basketUnits(address(this))).divu(totalSupply);
+        _historicalBasketDilution = melting.mulu(vault.basketUnits(address(this))).divu(totalSupply);
         return State.CALM;
     }
 
@@ -481,7 +475,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             Fix bal = toFix(IERC20(a.erc20()).balanceOf(address(this))); // {qTok}
 
             // {qTok} = {BU} * {qTok/BU}
-            Fix target = BUTarget.mul(vault.quantity(a));
+            Fix target = BUTarget.mulu(vault.quantity(a));
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
                 surplus[i] = bal.minus(target).mul(a.priceUSD(main));
@@ -532,6 +526,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         sellAmount = Math.min(sellAmount, sell.erc20().balanceOf(address(this)));
 
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
+
         Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(main).mulu(main.rToken().totalSupply());
         Fix maxSellUSD = rTokenMarketCapUSD.mul(main.config().maxAuctionSize); // {attoUSD}
         Fix minSellUSD = rTokenMarketCapUSD.mul(minAuctionSize); // {attoUSD}

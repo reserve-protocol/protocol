@@ -64,9 +64,14 @@ async function rsrFixture(): Promise<RSRFixture> {
 }
 
 interface COMPAAVEFixture {
+  weth: ERC20Mock
+  compToken: ERC20Mock
   compAsset: COMPAssetP0
-  aaveAsset: AAVEAssetP0
+  compoundOracle: CompoundOracleMockP0
   compoundMock: ComptrollerMockP0
+  aaveToken: ERC20Mock
+  aaveAsset: AAVEAssetP0
+  aaveOracle: AaveOracleMockP0
   aaveMock: AaveLendingPoolMockP0
 }
 
@@ -103,10 +108,18 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
     await AaveLendingPoolMockFactory.deploy(aaveAddrProvider.address)
   )
 
-  return { compAsset, aaveAsset, compoundMock, aaveMock }
+  return { weth, compToken, compAsset, compoundOracle, compoundMock, aaveToken, aaveAsset, aaveOracle, aaveMock }
 }
 
 interface VaultFixture {
+  token0: ERC20Mock
+  token1: ERC20Mock
+  token2: ERC20Mock
+  token3: ERC20Mock
+  asset0: AssetP0
+  asset1: AssetP0
+  asset2: AssetP0
+  asset3: AssetP0
   assets: string[]
   vault: VaultP0
 }
@@ -138,7 +151,7 @@ async function vaultFixture(): Promise<VaultFixture> {
   const VaultFactory: ContractFactory = await ethers.getContractFactory('VaultP0')
   const vault: VaultP0 = <VaultP0>await VaultFactory.deploy(assets, quantities, [])
 
-  return { assets, vault }
+  return { token0, token1, token2, token3, asset0, asset1, asset2, asset3, assets, vault }
 }
 
 type RSRAndCompAaveAndVaultFixture = RSRFixture & COMPAAVEFixture & VaultFixture
@@ -156,8 +169,25 @@ interface DeployerFixture extends RSRAndCompAaveAndVaultFixture {
 
 export const deployerFixture: Fixture<DeployerFixture> = async function ([owner]): Promise<DeployerFixture> {
   const { rsr, rsrAsset } = await rsrFixture()
-  const { compAsset, aaveAsset, compoundMock, aaveMock } = await compAaveFixture()
-  const { assets, vault } = await vaultFixture()
+  const { token0, token1, token2, token3, asset0, asset1, asset2, asset3, assets, vault } = await vaultFixture()
+  const { weth, compToken, compAsset, compoundOracle, compoundMock, aaveToken, aaveAsset, aaveOracle, aaveMock } =
+    await compAaveFixture()
+
+  // Set Default Oracle Prices
+  await compoundOracle.setPrice('TKN0', bn('1e6'))
+  await compoundOracle.setPrice('TKN1', bn('1e6'))
+  await compoundOracle.setPrice('TKN2', bn('1e6'))
+  await compoundOracle.setPrice('TKN3', bn('1e6'))
+  await compoundOracle.setPrice('ETH', bn('1e6'))
+  await compoundOracle.setPrice('COMP', bn('1e6'))
+
+  await aaveOracle.setPrice(token0.address, bn('1e18'))
+  await aaveOracle.setPrice(token1.address, bn('1e18'))
+  await aaveOracle.setPrice(token2.address, bn('1e18'))
+  await aaveOracle.setPrice(token3.address, bn('1e18'))
+  await aaveOracle.setPrice(weth.address, bn('1e18'))
+  await aaveOracle.setPrice(aaveToken.address, bn('1e18'))
+  await aaveOracle.setPrice(compToken.address, bn('1e18'))
 
   const paramsAssets: IParamsAssets = {
     rsrAsset: rsrAsset.address,
@@ -221,10 +251,23 @@ export const deployerFixture: Fixture<DeployerFixture> = async function ([owner]
   return {
     rsr,
     rsrAsset,
+    weth,
+    compToken,
     compAsset,
-    aaveAsset,
+    compoundOracle,
     compoundMock,
+    aaveToken,
+    aaveAsset,
+    aaveOracle,
     aaveMock,
+    token0,
+    token1,
+    token2,
+    token3,
+    asset0,
+    asset1,
+    asset2,
+    asset3,
     assets,
     vault,
     config,

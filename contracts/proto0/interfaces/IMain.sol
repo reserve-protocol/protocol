@@ -68,7 +68,7 @@ struct Config {
 struct SlowIssuance {
     IVault vault;
     uint256 amount; // {qTok}
-    Fix BUs; // {qBU}
+    uint256 BUs; // {qBU}
     uint256[] deposits; // {qTok}, same index as vault basket assets
     address issuer;
     uint256 blockAvailableAt; // {blockNumber}
@@ -85,7 +85,7 @@ interface IMain {
     /// @param issuanceId The index off the issuance, a globally unique identifier
     /// @param issuer The account performing the issuance
     /// @param amount The quantity of RToken being issued
-    event IssuanceStart(
+    event IssuanceStarted(
         uint256 indexed issuanceId,
         address indexed issuer,
         uint256 indexed amount,
@@ -94,11 +94,11 @@ interface IMain {
 
     /// Emitted when an RToken issuance is canceled, such as during a default
     /// @param issuanceId The index of the issuance, a globally unique identifier
-    event IssuanceCancel(uint256 indexed issuanceId);
+    event IssuanceCanceled(uint256 indexed issuanceId);
 
     /// Emitted when an RToken issuance is completed successfully
     /// @param issuanceId The index of the issuance, a globally unique identifier
-    event IssuanceComplete(uint256 indexed issuanceId);
+    event IssuanceCompleted(uint256 indexed issuanceId);
 
     /// Emitted when a redemption of RToken occurs
     /// @param redeemer The address of the account redeeeming RTokens
@@ -106,7 +106,7 @@ interface IMain {
     event Redemption(address indexed redeemer, uint256 indexed amount);
 
     /// Emitted when there is a change in system state.
-    event StateChange(State indexed oldState, State indexed newState);
+    event StateChanged(State indexed oldState, State indexed newState);
 
     //
 

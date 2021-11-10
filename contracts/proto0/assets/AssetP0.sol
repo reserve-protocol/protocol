@@ -26,14 +26,14 @@ contract AssetP0 is IAsset {
 
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
     function rateFiatcoin() public virtual override returns (Fix) {
-        return toFix(10**fiatcoinDecimals()).divu(10**decimals());
+        return toFixWithShift(1, int8(fiatcoinDecimals()) - int8(decimals()));
     }
 
     /// @return {attoUSD/qTok} Without using oracles, returns the expected attoUSD value of one qtok.
     function rateUSD() public virtual override returns (Fix) {
         // {attoUSD/tok} / {qTok/tok}
-        int128 shiftLeft = -int8(decimals());
-        return toFix(1e18, shiftLeft);
+        int8 shiftLeft = -int8(decimals());
+        return toFixWithShift(1e18, shiftLeft);
     }
 
     /// @return The ERC20 contract of the central token

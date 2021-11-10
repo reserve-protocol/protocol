@@ -66,12 +66,12 @@ function toFix(uint256 x) pure returns (Fix) {
 
 /// Convert a uint to its Fix representation after shifting its value `shiftLeft` digits.
 /// Fails if the shifted value is outside Fix's representable range.
-function toFix(uint256 x, int256 shiftLeft) pure returns (Fix) {
+function toFixWithShift(uint256 x, int8 shiftLeft) pure returns (Fix) {
     if (x == 0 || shiftLeft < -95) return Fix.wrap(0); // shift would clear a uint256; 0 -> 0
     if (59 < shiftLeft) revert IntOutOfBounds(shiftLeft); // would unconditionally overflow x
 
     shiftLeft += 18;
-    uint256 shifted = (shiftLeft >= 0) ? x * 10**uint256(shiftLeft) : x / 10**(uint256(-shiftLeft));
+    uint256 shifted = (shiftLeft >= 0) ? x * 10**uint256(uint8(shiftLeft)) : x / 10**(uint256(uint8(-shiftLeft)));
 
     if (uint192(type(int192).max) < shifted) revert UIntOutOfBounds(shifted);
     return Fix.wrap(int192(uint192(shifted)));
@@ -172,6 +172,14 @@ library FixLib {
             revert IntOutOfBounds(n);
         }
         return uint192(n) / FIX_SCALE_U;
+    }
+
+    /// Return the Fix shifted to the left by `decimal` digits
+    /// Similar to a bitshift but in base 10
+    /// Equivalent to multiplying `x` by `10**decimal`
+    function shiftLeft(Fix x, int8 decimals) internal pure returns (Fix) {
+        int256 coeff = decimals >= 0 ? int256(10**uint8(decimals)) : int256(10**uint8(-decimals));
+        return _safe_wrap(decimals >= 0 ? Fix.unwrap(x) * coeff : Fix.unwrap(x) / coeff);
     }
 
     /// Round this Fix to the nearest int. If equidistant to both

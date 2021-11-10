@@ -44,7 +44,7 @@ contract FurnaceP0 is IFurnace {
 
         // Register handout
         batches.push(Batch(amount, block.timestamp, timePeriod, 0));
-        emit Distribution(amount, timePeriod, msg.sender);
+        emit DistributionCreated(amount, timePeriod, msg.sender);
     }
 
     /// Performs any burning that has vested since last call. Idempotent
@@ -54,7 +54,7 @@ contract FurnaceP0 is IFurnace {
             bool success = rToken.burn(address(this), amount);
             require(success, "should burn from self successfully");
             totalBurnt += amount;
-            emit Burn(amount);
+            emit Burned(amount);
         }
     }
 

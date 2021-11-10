@@ -91,7 +91,7 @@ contract MainP0 is IMain, Ownable {
         require(state == State.CALM || state == State.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
         _processSlowIssuance();
-        Fix BUs = manager.toBUs(amount);
+        uint256 BUs = manager.toBUs(amount);
 
         // During SlowIssuance, BUs are created up front and held by `Main` until the issuance vests,
         // at which point the BUs are transferred to the AssetManager and RToken is minted to the issuer.
@@ -111,7 +111,7 @@ contract MainP0 is IMain, Ownable {
             IERC20(iss.vault.assetAt(i).erc20()).safeApprove(address(iss.vault), iss.deposits[i]);
         }
         iss.vault.issue(address(this), iss.BUs);
-        emit IssuanceStart(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
+        emit IssuanceStarted(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
     }
 
     /// Redeem RToken for basket collateral
@@ -140,7 +140,7 @@ contract MainP0 is IMain, Ownable {
 
         State newState = manager.doAuctions();
         if (newState != state) {
-            emit StateChange(state, newState);
+            emit StateChanged(state, newState);
             state = newState;
         }
     }
@@ -153,7 +153,7 @@ contract MainP0 is IMain, Ownable {
         if (softDefaulting.length == 0) {
             State newState = manager.fullyCapitalized() ? State.CALM : State.TRADING;
             if (newState != state) {
-                emit StateChange(state, newState);
+                emit StateChanged(state, newState);
                 state = newState;
             }
             return;
@@ -162,10 +162,10 @@ contract MainP0 is IMain, Ownable {
         // If state is DOUBT for >24h (default delay), switch vaults
         if (state == State.DOUBT && block.timestamp >= stateRaisedAt + _config.defaultDelay) {
             manager.switchVaults(softDefaulting);
-            emit StateChange(state, State.TRADING);
+            emit StateChanged(state, State.TRADING);
             state = State.TRADING;
         } else if (state == State.CALM || state == State.TRADING) {
-            emit StateChange(state, State.DOUBT);
+            emit StateChanged(state, State.DOUBT);
             state = State.DOUBT;
             stateRaisedAt = block.timestamp;
         }
@@ -236,6 +236,7 @@ contract MainP0 is IMain, Ownable {
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
     function backingTokens() external view override returns (address[] memory erc20s) {
+        erc20s = new address[](manager.vault().size());
         for (uint256 i = 0; i < manager.vault().size(); i++) {
             erc20s[i] = address(manager.vault().assetAt(i).erc20());
         }
@@ -274,12 +275,12 @@ contract MainP0 is IMain, Ownable {
             if (!issuances[i].processed && issuances[i].vault != manager.vault()) {
                 issuances[i].vault.redeem(issuances[i].issuer, issuances[i].BUs);
                 issuances[i].processed = true;
-                emit IssuanceCancel(i);
+                emit IssuanceCanceled(i);
             } else if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
                 issuances[i].vault.setAllowance(address(manager), issuances[i].BUs);
                 manager.issue(issuances[i]);
                 issuances[i].processed = true;
-                emit IssuanceComplete(i);
+                emit IssuanceCompleted(i);
             }
         }
     }
