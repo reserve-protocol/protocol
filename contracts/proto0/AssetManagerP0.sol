@@ -296,14 +296,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function _launchAuction(Auction.Info memory auction) internal {
         auctions.push(auction);
         auctions[auctions.length - 1].open();
-        emit AuctionStarted(
-            auctions.length - 1,
-            address(auction.sell),
-            address(auction.buy),
-            auction.sellAmount,
-            auction.minBuyAmount,
-            auction.fate
-        );
     }
 
     /// Runs all auctions for recapitalization

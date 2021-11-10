@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/proto0/interfaces/IAsset.sol";
+import "contracts/proto0/interfaces/IAssetManager.sol";
 import "contracts/proto0/interfaces/IFurnace.sol";
 import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
@@ -19,6 +20,21 @@ library Auction {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
+    /// Emitted when an auction is started
+    /// @param sell The token to sell
+    /// @param buy The token to buy
+    /// @param sellAmount {qSellTok} The quantity of the selling token
+    /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
+    /// @param fate The fate of the soon-to-be-purchased tokens
+    /// @dev Must be kept in sync with its duplicate in `IAssetManager.sol`
+    event AuctionStarted(
+        address indexed sell,
+        address indexed buy,
+        uint256 sellAmount, // {qSellTok}
+        uint256 minBuyAmount, // {qBuyTok}
+        Fate fate
+    );
+
     struct Info {
         IAsset sell;
         IAsset buy;
@@ -30,9 +46,17 @@ library Auction {
         bool isOpen;
     }
 
+
     function open(Auction.Info storage self) internal {
         // TODO: batchAuction.initiateAuction()
         self.isOpen = true;
+        emit AuctionStarted(
+            address(self.sell),
+            address(self.buy),
+            self.sellAmount,
+            self.minBuyAmount,
+            self.fate
+        );
     }
 
     /// Closes out the auction and sends bought token to its fate

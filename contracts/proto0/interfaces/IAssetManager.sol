@@ -16,14 +16,13 @@ import "./IVault.sol";
  */
 interface IAssetManager {
     /// Emitted when an auction is started
-    /// @param auctionId The index of the auction, a globally unique identifier
     /// @param sell The token to sell
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
     /// @param fate The fate of the soon-to-be-purchased tokens
+    /// @dev Must be kept in sync with its duplicate in `libraries/Auction.sol`
     event AuctionStarted(
-        uint256 indexed auctionId,
         address indexed sell,
         address indexed buy,
         uint256 sellAmount, // {qSellTok}
