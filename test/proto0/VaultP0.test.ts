@@ -307,24 +307,27 @@ describe('VaultP0 contract', () => {
 
     it('Should adjust basketRate and tokenAmounts for ATokens and CTokens', async function () {
       // Set new Vault with Atokens and CTokens
+      const qtyHalfCToken: BigNumber = bn('1e8').div(2)
+
       let newVault: VaultP0 = <VaultP0>(
-        await VaultFactory.deploy([assetAToken.address, assetCToken.address], [qtyHalf, qtyHalf], [])
+        await VaultFactory.deploy([assetAToken.address, assetCToken.address], [qtyHalf, qtyHalfCToken], [])
       )
       expect(await newVault.callStatic.basketRate()).to.equal(fp('1e18'))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
+      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
 
-      // Change redemption rate for AToken to double (rate increases by an additional half)
-      await aTkn.setExchangeRate(bn('2e18'))
-      expect(await newVault.callStatic.basketRate()).to.equal(fp('1e18').add(qtyHalf))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
+      // Change redemption rate for AToken to double (rate increases by an additional half) - In Rays
+      await aTkn.setExchangeRate(bn('2e27'))
+      expect(await newVault.callStatic.basketRate()).to.equal(fp(bn('1e18').add(qtyHalf)))
+      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
 
       // Change also redemption rate for CToken to double (rate doubles)
-      await cTkn.setExchangeRate(bn('2e18'))
-      expect(await newVault.callStatic.basketRate()).to.equal(fp('1e18').mul(2))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
+      // By default the current exchange rate at genesis is 2e26 for CTokens
+      await cTkn.setExchangeRate(bn('4e26'))
+      expect(await newVault.callStatic.basketRate()).to.equal(fp(bn('1e18').mul(2)))
+      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
 
-      // Set new Vault with sinlge AToken - reduce redemption rate to a half
-      await aTkn.setExchangeRate(bn('5e17'))
+      // Set new Vault with sinlge AToken - reduce redemption rate to a half  - In Rays
+      await aTkn.setExchangeRate(bn('5e26'))
       newVault = <VaultP0>await VaultFactory.deploy([assetAToken.address], [bn('1e18')], [])
       expect(await newVault.callStatic.basketRate()).to.equal(fp(qtyHalf))
       expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e18')])
