@@ -47,11 +47,11 @@ contract RTokenMockP0 is ERC20, IRToken {
     }
 
     // TODO: remove after we have manager tests
-    function paused() external view returns (bool) {
+    function paused() external pure returns (bool) {
         return false;
     }
 
-    function fullyCapitalized() external view returns (bool) {
+    function fullyCapitalized() external pure returns (bool) {
         return true;
     }
 }

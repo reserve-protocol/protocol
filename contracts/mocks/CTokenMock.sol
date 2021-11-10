@@ -24,11 +24,11 @@ contract CTokenMock is ERC20Mock {
         _exchangeRate = toFixWithShift(1, leftShift).mul(start).toUint();
     }
 
-    function decimals() public view override returns (uint8) {
+    function decimals() public pure override returns (uint8) {
         return 8;
     }
 
-    function exchangeRateCurrent() external returns (uint256) {
+    function exchangeRateCurrent() external view returns (uint256) {
         return _exchangeRate;
     }
 

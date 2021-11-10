@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "contracts/libraries/CommonErrors.sol";
 import "contracts/libraries/Fixed.sol";
 
 interface IComptroller {
@@ -73,7 +74,7 @@ library Oracle {
             // ({microUSD/tok} * {attoUSD/USD})/ {microUSD/USD}
             return toFix(price).mulu(1e12);
         } else {
-            assert(false);
+            revert CommonErrors.UnsupportedProtocol();
         }
     }
 }

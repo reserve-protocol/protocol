@@ -9,8 +9,8 @@ contract FixedCallerMock {
         return libToFix(x);
     }
 
-    function toFixWithShift(uint256 x, int8 shiftLeft) public pure returns (Fix) {
-        return libToFixWithShift(x, shiftLeft);
+    function toFixWithShift(uint256 x, int8 shiftLeft_) public pure returns (Fix) {
+        return libToFixWithShift(x, shiftLeft_);
     }
 
     function intToFix(int256 x) public pure returns (Fix) {
@@ -37,8 +37,8 @@ contract FixedCallerMock {
         return FixLib.toUint(x);
     }
 
-    function shiftLeft(Fix x, int8 shiftLeft) public pure returns (Fix) {
-        return FixLib.shiftLeft(x, shiftLeft);
+    function shiftLeft(Fix x, int8 shiftLeft_) public pure returns (Fix) {
+        return FixLib.shiftLeft(x, shiftLeft_);
     }
 
     function round(Fix x) public pure returns (int192) {

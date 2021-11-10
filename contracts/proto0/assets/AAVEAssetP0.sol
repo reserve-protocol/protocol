@@ -18,7 +18,7 @@ contract AAVEAssetP0 is IAsset {
     }
 
     // @return {attoUSD/qAAVE}
-    function priceUSD(IMain main) public override returns (Fix) {
+    function priceUSD(IMain main) public view override returns (Fix) {
         return main.consultOracle(Oracle.Source.AAVE, _erc20);
     }
 

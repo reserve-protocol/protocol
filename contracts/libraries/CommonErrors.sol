@@ -46,4 +46,7 @@ library CommonErrors {
 
     // RSR
     error CrossedAlready();
+
+    // Oracle
+    error UnsupportedProtocol();
 }

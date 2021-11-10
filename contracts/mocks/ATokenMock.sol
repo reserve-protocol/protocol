@@ -38,7 +38,7 @@ contract StaticATokenMock is ERC20Mock {
         _exchangeRate = 1e27;
     }
 
-    function decimals() public view override returns (uint8) {
+    function decimals() public pure override returns (uint8) {
         return 18;
     }
 
@@ -46,8 +46,8 @@ contract StaticATokenMock is ERC20Mock {
         return _exchangeRate;
     }
 
-    function setExchangeRate(uint256 rate) external {
-        _exchangeRate = rate;
+    function setExchangeRate(uint256 rate_) external {
+        _exchangeRate = rate_;
     }
 
     function ATOKEN() external view returns (ATokenMock) {

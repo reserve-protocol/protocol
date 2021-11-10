@@ -16,7 +16,7 @@ contract ComptrollerMockP0 is IComptroller {
         return _compoundOracle;
     }
 
-    function claimComp(address holder) external override {
+    function claimComp(address holder) external view override {
         _compBalances[holder];
     }
 }

@@ -180,7 +180,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     //
 
     /// @return Whether the vault is fully capitalized
-    function fullyCapitalized() public override returns (bool) {
+    function fullyCapitalized() public view override returns (bool) {
         return vault.basketUnits(address(this)) >= main.rToken().totalSupply();
     }
 

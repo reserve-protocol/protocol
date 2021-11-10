@@ -59,7 +59,7 @@ interface IAssetManager {
     function fromBUs(uint256 BUs) external returns (uint256);
 
     /// @return Whether the vault is fully capitalized
-    function fullyCapitalized() external returns (bool);
+    function fullyCapitalized() external view returns (bool);
 
     /// @return The current vault
     function vault() external view returns (IVault);
