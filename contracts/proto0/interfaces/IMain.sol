@@ -11,12 +11,11 @@ import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./IVault.sol";
 
-/// The 4 canonical states of the system
+/// The 3 canonical states of the system
 enum State {
     CALM, // 100% capitalized + no auctions
     DOUBT, // in this state for 24h before default, no auctions or unstaking
-    TRADING, // auctions in progress, no unstaking
-    PRECAUTIONARY // no auctions, no issuance, no unstaking
+    TRADING // auctions in progress, no unstaking
 }
 
 /// Configuration of the system

@@ -83,28 +83,4 @@ library Auction {
         emit AuctionEnded(address(self.sell), address(self.buy), self.sellAmount, buyAmount, self.fate);
         return buyAmount;
     }
-
-    /// Checks that final clearing price is reasonable
-    /// @param buyAmount {qBuyTok}
-    /// @return false if `buyAmount` is > config.auctionClearingTolerance of the expected buy amount
-    function clearedCloseToOraclePrice(
-        Auction.Info storage self,
-        IMain main,
-        uint256 buyAmount
-    ) internal returns (bool) {
-        // {qBuyTok/qSellTok} = {qBuyTok} / {qSellTok}
-        Fix clearedRate = toFix(buyAmount).divu(self.sellAmount);
-
-        // {USD/qSellTok} = {USD/wholeSellTok} * {wholeSellTok/qSellTok}
-        Fix qSellUSD = self.sell.priceUSD(main).mulu(10**self.sell.decimals());
-
-        // {USD/qBuyTok} = {USD/wholeBuyTok} * {wholeBuyTok/qBuyTok}
-        Fix qBuyUSD = self.buy.priceUSD(main).mulu(10**self.buy.decimals());
-
-        // {qBuyTok/qSellTok} = {USD/qSellTok} / {USD/qBuyTok}
-        Fix expectedRate = qSellUSD.div(qBuyUSD);
-
-        // 1 - clearedRate/expectedRate <= auctionClearingTolerance
-        return FIX_ONE.minus((clearedRate).div(expectedRate)).lte(main.config().auctionClearingTolerance);
-    }
 }

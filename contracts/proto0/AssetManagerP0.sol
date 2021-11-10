@@ -146,11 +146,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 if (block.timestamp <= auction.endTime) {
                     return State.TRADING;
                 }
-
-                uint256 boughtAmount = auction.close(main);
-                if (!auction.clearedCloseToOraclePrice(main, boughtAmount)) {
-                    return State.PRECAUTIONARY;
-                }
+                auction.close(main);
             }
         }
 

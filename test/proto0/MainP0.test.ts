@@ -29,7 +29,6 @@ enum State {
   CALM = 0,
   DOUBT = 1,
   TRADING = 2,
-  PRECAUTIONARY = 3,
 }
 
 describe('MainP0 contract', () => {
