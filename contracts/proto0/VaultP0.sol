@@ -153,10 +153,10 @@ contract VaultP0 is IVault, Ownable {
     /// @return sum {attoUSD/BU} The attoUSD value of 1 BU if all fiatcoins hold peg
     function basketRate() external override returns (Fix sum) {
         for (uint256 i = 0; i < _basket.size; i++) {
-            IAsset c = _basket.assets[i];
+            IAsset a = _basket.assets[i];
 
-            // {attoUSD/BU} = {attoUSD/BU} + {qTok/BU} * {attoUSD/qTok}
-            sum = sum.plus(c.rateUSD().mulu(_basket.quantities[c]));
+            // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
+            sum = sum.plus(a.rateUSD().mulu(_basket.quantities[a]));
         }
     }
 
