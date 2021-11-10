@@ -105,6 +105,7 @@ describe('AssetP0 contracts', () => {
       expect(await tokenAsset.decimals()).to.equal(18)
       expect(await tokenAsset.fiatcoinDecimals()).to.equal(await token.decimals())
       expect(await tokenAsset.callStatic.rateFiatcoin()).to.equal(fp('1'))
+      expect(await tokenAsset.callStatic.rateUSD()).to.equal(fp('1'))
       expect(await tokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
       expect(await tokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1'))
 
@@ -116,6 +117,7 @@ describe('AssetP0 contracts', () => {
       expect(await usdcAsset.decimals()).to.equal(6)
       expect(await usdcAsset.fiatcoinDecimals()).to.equal(await usdc.decimals())
       expect(await usdcAsset.callStatic.rateFiatcoin()).to.equal(fp('1'))
+      expect(await usdcAsset.callStatic.rateUSD()).to.equal(fp('1e12'))
       expect(await usdcAsset.callStatic.priceUSD(main.address)).to.equal(fp('1e12'))
       expect(await usdcAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1e12'))
 
@@ -127,6 +129,7 @@ describe('AssetP0 contracts', () => {
       expect(await aTokenAsset.decimals()).to.equal(18)
       expect(await aTokenAsset.fiatcoinDecimals()).to.equal(await token.decimals())
       expect(await aTokenAsset.callStatic.rateFiatcoin()).to.equal(fp('1'))
+      expect(await aTokenAsset.callStatic.rateUSD()).to.equal(fp('1'))
       expect(await aTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
       expect(await aTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1'))
 
@@ -138,6 +141,7 @@ describe('AssetP0 contracts', () => {
       expect(await cTokenAsset.decimals()).to.equal(8)
       expect(await cTokenAsset.fiatcoinDecimals()).to.equal(await usdc.decimals())
       expect(await cTokenAsset.callStatic.rateFiatcoin()).to.equal(fp('1e-2')) // 1/100 qUSDC per qcUSDC
+      expect(await cTokenAsset.callStatic.rateUSD()).to.equal(fp('1e10'))
       expect(await cTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1e10')) // 18 - 8 decimals = 10
       expect(await cTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1e12'))
 
