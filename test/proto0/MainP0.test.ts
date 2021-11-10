@@ -19,7 +19,7 @@ import { RTokenP0 } from '../../typechain/RTokenP0'
 import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { StRSRP0 } from '../../typechain/StRSRP0'
-import { AssetP0 } from '../../typechain/AssetP0'
+import { CollateralP0 } from '../../typechain/CollateralP0'
 import { AssetManagerP0 } from '../../typechain/AssetManagerP0'
 import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
 
@@ -44,7 +44,7 @@ describe('MainP0 contract', () => {
   // Vault and Assets
   let VaultFactory: ContractFactory
   let vault: VaultP0
-  let assets: string[]
+  let collateral: string[]
 
   // RSR
   let rsr: ERC20Mock
@@ -62,10 +62,10 @@ describe('MainP0 contract', () => {
   let token1: ERC20Mock
   let token2: ERC20Mock
   let token3: ERC20Mock
-  let asset0: AssetP0
-  let asset1: AssetP0
-  let asset2: AssetP0
-  let asset3: AssetP0
+  let collateral0: CollateralP0
+  let collateral1: CollateralP0
+  let collateral2: CollateralP0
+  let collateral3: CollateralP0
 
   // Config values
   let config: IManagerConfig
@@ -101,11 +101,11 @@ describe('MainP0 contract', () => {
       token1,
       token2,
       token3,
-      asset0,
-      asset1,
-      asset2,
-      asset3,
-      assets,
+      collateral0,
+      collateral1,
+      collateral2,
+      collateral3,
+      collateral,
       vault,
       config,
       deployer,
@@ -244,10 +244,10 @@ describe('MainP0 contract', () => {
 
     it('Should return backing tokens', async () => {
       expect(await main.backingTokens()).to.eql([
-        await asset0.erc20(),
-        await asset1.erc20(),
-        await asset2.erc20(),
-        await asset3.erc20(),
+        await collateral0.erc20(),
+        await collateral1.erc20(),
+        await collateral2.erc20(),
+        await collateral3.erc20(),
       ])
     })
   })
@@ -299,7 +299,7 @@ describe('MainP0 contract', () => {
     it('Should issue RTokens with single basket token', async function () {
       const issueAmount: BigNumber = bn('10e18')
       const qty: BigNumber = bn('1e18')
-      const newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [qty], [])
+      const newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collateral[0]], [qty], [])
 
       // Update Vault
       await assetManager.connect(owner).switchVault(newVault.address)
@@ -336,10 +336,10 @@ describe('MainP0 contract', () => {
     it('Should issue RTokens correctly for more complex basket multiple users', async function () {
       const issueAmount: BigNumber = bn('10e18')
 
-      const expectedTkn0: BigNumber = issueAmount.mul(await vault.quantity(asset0.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn1: BigNumber = issueAmount.mul(await vault.quantity(asset1.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn2: BigNumber = issueAmount.mul(await vault.quantity(asset2.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn3: BigNumber = issueAmount.mul(await vault.quantity(asset3.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn0: BigNumber = issueAmount.mul(await vault.quantity(collateral0.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn1: BigNumber = issueAmount.mul(await vault.quantity(collateral1.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn2: BigNumber = issueAmount.mul(await vault.quantity(collateral2.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn3: BigNumber = issueAmount.mul(await vault.quantity(collateral3.address)).div(BN_SCALE_FACTOR)
 
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)
@@ -434,10 +434,10 @@ describe('MainP0 contract', () => {
     it.skip('Should process issuances in multiple attempts (2 blocks)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
-      const expectedTkn0: BigNumber = issueAmount.mul(await vault.quantity(asset0.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn1: BigNumber = issueAmount.mul(await vault.quantity(asset1.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn2: BigNumber = issueAmount.mul(await vault.quantity(asset2.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn3: BigNumber = issueAmount.mul(await vault.quantity(asset3.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn0: BigNumber = issueAmount.mul(await vault.quantity(collateral0.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn1: BigNumber = issueAmount.mul(await vault.quantity(collateral1.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn2: BigNumber = issueAmount.mul(await vault.quantity(collateral2.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn3: BigNumber = issueAmount.mul(await vault.quantity(collateral3.address)).div(BN_SCALE_FACTOR)
 
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)

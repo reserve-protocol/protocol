@@ -49,7 +49,7 @@ contract DeployerP0 is IDeployer {
         IComptroller compound,
         IAaveLendingPool aave,
         ParamsAssets memory nonCollateral,
-        IAsset[] memory collateral
+        ICollateral[] memory collateral
     ) external override returns (address) {
         Oracle.Info memory oracle = Oracle.Info(compound, aave);
 

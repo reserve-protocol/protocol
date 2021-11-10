@@ -72,7 +72,7 @@ contract MainP0 is IMain, Ownable {
 
     /// This modifier runs before every function including redemption, so it should be very safe.
     modifier always() {
-        IAsset[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
+        ICollateral[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
         if (hardDefaulting.length > 0) {
             manager.switchVaults(hardDefaulting);
             state = State.TRADING;
@@ -107,8 +107,8 @@ contract MainP0 is IMain, Ownable {
         issuances.push(iss);
 
         for (uint256 i = 0; i < iss.vault.size(); i++) {
-            IERC20(iss.vault.assetAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.deposits[i]);
-            IERC20(iss.vault.assetAt(i).erc20()).safeApprove(address(iss.vault), iss.deposits[i]);
+            IERC20(iss.vault.collateralAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.deposits[i]);
+            IERC20(iss.vault.collateralAt(i).erc20()).safeApprove(address(iss.vault), iss.deposits[i]);
         }
         iss.vault.issue(address(this), iss.BUs);
         emit IssuanceStarted(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
@@ -147,7 +147,7 @@ contract MainP0 is IMain, Ownable {
 
     /// Performs the expensive checks for default, such as calculating VWAPs
     function noticeDefault() external override notPaused always {
-        IAsset[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoins());
+        ICollateral[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoins());
 
         // If no defaults, walk back the default and enter CALM/TRADING
         if (softDefaulting.length == 0) {
@@ -238,7 +238,7 @@ contract MainP0 is IMain, Ownable {
     function backingTokens() external view override returns (address[] memory erc20s) {
         erc20s = new address[](manager.vault().size());
         for (uint256 i = 0; i < manager.vault().size(); i++) {
-            erc20s[i] = address(manager.vault().assetAt(i).erc20());
+            erc20s[i] = address(manager.vault().collateralAt(i).erc20());
         }
     }
 

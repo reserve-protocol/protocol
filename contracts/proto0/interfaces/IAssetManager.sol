@@ -41,11 +41,11 @@ interface IAssetManager {
     /// Accumulates current metrics into historical metrics
     function accumulate() external;
 
-    /// Attempts to switch vaults to a backup vault that does not contain `defaulting` assets
-    /// @param defaulting The list of assets that are ineligible to be in the next vault
-    function switchVaults(IAsset[] memory defaulting) external;
+    /// Attempts to switch vaults to a backup vault that does not contain `defaulting` collateral
+    /// @param defaulting The list of collateral that are ineligible to be in the next vault
+    function switchVaults(ICollateral[] memory defaulting) external;
 
-    /// @return {none} The base factor
+    /// @return {qRTok/qBU} The base factor
     function baseFactor() external returns (Fix);
 
     /// BUs -> RToken
@@ -64,6 +64,6 @@ interface IAssetManager {
     /// @return The current vault
     function vault() external view returns (IVault);
 
-    /// @return An array of addresses of the approved fiatcoin assets used for oracle USD determination
-    function approvedFiatcoins() external view returns (IAsset[] memory);
+    /// @return An array of addresses of the approved fiatcoin collateral used for oracle USD determination
+    function approvedFiatcoins() external view returns (ICollateral[] memory);
 }

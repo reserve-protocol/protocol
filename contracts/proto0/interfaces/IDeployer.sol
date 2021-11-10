@@ -51,6 +51,6 @@ interface IDeployer {
         IComptroller compound,
         IAaveLendingPool aave,
         ParamsAssets memory nonCollateral,
-        IAsset[] memory collateral
+        ICollateral[] memory collateral
     ) external returns (address);
 }

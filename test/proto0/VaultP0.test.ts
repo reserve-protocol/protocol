@@ -8,9 +8,9 @@ import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { USDCMock } from '../../typechain/USDCMock'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { CTokenMock } from '../../typechain/CTokenMock'
-import { AssetP0 } from '../../typechain/AssetP0'
-import { ATokenAssetP0 } from '../../typechain/ATokenAssetP0'
-import { CTokenAssetP0 } from '../../typechain/CTokenAssetP0'
+import { CollateralP0 } from '../../typechain/CollateralP0'
+import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
+import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
 import { VaultP0 } from '../../typechain/VaultP0'
 import { MainMockP0 } from '../../typechain/MainMockP0'
 
@@ -44,11 +44,11 @@ describe('VaultP0 contract', () => {
   let usdc: USDCMock
 
   let AssetFactory: ContractFactory
-  let asset0: AssetP0
-  let asset1: AssetP0
-  let asset2: AssetP0
-  let asset3: AssetP0
-  let assetUSDC: AssetP0
+  let asset0: CollateralP0
+  let asset1: CollateralP0
+  let asset2: CollateralP0
+  let asset3: CollateralP0
+  let assetUSDC: CollateralP0
   let assets: string[]
 
   // AToken and CTokens
@@ -58,8 +58,8 @@ describe('VaultP0 contract', () => {
   let CTokenAssetFactory: ContractFactory
   let aTkn: StaticATokenMock
   let cTkn: CTokenMock
-  let assetAToken: ATokenAssetP0
-  let assetCToken: CTokenAssetP0
+  let assetAToken: ATokenCollateralP0
+  let assetCToken: CTokenCollateralP0
 
   // Quantities
   let quantity0: BigNumber
@@ -109,23 +109,23 @@ describe('VaultP0 contract', () => {
     await tkn3.connect(owner).mint(addr1.address, initialBal)
 
     // Set Collateral Assets and Quantities
-    AssetFactory = await ethers.getContractFactory('AssetP0')
-    asset0 = <AssetP0>await AssetFactory.deploy(tkn0.address, tkn0.decimals())
-    asset1 = <AssetP0>await AssetFactory.deploy(tkn1.address, tkn1.decimals())
-    asset2 = <AssetP0>await AssetFactory.deploy(tkn2.address, tkn2.decimals())
-    asset3 = <AssetP0>await AssetFactory.deploy(tkn3.address, tkn3.decimals())
-    assetUSDC = <AssetP0>await AssetFactory.deploy(usdc.address, usdc.decimals())
+    AssetFactory = await ethers.getContractFactory('CollateralP0')
+    asset0 = <CollateralP0>await AssetFactory.deploy(tkn0.address, tkn0.decimals())
+    asset1 = <CollateralP0>await AssetFactory.deploy(tkn1.address, tkn1.decimals())
+    asset2 = <CollateralP0>await AssetFactory.deploy(tkn2.address, tkn2.decimals())
+    asset3 = <CollateralP0>await AssetFactory.deploy(tkn3.address, tkn3.decimals())
+    assetUSDC = <CollateralP0>await AssetFactory.deploy(usdc.address, usdc.decimals())
 
     // ATokens and CTokens
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
     aTkn = <StaticATokenMock>await ATokenMockFactory.deploy('AToken', 'ATKN0', tkn0.address)
-    ATokenAssetFactory = await ethers.getContractFactory('ATokenAssetP0')
-    assetAToken = <ATokenAssetP0>await ATokenAssetFactory.deploy(aTkn.address, aTkn.decimals())
+    ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
+    assetAToken = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aTkn.address, aTkn.decimals())
 
     CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
     cTkn = <CTokenMock>await CTokenMockFactory.deploy('CToken', 'CTKN1', tkn1.address)
-    CTokenAssetFactory = await ethers.getContractFactory('CTokenAssetP0')
-    assetCToken = <CTokenAssetP0>await CTokenAssetFactory.deploy(cTkn.address, cTkn.decimals())
+    CTokenAssetFactory = await ethers.getContractFactory('CTokenCollateralP0')
+    assetCToken = <CTokenCollateralP0>await CTokenAssetFactory.deploy(cTkn.address, cTkn.decimals())
 
     // Quantities
     quantity0 = qtyHalf
@@ -145,8 +145,8 @@ describe('VaultP0 contract', () => {
 
   describe('Deployment', () => {
     const expectAsset = async (index: number, assetInfo: Partial<IAssetInfo>) => {
-      const assetAddress = await vault.assetAt(index)
-      const assetInstance = <AssetP0>await ethers.getContractAt('AssetP0', assetAddress)
+      const assetAddress = await vault.collateralAt(index)
+      const assetInstance = <CollateralP0>await ethers.getContractAt('CollateralP0', assetAddress)
       expect(await assetInstance.erc20()).to.equal(assetInfo.erc20)
       expect(await assetInstance.decimals()).to.equal(assetInfo.decimals)
       expect(await vault.quantity(assetInstance.address)).to.equal(assetInfo.quantity)

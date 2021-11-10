@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/proto0/assets/AssetP0.sol";
+import "contracts/proto0/assets/collateral/CollateralP0.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/proto0/libraries/Oracle.sol";
 
@@ -16,11 +17,11 @@ interface ICToken {
     function underlying() external view returns (address);
 }
 
-contract CTokenAssetP0 is AssetP0 {
+contract CTokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
 
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
-    constructor(address erc20_) AssetP0(erc20_) {}
+    constructor(address erc20_) CollateralP0(erc20_) {}
 
     /// @return {qFiatTok/qTok}
     function rateFiatcoin() public override returns (Fix) {
@@ -41,13 +42,13 @@ contract CTokenAssetP0 is AssetP0 {
         return rate.mul(toFixWithShift(1, shiftLeft));
     }
 
-    function fiatcoin() public view override returns (address) {
-        return ICToken(_erc20).underlying();
+    function fiatcoin() public view override returns (IERC20) {
+        return IERC20(ICToken(_erc20).underlying());
     }
 
     /// @return {attoUSD/qFiatTok}
     function fiatcoinPriceUSD(IMain main) public view override returns (Fix) {
-        return main.consultOracle(Oracle.Source.COMPOUND, fiatcoin());
+        return main.consultOracle(Oracle.Source.COMPOUND, address(fiatcoin()));
     }
 
     function isFiatcoin() external pure override returns (bool) {

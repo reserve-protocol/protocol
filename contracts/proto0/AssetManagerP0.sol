@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/libraries/CommonErrors.sol";
-import "contracts/proto0/assets/ATokenAssetP0.sol";
 import "contracts/proto0/libraries/Auction.sol";
 import "contracts/proto0/interfaces/IAsset.sol";
 import "contracts/proto0/interfaces/IAssetManager.sol";
@@ -19,6 +17,7 @@ import "contracts/proto0/interfaces/IVault.sol";
 import "contracts/proto0/FurnaceP0.sol";
 import "contracts/proto0/RTokenP0.sol";
 import "contracts/proto0/StRSRP0.sol";
+import "contracts/libraries/CommonErrors.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
@@ -42,7 +41,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     // <RToken> = b * <Basket Unit Vector>
     // Fully capitalized: #RTokens <= #BUs / b
 
-    Fix internal _historicalBasketDilution = FIX_ONE; // the product of all historical basket dilutions
+    Fix internal _historicalBasketDilution; // the product of all historical basket dilutions
     Fix internal _prevBasketRate; // redemption value of the basket in fiatcoins last update
 
     EnumerableSet.AddressSet internal _approvedCollateral;
@@ -59,23 +58,22 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         IMain main_,
         IVault vault_,
         address owner_,
-        IAsset[] memory approvedAssets_
+        ICollateral[] memory approvedCollateral_
     ) {
         main = main_;
         vault = vault_;
-        _prevBasketRate = vault.basketRate();
 
-        for (uint256 i = 0; i < approvedAssets_.length; i++) {
-            _approveAsset(approvedAssets_[i]);
+        for (uint256 i = 0; i < approvedCollateral_.length; i++) {
+            _approveCollateral(approvedCollateral_[i]);
         }
 
         if (!vault.containsOnly(_approvedCollateral.values())) {
-            revert CommonErrors.UnapprovedAsset();
+            revert CommonErrors.UnapprovedCollateral();
         }
 
-        _accumulate();
-
         main.rsr().approve(address(main.stRSR()), type(uint256).max);
+        _prevBasketRate = vault.basketRate();
+        _historicalBasketDilution = _basketDilutionFactor();
         _transferOwnership(owner_);
     }
 
@@ -101,8 +99,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         vault.claimAndSweepRewardsToManager();
         main.comptroller().claimComp(address(this));
         for (uint256 i = 0; i < vault.size(); i++) {
-            // Only aTokens need to be claimed at the asset level
-            vault.assetAt(i).claimRewards();
+            // Only aTokens need to be claimed at the collateral level
+            vault.collateralAt(i).claimRewards();
         }
         // Expand the RToken supply to self
         uint256 possible = fromBUs(vault.basketUnits(address(this)));
@@ -112,8 +110,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
     }
 
-    /// Attempts to switch vaults to a backup vault that does not contain `defaulting` assets
-    function switchVaults(IAsset[] memory defaulting) external override {
+    /// Attempts to switch vaults to a backup vault that does not contain `defaulting` collateral
+    function switchVaults(ICollateral[] memory defaulting) external override {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         for (uint256 i = 0; i < defaulting.length; i++) {
             _unapproveAsset(defaulting[i]);
@@ -171,12 +169,12 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     //
 
-    function approveAsset(IAsset asset) external onlyOwner {
-        _approveAsset(asset);
+    function approveCollateral(ICollateral collateral) external onlyOwner {
+        _approveCollateral(collateral);
     }
 
-    function unapproveAsset(IAsset asset) external onlyOwner {
-        _unapproveAsset(asset);
+    function unapproveCollateral(ICollateral collateral) external onlyOwner {
+        _unapproveAsset(collateral);
     }
 
     function switchVault(IVault vault_) external onlyOwner {
@@ -190,15 +188,15 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         return vault.basketUnits(address(this)) >= main.rToken().totalSupply();
     }
 
-    /// @return fiatcoins An array of approved fiatcoin assets to be used for oracle USD determination
-    function approvedFiatcoins() external view override returns (IAsset[] memory fiatcoins) {
+    /// @return fiatcoins An array of approved fiatcoin collateral to be used for oracle USD determination
+    function approvedFiatcoins() external view override returns (ICollateral[] memory fiatcoins) {
         address[] memory addresses = _fiatcoins.values();
         for (uint256 i = 0; i < addresses.length; i++) {
-            fiatcoins[i] = IAsset(addresses[i]);
+            fiatcoins[i] = ICollateral(addresses[i]);
         }
     }
 
-    /// @return {none} The base factor
+    /// @return {qRTok/qBU} The base factor
     function baseFactor() public override returns (Fix) {
         main.furnace().doBurn();
         return _meltingFactor().div(_basketDilutionFactor());
@@ -249,7 +247,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// Returns the oldest vault that contains nonzero BUs.
     /// Note that this will pass over vaults with uneven holdings, it does not necessarily mean the vault
-    /// contains no asset tokens.
+    /// contains no collateral.
     function _oldestVault() internal view returns (IVault) {
         for (uint256 i = 0; i < pastVaults.length; i++) {
             if (pastVaults[i].basketUnits(address(this)) > 0) {
@@ -276,18 +274,18 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         _accumulate();
     }
 
-    function _approveAsset(IAsset asset) internal {
-        _approvedCollateral.add(address(asset));
-        _alltimeCollateral.add(address(asset));
-        if (asset.isFiatcoin()) {
-            _fiatcoins.add(address(asset));
+    function _approveCollateral(ICollateral collateral) internal {
+        _approvedCollateral.add(address(collateral));
+        _alltimeCollateral.add(address(collateral));
+        if (collateral.isFiatcoin()) {
+            _fiatcoins.add(address(collateral));
         }
     }
 
-    function _unapproveAsset(IAsset asset) internal {
-        _approvedCollateral.remove(address(asset));
-        if (asset.isFiatcoin()) {
-            _fiatcoins.remove(address(asset));
+    function _unapproveAsset(ICollateral collateral) internal {
+        _approvedCollateral.remove(address(collateral));
+        if (collateral.isFiatcoin()) {
+            _fiatcoins.remove(address(collateral));
         }
     }
 
@@ -300,7 +298,12 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     /// Runs all auctions for recapitalization
     function _doRecapitalizationAuctions() internal returns (State) {
         // Are we able to trade sideways, or is it all dust?
-        (IAsset sell, IAsset buy, uint256 maxSell, uint256 targetBuy) = _largestCollateralForCollateralTrade();
+        (
+            ICollateral sell,
+            ICollateral buy,
+            uint256 maxSell,
+            uint256 targetBuy
+        ) = _largestCollateralForCollateralTrade();
         (bool trade, Auction.Info memory auction) = _prepareAuctionBuy(
             main.config().minRecapitalizationAuctionSize,
             sell,
@@ -314,7 +317,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             return State.TRADING;
         }
 
-        // Redeem BUs to open up spare collateral assets
+        // Redeem BUs to open up spare collateral
         uint256 totalSupply = main.rToken().totalSupply();
         IVault oldVault = _oldestVault();
         if (oldVault != vault) {
@@ -439,17 +442,17 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// Determines what the largest collateral-for-collateral trade is.
     /// Algorithm:
-    ///    1. Target a particular number of basket units based on total fiatcoins held across all asset.
+    ///    1. Target a particular number of basket units based on total fiatcoins held across all collateral.
     ///    2. Choose the most in-surplus and most in-deficit collateral assets for trading.
-    /// @return Sell asset
-    /// @return Buy asset
+    /// @return Sell collateral
+    /// @return Buy collateral
     /// @return {sellTokLot} Sell amount
     /// @return {buyTokLot} Buy amount
     function _largestCollateralForCollateralTrade()
         internal
         returns (
-            IAsset,
-            IAsset,
+            ICollateral,
+            ICollateral,
             uint256,
             uint256
         )
@@ -457,7 +460,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         // Calculate a BU target (if we could trade with 0 slippage)
         Fix totalValue; // {attoUSD}
         for (uint256 i = 0; i < _alltimeCollateral.length(); i++) {
-            IAsset a = IAsset(_alltimeCollateral.at(i));
+            ICollateral a = ICollateral(_alltimeCollateral.at(i));
             Fix bal = toFix(IERC20(a.erc20()).balanceOf(address(this)));
 
             // {attoUSD} = {attoUSD} + {attoUSD/qTok} * {qTok}
@@ -470,7 +473,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         Fix[] memory surplus = new Fix[](_alltimeCollateral.length());
         Fix[] memory deficit = new Fix[](_alltimeCollateral.length());
         for (uint256 i = 0; i < _alltimeCollateral.length(); i++) {
-            IAsset a = IAsset(_alltimeCollateral.at(i));
+            ICollateral a = ICollateral(_alltimeCollateral.at(i));
             Fix bal = toFix(IERC20(a.erc20()).balanceOf(address(this))); // {qTok}
 
             // {qTok} = {BU} * {qTok/BU}
@@ -500,8 +503,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             }
         }
 
-        IAsset sell = IAsset(_alltimeCollateral.at(sellIndex));
-        IAsset buy = IAsset(_alltimeCollateral.at(buyIndex));
+        ICollateral sell = ICollateral(_alltimeCollateral.at(sellIndex));
+        ICollateral buy = ICollateral(_alltimeCollateral.at(buyIndex));
 
         // {qSellTok} = {attoUSD} / {attoUSD/qSellTok}
         Fix sellAmount = surplusMax.div(sell.priceUSD(main));

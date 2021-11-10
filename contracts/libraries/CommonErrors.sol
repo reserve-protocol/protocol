@@ -26,7 +26,7 @@ library CommonErrors {
     error BasketTooBig();
     error UninitializedTokens();
     error InvalidTokenIndex();
-    error UnapprovedAsset();
+    error UnapprovedCollateral();
 
     // Circuit Breaker
     error CircuitPaused();
