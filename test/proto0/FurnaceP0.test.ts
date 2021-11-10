@@ -60,7 +60,7 @@ describe('FurnaceP0 contract', () => {
     rToken = <RTokenMockP0>await RToken.deploy('RToken', 'RTKN', rsr.address)
 
     // Mint and set balances
-    initialBal = bn(100e18)
+    initialBal = bn('100e18')
     await rToken.connect(owner).mint(addr1.address, initialBal)
     await rToken.connect(owner).mint(addr2.address, initialBal)
 
@@ -94,7 +94,7 @@ describe('FurnaceP0 contract', () => {
     })
 
     it('Should revert when not providing approval for tokens', async () => {
-      const hndAmt: BigNumber = bn(10e18)
+      const hndAmt: BigNumber = bn('10e18')
 
       await expect(furnace.connect(addr1).burnOverPeriod(hndAmt, timePeriod)).to.be.revertedWith(
         'ERC20: transfer amount exceeds allowance'
@@ -102,7 +102,7 @@ describe('FurnaceP0 contract', () => {
     })
 
     it('Should revert when not having enough RTokens for burn', async () => {
-      const hndAmt: BigNumber = bn(20000e18)
+      const hndAmt: BigNumber = bn('20000e18')
 
       // Approval
       await rToken.connect(addr1).approve(furnace.address, hndAmt)
@@ -113,7 +113,7 @@ describe('FurnaceP0 contract', () => {
     })
 
     it('Should allow batches correctly', async () => {
-      const hndAmt: BigNumber = bn(10e18)
+      const hndAmt: BigNumber = bn('10e18')
 
       // Approval
       await rToken.connect(addr1).approve(furnace.address, hndAmt)
@@ -129,13 +129,13 @@ describe('FurnaceP0 contract', () => {
         amount: hndAmt,
         start: await getLatestBlockTimestamp(),
         duration: timePeriod,
-        burnt: bn(0),
+        burnt: bn('0'),
       })
     })
 
     it('Should allow multiple batches', async () => {
-      const hndAmt1: BigNumber = bn(10e18)
-      const hndAmt2: BigNumber = bn(50e18)
+      const hndAmt1: BigNumber = bn('10e18')
+      const hndAmt2: BigNumber = bn('50e18')
 
       // Approval
       await rToken.connect(addr1).approve(furnace.address, hndAmt1)
@@ -149,7 +149,7 @@ describe('FurnaceP0 contract', () => {
         amount: hndAmt1,
         start: await getLatestBlockTimestamp(),
         duration: timePeriod,
-        burnt: bn(0),
+        burnt: bn('0'),
       })
 
       // Additional Batch burn
@@ -160,7 +160,7 @@ describe('FurnaceP0 contract', () => {
         amount: hndAmt2,
         start: await getLatestBlockTimestamp(),
         duration: timePeriod,
-        burnt: bn(0),
+        burnt: bn('0'),
       })
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt1))
@@ -171,7 +171,7 @@ describe('FurnaceP0 contract', () => {
 
   describe('Do Burn', () => {
     it('Should allow burn all funds if period is zero', async () => {
-      const hndAmt: BigNumber = bn(2e18)
+      const hndAmt: BigNumber = bn('2e18')
 
       // Approval
       await rToken.connect(addr1).approve(furnace.address, hndAmt)
@@ -201,7 +201,7 @@ describe('FurnaceP0 contract', () => {
     })
 
     it('Should allow burn - full amount if period is complete', async () => {
-      const hndAmt: BigNumber = bn(10e18)
+      const hndAmt: BigNumber = bn('10e18')
       const timePeriod: number = 60 * 60 * 24 // 1 day
 
       // Approval
@@ -236,7 +236,7 @@ describe('FurnaceP0 contract', () => {
     })
 
     it('Should not return more funds once all was burnt', async () => {
-      const hndAmt: BigNumber = bn(10e18)
+      const hndAmt: BigNumber = bn('10e18')
       const timePeriod: number = 60 * 60 * 24 // 1 day
 
       // Approval
@@ -278,7 +278,7 @@ describe('FurnaceP0 contract', () => {
       // Revert to snapshot to ensure test runs independent
       //await ethers.provider.send('evm_revert', [snapshotId])
 
-      const hndAmt: BigNumber = bn(10e18)
+      const hndAmt: BigNumber = bn('10e18')
       const timePeriod: number = 60 * 60 * 24 // 1 day
 
       // Approval
@@ -336,7 +336,7 @@ describe('FurnaceP0 contract', () => {
       // Revert to snapshot to ensure test runs independent
       //await ethers.provider.send('evm_revert', [snapshotId])
 
-      const hndAmt: BigNumber = bn(10e18)
+      const hndAmt: BigNumber = bn('10e18')
       const timePeriod: number = 60 * 60 * 24 // 1 day
 
       // Approval
@@ -347,7 +347,7 @@ describe('FurnaceP0 contract', () => {
 
       const hndTimestamp = await getLatestBlockTimestamp()
 
-      const hndAmt2: BigNumber = bn(20e18)
+      const hndAmt2: BigNumber = bn('20e18')
       const timePeriod2: number = 60 * 60 // 1 hour
 
       // Approval
@@ -417,7 +417,7 @@ describe('FurnaceP0 contract', () => {
         amount: hndAmt,
         start: hndTimestamp2,
         duration: timePeriod / 2,
-        burnt: bn(0),
+        burnt: bn('0'),
       })
 
       // Advance to the end of largest period, shoeuld process half of the last burn

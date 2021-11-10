@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "../Ownable.sol"; // temporary
 // import "@openzeppelin/contracts/access/Ownable.sol";
@@ -7,17 +7,18 @@ import "../Ownable.sol"; // temporary
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "./assets/RTokenAssetP0.sol";
-import "./assets/RSRAssetP0.sol";
-import "./assets/AAVEAssetP0.sol";
-import "./assets/COMPAssetP0.sol";
-import "./libraries/Oracle.sol";
-import "./interfaces/IAsset.sol";
-import "./interfaces/IAssetManager.sol";
-import "./interfaces/IDefaultMonitor.sol";
-import "./interfaces/IFurnace.sol";
-import "./interfaces/IMain.sol";
-import "./interfaces/IRToken.sol";
+import "contracts/proto0/assets/RTokenAssetP0.sol";
+import "contracts/proto0/assets/RSRAssetP0.sol";
+import "contracts/proto0/assets/AAVEAssetP0.sol";
+import "contracts/proto0/assets/COMPAssetP0.sol";
+import "contracts/proto0/libraries/Oracle.sol";
+import "contracts/proto0/interfaces/IAsset.sol";
+import "contracts/proto0/interfaces/IAssetManager.sol";
+import "contracts/proto0/interfaces/IDefaultMonitor.sol";
+import "contracts/proto0/interfaces/IFurnace.sol";
+import "contracts/proto0/interfaces/IMain.sol";
+import "contracts/proto0/interfaces/IRToken.sol";
+import "contracts/libraries/Fixed.sol";
 
 /**
  * @title MainP0
@@ -26,8 +27,7 @@ import "./interfaces/IRToken.sol";
 contract MainP0 is IMain, Ownable {
     using SafeERC20 for IERC20;
     using Oracle for Oracle.Info;
-
-    uint256 public constant override SCALE = 1e18;
+    using FixLib for Fix;
 
     Config internal _config;
     Oracle.Info internal _oracle;
@@ -77,7 +77,6 @@ contract MainP0 is IMain, Ownable {
             manager.switchVaults(hardDefaulting);
             state = State.TRADING;
         }
-        manager.updateBaseFactor();
         _;
     }
 
@@ -86,20 +85,21 @@ contract MainP0 is IMain, Ownable {
         _;
     }
 
-    /// @notice Begin a time-delayed issuance of RToken for basket collateral
-    /// @param amount The quantity {qRToken} of RToken to issue
+    /// Begin a time-delayed issuance of RToken for basket collateral
+    /// @param amount {qTok} The quantity of RToken to issue
     function issue(uint256 amount) external override notPaused always {
         require(state == State.CALM || state == State.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
         _processSlowIssuance();
+        Fix BUs = manager.toBUs(amount);
 
         // During SlowIssuance, BUs are created up front and held by `Main` until the issuance vests,
         // at which point the BUs are transferred to the AssetManager and RToken is minted to the issuer.
         SlowIssuance memory iss = SlowIssuance({
             vault: manager.vault(),
             amount: amount,
-            BUs: manager.toBUs(amount),
-            basketAmounts: manager.vault().tokenAmounts(manager.toBUs(amount)),
+            BUs: BUs,
+            deposits: manager.vault().tokenAmounts(BUs),
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
@@ -107,15 +107,15 @@ contract MainP0 is IMain, Ownable {
         issuances.push(iss);
 
         for (uint256 i = 0; i < iss.vault.size(); i++) {
-            IERC20(iss.vault.assetAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.basketAmounts[i]);
-            IERC20(iss.vault.assetAt(i).erc20()).safeApprove(address(iss.vault), iss.basketAmounts[i]);
+            IERC20(iss.vault.assetAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.deposits[i]);
+            IERC20(iss.vault.assetAt(i).erc20()).safeApprove(address(iss.vault), iss.deposits[i]);
         }
         iss.vault.issue(address(this), iss.BUs);
         emit IssuanceStart(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
     }
 
-    /// @notice Redeem RToken for basket collateral
-    /// @param amount The quantity {qRToken} of RToken to redeem
+    /// Redeem RToken for basket collateral
+    /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     function redeem(uint256 amount) external override always {
         require(amount > 0, "Cannot redeem zero");
         if (!paused) {
@@ -125,7 +125,7 @@ contract MainP0 is IMain, Ownable {
         emit Redemption(_msgSender(), amount);
     }
 
-    /// @notice Runs the central auction loop
+    /// Runs the central auction loop
     function poke() external override notPaused always {
         require(state == State.CALM || state == State.TRADING, "only during calm + trading");
         _processSlowIssuance();
@@ -145,7 +145,7 @@ contract MainP0 is IMain, Ownable {
         }
     }
 
-    /// @notice Performs the expensive checks for default, such as calculating VWAPs
+    /// Performs the expensive checks for default, such as calculating VWAPs
     function noticeDefault() external override notPaused always {
         IAsset[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoins());
 
@@ -188,7 +188,7 @@ contract MainP0 is IMain, Ownable {
 
     function setConfig(Config memory config_) external onlyOwner {
         // When f changes we need to accumulate the historical basket dilution
-        if (_config.f != config_.f) {
+        if (_config.f.neq(config_.f)) {
             manager.accumulate();
         }
         _config = config_;
@@ -234,12 +234,6 @@ contract MainP0 is IMain, Ownable {
         return next;
     }
 
-    /// @return The quantities of collateral tokens that would be required to issue `amount` RToken
-    function quote(uint256 amount) public view override returns (uint256[] memory) {
-        require(amount > 0, "Cannot quote zero");
-        return manager.vault().tokenAmounts(manager.toBUs(amount));
-    }
-
     /// @return erc20s The addresses of the ERC20s backing the RToken
     function backingTokens() external view override returns (address[] memory erc20s) {
         for (uint256 i = 0; i < manager.vault().size(); i++) {
@@ -247,14 +241,9 @@ contract MainP0 is IMain, Ownable {
         }
     }
 
-    /// @return The price in USD of `token` on Aave {UNITS}
-    function consultAaveOracle(address token) external view override returns (uint256) {
-        return _oracle.consultAave(token);
-    }
-
-    /// @return The price in USD of `token` on Compound {UNITS}
-    function consultCompoundOracle(address token) external view override returns (uint256) {
-        return _oracle.consultCompound(token);
+    /// @return {attoUSD/qTok} The price in attoUSD of a `qTok` on oracle `source`.
+    function consultOracle(Oracle.Source source, address token) external view override returns (Fix) {
+        return _oracle.consult(source, token);
     }
 
     /// @return The deployment of the comptroller on this chain
@@ -269,14 +258,14 @@ contract MainP0 is IMain, Ownable {
 
     // ==================================== Internal ====================================
 
-    // Returns the block number at which an issuance for *amount* that begins now
+    // Returns the future block number at which an issuance for *amount* now can complete
     function _nextIssuanceBlockAvailable(uint256 amount) internal view returns (uint256) {
-        uint256 issuanceRate = Math.max(
-            10_000 * 10**rToken.decimals(),
-            (rToken.totalSupply() * _config.issuanceRate) / SCALE
-        );
+        uint256 perBlock = Math.max(
+            10_000 * 10**rToken.decimals(), // lower-bound: 10k whole RToken per block
+            toFix(rToken.totalSupply()).mul(_config.issuanceRate).toUint()
+        ); // {RToken/block}
         uint256 blockStart = issuances.length == 0 ? block.number : issuances[issuances.length - 1].blockAvailableAt;
-        return Math.max(blockStart, block.number) + Math.ceilDiv(amount, issuanceRate);
+        return Math.max(blockStart, block.number) + Math.ceilDiv(amount, perBlock);
     }
 
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
@@ -284,16 +273,14 @@ contract MainP0 is IMain, Ownable {
         for (uint256 i = 0; i < issuances.length; i++) {
             if (!issuances[i].processed && issuances[i].vault != manager.vault()) {
                 issuances[i].vault.redeem(issuances[i].issuer, issuances[i].BUs);
+                issuances[i].processed = true;
                 emit IssuanceCancel(i);
-            }
-
-            if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
+            } else if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
                 issuances[i].vault.setAllowance(address(manager), issuances[i].BUs);
                 manager.issue(issuances[i]);
+                issuances[i].processed = true;
                 emit IssuanceComplete(i);
             }
-
-            issuances[i].processed = true;
         }
     }
 

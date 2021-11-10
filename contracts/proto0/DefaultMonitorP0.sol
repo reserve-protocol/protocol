@@ -1,41 +1,41 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Context.sol";
-import "./interfaces/IAsset.sol";
-import "./interfaces/IDefaultMonitor.sol";
-import "./interfaces/IMain.sol";
-import "./MainP0.sol";
+import "contracts/proto0/interfaces/IAsset.sol";
+import "contracts/proto0/interfaces/IDefaultMonitor.sol";
+import "contracts/proto0/interfaces/IMain.sol";
+import "contracts/proto0/MainP0.sol";
+import "contracts/libraries/Fixed.sol";
 
 /**
  * @title DefaultMonitorP0
  * @notice The default monitor checks for default states in other systems.
  */
 contract DefaultMonitorP0 is Context, IDefaultMonitor {
-    uint256 public constant SCALE = 1e18;
+    using FixLib for Fix;
+    mapping(address => Fix) internal _lastRatesUSD; // {attoUSD/qtok}
 
     IMain public main;
-
-    mapping(address => uint256) public redemptionRates;
 
     constructor(IMain main_) {
         main = main_;
     }
 
-    /// @notice Checks for hard default in a vault by inspecting the redemption rates of collateral tokens
+    /// Checks for hard default in a vault by inspecting the redemption rates of collateral tokens
     /// @param vault The vault to inspect
+    /// @return defaulting All hard-defaulting tokens
     function checkForHardDefault(IVault vault) external override returns (IAsset[] memory defaulting) {
         require(_msgSender() == address(main), "main only");
         IAsset[] memory vaultAssets = new IAsset[](vault.size());
         uint256 count;
         for (uint256 i = 0; i < vault.size(); i++) {
             IAsset a = vault.assetAt(i);
-            uint256 redemptionRate = a.redemptionRate();
-            if (redemptionRate + 1 < redemptionRates[address(a)]) {
+            if (a.rateUSD().lt(_lastRatesUSD[address(a)])) {
                 vaultAssets[count] = a;
                 count++;
             }
-            redemptionRates[address(a)] = redemptionRate;
+            _lastRatesUSD[address(a)] = a.rateUSD();
         }
         defaulting = new IAsset[](count);
         for (uint256 i = 0; i < count; i++) {
@@ -43,21 +43,23 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         }
     }
 
-    /// @notice Checks for soft default in a vault by checking oracle values for all fiatcoins in the vault
+    /// Checks for soft default in a vault by checking oracle values for all fiatcoins in the vault
     /// @param vault The vault to inspect
     /// @param fiatcoins An array of addresses of fiatcoin assets to use for median USD calculation
+    /// @return defaulting All soft-defaulting tokens
     function checkForSoftDefault(IVault vault, IAsset[] memory fiatcoins)
         public
         view
         override
         returns (IAsset[] memory defaulting)
     {
-        uint256 defaultThreshold = _defaultThreshold(fiatcoins);
+        Fix defaultThreshold = _defaultThreshold(fiatcoins); // {attoUSD/qTok}
         IAsset[] memory vaultAssets = new IAsset[](vault.size());
         uint256 count;
         for (uint256 i = 0; i < vaultAssets.length; i++) {
             IAsset a = vault.assetAt(i);
-            if (a.fiatcoinPriceUSD(main) < defaultThreshold) {
+
+            if (a.fiatcoinPriceUSD(main).lt(defaultThreshold)) {
                 vaultAssets[count] = a;
                 count++;
             }
@@ -68,7 +70,7 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         }
     }
 
-    /// @notice Returns a vault from the list of backup vaults that is not defaulting
+    /// Returns a vault from the list of backup vaults that is not defaulting
     /// @param vault The vault that is currently defaulting
     /// @param approvedCollateral An array of addresses of all collateral assets eligible to be in the new vault
     /// @param fiatcoins An array of addresses of fiatcoin assets to use for median USD calculation
@@ -77,49 +79,50 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         address[] memory approvedCollateral,
         address[] memory fiatcoins
     ) external override returns (IVault) {
-        uint256 maxRate;
-        uint256 indexMax = 0;
         IAsset[] memory fiatcoinAssets = new IAsset[](fiatcoins.length);
         for (uint256 i = 0; i < fiatcoins.length; i++) {
             fiatcoinAssets[i] = IAsset(fiatcoins[i]);
         }
 
-        // Loop through backups to find the highest value one that doesn't contain defaulting collateral
+        Fix maxRate;
+        uint256 indexMax = 0;
         IVault[] memory backups = vault.getBackups();
+
+        // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
             if (
                 backups[i].containsOnly(approvedCollateral) &&
                 checkForSoftDefault(backups[i], fiatcoinAssets).length == 0
             ) {
-                uint256 rate = backups[i].basketRate();
+                Fix rate = backups[i].basketRate(); // {USD}
 
                 // See if it has the highest basket rate
-                if (rate > maxRate) {
+                if (rate.gt(maxRate)) {
                     maxRate = rate;
                     indexMax = i;
                 }
             }
         }
 
-        if (maxRate == 0) {
+        if (maxRate.eq(FIX_ZERO)) {
             return IVault(address(0));
         }
         return backups[indexMax];
     }
 
-    // Computes the USD price (18 decimals) at which a fiatcoin should be considered to be defaulting.
-    function _defaultThreshold(IAsset[] memory fiatcoins) internal view returns (uint256) {
+    /// @return {attoUSD/qTok} The USD price at which a fiatcoin can be said to be defaulting
+    function _defaultThreshold(IAsset[] memory fiatcoins) internal view returns (Fix) {
         // Collect prices
-        uint256[] memory prices = new uint256[](fiatcoins.length);
+        Fix[] memory prices = new Fix[](fiatcoins.length);
         for (uint256 i = 0; i < fiatcoins.length; i++) {
-            prices[i] = fiatcoins[i].fiatcoinPriceUSD(main);
+            prices[i] = fiatcoins[i].fiatcoinPriceUSD(main); // {attoUSD/qTok}
         }
 
         // Sort
         for (uint256 i = 1; i < prices.length; i++) {
-            uint256 key = prices[i];
+            Fix key = prices[i];
             uint256 j = i - 1;
-            while (j >= 0 && prices[j] > key) {
+            while (j >= 0 && prices[j].gt(key)) {
                 prices[j + 1] = prices[j];
                 j--;
             }
@@ -127,13 +130,14 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         }
 
         // Take the median
-        uint256 price;
+        Fix median;
         if (prices.length % 2 == 0) {
-            price = (prices[prices.length / 2 - 1] + prices[prices.length / 2]) / 2;
+            median = prices[prices.length / 2 - 1].plus(prices[prices.length / 2]).divu(2);
         } else {
-            price = prices[prices.length / 2];
+            median = prices[prices.length / 2];
         }
 
-        return (price * (SCALE - main.config().defaultThreshold)) / SCALE;
+        // median - (median * defaultThreshold)
+        return median.minus(median.mul(main.config().defaultThreshold));
     }
 }

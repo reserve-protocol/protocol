@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
+import "contracts/proto0/libraries/Oracle.sol";
+import "contracts/libraries/Fixed.sol";
 
 contract ManagerInternalMockP0 {
     bool public fullyCapitalized;
@@ -59,13 +62,8 @@ contract MainMockP0 {
         return _config;
     }
 
-    // Return USD Price in 18 decimals
-    function consultAaveOracle(address token) external view returns (uint256) {
-        return 1e18;
-    }
-
-    // Return USD Price in 18 decimals
-    function consultCompoundOracle(address token) external view returns (uint256) {
-        return 1e18;
+    /// @return {attoUSD/qTok} The price in attoUSD of `token` on Compound
+    function consultOracle(Oracle.Source source, address token) external view returns (Fix) {
+        return toFix(1, 18 - int8(IERC20Metadata(token).decimals()));
     }
 }

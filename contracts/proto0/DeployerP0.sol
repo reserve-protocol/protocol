@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./assets/RTokenAssetP0.sol";
@@ -27,7 +27,7 @@ import "./StRSRP0.sol";
 contract DeployerP0 is IDeployer {
     IMain[] public deployments;
 
-    /// @notice Deploys an instance of the entire system
+    /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
     /// @param owner The address that should own the entire system, hopefully a governance contract

@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/IAsset.sol";
-import "../interfaces/IMain.sol";
+import "contracts/proto0/interfaces/IAsset.sol";
+import "contracts/proto0/interfaces/IMain.sol";
+import "contracts/libraries/Fixed.sol";
+import "contracts/proto0/libraries/Oracle.sol";
 
 /**
  * @title AssetP0
  * @notice A vanilla asset such as a fiatcoin, to be extended by more complex assets such as cTokens.
  */
 contract AssetP0 is IAsset {
-    uint256 public constant SCALE = 1e18;
+    using FixLib for Fix;
 
     address internal immutable _erc20;
 
@@ -19,16 +21,19 @@ contract AssetP0 is IAsset {
         _erc20 = erc20_;
     }
 
-    /// @notice Forces an update in asset's underlying DeFi protocol
-    function updateRedemptionRate() external virtual override {}
-
     /// Claims any rewards such as COMP/AAVE for the asset
     function claimRewards() external virtual override {}
 
-    /// @dev `updateRedemptionRate()` before to ensure the latest rates
-    /// @return The latest fiatcoin redemption rate
-    function redemptionRate() public view virtual override returns (uint256) {
-        return 1e18;
+    /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
+    function rateFiatcoin() public virtual override returns (Fix) {
+        return toFix(10**fiatcoinDecimals()).divu(10**decimals());
+    }
+
+    /// @return {attoUSD/qTok} Without using oracles, returns the expected attoUSD value of one qtok.
+    function rateUSD() public virtual override returns (Fix) {
+        // {attoUSD/tok} / {qTok/tok}
+        int128 shiftLeft = -int8(decimals());
+        return toFix(1e18, shiftLeft);
     }
 
     /// @return The ERC20 contract of the central token
@@ -37,7 +42,7 @@ contract AssetP0 is IAsset {
     }
 
     /// @return The number of decimals in the central token
-    function decimals() external view override returns (uint8) {
+    function decimals() public view override returns (uint8) {
         return IERC20Metadata(_erc20).decimals();
     }
 
@@ -51,18 +56,18 @@ contract AssetP0 is IAsset {
         return _erc20;
     }
 
-    /// @return The price in USD of the asset as a function of DeFi redemption rates + oracle data
-    function priceUSD(IMain main) public view virtual override returns (uint256) {
-        // Aave has all 4 of the fiatcoins we are considering
-        return (redemptionRate() * main.consultAaveOracle(address(erc20()))) / SCALE;
+    /// @return {attoUSD/qTok} The price in attoUSD of the asset's smallest unit
+    function priceUSD(IMain main) public virtual override returns (Fix) {
+        // {attoUSD/qFiatTok} * {qFiatTok/qTok}
+        return fiatcoinPriceUSD(main).mul(rateFiatcoin());
     }
 
-    /// @return The price in USD of the fiatcoin underlying the ERC20 (or the price of the ERC20 itself)
-    function fiatcoinPriceUSD(IMain main) public view virtual override returns (uint256) {
-        return main.consultAaveOracle(fiatcoin());
+    /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
+    function fiatcoinPriceUSD(IMain main) public view virtual override returns (Fix) {
+        return main.consultOracle(Oracle.Source.AAVE, fiatcoin());
     }
 
-    /// @return Whether the asset is (directly) a fiatcoin
+    /// @return Whether `_erc20` is a fiatcoin
     function isFiatcoin() external pure virtual override returns (bool) {
         return true;
     }

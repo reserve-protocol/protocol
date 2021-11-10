@@ -48,7 +48,7 @@ describe('StRSRP0 contract', () => {
     main = <MainMockP0>await MainMockFactory.deploy(rsr.address, stRSRWithdrawalDelay)
 
     // Mint initial amounts
-    initialBal = bn(100e18)
+    initialBal = bn('100e18')
     await rsr.connect(owner).mint(addr1.address, initialBal)
     await rsr.connect(owner).mint(addr2.address, initialBal)
     await rsr.connect(owner).mint(addr3.address, initialBal)
@@ -84,7 +84,7 @@ describe('StRSRP0 contract', () => {
   describe('Deposits/Staking', () => {
     it('Should allow to stake/deposit in RSR', async () => {
       // Perform stake
-      const amount: BigNumber = bn(1e18)
+      const amount: BigNumber = bn('1e18')
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -99,7 +99,7 @@ describe('StRSRP0 contract', () => {
 
     it('Should not allow to stake amount = 0', async () => {
       // Perform stake
-      const amount: BigNumber = bn(1e18)
+      const amount: BigNumber = bn('1e18')
       const zero: BigNumber = bn(0)
 
       // Approve transfer and stake
@@ -115,9 +115,9 @@ describe('StRSRP0 contract', () => {
 
     it('Should allow multiple stakes/deposits in RSR', async () => {
       // Perform stake
-      const amount1: BigNumber = bn(1e18)
-      const amount2: BigNumber = bn(2e18)
-      const amount3: BigNumber = bn(3e18)
+      const amount1: BigNumber = bn('1e18')
+      const amount2: BigNumber = bn('2e18')
+      const amount3: BigNumber = bn('3e18')
 
       // Approve transfer and stake twice
       await rsr.connect(addr1).approve(stRSR.address, amount1.add(amount2))
@@ -140,7 +140,7 @@ describe('StRSRP0 contract', () => {
 
   describe('Withdrawals/Unstaking', () => {
     it('Should create Pending withdrawal when unstaking', async () => {
-      const amount: BigNumber = bn(1e18)
+      const amount: BigNumber = bn('1e18')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -171,7 +171,7 @@ describe('StRSRP0 contract', () => {
     })
 
     it('Should not allow to unstake if not enough balance', async () => {
-      const amount: BigNumber = bn(1e18)
+      const amount: BigNumber = bn('1e18')
 
       // Unstake with no stakes/balance
       await expect(stRSR.connect(addr1).unstake(amount)).to.be.revertedWith('Not enough balance')
@@ -179,9 +179,9 @@ describe('StRSRP0 contract', () => {
 
     it('Should allow multiple unstakes/withdrawals in RSR', async () => {
       // Perform stake
-      const amount1: BigNumber = bn(1e18)
-      const amount2: BigNumber = bn(2e18)
-      const amount3: BigNumber = bn(3e18)
+      const amount1: BigNumber = bn('1e18')
+      const amount2: BigNumber = bn('2e18')
+      const amount3: BigNumber = bn('3e18')
 
       // Approve transfers
       await rsr.connect(addr1).approve(stRSR.address, amount1.add(amount2))
@@ -232,9 +232,9 @@ describe('StRSRP0 contract', () => {
         await main.connect(owner).setStRSRWithdrawalDelay(stkWithdrawalDelay)
 
         // Perform stake
-        amount1 = bn(1e18)
-        amount2 = bn(2e18)
-        amount3 = bn(3e18)
+        amount1 = bn('1e18')
+        amount2 = bn('2e18')
+        amount3 = bn('3e18')
 
         // Approve transfers
         await rsr.connect(addr1).approve(stRSR.address, amount1)
@@ -404,7 +404,7 @@ describe('StRSRP0 contract', () => {
 
   describe('Add/Remove RSR', () => {
     it('Should not allow to remove RSR if caller is not AssetManager', async () => {
-      const amount: BigNumber = bn(1e18)
+      const amount: BigNumber = bn('1e18')
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
 
       await expect(stRSR.connect(other).seizeRSR(amount)).to.be.revertedWith('Caller is not Asset Manager')
@@ -423,8 +423,8 @@ describe('StRSRP0 contract', () => {
     })
 
     it('Should allow to add RSR - Single staker', async () => {
-      const amount: BigNumber = bn(1e18)
-      const amount2: BigNumber = bn(10e18)
+      const amount: BigNumber = bn('1e18')
+      const amount2: BigNumber = bn('10e18')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -448,8 +448,8 @@ describe('StRSRP0 contract', () => {
     })
 
     it('Should allow to add RSR - Two stakers - Rounded values', async () => {
-      const amount: BigNumber = bn(1e18)
-      const amount2: BigNumber = bn(10e18)
+      const amount: BigNumber = bn('1e18')
+      const amount2: BigNumber = bn('10e18')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -480,8 +480,8 @@ describe('StRSRP0 contract', () => {
     })
 
     it('Should allow to add RSR - Three stakers - Check Precision', async () => {
-      const amount: BigNumber = bn(1e18)
-      const amount2: BigNumber = bn(10e18)
+      const amount: BigNumber = bn('1e18')
+      const amount2: BigNumber = bn('10e18')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -520,8 +520,8 @@ describe('StRSRP0 contract', () => {
     })
 
     it('Should allow to remove RSR - Single staker', async () => {
-      const amount: BigNumber = bn(10e18)
-      const amount2: BigNumber = bn(1e18)
+      const amount: BigNumber = bn('10e18')
+      const amount2: BigNumber = bn('1e18')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -544,8 +544,8 @@ describe('StRSRP0 contract', () => {
     })
 
     it('Should allow to remove RSR - Two stakers - Rounded values', async () => {
-      const amount: BigNumber = bn(10e18)
-      const amount2: BigNumber = bn(1e18)
+      const amount: BigNumber = bn('10e18')
+      const amount2: BigNumber = bn('1e18')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -575,8 +575,8 @@ describe('StRSRP0 contract', () => {
     })
 
     it('Should allow to remove RSR - Three stakers - Check Precision', async () => {
-      const amount: BigNumber = bn(10e18)
-      const amount2: BigNumber = bn(1e18)
+      const amount: BigNumber = bn('10e18')
+      const amount2: BigNumber = bn('1e18')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -614,8 +614,8 @@ describe('StRSRP0 contract', () => {
     })
 
     it('Should remove RSR from Withdrawers', async () => {
-      const amount: BigNumber = bn(10e18)
-      const amount2: BigNumber = bn(1e18)
+      const amount: BigNumber = bn('10e18')
+      const amount2: BigNumber = bn('1e18')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -661,8 +661,8 @@ describe('StRSRP0 contract', () => {
     })
 
     it('Should remove RSR proportionally from Stakers and Withdrawers', async () => {
-      const amount: BigNumber = bn(10e18)
-      const amount2: BigNumber = bn(1e18)
+      const amount: BigNumber = bn('10e18')
+      const amount2: BigNumber = bn('1e18')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -724,7 +724,7 @@ describe('StRSRP0 contract', () => {
 
     beforeEach(async function () {
       // Stake some RSR
-      amount = bn(10e18)
+      amount = bn('10e18')
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)

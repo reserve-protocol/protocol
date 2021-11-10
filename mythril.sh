@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Note: This script requires mythril installed via Docker
-SOLC="0.8.4"
+SOLC="0.8.9"
 
 if ! command -v docker >/dev/null
 then

@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { ContractFactory } from 'ethers'
-import { bn } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
@@ -63,7 +63,7 @@ describe('AssetP0 contracts', () => {
     token = <ERC20Mock>await ERC20.deploy('Token', 'TKN')
     usdc = <USDCMock>await USDCMockFactory.deploy('USDC Token', 'USDC')
     aToken = <StaticATokenMock>await ATokenMockFactory.deploy('Static AToken', 'aTKN', token.address)
-    cToken = <CTokenMock>await CTokenMockFactory.deploy('CToken', 'cTKN', token.address)
+    cToken = <CTokenMock>await CTokenMockFactory.deploy('CToken', 'cTKN', usdc.address)
     rsr = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
     comp = <ERC20Mock>await ERC20.deploy('COMP Token', 'COMP')
     aave = <ERC20Mock>await ERC20.deploy('AAVE Token', 'AAVE')
@@ -90,11 +90,13 @@ describe('AssetP0 contracts', () => {
 
     // Deploy Main Mock
     MainMockFactory = await ethers.getContractFactory('MainMockP0')
-    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, bn(0))
+    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, bn('0'))
   })
 
   describe('Deployment', () => {
     it('Deployment should setup assets correctly', async () => {
+      // TODO: Add `rateUSD` for top 4
+
       // Fiat Token Asset
       expect(await tokenAsset.erc20()).to.equal(token.address)
       expect(await tokenAsset.fiatcoin()).to.equal(token.address)
@@ -102,9 +104,9 @@ describe('AssetP0 contracts', () => {
       expect(await tokenAsset.decimals()).to.equal(await token.decimals())
       expect(await tokenAsset.decimals()).to.equal(18)
       expect(await tokenAsset.fiatcoinDecimals()).to.equal(await token.decimals())
-      expect(await tokenAsset.redemptionRate()).to.equal(bn(1e18))
-      expect(await tokenAsset.priceUSD(main.address)).to.equal(bn(1e18))
-      expect(await tokenAsset.fiatcoinPriceUSD(main.address)).to.equal(bn(1e18))
+      expect(await tokenAsset.callStatic.rateFiatcoin()).to.equal(fp('1'))
+      expect(await tokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
+      expect(await tokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1'))
 
       // USDC Fiat Token
       expect(await usdcAsset.erc20()).to.equal(usdc.address)
@@ -113,9 +115,9 @@ describe('AssetP0 contracts', () => {
       expect(await usdcAsset.decimals()).to.equal(await usdc.decimals())
       expect(await usdcAsset.decimals()).to.equal(6)
       expect(await usdcAsset.fiatcoinDecimals()).to.equal(await usdc.decimals())
-      expect(await usdcAsset.redemptionRate()).to.equal(bn(1e18))
-      expect(await usdcAsset.priceUSD(main.address)).to.equal(bn(1e18))
-      expect(await usdcAsset.fiatcoinPriceUSD(main.address)).to.equal(bn(1e18))
+      expect(await usdcAsset.callStatic.rateFiatcoin()).to.equal(fp('1'))
+      expect(await usdcAsset.callStatic.priceUSD(main.address)).to.equal(fp('1e12'))
+      expect(await usdcAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1e12'))
 
       // AToken
       expect(await aTokenAsset.erc20()).to.equal(aToken.address)
@@ -124,20 +126,20 @@ describe('AssetP0 contracts', () => {
       expect(await aTokenAsset.decimals()).to.equal(await aToken.decimals())
       expect(await aTokenAsset.decimals()).to.equal(18)
       expect(await aTokenAsset.fiatcoinDecimals()).to.equal(await token.decimals())
-      expect(await aTokenAsset.redemptionRate()).to.equal(bn(1e18))
-      expect(await aTokenAsset.priceUSD(main.address)).to.equal(bn(1e18))
-      expect(await aTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(bn(1e18))
+      expect(await aTokenAsset.callStatic.rateFiatcoin()).to.equal(fp('1'))
+      expect(await aTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
+      expect(await aTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1'))
 
       // CToken
       expect(await cTokenAsset.erc20()).to.equal(cToken.address)
-      expect(await cTokenAsset.fiatcoin()).to.equal(token.address)
+      expect(await cTokenAsset.fiatcoin()).to.equal(usdc.address)
       expect(await cTokenAsset.isFiatcoin()).to.equal(false)
       expect(await cTokenAsset.decimals()).to.equal(await cToken.decimals())
-      expect(await cTokenAsset.decimals()).to.equal(18)
-      expect(await cTokenAsset.fiatcoinDecimals()).to.equal(await token.decimals())
-      expect(await cTokenAsset.redemptionRate()).to.equal(bn(1e18))
-      expect(await cTokenAsset.priceUSD(main.address)).to.equal(bn(1e18))
-      expect(await cTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(bn(1e18))
+      expect(await cTokenAsset.decimals()).to.equal(8)
+      expect(await cTokenAsset.fiatcoinDecimals()).to.equal(await usdc.decimals())
+      expect(await cTokenAsset.callStatic.rateFiatcoin()).to.equal(fp('1e-2')) // 1/100 qUSDC per qcUSDC
+      expect(await cTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1e10')) // 18 - 8 decimals = 10
+      expect(await cTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1e12'))
 
       // RSR Asset
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
@@ -146,8 +148,9 @@ describe('AssetP0 contracts', () => {
       expect(await rsrAsset.decimals()).to.equal(await rsr.decimals())
       expect(await rsrAsset.decimals()).to.equal(18)
       expect(await rsrAsset.fiatcoinDecimals()).to.equal(await rsr.decimals())
-      await expect(rsrAsset.redemptionRate()).to.be.reverted
-      await expect(rsrAsset.priceUSD(main.address)).to.be.reverted
+      expect(await rsrAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
+      await expect(rsrAsset.callStatic.rateFiatcoin()).to.be.reverted
+      await expect(rsrAsset.callStatic.rateUSD()).to.be.reverted
       await expect(rsrAsset.fiatcoinPriceUSD(main.address)).to.be.reverted
 
       // COMP Token
@@ -157,8 +160,9 @@ describe('AssetP0 contracts', () => {
       expect(await compAsset.decimals()).to.equal(await comp.decimals())
       expect(await compAsset.decimals()).to.equal(18)
       expect(await compAsset.fiatcoinDecimals()).to.equal(await comp.decimals())
-      await expect(compAsset.redemptionRate()).to.be.reverted
-      await expect(compAsset.priceUSD(main.address)).to.be.reverted
+      expect(await compAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
+      await expect(compAsset.callStatic.rateFiatcoin()).to.be.reverted
+      await expect(compAsset.callStatic.rateUSD()).to.be.reverted
       await expect(compAsset.fiatcoinPriceUSD(main.address)).to.be.reverted
 
       // AAVE Token
@@ -168,8 +172,9 @@ describe('AssetP0 contracts', () => {
       expect(await aaveAsset.decimals()).to.equal(await aave.decimals())
       expect(await aaveAsset.decimals()).to.equal(18)
       expect(await aaveAsset.fiatcoinDecimals()).to.equal(await aave.decimals())
-      await expect(aaveAsset.redemptionRate()).to.be.reverted
-      await expect(aaveAsset.priceUSD(main.address)).to.be.reverted
+      expect(await aaveAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
+      await expect(aaveAsset.callStatic.rateFiatcoin()).to.be.reverted
+      await expect(aaveAsset.callStatic.rateUSD()).to.be.reverted
       await expect(aaveAsset.fiatcoinPriceUSD(main.address)).to.be.reverted
     })
   })

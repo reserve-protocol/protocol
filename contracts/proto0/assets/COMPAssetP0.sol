@@ -1,26 +1,35 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "../interfaces/IMain.sol";
 import "./AssetP0.sol";
+import "contracts/libraries/Fixed.sol";
+import "contracts/proto0/libraries/Oracle.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
 contract COMPAssetP0 is AssetP0 {
+    using FixLib for Fix;
+
     constructor(address erc20_) AssetP0(erc20_) {}
 
-    // Fiatcoins return 1e18. All redemption rates should have 18 zeroes.
-    function redemptionRate() public view override returns (uint256) {
+    function rateFiatcoin() public override returns (Fix) {
         assert(false);
-        return 0;
+        return FIX_ZERO;
     }
 
-    function priceUSD(IMain main) public view virtual override returns (uint256) {
-        return (redemptionRate() * main.consultCompoundOracle(address(erc20()))) / SCALE;
+    function rateUSD() public override returns (Fix) {
+        assert(false);
+        return FIX_ZERO;
     }
 
-    function fiatcoinPriceUSD(IMain) public view virtual override returns (uint256) {
+    // @return {attoUSD/qCOMP}
+    function priceUSD(IMain main) public override returns (Fix) {
+        return main.consultOracle(Oracle.Source.COMPOUND, _erc20);
+    }
+
+    function fiatcoinPriceUSD(IMain) public view override returns (Fix) {
         assert(false);
-        return 0;
+        return FIX_ZERO;
     }
 
     function isFiatcoin() external pure override returns (bool) {

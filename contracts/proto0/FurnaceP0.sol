@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "./interfaces/IFurnace.sol";
-import "./interfaces/IRToken.sol";
+import "contracts/libraries/Fixed.sol";
+import "contracts/proto0/interfaces/IFurnace.sol";
+import "contracts/proto0/interfaces/IRToken.sol";
 
 /**
  * @title FurnaceP0
@@ -12,14 +13,15 @@ import "./interfaces/IRToken.sol";
  */
 contract FurnaceP0 is IFurnace {
     using SafeERC20 for IRToken;
+    using FixLib for Fix;
 
     IRToken public immutable rToken;
 
     struct Batch {
-        uint256 amount;
-        uint256 start; // Start timestamp
-        uint256 duration; // Duration in seconds
-        uint256 burnt; // Amount already burnt
+        uint256 amount; // {qTok}
+        uint256 start; // {timestamp}
+        uint256 duration; // {sec}
+        uint256 burnt; // {qTok}
     }
 
     Batch[] public batches;
@@ -32,9 +34,9 @@ contract FurnaceP0 is IFurnace {
         rToken = IRToken(rToken_);
     }
 
-    /// @notice Sets aside `amount` of RToken to be burnt over `timePeriod` seconds.
-    /// @param amount The amount of RToken to be burnt {qRToken}
-    /// @param timePeriod The number of seconds to spread the burn over
+    /// Sets aside `amount` of RToken to be burnt over `timePeriod` seconds.
+    /// @param amount {qTok} The amount of RToken to be burnt
+    /// @param timePeriod {sec} The number of seconds to spread the burn over
     function burnOverPeriod(uint256 amount, uint256 timePeriod) external override {
         require(amount > 0, "Cannot burn a batch of zero");
 
@@ -45,11 +47,12 @@ contract FurnaceP0 is IFurnace {
         emit Distribution(amount, timePeriod, msg.sender);
     }
 
-    /// @notice Performs any burning that has vested since last call. Idempotent
+    /// Performs any burning that has vested since last call. Idempotent
     function doBurn() external override {
         uint256 amount = _burnable(block.timestamp);
         if (amount > 0) {
-            require(rToken.burn(address(this), amount), "should burn from self successfully");
+            bool success = rToken.burn(address(this), amount);
+            require(success, "should burn from self successfully");
             totalBurnt += amount;
             emit Burn(amount);
         }
@@ -89,7 +92,8 @@ contract FurnaceP0 is IFurnace {
         } else if (timestamp > batch.start + batch.duration) {
             return batch.amount;
         } else {
-            return (batch.amount * (timestamp - batch.start)) / batch.duration;
+            // batch.amount{RTok} * (timestamp - batch.start) / batch.duration
+            return toFix(timestamp - batch.start).divu(batch.duration).mulu(batch.amount).toUint();
         }
     }
 }
