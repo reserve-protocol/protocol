@@ -45,7 +45,7 @@ struct Config {
     // auctionPeriod = 1800 (30 minutes)
     // stRSRWithdrawalDelay = 1209600 (2 weeks)
     // defaultDelay = 86400 (24 hours)
-    // maxTradeSlippage = 1e17 (10%)
+    // maxTradeSlippage = 1e17 (1%)
     // auctionClearingTolerance = 0.1 (10%)
     // maxAuctionSize = 1e16 (1%)
     // minRecapitalizationAuctionSize = 1e15 (0.1%)

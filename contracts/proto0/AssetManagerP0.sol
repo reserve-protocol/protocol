@@ -305,7 +305,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             sell,
             buy,
             maxSell,
-            targetBuy,
+            _approvedCollateral.contains(address(sell)) ? targetBuy : 0,
             Fate.Stay
         );
         if (trade) {
@@ -329,7 +329,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             sell,
             buy,
             maxSell,
-            targetBuy,
+            _approvedCollateral.contains(address(sell)) ? targetBuy : 0,
             Fate.Stay
         );
         if (trade) {
