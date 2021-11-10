@@ -236,6 +236,7 @@ contract MainP0 is IMain, Ownable {
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
     function backingTokens() external view override returns (address[] memory erc20s) {
+        erc20s = new address[](manager.vault().size());
         for (uint256 i = 0; i < manager.vault().size(); i++) {
             erc20s[i] = address(manager.vault().assetAt(i).erc20());
         }
