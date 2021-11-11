@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/proto0/interfaces/IFurnace.sol";
 import "contracts/proto0/interfaces/IRToken.sol";
@@ -11,7 +12,7 @@ import "contracts/proto0/interfaces/IRToken.sol";
  * @title FurnaceP0
  * @notice A helper contract to burn RTokens slowly and permisionlessly.
  */
-contract FurnaceP0 is IFurnace {
+contract FurnaceP0 is Context, IFurnace {
     using SafeERC20 for IRToken;
     using FixLib for Fix;
 
@@ -40,11 +41,11 @@ contract FurnaceP0 is IFurnace {
     function burnOverPeriod(uint256 amount, uint256 timePeriod) external override {
         require(amount > 0, "Cannot burn a batch of zero");
 
-        rToken.safeTransferFrom(msg.sender, address(this), amount);
+        rToken.safeTransferFrom(_msgSender(), address(this), amount);
 
         // Register handout
         batches.push(Batch(amount, block.timestamp, timePeriod, 0));
-        emit DistributionCreated(amount, timePeriod, msg.sender);
+        emit DistributionCreated(amount, timePeriod, _msgSender());
     }
 
     /// Performs any burning that has vested since last call. Idempotent
