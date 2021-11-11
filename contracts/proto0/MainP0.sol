@@ -90,7 +90,9 @@ contract MainP0 is IMain, Ownable {
     function issue(uint256 amount) external override notPaused always {
         require(state == State.CALM || state == State.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
+
         _processSlowIssuance();
+
         uint256 BUs = manager.toBUs(amount);
 
         // During SlowIssuance, BUs are created up front and held by `Main` until the issuance vests,

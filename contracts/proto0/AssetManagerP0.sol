@@ -73,7 +73,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
         main.rsr().approve(address(main.stRSR()), type(uint256).max);
         _prevBasketRate = vault.basketRate();
-        _historicalBasketDilution = _basketDilutionFactor();
+        _historicalBasketDilution = FIX_ONE;
         _transferOwnership(owner_);
     }
 
@@ -381,6 +381,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             main.rToken().balanceOf(address(this)),
             Fate.Stake
         );
+
         if (launch) {
             _launchAuction(auction);
         }
@@ -524,7 +525,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         sellAmount = Math.min(sellAmount, sell.erc20().balanceOf(address(this)));
 
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
-
         Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(main).mulu(main.rToken().totalSupply());
         Fix maxSellUSD = rTokenMarketCapUSD.mul(main.config().maxAuctionSize); // {attoUSD}
         Fix minSellUSD = rTokenMarketCapUSD.mul(minAuctionSize); // {attoUSD}
