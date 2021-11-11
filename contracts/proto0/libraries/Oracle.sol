@@ -54,22 +54,25 @@ library Oracle {
     ) internal view returns (Fix) {
         if (source == Source.AAVE) {
             // Aave keeps their prices in terms of ETH
-
             IAaveOracle aaveOracle = self.aave.getAddressesProvider().getPriceOracle();
             uint256 p = aaveOracle.getAssetPrice(token);
-            assert(p > 0);
+
+            if (p == 0) {
+                revert CommonErrors.PriceIsZero();
+            }
 
             Fix inETH = toFix(p); // {qETH/tok}
             Fix ethNorm = toFix(aaveOracle.getAssetPrice(aaveOracle.WETH())); // {qETH/ETH}
             Fix ethInUsd = toFix(self.compound.oracle().price("ETH")).divu(1e6); // {microUSD/ETH} / {microUSD/USD}
-
             // ({qETH/tok} * {USD/ETH} * {attoUSD/USD}) / {qETH/ETH}
             return inETH.mul(ethInUsd).mul(toFix(1e18).div(ethNorm));
         } else if (source == Source.COMPOUND) {
             // Compound stores prices with 6 decimals of precision
 
             uint256 price = self.compound.oracle().price(IERC20Metadata(token).symbol());
-            assert(price > 0);
+            if (price == 0) {
+                revert CommonErrors.PriceIsZero();
+            }
 
             // ({microUSD/tok} * {attoUSD/USD})/ {microUSD/USD}
             return toFix(price).mulu(1e12);

@@ -2,7 +2,7 @@ import { expect } from 'chai'
 import { ethers, waffle } from 'hardhat'
 import { Wallet } from 'ethers'
 import { bn } from '../../common/numbers'
-import { deployerFixture, IManagerConfig, IParamsAssets } from './utils/fixtures'
+import { defaultFixture, IManagerConfig, IParamsAssets } from './utils/fixtures'
 import { MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
@@ -83,7 +83,7 @@ describe('DeployerP0 contract', () => {
       stRSR,
       assetManager,
       defaultMonitor,
-    } = await loadFixture(deployerFixture))
+    } = await loadFixture(defaultFixture))
   })
 
   describe('Deployment', () => {

@@ -156,7 +156,7 @@ async function vaultFixture(): Promise<VaultFixture> {
 
 type RSRAndCompAaveAndVaultFixture = RSRFixture & COMPAAVEFixture & VaultFixture
 
-interface DeployerFixture extends RSRAndCompAaveAndVaultFixture {
+interface DefaultFixture extends RSRAndCompAaveAndVaultFixture {
   config: IManagerConfig
   deployer: DeployerP0
   main: MainP0
@@ -167,7 +167,7 @@ interface DeployerFixture extends RSRAndCompAaveAndVaultFixture {
   defaultMonitor: DefaultMonitorP0
 }
 
-export const deployerFixture: Fixture<DeployerFixture> = async function ([owner]): Promise<DeployerFixture> {
+export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]): Promise<DefaultFixture> {
   const { rsr, rsrAsset } = await rsrFixture()
   const { token0, token1, token2, token3, collateral0, collateral1, collateral2, collateral3, collateral, vault } =
     await vaultFixture()
@@ -179,16 +179,17 @@ export const deployerFixture: Fixture<DeployerFixture> = async function ([owner]
   await compoundOracle.setPrice('TKN1', bn('1e6'))
   await compoundOracle.setPrice('TKN2', bn('1e6'))
   await compoundOracle.setPrice('TKN3', bn('1e6'))
-  await compoundOracle.setPrice('ETH', bn('1e6'))
+  await compoundOracle.setPrice('ETH', bn('4000e6'))
   await compoundOracle.setPrice('COMP', bn('1e6'))
 
-  await aaveOracle.setPrice(token0.address, bn('1e18'))
-  await aaveOracle.setPrice(token1.address, bn('1e18'))
-  await aaveOracle.setPrice(token2.address, bn('1e18'))
-  await aaveOracle.setPrice(token3.address, bn('1e18'))
+  await aaveOracle.setPrice(token0.address, bn('2.5e14'))
+  await aaveOracle.setPrice(token1.address, bn('2.5e14'))
+  await aaveOracle.setPrice(token2.address, bn('2.5e14'))
+  await aaveOracle.setPrice(token3.address, bn('2.5e14'))
   await aaveOracle.setPrice(weth.address, bn('1e18'))
   await aaveOracle.setPrice(aaveToken.address, bn('1e18'))
   await aaveOracle.setPrice(compToken.address, bn('1e18'))
+  await aaveOracle.setPrice(rsr.address, bn('1e18'))
 
   const paramsAssets: IParamsAssets = {
     rsrAsset: rsrAsset.address,

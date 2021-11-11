@@ -2,7 +2,7 @@ import { expect } from 'chai'
 import { ethers, waffle } from 'hardhat'
 import { Wallet, BigNumber, ContractFactory } from 'ethers'
 import { bn } from '../../common/numbers'
-import { deployerFixture, IManagerConfig } from './utils/fixtures'
+import { defaultFixture, IManagerConfig } from './utils/fixtures'
 import { advanceTime } from '../utils/time'
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -114,7 +114,7 @@ describe('MainP0 contract', () => {
       stRSR,
       assetManager,
       defaultMonitor,
-    } = await loadFixture(deployerFixture))
+    } = await loadFixture(defaultFixture))
 
     // Mint initial balances
     initialBal = bn('100000e18')
@@ -430,7 +430,7 @@ describe('MainP0 contract', () => {
       expect(sm_proc).to.equal(false)
     })
 
-    it.skip('Should process issuances in multiple attempts (2 blocks)', async function () {
+    it('Should process issuances in multiple attempts (2 blocks)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
       const expectedTkn0: BigNumber = issueAmount.mul(await vault.quantity(collateral0.address)).div(BN_SCALE_FACTOR)
