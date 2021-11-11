@@ -1,2 +1,6 @@
-contracts/test/
-contracts/libraries/ABDKMath64x64.sol
+# Ignore the style of pure-test contracts
+test/
+mocks/
+
+# The Fixed library defines a custom type and crashes the solhint parser
+contracts/libraries/Fixed.sol

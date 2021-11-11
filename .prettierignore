@@ -1,0 +1,2 @@
+# The Fixed library defines a custom type and crashes the prettier parser
+contracts/libraries/Fixed.sol
