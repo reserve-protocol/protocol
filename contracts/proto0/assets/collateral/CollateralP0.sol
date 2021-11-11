@@ -22,6 +22,7 @@ contract CollateralP0 is ICollateral {
     }
 
     /// Claims any rewards such as COMP/AAVE for the asset
+    // solhint-disable-next-line no-empty-blocks
     function claimRewards() external virtual override {}
 
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.

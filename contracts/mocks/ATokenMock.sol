@@ -16,6 +16,7 @@ contract ATokenMock is ERC20Mock {
         _underlyingAsset = underlyingAsset;
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function UNDERLYING_ASSET_ADDRESS() external view returns (address) {
         return _underlyingAsset;
     }
@@ -50,6 +51,7 @@ contract StaticATokenMock is ERC20Mock {
         _exchangeRate = rate_;
     }
 
+    //solhint-disable-next-line func-name-mixedcase
     function ATOKEN() external view returns (ATokenMock) {
         return aToken;
     }

@@ -21,6 +21,7 @@ contract CTokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
 
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
+    // solhint-disable-next-line no-empty-blocks
     constructor(address erc20_) CollateralP0(erc20_) {}
 
     /// @return {qFiatTok/qTok}

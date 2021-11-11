@@ -209,6 +209,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     /// {qBU} -> {qRTok}
+    // solhint-disable-next-line func-param-name-mixedcase
     function fromBUs(uint256 BUs) public override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
             return BUs;

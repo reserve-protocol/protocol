@@ -6,17 +6,19 @@ import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "./CollateralP0.sol";
 
-// https://github.com/aave/protocol-v2/blob/feat-atoken-wrapper-liquidity-mining/contracts/protocol/tokenization/StaticATokenLM.sol
+// Interfaces to contracts from: https://git.io/JX7iJ
 interface IStaticAToken is IERC20 {
     // @return RAY{fiatTok/tok}
     function rate() external view returns (uint256);
 
+    // solhint-disable-next-line func-name-mixedcase
     function ATOKEN() external view returns (AToken);
 
     function claimRewardsToSelf(bool forceUpdate) external;
 }
 
 interface AToken {
+    // solhint-disable-next-line func-name-mixedcase
     function UNDERLYING_ASSET_ADDRESS() external view returns (address);
 }
 
@@ -25,6 +27,7 @@ interface AToken {
 contract ATokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
 
+    // solhint-disable-next-line no-empty-blocks
     constructor(address erc20_) CollateralP0(erc20_) {}
 
     /// Claims any rewards such as COMP/AAVE for the asset

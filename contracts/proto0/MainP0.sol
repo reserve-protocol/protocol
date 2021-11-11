@@ -50,7 +50,7 @@ contract MainP0 is IMain, Ownable {
     bool public override paused;
 
     // timestamp -> whether rewards have been claimed.
-    mapping(uint256 => bool) rewardsClaimed;
+    mapping(uint256 => bool) private rewardsClaimed;
 
     // Slow Issuance
     SlowIssuance[] public issuances;

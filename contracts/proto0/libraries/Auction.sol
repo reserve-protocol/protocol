@@ -66,6 +66,7 @@ library Auction {
 
         uint256 bal = self.buy.erc20().balanceOf(address(this)); // {qBuyTok}
 
+        // solhint-disable no-empty-blocks
         if (self.fate == Fate.Burn) {
             self.buy.erc20().safeTransfer(address(0), bal);
         } else if (self.fate == Fate.Melt) {
@@ -79,6 +80,8 @@ library Auction {
         } else {
             assert(false);
         }
+        // solhint-enable no-empty-blocks
+
         self.isOpen = false;
         emit AuctionEnded(address(self.sell), address(self.buy), self.sellAmount, buyAmount, self.fate);
         return buyAmount;

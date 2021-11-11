@@ -26,7 +26,7 @@ struct Config {
     uint256 auctionPeriod; // the length of an auction
     uint256 stRSRWithdrawalDelay; // the "thawing time" of staked RSR before withdrawal
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
-    // Percentage values (relative to SCALE)
+    // Ratios
     Fix maxTradeSlippage; // the maximum amount of slippage in percentage terms we will accept in a trade
     Fix auctionClearingTolerance; // the maximum % difference between auction clearing price and oracle data allowed.
     Fix maxAuctionSize; // the max size of an auction, as a fraction of RToken supply
@@ -45,15 +45,16 @@ struct Config {
     // auctionPeriod = 1800 (30 minutes)
     // stRSRWithdrawalDelay = 1209600 (2 weeks)
     // defaultDelay = 86400 (24 hours)
-    // maxTradeSlippage = 1e17 (1%)
+
+    // maxTradeSlippage = 0.01 (1%)
     // auctionClearingTolerance = 0.1 (10%)
-    // maxAuctionSize = 1e16 (1%)
-    // minRecapitalizationAuctionSize = 1e15 (0.1%)
-    // minRevenueAuctionSize = 1e14 (0.01%)
-    // migrationChunk = 2e17 (20%)
-    // issuanceRate = 25e13 (0.025% per block, or ~0.1% per minute)
-    // defaultThreshold = 5e16 (5% deviation)
-    // f = 6e17 (60% to stakers)
+    // maxAuctionSize = 0.01 (1%)
+    // minRecapitalizationAuctionSize = 0.001 (0.1%)
+    // minRevenueAuctionSize = 0.0001 (0.01%)
+    // migrationChunk = 0.2 (20%)
+    // issuanceRate = 0.00025 (0.025% per block, or ~0.1% per minute)
+    // defaultThreshold = 0.05 (5% deviation)
+    // f = 0.6 (60% to stakers)
 }
 
 /// Tracks data for an issuance
