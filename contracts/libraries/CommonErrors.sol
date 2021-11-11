@@ -48,6 +48,6 @@ library CommonErrors {
     error CrossedAlready();
 
     // Oracle
+    error PriceIsZero();
     error UnsupportedProtocol();
-    error PrizeIsZero();
 }
