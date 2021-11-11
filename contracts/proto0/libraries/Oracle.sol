@@ -27,6 +27,7 @@ interface ILendingPoolAddressesProvider {
 }
 
 interface IAaveOracle {
+    // solhint-disable-next-line func-name-mixedcase
     function WETH() external view returns (address);
 
     /// @return {qETH/tok} The price of the `token` in ETH with 18 decimals
