@@ -96,7 +96,7 @@ function divFix(uint256 x, Fix y) pure returns (Fix) {
        return x * 1e36 / _y.
     */
     // If it's safe to do this operation the easy way, do it:
-    if(x < uint256(type(int256).max/FIX_SCALE_SQ)) {
+    if (x < uint256(type(int256).max / FIX_SCALE_SQ)) {
         return _safe_wrap(int256(x * FIX_SCALE_SQ_U) / _y);
     }
     /* If we're not in that safe range, there are still lots of situations where the output fits in
@@ -107,8 +107,8 @@ function divFix(uint256 x, Fix y) pure returns (Fix) {
      * So, we'll do this, essentially, by long division. 1e18 is about 2**60, so 1e18 fits in 64 bits.
      */
 
-    int256 sign = (_y < 0) ? int256(-1) : int256(1);  // sign = sign(_y)
-    uint256 div = uint256(_y * sign);                 // div = abs(_y),
+    int256 sign = (_y < 0) ? int256(-1) : int256(1); // sign = sign(_y)
+    uint256 div = uint256(_y * sign); // div = abs(_y),
     /* From starting conditions, we know that x in uint256, div in uint192, and 1e18 in uint64.
 
        We can't directly compute x * 1e18, because that might overflow a uint256. Instead,
@@ -116,17 +116,17 @@ function divFix(uint256 x, Fix y) pure returns (Fix) {
        single zero per long divison step, we'll "bring down" 18 at a time.
     */
 
-                                          // Each step overflows only if the result would overflow. Justifications follow:
+    // Each step overflows only if the result would overflow. Justifications follow:
 
-    uint256 q0 = x / div;                 // x/div fits in uint256
-    uint256 part0 = q0 * FIX_SCALE_SQ_U;  // part0 <= result, so fits in int192 if result does
-    uint256 r0 = x % div;                 // x%div < div fits in uint192, so r0 fits in uint192
+    uint256 q0 = x / div; // x/div fits in uint256
+    uint256 part0 = q0 * FIX_SCALE_SQ_U; // part0 <= result, so fits in int192 if result does
+    uint256 r0 = x % div; // x%div < div fits in uint192, so r0 fits in uint192
 
-    uint256 q1 = (r0*FIX_SCALE_U) / div;  // r0 in uint192 and 1e18 in uint64, so r0*1e18 in uint256
-    uint256 part1 = q1 * FIX_SCALE_U;     // part1 <= result, so fits in int192 if result does.
-    uint256 r1 = (r0*FIX_SCALE_U) % div;  // r0 % div < div fits in uint192, so r1*1e18 fits in uint256
+    uint256 q1 = (r0 * FIX_SCALE_U) / div; // r0 in uint192 and 1e18 in uint64, so r0*1e18 in uint256
+    uint256 part1 = q1 * FIX_SCALE_U; // part1 <= result, so fits in int192 if result does.
+    uint256 r1 = (r0 * FIX_SCALE_U) % div; // r0 % div < div fits in uint192, so r1*1e18 fits in uint256
 
-    uint256 q2 = (r1 * FIX_SCALE_U) / div;   // q2 <= result so fits in int192 if result does
+    uint256 q2 = (r1 * FIX_SCALE_U) / div; // q2 <= result so fits in int192 if result does
 
     return _safe_wrap(int256(part0 + part1 + q2) * sign);
 
@@ -165,6 +165,7 @@ library FixLib {
     function toInt(Fix x) internal pure returns (int192) {
         return Fix.unwrap(x) / FIX_SCALE;
     }
+
     /// Convert this Fix to a uint. Fail if x is negative. Round the fractional part towards zero.
     function toUint(Fix x) internal pure returns (uint192) {
         int192 n = Fix.unwrap(x);
@@ -186,7 +187,7 @@ library FixLib {
     /// adjacent ints, round up, away from zero.
     function round(Fix x) internal pure returns (int192) {
         int256 x_ = Fix.unwrap(x);
-        int256 adjustment = x_ >= 0 ? FIX_SCALE/2 : -FIX_SCALE/2;
+        int256 adjustment = x_ >= 0 ? FIX_SCALE / 2 : -FIX_SCALE / 2;
         int256 rounded = (x_ + adjustment) / FIX_SCALE;
         if (rounded < type(int192).min || type(int192).max < rounded) revert IntOutOfBounds(rounded);
         return int192(rounded);
@@ -233,7 +234,7 @@ library FixLib {
     /// Round truncated values to the nearest available value. 5e-19 rounds away from zero.
     function mul(Fix x, Fix y) internal pure returns (Fix) {
         int256 naive_prod = int256(Fix.unwrap(x)) * int256(Fix.unwrap(y));
-        int256 rounding_adjustment = naive_prod >= 0 ? FIX_SCALE/2 : -FIX_SCALE/2;
+        int256 rounding_adjustment = naive_prod >= 0 ? FIX_SCALE / 2 : -FIX_SCALE / 2;
         return _safe_wrap((naive_prod + rounding_adjustment) / FIX_SCALE);
     }
 
@@ -272,7 +273,7 @@ library FixLib {
 
     /// Compute 1 / (this Fix).
     function inv(Fix x) internal pure returns (Fix) {
-        return div(FIX_ONE,x);
+        return div(FIX_ONE, x);
     }
 
     /// Raise this Fix to a nonnegative integer power.
@@ -281,7 +282,7 @@ library FixLib {
     function powu(Fix x, uint256 y) internal pure returns (Fix result) {
         // The algorithm is exponentiation by squaring. See: https://w.wiki/4LjE
         result = FIX_ONE;
-        while(true) {
+        while (true) {
             if (y & 1 == 1) result = mul(result, x);
             if (y <= 1) return result;
             y = y >> 1;
