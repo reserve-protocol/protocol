@@ -15,6 +15,7 @@ As with any smart contract application, the actual behavior may vary from the in
 For a much more detailed explanation of the economic design, see [the Reserve website](https://reserve.org/protocol/2021_version/).
 
 ## Development
+
 Developers: See setup and repository usage notes at [docs/developers.md](docs/developers.md).
 
 ## Repository Structure
@@ -26,7 +27,6 @@ The central directories in this repository are `contracts` and `test`.
 `contracts` holds all our smart contracts, organized as follows:
 
 - `libraries`: Common `DELEGATECALL` libraries
-- `prod`: The real Reserve Protocol implementation
 - `proto0`, `proto1`, `proto2`: [Progressive prototypes](#differential_testing)
 - `mocks`: Mock contracts for testing
 
@@ -35,7 +35,7 @@ Each implementation directory (`prod`, `proto0`, `proto1`, `proto2`) contains th
 - Top-level files: The system contracts
 - `interfaces`: Interfaces for the system contracts
 - `libraries`: `DELEGATECALL` libraries specific to this implementation
-- `mocks`: Mock contracts for testing
+- `mocks`: Mock contracts for testing common to all prototypes
 
 The less-central folders in the repository are dedicated to project management, configuration, and other ancillary details:
 
@@ -47,13 +47,13 @@ The less-central folders in the repository are dedicated to project management, 
 
 ## Differential Testing
 
-This protocol is complex enough, in a demanding enough space, and has a high enough need for correctness, that it's worth thinking about it and implementing it using the method of *progressive specification*. In progressive specification, you implement (and maintain!) several versions of your overall system:
+This protocol is complex enough, in a demanding enough space, and has a high enough need for correctness, that it's worth thinking about it and implementing it using the method of _progressive specification_. In progressive specification, you implement (and maintain!) several versions of your overall system:
 
-- *Prototype 0* is as simple and intuitive as we can make it — as close as we can make it to "obviously correct by construction"
-- For each *N*, you can neatly describe how *Prototype N+1* is supposed to relate to *Prototype N* — and because both systems are executable, you can actually run them and compare their results.
-- The most complex system, *Prod* is the system you intend to actually deploy.
+- _Prototype 0_ is as simple and intuitive as we can make it — as close as we can make it to "obviously correct by construction"
+- For each _N_, you can neatly describe how _Prototype N+1_ is supposed to relate to _Prototype N_ — and because both systems are executable, you can actually run them and compare their results.
+- The most complex system, _Prod_ is the system you intend to actually deploy.
 
-We're building and testing *all* of these systems. A whole set of generic test cases, written against a generic interface, run over the whole collection. Moreover, we can fuzz each subsequent pair of systems, testing them for observational equivalence. This is [differential testing](https://en.wikipedia.org/wiki/Differential_testing) between our prototypes.
+We're building and testing _all_ of these systems. A whole set of generic test cases, written against a generic interface, run over the whole collection. Moreover, we can fuzz each subsequent pair of systems, testing them for observational equivalence. This is [differential testing](https://en.wikipedia.org/wiki/Differential_testing) between our prototypes.
 
 ### Planned Prototypes
 
@@ -65,7 +65,7 @@ The abstract economic protocol expressed just as clearly as we can manage it, wh
 - No constraints on execution speed or gas costs
 - Normalize state as much as possible
 - Things that happen after time delays are pulled, not pushed, and require two transactions.
-- Updates may *not* be assumed to happen every block, though the "every block" pattern that we've so-far used (in which some function is the first state-effecting thing that can happen every block) is just fine
+- Updates may _not_ be assumed to happen every block, though the "every block" pattern that we've so-far used (in which some function is the first state-effecting thing that can happen every block) is just fine
 
 #### Prototype 1
 
@@ -82,13 +82,13 @@ Equivalence: P1 perfectly bisimulates P0.
 Like Prototype 1, but account for numerical precision
 
 - Explicitly choose and document the overall rounding policy. Something like:
-    - Error ratios are no more than 1 part in a million
-    - Monetary errors are no more than $0.01 of token value
-    - The directions of errors always favor the protocol
+  - Error ratios are no more than 1 part in a million
+  - Monetary errors are no more than $0.01 of token value
+  - The directions of errors always favor the protocol
 - Propagate the rounding policy into:
-    - Comments on command interfaces (and wherever else it may be relevant)
-    - Math libraries (if necessary)
-    - Unit and property tests of the system
+  - Comments on command interfaces (and wherever else it may be relevant)
+  - Math libraries (if necessary)
+  - Unit and property tests of the system
 - Ensure that Prototype 2 actually meets that policy.
 
 Equivalence: P2 bisumulates P0 and P1, except that:
@@ -106,45 +106,45 @@ Equivalence: Prod perfectly bisimulates P2.
 
 We have two different general families of tests:
 
-- *Generic Test*
+- _Generic Test_
 
-    We say that a test is *generic* if it uses our EVM generic test interface. When it does, a single test case can be run over all system implementations.
+  We say that a test is _generic_ if it uses our EVM generic test interface. When it does, a single test case can be run over all system implementations.
 
-- *Particular Test*
+- _Particular Test_
 
-    In contrast, we say that a test is *particular* if it is not generic. That is, it uses interfaces other than the EVM generic test interface, so that it can check the details of a specific system implementation.
+  In contrast, we say that a test is _particular_ if it is not generic. That is, it uses interfaces other than the EVM generic test interface, so that it can check the details of a specific system implementation.
 
 Further, tests will be hosted by two different systems, Echidna and Hardhat, each of which have different strengths and weaknesses. Together, these yield 4 overall test types.
 
 Finally, inside particular, testing in Hardhat, it's quite useful to distinguish unit tests from full end-to-end tests. As such, we expect to write tests of the following 5 types:
 
 - **Differential Tests**
-    - Generic
-    - Driven by Echidna
-    - Checks that protocol implementations have equivalent behaviors
-    - Check invariants
+  - Generic
+  - Driven by Echidna
+  - Checks that protocol implementations have equivalent behaviors
+  - Check invariants
 - **Generic Protocol Tests**
-    - Generic
-    - Driven by Hardhat
-    - Checks that protocol implementations have expected behaviors
-    - Mock out whatever helps to define
-    - May use fast-check (but doesn't have to)
+  - Generic
+  - Driven by Hardhat
+  - Checks that protocol implementations have expected behaviors
+  - Mock out whatever helps to define
+  - May use fast-check (but doesn't have to)
 - **Component Property Tests**
-    - Particular
-    - Driven by Echidna
-    - Checks properties of specific components
-    - Requires extra EVM testing contracts
+  - Particular
+  - Driven by Echidna
+  - Checks properties of specific components
+  - Requires extra EVM testing contracts
 - **Component Unit Tests**
-    - Particular
-    - Driven by Hardhat
-    - Checks properties of specific components
-    - Mock out whatever helps us predict component behavior
-    - May use fast-check (but doesn't have to)
+  - Particular
+  - Driven by Hardhat
+  - Checks properties of specific components
+  - Mock out whatever helps us predict component behavior
+  - May use fast-check (but doesn't have to)
 - **End-to-End Tests**
-    - Particular
-    - Driven by Hardhat
-    - Checks that the Production protocol works when deployed
-    - Tests all needed contracts, contract deployment, any migrations, etc.
-    - Mock out as little as possible
-    - Almost certainly uses mainnet forking
-    - May use fast-check (but doesn't have to)
+  - Particular
+  - Driven by Hardhat
+  - Checks that the Production protocol works when deployed
+  - Tests all needed contracts, contract deployment, any migrations, etc.
+  - Mock out as little as possible
+  - Almost certainly uses mainnet forking
+  - May use fast-check (but doesn't have to)
