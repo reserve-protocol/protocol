@@ -1,32 +1,33 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
-import { Fix, FixLib, toFix as libToFix, toFixWithShift as libToFixWithShift, intToFix as libIntToFix, divFix as libDivFix, fixMin as libFixMin, fixMax as libFixMax } from "../Fixed.sol";
+import "../Fixed.sol" as FixGlobals;
+import { Fix, FixLib } from "../Fixed.sol";
 
 // Simple mock for Fixed library.
 contract FixedCallerMock {
     function toFix(uint256 x) public pure returns (Fix) {
-        return libToFix(x);
+        return FixGlobals.toFix(x);
     }
 
     function toFixWithShift(uint256 x, int8 shiftLeft_) public pure returns (Fix) {
-        return libToFixWithShift(x, shiftLeft_);
+        return FixGlobals.toFixWithShift(x, shiftLeft_);
     }
 
     function intToFix(int256 x) public pure returns (Fix) {
-        return libIntToFix(x);
+        return FixGlobals.intToFix(x);
     }
 
     function divFix(uint256 x, Fix y) public pure returns (Fix) {
-        return libDivFix(x, y);
+        return FixGlobals.divFix(x, y);
     }
 
     function fixMin(Fix x, Fix y) public pure returns (Fix) {
-        return libFixMin(x, y);
+        return FixGlobals.fixMin(x, y);
     }
 
     function fixMax(Fix x, Fix y) public pure returns (Fix) {
-        return libFixMax(x, y);
+        return FixGlobals.fixMax(x, y);
     }
 
     function toInt(Fix x) public pure returns (int192) {
