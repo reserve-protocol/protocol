@@ -15,7 +15,7 @@ import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
 import { USDCMock } from '../../typechain/USDCMock'
 
-describe('Assets', () => {
+describe('AssetsP0 contracts', () => {
   let owner: SignerWithAddress
 
   // Tokens
