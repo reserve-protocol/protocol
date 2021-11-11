@@ -49,4 +49,5 @@ library CommonErrors {
 
     // Oracle
     error UnsupportedProtocol();
+    error PrizeIsZero();
 }
