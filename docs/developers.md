@@ -59,6 +59,8 @@ solc-select use 0.8.9
 
 ### Slither
 
+NOTE: Right now, slither chokes on our code. We're hoping they update to working over solidity 0.8.9 sometime soon; until then, I guess we're just not using this. D:
+
 Slither depends on `solc-select`. Once it's set up, install slither with:
 
 ```bash
