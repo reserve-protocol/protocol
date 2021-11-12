@@ -7,7 +7,7 @@ import "./assets/RSRAssetP1.sol";
 import "./assets/COMPAssetP1.sol";
 import "./assets/AAVEAssetP1.sol";
 import "../libraries/CommonErrors.sol";
-import "./libraries/Oracle.sol";
+import "./libraries/OracleP1.sol";
 import "./interfaces/IAssetP1.sol";
 import "./interfaces/IDeployerP1.sol";
 import "./interfaces/IMainP1.sol";

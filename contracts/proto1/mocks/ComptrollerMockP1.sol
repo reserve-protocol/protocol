@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "../libraries/Oracle.sol";
+import "../libraries/OracleP1.sol";
 
 contract ComptrollerMockP1 is IComptroller {
     ICompoundOracle private _compoundOracle;

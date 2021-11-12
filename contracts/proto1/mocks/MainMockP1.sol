@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IStRSRP1.sol";
 import "../interfaces/IMainP1.sol";
-import "contracts/proto1/libraries/Oracle.sol";
+import "contracts/proto1/libraries/OracleP1.sol";
 import "contracts/libraries/Fixed.sol";
 
 contract ManagerInternalMockP1 {

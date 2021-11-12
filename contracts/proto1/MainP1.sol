@@ -11,7 +11,7 @@ import "contracts/proto1/assets/RTokenAssetP1.sol";
 import "contracts/proto1/assets/RSRAssetP1.sol";
 import "contracts/proto1/assets/AAVEAssetP1.sol";
 import "contracts/proto1/assets/COMPAssetP1.sol";
-import "contracts/proto1/libraries/Oracle.sol";
+import "contracts/proto1/libraries/OracleP1.sol";
 import "contracts/proto1/interfaces/IAssetP1.sol";
 import "contracts/proto1/interfaces/IAssetManagerP1.sol";
 import "contracts/proto1/interfaces/IDefaultMonitorP1.sol";
