@@ -28,6 +28,8 @@ contract StaticATokenMock is ERC20Mock {
 
     uint256 internal _exchangeRate;
 
+    bool public rewardsClaimed; // Mock flag to check if rewards claim was called
+
     constructor(
         string memory name,
         string memory symbol,
@@ -37,6 +39,7 @@ contract StaticATokenMock is ERC20Mock {
 
         // In Aave all rates are in {RAYs/tok}, and they are independent of the underlying's decimals
         _exchangeRate = 1e27;
+        rewardsClaimed = false;
     }
 
     function decimals() public pure override returns (uint8) {
@@ -54,5 +57,10 @@ contract StaticATokenMock is ERC20Mock {
     //solhint-disable-next-line func-name-mixedcase
     function ATOKEN() external view returns (ATokenMock) {
         return aToken;
+    }
+
+    function claimRewardsToSelf(bool forceUpdate) external {
+        // Just set flag internally in this mock
+        rewardsClaimed = forceUpdate;
     }
 }

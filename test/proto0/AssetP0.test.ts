@@ -14,6 +14,9 @@ import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
 import { USDCMock } from '../../typechain/USDCMock'
+import { RTokenP0 } from '../../typechain/RTokenP0'
+import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
+import { VaultP0 } from '../../typechain/VaultP0'
 
 describe('AssetsP0 contracts', () => {
   let owner: SignerWithAddress
@@ -23,6 +26,7 @@ describe('AssetsP0 contracts', () => {
   let USDCMockFactory: ContractFactory
   let ATokenMockFactory: ContractFactory
   let CTokenMockFactory: ContractFactory
+  let RTokenFactory: ContractFactory
 
   let token: ERC20Mock
   let usdc: USDCMock
@@ -31,6 +35,7 @@ describe('AssetsP0 contracts', () => {
   let rsr: ERC20Mock
   let comp: ERC20Mock
   let aave: ERC20Mock
+  let rToken: RTokenP0
 
   // Assets
   let AssetFactory: ContractFactory
@@ -39,6 +44,7 @@ describe('AssetsP0 contracts', () => {
   let RSRAssetFactory: ContractFactory
   let AAVEAssetFactory: ContractFactory
   let COMPAssetFactory: ContractFactory
+  let RTokenAssetFactory: ContractFactory
   let tokenAsset: CollateralP0
   let usdcAsset: CollateralP0
   let aTokenAsset: ATokenCollateralP0
@@ -46,10 +52,13 @@ describe('AssetsP0 contracts', () => {
   let rsrAsset: RSRAssetP0
   let compAsset: COMPAssetP0
   let aaveAsset: AAVEAssetP0
+  let rTokenAsset: RTokenAssetP0
 
-  // Main Mock
+  // Main Mock and Vault
   let MainMockFactory: ContractFactory
+  let VaultFactory: ContractFactory
   let main: MainMockP0
+  let vault: VaultP0
 
   beforeEach(async () => {
     ;[owner] = await ethers.getSigners()
@@ -91,6 +100,19 @@ describe('AssetsP0 contracts', () => {
     // Deploy Main Mock
     MainMockFactory = await ethers.getContractFactory('MainMockP0')
     main = <MainMockP0>await MainMockFactory.deploy(rsr.address, bn('0'))
+
+    VaultFactory = await ethers.getContractFactory('VaultP0')
+    vault = <VaultP0>await VaultFactory.deploy([tokenAsset.address, usdcAsset.address], [bn('5e17'), bn('5e5')], [])
+
+    // Set Vault and Main relationship
+    await main.connect(owner).setVault(vault.address)
+    await vault.connect(owner).setMain(main.address)
+
+    // Deploy RToken and Asset
+    RTokenFactory = await ethers.getContractFactory('RTokenP0')
+    rToken = <RTokenP0>await RTokenFactory.deploy(main.address, 'RToken', 'RTKN')
+    RTokenAssetFactory = await ethers.getContractFactory('RTokenAssetP0')
+    rTokenAsset = <RTokenAssetP0>await RTokenAssetFactory.deploy(rToken.address)
   })
 
   describe('Deployment', () => {
@@ -130,6 +152,10 @@ describe('AssetsP0 contracts', () => {
       expect(await aTokenAsset.callStatic.rateUSD()).to.equal(fp('1'))
       expect(await aTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
       expect(await aTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1'))
+      // Check Claim rewards derives the call to the static token
+      expect(await aToken.rewardsClaimed()).to.equal(false)
+      await aTokenAsset.claimRewards()
+      expect(await aToken.rewardsClaimed()).to.equal(true)
 
       // CToken
       expect(await cTokenAsset.erc20()).to.equal(cToken.address)
@@ -160,6 +186,12 @@ describe('AssetsP0 contracts', () => {
       expect(await aaveAsset.decimals()).to.equal(await aave.decimals())
       expect(await aaveAsset.decimals()).to.equal(18)
       expect(await aaveAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
+
+      // RToken
+      expect(await rTokenAsset.erc20()).to.equal(rToken.address)
+      expect(await rTokenAsset.decimals()).to.equal(await rToken.decimals())
+      expect(await rTokenAsset.decimals()).to.equal(18)
+      expect(await rTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
     })
   })
 })
