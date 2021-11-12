@@ -16,7 +16,7 @@ enum Fate {
     Stay // No action needs to be taken; tokens can be left at the callers address
 }
 
-library Auction {
+library AuctionP1 {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 

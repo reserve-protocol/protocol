@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/proto1/libraries/Auction.sol";
+import "contracts/proto1/libraries/AuctionP1.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IAssetP1.sol";
 import "./IMainP1.sol";

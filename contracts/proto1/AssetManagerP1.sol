@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/proto1/libraries/Auction.sol";
+import "contracts/proto1/libraries/AuctionP1.sol";
 import "contracts/proto1/interfaces/IAssetP1.sol";
 import "contracts/proto1/interfaces/IAssetManagerP1.sol";
 import "contracts/proto1/interfaces/IMainP1.sol";

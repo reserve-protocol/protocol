@@ -34,7 +34,7 @@ interface IAaveOracle {
     function getAssetPrice(address token) external view returns (uint256);
 }
 
-library Oracle {
+library OracleP1 {
     using FixLib for Fix;
 
     enum Source {
