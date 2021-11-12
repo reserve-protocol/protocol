@@ -5,11 +5,11 @@ import "contracts/libraries/Fixed.sol";
 import "../libraries/OracleP1.sol";
 
 contract OracleCallerMockP1 {
-    using Oracle for Oracle.Info;
+    using OracleP1 for OracleP1.Info;
 
-    Oracle.Info internal _oracle;
+    OracleP1.Info internal _oracle;
 
-    constructor(Oracle.Info memory oracle_) {
+    constructor(OracleP1.Info memory oracle_) {
         _oracle = oracle_;
     }
 

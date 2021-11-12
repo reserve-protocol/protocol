@@ -26,11 +26,11 @@ import "contracts/libraries/Fixed.sol";
  */
 contract MainP1 is IMainP1, Ownable {
     using SafeERC20 for IERC20;
-    using Oracle for Oracle.Info;
+    using OracleP1 for OracleP1.Info;
     using FixLib for Fix;
 
     Config internal _config;
-    Oracle.Info internal _oracle;
+    OracleP1.Info internal _oracle;
 
     IERC20 public override rsr;
     IRTokenP1 public override rToken;
@@ -60,7 +60,7 @@ contract MainP1 is IMainP1, Ownable {
     uint256 public stateRaisedAt; // timestamp when default occurred
 
     constructor(
-        Oracle.Info memory oracle_,
+        OracleP1.Info memory oracle_,
         Config memory config_,
         IERC20 rsr_
     ) {

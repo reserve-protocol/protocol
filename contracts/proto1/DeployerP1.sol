@@ -51,7 +51,7 @@ contract DeployerP1 is IDeployerP1 {
         ParamsAssets memory nonCollateral,
         ICollateral[] memory collateral
     ) external override returns (address) {
-        Oracle.Info memory oracle = Oracle.Info(compound, aave);
+        OracleP1.Info memory oracle = OracleP1.Info(compound, aave);
 
         MainP1 main = new MainP1(oracle, config, rsr);
         deployments.push(main);

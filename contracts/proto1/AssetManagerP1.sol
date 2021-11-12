@@ -31,7 +31,7 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
     using SafeERC20 for IERC20;
     using Auction for Auction.Info;
     using EnumerableSet for EnumerableSet.AddressSet;
-    using Oracle for Oracle.Info;
+    using OracleP1 for OracleP1.Info;
     using FixLib for Fix;
 
     // ECONOMICS
