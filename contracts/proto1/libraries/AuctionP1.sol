@@ -51,7 +51,7 @@ library AuctionP1 {
         bool isOpen;
     }
 
-    function open(Auction.Info storage self) internal {
+    function open(AuctionP1.Info storage self) internal {
         // TODO: batchAuction.initiateAuction()
         self.isOpen = true;
         emit AuctionStarted(address(self.sell), address(self.buy), self.sellAmount, self.minBuyAmount, self.fate);
@@ -59,7 +59,7 @@ library AuctionP1 {
 
     /// Closes out the auction and sends bought token to its fate
     /// @return buyAmount {qBuyTok} The clearing buyAmount for the auction
-    function close(Auction.Info storage self, IMainP1 main) internal returns (uint256 buyAmount) {
+    function close(AuctionP1.Info storage self, IMainP1 main) internal returns (uint256 buyAmount) {
         require(self.isOpen, "already closed out");
         require(self.endTime <= block.timestamp, "auction not over");
         // TODO: buyAmount = batchAuction.claim();

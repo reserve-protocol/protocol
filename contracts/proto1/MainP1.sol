@@ -245,7 +245,7 @@ contract MainP1 is IMainP1, Ownable {
     }
 
     /// @return {attoUSD/qTok} The price in attoUSD of a `qTok` on oracle `source`.
-    function consultOracle(Oracle.Source source, address token) external view override returns (Fix) {
+    function consultOracle(OracleP1.Source source, address token) external view override returns (Fix) {
         return _oracle.consult(source, token);
     }
 

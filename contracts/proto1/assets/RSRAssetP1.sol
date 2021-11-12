@@ -20,7 +20,7 @@ contract RSRAssetP1 is IAssetP1 {
 
     /// @return {attoUSD/qRSR}
     function priceUSD(IMainP1 main) public view override returns (Fix) {
-        return main.consultOracle(Oracle.Source.AAVE, _erc20);
+        return main.consultOracle(OracleP1.Source.AAVE, _erc20);
     }
 
     /// @return The ERC20 contract of the central token

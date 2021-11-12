@@ -154,7 +154,7 @@ interface IMainP1 {
     function monitor() external view returns (IDefaultMonitorP1);
 
     /// @return {attoUSD/qTok} The price in attoUSD of `token` on oracle `source`.
-    function consultOracle(Oracle.Source source, address token) external view returns (Fix);
+    function consultOracle(OracleP1.Source source, address token) external view returns (Fix);
 
     /// @return The deployment of the comptroller on this chain
     function comptroller() external view returns (IComptroller);

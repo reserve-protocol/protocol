@@ -49,7 +49,7 @@ contract CTokenCollateralP1 is CollateralP1 {
 
     /// @return {attoUSD/qFiatTok}
     function fiatcoinPriceUSD(IMainP1 main) public view override returns (Fix) {
-        return main.consultOracle(Oracle.Source.COMPOUND, address(fiatcoin()));
+        return main.consultOracle(OracleP1.Source.COMPOUND, address(fiatcoin()));
     }
 
     function isFiatcoin() external pure override returns (bool) {

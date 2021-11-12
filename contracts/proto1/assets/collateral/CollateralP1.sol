@@ -65,7 +65,7 @@ contract CollateralP1 is ICollateral {
 
     /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
     function fiatcoinPriceUSD(IMainP1 main) public view virtual override returns (Fix) {
-        return main.consultOracle(Oracle.Source.AAVE, address(fiatcoin()));
+        return main.consultOracle(OracleP1.Source.AAVE, address(fiatcoin()));
     }
 
     /// @return Whether `_erc20` is a fiatcoin

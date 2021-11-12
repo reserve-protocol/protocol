@@ -14,11 +14,11 @@ contract OracleCallerMockP1 {
     }
 
     function consultAaveOracle(address token) external view returns (Fix) {
-        return _oracle.consult(Oracle.Source.AAVE, token);
+        return _oracle.consult(OracleP1.Source.AAVE, token);
     }
 
     function consultCompoundOracle(address token) external view returns (Fix) {
-        return _oracle.consult(Oracle.Source.COMPOUND, token);
+        return _oracle.consult(OracleP1.Source.COMPOUND, token);
     }
 
     /// @return The deployment of the comptroller on this chain

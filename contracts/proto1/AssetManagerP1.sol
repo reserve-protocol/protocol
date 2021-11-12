@@ -29,7 +29,7 @@ import "contracts/libraries/Fixed.sol";
  */
 contract AssetManagerP1 is IAssetManagerP1, Ownable {
     using SafeERC20 for IERC20;
-    using Auction for Auction.Info;
+    using AuctionP1 for AuctionP1.Info;
     using EnumerableSet for EnumerableSet.AddressSet;
     using OracleP1 for OracleP1.Info;
     using FixLib for Fix;
@@ -52,7 +52,7 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
     IVaultP1 public override vault;
 
     IVaultP1[] public pastVaults;
-    Auction.Info[] public auctions;
+    AuctionP1.Info[] public auctions;
 
     constructor(
         IMainP1 main_,
@@ -141,7 +141,7 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctions.length; i++) {
-            Auction.Info storage auction = auctions[i];
+            AuctionP1.Info storage auction = auctions[i];
             if (auction.isOpen) {
                 if (block.timestamp <= auction.endTime) {
                     return State.TRADING;
@@ -287,7 +287,7 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
     }
 
     /// Opens an `auction`
-    function _launchAuction(Auction.Info memory auction) internal {
+    function _launchAuction(AuctionP1.Info memory auction) internal {
         auctions.push(auction);
         auctions[auctions.length - 1].open();
     }
@@ -301,7 +301,7 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
             uint256 maxSell,
             uint256 targetBuy
         ) = _largestCollateralForCollateralTrade();
-        (bool trade, Auction.Info memory auction) = _prepareAuctionBuy(
+        (bool trade, AuctionP1.Info memory auction) = _prepareAuctionBuy(
             main.config().minRecapitalizationAuctionSize,
             sell,
             buy,
@@ -375,7 +375,7 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
         }
 
         // RToken -> dividend RSR
-        (bool launch, Auction.Info memory auction) = _prepareAuctionSell(
+        (bool launch, AuctionP1.Info memory auction) = _prepareAuctionSell(
             main.config().minRevenueAuctionSize,
             main.rTokenAsset(),
             main.rsrAsset(),
@@ -398,7 +398,7 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
             amountForRSR.toUint(),
             Fate.Stake
         );
-        (bool launch2, Auction.Info memory auction2) = _prepareAuctionSell(
+        (bool launch2, AuctionP1.Info memory auction2) = _prepareAuctionSell(
             main.config().minRevenueAuctionSize,
             main.compAsset(),
             main.rTokenAsset(),
@@ -522,7 +522,7 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
         IAssetP1 buy,
         uint256 sellAmount,
         Fate fate
-    ) internal returns (bool, Auction.Info memory auction) {
+    ) internal returns (bool, AuctionP1.Info memory auction) {
         sellAmount = Math.min(sellAmount, sell.erc20().balanceOf(address(this)));
 
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
@@ -540,7 +540,7 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
         Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.config().maxTradeSlippage)); // {qBuyTok}
         return (
             true,
-            Auction.Info({
+            AuctionP1.Info({
                 sell: sell,
                 buy: buy,
                 sellAmount: sellAmount,
@@ -564,8 +564,8 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
         uint256 maxSellAmount,
         uint256 targetBuyAmount,
         Fate fate
-    ) internal returns (bool, Auction.Info memory emptyAuction) {
-        (bool trade, Auction.Info memory auction) = _prepareAuctionSell(minAuctionSize, sell, buy, maxSellAmount, fate);
+    ) internal returns (bool, AuctionP1.Info memory emptyAuction) {
+        (bool trade, AuctionP1.Info memory auction) = _prepareAuctionSell(minAuctionSize, sell, buy, maxSellAmount, fate);
         if (!trade) {
             return (false, emptyAuction);
         }
