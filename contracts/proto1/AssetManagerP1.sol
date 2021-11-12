@@ -565,7 +565,13 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
         uint256 targetBuyAmount,
         Fate fate
     ) internal returns (bool, AuctionP1.Info memory emptyAuction) {
-        (bool trade, AuctionP1.Info memory auction) = _prepareAuctionSell(minAuctionSize, sell, buy, maxSellAmount, fate);
+        (bool trade, AuctionP1.Info memory auction) = _prepareAuctionSell(
+            minAuctionSize,
+            sell,
+            buy,
+            maxSellAmount,
+            fate
+        );
         if (!trade) {
             return (false, emptyAuction);
         }
