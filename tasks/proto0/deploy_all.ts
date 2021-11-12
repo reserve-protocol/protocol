@@ -200,6 +200,32 @@ task('Proto0-deployAll', 'Deploys all proto0 contracts and a mock RToken')
     await hre.ethers.getContractAt('DefaultMonitorP0', await main.monitor())
   )
 
+  console.log(`
+    -------------------------
+    Reserve Proto0 - Deployed
+    -------------------------
+    RSR             - ${rsr.address}
+    RSR_ASSET       - ${rsrAsset.address}
+    WETH            - ${weth.address}
+    COMP            - ${compToken.address}
+    COMP_ASSET      - ${compAsset.address}
+    COMP_ORACLE     - ${compoundOracle.address}
+    COMP_MOCK       - ${compoundMock.address}
+    AAVE_TOKEN      - ${aaveToken.address}
+    AAVE_ASSET      - ${aaveAsset.address}
+    AAVE_ORACLE     - ${aaveOracle.address}
+    AAVE_MOCK       - ${aaveMock.address}
+    VAULT           - ${vault.address}
+    RTOKEN_DEPLOYER - ${rtokenDeployer.address}
+    MAIN            - ${main.address}
+    RTOKEN          - ${rToken.address}
+    FURNACE         - ${furnace.address}
+    stRSR           - ${stRSR.address}
+    ASSET_MANAGER   - ${assetManager.address}
+    DEFAULT_MONITOR - ${defaultMonitor.address}
+    -------------------------
+  `)
+
   return {
     rsr,
     rsrAsset,
@@ -216,7 +242,7 @@ task('Proto0-deployAll', 'Deploys all proto0 contracts and a mock RToken')
     collaterals,
     vault,
     config,
-    deployer,
+    rtokenDeployer,
     main,
     rToken,
     furnace,
