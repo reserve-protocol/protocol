@@ -2,29 +2,29 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./assets/RTokenAssetP0.sol";
-import "./assets/RSRAssetP0.sol";
-import "./assets/COMPAssetP0.sol";
-import "./assets/AAVEAssetP0.sol";
+import "./assets/RTokenAssetP1.sol";
+import "./assets/RSRAssetP1.sol";
+import "./assets/COMPAssetP1.sol";
+import "./assets/AAVEAssetP1.sol";
 import "../libraries/CommonErrors.sol";
 import "./libraries/Oracle.sol";
 import "./interfaces/IAsset.sol";
 import "./interfaces/IDeployer.sol";
 import "./interfaces/IMain.sol";
 import "./interfaces/IVault.sol";
-import "./assets/RTokenAssetP0.sol";
-import "./AssetManagerP0.sol";
-import "./DefaultMonitorP0.sol";
-import "./FurnaceP0.sol";
-import "./MainP0.sol";
-import "./RTokenP0.sol";
-import "./StRSRP0.sol";
+import "./assets/RTokenAssetP1.sol";
+import "./AssetManagerP1.sol";
+import "./DefaultMonitorP1.sol";
+import "./FurnaceP1.sol";
+import "./MainP1.sol";
+import "./RTokenP1.sol";
+import "./StRSRP1.sol";
 
 /**
- * @title DeployerP0
+ * @title DeployerP1
  * @notice The deployer for the entire system.
  */
-contract DeployerP0 is IDeployer {
+contract DeployerP1 is IDeployer {
     IMain[] public deployments;
 
     /// Deploys an instance of the entire system
@@ -53,25 +53,25 @@ contract DeployerP0 is IDeployer {
     ) external override returns (address) {
         Oracle.Info memory oracle = Oracle.Info(compound, aave);
 
-        MainP0 main = new MainP0(oracle, config, rsr);
+        MainP1 main = new MainP1(oracle, config, rsr);
         deployments.push(main);
 
         {
-            DefaultMonitorP0 monitor = new DefaultMonitorP0(main);
+            DefaultMonitorP1 monitor = new DefaultMonitorP1(main);
             main.setMonitor(monitor);
         }
 
         {
-            RTokenP0 rToken = new RTokenP0(main, name, symbol);
+            RTokenP1 rToken = new RTokenP1(main, name, symbol);
             main.setRToken(rToken);
-            RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken));
+            RTokenAssetP1 rTokenAsset = new RTokenAssetP1(address(rToken));
             main.setAssets(rTokenAsset, nonCollateral.rsrAsset, nonCollateral.compAsset, nonCollateral.aaveAsset);
-            FurnaceP0 furnace = new FurnaceP0(address(rToken));
+            FurnaceP1 furnace = new FurnaceP1(address(rToken));
             main.setFurnace(furnace);
         }
 
         {
-            StRSRP0 stRSR = new StRSRP0(
+            StRSRP1 stRSR = new StRSRP1(
                 main,
                 string(abi.encodePacked("Staked RSR - ", name)),
                 string(abi.encodePacked("st", symbol, "RSR"))
@@ -80,7 +80,7 @@ contract DeployerP0 is IDeployer {
         }
 
         {
-            AssetManagerP0 manager = new AssetManagerP0(main, vault, owner, collateral);
+            AssetManagerP1 manager = new AssetManagerP1(main, vault, owner, collateral);
             main.setManager(manager);
         }
         main.setPauser(owner);

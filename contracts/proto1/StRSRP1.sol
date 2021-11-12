@@ -10,7 +10,7 @@ import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
 /*
- * @title StRSRP0
+ * @title StRSRP1
  * @notice The StRSR is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken.
  *
@@ -18,7 +18,7 @@ import "contracts/libraries/Fixed.sol";
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both
  * balances that are in the process of being withdrawn and those that are not.
  */
-contract StRSRP0 is IStRSR, Context {
+contract StRSRP1 is IStRSR, Context {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;

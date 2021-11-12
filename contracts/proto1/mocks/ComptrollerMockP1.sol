@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "../libraries/Oracle.sol";
 
-contract ComptrollerMockP0 is IComptroller {
+contract ComptrollerMockP1 is IComptroller {
     ICompoundOracle private _compoundOracle;
 
     mapping(address => uint256) private _compBalances;

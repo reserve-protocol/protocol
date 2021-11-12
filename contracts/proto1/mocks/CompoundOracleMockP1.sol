@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "../libraries/Oracle.sol";
 
-contract CompoundOracleMockP0 is ICompoundOracle {
+contract CompoundOracleMockP1 is ICompoundOracle {
     mapping(string => uint256) private _prices;
 
     constructor() {}

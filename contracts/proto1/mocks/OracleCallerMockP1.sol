@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/libraries/Fixed.sol";
 import "../libraries/Oracle.sol";
 
-contract OracleCallerMockP0 {
+contract OracleCallerMockP1 {
     using Oracle for Oracle.Info;
 
     Oracle.Info internal _oracle;

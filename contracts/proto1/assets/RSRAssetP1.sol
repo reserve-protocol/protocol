@@ -9,7 +9,7 @@ import "contracts/proto0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
-contract RSRAssetP0 is IAsset {
+contract RSRAssetP1 is IAsset {
     using FixLib for Fix;
 
     address internal immutable _erc20;

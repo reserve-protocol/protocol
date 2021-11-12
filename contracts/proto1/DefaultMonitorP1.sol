@@ -5,14 +5,14 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "contracts/proto0/interfaces/IAsset.sol";
 import "contracts/proto0/interfaces/IDefaultMonitor.sol";
 import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/proto0/MainP0.sol";
+import "contracts/proto0/MainP1.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title DefaultMonitorP0
+ * @title DefaultMonitorP1
  * @notice The default monitor checks for default states in other systems.
  */
-contract DefaultMonitorP0 is Context, IDefaultMonitor {
+contract DefaultMonitorP1 is Context, IDefaultMonitor {
     using FixLib for Fix;
     mapping(address => Fix) internal _lastRatesUSD; // {attoUSD/qtok}
 

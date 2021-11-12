@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "../libraries/Oracle.sol";
 
-contract AaveOracleMockP0 is IAaveOracle {
+contract AaveOracleMockP1 is IAaveOracle {
     mapping(address => uint256) private _prices;
 
     address private _weth;

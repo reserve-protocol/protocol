@@ -14,20 +14,20 @@ import "contracts/proto0/interfaces/IAssetManager.sol";
 import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/proto0/interfaces/IRToken.sol";
 import "contracts/proto0/interfaces/IVault.sol";
-import "contracts/proto0/FurnaceP0.sol";
-import "contracts/proto0/RTokenP0.sol";
-import "contracts/proto0/StRSRP0.sol";
+import "contracts/proto0/FurnaceP1.sol";
+import "contracts/proto0/RTokenP1.sol";
+import "contracts/proto0/StRSRP1.sol";
 import "contracts/libraries/CommonErrors.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title AssetManagerP0
+ * @title AssetManagerP1
  * @notice Handles the transfer and trade of assets
  *    - Defines the exchange rate between Vault BUs and RToken supply, via the base factor
  *    - Manages RToken backing via a Vault
  *    - Runs recapitalization and revenue auctions
  */
-contract AssetManagerP0 is IAssetManager, Ownable {
+contract AssetManagerP1 is IAssetManager, Ownable {
     using SafeERC20 for IERC20;
     using Auction for Auction.Info;
     using EnumerableSet for EnumerableSet.AddressSet;

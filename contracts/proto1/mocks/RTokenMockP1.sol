@@ -8,7 +8,7 @@ import "../interfaces/IStRSR.sol";
 
 interface IRToken is IERC20 {}
 
-contract RTokenMockP0 is ERC20, IRToken {
+contract RTokenMockP1 is ERC20, IRToken {
     using SafeERC20 for IERC20;
     using SafeERC20 for IRToken;
 

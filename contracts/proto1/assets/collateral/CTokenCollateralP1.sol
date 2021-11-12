@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/proto0/assets/collateral/CollateralP0.sol";
+import "contracts/proto0/assets/collateral/CollateralP1.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/proto0/libraries/Oracle.sol";
 
@@ -17,12 +17,12 @@ interface ICToken {
     function underlying() external view returns (address);
 }
 
-contract CTokenCollateralP0 is CollateralP0 {
+contract CTokenCollateralP1 is CollateralP1 {
     using FixLib for Fix;
 
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
     // solhint-disable-next-line no-empty-blocks
-    constructor(address erc20_) CollateralP0(erc20_) {}
+    constructor(address erc20_) CollateralP1(erc20_) {}
 
     /// @return {qFiatTok/qTok}
     function rateFiatcoin() public override returns (Fix) {

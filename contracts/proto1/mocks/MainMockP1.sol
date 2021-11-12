@@ -8,7 +8,7 @@ import "../interfaces/IMain.sol";
 import "contracts/proto0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
-contract ManagerInternalMockP0 {
+contract ManagerInternalMockP1 {
     bool public fullyCapitalized;
     IMain public main;
 
@@ -26,9 +26,9 @@ contract ManagerInternalMockP0 {
     }
 }
 
-contract MainMockP0 {
+contract MainMockP1 {
     IERC20 public rsr;
-    ManagerInternalMockP0 public manager;
+    ManagerInternalMockP1 public manager;
     bool public paused;
 
     IStRSR public stRSR;
@@ -38,7 +38,7 @@ contract MainMockP0 {
     constructor(IERC20 rsr_, uint256 stRSRWithdrawalDelay_) {
         _config.stRSRWithdrawalDelay = stRSRWithdrawalDelay_;
         rsr = rsr_;
-        manager = new ManagerInternalMockP0(address(this));
+        manager = new ManagerInternalMockP1(address(this));
         paused = false;
     }
 

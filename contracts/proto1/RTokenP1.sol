@@ -6,10 +6,10 @@ import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/proto0/interfaces/IRToken.sol";
 
 /**
- * @title RTokenP0
+ * @title RTokenP1
  * @notice An ERC20 with an elastic supply.
  */
-contract RTokenP0 is IRToken, ERC20 {
+contract RTokenP1 is IRToken, ERC20 {
     IMain public main;
 
     constructor(

@@ -8,7 +8,7 @@ import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/proto0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
-contract COMPAssetP0 is IAsset {
+contract COMPAssetP1 is IAsset {
     using FixLib for Fix;
 
     address internal immutable _erc20;

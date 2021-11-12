@@ -9,10 +9,10 @@ import "contracts/proto0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title CollateralP0
+ * @title CollateralP1
  * @notice A vanilla asset such as a fiatcoin, to be extended by more complex assets such as cTokens.
  */
-contract CollateralP0 is ICollateral {
+contract CollateralP1 is ICollateral {
     using FixLib for Fix;
 
     address internal immutable _erc20;

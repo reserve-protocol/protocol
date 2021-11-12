@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/proto0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "./CollateralP0.sol";
+import "./CollateralP1.sol";
 
 // Interfaces to contracts from: https://git.io/JX7iJ
 interface IStaticAToken is IERC20 {
@@ -24,11 +24,11 @@ interface AToken {
 
 /// @dev In Aave the number of decimals of the staticAToken is always 18, but the underlying rebasing
 /// AToken will have the same number of decimals as its fiatcoin.
-contract ATokenCollateralP0 is CollateralP0 {
+contract ATokenCollateralP1 is CollateralP1 {
     using FixLib for Fix;
 
     // solhint-disable-next-line no-empty-blocks
-    constructor(address erc20_) CollateralP0(erc20_) {}
+    constructor(address erc20_) CollateralP1(erc20_) {}
 
     /// Claims any rewards such as COMP/AAVE for the asset
     function claimRewards() external override {

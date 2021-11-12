@@ -7,10 +7,10 @@ import "../Ownable.sol"; // temporary
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/proto0/assets/RTokenAssetP0.sol";
-import "contracts/proto0/assets/RSRAssetP0.sol";
-import "contracts/proto0/assets/AAVEAssetP0.sol";
-import "contracts/proto0/assets/COMPAssetP0.sol";
+import "contracts/proto0/assets/RTokenAssetP1.sol";
+import "contracts/proto0/assets/RSRAssetP1.sol";
+import "contracts/proto0/assets/AAVEAssetP1.sol";
+import "contracts/proto0/assets/COMPAssetP1.sol";
 import "contracts/proto0/libraries/Oracle.sol";
 import "contracts/proto0/interfaces/IAsset.sol";
 import "contracts/proto0/interfaces/IAssetManager.sol";
@@ -21,10 +21,10 @@ import "contracts/proto0/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title MainP0
+ * @title MainP1
  * @notice The central coordinator for the entire system, as well as the external interface.
  */
-contract MainP0 is IMain, Ownable {
+contract MainP1 is IMain, Ownable {
     using SafeERC20 for IERC20;
     using Oracle for Oracle.Info;
     using FixLib for Fix;
@@ -217,10 +217,10 @@ contract MainP0 is IMain, Ownable {
     }
 
     function setAssets(
-        RTokenAssetP0 rToken_,
-        RSRAssetP0 rsr_,
-        COMPAssetP0 comp_,
-        AAVEAssetP0 aave_
+        RTokenAssetP1 rToken_,
+        RSRAssetP1 rsr_,
+        COMPAssetP1 comp_,
+        AAVEAssetP1 aave_
     ) external onlyOwner {
         rTokenAsset = rToken_;
         rsrAsset = rsr_;

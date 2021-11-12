@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "../libraries/Oracle.sol";
 
-contract AaveLendingPoolMockP0 is IAaveLendingPool {
+contract AaveLendingPoolMockP1 is IAaveLendingPool {
     ILendingPoolAddressesProvider private _lendingAddressesProvider;
 
     constructor(address lendingAddressesProvider) {

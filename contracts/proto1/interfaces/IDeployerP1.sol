@@ -2,9 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../assets/RSRAssetP0.sol";
-import "../assets/COMPAssetP0.sol";
-import "../assets/AAVEAssetP0.sol";
+import "../assets/RSRAssetP1.sol";
+import "../assets/COMPAssetP1.sol";
+import "../assets/AAVEAssetP1.sol";
 import "./IAsset.sol";
 import "./IVault.sol";
 
@@ -24,9 +24,9 @@ interface IDeployer {
     /// @param compAsset COMP as an IAsset
     /// @param aaveAsset AAVE as an IAsset
     struct ParamsAssets {
-        RSRAssetP0 rsrAsset;
-        COMPAssetP0 compAsset;
-        AAVEAssetP0 aaveAsset;
+        RSRAssetP1 rsrAsset;
+        COMPAssetP1 compAsset;
+        AAVEAssetP1 aaveAsset;
     }
 
     /// Deploys an instance of the entire system

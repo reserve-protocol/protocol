@@ -14,10 +14,10 @@ import "contracts/proto0/interfaces/IVault.sol";
 import "contracts/libraries/Fixed.sol";
 
 /*
- * @title VaultP0
+ * @title VaultP1
  * @notice An issuer of an internal bookkeeping unit called a BU or basket unit.
  */
-contract VaultP0 is IVault, Ownable {
+contract VaultP1 is IVault, Ownable {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
