@@ -1,14 +1,13 @@
 import { expect } from 'chai'
-import { ethers } from 'hardhat'
 import hre from 'hardhat'
-import { BigNumber, ContractFactory, Contract } from 'ethers'
+import { ethers } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
 import { bn } from '../../common/numbers'
+import { ZERO_ADDRESS } from '../../common/constants'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { RTokenMockP0 } from '../../typechain/RTokenMockP0'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
-import { ZERO_ADDRESS } from '../../common/constants'
 
 interface IBatchInfo {
   amount: BigNumber
@@ -22,15 +21,12 @@ describe('FurnaceP0 contract', () => {
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
 
-  let ERC20: ContractFactory
+  let RTokenMockFactory: ContractFactory
   let FurnaceFactory: ContractFactory
-  let RToken: ContractFactory
   let furnace: FurnaceP0
   let rToken: RTokenMockP0
-  let rsr: ERC20Mock
 
   let initialBal: BigNumber
-  let snapshotId: number
 
   const expectBatchInfo = async (index: number, hdnOutInfo: Partial<IBatchInfo>) => {
     const { amount, start, duration, burnt } = await furnace.batches(index)
@@ -41,23 +37,12 @@ describe('FurnaceP0 contract', () => {
     expect(burnt).to.equal(hdnOutInfo.burnt)
   }
 
-  //   before(async () => {
-  //     // Reset for correct timestamp disbursement calculation
-  //     await hre.network.provider.request({
-  //       method: 'hardhat_reset',
-  //       params: [],
-  //     })
-  //   })
-
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
 
-    // Deploy RSR and RToken
-    ERC20 = await ethers.getContractFactory('ERC20Mock')
-    rsr = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
-
-    RToken = await ethers.getContractFactory('RTokenMockP0')
-    rToken = <RTokenMockP0>await RToken.deploy('RToken', 'RTKN', rsr.address)
+    // Deploy RToken Mock
+    RTokenMockFactory = await ethers.getContractFactory('RTokenMockP0')
+    rToken = <RTokenMockP0>await RTokenMockFactory.deploy('RToken', 'RTKN')
 
     // Mint and set balances
     initialBal = bn('100e18')
@@ -67,9 +52,6 @@ describe('FurnaceP0 contract', () => {
     // Deploy Furnace
     FurnaceFactory = await ethers.getContractFactory('FurnaceP0')
     furnace = <FurnaceP0>await FurnaceFactory.deploy(rToken.address)
-
-    // Take snapshot to be able to revert to this point
-    //snapshotId = await ethers.provider.send('evm_snapshot', [])
   })
 
   describe('Deployment', () => {
@@ -275,9 +257,6 @@ describe('FurnaceP0 contract', () => {
     })
 
     it('Should allow burn - two equal parts', async () => {
-      // Revert to snapshot to ensure test runs independent
-      //await ethers.provider.send('evm_revert', [snapshotId])
-
       const hndAmt: BigNumber = bn('10e18')
       const timePeriod: number = 60 * 60 * 24 // 1 day
 
@@ -333,9 +312,6 @@ describe('FurnaceP0 contract', () => {
     })
 
     it('Should allow burn - for multiple batches', async () => {
-      // Revert to snapshot to ensure test runs independent
-      //await ethers.provider.send('evm_revert', [snapshotId])
-
       const hndAmt: BigNumber = bn('10e18')
       const timePeriod: number = 60 * 60 * 24 // 1 day
 
@@ -447,6 +423,40 @@ describe('FurnaceP0 contract', () => {
       expect(await rToken.balanceOf(addr2.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt.div(2))
       expect(await furnace.totalBurnt()).to.equal(hndAmt.add(hndAmt2).add(hndAmt.div(2)))
+    })
+
+    it('Should not burn any funds in the initial block', async () => {
+      const hndAmt: BigNumber = bn('2e18')
+
+      // Set automine to false for multiple transactions in one block
+      await hre.network.provider.send('evm_setAutomine', [false])
+
+      // Approval
+      await rToken.connect(addr1).approve(furnace.address, hndAmt)
+
+      // Batch burn
+      await furnace.connect(addr1).burnOverPeriod(hndAmt, 0)
+
+      // Burn
+      await furnace.connect(addr1).doBurn()
+
+      // Mine block
+      await hre.network.provider.send('evm_mine', [])
+
+      // Check burn was registered but not processed
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
+      expect(await furnace.totalBurnt()).to.equal(0)
+
+      expectBatchInfo(0, {
+        amount: hndAmt,
+        start: await getLatestBlockTimestamp(),
+        duration: 0,
+        burnt: bn('0'),
+      })
+
+      // Set automine to true again
+      await hre.network.provider.send('evm_setAutomine', [true])
     })
   })
 })
