@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/proto0/interfaces/IStRSR.sol";
-import "contracts/proto0/interfaces/IMain.sol";
+import "contracts/proto1/interfaces/IStRSRP1.sol";
+import "contracts/proto1/interfaces/IMainP1.sol";
 import "contracts/libraries/Fixed.sol";
 
 /*
@@ -18,12 +18,12 @@ import "contracts/libraries/Fixed.sol";
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both
  * balances that are in the process of being withdrawn and those that are not.
  */
-contract StRSRP1 is IStRSR, Context {
+contract StRSRP1 is IStRSRP1, Context {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
-    IMain public main;
+    IMainP1 public main;
 
     // Staking Token Name and Symbol
     string private _name;
@@ -50,7 +50,7 @@ contract StRSRP1 is IStRSR, Context {
     uint256 public withdrawalIndex;
 
     constructor(
-        IMain main_,
+        IMainP1 main_,
         string memory name_,
         string memory symbol_
     ) {

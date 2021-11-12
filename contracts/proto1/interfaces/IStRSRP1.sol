@@ -4,10 +4,10 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /*
- * @title IStRSR
+ * @title IStRSRP1
  * @notice A rebasing token that represents claims on staked RSR and entitles the AssetManager to seize RSR.
  */
-interface IStRSR is IERC20 {
+interface IStRSRP1 is IERC20 {
     /// Emitted when RSR is staked
     /// @param staker The address of the staker
     /// @param amount {qRSR} The quantity of RSR staked

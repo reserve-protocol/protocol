@@ -3,18 +3,18 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/IStRSR.sol";
-import "../interfaces/IMain.sol";
-import "contracts/proto0/libraries/Oracle.sol";
+import "../interfaces/IStRSRP1.sol";
+import "../interfaces/IMainP1.sol";
+import "contracts/proto1/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
 contract ManagerInternalMockP1 {
     bool public fullyCapitalized;
-    IMain public main;
+    IMainP1 public main;
 
     constructor(address main_) {
         fullyCapitalized = true;
-        main = IMain(main_);
+        main = IMainP1(main_);
     }
 
     function setFullyCapitalized(bool value) external {
@@ -31,7 +31,7 @@ contract MainMockP1 {
     ManagerInternalMockP1 public manager;
     bool public paused;
 
-    IStRSR public stRSR;
+    IStRSRP1 public stRSR;
 
     Config private _config;
 
@@ -42,7 +42,7 @@ contract MainMockP1 {
         paused = false;
     }
 
-    function setStRSR(IStRSR stRSR_) external {
+    function setStRSR(IStRSRP1 stRSR_) external {
         stRSR = stRSR_;
     }
 

@@ -8,15 +8,15 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/proto0/libraries/Auction.sol";
-import "contracts/proto0/interfaces/IAsset.sol";
-import "contracts/proto0/interfaces/IAssetManager.sol";
-import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/proto0/interfaces/IRToken.sol";
-import "contracts/proto0/interfaces/IVault.sol";
-import "contracts/proto0/FurnaceP1.sol";
-import "contracts/proto0/RTokenP1.sol";
-import "contracts/proto0/StRSRP1.sol";
+import "contracts/proto1/libraries/Auction.sol";
+import "contracts/proto1/interfaces/IAssetP1.sol";
+import "contracts/proto1/interfaces/IAssetManagerP1.sol";
+import "contracts/proto1/interfaces/IMainP1.sol";
+import "contracts/proto1/interfaces/IRTokenP1.sol";
+import "contracts/proto1/interfaces/IVaultP1.sol";
+import "contracts/proto1/FurnaceP1.sol";
+import "contracts/proto1/RTokenP1.sol";
+import "contracts/proto1/StRSRP1.sol";
 import "contracts/libraries/CommonErrors.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -27,7 +27,7 @@ import "contracts/libraries/Fixed.sol";
  *    - Manages RToken backing via a Vault
  *    - Runs recapitalization and revenue auctions
  */
-contract AssetManagerP1 is IAssetManager, Ownable {
+contract AssetManagerP1 is IAssetManagerP1, Ownable {
     using SafeERC20 for IERC20;
     using Auction for Auction.Info;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -48,15 +48,15 @@ contract AssetManagerP1 is IAssetManager, Ownable {
     EnumerableSet.AddressSet internal _alltimeCollateral;
     EnumerableSet.AddressSet internal _fiatcoins;
 
-    IMain public main;
-    IVault public override vault;
+    IMainP1 public main;
+    IVaultP1 public override vault;
 
-    IVault[] public pastVaults;
+    IVaultP1[] public pastVaults;
     Auction.Info[] public auctions;
 
     constructor(
-        IMain main_,
-        IVault vault_,
+        IMainP1 main_,
+        IVaultP1 vault_,
         address owner_,
         ICollateral[] memory approvedCollateral_
     ) {
@@ -117,7 +117,7 @@ contract AssetManagerP1 is IAssetManager, Ownable {
             _unapproveAsset(defaulting[i]);
         }
 
-        IVault newVault = main.monitor().getNextVault(vault, _approvedCollateral.values(), _fiatcoins.values());
+        IVaultP1 newVault = main.monitor().getNextVault(vault, _approvedCollateral.values(), _fiatcoins.values());
         if (address(newVault) != address(0)) {
             _switchVault(newVault);
         }
@@ -173,7 +173,7 @@ contract AssetManagerP1 is IAssetManager, Ownable {
         _unapproveAsset(collateral);
     }
 
-    function switchVault(IVault vault_) external onlyOwner {
+    function switchVault(IVaultP1 vault_) external onlyOwner {
         _switchVault(vault_);
     }
 
@@ -245,7 +245,7 @@ contract AssetManagerP1 is IAssetManager, Ownable {
     /// Returns the oldest vault that contains nonzero BUs.
     /// Note that this will pass over vaults with uneven holdings, it does not necessarily mean the vault
     /// contains no collateral.
-    function _oldestVault() internal view returns (IVault) {
+    function _oldestVault() internal view returns (IVaultP1) {
         for (uint256 i = 0; i < pastVaults.length; i++) {
             if (pastVaults[i].basketUnits(address(this)) > 0) {
                 return pastVaults[i];
@@ -262,7 +262,7 @@ contract AssetManagerP1 is IAssetManager, Ownable {
         _prevBasketRate = vault.basketRate();
     }
 
-    function _switchVault(IVault vault_) internal {
+    function _switchVault(IVaultP1 vault_) internal {
         pastVaults.push(vault_);
         emit NewVaultSet(address(vault), address(vault_));
         vault = vault_;
@@ -316,7 +316,7 @@ contract AssetManagerP1 is IAssetManager, Ownable {
 
         // Redeem BUs to open up spare collateral
         uint256 totalSupply = main.rToken().totalSupply();
-        IVault oldVault = _oldestVault();
+        IVaultP1 oldVault = _oldestVault();
         if (oldVault != vault) {
             uint256 max = main.config().migrationChunk.mulu(totalSupply).toUint();
             uint256 chunk = Math.min(max, oldVault.basketUnits(address(this)));
@@ -369,7 +369,7 @@ contract AssetManagerP1 is IAssetManager, Ownable {
         uint256 auctionLenSnapshot = auctions.length;
 
         // Empty oldest vault
-        IVault oldVault = _oldestVault();
+        IVaultP1 oldVault = _oldestVault();
         if (oldVault != vault) {
             oldVault.redeem(address(this), oldVault.basketUnits(address(this)));
         }
@@ -518,8 +518,8 @@ contract AssetManagerP1 is IAssetManager, Ownable {
     /// @return false if it is a dust trade
     function _prepareAuctionSell(
         Fix minAuctionSize,
-        IAsset sell,
-        IAsset buy,
+        IAssetP1 sell,
+        IAssetP1 buy,
         uint256 sellAmount,
         Fate fate
     ) internal returns (bool, Auction.Info memory auction) {
@@ -559,8 +559,8 @@ contract AssetManagerP1 is IAssetManager, Ownable {
     /// @return false if it is a dust trade
     function _prepareAuctionBuy(
         Fix minAuctionSize,
-        IAsset sell,
-        IAsset buy,
+        IAssetP1 sell,
+        IAssetP1 buy,
         uint256 maxSellAmount,
         uint256 targetBuyAmount,
         Fate fate

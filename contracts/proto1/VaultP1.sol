@@ -8,16 +8,16 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/proto0/interfaces/IAsset.sol";
-import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/proto0/interfaces/IVault.sol";
+import "contracts/proto1/interfaces/IAssetP1.sol";
+import "contracts/proto1/interfaces/IMainP1.sol";
+import "contracts/proto1/interfaces/IVaultP1.sol";
 import "contracts/libraries/Fixed.sol";
 
 /*
  * @title VaultP1
  * @notice An issuer of an internal bookkeeping unit called a BU or basket unit.
  */
-contract VaultP1 is IVault, Ownable {
+contract VaultP1 is IVaultP1, Ownable {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
@@ -29,16 +29,16 @@ contract VaultP1 is IVault, Ownable {
     mapping(address => uint256) public override basketUnits;
     uint256 public totalUnits;
 
-    IVault[] public backups;
+    IVaultP1[] public backups;
 
-    IMain public main;
+    IMainP1 public main;
 
     // {BU} = 1e18{qBU}
 
     constructor(
         ICollateral[] memory collateral,
         uint256[] memory quantities, // {qTok/BU}
-        IVault[] memory backupVaults
+        IVaultP1[] memory backupVaults
     ) {
         require(collateral.length == quantities.length, "arrays must match in length");
 
@@ -200,15 +200,15 @@ contract VaultP1 is IVault, Ownable {
     }
 
     /// @return A list of eligible backup vaults
-    function getBackups() external view override returns (IVault[] memory) {
+    function getBackups() external view override returns (IVaultP1[] memory) {
         return backups;
     }
 
-    function setBackups(IVault[] memory backupVaults) external onlyOwner {
+    function setBackups(IVaultP1[] memory backupVaults) external onlyOwner {
         backups = backupVaults;
     }
 
-    function setMain(IMain main_) external onlyOwner {
+    function setMain(IMainP1 main_) external onlyOwner {
         main = main_;
     }
 }

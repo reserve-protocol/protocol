@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/proto0/interfaces/IAsset.sol";
-import "contracts/proto0/interfaces/IMain.sol";
+import "contracts/proto1/interfaces/IAssetP1.sol";
+import "contracts/proto1/interfaces/IMainP1.sol";
 import "contracts/libraries/Fixed.sol";
 
 /// @param collateral Mapping from an incremental index to asset
@@ -15,10 +15,10 @@ struct Basket {
 }
 
 /*
- * @title IVault
+ * @title IVaultP1
  * @notice An issuer of an internal bookkeeping unit called a BU or basket unit.
  */
-interface IVault {
+interface IVaultP1 {
     /// Emitted whenever new BUs are issued
     /// @param to The account that earned the BUs
     /// @param by The account that paid for the BUs
@@ -89,7 +89,7 @@ interface IVault {
     function quantity(ICollateral asset) external view returns (uint256);
 
     /// @return A list of eligible backup vaults
-    function getBackups() external view returns (IVault[] memory);
+    function getBackups() external view returns (IVaultP1[] memory);
 
     /// @return The number of decimals in a BU
     function BU_DECIMALS() external view returns (uint8);

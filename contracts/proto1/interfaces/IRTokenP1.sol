@@ -4,10 +4,10 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /**
- * @title IRToken
+ * @title IRTokenP1
  * @notice An ERC20 with an elastic supply.
  */
-interface IRToken is IERC20Metadata {
+interface IRTokenP1 is IERC20Metadata {
     /// Mints a quantity of RToken to the `recipient`, only callable by AssetManager
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qTok} The amount to be minted

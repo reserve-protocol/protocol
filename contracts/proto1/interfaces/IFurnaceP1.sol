@@ -4,10 +4,10 @@ pragma solidity 0.8.9;
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title IFurnace
+ * @title IFurnaceP1
  * @notice A helper contract to burn RTokens slowly and permisionlessly.
  */
-interface IFurnace {
+interface IFurnaceP1 {
     /// Emitted whenever RToken is burned
     /// @param amount {RTok} The amount burnt
     event Burned(uint256 indexed amount);

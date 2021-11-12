@@ -4,15 +4,15 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../interfaces/IStRSR.sol";
+import "../interfaces/IStRSRP1.sol";
 
-interface IRToken is IERC20 {}
+interface IRTokenP1 is IERC20 {}
 
-contract RTokenMockP1 is ERC20, IRToken {
+contract RTokenMockP1 is ERC20, IRTokenP1 {
     using SafeERC20 for IERC20;
-    using SafeERC20 for IRToken;
+    using SafeERC20 for IRTokenP1;
 
-    IStRSR public stRSR;
+    IStRSRP1 public stRSR;
     IERC20 public rsr;
 
     constructor(
@@ -24,7 +24,7 @@ contract RTokenMockP1 is ERC20, IRToken {
     }
 
     function setStRSR(address stRSR_) external {
-        stRSR = IStRSR(stRSR_);
+        stRSR = IStRSRP1(stRSR_);
     }
 
     function addRSR(uint256 amount) external {

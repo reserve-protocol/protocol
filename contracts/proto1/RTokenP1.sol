@@ -2,18 +2,18 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/proto0/interfaces/IRToken.sol";
+import "contracts/proto1/interfaces/IMainP1.sol";
+import "contracts/proto1/interfaces/IRTokenP1.sol";
 
 /**
  * @title RTokenP1
  * @notice An ERC20 with an elastic supply.
  */
-contract RTokenP1 is IRToken, ERC20 {
-    IMain public main;
+contract RTokenP1 is IRTokenP1, ERC20 {
+    IMainP1 public main;
 
     constructor(
-        IMain main_,
+        IMainP1 main_,
         string memory name_,
         string memory symbol_
     ) ERC20(name_, symbol_) {

@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/proto0/libraries/Auction.sol";
+import "contracts/proto1/libraries/Auction.sol";
 import "contracts/libraries/Fixed.sol";
-import "./IAsset.sol";
-import "./IMain.sol";
-import "./IVault.sol";
+import "./IAssetP1.sol";
+import "./IMainP1.sol";
+import "./IVaultP1.sol";
 
 /**
- * @title IAssetManager
+ * @title IAssetManagerP1
  * @notice Handles the transfer and trade of assets
  *    - Defines the exchange rate between Vault BUs and RToken supply, via the base factor
  *    - Manages RToken backing via a Vault
  *    - Runs recapitalization and revenue auctions
  */
-interface IAssetManager {
+interface IAssetManagerP1 {
     /// Emitted when the current vault is changed
     /// @param oldVault The address of the old vault
     /// @param newVault The address of the new vault
@@ -62,7 +62,7 @@ interface IAssetManager {
     function fullyCapitalized() external view returns (bool);
 
     /// @return The current vault
-    function vault() external view returns (IVault);
+    function vault() external view returns (IVaultP1);
 
     /// @return An array of addresses of the approved fiatcoin collateral used for oracle USD determination
     function approvedFiatcoins() external view returns (ICollateral[] memory);

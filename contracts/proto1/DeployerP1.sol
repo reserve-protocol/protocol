@@ -8,10 +8,10 @@ import "./assets/COMPAssetP1.sol";
 import "./assets/AAVEAssetP1.sol";
 import "../libraries/CommonErrors.sol";
 import "./libraries/Oracle.sol";
-import "./interfaces/IAsset.sol";
-import "./interfaces/IDeployer.sol";
-import "./interfaces/IMain.sol";
-import "./interfaces/IVault.sol";
+import "./interfaces/IAssetP1.sol";
+import "./interfaces/IDeployerP1.sol";
+import "./interfaces/IMainP1.sol";
+import "./interfaces/IVaultP1.sol";
 import "./assets/RTokenAssetP1.sol";
 import "./AssetManagerP1.sol";
 import "./DefaultMonitorP1.sol";
@@ -24,8 +24,8 @@ import "./StRSRP1.sol";
  * @title DeployerP1
  * @notice The deployer for the entire system.
  */
-contract DeployerP1 is IDeployer {
-    IMain[] public deployments;
+contract DeployerP1 is IDeployerP1 {
+    IMainP1[] public deployments;
 
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
@@ -43,7 +43,7 @@ contract DeployerP1 is IDeployer {
         string memory name,
         string memory symbol,
         address owner,
-        IVault vault,
+        IVaultP1 vault,
         IERC20 rsr,
         Config memory config,
         IComptroller compound,

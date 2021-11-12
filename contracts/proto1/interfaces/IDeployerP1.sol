@@ -5,14 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../assets/RSRAssetP1.sol";
 import "../assets/COMPAssetP1.sol";
 import "../assets/AAVEAssetP1.sol";
-import "./IAsset.sol";
-import "./IVault.sol";
+import "./IAssetP1.sol";
+import "./IVaultP1.sol";
 
 /**
- * @title IDeployer
+ * @title IDeployerP1
  * @notice The deployer for the entire system.
  */
-interface IDeployer {
+interface IDeployerP1 {
     /// Emitted when a new RToken and accompanying system is deployed
     /// @param main The address of `Main`
     /// @param owner The owner of the newly deployed system
@@ -20,9 +20,9 @@ interface IDeployer {
 
     //
 
-    /// @param rsrAsset RSR as an IAsset
-    /// @param compAsset COMP as an IAsset
-    /// @param aaveAsset AAVE as an IAsset
+    /// @param rsrAsset RSR as an IAssetP1
+    /// @param compAsset COMP as an IAssetP1
+    /// @param aaveAsset AAVE as an IAssetP1
     struct ParamsAssets {
         RSRAssetP1 rsrAsset;
         COMPAssetP1 compAsset;
@@ -45,7 +45,7 @@ interface IDeployer {
         string memory name,
         string memory symbol,
         address owner,
-        IVault vault,
+        IVaultP1 vault,
         IERC20 rsr,
         Config memory config,
         IComptroller compound,

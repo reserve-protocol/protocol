@@ -7,24 +7,24 @@ import "../Ownable.sol"; // temporary
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/proto0/assets/RTokenAssetP1.sol";
-import "contracts/proto0/assets/RSRAssetP1.sol";
-import "contracts/proto0/assets/AAVEAssetP1.sol";
-import "contracts/proto0/assets/COMPAssetP1.sol";
-import "contracts/proto0/libraries/Oracle.sol";
-import "contracts/proto0/interfaces/IAsset.sol";
-import "contracts/proto0/interfaces/IAssetManager.sol";
-import "contracts/proto0/interfaces/IDefaultMonitor.sol";
-import "contracts/proto0/interfaces/IFurnace.sol";
-import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/proto0/interfaces/IRToken.sol";
+import "contracts/proto1/assets/RTokenAssetP1.sol";
+import "contracts/proto1/assets/RSRAssetP1.sol";
+import "contracts/proto1/assets/AAVEAssetP1.sol";
+import "contracts/proto1/assets/COMPAssetP1.sol";
+import "contracts/proto1/libraries/Oracle.sol";
+import "contracts/proto1/interfaces/IAssetP1.sol";
+import "contracts/proto1/interfaces/IAssetManagerP1.sol";
+import "contracts/proto1/interfaces/IDefaultMonitorP1.sol";
+import "contracts/proto1/interfaces/IFurnaceP1.sol";
+import "contracts/proto1/interfaces/IMainP1.sol";
+import "contracts/proto1/interfaces/IRTokenP1.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
  * @title MainP1
  * @notice The central coordinator for the entire system, as well as the external interface.
  */
-contract MainP1 is IMain, Ownable {
+contract MainP1 is IMainP1, Ownable {
     using SafeERC20 for IERC20;
     using Oracle for Oracle.Info;
     using FixLib for Fix;
@@ -33,17 +33,17 @@ contract MainP1 is IMain, Ownable {
     Oracle.Info internal _oracle;
 
     IERC20 public override rsr;
-    IRToken public override rToken;
-    IFurnace public override furnace;
-    IStRSR public override stRSR;
-    IAssetManager public override manager;
-    IDefaultMonitor public override monitor;
+    IRTokenP1 public override rToken;
+    IFurnaceP1 public override furnace;
+    IStRSRP1 public override stRSR;
+    IAssetManagerP1 public override manager;
+    IDefaultMonitorP1 public override monitor;
 
     // Assets
-    IAsset public override rTokenAsset;
-    IAsset public override rsrAsset;
-    IAsset public override compAsset;
-    IAsset public override aaveAsset;
+    IAssetP1 public override rTokenAsset;
+    IAssetP1 public override rsrAsset;
+    IAssetP1 public override compAsset;
+    IAssetP1 public override aaveAsset;
 
     // Pausing
     address public pauser;
@@ -196,23 +196,23 @@ contract MainP1 is IMain, Ownable {
         _config = config_;
     }
 
-    function setRToken(IRToken rToken_) external onlyOwner {
+    function setRToken(IRTokenP1 rToken_) external onlyOwner {
         rToken = rToken_;
     }
 
-    function setMonitor(IDefaultMonitor monitor_) external onlyOwner {
+    function setMonitor(IDefaultMonitorP1 monitor_) external onlyOwner {
         monitor = monitor_;
     }
 
-    function setManager(IAssetManager manager_) external onlyOwner {
+    function setManager(IAssetManagerP1 manager_) external onlyOwner {
         manager = manager_;
     }
 
-    function setStRSR(IStRSR stRSR_) external onlyOwner {
+    function setStRSR(IStRSRP1 stRSR_) external onlyOwner {
         stRSR = stRSR_;
     }
 
-    function setFurnace(IFurnace furnace_) external onlyOwner {
+    function setFurnace(IFurnaceP1 furnace_) external onlyOwner {
         furnace = furnace_;
     }
 

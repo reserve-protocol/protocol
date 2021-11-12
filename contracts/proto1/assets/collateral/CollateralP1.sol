@@ -3,9 +3,9 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/proto0/interfaces/IAsset.sol";
-import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/proto0/libraries/Oracle.sol";
+import "contracts/proto1/interfaces/IAssetP1.sol";
+import "contracts/proto1/interfaces/IMainP1.sol";
+import "contracts/proto1/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
@@ -38,7 +38,7 @@ contract CollateralP1 is ICollateral {
     }
 
     /// @return {attoUSD/qTok} The price in attoUSD of the asset's smallest unit
-    function priceUSD(IMain main) public virtual override returns (Fix) {
+    function priceUSD(IMainP1 main) public virtual override returns (Fix) {
         // {attoUSD/qFiatTok} * {qFiatTok/qTok}
         return fiatcoinPriceUSD(main).mul(rateFiatcoin());
     }
@@ -64,7 +64,7 @@ contract CollateralP1 is ICollateral {
     }
 
     /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
-    function fiatcoinPriceUSD(IMain main) public view virtual override returns (Fix) {
+    function fiatcoinPriceUSD(IMainP1 main) public view virtual override returns (Fix) {
         return main.consultOracle(Oracle.Source.AAVE, address(fiatcoin()));
     }
 

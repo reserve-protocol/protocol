@@ -2,30 +2,30 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Context.sol";
-import "contracts/proto0/interfaces/IAsset.sol";
-import "contracts/proto0/interfaces/IDefaultMonitor.sol";
-import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/proto0/MainP1.sol";
+import "contracts/proto1/interfaces/IAssetP1.sol";
+import "contracts/proto1/interfaces/IDefaultMonitorP1.sol";
+import "contracts/proto1/interfaces/IMainP1.sol";
+import "contracts/proto1/MainP1.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
  * @title DefaultMonitorP1
  * @notice The default monitor checks for default states in other systems.
  */
-contract DefaultMonitorP1 is Context, IDefaultMonitor {
+contract DefaultMonitorP1 is Context, IDefaultMonitorP1 {
     using FixLib for Fix;
     mapping(address => Fix) internal _lastRatesUSD; // {attoUSD/qtok}
 
-    IMain public main;
+    IMainP1 public main;
 
-    constructor(IMain main_) {
+    constructor(IMainP1 main_) {
         main = main_;
     }
 
     /// Checks for hard default in a vault by inspecting the redemption rates of collateral tokens
     /// @param vault The vault to inspect
     /// @return defaulting All hard-defaulting tokens
-    function checkForHardDefault(IVault vault) external override returns (ICollateral[] memory defaulting) {
+    function checkForHardDefault(IVaultP1 vault) external override returns (ICollateral[] memory defaulting) {
         require(_msgSender() == address(main), "main only");
         ICollateral[] memory vaultAssets = new ICollateral[](vault.size());
         uint256 count;
@@ -47,7 +47,7 @@ contract DefaultMonitorP1 is Context, IDefaultMonitor {
     /// @param vault The vault to inspect
     /// @param fiatcoins An array of addresses of fiatcoin assets to use for median USD calculation
     /// @return defaulting All soft-defaulting tokens
-    function checkForSoftDefault(IVault vault, ICollateral[] memory fiatcoins)
+    function checkForSoftDefault(IVaultP1 vault, ICollateral[] memory fiatcoins)
         public
         view
         override
@@ -75,10 +75,10 @@ contract DefaultMonitorP1 is Context, IDefaultMonitor {
     /// @param approvedCollateral An array of addresses of all collateral assets eligible to be in the new vault
     /// @param fiatcoins An array of addresses of fiatcoin assets to use for median USD calculation
     function getNextVault(
-        IVault vault,
+        IVaultP1 vault,
         address[] memory approvedCollateral,
         address[] memory fiatcoins
-    ) external override returns (IVault) {
+    ) external override returns (IVaultP1) {
         ICollateral[] memory fiatcoinAssets = new ICollateral[](fiatcoins.length);
         for (uint256 i = 0; i < fiatcoins.length; i++) {
             fiatcoinAssets[i] = ICollateral(fiatcoins[i]);
@@ -86,7 +86,7 @@ contract DefaultMonitorP1 is Context, IDefaultMonitor {
 
         Fix maxRate;
         uint256 indexMax = 0;
-        IVault[] memory backups = vault.getBackups();
+        IVaultP1[] memory backups = vault.getBackups();
 
         // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
@@ -105,7 +105,7 @@ contract DefaultMonitorP1 is Context, IDefaultMonitor {
         }
 
         if (maxRate.eq(FIX_ZERO)) {
-            return IVault(address(0));
+            return IVaultP1(address(0));
         }
         return backups[indexMax];
     }

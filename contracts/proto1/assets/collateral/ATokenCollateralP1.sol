@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/proto0/interfaces/IMain.sol";
+import "contracts/proto1/interfaces/IMainP1.sol";
 import "contracts/libraries/Fixed.sol";
 import "./CollateralP1.sol";
 

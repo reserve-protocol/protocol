@@ -3,13 +3,13 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/proto0/interfaces/IAsset.sol";
-import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/proto0/libraries/Oracle.sol";
+import "contracts/proto1/interfaces/IAssetP1.sol";
+import "contracts/proto1/interfaces/IMainP1.sol";
+import "contracts/proto1/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
-contract RSRAssetP1 is IAsset {
+contract RSRAssetP1 is IAssetP1 {
     using FixLib for Fix;
 
     address internal immutable _erc20;
@@ -19,7 +19,7 @@ contract RSRAssetP1 is IAsset {
     }
 
     /// @return {attoUSD/qRSR}
-    function priceUSD(IMain main) public view override returns (Fix) {
+    function priceUSD(IMainP1 main) public view override returns (Fix) {
         return main.consultOracle(Oracle.Source.AAVE, _erc20);
     }
 

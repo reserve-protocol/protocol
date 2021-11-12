@@ -5,18 +5,18 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/proto0/interfaces/IFurnace.sol";
-import "contracts/proto0/interfaces/IRToken.sol";
+import "contracts/proto1/interfaces/IFurnaceP1.sol";
+import "contracts/proto1/interfaces/IRTokenP1.sol";
 
 /**
  * @title FurnaceP1
  * @notice A helper contract to burn RTokens slowly and permisionlessly.
  */
-contract FurnaceP1 is Context, IFurnace {
-    using SafeERC20 for IRToken;
+contract FurnaceP1 is Context, IFurnaceP1 {
+    using SafeERC20 for IRTokenP1;
     using FixLib for Fix;
 
-    IRToken public immutable rToken;
+    IRTokenP1 public immutable rToken;
 
     struct Batch {
         uint256 amount; // {qTok}
@@ -32,7 +32,7 @@ contract FurnaceP1 is Context, IFurnace {
     constructor(address rToken_) {
         require(rToken_ != address(0), "rToken is zero address");
 
-        rToken = IRToken(rToken_);
+        rToken = IRTokenP1(rToken_);
     }
 
     /// Sets aside `amount` of RToken to be burnt over `timePeriod` seconds.

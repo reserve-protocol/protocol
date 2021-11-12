@@ -2,10 +2,10 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/proto0/interfaces/IMain.sol";
-import "contracts/proto0/assets/collateral/CollateralP1.sol";
+import "contracts/proto1/interfaces/IMainP1.sol";
+import "contracts/proto1/assets/collateral/CollateralP1.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/proto0/libraries/Oracle.sol";
+import "contracts/proto1/libraries/Oracle.sol";
 
 // cToken initial exchange rate is 0.02
 
@@ -48,7 +48,7 @@ contract CTokenCollateralP1 is CollateralP1 {
     }
 
     /// @return {attoUSD/qFiatTok}
-    function fiatcoinPriceUSD(IMain main) public view override returns (Fix) {
+    function fiatcoinPriceUSD(IMainP1 main) public view override returns (Fix) {
         return main.consultOracle(Oracle.Source.COMPOUND, address(fiatcoin()));
     }
 

@@ -3,10 +3,10 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/proto0/interfaces/IAsset.sol";
-import "contracts/proto0/interfaces/IAssetManager.sol";
-import "contracts/proto0/interfaces/IFurnace.sol";
-import "contracts/proto0/interfaces/IMain.sol";
+import "contracts/proto1/interfaces/IAssetP1.sol";
+import "contracts/proto1/interfaces/IAssetManagerP1.sol";
+import "contracts/proto1/interfaces/IFurnaceP1.sol";
+import "contracts/proto1/interfaces/IMainP1.sol";
 import "contracts/libraries/Fixed.sol";
 
 enum Fate {
@@ -26,7 +26,7 @@ library Auction {
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
     /// @param fate The fate of the soon-to-be-purchased tokens
-    /// @dev Must be kept in sync with its duplicate in `IAssetManager.sol`
+    /// @dev Must be kept in sync with its duplicate in `IAssetManagerP1.sol`
     event AuctionStarted(
         address indexed sell,
         address indexed buy,
@@ -41,8 +41,8 @@ library Auction {
     event AuctionEnded(address indexed sell, address indexed buy, uint256 sellAmount, uint256 buyAmount, Fate fate);
 
     struct Info {
-        IAsset sell;
-        IAsset buy;
+        IAssetP1 sell;
+        IAssetP1 buy;
         uint256 sellAmount; // {qSellTok}
         uint256 minBuyAmount; // {qBuyTok}
         uint256 startTime; // {sec}
@@ -59,7 +59,7 @@ library Auction {
 
     /// Closes out the auction and sends bought token to its fate
     /// @return buyAmount {qBuyTok} The clearing buyAmount for the auction
-    function close(Auction.Info storage self, IMain main) internal returns (uint256 buyAmount) {
+    function close(Auction.Info storage self, IMainP1 main) internal returns (uint256 buyAmount) {
         require(self.isOpen, "already closed out");
         require(self.endTime <= block.timestamp, "auction not over");
         // TODO: buyAmount = batchAuction.claim();

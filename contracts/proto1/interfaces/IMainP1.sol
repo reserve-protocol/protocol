@@ -2,14 +2,14 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/proto0/libraries/Oracle.sol";
-import "./IAsset.sol";
-import "./IAssetManager.sol";
-import "./IDefaultMonitor.sol";
-import "./IFurnace.sol";
-import "./IRToken.sol";
-import "./IStRSR.sol";
-import "./IVault.sol";
+import "contracts/proto1/libraries/Oracle.sol";
+import "./IAssetP1.sol";
+import "./IAssetManagerP1.sol";
+import "./IDefaultMonitorP1.sol";
+import "./IFurnaceP1.sol";
+import "./IRTokenP1.sol";
+import "./IStRSRP1.sol";
+import "./IVaultP1.sol";
 
 /// The 3 canonical states of the system
 enum State {
@@ -66,7 +66,7 @@ struct Config {
 /// @param blockAvailableAt {blockNumber} The block number at which the issuance can complete
 /// @param processed false when the issuance is still vesting
 struct SlowIssuance {
-    IVault vault;
+    IVaultP1 vault;
     uint256 amount; // {qTok}
     uint256 BUs; // {qBU}
     uint256[] deposits; // {qTok}, same index as vault basket assets
@@ -76,11 +76,11 @@ struct SlowIssuance {
 }
 
 /**
- * @title IMain
+ * @title IMainP1
  * @notice The central coordinator for the entire system, as well as the external interface.
  * @dev
  */
-interface IMain {
+interface IMainP1 {
     /// Emitted when issuance is started, at the point collateral is taken in
     /// @param issuanceId The index off the issuance, a globally unique identifier
     /// @param issuer The account performing the issuance
@@ -139,19 +139,19 @@ interface IMain {
     function rsr() external view returns (IERC20);
 
     /// @return The RToken provided by the system
-    function rToken() external view returns (IRToken);
+    function rToken() external view returns (IRTokenP1);
 
     /// @return The RToken Furnace associated with this RToken instance
-    function furnace() external view returns (IFurnace);
+    function furnace() external view returns (IFurnaceP1);
 
     /// @return The staked form of RSR for this RToken instance
-    function stRSR() external view returns (IStRSR);
+    function stRSR() external view returns (IStRSRP1);
 
     /// @return The AssetManager associated with this RToken instance
-    function manager() external view returns (IAssetManager);
+    function manager() external view returns (IAssetManagerP1);
 
     /// @return The DefaultMonitor associated with this RToken instance
-    function monitor() external view returns (IDefaultMonitor);
+    function monitor() external view returns (IDefaultMonitorP1);
 
     /// @return {attoUSD/qTok} The price in attoUSD of `token` on oracle `source`.
     function consultOracle(Oracle.Source source, address token) external view returns (Fix);
@@ -160,16 +160,16 @@ interface IMain {
     function comptroller() external view returns (IComptroller);
 
     /// @return The asset for the RToken
-    function rTokenAsset() external view returns (IAsset);
+    function rTokenAsset() external view returns (IAssetP1);
 
     /// @return The asset for RSR
-    function rsrAsset() external view returns (IAsset);
+    function rsrAsset() external view returns (IAssetP1);
 
     /// @return The asset for COMP
-    function compAsset() external view returns (IAsset);
+    function compAsset() external view returns (IAssetP1);
 
     /// @return The asset for AAVE
-    function aaveAsset() external view returns (IAsset);
+    function aaveAsset() external view returns (IAssetP1);
 
     /// @return The system configuration
     function config() external view returns (Config memory);
