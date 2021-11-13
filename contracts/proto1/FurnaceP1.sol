@@ -18,16 +18,10 @@ contract FurnaceP1 is Context, IFurnaceP1 {
 
     IRTokenP1 public immutable rToken;
 
-    struct Batch {
-        uint256 amount; // {qTok}
-        uint256 start; // {timestamp}
-        uint256 duration; // {sec}
-        uint256 burnt; // {qTok}
-    }
+    uint256 targetTime; // {sec} Timestamp when the current batch is targeted to be all burned.
+    uint256 prevTime; // {sec} Timestamp when some of the current batch was last burned.
 
-    Batch[] public batches;
-
-    uint256 public override totalBurnt;
+    uint256 public override totalBurnt; // {qTok}
 
     constructor(address rToken_) {
         require(rToken_ != address(0), "rToken is zero address");
@@ -35,66 +29,65 @@ contract FurnaceP1 is Context, IFurnaceP1 {
         rToken = IRTokenP1(rToken_);
     }
 
-    /// Sets aside `amount` of RToken to be burnt over `timePeriod` seconds.
+    /// Sets aside `amount` of RToken to be burnt over up to `timePeriod` seconds.
     /// @param amount {qTok} The amount of RToken to be burnt
     /// @param timePeriod {sec} The number of seconds to spread the burn over
-    function burnOverPeriod(uint256 amount, uint256 timePeriod) external override {
+    function burnOverPeriod(uint256 newAmount, uint256 duration) external override {
         require(amount > 0, "Cannot burn a batch of zero");
 
-        rToken.safeTransferFrom(_msgSender(), address(this), amount);
+        // If there are already tokens in the furnace, burn them first.
+        if(_bal() > 0 && prevTime <= targetTime) {
+            doBurn();
+        }
 
-        // Register handout
-        batches.push(Batch(amount, block.timestamp, timePeriod, 0));
+        uint oldAmount = _bal();
+        uint256 newTargetTime = duration + block.timestamp;
+
+        if(oldAmount == 0 ) { // || block.timestamp <= targetTime?
+            // Start a new, simple burn plan.
+            targetTime = duration + block.timestamp;
+        } else {
+            // We'll burn at whichever rate is faster:
+            // 1. Burn all tokens, old and new, at a rate so that we finish by max(targetTime, newTargetTime)
+            // 2. or, if it would be faster, keep burning at the old rate.
+
+            // {qtok / sec}
+            Fix oldRate = toFix(oldAmount).divu(targetTime - block.timestamp);
+            uint256 combinedTargetTime = Math.max(newTargetTime, targetTime)
+            Fix combinedRate = toFix(oldAmount + newAmount).divu(combinedTargetTime - block.timestamp);
+
+            if (oldRate.gt(combinedRate)) { // use oldRate.
+                targetTime = block.timestamp + divFix(oldAmount + newAmount, oldRate).toUint();
+            } else {
+                targetTime = combinedTargetTime;
+            }
+        }
+
+        // Actually update the Furnace's balance.
+        rToken.safeTransferFrom(_msgSender(), address(this), newAmount);
         emit DistributionCreated(amount, timePeriod, _msgSender());
     }
 
-    /// Performs any burning that has vested since last call. Idempotent
+    /// Performs any burning that has vested since last call. Idempotent.
     function doBurn() external override {
-        uint256 amount = _burnable(block.timestamp);
-        if (amount > 0) {
-            bool success = rToken.burn(address(this), amount);
-            require(success, "should burn from self successfully");
-            totalBurnt += amount;
-            emit Burned(amount);
-        }
+        uint256 toBurn = _burnable(block.timestamp);
+        if (toBurn == 0) return;
+
+        totalBurnt += toBurn;
+        prevTime = block.timestamp;
+
+        bool success = rToken.burn(address(this), toBurn);
+        require(success, "should have burned from self successfully");
+        emit Burned(amount);
     }
 
+    function _bal() internal view returns(uint256) { return rToken.balanceOf(address(this)); }
+
+    /// Return how many tokens we could burn at `timestamp`.
     function _burnable(uint256 timestamp) internal returns (uint256) {
-        uint256 releasable = 0;
-        for (
-            uint256 index = 0; /*handoutIndex*/
-            index < batches.length;
-            index++
-        ) {
-            Batch storage batch = batches[index];
+        if (timestamp >= target_time || _bal() == 0) return 0;
+        if (target_time <= prev_time) return 0;
 
-            // Check if there are still funds to be burnt
-            if (batch.burnt < batch.amount) {
-                uint256 vestedAmount = _vestedAmount(batch, timestamp);
-
-                // Release amount
-                releasable += vestedAmount - batch.burnt;
-
-                // Update burnt
-                batch.burnt = vestedAmount;
-
-                // Note: Potential optimization by cleaning up Batch once all consumed
-            }
-
-            // Note:  Potential optimization by increasing handoutIndex
-        }
-
-        return releasable;
-    }
-
-    function _vestedAmount(Batch storage batch, uint256 timestamp) internal view returns (uint256) {
-        if (timestamp <= batch.start) {
-            return 0;
-        } else if (timestamp > batch.start + batch.duration) {
-            return batch.amount;
-        } else {
-            // batch.amount{RTok} * (timestamp - batch.start) / batch.duration
-            return toFix(timestamp - batch.start).divu(batch.duration).mulu(batch.amount).toUint();
-        }
+        return toFix(timestamp - prev_time).divu(target_time - prev_time).mulu(amount).toUint();
     }
 }
