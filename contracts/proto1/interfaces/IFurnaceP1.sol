@@ -17,8 +17,6 @@ interface IFurnaceP1 {
     /// @param who The account that created the distribution
     event DistributionCreated(uint256 indexed amount, uint256 indexed timePeriod, address who);
 
-    //
-
     /// Sets aside `amount` of RToken to be burnt over `timePeriod` seconds.
     /// @param amount {RTok} The amount of RToken to be burnt
     /// @param timePeriod {sec} The number of seconds to spread the burn over

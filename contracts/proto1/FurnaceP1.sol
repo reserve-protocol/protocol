@@ -18,76 +18,67 @@ contract FurnaceP1 is Context, IFurnaceP1 {
 
     IRTokenP1 public immutable rToken;
 
-    uint256 targetTime; // {sec} Timestamp when the current batch is targeted to be all burned.
-    uint256 prevTime; // {sec} Timestamp when some of the current batch was last burned.
-
-    uint256 public override totalBurnt; // {qTok}
+    Fix public burnRate; // {qtok/sec} The rate at which this furnace now burns tokens. Set by burnOverPeriod.
+    uint256 public whenPreviousBurn; // {sec} Timestamp when some of the current batch was last burned. Set by doBurn().
+    uint256 public override totalBurnt; // {qTok} All-time total number of burnt tokens. Updated by doBurn().
 
     constructor(address rToken_) {
         require(rToken_ != address(0), "rToken is zero address");
-
         rToken = IRTokenP1(rToken_);
     }
 
     /// Sets aside `amount` of RToken to be burnt over up to `timePeriod` seconds.
-    /// @param amount {qTok} The amount of RToken to be burnt
-    /// @param timePeriod {sec} The number of seconds to spread the burn over
+    /// @param newAmount {qTok} The amount of RToken to be burnt
+    /// @param duration {sec} The number of seconds to spread the burn over
     function burnOverPeriod(uint256 newAmount, uint256 duration) external override {
-        require(amount > 0, "Cannot burn a batch of zero");
+        require(newAmount > 0, "Cannot burn a batch of zero");
 
-        // If there are already tokens in the furnace, burn them first.
-        if(_bal() > 0 && prevTime <= targetTime) {
-            doBurn();
-        }
+        // Bring state up-to-date
+        doBurn();
 
-        uint oldAmount = _bal();
-        uint256 newTargetTime = duration + block.timestamp;
+        uint256 oldAmount = _bal();
 
-        if(oldAmount == 0 ) { // || block.timestamp <= targetTime?
-            // Start a new, simple burn plan.
-            targetTime = duration + block.timestamp;
+        if (oldAmount == 0) {
+            // No burn in progress. Start a new burn.
+            burnRate = toFix(newAmount).divu(duration);
         } else {
-            // We'll burn at whichever rate is faster:
-            // 1. Burn all tokens, old and new, at a rate so that we finish by max(targetTime, newTargetTime)
-            // 2. or, if it would be faster, keep burning at the old rate.
+            // Burn in progress; combine new burn with ongoing burn. Either (A) keep burning at `burnRate`, or (B) burn
+            // both token amounts, together, at the rate that finishes both by the later of their two completion
+            // times. Rate A is `burnRate`, and rate B is `togetherRate`. Use whichever is faster.
 
-            // {qtok / sec}
-            Fix oldRate = toFix(oldAmount).divu(targetTime - block.timestamp);
-            uint256 combinedTargetTime = Math.max(newTargetTime, targetTime)
-            Fix combinedRate = toFix(oldAmount + newAmount).divu(combinedTargetTime - block.timestamp);
-
-            if (oldRate.gt(combinedRate)) { // use oldRate.
-                targetTime = block.timestamp + divFix(oldAmount + newAmount, oldRate).toUint();
-            } else {
-                targetTime = combinedTargetTime;
-            }
+            // togetherDuration: {sec}. How long the togetherRate might burn.
+            uint256 togetherDuration = Math.max(divFix(oldAmount, burnRate).toUint(), duration);
+            // togetherRate: {qtok/sec}. The rate at which we can burn all current tokens.
+            Fix togetherRate = toFix(oldAmount + newAmount).divu(togetherDuration);
+            // Select rate.
+            burnRate = fixMax(burnRate, togetherRate);
         }
 
-        // Actually update the Furnace's balance.
         rToken.safeTransferFrom(_msgSender(), address(this), newAmount);
-        emit DistributionCreated(amount, timePeriod, _msgSender());
+        emit DistributionCreated(newAmount, duration, _msgSender());
     }
 
     /// Performs any burning that has vested since last call. Idempotent.
-    function doBurn() external override {
+    function doBurn() public override {
         uint256 toBurn = _burnable(block.timestamp);
-        if (toBurn == 0) return;
 
+        whenPreviousBurn = block.timestamp;
         totalBurnt += toBurn;
-        prevTime = block.timestamp;
 
+        if (toBurn == 0) return;
         bool success = rToken.burn(address(this), toBurn);
         require(success, "should have burned from self successfully");
-        emit Burned(amount);
+        emit Burned(toBurn);
     }
 
-    function _bal() internal view returns(uint256) { return rToken.balanceOf(address(this)); }
+    function _bal() internal view returns (uint256) {
+        return rToken.balanceOf(address(this));
+    }
 
     /// Return how many tokens we could burn at `timestamp`.
-    function _burnable(uint256 timestamp) internal returns (uint256) {
-        if (timestamp >= target_time || _bal() == 0) return 0;
-        if (target_time <= prev_time) return 0;
+    function _burnable(uint256 timestamp) internal view returns (uint256) {
+        if (timestamp <= whenPreviousBurn) return 0;
 
-        return toFix(timestamp - prev_time).divu(target_time - prev_time).mulu(amount).toUint();
+        return Math.max(_bal(), burnRate.mulu(timestamp - whenPreviousBurn).toUint());
     }
 }
