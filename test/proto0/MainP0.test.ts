@@ -497,6 +497,98 @@ describe('MainP0 contract', () => {
     })
   })
 
-  describe('Redeem', () => {})
+  describe('Redeem', function () {
+    it('Should revert if zero amount', async function () {
+      const zero: BigNumber = bn('0')
+      await expect(main.connect(addr1).redeem(zero)).to.be.revertedWith('Cannot redeem zero')
+    })
+
+    it('Should revert if no balance of RToken', async function () {
+      const redeemAmount: BigNumber = bn('1000e18')
+
+      await expect(main.connect(addr1).redeem(redeemAmount)).to.be.revertedWith('ERC20: burn amount exceeds balance')
+    })
+
+    context('With issued RTokens', async function () {
+      let issueAmount: BigNumber
+
+      beforeEach(async function () {
+        // Issue some RTokens to user
+        issueAmount = bn('100e18')
+        // Provide approvals
+        await token0.connect(addr1).approve(main.address, initialBal)
+        await token1.connect(addr1).approve(main.address, initialBal)
+        await token2.connect(addr1).approve(main.address, initialBal)
+        await token3.connect(addr1).approve(main.address, initialBal)
+
+        // Issue rTokens
+        await main.connect(addr1).issue(issueAmount)
+
+        // Process the issuance
+        await main.poke()
+      })
+
+      it('Should redeem RTokens correctly', async function () {
+        const redeemAmount = bn('100e18')
+
+        // Check balances
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+        expect(await vault.basketUnits(assetManager.address)).to.equal(issueAmount)
+
+        // Redeem rTokens
+        await main.connect(addr1).redeem(redeemAmount)
+
+        // Check funds were transferred
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+      })
+
+      it('Should redeem RTokens correctly for multiple users', async function () {
+        const issueAmount = bn('100e18')
+        const redeemAmount = bn('100e18')
+
+        //Issue new RTokens
+        await token0.connect(addr2).approve(main.address, initialBal)
+        await token1.connect(addr2).approve(main.address, initialBal)
+        await token2.connect(addr2).approve(main.address, initialBal)
+        await token3.connect(addr2).approve(main.address, initialBal)
+
+        //Issue rTokens
+        await main.connect(addr2).issue(issueAmount)
+
+        // Process the issuance
+        await main.poke()
+
+        // Redeem rTokens
+        await main.connect(addr1).redeem(redeemAmount)
+
+        // Redeem rTokens with another user
+        await main.connect(addr2).redeem(redeemAmount)
+
+        // Check funds were transferred
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.balanceOf(addr2.address)).to.equal(0)
+
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+
+        expect(await token0.balanceOf(addr2.address)).to.equal(initialBal)
+        expect(await token1.balanceOf(addr2.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr2.address)).to.equal(initialBal)
+        expect(await token3.balanceOf(addr2.address)).to.equal(initialBal)
+      })
+    })
+  })
+
   describe('Notice Default', () => {})
 })

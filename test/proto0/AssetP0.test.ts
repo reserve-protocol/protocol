@@ -99,7 +99,7 @@ describe('AssetsP0 contracts', () => {
 
     // Deploy Main Mock
     MainMockFactory = await ethers.getContractFactory('MainMockP0')
-    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, bn('0'))
+    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, comp.address, aave.address, bn('0'))
 
     VaultFactory = await ethers.getContractFactory('VaultP0')
     vault = <VaultP0>await VaultFactory.deploy([tokenAsset.address, usdcAsset.address], [bn('5e17'), bn('5e5')], [])
