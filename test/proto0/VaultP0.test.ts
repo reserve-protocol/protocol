@@ -36,6 +36,7 @@ describe('VaultP0 contract', () => {
   let rsr: ERC20Mock
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
+  let weth: ERC20Mock
 
   // Tokens/Assets
   let USDCMockFactory: ContractFactory
@@ -87,10 +88,11 @@ describe('VaultP0 contract', () => {
     // Deploy AAVE and COMP Tokens (for Rewards)
     aaveToken = <ERC20Mock>await ERC20.deploy('AAVE Token', 'AAVE')
     compToken = <ERC20Mock>await ERC20.deploy('COMP Token', 'COMP')
+    weth = <ERC20Mock>await ERC20.deploy('Wrapped ETH', 'WETH')
 
     // Deploy Main Mock
     MainMockFactory = await ethers.getContractFactory('MainMockP0')
-    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, compToken.address, aaveToken.address, bn('0'))
+    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, compToken.address, aaveToken.address, weth.address, bn('0'), fp('0'))
 
     // Deploy Tokens
     ERC20 = await ethers.getContractFactory('ERC20Mock')
@@ -214,7 +216,7 @@ describe('VaultP0 contract', () => {
     it('Should allow to update Main correctly if Owner', async () => {
       // Create a new Main mock
       const newMain: MainMockP0 = <MainMockP0>(
-        await MainMockFactory.deploy(rsr.address, compToken.address, aaveToken.address, bn('0'))
+        await MainMockFactory.deploy(rsr.address, compToken.address, aaveToken.address, weth.address, bn('0'), fp('0'))
       )
 
       await vault.connect(owner).setMain(newMain.address)
