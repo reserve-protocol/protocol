@@ -30,26 +30,28 @@ describe('VaultP0 contract', () => {
 
   let ERC20: ContractFactory
 
-  // RSR and Main mock
+  // RSR, AAVE, COMP, and Main mock
   let MainMockFactory: ContractFactory
   let main: MainMockP0
   let rsr: ERC20Mock
+  let aaveToken: ERC20Mock
+  let compToken: ERC20Mock
 
   // Tokens/Assets
   let USDCMockFactory: ContractFactory
-  let tkn0: ERC20Mock
-  let tkn1: ERC20Mock
-  let tkn2: ERC20Mock
-  let tkn3: ERC20Mock
+  let token0: ERC20Mock
+  let token1: ERC20Mock
+  let token2: ERC20Mock
+  let token3: ERC20Mock
   let usdc: USDCMock
 
   let AssetFactory: ContractFactory
-  let asset0: CollateralP0
-  let asset1: CollateralP0
-  let asset2: CollateralP0
-  let asset3: CollateralP0
-  let assetUSDC: CollateralP0
-  let assets: string[]
+  let collateral0: CollateralP0
+  let collateral1: CollateralP0
+  let collateral2: CollateralP0
+  let collateral3: CollateralP0
+  let collateralUSDC: CollateralP0
+  let collateral: string[]
 
   // AToken and CTokens
   let ATokenMockFactory: ContractFactory
@@ -82,16 +84,20 @@ describe('VaultP0 contract', () => {
     ERC20 = await ethers.getContractFactory('ERC20Mock')
     rsr = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
 
+    // Deploy AAVE and COMP Tokens (for Rewards)
+    aaveToken = <ERC20Mock>await ERC20.deploy('AAVE Token', 'AAVE')
+    compToken = <ERC20Mock>await ERC20.deploy('COMP Token', 'COMP')
+
     // Deploy Main Mock
     MainMockFactory = await ethers.getContractFactory('MainMockP0')
-    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, bn('0'))
+    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, compToken.address, aaveToken.address, bn('0'))
 
     // Deploy Tokens
     ERC20 = await ethers.getContractFactory('ERC20Mock')
-    tkn0 = <ERC20Mock>await ERC20.deploy('Token 0', 'TKN0')
-    tkn1 = <ERC20Mock>await ERC20.deploy('Token 1', 'TKN1')
-    tkn2 = <ERC20Mock>await ERC20.deploy('Token 2', 'TKN2')
-    tkn3 = <ERC20Mock>await ERC20.deploy('Token 3', 'TKN2')
+    token0 = <ERC20Mock>await ERC20.deploy('Token 0', 'TKN0')
+    token1 = <ERC20Mock>await ERC20.deploy('Token 1', 'TKN1')
+    token2 = <ERC20Mock>await ERC20.deploy('Token 2', 'TKN2')
+    token3 = <ERC20Mock>await ERC20.deploy('Token 3', 'TKN2')
 
     USDCMockFactory = await ethers.getContractFactory('USDCMock')
     usdc = <USDCMock>await USDCMockFactory.deploy('USDC Dollar', 'USDC')
@@ -103,27 +109,27 @@ describe('VaultP0 contract', () => {
     qtyDouble = bn('1e18').mul(2)
 
     // Mint tokens
-    await tkn0.connect(owner).mint(addr1.address, initialBal)
-    await tkn1.connect(owner).mint(addr1.address, initialBal)
-    await tkn2.connect(owner).mint(addr1.address, initialBal)
-    await tkn3.connect(owner).mint(addr1.address, initialBal)
+    await token0.connect(owner).mint(addr1.address, initialBal)
+    await token1.connect(owner).mint(addr1.address, initialBal)
+    await token2.connect(owner).mint(addr1.address, initialBal)
+    await token3.connect(owner).mint(addr1.address, initialBal)
 
     // Set Collateral Assets and Quantities
     AssetFactory = await ethers.getContractFactory('CollateralP0')
-    asset0 = <CollateralP0>await AssetFactory.deploy(tkn0.address, tkn0.decimals())
-    asset1 = <CollateralP0>await AssetFactory.deploy(tkn1.address, tkn1.decimals())
-    asset2 = <CollateralP0>await AssetFactory.deploy(tkn2.address, tkn2.decimals())
-    asset3 = <CollateralP0>await AssetFactory.deploy(tkn3.address, tkn3.decimals())
-    assetUSDC = <CollateralP0>await AssetFactory.deploy(usdc.address, usdc.decimals())
+    collateral0 = <CollateralP0>await AssetFactory.deploy(token0.address, token0.decimals())
+    collateral1 = <CollateralP0>await AssetFactory.deploy(token1.address, token1.decimals())
+    collateral2 = <CollateralP0>await AssetFactory.deploy(token2.address, token2.decimals())
+    collateral3 = <CollateralP0>await AssetFactory.deploy(token3.address, token3.decimals())
+    collateralUSDC = <CollateralP0>await AssetFactory.deploy(usdc.address, usdc.decimals())
 
     // ATokens and CTokens
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
-    aTkn = <StaticATokenMock>await ATokenMockFactory.deploy('AToken', 'ATKN0', tkn0.address)
+    aTkn = <StaticATokenMock>await ATokenMockFactory.deploy('AToken', 'ATKN0', token0.address)
     ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
     assetAToken = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aTkn.address, aTkn.decimals())
 
     CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
-    cTkn = <CTokenMock>await CTokenMockFactory.deploy('CToken', 'CTKN1', tkn1.address)
+    cTkn = <CTokenMock>await CTokenMockFactory.deploy('CToken', 'CTKN1', token1.address)
     CTokenAssetFactory = await ethers.getContractFactory('CTokenCollateralP0')
     assetCToken = <CTokenCollateralP0>await CTokenAssetFactory.deploy(cTkn.address, cTkn.decimals())
 
@@ -133,11 +139,11 @@ describe('VaultP0 contract', () => {
     quantity2 = qtyThird
     quantity3 = qtyDouble
 
-    assets = [asset0.address, asset1.address, asset2.address, asset3.address]
+    collateral = [collateral0.address, collateral1.address, collateral2.address, collateral3.address]
     quantities = [quantity0, quantity1, quantity2, quantity3]
 
     VaultFactory = await ethers.getContractFactory('VaultP0')
-    vault = <VaultP0>await VaultFactory.deploy(assets, quantities, [])
+    vault = <VaultP0>await VaultFactory.deploy(collateral, quantities, [])
 
     // Setup Main
     await vault.connect(owner).setMain(main.address)
@@ -157,37 +163,37 @@ describe('VaultP0 contract', () => {
 
       // Token at 0
       expectAsset(0, {
-        erc20: tkn0.address,
-        decimals: await tkn0.decimals(),
+        erc20: token0.address,
+        decimals: await token0.decimals(),
         quantity: qtyHalf,
       })
 
       // Token at 1
       expectAsset(1, {
-        erc20: tkn1.address,
-        decimals: await tkn1.decimals(),
+        erc20: token1.address,
+        decimals: await token1.decimals(),
         quantity: qtyHalf,
       })
 
       // Token at 2
       expectAsset(2, {
-        erc20: tkn2.address,
-        decimals: await tkn2.decimals(),
+        erc20: token2.address,
+        decimals: await token2.decimals(),
         quantity: qtyThird,
       })
 
       // Token at 3
       expectAsset(3, {
-        erc20: tkn3.address,
-        decimals: await tkn3.decimals(),
+        erc20: token3.address,
+        decimals: await token3.decimals(),
         quantity: qtyDouble,
       })
     })
 
     it('Should setup backup vaults correctly', async () => {
       // Setup a simple backup vault with single token
-      const backupVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [quantities[0]], [])
-      const newVault: VaultP0 = <VaultP0>await VaultFactory.deploy(assets, quantities, [backupVault.address])
+      const backupVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collateral[0]], [quantities[0]], [])
+      const newVault: VaultP0 = <VaultP0>await VaultFactory.deploy(collateral, quantities, [backupVault.address])
 
       expect(await newVault.backups(0)).to.equal(backupVault.address)
     })
@@ -198,7 +204,7 @@ describe('VaultP0 contract', () => {
 
     it('Should revert if basket parameters have different lenght', async () => {
       // Setup a simple backup vault with single token
-      await expect(VaultFactory.deploy([assets[0]], [quantities[0], quantities[1]], [])).to.be.revertedWith(
+      await expect(VaultFactory.deploy([collateral[0]], [quantities[0], quantities[1]], [])).to.be.revertedWith(
         'arrays must match in length'
       )
     })
@@ -207,7 +213,9 @@ describe('VaultP0 contract', () => {
   describe('Configuration / State', () => {
     it('Should allow to update Main correctly if Owner', async () => {
       // Create a new Main mock
-      const newMain: MainMockP0 = <MainMockP0>await MainMockFactory.deploy(rsr.address, bn('0'))
+      const newMain: MainMockP0 = <MainMockP0>(
+        await MainMockFactory.deploy(rsr.address, compToken.address, aaveToken.address, bn('0'))
+      )
 
       await vault.connect(owner).setMain(newMain.address)
 
@@ -218,10 +226,10 @@ describe('VaultP0 contract', () => {
     })
 
     it('Should return quantities for each Asset', async function () {
-      expect(await vault.quantity(assets[0])).to.equal(qtyHalf)
-      expect(await vault.quantity(assets[1])).to.equal(qtyHalf)
-      expect(await vault.quantity(assets[2])).to.equal(qtyThird)
-      expect(await vault.quantity(assets[3])).to.equal(qtyDouble)
+      expect(await vault.quantity(collateral[0])).to.equal(qtyHalf)
+      expect(await vault.quantity(collateral[1])).to.equal(qtyHalf)
+      expect(await vault.quantity(collateral[2])).to.equal(qtyThird)
+      expect(await vault.quantity(collateral[3])).to.equal(qtyDouble)
 
       // If asset does not exist return 0
       expect(await vault.quantity(addr1.address)).to.equal(0)
@@ -229,17 +237,17 @@ describe('VaultP0 contract', () => {
 
     it('Should identify if vault containsOnly a list of collateral', async () => {
       // Check if contains only from collaterals
-      expect(await vault.connect(owner).containsOnly(assets)).to.equal(true)
+      expect(await vault.connect(owner).containsOnly(collateral)).to.equal(true)
 
-      expect(await vault.connect(owner).containsOnly([assets[0], assets[1], assets[2]])).to.equal(false)
+      expect(await vault.connect(owner).containsOnly([collateral[0], collateral[1], collateral[2]])).to.equal(false)
 
-      expect(await vault.connect(owner).containsOnly([assets[0]])).to.equal(false)
+      expect(await vault.connect(owner).containsOnly([collateral[0]])).to.equal(false)
 
       // With a smaller vault
-      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [bn('1e18')], [])
-      expect(await newVault.connect(owner).containsOnly(assets)).to.equal(true)
-      expect(await newVault.connect(owner).containsOnly([assets[0]])).to.equal(true)
-      expect(await newVault.connect(owner).containsOnly([assets[1]])).to.equal(false)
+      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collateral[0]], [bn('1e18')], [])
+      expect(await newVault.connect(owner).containsOnly(collateral)).to.equal(true)
+      expect(await newVault.connect(owner).containsOnly([collateral[0]])).to.equal(true)
+      expect(await newVault.connect(owner).containsOnly([collateral[1]])).to.equal(false)
     })
   })
 
@@ -278,17 +286,17 @@ describe('VaultP0 contract', () => {
 
     it('Should return basketRate and tokenAmounts for fiatcoins', async function () {
       // For simple vault with one token (1 to 1)
-      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [bn('1e18')], [])
+      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collateral[0]], [bn('1e18')], [])
       expect(await newVault.callStatic.basketRate()).to.equal(fp('1e18'))
       expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e18')])
 
       // For a vault with one token half the value
-      newVault = <VaultP0>await VaultFactory.deploy([assets[0]], [qtyHalf], [])
+      newVault = <VaultP0>await VaultFactory.deploy([collateral[0]], [qtyHalf], [])
       expect(await newVault.callStatic.basketRate()).to.equal(fp(qtyHalf))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf])
 
       // For a vault with two token half each
-      newVault = <VaultP0>await VaultFactory.deploy([assets[0], assets[1]], [qtyHalf, qtyHalf], [])
+      newVault = <VaultP0>await VaultFactory.deploy([collateral[0], collateral[1]], [qtyHalf, qtyHalf], [])
       expect(await newVault.callStatic.basketRate()).to.equal(fp('1e18'))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
 
@@ -300,7 +308,7 @@ describe('VaultP0 contract', () => {
 
     it('Should adjust basketRate and tokenAmounts for decimals (USDC)', async function () {
       // New Vault with USDC tokens
-      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assetUSDC.address], [bn('1e6')], [])
+      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collateralUSDC.address], [bn('1e6')], [])
       expect(await newVault.callStatic.basketRate()).to.equal(fp('1e18'))
       expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e6')])
     })
@@ -341,7 +349,7 @@ describe('VaultP0 contract', () => {
       expect(await vault.maxIssuable(addr1.address)).to.equal(initialBal.div(2).div(BN_SCALE_FACTOR))
 
       // Remove that token and recalculate
-      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assets[0]], [bn('1e18')], [])
+      let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collateral[0]], [bn('1e18')], [])
       expect(await newVault.maxIssuable(addr1.address)).to.equal(initialBal.div(BN_SCALE_FACTOR))
     })
 
@@ -349,21 +357,21 @@ describe('VaultP0 contract', () => {
       const issueAmount: BigNumber = bn('1e18')
 
       // Approvals
-      await tkn0.connect(addr1).approve(vault.address, qtyHalf)
-      await tkn1.connect(addr1).approve(vault.address, qtyHalf)
-      await tkn2.connect(addr1).approve(vault.address, qtyThird)
-      await tkn3.connect(addr1).approve(vault.address, qtyDouble)
+      await token0.connect(addr1).approve(vault.address, qtyHalf)
+      await token1.connect(addr1).approve(vault.address, qtyHalf)
+      await token2.connect(addr1).approve(vault.address, qtyThird)
+      await token3.connect(addr1).approve(vault.address, qtyDouble)
 
       // Check no balance in contract
-      expect(await tkn0.balanceOf(vault.address)).to.equal(bn('0'))
-      expect(await tkn1.balanceOf(vault.address)).to.equal(bn('0'))
-      expect(await tkn2.balanceOf(vault.address)).to.equal(bn('0'))
-      expect(await tkn3.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await token0.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await token1.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await token2.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await token3.balanceOf(vault.address)).to.equal(bn('0'))
 
-      expect(await tkn0.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await tkn1.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await tkn2.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await tkn3.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
       expect(await vault.totalUnits()).to.equal(bn('0'))
       expect(await vault.basketUnits(addr1.address)).to.equal(bn('0'))
@@ -372,15 +380,15 @@ describe('VaultP0 contract', () => {
       await vault.connect(addr1).issue(addr1.address, issueAmount)
 
       // Check funds were transferred
-      expect(await tkn0.balanceOf(vault.address)).to.equal(qtyHalf)
-      expect(await tkn1.balanceOf(vault.address)).to.equal(qtyHalf)
-      expect(await tkn2.balanceOf(vault.address)).to.equal(qtyThird)
-      expect(await tkn3.balanceOf(vault.address)).to.equal(qtyDouble)
+      expect(await token0.balanceOf(vault.address)).to.equal(qtyHalf)
+      expect(await token1.balanceOf(vault.address)).to.equal(qtyHalf)
+      expect(await token2.balanceOf(vault.address)).to.equal(qtyThird)
+      expect(await token3.balanceOf(vault.address)).to.equal(qtyDouble)
 
-      expect(await tkn0.balanceOf(addr1.address)).to.equal(initialBal.sub(qtyHalf))
-      expect(await tkn1.balanceOf(addr1.address)).to.equal(initialBal.sub(qtyHalf))
-      expect(await tkn2.balanceOf(addr1.address)).to.equal(initialBal.sub(qtyThird))
-      expect(await tkn3.balanceOf(addr1.address)).to.equal(initialBal.sub(qtyDouble))
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(qtyHalf))
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(qtyHalf))
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(qtyThird))
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(qtyDouble))
 
       expect(await vault.totalUnits()).to.equal(issueAmount)
       expect(await vault.basketUnits(addr1.address)).to.equal(issueAmount)
@@ -392,10 +400,10 @@ describe('VaultP0 contract', () => {
 
     beforeEach(async () => {
       // Approvals
-      await tkn0.connect(addr1).approve(vault.address, qtyHalf)
-      await tkn1.connect(addr1).approve(vault.address, qtyHalf)
-      await tkn2.connect(addr1).approve(vault.address, qtyThird)
-      await tkn3.connect(addr1).approve(vault.address, qtyDouble)
+      await token0.connect(addr1).approve(vault.address, qtyHalf)
+      await token1.connect(addr1).approve(vault.address, qtyHalf)
+      await token2.connect(addr1).approve(vault.address, qtyThird)
+      await token3.connect(addr1).approve(vault.address, qtyDouble)
 
       // Issue BUs
       await vault.connect(addr1).issue(addr1.address, issueAmount)
@@ -429,15 +437,15 @@ describe('VaultP0 contract', () => {
       await vault.connect(addr1).redeem(addr1.address, redeemAmount)
 
       // Check balance after redeem go to initial state
-      expect(await tkn0.balanceOf(vault.address)).to.equal(bn('0'))
-      expect(await tkn1.balanceOf(vault.address)).to.equal(bn('0'))
-      expect(await tkn2.balanceOf(vault.address)).to.equal(bn('0'))
-      expect(await tkn3.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await token0.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await token1.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await token2.balanceOf(vault.address)).to.equal(bn('0'))
+      expect(await token3.balanceOf(vault.address)).to.equal(bn('0'))
 
-      expect(await tkn0.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await tkn1.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await tkn2.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await tkn3.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
       expect(await vault.totalUnits()).to.equal(bn('0'))
       expect(await vault.basketUnits(addr1.address)).to.equal(bn('0'))
@@ -445,10 +453,29 @@ describe('VaultP0 contract', () => {
   })
 
   describe('Rewards', () => {
-    it.skip('Should claim and sweep rewards to Manager', async function () {
+    it('Should claim and sweep rewards to Manager', async function () {
+      // Mint COMP and AAVE tokens as reward
+      const rewardAmountCOMP: BigNumber = bn('100e18')
+      const rewardAmountAAVE: BigNumber = bn('20e18')
+      await compToken.connect(owner).mint(vault.address, rewardAmountCOMP)
+      await aaveToken.connect(owner).mint(vault.address, rewardAmountAAVE)
+
+      // Check no funds in the asset manager
+      expect(await compToken.balanceOf(await main.manager())).to.equal(0)
+      expect(await aaveToken.balanceOf(await main.manager())).to.equal(0)
+
       // Claim and Sweep rewards
-      // TODO: Load or mock main, with Comptroller. Review how to implement `claimComp` in mock.
-      //await vault.claimAndSweepRewardsToManager(main.address)
+      await expect(vault.claimAndSweepRewardsToManager())
+        .to.emit(vault, 'RewardsClaimed')
+        .withArgs(rewardAmountCOMP, rewardAmountAAVE)
+
+      // Check rewards were transfered to Asset Manager
+      expect(await compToken.balanceOf(await main.manager())).to.equal(rewardAmountCOMP)
+      expect(await aaveToken.balanceOf(await main.manager())).to.equal(rewardAmountAAVE)
+
+      // No funds in vault anymore
+      expect(await compToken.balanceOf(vault.address)).to.equal(0)
+      expect(await aaveToken.balanceOf(vault.address)).to.equal(0)
     })
   })
 
@@ -457,7 +484,9 @@ describe('VaultP0 contract', () => {
 
     beforeEach(async () => {
       // Setup a simple backup vault with two tokens
-      backupVault = <VaultP0>await VaultFactory.deploy([assets[0], assets[1]], [quantities[0], quantities[1]], [])
+      backupVault = <VaultP0>(
+        await VaultFactory.deploy([collateral[0], collateral[1]], [quantities[0], quantities[1]], [])
+      )
     })
 
     it('Should not allow to setup backup vaults if not owner', async () => {

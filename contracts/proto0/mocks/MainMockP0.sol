@@ -8,6 +8,10 @@ import "../interfaces/IMain.sol";
 import "../interfaces/IVault.sol";
 import "contracts/proto0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/proto0/assets/COMPAssetP0.sol";
+import "contracts/proto0/assets/AAVEAssetP0.sol";
+import "./CompoundOracleMockP0.sol";
+import "./ComptrollerMockP0.sol";
 
 contract ManagerInternalMockP0 {
     bool public fullyCapitalized;
@@ -45,11 +49,26 @@ contract MainMockP0 {
 
     Config private _config;
 
-    constructor(IERC20 rsr_, uint256 stRSRWithdrawalDelay_) {
+    ICompoundOracle private _compOracle;
+    IComptroller public comptroller;
+
+    IAsset public compAsset;
+    IAsset public aaveAsset;
+
+    constructor(
+        IERC20 rsr_,
+        IERC20 compToken,
+        IERC20 aaveToken,
+        uint256 stRSRWithdrawalDelay_
+    ) {
         _config.stRSRWithdrawalDelay = stRSRWithdrawalDelay_;
         rsr = rsr_;
         manager = new ManagerInternalMockP0(address(this));
         paused = false;
+        _compOracle = new CompoundOracleMockP0();
+        comptroller = new ComptrollerMockP0(address(_compOracle));
+        compAsset = new COMPAssetP0(address(compToken));
+        aaveAsset = new AAVEAssetP0(address(aaveToken));
     }
 
     function setStRSR(IStRSR stRSR_) external {
