@@ -38,7 +38,7 @@ contract VaultP0 is IVault, Ownable {
     // quantities = {qTok/BU}
     constructor(
         ICollateral[] memory collateral,
-        uint256[] memory quantities, 
+        uint256[] memory quantities,
         IVault[] memory backupVaults
     ) {
         require(collateral.length == quantities.length, "arrays must match in length");

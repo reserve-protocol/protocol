@@ -41,11 +41,20 @@ describe('StRSRP0 contract', () => {
     // Deploy RSR, WETH, AAVE, and COMP tokens
     ERC20 = await ethers.getContractFactory('ERC20Mock')
     rsr = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
-    
+
     // Deploy Main Mock
     MainMockFactory = await ethers.getContractFactory('MainMockP0')
     stRSRWithdrawalDelay = bn(0)
-    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, other.address, other.address, other.address, stRSRWithdrawalDelay, fp('0'))
+    main = <MainMockP0>(
+      await MainMockFactory.deploy(
+        rsr.address,
+        other.address,
+        other.address,
+        other.address,
+        stRSRWithdrawalDelay,
+        fp('0')
+      )
+    )
 
     // Mint initial amounts
     initialBal = bn('100e18')

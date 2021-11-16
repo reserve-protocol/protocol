@@ -92,7 +92,9 @@ describe('VaultP0 contract', () => {
 
     // Deploy Main Mock
     MainMockFactory = await ethers.getContractFactory('MainMockP0')
-    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, compToken.address, aaveToken.address, weth.address, bn('0'), fp('0'))
+    main = <MainMockP0>(
+      await MainMockFactory.deploy(rsr.address, compToken.address, aaveToken.address, weth.address, bn('0'), fp('0'))
+    )
 
     // Deploy Tokens
     ERC20 = await ethers.getContractFactory('ERC20Mock')

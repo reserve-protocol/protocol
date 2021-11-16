@@ -79,7 +79,7 @@ contract MainMockP0 {
     ) {
         _config.stRSRWithdrawalDelay = stRSRWithdrawalDelay_;
         _config.defaultThreshold = defaultThreshold_;
-        
+
         rsr = rsr_;
         manager = new ManagerInternalMockP0(address(this));
         monitor = new DefaultMonitorP0(IMain(address(this)));
@@ -114,7 +114,7 @@ contract MainMockP0 {
         _config.stRSRWithdrawalDelay = stRSRWithdrawalDelay_;
     }
 
-      function setDefaultThreshold(Fix defaultThreshold_) public {
+    function setDefaultThreshold(Fix defaultThreshold_) public {
         _config.defaultThreshold = defaultThreshold_;
     }
 

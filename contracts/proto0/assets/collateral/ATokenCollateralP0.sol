@@ -67,7 +67,7 @@ contract ATokenCollateralP0 is CollateralP0 {
         return IERC20(IStaticAToken(_erc20).ATOKEN().UNDERLYING_ASSET_ADDRESS());
     }
 
-    function isFiatcoin() external pure override returns (bool) {
+    function isFiatcoin() public pure override returns (bool) {
         return false;
     }
 }
