@@ -134,4 +134,9 @@ contract FixedCallerMock {
     ) public pure returns (bool) {
         return FixLib.near(x, y, epsilon);
     }
+
+    // Nonview version for gas estimation in test framework
+    function powu_nonview(Fix x, uint256 y) public {
+        FixLib.powu(x,y);
+    }
 }
