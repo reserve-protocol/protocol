@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { BigNumber, ContractFactory } from 'ethers'
-import { bn } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import { advanceTime } from '../utils/time'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
@@ -38,14 +38,23 @@ describe('StRSRP0 contract', () => {
   beforeEach(async () => {
     ;[owner, addr1, addr2, addr3, other] = await ethers.getSigners()
 
-    // Deploy RSR, AAVE, and COMP tokens
+    // Deploy RSR, WETH, AAVE, and COMP tokens
     ERC20 = await ethers.getContractFactory('ERC20Mock')
     rsr = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
 
     // Deploy Main Mock
     MainMockFactory = await ethers.getContractFactory('MainMockP0')
     stRSRWithdrawalDelay = bn(0)
-    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, other.address, other.address, stRSRWithdrawalDelay)
+    main = <MainMockP0>(
+      await MainMockFactory.deploy(
+        rsr.address,
+        other.address,
+        other.address,
+        other.address,
+        stRSRWithdrawalDelay,
+        fp('0')
+      )
+    )
 
     // Mint initial amounts
     initialBal = bn('100e18')

@@ -30,17 +30,16 @@ contract CTokenCollateralP0 is CollateralP0 {
         // {qFiatTok/qTok} = {fiatTok/tok} * {qFiatTok/fiatTok} / {qTok/tok}
 
         int8 shiftLeft = int8(fiatcoinDecimals()) - int8(decimals());
-        return rate.mul(toFixWithShift(1, shiftLeft));
+        return rate.shiftLeft(shiftLeft);
     }
 
-    /// @return {attoUSD/qTok} Without using oracles, returns the expected USD value of one whole tok.
+    /// @return {attoUSD/qTok} Without using oracles, returns the expected USD value of one qTok.
     function rateUSD() public override returns (Fix) {
         Fix rate = _exchangeRateRelativeToGenesis(); // {fiatTok/tok}
 
         // {attoUSD/qTok} = {fiatTok/tok} * {attoUSD/fiatTok} / {qTok/tok}
-
         int8 shiftLeft = 18 - int8(decimals());
-        return rate.mul(toFixWithShift(1, shiftLeft));
+        return rate.shiftLeft(shiftLeft);
     }
 
     function fiatcoin() public view override returns (IERC20) {
@@ -52,7 +51,7 @@ contract CTokenCollateralP0 is CollateralP0 {
         return main.consultOracle(Oracle.Source.COMPOUND, address(fiatcoin()));
     }
 
-    function isFiatcoin() external pure override returns (bool) {
+    function isFiatcoin() public pure override returns (bool) {
         return false;
     }
 

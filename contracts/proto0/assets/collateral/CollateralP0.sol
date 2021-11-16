@@ -27,20 +27,24 @@ contract CollateralP0 is ICollateral {
 
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
     function rateFiatcoin() public virtual override returns (Fix) {
+        // {qFiatTok/qTok} = {qFiatTok/fiatTok} / {qTok/tok}
         return toFixWithShift(1, int8(fiatcoinDecimals()) - int8(decimals()));
     }
 
-    /// @return {attoUSD/qTok} Without using oracles, returns the expected attoUSD value of one qtok.
+    /// @return {attoUSD/qTok} Without using oracles, returns the expected attoUSD value of one qTok.
     function rateUSD() public virtual override returns (Fix) {
-        // {attoUSD/tok} / {qTok/tok}
-        int8 shiftLeft = -int8(decimals());
-        return toFixWithShift(1e18, shiftLeft);
+        // {attoUSD/qTok} = {attoUSD/tok} / {qTok/tok}
+        return toFixWithShift(1, 18 - int8(decimals()));
     }
 
     /// @return {attoUSD/qTok} The price in attoUSD of the asset's smallest unit
     function priceUSD(IMain main) public virtual override returns (Fix) {
-        // {attoUSD/qFiatTok} * {qFiatTok/qTok}
-        return fiatcoinPriceUSD(main).mul(rateFiatcoin());
+        if (isFiatcoin()) {
+            return main.consultOracle(Oracle.Source.AAVE, _erc20);
+        } else {
+            // {attoUSD/qTok} = {attoUSD/qFiatTok} * {qFiatTok/qTok}
+            return fiatcoinPriceUSD(main).mul(rateFiatcoin());
+        }
     }
 
     /// @return The ERC20 contract of the central token
@@ -69,7 +73,7 @@ contract CollateralP0 is ICollateral {
     }
 
     /// @return Whether `_erc20` is a fiatcoin
-    function isFiatcoin() external pure virtual override returns (bool) {
+    function isFiatcoin() public pure virtual override returns (bool) {
         return true;
     }
 }

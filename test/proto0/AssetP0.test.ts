@@ -17,6 +17,8 @@ import { USDCMock } from '../../typechain/USDCMock'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
 import { VaultP0 } from '../../typechain/VaultP0'
+import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
+import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
 
 describe('AssetsP0 contracts', () => {
   let owner: SignerWithAddress
@@ -36,6 +38,11 @@ describe('AssetsP0 contracts', () => {
   let comp: ERC20Mock
   let aave: ERC20Mock
   let rToken: RTokenP0
+  let weth: ERC20Mock
+
+  // Oracles
+  let compoundOracle: CompoundOracleMockP0
+  let aaveOracle: AaveOracleMockP0
 
   // Assets
   let AssetFactory: ContractFactory
@@ -76,6 +83,7 @@ describe('AssetsP0 contracts', () => {
     rsr = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
     comp = <ERC20Mock>await ERC20.deploy('COMP Token', 'COMP')
     aave = <ERC20Mock>await ERC20.deploy('AAVE Token', 'AAVE')
+    weth = <ERC20Mock>await ERC20.deploy('Wrapped ETH', 'WETH')
 
     // Deploy Assets
     AssetFactory = await ethers.getContractFactory('CollateralP0')
@@ -99,7 +107,14 @@ describe('AssetsP0 contracts', () => {
 
     // Deploy Main Mock
     MainMockFactory = await ethers.getContractFactory('MainMockP0')
-    main = <MainMockP0>await MainMockFactory.deploy(rsr.address, comp.address, aave.address, bn('0'))
+    main = <MainMockP0>(
+      await MainMockFactory.deploy(rsr.address, comp.address, aave.address, weth.address, bn('0'), fp('0'))
+    )
+
+    compoundOracle = <CompoundOracleMockP0>(
+      await ethers.getContractAt('CompoundOracleMockP0', await main.compoundOracle())
+    )
+    aaveOracle = <AaveOracleMockP0>await ethers.getContractAt('AaveOracleMockP0', await main.aaveOracle())
 
     VaultFactory = await ethers.getContractFactory('VaultP0')
     vault = <VaultP0>await VaultFactory.deploy([tokenAsset.address, usdcAsset.address], [bn('5e17'), bn('5e5')], [])
@@ -107,6 +122,24 @@ describe('AssetsP0 contracts', () => {
     // Set Vault and Main relationship
     await main.connect(owner).setVault(vault.address)
     await vault.connect(owner).setMain(main.address)
+
+    // Set Default Oracle Prices
+    await compoundOracle.setPrice('TKN', bn('1e6'))
+    await compoundOracle.setPrice('USDC', bn('1e6'))
+    await compoundOracle.setPrice('ETH', bn('4000e6'))
+    await compoundOracle.setPrice('COMP', bn('1e6'))
+    await compoundOracle.setPrice('AAVE', bn('1e6'))
+
+    // $4000 ETH
+    // {qETH/tok}
+    await aaveOracle.setPrice(token.address, bn('2.5e14'))
+    await aaveOracle.setPrice(usdc.address, bn('2.5e14'))
+    await aaveOracle.setPrice(weth.address, bn('1e18'))
+    await aaveOracle.setPrice(aToken.address, bn('2.5e14'))
+    await aaveOracle.setPrice(cToken.address, bn('2.5e14'))
+    await aaveOracle.setPrice(rsr.address, bn('2.5e14'))
+    await aaveOracle.setPrice(comp.address, bn('2.5e14'))
+    await aaveOracle.setPrice(aave.address, bn('2.5e14'))
 
     // Deploy RToken and Asset
     RTokenFactory = await ethers.getContractFactory('RTokenP0')
@@ -165,9 +198,9 @@ describe('AssetsP0 contracts', () => {
       expect(await cTokenAsset.decimals()).to.equal(8)
       expect(await cTokenAsset.fiatcoinDecimals()).to.equal(await usdc.decimals())
       expect(await cTokenAsset.callStatic.rateFiatcoin()).to.equal(fp('1e-2')) // 1/100 qUSDC per qcUSDC
-      expect(await cTokenAsset.callStatic.rateUSD()).to.equal(fp('1e10'))
-      expect(await cTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1e10')) // 18 - 8 decimals = 10
-      expect(await cTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1e12'))
+      expect(await cTokenAsset.callStatic.rateUSD()).to.equal(fp('1e10')) // 18 - 8 decimals = 10
+      expect(await cTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1e10'))
+      expect(await cTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1e12')) // 18 - 6 decimals for USDC
 
       // RSR Asset
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
