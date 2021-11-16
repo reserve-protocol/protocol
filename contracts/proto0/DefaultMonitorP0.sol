@@ -34,8 +34,9 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
             if (a.rateUSD().lt(_lastRatesUSD[address(a)])) {
                 vaultAssets[count] = a;
                 count++;
+            } else {
+                _lastRatesUSD[address(a)] = a.rateUSD();
             }
-            _lastRatesUSD[address(a)] = a.rateUSD();
         }
         defaulting = new ICollateral[](count);
         for (uint256 i = 0; i < count; i++) {
@@ -55,6 +56,7 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
     {
         Fix defaultThreshold = _defaultThreshold(fiatcoins); // {attoUSD/qTok}
         ICollateral[] memory vaultAssets = new ICollateral[](vault.size());
+
         uint256 count;
         for (uint256 i = 0; i < vaultAssets.length; i++) {
             ICollateral a = vault.collateralAt(i);
@@ -119,14 +121,18 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         }
 
         // Sort
-        for (uint256 i = 1; i < prices.length; i++) {
-            Fix key = prices[i];
-            uint256 j = i - 1;
-            while (j >= 0 && prices[j].gt(key)) {
-                prices[j + 1] = prices[j];
-                j--;
+        for (uint256 i = 0; i < prices.length - 1; i++) {
+            uint256 min = i;
+            for (uint256 j = i; j < prices.length; j++) {
+                if (prices[j].lt(prices[min])) {
+                    min = j;
+                }
             }
-            prices[j + 1] = key;
+            if (min != i) {
+                Fix tmp = prices[i];
+                prices[i] = prices[min];
+                prices[min] = tmp;
+            }
         }
 
         // Take the median
