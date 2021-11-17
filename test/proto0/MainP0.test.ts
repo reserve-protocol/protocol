@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { ethers, waffle } from 'hardhat'
 import { Wallet, BigNumber, ContractFactory } from 'ethers'
-import { bn } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import { defaultFixture, IManagerConfig } from './utils/fixtures'
 import { advanceTime } from '../utils/time'
 import { BN_SCALE_FACTOR } from '../../common/constants'
@@ -22,6 +22,10 @@ import { StRSRP0 } from '../../typechain/StRSRP0'
 import { CollateralP0 } from '../../typechain/CollateralP0'
 import { AssetManagerP0 } from '../../typechain/AssetManagerP0'
 import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
+import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
+import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
+import { StaticATokenMock } from '../../typechain/StaticATokenMock'
+import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -52,8 +56,10 @@ describe('MainP0 contract', () => {
   // AAVE and Compound
   let compAsset: COMPAssetP0
   let compoundMock: ComptrollerMockP0
+  let compoundOracle: CompoundOracleMockP0
   let aaveAsset: AAVEAssetP0
   let aaveMock: AaveLendingPoolMockP0
+  let aaveOracle: AaveOracleMockP0
 
   // Tokens and Assets
   let initialBal: BigNumber
@@ -65,6 +71,12 @@ describe('MainP0 contract', () => {
   let collateral1: CollateralP0
   let collateral2: CollateralP0
   let collateral3: CollateralP0
+  let ATokenMockFactory: ContractFactory
+  let ATokenAssetFactory: ContractFactory
+  let aToken0: StaticATokenMock
+  let aToken1: StaticATokenMock
+  let assetAToken0: ATokenCollateralP0
+  let assetAToken1: ATokenCollateralP0
 
   // Config values
   let config: IManagerConfig
@@ -94,6 +106,8 @@ describe('MainP0 contract', () => {
       rsrAsset,
       compAsset,
       aaveAsset,
+      compoundOracle,
+      aaveOracle,
       compoundMock,
       aaveMock,
       token0,
@@ -224,6 +238,24 @@ describe('MainP0 contract', () => {
   })
 
   describe('Configuration/State', () => {
+    it('Should allow owner to update Config', async () => {
+      // Update some values in config
+      config.f = fp('0.50')
+      config.stRSRWithdrawalDelay = bn('3600')
+
+      // If not owner should not be able to update config
+      await expect(main.connect(other).setConfig(config)).to.be.revertedWith('Ownable: caller is not the owner')
+
+      // Check config was not updated\
+      expect(await main.config()).to.not.eql(Object.values(config))
+
+      // Set config as owner
+      await main.connect(owner).setConfig(config)
+
+      // Check config was updated\
+      expect(await main.config()).to.eql(Object.values(config))
+    })
+
     it('Should return nextRewards correctly', async () => {
       // Check next immediate reward
       expect(await main.nextRewards()).to.equal(config.rewardStart.add(config.rewardPeriod))
@@ -495,6 +527,81 @@ describe('MainP0 contract', () => {
       expect(await vault.basketUnits(main.address)).to.equal(0)
       expect(await vault.basketUnits(assetManager.address)).to.equal(issueAmount)
     })
+
+    it('Should rollback mintings if Vault changes (2 blocks)', async function () {
+      const issueAmount: BigNumber = bn('50000e18')
+
+      const expectedTkn0: BigNumber = issueAmount.mul(await vault.quantity(collateral0.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn1: BigNumber = issueAmount.mul(await vault.quantity(collateral1.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn2: BigNumber = issueAmount.mul(await vault.quantity(collateral2.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn3: BigNumber = issueAmount.mul(await vault.quantity(collateral3.address)).div(BN_SCALE_FACTOR)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(main.address, initialBal)
+      await token1.connect(addr1).approve(main.address, initialBal)
+      await token2.connect(addr1).approve(main.address, initialBal)
+      await token3.connect(addr1).approve(main.address, initialBal)
+
+      // Issue rTokens
+      await main.connect(addr1).issue(issueAmount)
+
+      // Check Balances - Before vault switch
+      expect(await token0.balanceOf(vault.address)).to.equal(expectedTkn0)
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
+
+      expect(await token1.balanceOf(vault.address)).to.equal(expectedTkn1)
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
+
+      expect(await token2.balanceOf(vault.address)).to.equal(expectedTkn2)
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
+
+      expect(await token3.balanceOf(vault.address)).to.equal(expectedTkn3)
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
+
+      expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await vault.basketUnits(main.address)).to.equal(issueAmount)
+
+      // Process slow issuances
+      await main.poke()
+
+      // Check previous minting was not processed
+      let [, , , , , sm_proc] = await main.issuances(0)
+      expect(sm_proc).to.equal(false)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+
+      // Process slow mintings 1 time (still more pending).
+      await main.poke()
+
+      // Change Vault
+      const newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collateral[1]], [bn('1e18')], [])
+      await assetManager.connect(owner).switchVault(newVault.address)
+
+      // Process slow mintings again
+      await expect(main.poke()).to.emit(main, 'IssuanceCanceled').withArgs(0)
+
+      // Check Balances after - Funds returned to minter
+      expect(await token0.balanceOf(vault.address)).to.equal(0)
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+
+      expect(await token1.balanceOf(vault.address)).to.equal(0)
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+
+      expect(await token2.balanceOf(vault.address)).to.equal(0)
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+
+      expect(await token3.balanceOf(vault.address)).to.equal(0)
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+
+      expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await vault.basketUnits(main.address)).to.equal(0)
+      ;[, , , , , sm_proc] = await main.issuances(0)
+      expect(sm_proc).to.equal(true)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+
+      // Nothing sent to the AssetManager
+      expect(await vault.basketUnits(assetManager.address)).to.equal(0)
+      expect(await newVault.basketUnits(assetManager.address)).to.equal(0)
+    })
   })
 
   describe('Redeem', function () {
@@ -590,5 +697,168 @@ describe('MainP0 contract', () => {
     })
   })
 
-  describe('Notice Default', () => {})
+  describe('Notice Default', function () {
+    let issueAmount: BigNumber
+
+    beforeEach(async function () {
+      // Issue some RTokens to user
+      issueAmount = bn('100e18')
+      // Provide approvals
+      await token0.connect(addr1).approve(main.address, initialBal)
+      await token1.connect(addr1).approve(main.address, initialBal)
+      await token2.connect(addr1).approve(main.address, initialBal)
+      await token3.connect(addr1).approve(main.address, initialBal)
+
+      // Issue rTokens
+      await main.connect(addr1).issue(issueAmount)
+
+      // Process the issuance
+      await main.poke()
+    })
+
+    it('Should not detect default and not impact state in normal situation', async () => {
+      expect(await main.state()).to.equal(State.CALM)
+      expect(await assetManager.fullyCapitalized()).to.equal(true)
+
+      // Notice default
+      await expect(main.noticeDefault()).to.not.emit
+
+      expect(await main.state()).to.equal(State.CALM)
+      expect(await assetManager.fullyCapitalized()).to.equal(true)
+    })
+
+    it('Should detect soft default and change state', async () => {
+      expect(await main.state()).to.equal(State.CALM)
+      expect(await assetManager.fullyCapitalized()).to.equal(true)
+
+      // Default one of the tokens - reduce fiatcoin price in terms of Eth
+      await aaveOracle.setPrice(token0.address, bn('1.5e14'))
+
+      // Notice default
+      await expect(main.noticeDefault()).to.emit(main, 'StateChanged').withArgs(State.CALM, State.DOUBT)
+
+      expect(await main.state()).to.equal(State.DOUBT)
+      expect(await assetManager.fullyCapitalized()).to.equal(true)
+
+      // If soft default is reversed goes back to calm state
+      await aaveOracle.setPrice(token0.address, bn('2.5e14'))
+
+      // Notice default
+      await expect(main.noticeDefault()).to.emit(main, 'StateChanged').withArgs(State.DOUBT, State.CALM)
+
+      expect(await main.state()).to.equal(State.CALM)
+      expect(await assetManager.fullyCapitalized()).to.equal(true)
+    })
+
+    it('Should switch vaults and start Trading if in "doubt" more than defaultDelay', async () => {
+      // Set backup vault
+      const backupVault: VaultP0 = <VaultP0>(
+        await VaultFactory.deploy([collateral[1], collateral[2]], [bn('1e18'), bn('1e18')], [])
+      )
+      await vault.setBackups([backupVault.address])
+
+      expect(await main.state()).to.equal(State.CALM)
+      expect(await assetManager.vault()).to.equal(vault.address)
+      expect(await assetManager.fullyCapitalized()).to.equal(true)
+
+      // Default one of the tokens - reduce fiatcoin price in terms of Eth
+      await aaveOracle.setPrice(token0.address, bn('1.5e14'))
+
+      // Notice default
+      await expect(main.noticeDefault()).to.emit(main, 'StateChanged').withArgs(State.CALM, State.DOUBT)
+
+      expect(await main.state()).to.equal(State.DOUBT)
+      expect(await assetManager.vault()).to.equal(vault.address)
+      expect(await assetManager.fullyCapitalized()).to.equal(true)
+
+      // Advancing time still before defaultDelay - No change should occur
+      await advanceTime(3600)
+
+      // Notice default
+      await expect(main.noticeDefault()).to.not.emit
+
+      expect(await main.state()).to.equal(State.DOUBT)
+      expect(await assetManager.vault()).to.equal(vault.address)
+      expect(await assetManager.fullyCapitalized()).to.equal(true)
+
+      // Advance time post defaultDelay
+      await advanceTime(config.defaultDelay.toString())
+
+      await expect(main.noticeDefault()).to.emit(main, 'StateChanged').withArgs(State.DOUBT, State.TRADING)
+
+      // Check state
+      expect(await main.state()).to.equal(State.TRADING)
+      expect(await assetManager.vault()).to.equal(backupVault.address)
+      expect(await assetManager.fullyCapitalized()).to.equal(false)
+
+      // If token enters a soft default and then its restored, it should still keep Trading stat
+      await aaveOracle.setPrice(token0.address, bn('2.5e14'))
+      await aaveOracle.setPrice(token1.address, bn('0.5e14'))
+
+      // Notice default
+      await expect(main.noticeDefault()).to.emit(main, 'StateChanged').withArgs(State.TRADING, State.DOUBT)
+
+      // Restore price
+      await aaveOracle.setPrice(token1.address, bn('2.5e14'))
+
+      await expect(main.noticeDefault()).to.emit(main, 'StateChanged').withArgs(State.DOUBT, State.TRADING)
+
+      expect(await main.state()).to.equal(State.TRADING)
+      expect(await assetManager.vault()).to.equal(backupVault.address)
+      expect(await assetManager.fullyCapitalized()).to.equal(false)
+    })
+
+    it('Should detect hard default and switch state and vault', async () => {
+      // Define AToken
+      ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
+      aToken0 = <StaticATokenMock>await ATokenMockFactory.deploy('AToken 0', 'ATKN0', token0.address)
+      aToken1 = <StaticATokenMock>await ATokenMockFactory.deploy('AToken 1', 'ATKN1', token1.address)
+      ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
+      assetAToken0 = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aToken0.address, aToken0.decimals())
+      assetAToken1 = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aToken1.address, aToken1.decimals())
+
+      // Check state
+      expect(await main.state()).to.equal(State.CALM)
+      expect(await assetManager.vault()).to.equal(vault.address)
+      expect(await assetManager.fullyCapitalized()).to.equal(true)
+
+      // Setup new Vault with AToken and capitalize Vault
+      const backupVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assetAToken1.address], [bn('1e18')], [])
+      const newVault: VaultP0 = <VaultP0>(
+        await VaultFactory.deploy([assetAToken0.address], [bn('1e18')], [backupVault.address])
+      )
+
+      // Approve new collateral
+      await assetManager.connect(owner).approveCollateral(assetAToken0.address)
+      await assetManager.connect(owner).approveCollateral(assetAToken1.address)
+
+      // Switch vault
+      await assetManager.connect(owner).switchVault(newVault.address)
+
+      // Check state
+      expect(await main.state()).to.equal(State.CALM)
+      expect(await assetManager.vault()).to.equal(newVault.address)
+      expect(await assetManager.fullyCapitalized()).to.equal(false)
+
+      // Call will not trigger hard default nor soft default in normal situation
+      await expect(main.noticeDefault()).to.emit(main, 'StateChanged').withArgs(State.CALM, State.TRADING)
+
+      // Check state
+      expect(await main.state()).to.equal(State.TRADING)
+      expect(await assetManager.vault()).to.equal(newVault.address)
+      expect(await assetManager.fullyCapitalized()).to.equal(false)
+
+      // Set default rate
+      await aToken0.setExchangeRate(bn('0.98e27'))
+
+      // Call to detect vault switch and state change
+      await main.noticeDefault()
+
+      // check state - backup vault was selected
+      expect(await main.state()).to.equal(State.TRADING)
+      expect(await assetManager.vault()).to.equal(backupVault.address)
+      expect(await assetManager.fullyCapitalized()).to.equal(false)
+    })
+    // TODO: Handle no backup vault found
+  })
 })

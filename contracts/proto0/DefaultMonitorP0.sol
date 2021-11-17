@@ -60,7 +60,6 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         uint256 count;
         for (uint256 i = 0; i < vaultAssets.length; i++) {
             ICollateral a = vault.collateralAt(i);
-
             if (a.fiatcoinPriceUSD(main).lt(defaultThreshold)) {
                 vaultAssets[count] = a;
                 count++;
