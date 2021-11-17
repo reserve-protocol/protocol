@@ -24,7 +24,9 @@ export default <HardhatUserConfig>{
       // }
       allowUnlimitedContractSize: true,
     },
-    localhost: {},
+    localhost: {
+      allowUnlimitedContractSize: true,
+    },
     ropsten: {
       chainId: 3,
       url: ROPSTEN_RPC_URL,

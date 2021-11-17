@@ -8,6 +8,7 @@
     "scripts": {
         "compile": "npx hardhat compile",
         "coverage": "npx hardhat coverage --temp artifacts",
+        "deploy:proto0": "npx hardhat run scripts/proto0/deploy_all.ts --network localhost --show-stack-traces",
         "deploy:localhost": "npx hardhat run scripts/deploy_all.ts --network localhost",
         "deploy:ropsten": "npx hardhat run scripts/deploy_all.ts --network ropsten",
         "devchain": "npx hardhat node",
