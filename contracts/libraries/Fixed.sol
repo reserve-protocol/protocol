@@ -282,6 +282,7 @@ library FixLib {
     function powu(Fix x, uint256 y) internal pure returns (Fix result) {
         // The algorithm is exponentiation by squaring. See: https://w.wiki/4LjE
         result = FIX_ONE;
+        if (eq(x, FIX_ONE)) return FIX_ONE;
         while (true) {
             if (y & 1 == 1) result = mul(result, x);
             if (y <= 1) return result;
