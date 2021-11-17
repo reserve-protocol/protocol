@@ -12,7 +12,7 @@ interface IComptroller {
 }
 
 interface ICompoundOracle {
-    /// @return {microUSD} The USD price of the corresponding token with 6 decimals.
+    /// @return {microUSD/tok} The USD price of the corresponding token with 6 decimals.
     function price(string memory symbol) external view returns (uint256);
 }
 
