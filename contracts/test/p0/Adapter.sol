@@ -44,13 +44,16 @@ contract AdapterP0 is ProtoDriver {
     mapping(CollateralToken => ICollateral) internal _collateral;
     mapping(IERC20 => CollateralToken) internal _reverseCollateral;
 
+    uint256 internal immutable ACCOUNT_LEN = uint256(Account.ALICE) + 1;
+    uint256 internal immutable COLLATERAL_TOKEN_LEN = uint256(CollateralToken.aBUSD) + 1;
+
     constructor() {
         _owner = msg.sender;
         _deployer = new DeployerExtension();
     }
 
     function init(ProtoState memory s) external override {
-        ICollateral[] memory collateral = new ICollateral[](11);
+        ICollateral[] memory collateral = new ICollateral[](COLLATERAL_TOKEN_LEN);
         {
             // Deploy collateral assets
             ERC20Mock dai = new ERC20Mock(s.collateral[0].name, s.collateral[0].symbol);
@@ -164,8 +167,8 @@ contract AdapterP0 is ProtoDriver {
         s.stRSR = _dumpERC20(address(_main.stRSR()));
         s.comp = _dumpERC20(address(_main.compAsset().erc20()));
         s.aave = _dumpERC20(address(_main.aaveAsset().erc20()));
-        s.collateral = new ERC20State[](11);
-        for (uint256 i = 0; i < 11; i++) {
+        s.collateral = new ERC20State[](COLLATERAL_TOKEN_LEN);
+        for (uint256 i = 0; i < COLLATERAL_TOKEN_LEN; i++) {
             s.collateral[i] = _dumpERC20(address(_collateral[CollateralToken(i)].erc20()));
         }
     }
@@ -226,8 +229,8 @@ contract AdapterP0 is ProtoDriver {
         IERC20Metadata erc20 = IERC20Metadata(addr);
         erc20State.name = erc20.name();
         erc20State.name = erc20.symbol();
-        erc20State.balances = new uint256[](5);
-        for (uint256 i = 0; i < 5; i++) {
+        erc20State.balances = new uint256[](ACCOUNT_LEN);
+        for (uint256 i = 0; i < ACCOUNT_LEN; i++) {
             erc20State.balances[i] = erc20.balanceOf(_address(i));
         }
         erc20State.totalSupply = erc20.totalSupply();
@@ -259,7 +262,7 @@ contract AdapterP0 is ProtoDriver {
     }
 
     /// Account index -> address
-    function _address(uint256 index) internal view returns (address) {
+    function _address(uint256 index) internal pure returns (address) {
         // Use 0x1, 0x2, ...
         return address((uint160(index) + 1));
     }

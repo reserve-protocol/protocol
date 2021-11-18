@@ -77,5 +77,4 @@ contract CollateralP0 is ICollateral {
     function isAToken() public pure virtual override returns (bool) {
         return false;
     }
-
 }
