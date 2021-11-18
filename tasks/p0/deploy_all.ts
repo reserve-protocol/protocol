@@ -165,7 +165,6 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
     auctionPeriod: bn('1800'), // 30 minutes
     stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
     defaultDelay: bn('86400'), // 24 hs
-    auctionClearingTolerance: fp('0.05'), // 5%
     maxTradeSlippage: fp('0.05'), // 5%
     maxAuctionSize: fp('0.01'), // 1%
     minRecapitalizationAuctionSize: fp('0.001'), // 0.1%
