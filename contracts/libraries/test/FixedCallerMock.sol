@@ -137,6 +137,6 @@ contract FixedCallerMock {
 
     // Nonview version for gas estimation in test framework
     function powu_nonview(Fix x, uint256 y) public {
-        FixLib.powu(x,y);
+        FixLib.powu(x, y);
     }
 }
