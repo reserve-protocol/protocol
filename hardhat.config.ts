@@ -22,9 +22,17 @@ export default <HardhatUserConfig>{
       // forking: {
       //   url: MAINNET_RPC_URL
       // }
+      gas: 12000000,
+      blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
+      timeout: 1800000,
     },
-    localhost: {},
+    localhost: {
+      gas: 12000000,
+      blockGasLimit: 0x1fffffffffffff,
+      allowUnlimitedContractSize: true,
+      timeout: 1800000,
+    },
     ropsten: {
       chainId: 3,
       url: ROPSTEN_RPC_URL,

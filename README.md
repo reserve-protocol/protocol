@@ -26,11 +26,12 @@ The central directories in this repository are `contracts` and `test`.
 
 `contracts` holds all our smart contracts, organized as follows:
 
+- Top-level files: The Dapp-facing interfaces. These are common across implementations.
 - `libraries`: Common `DELEGATECALL` libraries
-- `proto0`, `proto1`, `proto2`: [Progressive prototypes](#differential_testing)
+- `p0`, `p1`, `p2`: Short for `proto`. [Progressive prototypes](#differential_testing)
 - `mocks`: Mock contracts for testing
 
-Each implementation directory (`prod`, `proto0`, `proto1`, `proto2`) contains the following:
+Each implementation directory (`prod`, `p0`, `p1`, `p2`) contains the following:
 
 - Top-level files: The system contracts
 - `interfaces`: Interfaces for the system contracts
@@ -39,7 +40,7 @@ Each implementation directory (`prod`, `proto0`, `proto1`, `proto2`) contains th
 
 The less-central folders in the repository are dedicated to project management, configuration, and other ancillary details:
 
-- The top-level files are all various forms of project-level configuration
+- Most of the top-level files are various forms of project-level configuration
 - `common`: Shared utility types, methods, and constants in TypeScript
 - `tasks`: [Hardhat tasks](https://hardhat.org/getting-started/)
 - `scripts`: [Hardhat scripts](https://hardhat.org/guides/scripts.html)

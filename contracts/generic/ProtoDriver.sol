@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/libraries/Fixed.sol";
 import "./ProtoState.sol";
 
 interface ProtoDriver {
-    function constructor_() external; // suffix due to collision
-
     function init(ProtoState memory state) external;
 
-    function state() external view returns (ProtoState memory);
+    /// @dev view
+    function state() external returns (ProtoState memory);
 
-    // COMMANDS
+    // ==== COMMANDS ====
 
     function CMD_issue(Account account, uint256 amount) external;
 
@@ -21,16 +19,32 @@ interface ProtoDriver {
 
     function CMD_poke(Account account) external;
 
-    //
-    // function setOraclePrices(CollateralToken[] memory tokens, Fix[] memory prices) external;
+    function CMD_stakeRSR(Account account, uint256 amount) external;
 
-    // function setDefiRates(
-    //     DefiProtocol protocol,
-    //     CollateralToken[] memory tokens,
-    //     Fix[] memory redemptionRates
-    // ) external;
+    function CMD_unstakeRSR(Account account, uint256 amount) external;
 
-    // INVARIANTS
+    function CMD_setRTokenForMelting(Account account, uint256 amount) external;
+
+    function CMD_transferRToken(
+        Account from,
+        Account to,
+        uint256 amount
+    ) external;
+
+    function CMD_transferRSR(
+        Account from,
+        Account to,
+        uint256 amount
+    ) external;
+
+    function CMD_transferStRSR(
+        Account from,
+        Account to,
+        uint256 amount
+    ) external;
+
+    // === INVARIANTS ====
+
     function INVARIANT_isFullyCapitalized() external view returns (bool);
     // ...more
 }
