@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Context.sol";
-import "contracts/generic/Mixins.sol";
+import "contracts/test/Mixins.sol";
 import "contracts/p0/DeployerP0.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";

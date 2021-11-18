@@ -10,4 +10,4 @@ import './deployments/mocks/deploy-ReserveRightsTokenMock'
 // RToken
 import './RToken/create-RToken'
 
-import './proto0/deploy_all'
+import './p0/deploy_all'

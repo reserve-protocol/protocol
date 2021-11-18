@@ -3,10 +3,6 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/libraries/Oracle.sol";
-import "contracts/p0/assets/RTokenAssetP0.sol";
-import "contracts/p0/assets/RSRAssetP0.sol";
-import "contracts/p0/assets/COMPAssetP0.sol";
-import "contracts/p0/assets/AAVEAssetP0.sol";
 import "contracts/IMain.sol";
 import "./IAsset.sol";
 import "./IAssetManager.sol";
@@ -94,10 +90,10 @@ interface IMain is IMainCommon {
     function setStRSR(IStRSR stRSR_) external;
 
     function setAssets(
-        RTokenAssetP0 rToken_,
-        RSRAssetP0 rsr_,
-        COMPAssetP0 comp_,
-        AAVEAssetP0 aave_
+        IAsset rToken_,
+        IAsset rsr_,
+        IAsset comp_,
+        IAsset aave_
     ) external;
 
     function setFurnace(IFurnace furnace_) external;

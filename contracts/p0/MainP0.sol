@@ -217,10 +217,10 @@ contract MainP0 is IMain, Ownable {
     }
 
     function setAssets(
-        RTokenAssetP0 rToken_,
-        RSRAssetP0 rsr_,
-        COMPAssetP0 comp_,
-        AAVEAssetP0 aave_
+        IAsset rToken_,
+        IAsset rsr_,
+        IAsset comp_,
+        IAsset aave_
     ) external override onlyOwner {
         rTokenAsset = rToken_;
         rsrAsset = rsr_;

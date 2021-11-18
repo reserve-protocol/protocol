@@ -3,8 +3,8 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/generic/ProtoDriver.sol";
-import "contracts/generic/ProtoState.sol";
+import "contracts/test/ProtoDriver.sol";
+import "contracts/test/ProtoState.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/libraries/test/strings.sol";
 import "contracts/mocks/ATokenMock.sol";
