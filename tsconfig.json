@@ -6,7 +6,7 @@
         "esModuleInterop": true,
         "outDir": "dist",
         "paths": {
-            "@typechain/*": ["./typechain/*"],
+            "@typechain/*": ["./typechain/*"]
         },
         "typeRoots": ["./typechain", "./node_modules/@types"],
         "types": ["@nomiclabs/hardhat-ethers", "@nomiclabs/hardhat-waffle"]

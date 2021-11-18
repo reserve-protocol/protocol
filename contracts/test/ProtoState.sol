@@ -44,7 +44,7 @@ struct ERC20State {
 /// Top-level state struct
 struct ProtoState {
     // ==== Setup ====
-    GenericBasket[] baskets;
+    GenericBasket[] baskets; // not currently part of equality checks
     // Basket DAG
     // 0th index is assumed to be the initial backing
 

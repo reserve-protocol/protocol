@@ -11,8 +11,6 @@ import "contracts/p0/MainP0.sol";
 import "contracts/p0/RTokenP0.sol";
 import "contracts/p0/StRSRP0.sol";
 
-import "hardhat/console.sol";
-
 interface IMainExtension is IContextMixin, IMain {}
 
 interface IStRSRExtension is IContextMixin, IStRSR {}
@@ -25,12 +23,9 @@ contract MainExtension is IMainExtension, ContextMixin, MainP0 {
         Oracle.Info memory oracle_,
         Config memory config_,
         IERC20 rsr_
-    ) MainP0(oracle_, config_, rsr_) {
-        console.log("MainExtension");
-    }
+    ) MainP0(oracle_, config_, rsr_) {}
 
     function _msgSender() internal view override(Context, ContextMixin) returns (address) {
-        console.log("MainExtension._msgSender");
         return super._msgSender();
     }
 }

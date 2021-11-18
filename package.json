@@ -13,6 +13,7 @@
         "deploy:ropsten": "npx hardhat run scripts/deploy_all.ts --network ropsten",
         "devchain": "npx hardhat node",
         "test": "npx hardhat test",
+        "test:generic": "npx hardhat test test/generic/*.test.ts",
         "test:p0": "npx hardhat test test/p0/*.test.ts",
         "test:parallel": "mocha --require hardhat/register --recursive --parallel --exit",
         "test:recompile": "npx hardhat compile --force && mocha --require hardhat/register --recursive --exit",

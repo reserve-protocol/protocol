@@ -132,7 +132,7 @@ describe('Generic unit tests', () => {
     })
 
     it('Should setup correctly', async () => {
-      const state = await p0.state()
+      const state = await p0.callStatic.state()
       console.log(state)
     })
     // it('Should issue', async () => {

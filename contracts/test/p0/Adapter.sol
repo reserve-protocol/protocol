@@ -42,7 +42,7 @@ contract AdapterP0 is ProtoDriver {
     IMainExtension internal _main;
 
     mapping(CollateralToken => ICollateral) internal _collateral;
-    mapping(ICollateral => CollateralToken) internal _reverseCollateral;
+    mapping(IERC20 => CollateralToken) internal _reverseCollateral;
 
     constructor() {
         _owner = msg.sender;
@@ -156,7 +156,7 @@ contract AdapterP0 is ProtoDriver {
         address[] memory backingTokens = _main.backingTokens();
         CollateralToken[] memory backingCollateral = new CollateralToken[](backingTokens.length);
         for (uint256 i = 0; i < backingTokens.length; i++) {
-            backingCollateral[i] = _reverseCollateral[ICollateral(backingTokens[i])];
+            backingCollateral[i] = _reverseCollateral[IERC20(backingTokens[i])];
         }
         s.rTokenRedemption = GenericBasket(backingCollateral, _main.quote(10**_main.rToken().decimals()));
         s.rToken = _dumpERC20(address(_main.rToken()));
@@ -173,7 +173,6 @@ contract AdapterP0 is ProtoDriver {
     // === COMMANDS ====
 
     function CMD_issue(Account account, uint256 amount) external override {
-        // TODO: Can we improve this triple pattern?
         _main.connect(_address(uint256(account)));
         _main.issue(amount);
     }
@@ -255,7 +254,7 @@ contract AdapterP0 is ProtoDriver {
         } else {
             _collateral[ct] = new CollateralP0(address(erc20));
         }
-        _reverseCollateral[_collateral[ct]] = ct;
+        _reverseCollateral[_collateral[ct].erc20()] = ct;
         return _collateral[ct];
     }
 

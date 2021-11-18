@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "hardhat/console.sol";
-
 interface IContextMixin {
     function connect(address account) external;
 }
@@ -21,7 +19,6 @@ interface IContextMixin {
  * @dev A mix-in that enables mocking out msg.sender via multiple inheritance.
  */
 abstract contract ContextMixin is IContextMixin {
-
     address internal _msgDotSender;
     address internal _deployer;
 
@@ -35,7 +32,6 @@ abstract contract ContextMixin is IContextMixin {
     }
 
     function _msgSender() internal view virtual returns (address) {
-        console.log("_msgSender()", _msgDotSender, msg.sender);
         if (msg.sender == _deployer) {
             assert(_msgDotSender != address(0)); // this indicates a bug in the way the contract is used
             return _msgDotSender;
