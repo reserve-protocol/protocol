@@ -32,7 +32,7 @@ contract FurnaceP1 is Context, IFurnaceP1 {
     /// @param duration {sec} The number of seconds to spread the burn over
     function burnOverPeriod(uint256 newAmount, uint256 duration) external override {
         require(newAmount > 0, "Cannot burn a batch of zero");
-
+        require(duration > 0, "Will not burn in 0 time");
         // Bring state up-to-date
         doBurn();
 
@@ -79,6 +79,6 @@ contract FurnaceP1 is Context, IFurnaceP1 {
     function _burnable(uint256 timestamp) internal view returns (uint256) {
         if (timestamp <= whenPreviousBurn) return 0;
 
-        return Math.max(_bal(), burnRate.mulu(timestamp - whenPreviousBurn).toUint());
+        return Math.min(_bal(), burnRate.mulu(timestamp - whenPreviousBurn).toUint());
     }
 }

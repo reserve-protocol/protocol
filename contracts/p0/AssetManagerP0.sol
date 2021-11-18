@@ -113,6 +113,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     /// Attempts to switch vaults to a backup vault that does not contain `defaulting` collateral
     function switchVaults(ICollateral[] memory defaulting) external override {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
+
         for (uint256 i = 0; i < defaulting.length; i++) {
             _unapproveAsset(defaulting[i]);
         }
@@ -183,6 +184,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     /// @return fiatcoins An array of approved fiatcoin collateral to be used for oracle USD determination
     function approvedFiatcoins() external view override returns (ICollateral[] memory fiatcoins) {
         address[] memory addresses = _fiatcoins.values();
+        fiatcoins = new ICollateral[](addresses.length);
         for (uint256 i = 0; i < addresses.length; i++) {
             fiatcoins[i] = ICollateral(addresses[i]);
         }
