@@ -4,9 +4,7 @@ pragma solidity 0.8.9;
 import "hardhat/console.sol";
 
 interface IContextMixin {
-    function setSigner(address account) external;
-
-    function clearSigner() external;
+    function connect(address account) external;
 }
 
 /**
@@ -23,21 +21,25 @@ interface IContextMixin {
  * @dev A mix-in that enables mocking out msg.sender via multiple inheritance.
  */
 abstract contract ContextMixin is IContextMixin {
-    address internal _msgDotSender;
 
-    function setSigner(address account) external override {
-        _msgDotSender = account;
+    address internal _msgDotSender;
+    address internal _deployer;
+
+    constructor() {
+        _deployer = msg.sender;
     }
 
-    function clearSigner() external override {
-        _msgDotSender = address(0);
+    function connect(address account) external override {
+        require(msg.sender == _deployer, "deployer only");
+        _msgDotSender = account;
     }
 
     function _msgSender() internal view virtual returns (address) {
         console.log("_msgSender()", _msgDotSender, msg.sender);
-        if (_msgDotSender == address(0)) {
-            return msg.sender;
+        if (msg.sender == _deployer) {
+            assert(_msgDotSender != address(0)); // this indicates a bug in the way the contract is used
+            return _msgDotSender;
         }
-        return _msgDotSender;
+        return msg.sender;
     }
 }

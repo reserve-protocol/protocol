@@ -139,9 +139,8 @@ contract AdapterP0 is ProtoDriver {
 
         // stRSR
         for (uint256 i = 0; i < s.stRSR.balances.length; i++) {
-            _main.setSigner(_address(i));
+            _main.connect(_address(i));
             _main.stRSR().stake(s.stRSR.balances[i]);
-            _main.clearSigner();
         }
         // rToken
         for (uint256 i = 0; i < s.rToken.balances.length; i++) {
@@ -175,9 +174,8 @@ contract AdapterP0 is ProtoDriver {
 
     function CMD_issue(Account account, uint256 amount) external override {
         // TODO: Can we improve this triple pattern?
-        _main.setSigner(_address(uint256(account)));
+        _main.connect(_address(uint256(account)));
         _main.issue(amount);
-        _main.clearSigner();
     }
 
     function CMD_redeem(Account account, uint256 amount) external override {
