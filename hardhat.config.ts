@@ -6,7 +6,7 @@ import '@nomiclabs/hardhat-ethers'
 import '@typechain/hardhat'
 import 'solidity-coverage'
 import 'hardhat-gas-reporter'
-// import './tasks'
+import './tasks'
 import dotenv from 'dotenv'
 dotenv.config()
 
