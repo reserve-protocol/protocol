@@ -44,7 +44,7 @@ contract AdapterP0 is ProtoDriver {
     mapping(CollateralToken => ICollateral) internal _collateral;
     mapping(IERC20 => CollateralToken) internal _reverseCollateral;
 
-    uint256 internal immutable ACCOUNT_LEN = uint256(Account.ALICE) + 1;
+    uint256 internal immutable ACCOUNT_LEN = uint256(Account.EVE) + 1;
     uint256 internal immutable COLLATERAL_TOKEN_LEN = uint256(CollateralToken.aBUSD) + 1;
 
     constructor() {
