@@ -187,9 +187,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
   await aaveOracle.setPrice(token2.address, bn('2.5e14'))
   await aaveOracle.setPrice(token3.address, bn('2.5e14'))
   await aaveOracle.setPrice(weth.address, bn('1e18'))
-  await aaveOracle.setPrice(aaveToken.address, bn('1e18'))
-  await aaveOracle.setPrice(compToken.address, bn('1e18'))
-  await aaveOracle.setPrice(rsr.address, bn('1e18'))
+  await aaveOracle.setPrice(aaveToken.address, bn('2e14'))
+  await aaveOracle.setPrice(compToken.address, bn('2e14'))
+  await aaveOracle.setPrice(rsr.address, bn('2e14'))
 
   const paramsAssets: IParamsAssets = {
     rsrAsset: rsrAsset.address,
