@@ -21,10 +21,6 @@ contract CollateralP0 is ICollateral {
         _erc20 = erc20_;
     }
 
-    /// Claims any rewards such as COMP/AAVE for the asset
-    // solhint-disable-next-line no-empty-blocks
-    function claimRewards() external virtual override {}
-
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
     function rateFiatcoin() public virtual override returns (Fix) {
         // {qFiatTok/qTok} = {qFiatTok/fiatTok} / {qTok/tok}
@@ -76,4 +72,10 @@ contract CollateralP0 is ICollateral {
     function isFiatcoin() public pure virtual override returns (bool) {
         return true;
     }
+
+    /// @return Whether `_erc20` is an AToken (StaticAToken, actually)
+    function isAToken() public pure virtual override returns (bool) {
+        return false;
+    }
+
 }

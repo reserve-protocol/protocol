@@ -30,11 +30,6 @@ contract ATokenCollateralP0 is CollateralP0 {
     // solhint-disable-next-line no-empty-blocks
     constructor(address erc20_) CollateralP0(erc20_) {}
 
-    /// Claims any rewards such as COMP/AAVE for the asset
-    function claimRewards() external override {
-        IStaticAToken(address(erc20())).claimRewardsToSelf(true);
-    }
-
     /// @return {qFiatTok/qTok}
     function rateFiatcoin() public view override returns (Fix) {
         uint256 rateInRAYs = IStaticAToken(_erc20).rate(); // {ray fiatTok/tok}
@@ -69,5 +64,10 @@ contract ATokenCollateralP0 is CollateralP0 {
 
     function isFiatcoin() public pure override returns (bool) {
         return false;
+    }
+
+    /// @return Whether `_erc20` is an AToken (StaticAToken, actually)
+    function isAToken() public pure override returns (bool) {
+        return true;
     }
 }

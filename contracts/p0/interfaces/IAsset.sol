@@ -26,9 +26,6 @@ interface IAsset {
  * @notice A subtype of Asset that consists of the tokens eligible to back the RToken.
  */
 interface ICollateral is IAsset {
-    /// Claims any rewards such as COMP/AAVE for the asset
-    function claimRewards() external;
-
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
     function rateFiatcoin() external returns (Fix);
 
@@ -46,4 +43,7 @@ interface ICollateral is IAsset {
 
     /// @return Whether the asset is (directly) a fiatcoin
     function isFiatcoin() external view returns (bool);
+
+    /// @return Whether the asset is an AToken
+    function isAToken() external view returns (bool);
 }

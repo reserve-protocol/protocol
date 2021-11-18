@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "contracts/proto0/assets/collateral/ATokenCollateralP0.sol";
 import "contracts/p0/libraries/Auction.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IAssetManager.sol";
@@ -100,7 +101,9 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         main.comptroller().claimComp(address(this));
         for (uint256 i = 0; i < vault.size(); i++) {
             // Only aTokens need to be claimed at the collateral level
-            vault.collateralAt(i).claimRewards();
+            if (vault.collateralAt(i).isAToken()) {
+                IStaticAToken(address(vault.collateralAt(i).erc20())).claimRewardsToSelf(true);
+            }
         }
         // Expand the RToken supply to self
         uint256 possible = fromBUs(vault.basketUnits(address(this)));

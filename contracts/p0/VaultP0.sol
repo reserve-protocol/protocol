@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "contracts/proto0/assets/collateral/ATokenCollateralP0.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
@@ -113,11 +114,13 @@ contract VaultP0 is IVault, Ownable {
     function claimAndSweepRewardsToManager() external override {
         require(address(main) != address(0), "main not set");
 
-        // Claim
+        // Claim (covers all cTokens)
         main.comptroller().claimComp(address(this));
         for (uint256 i = 0; i < _basket.size; i++) {
             // Only aTokens need to be claimed at the asset level
-            _basket.collateral[i].claimRewards();
+            if (_basket.collateral[i].isAToken()) {
+                IStaticAToken(address(_basket.collateral[i].erc20())).claimRewardsToSelf(true);
+            }
         }
 
         // Sweep

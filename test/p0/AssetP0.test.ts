@@ -185,10 +185,6 @@ describe('AssetsP0 contracts', () => {
       expect(await aTokenAsset.callStatic.rateUSD()).to.equal(fp('1'))
       expect(await aTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
       expect(await aTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1'))
-      // Check Claim rewards derives the call to the static token
-      expect(await aToken.rewardsClaimed()).to.equal(false)
-      await aTokenAsset.claimRewards()
-      expect(await aToken.rewardsClaimed()).to.equal(true)
 
       // CToken
       expect(await cTokenAsset.erc20()).to.equal(cToken.address)
