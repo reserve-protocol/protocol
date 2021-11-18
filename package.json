@@ -6,14 +6,15 @@
         "test": "tests"
     },
     "scripts": {
-        "compile": "npx hardhat compile",
+        "compile": "TS_NODE_TRANSPILE_ONLY=1 npx hardhat typechain && npx hardhat compile",
         "coverage": "npx hardhat coverage --temp artifacts",
-        "deploy:proto0": "npx hardhat run scripts/proto0/deploy_all.ts --network localhost --show-stack-traces",
+        "deploy:p0": "npx hardhat run scripts/proto0/deploy_all.ts --network localhost --show-stack-traces",
         "deploy:localhost": "npx hardhat run scripts/deploy_all.ts --network localhost",
         "deploy:ropsten": "npx hardhat run scripts/deploy_all.ts --network ropsten",
         "devchain": "npx hardhat node",
         "test": "npx hardhat test",
-        "test:proto0": "npx hardhat test test/proto0/*.test.ts",
+        "test:generic": "npx hardhat test test/generic/*.test.ts",
+        "test:p0": "npx hardhat test test/p0/*.test.ts",
         "test:parallel": "mocha --require hardhat/register --recursive --parallel --exit",
         "test:recompile": "npx hardhat compile --force && mocha --require hardhat/register --recursive --exit",
         "lint:sol": "npx solhint 'contracts/**/*.sol'",

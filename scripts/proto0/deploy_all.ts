@@ -17,10 +17,9 @@ async function main() {
   await hre.run('Proto0-deployAll')
 }
 
-
 main()
-.then(() => process.exit(0))
-.catch((error) => {
-  console.error(error)
-  process.exit(1)
-})
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })

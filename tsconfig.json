@@ -5,9 +5,12 @@
         "strict": true,
         "esModuleInterop": true,
         "outDir": "dist",
+        "paths": {
+            "@typechain/*": ["./typechain/*"]
+        },
         "typeRoots": ["./typechain", "./node_modules/@types"],
         "types": ["@nomiclabs/hardhat-ethers", "@nomiclabs/hardhat-waffle"]
     },
-    "include": ["./test", "./tasks/**/*", "./common", "./scripts"],
+    "include": ["./test", "./tasks/**/*", "./common", "./scripts", "./typechain/**/*"],
     "files": ["./hardhat.config.ts"]
 }
