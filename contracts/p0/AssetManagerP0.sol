@@ -205,8 +205,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             return amount;
         }
 
-        // (_basketDilutionFactor() / _meltingFactor()) * amount
-        return toFix(amount).div(baseFactor()).toUint();
+        // (_meltingFactor() / _basketDilutionFactor()) * BUs
+        return baseFactor().mulu(amount).toUint();
     }
 
     /// {qBU} -> {qRTok}
@@ -216,8 +216,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             return BUs;
         }
 
-        // (_meltingFactor() / _basketDilutionFactor()) * BUs
-        return baseFactor().mulu(BUs).toUint();
+        // (_basketDilutionFactor() / _meltingFactor()) * amount
+        return toFix(BUs).div(baseFactor()).toUint();
     }
 
     // ==== Internal ====
