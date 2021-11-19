@@ -18,46 +18,49 @@ interface IStRSRExtension is IContextMixin, IStRSR {}
 interface IRTokenExtension is IContextMixin, IRToken {}
 
 /// Enables generic testing harness to set _msgSender() for Main.
-contract MainExtension is IMainExtension, ContextMixin, MainP0 {
+contract MainExtension is ContextMixin, MainP0, IMainExtension {
     constructor(
+        address admin,
         Oracle.Info memory oracle_,
         Config memory config_,
         IERC20 rsr_
-    ) MainP0(oracle_, config_, rsr_) {}
+    ) ContextMixin(admin) MainP0(oracle_, config_, rsr_) {}
 
-    function _msgSender() internal view override(Context, ContextMixin) returns (address) {
-        return super._msgSender();
+    function _msgSender() internal view override returns (address) {
+        return _mixinMsgSender();
     }
 }
 
 /// Enables generic testing harness to set _msgSender() for StRSR.
-contract StRSRExtension is IStRSRExtension, ContextMixin, StRSRP0 {
+contract StRSRExtension is ContextMixin, StRSRP0, IStRSRExtension {
     constructor(
+        address admin,
         IMain main_,
         string memory name_,
         string memory symbol_
-    ) StRSRP0(main_, name_, symbol_) {}
+    ) ContextMixin(admin) StRSRP0(main_, name_, symbol_) {}
 
-    function _msgSender() internal view override(Context, ContextMixin) returns (address) {
-        return super._msgSender();
+    function _msgSender() internal view override returns (address) {
+        return _mixinMsgSender();
     }
 }
 
 /// Enables generic testing harness to set _msgSender() for RToken.
-contract RTokenExtension is IRTokenExtension, ContextMixin, RTokenP0 {
+contract RTokenExtension is ContextMixin, RTokenP0, IRTokenExtension {
     constructor(
+        address admin,
         IMain main_,
         string memory name_,
         string memory symbol_
-    ) RTokenP0(main_, name_, symbol_) {}
+    ) ContextMixin(admin) RTokenP0(main_, name_, symbol_) {}
 
     function adminMint(address recipient, uint256 amount) external returns (bool) {
         _mint(recipient, amount);
         return true;
     }
 
-    function _msgSender() internal view override(Context, ContextMixin) returns (address) {
-        return super._msgSender();
+    function _msgSender() internal view override returns (address) {
+        return _mixinMsgSender();
     }
 }
 
@@ -65,13 +68,20 @@ contract RTokenExtension is IRTokenExtension, ContextMixin, RTokenP0 {
 
 /// Inject wrapper contracts into Deployer
 contract DeployerExtension is DeployerP0 {
+
+    address internal _deployer;
+
+    constructor() {
+        _deployer = msg.sender;
+    }
+
     /// @dev Used for testing override to manipulate msg.sender
     function _deployMain(
         Oracle.Info memory oracle,
         Config memory config,
         IERC20 rsr
     ) internal override returns (IMain) {
-        return new MainExtension(oracle, config, rsr);
+        return new MainExtension(_deployer, oracle, config, rsr);
     }
 
     /// @dev Used for testing override to manipulate msg.sender
@@ -80,7 +90,7 @@ contract DeployerExtension is DeployerP0 {
         string memory name,
         string memory symbol
     ) internal override returns (IRToken) {
-        return new RTokenExtension(main, name, symbol);
+        return new RTokenExtension(_deployer, main, name, symbol);
     }
 
     /// @dev Used for testing override to manipulate msg.sender
@@ -89,6 +99,6 @@ contract DeployerExtension is DeployerP0 {
         string memory name,
         string memory symbol
     ) internal override returns (IStRSR) {
-        return new StRSRExtension(main, name, symbol);
+        return new StRSRExtension(_deployer, main, name, symbol);
     }
 }

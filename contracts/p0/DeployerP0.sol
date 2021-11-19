@@ -98,7 +98,7 @@ contract DeployerP0 is IDeployer {
         return (address(main));
     }
 
-    /// @dev Used for testing override to manipulate msg.sender
+    /// @dev Used for testing to inject msg.sender
     function _deployMain(
         Oracle.Info memory oracle,
         Config memory config,
@@ -107,7 +107,7 @@ contract DeployerP0 is IDeployer {
         return new MainP0(oracle, config, rsr);
     }
 
-    /// @dev Used for testing override to manipulate msg.sender
+    /// @dev Used for testing to inject msg.sender
     function _deployRToken(
         IMain main,
         string memory name,
@@ -116,7 +116,7 @@ contract DeployerP0 is IDeployer {
         return new RTokenP0(main, name, symbol);
     }
 
-    /// @dev Used for testing override to manipulate msg.sender
+    /// @dev Used for testing to inject msg.sender
     function _deployStRSR(
         IMain main,
         string memory name,

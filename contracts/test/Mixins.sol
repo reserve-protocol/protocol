@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "hardhat/console.sol";
+
 interface IContextMixin {
     function connect(address account) external;
 }
@@ -20,19 +22,22 @@ interface IContextMixin {
  */
 abstract contract ContextMixin is IContextMixin {
     address internal _msgDotSender;
-    address internal _deployer;
+    address internal _admin;
 
-    constructor() {
-        _deployer = msg.sender;
+    constructor(address account) {
+        _admin = account;
     }
 
     function connect(address account) external override {
-        require(msg.sender == _deployer, "deployer only");
+        require(msg.sender == _admin, "admin only, ie the Adapter");
+        console.log("connected as %s", account);
         _msgDotSender = account;
     }
 
-    function _msgSender() internal view virtual returns (address) {
-        if (msg.sender == _deployer) {
+    function _mixinMsgSender() internal view virtual returns (address) {
+        console.log("_mixinMsgSender()");
+        if (msg.sender == _admin) {
+            console.log("caller is deployer");
             assert(_msgDotSender != address(0)); // this indicates a bug in the way the contract is used
             return _msgDotSender;
         }

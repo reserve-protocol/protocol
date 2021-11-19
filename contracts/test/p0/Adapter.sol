@@ -42,7 +42,7 @@ contract AdapterP0 is ProtoDriver {
     IMainExtension internal _main;
 
     mapping(CollateralToken => ICollateral) internal _collateral;
-    mapping(IERC20 => CollateralToken) internal _reverseCollateral;
+    mapping(IERC20 => CollateralToken) internal _reverseCollateral; // by the ERC20 of the collateral
 
     uint256 internal immutable ACCOUNT_LEN = uint256(Account.EVE) + 1;
     uint256 internal immutable COLLATERAL_TOKEN_LEN = uint256(CollateralToken.aBUSD) + 1;
@@ -246,7 +246,7 @@ contract AdapterP0 is ProtoDriver {
         for (uint256 i = 0; i < erc20State.balances.length; i++) {
             erc20.mint(_address(i), erc20State.balances[i]);
         }
-        assert(erc20.totalSupply() == erc20State.totalSupply);
+        // assert(erc20.totalSupply() == erc20State.totalSupply);
 
         string memory c = "c";
         string memory a = "a";

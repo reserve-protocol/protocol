@@ -99,17 +99,72 @@ describe('Generic unit tests', () => {
       const comp = { name: 'Compound Token', symbol: 'COMP', balances: [], totalSupply: 0 }
       const aave = { name: 'Aave Token', symbol: 'AAVE', balances: [], totalSupply: 0 }
       const collateral = [
-        { name: 'DAI Token', symbol: CollateralToken[CollateralToken.DAI], balances: [], totalSupply: 0 },
-        { name: 'USDC Token', symbol: CollateralToken[CollateralToken.USDC], balances: [], totalSupply: 0 },
-        { name: 'USDT Token', symbol: CollateralToken[CollateralToken.USDT], balances: [], totalSupply: 0 },
-        { name: 'BUSD Token', symbol: CollateralToken[CollateralToken.BUSD], balances: [], totalSupply: 0 },
-        { name: 'cDAI Token', symbol: CollateralToken[CollateralToken.cDAI], balances: [], totalSupply: 0 },
-        { name: 'cUSDC Token', symbol: CollateralToken[CollateralToken.cUSDC], balances: [], totalSupply: 0 },
-        { name: 'cUSDT Token', symbol: CollateralToken[CollateralToken.cUSDT], balances: [], totalSupply: 0 },
-        { name: 'aDAI Token', symbol: CollateralToken[CollateralToken.aDAI], balances: [], totalSupply: 0 },
-        { name: 'aUSDC Token', symbol: CollateralToken[CollateralToken.aUSDC], balances: [], totalSupply: 0 },
-        { name: 'aUSDT Token', symbol: CollateralToken[CollateralToken.aUSDT], balances: [], totalSupply: 0 },
-        { name: 'aBUSD Token', symbol: CollateralToken[CollateralToken.aBUSD], balances: [], totalSupply: 0 },
+        {
+          name: 'DAI Token',
+          symbol: CollateralToken[CollateralToken.DAI],
+          balances: [bn('1e36'), 0, 0, 0, 0],
+          totalSupply: 0,
+        },
+        {
+          name: 'USDC Token',
+          symbol: CollateralToken[CollateralToken.USDC],
+          balances: [0, 0, 0, 0, 0],
+          totalSupply: 0,
+        },
+        {
+          name: 'USDT Token',
+          symbol: CollateralToken[CollateralToken.USDT],
+          balances: [0, 0, 0, 0, 0],
+          totalSupply: 0,
+        },
+        {
+          name: 'BUSD Token',
+          symbol: CollateralToken[CollateralToken.BUSD],
+          balances: [0, 0, 0, 0, 0],
+          totalSupply: 0,
+        },
+        {
+          name: 'cDAI Token',
+          symbol: CollateralToken[CollateralToken.cDAI],
+          balances: [bn('1e36'), 0, 0, 0, 0],
+          totalSupply: 0,
+        },
+        {
+          name: 'cUSDC Token',
+          symbol: CollateralToken[CollateralToken.cUSDC],
+          balances: [0, 0, 0, 0, 0],
+          totalSupply: 0,
+        },
+        {
+          name: 'cUSDT Token',
+          symbol: CollateralToken[CollateralToken.cUSDT],
+          balances: [0, 0, 0, 0, 0],
+          totalSupply: 0,
+        },
+        {
+          name: 'aDAI Token',
+          symbol: CollateralToken[CollateralToken.aDAI],
+          balances: [0, 0, 0, 0, 0],
+          totalSupply: 0,
+        },
+        {
+          name: 'aUSDC Token',
+          symbol: CollateralToken[CollateralToken.aUSDC],
+          balances: [0, 0, 0, 0, 0],
+          totalSupply: 0,
+        },
+        {
+          name: 'aUSDT Token',
+          symbol: CollateralToken[CollateralToken.aUSDT],
+          balances: [0, 0, 0, 0, 0],
+          totalSupply: 0,
+        },
+        {
+          name: 'aBUSD Token',
+          symbol: CollateralToken[CollateralToken.aBUSD],
+          balances: [0, 0, 0, 0, 0],
+          totalSupply: 0,
+        },
       ]
 
       const state = {
@@ -133,11 +188,14 @@ describe('Generic unit tests', () => {
 
     it('Should setup correctly', async () => {
       const state = await p0.callStatic.state()
-      console.log(state)
+      console.log(JSON.stringify(state))
     })
-    // it('Should issue', async () => {
-    // expect(await p0.init())
-    // expect(await rTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
-    // })
+    it('Should issue', async () => {
+      await p0.CMD_issue(Account.ALICE, bn('1e18'))
+      const state = await p0.callStatic.state()
+      expect(state.rToken.balances[Account.ALICE]).to.equal(bn('1e18'))
+
+      // expect(await rTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
+    })
   })
 })
