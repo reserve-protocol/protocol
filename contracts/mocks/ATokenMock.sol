@@ -28,7 +28,10 @@ contract StaticATokenMock is ERC20Mock {
 
     uint256 internal _exchangeRate;
 
-    bool public rewardsClaimed; // Mock flag to check if rewards claim was called
+    // Mock mappings to set and claim AAVE Tokens
+    mapping(address => uint256) public aaveBalances;
+
+    ERC20Mock public aaveToken;
 
     constructor(
         string memory name,
@@ -39,7 +42,6 @@ contract StaticATokenMock is ERC20Mock {
 
         // In Aave all rates are in {RAYs/tok}, and they are independent of the underlying's decimals
         _exchangeRate = 1e27;
-        rewardsClaimed = false;
     }
 
     function decimals() public pure override returns (uint8) {
@@ -54,13 +56,25 @@ contract StaticATokenMock is ERC20Mock {
         _exchangeRate = rate_;
     }
 
+    function setAaveToken(address aaveToken_) external {
+        aaveToken = ERC20Mock(aaveToken_);
+    }
+
     //solhint-disable-next-line func-name-mixedcase
     function ATOKEN() external view returns (ATokenMock) {
         return aToken;
     }
 
+    function setRewards(address recipient, uint256 amount) external {
+        aaveBalances[recipient] = amount;
+    }
+
     function claimRewardsToSelf(bool forceUpdate) external {
-        // Just set flag internally in this mock
-        rewardsClaimed = forceUpdate;
+        // Mint amount and update internal balances
+        if (address(aaveToken) != address(0)) {
+            uint256 amount = aaveBalances[msg.sender];
+            aaveBalances[msg.sender] = 0;
+            aaveToken.mint(msg.sender, amount);
+        }
     }
 }

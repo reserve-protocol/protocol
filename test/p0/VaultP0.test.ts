@@ -13,6 +13,8 @@ import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
 import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
 import { VaultP0 } from '../../typechain/VaultP0'
 import { MainMockP0 } from '../../typechain/MainMockP0'
+import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
+import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
 
 interface IAssetInfo {
   erc20: string
@@ -37,6 +39,7 @@ describe('VaultP0 contract', () => {
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
   let weth: ERC20Mock
+  let compoundMock: ComptrollerMockP0
 
   // Tokens/Assets
   let USDCMockFactory: ContractFactory
@@ -95,6 +98,9 @@ describe('VaultP0 contract', () => {
     main = <MainMockP0>(
       await MainMockFactory.deploy(rsr.address, compToken.address, aaveToken.address, weth.address, bn('0'), fp('0'))
     )
+    // Get Comptroller fomr Main
+    compoundMock = <ComptrollerMockP0>await ethers.getContractAt('ComptrollerMockP0', await main.comptroller())
+    await compoundMock.setCompToken(compToken.address)
 
     // Deploy Tokens
     ERC20 = await ethers.getContractFactory('ERC20Mock')
@@ -129,6 +135,7 @@ describe('VaultP0 contract', () => {
     // ATokens and CTokens
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
     aTkn = <StaticATokenMock>await ATokenMockFactory.deploy('AToken', 'ATKN0', token0.address)
+    await aTkn.setAaveToken(aaveToken.address)
     ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
     assetAToken = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aTkn.address, aTkn.decimals())
 
@@ -458,19 +465,28 @@ describe('VaultP0 contract', () => {
 
   describe('Rewards', () => {
     it('Should claim and sweep rewards to Manager', async function () {
-      // Mint COMP and AAVE tokens as reward
+      // Set vault with AToken and CToken
+      const qtyHalfCToken: BigNumber = bn('1e8').div(2)
+
+      let newVault: VaultP0 = <VaultP0>(
+        await VaultFactory.deploy([assetAToken.address, assetCToken.address], [qtyHalf, qtyHalfCToken], [])
+      )
+      // Setup Main
+      await newVault.connect(owner).setMain(main.address)
+
+      // Set COMP and AAVE tokens as reward
       const rewardAmountCOMP: BigNumber = bn('100e18')
       const rewardAmountAAVE: BigNumber = bn('20e18')
-      await compToken.connect(owner).mint(vault.address, rewardAmountCOMP)
-      await aaveToken.connect(owner).mint(vault.address, rewardAmountAAVE)
+      await compoundMock.setRewards(newVault.address, rewardAmountCOMP)
+      await aTkn.setRewards(newVault.address, rewardAmountAAVE)
 
       // Check no funds in the asset manager
       expect(await compToken.balanceOf(await main.manager())).to.equal(0)
       expect(await aaveToken.balanceOf(await main.manager())).to.equal(0)
 
       // Claim and Sweep rewards
-      await expect(vault.claimAndSweepRewardsToManager())
-        .to.emit(vault, 'RewardsClaimed')
+      await expect(newVault.claimAndSweepRewardsToManager())
+        .to.emit(newVault, 'RewardsClaimed')
         .withArgs(rewardAmountCOMP, rewardAmountAAVE)
 
       // Check rewards were transfered to Asset Manager
@@ -478,8 +494,8 @@ describe('VaultP0 contract', () => {
       expect(await aaveToken.balanceOf(await main.manager())).to.equal(rewardAmountAAVE)
 
       // No funds in vault anymore
-      expect(await compToken.balanceOf(vault.address)).to.equal(0)
-      expect(await aaveToken.balanceOf(vault.address)).to.equal(0)
+      expect(await compToken.balanceOf(newVault.address)).to.equal(0)
+      expect(await aaveToken.balanceOf(newVault.address)).to.equal(0)
     })
   })
 
