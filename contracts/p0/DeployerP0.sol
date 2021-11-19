@@ -81,7 +81,7 @@ contract DeployerP0 is IDeployer {
         {
             IStRSR stRSR = _deployStRSR(
                 main,
-                string(abi.encodePacked("Staked RSR - ", name)),
+                string(abi.encodePacked("Staked ", symbol, " RSR Token")),
                 string(abi.encodePacked("st", symbol, "RSR"))
             );
             main.setStRSR(stRSR);

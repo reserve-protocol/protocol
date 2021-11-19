@@ -3,8 +3,6 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/test/ProtoDriver.sol";
-import "contracts/test/ProtoState.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/libraries/test/strings.sol";
 import "contracts/mocks/ATokenMock.sol";
@@ -21,23 +19,38 @@ import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/mocks/AaveLendingPoolMockP0.sol";
+import "contracts/p0/mocks/AaveLendingAddrProviderMockP0.sol";
+import "contracts/p0/mocks/AaveOracleMockP0.sol";
+import "contracts/p0/mocks/CompoundOracleMockP0.sol";
+import "contracts/p0/mocks/ComptrollerMockP0.sol";
 import "contracts/p0/mocks/RTokenMockP0.sol";
 import "contracts/p0/VaultP0.sol";
+import "contracts/test/Lib.sol";
+import "contracts/test/ProtosDriver.sol";
+import "contracts/test/ProtoState.sol";
 import "./Extensions.sol";
 
 import "hardhat/console.sol";
 
 interface IMockERC20 is IERC20Metadata {
     function mint(address recipient, uint256 amount) external;
-    function setAllowance(address owner, address spender, uint256 amount) external;
+
+    function setAllowance(
+        address owner,
+        address spender,
+        uint256 amount
+    ) external;
 }
 
-contract AdapterP0 is ProtoDriver {
+contract AdapterP0 is ProtoAdapter {
+    using Lib for ProtoState;
     using strings for string;
     using strings for strings.slice;
 
-    address internal _owner;
+    string constant ETH = "ETH";
 
+    // Deployed system contracts
     IDeployer internal _deployer;
     IMockERC20 internal _rsr;
     IMockERC20 internal _comp;
@@ -46,22 +59,25 @@ contract AdapterP0 is ProtoDriver {
     IStRSRExtension internal _stRSR;
     IRTokenExtension internal _rToken;
 
+    // Oracles
+    CompoundOracleMockP0 internal _compoundOracle;
+    AaveOracleMockP0 internal _aaveOracle;
+
+    // Collateral
     mapping(CollateralToken => ICollateral) internal _collateral;
     mapping(IERC20 => CollateralToken) internal _reverseCollateral; // by the ERC20 of the collateral
 
-    // Keep these up to date!
+    // Enum lengths - Keep these up to date!
     uint256 internal immutable ACCOUNT_LEN = uint256(Account.MAIN) + 1;
     uint256 internal immutable COLLATERAL_TOKEN_LEN = uint256(CollateralToken.aBUSD) + 1;
 
     constructor() {
-        _owner = msg.sender;
         _deployer = new DeployerExtension();
     }
 
     function init(ProtoState memory s) external override {
-        ICollateral[] memory collateral = new ICollateral[](COLLATERAL_TOKEN_LEN);
-
         // Deploy collateral assets
+        ICollateral[] memory collateral = new ICollateral[](COLLATERAL_TOKEN_LEN);
         {
             ERC20Mock dai = new ERC20Mock(s.collateral[0].name, s.collateral[0].symbol);
             USDCMock usdc = new USDCMock(s.collateral[1].name, s.collateral[1].symbol);
@@ -75,17 +91,17 @@ contract AdapterP0 is ProtoDriver {
             ATokenMock aUSDT = new ATokenMock(s.collateral[9].name, s.collateral[9].symbol, address(usdt));
             ATokenMock aBUSD = new ATokenMock(s.collateral[10].name, s.collateral[10].symbol, address(busd));
 
-            collateral[0] = _mockCollateral(IMockERC20(address(dai)), CollateralToken.DAI);
-            collateral[1] = _mockCollateral(IMockERC20(address(usdc)), CollateralToken.USDC);
-            collateral[2] = _mockCollateral(IMockERC20(address(usdt)), CollateralToken.USDT);
-            collateral[3] = _mockCollateral(IMockERC20(address(busd)), CollateralToken.BUSD);
-            collateral[4] = _mockCollateral(IMockERC20(address(cDAI)), CollateralToken.cDAI);
-            collateral[5] = _mockCollateral(IMockERC20(address(cUSDC)), CollateralToken.cUSDC);
-            collateral[6] = _mockCollateral(IMockERC20(address(cUSDT)), CollateralToken.cUSDT);
-            collateral[7] = _mockCollateral(IMockERC20(address(aDAI)), CollateralToken.aDAI);
-            collateral[8] = _mockCollateral(IMockERC20(address(aUSDC)), CollateralToken.aUSDC);
-            collateral[9] = _mockCollateral(IMockERC20(address(aUSDT)), CollateralToken.aUSDT);
-            collateral[10] = _mockCollateral(IMockERC20(address(aBUSD)),  CollateralToken.aBUSD);
+            collateral[0] = _deployCollateral(IMockERC20(address(dai)), CollateralToken.DAI);
+            collateral[1] = _deployCollateral(IMockERC20(address(usdc)), CollateralToken.USDC);
+            collateral[2] = _deployCollateral(IMockERC20(address(usdt)), CollateralToken.USDT);
+            collateral[3] = _deployCollateral(IMockERC20(address(busd)), CollateralToken.BUSD);
+            collateral[4] = _deployCollateral(IMockERC20(address(cDAI)), CollateralToken.cDAI);
+            collateral[5] = _deployCollateral(IMockERC20(address(cUSDC)), CollateralToken.cUSDC);
+            collateral[6] = _deployCollateral(IMockERC20(address(cUSDT)), CollateralToken.cUSDT);
+            collateral[7] = _deployCollateral(IMockERC20(address(aDAI)), CollateralToken.aDAI);
+            collateral[8] = _deployCollateral(IMockERC20(address(aUSDC)), CollateralToken.aUSDC);
+            collateral[9] = _deployCollateral(IMockERC20(address(aUSDT)), CollateralToken.aUSDT);
+            collateral[10] = _deployCollateral(IMockERC20(address(aBUSD)), CollateralToken.aBUSD);
         }
 
         // Deploy vault for each basket
@@ -113,17 +129,31 @@ contract AdapterP0 is ProtoDriver {
             _comp = IMockERC20(address(new ERC20Mock(s.comp.name, s.comp.symbol)));
             _aave = IMockERC20(address(new ERC20Mock(s.aave.name, s.aave.symbol)));
 
-            IDeployer.ParamsAssets memory nonCollateral = IDeployer.ParamsAssets(new RSRAssetP0(address(_rsr)), new COMPAssetP0(address(_comp)), new AAVEAssetP0(address(_aave)));
+            IDeployer.ParamsAssets memory nonCollateral = IDeployer.ParamsAssets(
+                new RSRAssetP0(address(_rsr)),
+                new COMPAssetP0(address(_comp)),
+                new AAVEAssetP0(address(_aave))
+            );
+
+            _compoundOracle = new CompoundOracleMockP0();
+            _compoundOracle.setPrice(ETH, s.ethPrice.inUSD);
+            IComptroller comptroller = new ComptrollerMockP0(address(_compoundOracle));
+            _aaveOracle = new AaveOracleMockP0(address(new ERC20Mock("Wrapped ETH", "WETH")));
+            _aaveOracle.setPrice(_aaveOracle.WETH(), s.ethPrice.inETH);
+            IAaveLendingPool aaveLendingPool = new AaveLendingPoolMockP0(
+                address(new AaveLendingAddrProviderMockP0(address(_aaveOracle)))
+            );
+
             _main = IMainExtension(
                 _deployer.deploy(
                     s.rToken.name,
                     s.rToken.symbol,
-                    _owner,
+                    address(this),
                     vaults[0],
                     _rsr,
                     s.config,
-                    s.comptroller,
-                    s.aaveLendingPool,
+                    comptroller,
+                    aaveLendingPool,
                     nonCollateral,
                     collateral
                 )
@@ -132,53 +162,62 @@ contract AdapterP0 is ProtoDriver {
             _rToken = IRTokenExtension(address(_main.rToken()));
         }
 
-        // Populate token ledgers
+        for (uint256 i = 0; i < vaults.length; i++) {
+            vaults[i].setMain(_main);
+        }
+
+        // Populate token ledgers + oracle prices
         {
             for (uint256 i = 0; i < COLLATERAL_TOKEN_LEN; i++) {
-                _initLedger(IMockERC20(address(collateral[i].erc20())), s.collateral[i]);
-            }
-            for (uint256 i = 0; i < s.rsr.balances.length; i++) {
-                _rsr.mint(_address(i), s.rsr.balances[i]);
+                _initERC20(IMockERC20(address(collateral[i].erc20())), s.collateral[i]);
             }
             for (uint256 i = 0; i < s.stRSR.balances.length; i++) {
-                _rsr.mint(_address(i), s.stRSR.balances[i]); // Mint stRSR to RSR, then stake
-            }
-            for (uint256 i = 0; i < s.comp.balances.length; i++) {
-                _comp.mint(_address(i), s.comp.balances[i]);
-            }
-            for (uint256 i = 0; i < s.aave.balances.length; i++) {
-                _aave.mint(_address(i), s.aave.balances[i]);
-            }
-            for (uint256 i = 0; i < s.stRSR.balances.length; i++) {
-                _stRSR.connect(_address(i));
-                _stRSR.stake(s.stRSR.balances[i]);
+                // Mint stRSR to RSR initially, then stake
+                if (s.stRSR.balances[i] > 0) {
+                    _rsr.mint(_address(i), s.stRSR.balances[i]);
+                    _stRSR.connect(_address(i));
+                    _stRSR.stake(s.stRSR.balances[i]);
+                }
             }
             for (uint256 i = 0; i < s.rToken.balances.length; i++) {
-                _rToken.adminMint(_address(i), s.rToken.balances[i]);
+                if (s.rToken.balances[i] > 0) {
+                    _rToken.adminMint(_address(i), s.rToken.balances[i]);
+                }
             }
+
+            _aaveOracle.setPrice(address(_stRSR), s.stRSR.price.inETH);
+            _compoundOracle.setPrice(IERC20Metadata(address(_stRSR)).symbol(), s.stRSR.price.inUSD);
+            _aaveOracle.setPrice(address(_rToken), s.rToken.price.inETH);
+            _compoundOracle.setPrice(IERC20Metadata(address(_rToken)).symbol(), s.rToken.price.inUSD);
+
+            _initERC20(IMockERC20(address(_rsr)), s.rsr);
+            _initERC20(IMockERC20(address(_comp)), s.comp);
+            _initERC20(IMockERC20(address(_aave)), s.aave);
         }
     }
 
-    function state() external override returns (ProtoState memory s) {
+    function state() public override returns (ProtoState memory s) {
         s.config = _main.config();
-        s.comptroller = _main.comptroller();
-        s.aaveLendingPool = _main.aaveLendingPool();
-
         address[] memory backingTokens = _main.backingTokens();
         CollateralToken[] memory backingCollateral = new CollateralToken[](backingTokens.length);
         for (uint256 i = 0; i < backingTokens.length; i++) {
             backingCollateral[i] = _reverseCollateral[IERC20(backingTokens[i])];
         }
         s.rTokenRedemption = GenericBasket(backingCollateral, _main.quote(10**_main.rToken().decimals()));
-        s.rToken = _dumpERC20(address(_main.rToken()));
-        s.rsr = _dumpERC20(address(_main.rsr()));
-        s.stRSR = _dumpERC20(address(_main.stRSR()));
-        s.comp = _dumpERC20(address(_main.compAsset().erc20()));
-        s.aave = _dumpERC20(address(_main.aaveAsset().erc20()));
-        s.collateral = new ERC20State[](COLLATERAL_TOKEN_LEN);
+        s.rToken = _dumpERC20(_main.rToken());
+        s.rsr = _dumpERC20(_main.rsr());
+        s.stRSR = _dumpERC20(_main.stRSR());
+        s.comp = _dumpERC20(_main.compAsset().erc20());
+        s.aave = _dumpERC20(_main.aaveAsset().erc20());
+        s.collateral = new TokenState[](COLLATERAL_TOKEN_LEN);
         for (uint256 i = 0; i < COLLATERAL_TOKEN_LEN; i++) {
-            s.collateral[i] = _dumpERC20(address(_collateral[CollateralToken(i)].erc20()));
+            s.collateral[i] = _dumpERC20(_collateral[CollateralToken(i)].erc20());
         }
+        s.ethPrice = OraclePrice(_aaveOracle.getAssetPrice(_aaveOracle.WETH()), _compoundOracle.price(ETH));
+    }
+
+    function matches(ProtoState memory s) external override returns (bool) {
+        return s.eq(state());
     }
 
     // === COMMANDS ====
@@ -189,40 +228,43 @@ contract AdapterP0 is ProtoDriver {
     }
 
     function CMD_redeem(Account account, uint256 amount) external override {
-        // _main.redeem(amount);
+        _main.connect(_address(uint256(account)));
+        _main.redeem(amount);
     }
 
-    function CMD_checkForDefault(Account account) external override {
-        // _main.noticeDefault();
+    function CMD_checkForDefault() external override {
+        _main.noticeDefault();
     }
 
-    function CMD_poke(Account account) external override {
-        // _main.poke();
+    function CMD_poke() external override {
+        _main.poke();
     }
 
-    function CMD_stakeRSR(Account account, uint256 amount) external override {}
+    function CMD_stakeRSR(Account account, uint256 amount) external override {
+        _stRSR.connect(_address(uint256(account)));
+    }
 
-    function CMD_unstakeRSR(Account account, uint256 amount) external override {}
+    function CMD_unstakeRSR(Account account, uint256 amount) external override {
+        _stRSR.connect(_address(uint256(account)));
+    }
 
-    function CMD_setRTokenForMelting(Account account, uint256 amount) external override {}
+    function CMD_setRTokenForMelting(uint256 amount) external override {}
 
     function CMD_transferRToken(
         Account from,
         Account to,
         uint256 amount
-    ) external override {}
-
-    function CMD_transferRSR(
-        Account from,
-        Account to,
-        uint256 amount
-    ) external override {}
+    ) external override {
+        _rToken.connect(_address(uint256(from)));
+    }
 
     function CMD_transferStRSR(
         Account from,
         Account to,
         uint256 amount
-    ) external override {}
+    ) external override {
+        _stRSR.connect(_address(uint256(from)));
+    }
 
     // === INVARIANTS ====
 
@@ -232,28 +274,29 @@ contract AdapterP0 is ProtoDriver {
 
     // =================================================================
 
-    /// @param addr The address of an ERC20 token
-    function _dumpERC20(address addr) internal view returns (ERC20State memory erc20State) {
-        IERC20Metadata erc20 = IERC20Metadata(addr);
-        erc20State.name = erc20.name();
-        erc20State.name = erc20.symbol();
-        erc20State.balances = new uint256[](ACCOUNT_LEN);
-        erc20State.allowances = new uint256[][](ACCOUNT_LEN);
+    /// @param token The ERC20 token
+    function _dumpERC20(IERC20 token) internal view returns (TokenState memory tokenState) {
+        IERC20Metadata erc20 = IERC20Metadata(address(token));
+        tokenState.name = erc20.name();
+        tokenState.symbol = erc20.symbol();
+        tokenState.balances = new uint256[](ACCOUNT_LEN);
+        tokenState.allowances = new uint256[][](ACCOUNT_LEN);
         for (uint256 i = 0; i < ACCOUNT_LEN; i++) {
-            erc20State.balances[i] = erc20.balanceOf(_address(i));
-            erc20State.allowances[i] = new uint256[](ACCOUNT_LEN);
+            tokenState.balances[i] = erc20.balanceOf(_address(i));
+            tokenState.allowances[i] = new uint256[](ACCOUNT_LEN);
             for (uint256 j = 0; j < ACCOUNT_LEN; j++) {
-                erc20State.allowances[i][j] = erc20.allowance(_address(i), _address(j));
+                tokenState.allowances[i][j] = erc20.allowance(_address(i), _address(j));
             }
         }
-        erc20State.totalSupply = erc20.totalSupply();
+        tokenState.totalSupply = erc20.totalSupply();
+        tokenState.price = OraclePrice(
+            _aaveOracle.getAssetPrice(address(erc20)),
+            _compoundOracle.price(erc20.symbol())
+        );
     }
 
     /// Deploys Collateral contracts and sets up initial balances / allowances
-    function _mockCollateral(
-        IMockERC20 erc20,
-        CollateralToken ct
-    ) internal returns (ICollateral) {
+    function _deployCollateral(IMockERC20 erc20, CollateralToken ct) internal returns (ICollateral) {
         string memory c = "c";
         string memory a = "a";
         if (erc20.symbol().toSlice().startsWith(c.toSlice())) {
@@ -267,25 +310,28 @@ contract AdapterP0 is ProtoDriver {
         return _collateral[ct];
     }
 
-    function _initLedger(IMockERC20 erc20, ERC20State memory erc20State) internal {
-        assert(keccak256(bytes(erc20.symbol())) == keccak256(bytes(erc20State.symbol)));
+    function _initERC20(IMockERC20 erc20, TokenState memory tokenState) internal {
+        assert(keccak256(bytes(erc20.symbol())) == keccak256(bytes(tokenState.symbol)));
         // Balances
-        for (uint256 i = 0; i < erc20State.balances.length; i++) {
-            if (erc20.balanceOf(_address(i)) > 0) {
-                erc20.mint(_address(i), erc20State.balances[i]);
+        for (uint256 i = 0; i < tokenState.balances.length; i++) {
+            if (tokenState.balances[i] > 0) {
+                erc20.mint(_address(i), tokenState.balances[i]);
             }
         }
-        assert(erc20.totalSupply() == erc20State.totalSupply);
+        assert(erc20.totalSupply() == tokenState.totalSupply);
 
         // Allowances
-        for (uint256 i = 0; i < erc20State.allowances.length; i++) {
-            for (uint256 j = 0; j < erc20State.allowances[i].length; j++) {
-                if (erc20State.allowances[i][j] > 0) {
-                    console.log(_address(i), _address(j), erc20State.allowances[i][j]);
-                    erc20.setAllowance(_address(i), _address(j), erc20State.allowances[i][j]);
+        for (uint256 i = 0; i < tokenState.allowances.length; i++) {
+            for (uint256 j = 0; j < tokenState.allowances[i].length; j++) {
+                if (tokenState.allowances[i][j] > 0) {
+                    erc20.setAllowance(_address(i), _address(j), tokenState.allowances[i][j]);
                 }
             }
         }
+
+        // Oracle price information
+        _aaveOracle.setPrice(address(erc20), tokenState.price.inETH);
+        _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUSD);
     }
 
     /// Account index -> address

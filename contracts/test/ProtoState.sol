@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/p0/libraries/Oracle.sol";
 import "contracts/IMain.sol";
 import "./Lib.sol";
 
@@ -38,12 +37,20 @@ struct GenericBasket {
     uint256[] quantities; // {qTok/RToken}
 }
 
-struct ERC20State {
+/// Only one of these prices below
+struct OraclePrice {
+    uint256 inETH; // {qETH/tok}
+    uint256 inUSD; // {microUSD/tok}
+}
+
+struct TokenState {
     string name;
     string symbol;
     uint256[][] allowances; // allowances[Account owner][Account spender] = uint256
     uint256[] balances; // balances[Account] = uint256
     uint256 totalSupply;
+    //
+    OraclePrice price;
 }
 
 /// Top-level state struct
@@ -54,14 +61,16 @@ struct ProtoState {
     // 0th index is assumed to be the initial backing
 
     // ==== Setup + Equality ====
+
+    // System-internal state
     Config config;
-    IComptroller comptroller;
-    IAaveLendingPool aaveLendingPool;
     GenericBasket rTokenRedemption;
-    ERC20State rToken;
-    ERC20State rsr;
-    ERC20State stRSR;
-    ERC20State comp;
-    ERC20State aave;
-    ERC20State[] collateral; // same length and order as CollateralToken enum
+    TokenState rToken;
+    TokenState rsr;
+    TokenState stRSR;
+    // System-external state
+    TokenState comp;
+    TokenState aave;
+    TokenState[] collateral; // same length and order as CollateralToken enum
+    OraclePrice ethPrice; // use the USD sub-field
 }

@@ -111,7 +111,6 @@ contract MainP0 is IMain, Ownable {
         issuances.push(iss);
 
         for (uint256 i = 0; i < iss.vault.size(); i++) {
-            console.log("issue", iss.issuer, iss.deposits[i]);
             IERC20(iss.vault.collateralAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.deposits[i]);
             IERC20(iss.vault.collateralAt(i).erc20()).safeApprove(address(iss.vault), iss.deposits[i]);
         }
