@@ -7,16 +7,20 @@ import "./Lib.sol";
 
 /// Address-abstracted accounts
 enum Account {
-    ALICE,
+    ALICE, // 0
     BOB,
     CHARLIE,
     DAVE,
-    EVE
+    EVE,
+    //
+    RTOKEN,
+    STRSR,
+    MAIN // 7
 }
 
 /// All eligible collateral
 enum CollateralToken {
-    DAI,
+    DAI, // 0
     USDC,
     USDT,
     BUSD,
@@ -26,7 +30,7 @@ enum CollateralToken {
     aDAI,
     aUSDC,
     aUSDT,
-    aBUSD
+    aBUSD // 10
 }
 
 struct GenericBasket {
@@ -37,7 +41,8 @@ struct GenericBasket {
 struct ERC20State {
     string name;
     string symbol;
-    uint256[] balances; // Account (as uint index) -> uint256
+    uint256[][] allowances; // allowances[Account owner][Account spender] = uint256
+    uint256[] balances; // balances[Account] = uint256
     uint256 totalSupply;
 }
 

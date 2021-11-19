@@ -1136,6 +1136,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/lodash@npm:^4.14.177":
+  version: 4.14.177
+  resolution: "@types/lodash@npm:4.14.177"
+  checksum: 00f9eb300ed5219cfbabb3448d4a71744895edad60dcfda9f028c0808a50eb6ad1ca9f673b56a85f85668a4ea54b9870643625468a747039c435643e52253a75
+  languageName: node
+  linkType: hard
+
 "@types/lru-cache@npm:^5.1.0":
   version: 5.1.1
   resolution: "@types/lru-cache@npm:5.1.1"
@@ -10242,6 +10249,7 @@ fsevents@~2.3.2:
     "@typechain/ethers-v5": ^7.0.1
     "@typechain/hardhat": ^2.3.0
     "@types/chai": ^4.2.21
+    "@types/lodash": ^4.14.177
     "@types/mocha": ^9.0.0
     "@uniswap/v3-core": 1.0.0
     "@uniswap/v3-periphery": ^1.1.1
@@ -10253,6 +10261,7 @@ fsevents@~2.3.2:
     hardhat: ^2.5.0
     hardhat-gas-reporter: ^1.0.4
     husky: ^7.0.2
+    lodash: ^4.17.21
     mocha: ^9.0.2
     prettier: 2.3.2
     prettier-plugin-solidity: 1.0.0-beta.13

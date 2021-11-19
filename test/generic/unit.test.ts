@@ -1,6 +1,7 @@
+import * as _ from 'lodash'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { ContractFactory } from 'ethers'
+import { ContractFactory, BigNumber } from 'ethers'
 import { getLatestBlockTimestamp } from '../utils/time'
 import { bn, fp } from '../../common/numbers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -13,7 +14,7 @@ import { ProtoDriver } from '../../typechain/ProtoDriver'
 import { AdapterP0 } from '../../typechain/AdapterP0'
 import { IManagerConfig } from '../p0/utils/fixtures'
 
-/// @dev Must match `types.CollateralToken`
+// Must match `ProtoState.CollateralToken`
 enum CollateralToken {
   DAI,
   USDC,
@@ -28,13 +29,32 @@ enum CollateralToken {
   aBUSD,
 }
 
-/// @dev Must match `types.Account`
+// Must match `ProtoState.Account`
 enum Account {
   ALICE,
   BOB,
   CHARLIE,
   DAVE,
   EVE,
+  //
+  RTOKEN,
+  STRSR,
+  MAIN,
+}
+
+// Inserts all allowance triples into a 2d array using accounts to determine indices
+const allowance2D = (...allowance: Array<[Account, Account, BigNumber]>) => {
+  const toReturn: BigNumber[][] = [] // 2d
+  for (let i = 0; i < Account.MAIN + 1; i++) {
+    toReturn[i] = []
+    for (let j = 0; j < Account.MAIN + 1; j++) {
+      toReturn[i][j] = bn(0)
+    }
+  }
+  for (let i = 0; i < allowance.length; i++) {
+    toReturn[allowance[i][0]][allowance[i][1]] = allowance[i][2]
+  }
+  return toReturn
 }
 
 describe('Generic unit tests', () => {
@@ -88,86 +108,111 @@ describe('Generic unit tests', () => {
 
   describe('Setup', () => {
     let p0: ProtoDriver
+    let initialState: any
 
     beforeEach(async () => {
-      const b1 = { tokens: [CollateralToken.cDAI, CollateralToken.DAI], quantities: [bn('5e7'), bn('5e17')] }
-      const b2 = { tokens: [CollateralToken.DAI], quantities: [bn('1e18')] }
-      const baskets = [b1, b2]
-      const rToken = { name: 'USD+ RToken', symbol: 'USD+', balances: [], totalSupply: 0 }
-      const rsr = { name: 'Reserve Rights Token', symbol: 'RSR', balances: [], totalSupply: 0 }
-      const stRSR = { name: 'Staked RSR', symbol: 'stRSR', balances: [], totalSupply: 0 }
-      const comp = { name: 'Compound Token', symbol: 'COMP', balances: [], totalSupply: 0 }
-      const aave = { name: 'Aave Token', symbol: 'AAVE', balances: [], totalSupply: 0 }
+      const rToken = { name: 'USD+ RToken', symbol: 'USD+', balances: [], allowances: allowance2D(), totalSupply: 0 }
+      const rsr = {
+        name: 'Reserve Rights Token',
+        symbol: 'RSR',
+        balances: [],
+        allowances: allowance2D(),
+        totalSupply: 0,
+      }
+      const stRSR = { name: 'Staked RSR', symbol: 'stRSR', balances: [], allowances: allowance2D(), totalSupply: 0 }
+      const comp = {
+        name: 'Compound Token',
+        symbol: 'COMP',
+        balances: [],
+        allowances: allowance2D(),
+        totalSupply: 0,
+      }
+      const aave = { name: 'Aave Token', symbol: 'AAVE', balances: [], allowances: allowance2D(), totalSupply: 0 }
       const collateral = [
         {
           name: 'DAI Token',
           symbol: CollateralToken[CollateralToken.DAI],
-          balances: [bn('1e36'), 0, 0, 0, 0],
+          balances: [bn('1e36'), 0, 0, 0, 0, 0, 0, 0],
+          allowances: allowance2D([Account.ALICE, Account.MAIN, bn('1e36')], [Account.ALICE, Account.BOB, bn('1e36')]),
           totalSupply: 0,
         },
         {
           name: 'USDC Token',
           symbol: CollateralToken[CollateralToken.USDC],
-          balances: [0, 0, 0, 0, 0],
+          balances: [],
+          allowances: allowance2D(),
           totalSupply: 0,
         },
         {
           name: 'USDT Token',
           symbol: CollateralToken[CollateralToken.USDT],
-          balances: [0, 0, 0, 0, 0],
+          balances: [],
+          allowances: allowance2D(),
           totalSupply: 0,
         },
         {
           name: 'BUSD Token',
           symbol: CollateralToken[CollateralToken.BUSD],
-          balances: [0, 0, 0, 0, 0],
+          balances: [],
+          allowances: allowance2D(),
           totalSupply: 0,
         },
         {
           name: 'cDAI Token',
           symbol: CollateralToken[CollateralToken.cDAI],
-          balances: [bn('1e36'), 0, 0, 0, 0],
+          balances: [bn('1e36'), 0, 0, 0, 0, 0, 0, 0],
+          allowances: allowance2D([Account.ALICE, Account.MAIN, bn('1e36')]),
           totalSupply: 0,
         },
         {
           name: 'cUSDC Token',
           symbol: CollateralToken[CollateralToken.cUSDC],
-          balances: [0, 0, 0, 0, 0],
+          balances: [],
+          allowances: allowance2D(),
           totalSupply: 0,
         },
         {
           name: 'cUSDT Token',
           symbol: CollateralToken[CollateralToken.cUSDT],
-          balances: [0, 0, 0, 0, 0],
+          balances: [],
+          allowances: allowance2D(),
           totalSupply: 0,
         },
         {
           name: 'aDAI Token',
           symbol: CollateralToken[CollateralToken.aDAI],
-          balances: [0, 0, 0, 0, 0],
+          balances: [],
+          allowances: allowance2D(),
           totalSupply: 0,
         },
         {
           name: 'aUSDC Token',
           symbol: CollateralToken[CollateralToken.aUSDC],
-          balances: [0, 0, 0, 0, 0],
+          balances: [],
+          allowances: allowance2D(),
           totalSupply: 0,
         },
         {
           name: 'aUSDT Token',
           symbol: CollateralToken[CollateralToken.aUSDT],
-          balances: [0, 0, 0, 0, 0],
+          balances: [],
+          allowances: allowance2D(),
           totalSupply: 0,
         },
         {
           name: 'aBUSD Token',
           symbol: CollateralToken[CollateralToken.aBUSD],
-          balances: [0, 0, 0, 0, 0],
+          balances: [],
+          allowances: allowance2D(),
           totalSupply: 0,
         },
       ]
 
-      const state = {
+      const b1 = { tokens: [CollateralToken.cDAI, CollateralToken.DAI], quantities: [bn('5e7'), bn('5e17')] }
+      const b2 = { tokens: [CollateralToken.DAI], quantities: [bn('1e18')] }
+      const baskets = [b1, b2]
+
+      initialState = {
         config: config,
         comptroller: comptroller.address,
         aaveLendingPool: aaveLendingPool.address,
@@ -183,16 +228,19 @@ describe('Generic unit tests', () => {
       }
 
       p0 = <AdapterP0>await P0.deploy()
-      await p0.init(state)
+      console.log(initialState)
+      console.log(initialState.collateral[0].allowances)
+      await p0.init(initialState)
     })
 
-    it('Should setup correctly', async () => {
+    it('Should output initialState intially', async () => {
       const state = await p0.callStatic.state()
-      console.log(JSON.stringify(state))
+      expect(_.eq(state, initialState)).to.equal(true)
     })
     it('Should issue', async () => {
       await p0.CMD_issue(Account.ALICE, bn('1e18'))
       const state = await p0.callStatic.state()
+      console.log(allowance2D([Account.ALICE, Account.BOB, bn('1e36')]))
       expect(state.rToken.balances[Account.ALICE]).to.equal(bn('1e18'))
 
       // expect(await rTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))

@@ -30,14 +30,14 @@ abstract contract ContextMixin is IContextMixin {
 
     function connect(address account) external override {
         require(msg.sender == _admin, "admin only, ie the Adapter");
-        console.log("connected as %s", account);
+        // console.log("connected as %s", account);
         _msgDotSender = account;
     }
 
     function _mixinMsgSender() internal view virtual returns (address) {
-        console.log("_mixinMsgSender()");
+        // console.log("_mixinMsgSender()");
         if (msg.sender == _admin) {
-            console.log("caller is deployer");
+            // console.log("caller is deployer");
             assert(_msgDotSender != address(0)); // this indicates a bug in the way the contract is used
             return _msgDotSender;
         }

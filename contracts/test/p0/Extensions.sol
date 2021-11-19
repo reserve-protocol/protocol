@@ -15,7 +15,9 @@ interface IMainExtension is IContextMixin, IMain {}
 
 interface IStRSRExtension is IContextMixin, IStRSR {}
 
-interface IRTokenExtension is IContextMixin, IRToken {}
+interface IRTokenExtension is IContextMixin, IRToken {
+    function adminMint(address recipient, uint256 amount) external returns (bool);
+}
 
 /// Enables generic testing harness to set _msgSender() for Main.
 contract MainExtension is ContextMixin, MainP0, IMainExtension {
@@ -54,7 +56,7 @@ contract RTokenExtension is ContextMixin, RTokenP0, IRTokenExtension {
         string memory symbol_
     ) ContextMixin(admin) RTokenP0(main_, name_, symbol_) {}
 
-    function adminMint(address recipient, uint256 amount) external returns (bool) {
+    function adminMint(address recipient, uint256 amount) external override returns (bool) {
         _mint(recipient, amount);
         return true;
     }
@@ -68,7 +70,6 @@ contract RTokenExtension is ContextMixin, RTokenP0, IRTokenExtension {
 
 /// Inject wrapper contracts into Deployer
 contract DeployerExtension is DeployerP0 {
-
     address internal _deployer;
 
     constructor() {

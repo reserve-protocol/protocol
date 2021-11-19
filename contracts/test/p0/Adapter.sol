@@ -25,8 +25,11 @@ import "contracts/p0/mocks/RTokenMockP0.sol";
 import "contracts/p0/VaultP0.sol";
 import "./Extensions.sol";
 
-interface IMintERC20 is IERC20Metadata {
+import "hardhat/console.sol";
+
+interface IMockERC20 is IERC20Metadata {
     function mint(address recipient, uint256 amount) external;
+    function setAllowance(address owner, address spender, uint256 amount) external;
 }
 
 contract AdapterP0 is ProtoDriver {
@@ -36,15 +39,18 @@ contract AdapterP0 is ProtoDriver {
     address internal _owner;
 
     IDeployer internal _deployer;
-    IMintERC20 internal _rsr;
-    IMintERC20 internal _comp;
-    IMintERC20 internal _aave;
+    IMockERC20 internal _rsr;
+    IMockERC20 internal _comp;
+    IMockERC20 internal _aave;
     IMainExtension internal _main;
+    IStRSRExtension internal _stRSR;
+    IRTokenExtension internal _rToken;
 
     mapping(CollateralToken => ICollateral) internal _collateral;
     mapping(IERC20 => CollateralToken) internal _reverseCollateral; // by the ERC20 of the collateral
 
-    uint256 internal immutable ACCOUNT_LEN = uint256(Account.EVE) + 1;
+    // Keep these up to date!
+    uint256 internal immutable ACCOUNT_LEN = uint256(Account.MAIN) + 1;
     uint256 internal immutable COLLATERAL_TOKEN_LEN = uint256(CollateralToken.aBUSD) + 1;
 
     constructor() {
@@ -54,8 +60,9 @@ contract AdapterP0 is ProtoDriver {
 
     function init(ProtoState memory s) external override {
         ICollateral[] memory collateral = new ICollateral[](COLLATERAL_TOKEN_LEN);
+
+        // Deploy collateral assets
         {
-            // Deploy collateral assets
             ERC20Mock dai = new ERC20Mock(s.collateral[0].name, s.collateral[0].symbol);
             USDCMock usdc = new USDCMock(s.collateral[1].name, s.collateral[1].symbol);
             ERC20Mock usdt = new ERC20Mock(s.collateral[2].name, s.collateral[2].symbol);
@@ -68,48 +75,68 @@ contract AdapterP0 is ProtoDriver {
             ATokenMock aUSDT = new ATokenMock(s.collateral[9].name, s.collateral[9].symbol, address(usdt));
             ATokenMock aBUSD = new ATokenMock(s.collateral[10].name, s.collateral[10].symbol, address(busd));
 
-            collateral[0] = _initCollateral(IMintERC20(address(dai)), s.collateral[0], CollateralToken.DAI);
-            collateral[1] = _initCollateral(IMintERC20(address(usdc)), s.collateral[1], CollateralToken.USDC);
-            collateral[2] = _initCollateral(IMintERC20(address(usdt)), s.collateral[2], CollateralToken.USDT);
-            collateral[3] = _initCollateral(IMintERC20(address(busd)), s.collateral[3], CollateralToken.BUSD);
-            collateral[4] = _initCollateral(IMintERC20(address(cDAI)), s.collateral[4], CollateralToken.cDAI);
-            collateral[5] = _initCollateral(IMintERC20(address(cUSDC)), s.collateral[5], CollateralToken.cUSDC);
-            collateral[6] = _initCollateral(IMintERC20(address(cUSDT)), s.collateral[6], CollateralToken.cUSDT);
-            collateral[7] = _initCollateral(IMintERC20(address(aDAI)), s.collateral[7], CollateralToken.aDAI);
-            collateral[8] = _initCollateral(IMintERC20(address(aUSDC)), s.collateral[8], CollateralToken.aUSDC);
-            collateral[9] = _initCollateral(IMintERC20(address(aUSDT)), s.collateral[9], CollateralToken.aUSDT);
-            collateral[10] = _initCollateral(IMintERC20(address(aBUSD)), s.collateral[10], CollateralToken.aBUSD);
+            collateral[0] = _mockCollateral(IMockERC20(address(dai)), CollateralToken.DAI);
+            collateral[1] = _mockCollateral(IMockERC20(address(usdc)), CollateralToken.USDC);
+            collateral[2] = _mockCollateral(IMockERC20(address(usdt)), CollateralToken.USDT);
+            collateral[3] = _mockCollateral(IMockERC20(address(busd)), CollateralToken.BUSD);
+            collateral[4] = _mockCollateral(IMockERC20(address(cDAI)), CollateralToken.cDAI);
+            collateral[5] = _mockCollateral(IMockERC20(address(cUSDC)), CollateralToken.cUSDC);
+            collateral[6] = _mockCollateral(IMockERC20(address(cUSDT)), CollateralToken.cUSDT);
+            collateral[7] = _mockCollateral(IMockERC20(address(aDAI)), CollateralToken.aDAI);
+            collateral[8] = _mockCollateral(IMockERC20(address(aUSDC)), CollateralToken.aUSDC);
+            collateral[9] = _mockCollateral(IMockERC20(address(aUSDT)), CollateralToken.aUSDT);
+            collateral[10] = _mockCollateral(IMockERC20(address(aBUSD)),  CollateralToken.aBUSD);
         }
 
         // Deploy vault for each basket
         IVault[] memory vaults = new IVault[](s.baskets.length);
-        for (int256 i = int256(s.baskets.length) - 1; i >= 0; i--) {
-            uint256 iUint = uint256(i);
-            IVault[] memory prevVaults = new IVault[](s.baskets.length - 1 - iUint);
-            for (uint256 j = iUint + 1; j < s.baskets.length; j++) {
-                prevVaults[j - (iUint + 1)] = vaults[j];
-            }
+        {
+            for (int256 i = int256(s.baskets.length) - 1; i >= 0; i--) {
+                uint256 iUint = uint256(i);
+                IVault[] memory prevVaults = new IVault[](s.baskets.length - 1 - iUint);
+                for (uint256 j = iUint + 1; j < s.baskets.length; j++) {
+                    prevVaults[j - (iUint + 1)] = vaults[j];
+                }
 
-            ICollateral[] memory backing = new ICollateral[](s.baskets[iUint].tokens.length);
-            for (uint256 j = 0; j < s.baskets[iUint].tokens.length; j++) {
-                backing[j] = _collateral[s.baskets[iUint].tokens[j]];
-            }
+                ICollateral[] memory backing = new ICollateral[](s.baskets[iUint].tokens.length);
+                for (uint256 j = 0; j < s.baskets[iUint].tokens.length; j++) {
+                    backing[j] = _collateral[s.baskets[iUint].tokens[j]];
+                }
 
-            vaults[iUint] = new VaultP0(backing, s.baskets[iUint].quantities, prevVaults);
+                vaults[iUint] = new VaultP0(backing, s.baskets[iUint].quantities, prevVaults);
+            }
         }
 
-        // Deploy non-collateral assets
-        IDeployer.ParamsAssets memory nonCollateral;
+        // Deploy rest of system
         {
-            _rsr = IMintERC20(address(new ERC20Mock(s.rsr.name, s.rsr.symbol)));
-            _comp = IMintERC20(address(new ERC20Mock(s.comp.name, s.comp.symbol)));
-            _aave = IMintERC20(address(new ERC20Mock(s.aave.name, s.aave.symbol)));
-            RSRAssetP0 rsrAsset = new RSRAssetP0(address(_rsr));
-            COMPAssetP0 compAsset = new COMPAssetP0(address(_comp));
-            AAVEAssetP0 aaveAsset = new AAVEAssetP0(address(_aave));
-            nonCollateral = IDeployer.ParamsAssets(rsrAsset, compAsset, aaveAsset);
+            _rsr = IMockERC20(address(new ERC20Mock(s.rsr.name, s.rsr.symbol)));
+            _comp = IMockERC20(address(new ERC20Mock(s.comp.name, s.comp.symbol)));
+            _aave = IMockERC20(address(new ERC20Mock(s.aave.name, s.aave.symbol)));
 
-            // Mint starting balances
+            IDeployer.ParamsAssets memory nonCollateral = IDeployer.ParamsAssets(new RSRAssetP0(address(_rsr)), new COMPAssetP0(address(_comp)), new AAVEAssetP0(address(_aave)));
+            _main = IMainExtension(
+                _deployer.deploy(
+                    s.rToken.name,
+                    s.rToken.symbol,
+                    _owner,
+                    vaults[0],
+                    _rsr,
+                    s.config,
+                    s.comptroller,
+                    s.aaveLendingPool,
+                    nonCollateral,
+                    collateral
+                )
+            );
+            _stRSR = IStRSRExtension(address(_main.stRSR()));
+            _rToken = IRTokenExtension(address(_main.rToken()));
+        }
+
+        // Populate token ledgers
+        {
+            for (uint256 i = 0; i < COLLATERAL_TOKEN_LEN; i++) {
+                _initLedger(IMockERC20(address(collateral[i].erc20())), s.collateral[i]);
+            }
             for (uint256 i = 0; i < s.rsr.balances.length; i++) {
                 _rsr.mint(_address(i), s.rsr.balances[i]);
             }
@@ -122,32 +149,13 @@ contract AdapterP0 is ProtoDriver {
             for (uint256 i = 0; i < s.aave.balances.length; i++) {
                 _aave.mint(_address(i), s.aave.balances[i]);
             }
-        }
-
-        // Deploy system
-        _main = IMainExtension(
-            _deployer.deploy(
-                s.rToken.name,
-                s.rToken.symbol,
-                _owner,
-                vaults[0],
-                _rsr,
-                s.config,
-                s.comptroller,
-                s.aaveLendingPool,
-                nonCollateral,
-                collateral
-            )
-        );
-
-        // stRSR
-        for (uint256 i = 0; i < s.stRSR.balances.length; i++) {
-            _main.connect(_address(i));
-            _main.stRSR().stake(s.stRSR.balances[i]);
-        }
-        // rToken
-        for (uint256 i = 0; i < s.rToken.balances.length; i++) {
-            RTokenExtension(address(_main.rToken())).adminMint(_address(i), s.rToken.balances[i]);
+            for (uint256 i = 0; i < s.stRSR.balances.length; i++) {
+                _stRSR.connect(_address(i));
+                _stRSR.stake(s.stRSR.balances[i]);
+            }
+            for (uint256 i = 0; i < s.rToken.balances.length; i++) {
+                _rToken.adminMint(_address(i), s.rToken.balances[i]);
+            }
         }
     }
 
@@ -230,24 +238,22 @@ contract AdapterP0 is ProtoDriver {
         erc20State.name = erc20.name();
         erc20State.name = erc20.symbol();
         erc20State.balances = new uint256[](ACCOUNT_LEN);
+        erc20State.allowances = new uint256[][](ACCOUNT_LEN);
         for (uint256 i = 0; i < ACCOUNT_LEN; i++) {
             erc20State.balances[i] = erc20.balanceOf(_address(i));
+            erc20State.allowances[i] = new uint256[](ACCOUNT_LEN);
+            for (uint256 j = 0; j < ACCOUNT_LEN; j++) {
+                erc20State.allowances[i][j] = erc20.allowance(_address(i), _address(j));
+            }
         }
         erc20State.totalSupply = erc20.totalSupply();
     }
 
-    /// Deploys Collateral contracts and mints initial balances
-    function _initCollateral(
-        IMintERC20 erc20,
-        ERC20State memory erc20State,
+    /// Deploys Collateral contracts and sets up initial balances / allowances
+    function _mockCollateral(
+        IMockERC20 erc20,
         CollateralToken ct
     ) internal returns (ICollateral) {
-        assert(keccak256(bytes(erc20.symbol())) == keccak256(bytes(erc20State.symbol)));
-        for (uint256 i = 0; i < erc20State.balances.length; i++) {
-            erc20.mint(_address(i), erc20State.balances[i]);
-        }
-        // assert(erc20.totalSupply() == erc20State.totalSupply);
-
         string memory c = "c";
         string memory a = "a";
         if (erc20.symbol().toSlice().startsWith(c.toSlice())) {
@@ -261,9 +267,38 @@ contract AdapterP0 is ProtoDriver {
         return _collateral[ct];
     }
 
+    function _initLedger(IMockERC20 erc20, ERC20State memory erc20State) internal {
+        assert(keccak256(bytes(erc20.symbol())) == keccak256(bytes(erc20State.symbol)));
+        // Balances
+        for (uint256 i = 0; i < erc20State.balances.length; i++) {
+            if (erc20.balanceOf(_address(i)) > 0) {
+                erc20.mint(_address(i), erc20State.balances[i]);
+            }
+        }
+        assert(erc20.totalSupply() == erc20State.totalSupply);
+
+        // Allowances
+        for (uint256 i = 0; i < erc20State.allowances.length; i++) {
+            for (uint256 j = 0; j < erc20State.allowances[i].length; j++) {
+                if (erc20State.allowances[i][j] > 0) {
+                    console.log(_address(i), _address(j), erc20State.allowances[i][j]);
+                    erc20.setAllowance(_address(i), _address(j), erc20State.allowances[i][j]);
+                }
+            }
+        }
+    }
+
     /// Account index -> address
-    function _address(uint256 index) internal pure returns (address) {
-        // Use 0x1, 0x2, ...
+    function _address(uint256 index) internal view returns (address) {
+        if (index == uint256(Account.RTOKEN)) {
+            return address(_rToken);
+        } else if (index == uint256(Account.STRSR)) {
+            return address(_stRSR);
+        } else if (index == uint256(Account.MAIN)) {
+            return address(_main);
+        }
+
+        // EOA: Use 0x1, 0x2, ...
         return address((uint160(index) + 1));
     }
 }
