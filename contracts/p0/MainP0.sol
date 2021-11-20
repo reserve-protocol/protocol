@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "../Ownable.sol"; // temporary
 // import "@openzeppelin/contracts/access/Ownable.sol";
+import "contracts/Ownable.sol"; // temporary
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -18,36 +18,18 @@ import "contracts/p0/interfaces/IDefaultMonitor.sol";
 import "contracts/p0/interfaces/IFurnace.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
+import "contracts/p0/SettingsP0.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/Pausable.sol";
 
 /**
  * @title MainP0
  * @notice The central coordinator for the entire system, as well as the external interface.
  */
-contract MainP0 is IMain, Ownable {
+contract MainP0 is IMain, Ownable, Pausable, SettingsP0 {
     using SafeERC20 for IERC20;
     using Oracle for Oracle.Info;
     using FixLib for Fix;
-
-    Config internal _config;
-    Oracle.Info internal _oracle;
-
-    IERC20 public override rsr;
-    IRToken public override rToken;
-    IFurnace public override furnace;
-    IStRSR public override stRSR;
-    IAssetManager public override manager;
-    IDefaultMonitor public override monitor;
-
-    // Assets
-    IAsset public override rTokenAsset;
-    IAsset public override rsrAsset;
-    IAsset public override compAsset;
-    IAsset public override aaveAsset;
-
-    // Pausing
-    address public pauser;
-    bool public override paused;
 
     // timestamp -> whether rewards have been claimed.
     mapping(uint256 => bool) private rewardsClaimed;
@@ -55,33 +37,15 @@ contract MainP0 is IMain, Ownable {
     // Slow Issuance
     SlowIssuance[] public issuances;
 
-    // Default detection.
-    SystemState public state;
-    uint256 public stateRaisedAt; // timestamp when default occurred
-
     constructor(
         Oracle.Info memory oracle_,
         Config memory config_,
         IERC20 rsr_
-    ) {
-        _oracle = oracle_;
-        _config = config_;
-        rsr = rsr_;
-        pauser = _msgSender();
-    }
+    ) Settings(oracle_, config_, rsr_) {}
 
-    /// This modifier runs before every function including redemption, so it should be very safe.
+    /// This modifier runs before every function including redemption, so it must be very safe.
     modifier always() {
-        ICollateral[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
-        if (hardDefaulting.length > 0) {
-            manager.switchVaults(hardDefaulting);
-            state = SystemState.TRADING;
-        }
-        _;
-    }
-
-    modifier notPaused() {
-        require(!paused, "paused");
+        checkForHardDefault();
         _;
     }
 
@@ -116,6 +80,16 @@ contract MainP0 is IMain, Ownable {
         emit IssuanceStarted(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
     }
 
+    // Returns the future block number at which an issuance for *amount* now can complete
+    function _nextIssuanceBlockAvailable(uint256 amount) internal view returns (uint256) {
+        uint256 perBlock = Math.max(
+            10_000 * 10**rToken.decimals(), // lower-bound: 10k whole RToken per block
+            toFix(rToken.totalSupply()).mul(_config.issuanceRate).toUint()
+        ); // {RToken/block}
+        uint256 blockStart = issuances.length == 0 ? block.number : issuances[issuances.length - 1].blockAvailableAt;
+        return Math.max(blockStart, block.number) + Math.ceilDiv(amount, perBlock);
+    }
+
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     function redeem(uint256 amount) external override always {
@@ -127,23 +101,17 @@ contract MainP0 is IMain, Ownable {
         emit Redemption(_msgSender(), amount);
     }
 
-    /// Runs the central auction loop
-    function poke() external override notPaused always {
-        require(state == SystemState.CALM || state == SystemState.TRADING, "only during calm + trading");
-        _processSlowIssuance();
 
-        if (state == SystemState.CALM) {
-            (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
-            if (!rewardsClaimed[prevRewards]) {
-                manager.collectRevenue();
-                rewardsClaimed[prevRewards] = true;
-            }
-        }
+    // -------- Default detection --------
+    SystemState public state;
+    uint256 public stateRaisedAt; // timestamp when default occurred
 
-        SystemState newState = manager.doAuctions();
-        if (newState != state) {
-            emit SystemStateChanged(state, newState);
-            state = newState;
+    function checkForHardDefault() internal view {
+        ICollateral[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
+        if (hardDefaulting.length > 0) {
+            manager.switchVaults(hardDefaulting);
+            state = SystemState.TRADING;
+            // TODO: Set stateRaisedAt?
         }
     }
 
@@ -173,61 +141,6 @@ contract MainP0 is IMain, Ownable {
         }
     }
 
-    function pause() external {
-        require(_msgSender() == pauser || _msgSender() == owner(), "only pauser or owner");
-        paused = true;
-    }
-
-    function unpause() external {
-        require(_msgSender() == pauser || _msgSender() == owner(), "only pauser or owner");
-        paused = false;
-    }
-
-    function setPauser(address pauser_) external override {
-        require(_msgSender() == pauser || _msgSender() == owner(), "only pauser or owner");
-        pauser = pauser_;
-    }
-
-    function setConfig(Config memory config_) external override onlyOwner {
-        // When f changes we need to accumulate the historical basket dilution
-        if (_config.f.neq(config_.f)) {
-            manager.accumulate();
-        }
-        _config = config_;
-    }
-
-    function setRToken(IRToken rToken_) external override onlyOwner {
-        rToken = rToken_;
-    }
-
-    function setMonitor(IDefaultMonitor monitor_) external override onlyOwner {
-        monitor = monitor_;
-    }
-
-    function setManager(IAssetManager manager_) external override onlyOwner {
-        manager = manager_;
-    }
-
-    function setStRSR(IStRSR stRSR_) external override onlyOwner {
-        stRSR = stRSR_;
-    }
-
-    function setFurnace(IFurnace furnace_) external override onlyOwner {
-        furnace = furnace_;
-    }
-
-    function setAssets(
-        IAsset rToken_,
-        IAsset rsr_,
-        IAsset comp_,
-        IAsset aave_
-    ) external override onlyOwner {
-        rTokenAsset = rToken_;
-        rsrAsset = rsr_;
-        compAsset = comp_;
-        aaveAsset = aave_;
-    }
-
     // ==================================== Views ====================================
 
     /// @return The timestamp of the next rewards event
@@ -250,37 +163,27 @@ contract MainP0 is IMain, Ownable {
         }
     }
 
-    /// @return {attoUSD/qTok} The price in attoUSD of a `qTok` on oracle `source`.
-    function consultOracle(Oracle.Source source, address token) external view override returns (Fix) {
-        return _oracle.consult(source, token);
+    // -------- frequent checks... --------
+    /// Runs the central auction loop
+    function poke() external override notPaused always {
+        require(state == SystemState.CALM || state == SystemState.TRADING, "only during calm + trading");
+        _processSlowIssuance();
+
+        if (state == SystemState.CALM) {
+            (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
+            if (!rewardsClaimed[prevRewards]) {
+                manager.collectRevenue();
+                rewardsClaimed[prevRewards] = true;
+            }
+        }
+
+        SystemState newState = manager.doAuctions();
+        if (newState != state) {
+            emit SystemStateChanged(state, newState);
+            state = newState;
+        }
     }
 
-    /// @return The deployment of the comptroller on this chain
-    function comptroller() external view override returns (IComptroller) {
-        return _oracle.compound;
-    }
-
-    /// @return The deployment of the aave lending pool on this chain
-    function aaveLendingPool() external view override returns (IAaveLendingPool) {
-        return _oracle.aave;
-    }
-
-    /// @return The system configuration
-    function config() external view override returns (Config memory) {
-        return _config;
-    }
-
-    // ==================================== Internal ====================================
-
-    // Returns the future block number at which an issuance for *amount* now can complete
-    function _nextIssuanceBlockAvailable(uint256 amount) internal view returns (uint256) {
-        uint256 perBlock = Math.max(
-            10_000 * 10**rToken.decimals(), // lower-bound: 10k whole RToken per block
-            toFix(rToken.totalSupply()).mul(_config.issuanceRate).toUint()
-        ); // {RToken/block}
-        uint256 blockStart = issuances.length == 0 ? block.number : issuances[issuances.length - 1].blockAvailableAt;
-        return Math.max(blockStart, block.number) + Math.ceilDiv(amount, perBlock);
-    }
 
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowIssuance() internal {
@@ -300,8 +203,10 @@ contract MainP0 is IMain, Ownable {
 
     // Returns the rewards boundaries on either side of *time*.
     function _rewardsAdjacent(uint256 time) internal view returns (uint256 left, uint256 right) {
-        int256 reps = (int256(time) - int256(_config.rewardStart)) / int256(_config.rewardPeriod);
-        left = uint256(reps * int256(_config.rewardPeriod) + int256(_config.rewardStart));
-        right = left + _config.rewardPeriod;
+        int256 dist = (int256(time) - int256(_config.rewardStart)) % _config.rewardPeriod;
+        if (dist < 0) {
+            dist += _config.rewardPeriod;
+        }
+        return (time - uint256(dist), time + uint256(dist));
     }
 }
