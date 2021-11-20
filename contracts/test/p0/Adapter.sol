@@ -67,17 +67,13 @@ contract AdapterP0 is ProtoAdapter {
     mapping(CollateralToken => ICollateral) internal _collateral;
     mapping(IERC20 => CollateralToken) internal _reverseCollateral; // by the ERC20 of the collateral
 
-    // Enum lengths - Keep these up to date!
-    uint256 internal immutable ACCOUNT_LEN = uint256(Account.MAIN) + 1;
-    uint256 internal immutable COLLATERAL_TOKEN_LEN = uint256(CollateralToken.aBUSD) + 1;
-
     constructor() {
         _deployer = new DeployerExtension();
     }
 
     function init(ProtoState memory s) external override {
         // Deploy collateral assets
-        ICollateral[] memory collateral = new ICollateral[](COLLATERAL_TOKEN_LEN);
+        ICollateral[] memory collateral = new ICollateral[](uint256(type(CollateralToken).max) + 1);
         {
             ERC20Mock dai = new ERC20Mock(s.collateral[0].name, s.collateral[0].symbol);
             USDCMock usdc = new USDCMock(s.collateral[1].name, s.collateral[1].symbol);
@@ -168,7 +164,7 @@ contract AdapterP0 is ProtoAdapter {
 
         // Populate token ledgers + oracle prices
         {
-            for (uint256 i = 0; i < COLLATERAL_TOKEN_LEN; i++) {
+            for (uint256 i = 0; i < uint256(type(CollateralToken).max) + 1; i++) {
                 _initERC20(IMockERC20(address(collateral[i].erc20())), s.collateral[i]);
             }
             for (uint256 i = 0; i < s.stRSR.balances.length; i++) {
@@ -209,8 +205,8 @@ contract AdapterP0 is ProtoAdapter {
         s.stRSR = _dumpERC20(_main.stRSR());
         s.comp = _dumpERC20(_main.compAsset().erc20());
         s.aave = _dumpERC20(_main.aaveAsset().erc20());
-        s.collateral = new TokenState[](COLLATERAL_TOKEN_LEN);
-        for (uint256 i = 0; i < COLLATERAL_TOKEN_LEN; i++) {
+        s.collateral = new TokenState[](uint256(type(CollateralToken).max) + 1);
+        for (uint256 i = 0; i < uint256(type(CollateralToken).max) + 1; i++) {
             s.collateral[i] = _dumpERC20(_collateral[CollateralToken(i)].erc20());
         }
         s.ethPrice = OraclePrice(_aaveOracle.getAssetPrice(_aaveOracle.WETH()), _compoundOracle.price(ETH));
@@ -279,12 +275,12 @@ contract AdapterP0 is ProtoAdapter {
         IERC20Metadata erc20 = IERC20Metadata(address(token));
         tokenState.name = erc20.name();
         tokenState.symbol = erc20.symbol();
-        tokenState.balances = new uint256[](ACCOUNT_LEN);
-        tokenState.allowances = new uint256[][](ACCOUNT_LEN);
-        for (uint256 i = 0; i < ACCOUNT_LEN; i++) {
+        tokenState.balances = new uint256[](uint256(type(Account).max) + 1);
+        tokenState.allowances = new uint256[][](uint256(type(Account).max) + 1);
+        for (uint256 i = 0; i < uint256(type(Account).max) + 1; i++) {
             tokenState.balances[i] = erc20.balanceOf(_address(i));
-            tokenState.allowances[i] = new uint256[](ACCOUNT_LEN);
-            for (uint256 j = 0; j < ACCOUNT_LEN; j++) {
+            tokenState.allowances[i] = new uint256[](uint256(type(Account).max) + 1);
+            for (uint256 j = 0; j < uint256(type(Account).max) + 1; j++) {
                 tokenState.allowances[i][j] = erc20.allowance(_address(i), _address(j));
             }
         }

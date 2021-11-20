@@ -154,7 +154,7 @@ contract ProtosDriver is ProtoCommon {
         }
     }
 
-    /// Checks all invariants for all adapters
+    /// @return Whether all adapters are meeting their invariants
     function _checkInvariants() internal returns (bool) {
         for (uint256 i = 0; i < _adapters.length; i++) {
             if (!_adapters[i].INVARIANT_isFullyCapitalized()) {

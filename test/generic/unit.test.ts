@@ -35,6 +35,7 @@ enum CollateralToken {
   aUSDT,
   aBUSD,
 }
+const COLLATERAL_TOKEN_LEN = 11
 
 // Must match `ProtoState.Account`
 enum Account {
@@ -48,20 +49,41 @@ enum Account {
   STRSR,
   MAIN,
 }
+const ACCOUNTS_LEN = 8
 
-// Inserts all allowance triples into a 2d array mapping the Account enum to indices
-const allowance2D = (...allowance: Array<[Account, Account, BigNumber]>) => {
+/// Helper to prepare two-dimensional allowance arrays
+const prepareAllowances = (...allowance: Array<[Account, Account, BigNumber]>) => {
   const toReturn: BigNumber[][] = [] // 2d
-  for (let i = 0; i < Account.MAIN + 1; i++) {
-    toReturn[i] = []
-    for (let j = 0; j < Account.MAIN + 1; j++) {
-      toReturn[i][j] = bn(0)
+  for (let i = 0; i < ACCOUNTS_LEN; i++) {
+    toReturn.push([])
+    for (let j = 0; j < ACCOUNTS_LEN; j++) {
+      toReturn[i].push(bn(0))
     }
   }
   for (let i = 0; i < allowance.length; i++) {
     toReturn[allowance[i][0]][allowance[i][1]] = allowance[i][2]
   }
   return toReturn
+}
+
+/// Helper to prepare balance arrays
+const prepareBalances = (...balance: Array<[Account, BigNumber]>) => {
+  const toReturn: BigNumber[] = []
+  for (let i = 0; i < ACCOUNTS_LEN; i++) {
+    toReturn.push(bn(0))
+  }
+  for (let i = 0; i < balance.length; i++) {
+    toReturn[balance[i][0]] = balance[i][1]
+  }
+  return toReturn
+}
+
+const sum = (arr: Array<BigNumber>) => {
+  let total = bn(0)
+  for (let i = 0; i < arr.length; i++) {
+    total = total.add(arr[i])
+  }
+  return total
 }
 
 describe('Generic unit tests', () => {
@@ -71,6 +93,8 @@ describe('Generic unit tests', () => {
 
   beforeEach(async () => {
     ;[owner] = await ethers.getSigners()
+
+    // ADD PROTOS TO THIS ARRAY AS WE FINISH THEM
     Impls = [await ethers.getContractFactory('AdapterP0')]
   })
 
@@ -95,146 +119,49 @@ describe('Generic unit tests', () => {
         f: fp('0.60'), // 60% to stakers
       }
 
-      const ethPrice = { inUSD: bn('4000e6'), inETH: bn('1e18') } // $4k ETH
-      const makePrice = (microUSD: BigNumber) => {
-        return { inUSD: microUSD, inETH: microUSD.mul(bn('1e12')).div(ethPrice.inUSD) }
+      // $4k ETH
+      const ethPrice = { inUSD: bn('4000e6'), inETH: bn('1e18') }
+      const makeToken = (
+        symbol: string,
+        balances: Array<[Account, BigNumber]>,
+        allowances: Array<[Account, Account, BigNumber]>,
+        microUSDPrice: BigNumber
+      ) => {
+        const bals = prepareBalances(...balances)
+        return {
+          name: symbol + ' Token',
+          symbol: symbol,
+          balances: bals,
+          allowances: prepareAllowances(...allowances),
+          totalSupply: sum(bals),
+          price: { inUSD: microUSDPrice, inETH: microUSDPrice.mul(bn('1e12')).div(ethPrice.inUSD) },
+        }
       }
 
-      const emptyBalances = [0, 0, 0, 0, 0, 0, 0, 0] // 8 accounts
-      const rToken = {
-        name: 'USD+ RToken',
-        symbol: 'USD+',
-        balances: emptyBalances,
-        allowances: allowance2D(),
-        totalSupply: 0,
-        price: makePrice(bn('1e6')),
-      }
-      const rsr = {
-        name: 'Reserve Rights Token',
-        symbol: 'RSR',
-        balances: emptyBalances,
-        allowances: allowance2D(),
-        totalSupply: 0,
-        price: makePrice(bn('1e6')),
-      }
-      const stRSR = {
-        name: 'Staked USD+ RSR Token',
-        symbol: 'stUSD+RSR',
-        balances: emptyBalances,
-        allowances: allowance2D(),
-        totalSupply: 0,
-        price: makePrice(bn('1e6')),
-      }
-      const comp = {
-        name: 'Compound Token',
-        symbol: 'COMP',
-        balances: emptyBalances,
-        allowances: allowance2D(),
-        totalSupply: 0,
-        price: makePrice(bn('1e6')),
-      }
-      const aave = {
-        name: 'Aave Token',
-        symbol: 'AAVE',
-        balances: emptyBalances,
-        allowances: allowance2D(),
-        totalSupply: 0,
-        price: makePrice(bn('1e6')),
-      }
+      // {symbol}, {balances}, {allowances}, {microUSD price}
+      const rToken = makeToken('USD+', [], [], bn('1e6'))
+      const rsr = makeToken('RSR', [], [], bn('1e6'))
+      const stRSR = makeToken('stUSD+RSR', [], [], bn('1e6'))
+      const comp = makeToken('COMP', [], [], bn('1e6'))
+      const aave = makeToken('AAVE', [], [], bn('1e6'))
       const collateral = [
-        {
-          name: 'DAI Token',
-          symbol: CollateralToken[CollateralToken.DAI],
-          balances: [bn('1e36'), 0, 0, 0, 0, 0, 0, 0],
-          allowances: allowance2D([Account.ALICE, Account.MAIN, bn('1e36')], [Account.ALICE, Account.BOB, bn('1e36')]),
-          totalSupply: bn('1e36'),
-          price: makePrice(bn('1e6')),
-        },
-        {
-          name: 'USDC Token',
-          symbol: CollateralToken[CollateralToken.USDC],
-          balances: emptyBalances,
-          allowances: allowance2D(),
-          totalSupply: 0,
-          price: makePrice(bn('1e6')),
-        },
-        {
-          name: 'USDT Token',
-          symbol: CollateralToken[CollateralToken.USDT],
-          balances: emptyBalances,
-          allowances: allowance2D(),
-          totalSupply: 0,
-          price: makePrice(bn('1e6')),
-        },
-        {
-          name: 'BUSD Token',
-          symbol: CollateralToken[CollateralToken.BUSD],
-          balances: emptyBalances,
-          allowances: allowance2D(),
-          totalSupply: 0,
-          price: makePrice(bn('1e6')),
-        },
-        {
-          name: 'cDAI Token',
-          symbol: CollateralToken[CollateralToken.cDAI],
-          balances: [bn('1e36'), 0, 0, 0, 0, 0, 0, 0],
-          allowances: allowance2D([Account.ALICE, Account.MAIN, bn('1e36')]),
-          totalSupply: bn('1e36'),
-          price: makePrice(bn('1e6')),
-        },
-        {
-          name: 'cUSDC Token',
-          symbol: CollateralToken[CollateralToken.cUSDC],
-          balances: emptyBalances,
-          allowances: allowance2D(),
-          totalSupply: 0,
-          price: makePrice(bn('1e6')),
-        },
-        {
-          name: 'cUSDT Token',
-          symbol: CollateralToken[CollateralToken.cUSDT],
-          balances: emptyBalances,
-          allowances: allowance2D(),
-          totalSupply: 0,
-          price: makePrice(bn('1e6')),
-        },
-        {
-          name: 'aDAI Token',
-          symbol: CollateralToken[CollateralToken.aDAI],
-          balances: emptyBalances,
-          allowances: allowance2D(),
-          totalSupply: 0,
-          price: makePrice(bn('1e6')),
-        },
-        {
-          name: 'aUSDC Token',
-          symbol: CollateralToken[CollateralToken.aUSDC],
-          balances: emptyBalances,
-          allowances: allowance2D(),
-          totalSupply: 0,
-          price: makePrice(bn('1e6')),
-        },
-        {
-          name: 'aUSDT Token',
-          symbol: CollateralToken[CollateralToken.aUSDT],
-          balances: emptyBalances,
-          allowances: allowance2D(),
-          totalSupply: 0,
-          price: makePrice(bn('1e6')),
-        },
-        {
-          name: 'aBUSD Token',
-          symbol: CollateralToken[CollateralToken.aBUSD],
-          balances: emptyBalances,
-          allowances: allowance2D(),
-          totalSupply: 0,
-          price: makePrice(bn('1e6')),
-        },
+        makeToken('DAI', [[Account.ALICE, bn('1e36')]], [[Account.ALICE, Account.MAIN, bn('1e36')]], bn('1e6')),
+        makeToken('USDC', [], [], bn('1e6')),
+        makeToken('USDT', [], [], bn('1e6')),
+        makeToken('BUSD', [], [], bn('1e6')),
+        makeToken('cDAI', [[Account.ALICE, bn('1e36')]], [[Account.ALICE, Account.MAIN, bn('1e36')]], bn('1e6')),
+        makeToken('cUSDC', [], [], bn('1e6')),
+        makeToken('cUSDT', [], [], bn('1e6')),
+        makeToken('aDAI', [], [], bn('1e6')),
+        makeToken('aUSDC', [], [], bn('1e6')),
+        makeToken('aUSDT', [], [], bn('1e6')),
+        makeToken('aBUSD', [], [], bn('1e6')),
       ]
 
       const b1 = { tokens: [CollateralToken.cDAI, CollateralToken.DAI], quantities: [bn('5e7'), bn('5e17')] }
       const b2 = { tokens: [CollateralToken.DAI], quantities: [bn('1e18')] }
       const baskets = [b1, b2]
+
       initialState = {
         baskets: baskets,
         config: config,
