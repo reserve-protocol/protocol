@@ -149,7 +149,6 @@ describe('DeployerP0 contract', () => {
           'RTKN',
           owner.address,
           vault.address,
-          rsr.address,
           config,
           compoundMock.address,
           aaveMock.address,

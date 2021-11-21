@@ -24,9 +24,8 @@ contract MainExtension is ContextMixin, MainP0, IMainExtension {
     constructor(
         address admin,
         Oracle.Info memory oracle_,
-        Config memory config_,
-        IERC20 rsr_
-    ) ContextMixin(admin) MainP0(oracle_, config_, rsr_) {}
+        Config memory config_
+    ) ContextMixin(admin) MainP0(oracle_, config_) {}
 
     function _msgSender() internal view override returns (address) {
         return _mixinMsgSender();
@@ -77,12 +76,8 @@ contract DeployerExtension is DeployerP0 {
     }
 
     /// @dev Used for testing override to manipulate msg.sender
-    function _deployMain(
-        Oracle.Info memory oracle,
-        Config memory config,
-        IERC20 rsr
-    ) internal override returns (IMain) {
-        return new MainExtension(_deployer, oracle, config, rsr);
+    function _deployMain(Oracle.Info memory oracle, Config memory config) internal override returns (IMain) {
+        return new MainExtension(_deployer, oracle, config);
     }
 
     /// @dev Used for testing override to manipulate msg.sender

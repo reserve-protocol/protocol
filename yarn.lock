@@ -6168,9 +6168,9 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"hardhat@npm:^2.5.0":
-  version: 2.6.2
-  resolution: "hardhat@npm:2.6.2"
+"hardhat@npm:^2.6.8":
+  version: 2.6.8
+  resolution: "hardhat@npm:2.6.8"
   dependencies:
     "@ethereumjs/block": ^3.4.0
     "@ethereumjs/blockchain": ^5.4.0
@@ -6179,7 +6179,7 @@ fsevents@~2.3.2:
     "@ethereumjs/vm": ^5.5.2
     "@ethersproject/abi": ^5.1.2
     "@sentry/node": ^5.18.1
-    "@solidity-parser/parser": ^0.11.0
+    "@solidity-parser/parser": ^0.14.0
     "@types/bn.js": ^5.1.0
     "@types/lru-cache": ^5.1.0
     abort-controller: ^3.0.0
@@ -6221,7 +6221,7 @@ fsevents@~2.3.2:
     ws: ^7.4.6
   bin:
     hardhat: internal/cli/cli.js
-  checksum: 6d9273d625e5a51daeab10f9b02d8a2e31ea98820f1f503cd8276be2e1b4733761fc8ddec34e8898831c922f83d997874633d913851cb457851dde7a7b8a2697
+  checksum: 72b450391f4acd53f8a2f457d1e5cd3d17f0c9150b66678acc3a793e8761cf79b88ee28ddbaa242cfb45998ced330b85017b383a9cb204292ac58505fed013d4
   languageName: node
   linkType: hard
 
@@ -10258,7 +10258,7 @@ fsevents@~2.3.2:
     dotenv: ^10.0.0
     ethereum-waffle: ^3.4.0
     ethers: ^5.4.1
-    hardhat: ^2.5.0
+    hardhat: ^2.6.8
     hardhat-gas-reporter: ^1.0.4
     husky: ^7.0.2
     mocha: ^9.0.2

@@ -24,13 +24,12 @@ abstract contract ContextMixin is IContextMixin {
     address internal _msgDotSender;
     address internal _admin;
 
-    constructor(address account) {
-        _admin = account;
+    constructor(address admin) {
+        _admin = admin;
     }
 
     function connect(address account) external override {
-        require(msg.sender == _admin, "admin only, ie the Adapter");
-        // console.log("connected as %s", account);
+        require(msg.sender == _admin, "admin only");
         _msgDotSender = account;
     }
 
