@@ -216,6 +216,10 @@ contract MainP0 is IMain, Ownable {
         furnace = furnace_;
     }
 
+    function setOracle(Oracle.Info memory oracle) external override onlyOwner {
+        _oracle = oracle;
+    }
+
     function setAssets(
         IAsset rToken_,
         IAsset rsr_,

@@ -89,6 +89,8 @@ interface IMain is IMainCommon {
 
     function setStRSR(IStRSR stRSR_) external;
 
+    function setOracle(Oracle.Info memory oracle) external;
+
     function setAssets(
         IAsset rToken_,
         IAsset rsr_,
