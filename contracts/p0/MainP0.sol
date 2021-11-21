@@ -32,8 +32,6 @@ contract MainP0 is IMain, Ownable {
     Config internal _config;
     Oracle.Info internal _oracle;
 
-    IERC20 public override rsr;
-    IRToken public override rToken;
     IFurnace public override furnace;
     IStRSR public override stRSR;
     IAssetManager public override manager;
@@ -59,14 +57,9 @@ contract MainP0 is IMain, Ownable {
     SystemState public state;
     uint256 public stateRaisedAt; // timestamp when default occurred
 
-    constructor(
-        Oracle.Info memory oracle_,
-        Config memory config_,
-        IERC20 rsr_
-    ) {
+    constructor(Oracle.Info memory oracle_, Config memory config_) {
         _oracle = oracle_;
         _config = config_;
-        rsr = rsr_;
         pauser = _msgSender();
     }
 
@@ -196,10 +189,6 @@ contract MainP0 is IMain, Ownable {
         _config = config_;
     }
 
-    function setRToken(IRToken rToken_) external override onlyOwner {
-        rToken = rToken_;
-    }
-
     function setMonitor(IDefaultMonitor monitor_) external override onlyOwner {
         monitor = monitor_;
     }
@@ -269,6 +258,16 @@ contract MainP0 is IMain, Ownable {
         return _oracle.aave;
     }
 
+    /// @return The RToken deployment
+    function rToken() external view override returns (IRToken) {
+        return IRToken(address(rTokenAsset.erc20()));
+    }
+
+    /// @return The RSR deployment
+    function rsr() external view override returns (IERC20) {
+        return rsrAsset.erc20();
+    }
+
     /// @return The system configuration
     function config() external view override returns (Config memory) {
         return _config;
@@ -279,8 +278,8 @@ contract MainP0 is IMain, Ownable {
     // Returns the future block number at which an issuance for *amount* now can complete
     function _nextIssuanceBlockAvailable(uint256 amount) internal view returns (uint256) {
         uint256 perBlock = Math.max(
-            10_000 * 10**rToken.decimals(), // lower-bound: 10k whole RToken per block
-            toFix(rToken.totalSupply()).mul(_config.issuanceRate).toUint()
+            10_000 * 10**rTokenAsset.decimals(), // lower-bound: 10k whole RToken per block
+            toFix(rTokenAsset.erc20().totalSupply()).mul(_config.issuanceRate).toUint()
         ); // {RToken/block}
         uint256 blockStart = issuances.length == 0 ? block.number : issuances[issuances.length - 1].blockAvailableAt;
         return Math.max(blockStart, block.number) + Math.ceilDiv(amount, perBlock);

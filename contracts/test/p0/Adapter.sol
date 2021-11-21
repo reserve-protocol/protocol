@@ -131,7 +131,6 @@ contract AdapterP0 is ProtoDriver {
                 s.rToken.symbol,
                 _owner,
                 vaults[0],
-                _rsr,
                 s.config,
                 s.comptroller,
                 s.aaveLendingPool,

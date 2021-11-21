@@ -81,8 +81,6 @@ interface IMain is IMainCommon {
 
     function setMonitor(IDefaultMonitor monitor_) external;
 
-    function setRToken(IRToken rToken_) external;
-
     function setConfig(Config memory config_) external;
 
     function setPauser(address pauser_) external;
