@@ -68,11 +68,18 @@ contract AdapterP0 is ProtoAdapter {
     mapping(CollateralToken => ICollateral) internal _collateral;
     mapping(IERC20 => CollateralToken) internal _reverseCollateral; // by the ERC20 of the collateral
 
-    constructor() {
-        _deployer = new DeployerExtension();
-    }
-
     function init(ProtoState memory s) external override {
+        // Deploy deployer factory
+        {
+            _rsr = IMockERC20(address(new ERC20Mock(s.rsr.name, s.rsr.symbol)));
+            _comp = IMockERC20(address(new ERC20Mock(s.comp.name, s.comp.symbol)));
+            _aave = IMockERC20(address(new ERC20Mock(s.aave.name, s.aave.symbol)));
+            IAsset rsrAsset = new RSRAssetP0(address(_rsr));
+            IAsset compAsset = new COMPAssetP0(address(_comp));
+            IAsset aaveAsset = new AAVEAssetP0(address(_aave));
+            _deployer = new DeployerExtension(rsrAsset, compAsset, aaveAsset);
+        }
+
         // Deploy collateral assets
         ICollateral[] memory collateral = new ICollateral[](uint256(type(CollateralToken).max) + 1);
         {
@@ -122,16 +129,6 @@ contract AdapterP0 is ProtoAdapter {
 
         // Deploy rest of system
         {
-            _rsr = IMockERC20(address(new ERC20Mock(s.rsr.name, s.rsr.symbol)));
-            _comp = IMockERC20(address(new ERC20Mock(s.comp.name, s.comp.symbol)));
-            _aave = IMockERC20(address(new ERC20Mock(s.aave.name, s.aave.symbol)));
-
-            IDeployer.ParamsAssets memory nonCollateral = IDeployer.ParamsAssets(
-                new RSRAssetP0(address(_rsr)),
-                new COMPAssetP0(address(_comp)),
-                new AAVEAssetP0(address(_aave))
-            );
-
             _compoundOracle = new CompoundOracleMockP0();
             _compoundOracle.setPrice(ETH, s.ethPrice.inUSD);
             IComptroller comptroller = new ComptrollerMockP0(address(_compoundOracle));
@@ -150,7 +147,6 @@ contract AdapterP0 is ProtoAdapter {
                     s.config,
                     comptroller,
                     aaveLendingPool,
-                    nonCollateral,
                     collateral
                 )
             );

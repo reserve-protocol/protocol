@@ -1,12 +1,12 @@
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ethers } from 'hardhat'
-import { BN_SCALE_FACTOR } from '../../common/constants'
-import { bn, fp, pow10 } from '../../common/numbers'
-
 import { ContractFactory } from 'ethers'
 import { BigNumber, BigNumberish } from 'ethers'
+import { ethers } from 'hardhat'
+
+import { BN_SCALE_FACTOR } from '../../common/constants'
+import { bn, fp, pow10 } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 describe('In FixLib,', async () => {
   let owner: SignerWithAddress
@@ -122,9 +122,9 @@ describe('In FixLib,', async () => {
   describe('divFix', async () => {
     it('correctly divides inside its range', async () => {
       //prettier-ignore
-      [ [10, 1, 10], [10, 2, 5], [20, 2.5, 8], [1, 5, 0.2], [256, 256, 1], ]
-        .flatMap(([x, y, z]) => [ [x, y, z], [x, -y, -z], [x, z, y], [x, -z, -y], ])
-        .concat([[0, 1, 0], [0, -1, 0], ])
+      [[10, 1, 10], [10, 2, 5], [20, 2.5, 8], [1, 5, 0.2], [256, 256, 1],]
+        .flatMap(([x, y, z]) => [[x, y, z], [x, -y, -z], [x, z, y], [x, -z, -y],])
+        .concat([[0, 1, 0], [0, -1, 0],])
         .forEach(async ([x, y, result]) =>
           expect(await caller.divFix(x, fp(y)), `divFix(${x}, ${y}) == ${result}`).to.equal(fp(result))
         )
@@ -620,9 +620,9 @@ describe('In FixLib,', async () => {
         [bn(3), bn(2), fp(1.5)],
         [fp(1), bn(1), fp('1e18')],
         [bn(1), fp(1), bn(1)],
-      ] .flatMap(([a,b,c]) => [ [a,b,c], [a,c,b], ])
-        .flatMap(([a,b,c]) => [ [a,b,c], [neg(a), b, neg(c)], ])
-        .flatMap(([a,b,c]) => [ [a,b,c], [a, neg(b), neg(c)], ])
+      ].flatMap(([a, b, c]) => [[a, b, c], [a, c, b],])
+        .flatMap(([a, b, c]) => [[a, b, c], [neg(a), b, neg(c)],])
+        .flatMap(([a, b, c]) => [[a, b, c], [a, neg(b), neg(c)],])
 
       table.forEach(async ([a, b, c]) => expect(await caller.div(a, b), `div(${a}, ${b})`).to.equal(c))
     })
@@ -632,7 +632,7 @@ describe('In FixLib,', async () => {
         [MAX_INT192, fp(1), MAX_INT192],
         [MAX_INT192, fp(-1), neg(MAX_INT192)],
         [MIN_INT192, fp(2), MIN_INT192.div(2)],
-      ].flatMap(([a, b, c]) => [ [a, b, c], [a, c, b], ])
+      ].flatMap(([a, b, c]) => [[a, b, c], [a, c, b],])
 
       table.forEach(async ([a, b, c]) => expect(await caller.div(a, b), `div((${a}, ${b})`).to.equal(c))
     })
@@ -654,14 +654,14 @@ describe('In FixLib,', async () => {
         [MIN_INT192, fp(0.99)],
         [MIN_INT192.div(5), fp(0.19)],
         [MIN_INT192.div(pow10(16)), bn(1)],
-      ].flatMap(([a,b]) => [[a,b], [a,neg(b)]])
+      ].flatMap(([a, b]) => [[a, b], [a, neg(b)]])
 
       table.forEach(async ([a, b]) => await expect(caller.div(a, b), `div((${a}, ${b})`).to.be.reverted)
     })
     it('fails to divide by zero', async () => {
       // prettier-ignore
-      [ fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
-        . forEach(async (x) => await expect(caller.div(x, bn(0)), `div(${x}, 0`).to.be.reverted)
+      [fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
+        .forEach(async (x) => await expect(caller.div(x, bn(0)), `div(${x}, 0`).to.be.reverted)
     })
   })
   describe('divi', async () => {
@@ -675,8 +675,8 @@ describe('In FixLib,', async () => {
         [fp(3), bn(2), fp(1.5)],
         [fp(1), bn(1), fp(1)],
         [bn(1), bn(1), bn(1)],
-      ] .flatMap(([a,b,c]) => [ [a,b,c], [neg(a), b, neg(c)], ])
-        .flatMap(([a,b,c]) => [ [a,b,c], [a, neg(b), neg(c)], ])
+      ].flatMap(([a, b, c]) => [[a, b, c], [neg(a), b, neg(c)],])
+        .flatMap(([a, b, c]) => [[a, b, c], [a, neg(b), neg(c)],])
         .forEach(async ([a, b, c]) => expect(await caller.divi(a, b), `divi(${a}, ${b})`).to.equal(c))
     })
     it('correctly divides at the extremes of its range', async () => {
@@ -685,7 +685,7 @@ describe('In FixLib,', async () => {
         [MAX_INT192, bn(1), MAX_INT192],
         [MAX_INT192, bn(-1), neg(MAX_INT192)],
         [MIN_INT192, bn(2), MIN_INT192.div(2)],
-      ] .flatMap(([a, b, c]) => [ [a, b, c], [a, c, b], ])
+      ].flatMap(([a, b, c]) => [[a, b, c], [a, c, b],])
         .forEach(async ([a, b, c]) => expect(await caller.divi(a, b), `divi(${a}, ${b})`).to.equal(c))
     })
     it('correctly truncates results towards zero', async () => {
@@ -695,12 +695,12 @@ describe('In FixLib,', async () => {
         [bn(-5), bn(2), bn(-2)],
         [bn(29), bn(10), bn(2)],
         [bn(-19), bn(10), bn(-1)],
-      ] .forEach(async ([a, b, c]) => expect(await caller.divi(a, b), `divi((${a}, ${b})`).to.equal(c))
+      ].forEach(async ([a, b, c]) => expect(await caller.divi(a, b), `divi((${a}, ${b})`).to.equal(c))
     })
     it('fails to divide by zero', async () => {
       // prettier-ignore
-      [ fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
-        . forEach(async (x) => await expect(caller.divi(x, bn(0)), `divi(${x}, 0`).to.be.reverted)
+      [fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
+        .forEach(async (x) => await expect(caller.divi(x, bn(0)), `divi(${x}, 0`).to.be.reverted)
     })
   })
   describe('divu', async () => {
@@ -714,7 +714,7 @@ describe('In FixLib,', async () => {
         [fp(3), bn(2), fp(1.5)],
         [fp(1), bn(1), fp(1)],
         [bn(1), bn(1), bn(1)],
-      ].forEach(async ([a,b,c]) => expect(await caller.divu(a, b), `divu((${a}, ${b})`).to.equal(c))
+      ].forEach(async ([a, b, c]) => expect(await caller.divu(a, b), `divu((${a}, ${b})`).to.equal(c))
     })
     it('correctly divides at the extremes of its range', async () => {
       // prettier-ignore
@@ -722,7 +722,7 @@ describe('In FixLib,', async () => {
         [MAX_INT192, bn(1), MAX_INT192],
         [MIN_INT192, bn(1), MIN_INT192],
         [MIN_INT192, bn(2), MIN_INT192.div(2)],
-      ] .forEach(async ([a, b, c]) => expect(await caller.divu(a, b), `divu(${a}, ${b})`).to.equal(c))
+      ].forEach(async ([a, b, c]) => expect(await caller.divu(a, b), `divu(${a}, ${b})`).to.equal(c))
     })
     it('correctly truncates results towards zero', async () => {
       // prettier-ignore
@@ -731,12 +731,12 @@ describe('In FixLib,', async () => {
         [bn(-5), bn(2), bn(-2)],
         [bn(29), bn(10), bn(2)],
         [bn(-19), bn(10), bn(-1)],
-      ] .forEach(async ([a, b, c]) => expect(await caller.divu(a, b), `divu((${a}, ${b})`).to.equal(c))
+      ].forEach(async ([a, b, c]) => expect(await caller.divu(a, b), `divu((${a}, ${b})`).to.equal(c))
     })
     it('fails to divide by zero', async () => {
       // prettier-ignore
-      [ fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
-        . forEach(async (x) => await expect(caller.divu(x, bn(0)), `divu(${x}, 0`).to.be.reverted)
+      [fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
+        .forEach(async (x) => await expect(caller.divu(x, bn(0)), `divu(${x}, 0`).to.be.reverted)
     })
   })
   describe('inv', async () => {
@@ -747,8 +747,8 @@ describe('In FixLib,', async () => {
         [fp(2), fp(0.5)],
         [bn(2), fp('0.5e18')],
         [bn(1e9), fp(1e9)],
-      ] .flatMap(([a,b]) => [[a,b], [b,a], [neg(a), neg(b)], [neg(b), neg(a)]])
-        .forEach(async ([a,b]) => expect(await caller.inv(a), `inv(${a})`).to.equal(b))
+      ].flatMap(([a, b]) => [[a, b], [b, a], [neg(a), neg(b)], [neg(b), neg(a)]])
+        .forEach(async ([a, b]) => expect(await caller.inv(a), `inv(${a})`).to.equal(b))
     })
     it('correctly inverts at the extremes of its range', async () => {
       // prettier-ignore
@@ -759,7 +759,7 @@ describe('In FixLib,', async () => {
         [fp('-1e18'), bn(-1)],
         [bn(1), fp('1e18')],
         [bn(-1), fp('-1e18')],
-      ] .forEach(async ([a,b]) => expect(await caller.inv(a), `inv(${a})`).to.equal(b))
+      ].forEach(async ([a, b]) => expect(await caller.inv(a), `inv(${a})`).to.equal(b))
     })
     it('fails to invert zero', async () => {
       await expect(caller.inv(bn(0))).to.be.reverted
@@ -785,7 +785,7 @@ describe('In FixLib,', async () => {
         [fp('1e-9'), bn(2), fp('1e-18')],
         [fp(0.1), bn(17), fp('1e-17')],
         [fp(10), bn(19), fp('1e19')],
-      ] .forEach(async ([a,b,c]) => expect(await caller.powu(a,b), `powu(${a}, ${b})`).to.equal(c))
+      ].forEach(async ([a, b, c]) => expect(await caller.powu(a, b), `powu(${a}, ${b})`).to.equal(c))
     })
     it('correctly exponentiates at the extremes of its range', async () => {
       ;[
@@ -882,9 +882,9 @@ describe('In FixLib,', async () => {
         [bn(87654), bn(87655), bn(1)],
         [bn(87654), bn(87655), bn(2)],
         [fp(1.0), fp(1.0), bn(1)],
-      ] .flatMap(([a,b,c])=>[ [a,b,c], [b,a,c], [neg(a), neg(b), c], [neg(b), neg(a), c]])
+      ].flatMap(([a, b, c]) => [[a, b, c], [b, a, c], [neg(a), neg(b), c], [neg(b), neg(a), c]])
         .forEach(async ([a, b, c]) =>
-          expect(await caller.near(a, b, c), `near(${a}, ${b}, ${c}`).to.equal(a.sub(b).abs().lt(c)) )
+          expect(await caller.near(a, b, c), `near(${a}, ${b}, ${c}`).to.equal(a.sub(b).abs().lt(c)))
     })
     it('correctly evaluates approximate equality at the extremes of its range', async () => {
       // prettier-ignore
@@ -901,9 +901,9 @@ describe('In FixLib,', async () => {
         [bn(-1000), MIN_INT192, MAX_INT192],
         [bn(1000), MAX_INT192, MAX_INT192],
 
-      ] .flatMap(([a,b,c])=>[ [a,b,c], [b,a,c], ])
+      ].flatMap(([a, b, c]) => [[a, b, c], [b, a, c],])
         .forEach(async ([a, b, c]) =>
-          expect(await caller.near(a, b, c), `near(${a}, ${b}, ${c}`).to.equal(a.sub(b).abs().lt(c)) )
+          expect(await caller.near(a, b, c), `near(${a}, ${b}, ${c}`).to.equal(a.sub(b).abs().lt(c)))
     })
   })
 })

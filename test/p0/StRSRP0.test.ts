@@ -1,13 +1,14 @@
-import { expect } from 'chai'
-import { ethers } from 'hardhat'
-import { BigNumber, ContractFactory } from 'ethers'
-import { bn, fp } from '../../common/numbers'
-import { advanceTime } from '../utils/time'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { expect } from 'chai'
+import { BigNumber, ContractFactory } from 'ethers'
+import { ethers } from 'hardhat'
+
+import { bn, fp } from '../../common/numbers'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainMockP0 } from '../../typechain/MainMockP0'
 import { ManagerInternalMockP0 } from '../../typechain/ManagerInternalMockP0'
 import { StRSRP0 } from '../../typechain/StRSRP0'
+import { advanceTime } from '../utils/time'
 
 describe('StRSRP0 contract', () => {
   let owner: SignerWithAddress

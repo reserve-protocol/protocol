@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "contracts/p0/DeployerP0.sol";
+import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
@@ -15,7 +16,11 @@ contract DeployerExtension is IExtension, DeployerP0 {
     address internal _deployer;
     IMain internal _main;
 
-    constructor() {
+    constructor(
+        IAsset rsr_,
+        IAsset comp_,
+        IAsset aave_
+    ) DeployerP0(rsr_, comp_, aave_) {
         _deployer = msg.sender;
     }
 

@@ -34,6 +34,19 @@ interface IOwnable {
  */
 contract DeployerP0 is IDeployer {
     IMain[] public deployments;
+    IAsset rsrAsset;
+    IAsset compAsset;
+    IAsset aaveAsset;
+
+    constructor(
+        IAsset rsrAsset_,
+        IAsset compAsset_,
+        IAsset aaveAsset_
+    ) {
+        rsrAsset = rsrAsset_;
+        compAsset = compAsset_;
+        aaveAsset = aaveAsset_;
+    }
 
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
@@ -43,7 +56,6 @@ contract DeployerP0 is IDeployer {
     /// @param config Governance params
     /// @param compound The deployment of the Comptroller on this chain
     /// @param aave The deployment of the AaveLendingPool on this chain
-    /// @param nonCollateral The non-collateral assets in the system
     /// @param collateral The collateral assets in the system
     /// @return The address of the newly deployed Main instance.
     function deploy(
@@ -54,7 +66,6 @@ contract DeployerP0 is IDeployer {
         Config memory config,
         IComptroller compound,
         IAaveLendingPool aave,
-        ParamsAssets memory nonCollateral,
         ICollateral[] memory collateral
     ) external override returns (address) {
         Oracle.Info memory oracle = Oracle.Info(compound, aave);
@@ -70,7 +81,7 @@ contract DeployerP0 is IDeployer {
         {
             IRToken rToken = _deployRToken(main, name, symbol);
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken));
-            main.setAssets(rTokenAsset, nonCollateral.rsrAsset, nonCollateral.compAsset, nonCollateral.aaveAsset);
+            main.setAssets(rTokenAsset, rsrAsset, compAsset, aaveAsset);
             FurnaceP0 furnace = new FurnaceP0(address(rToken));
             main.setFurnace(furnace);
         }
