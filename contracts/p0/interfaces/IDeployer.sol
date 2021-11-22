@@ -35,7 +35,6 @@ interface IDeployer {
     /// @param symbol The symbol of the RToken to deploy
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param vault The initial vault that backs the RToken
-    /// @param rsr The deployment of RSR on this chain
     /// @param config Governance param
     /// @param compound The deployment of the Comptroller on this chain
     /// @param aave The deployment of the AaveLendingPool on this chain
@@ -47,7 +46,6 @@ interface IDeployer {
         string memory symbol,
         address owner,
         IVault vault,
-        IERC20 rsr,
         Config memory config,
         IComptroller compound,
         IAaveLendingPool aave,

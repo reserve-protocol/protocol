@@ -122,7 +122,7 @@ describe('DeployerP0 contract', () => {
 
     it('Should setup stRSR correctly', async () => {
       expect(await stRSR.main()).to.equal(main.address)
-      expect(await stRSR.name()).to.equal('Staked RSR - RToken')
+      expect(await stRSR.name()).to.equal('stRTKNRSR Token')
       expect(await stRSR.symbol()).to.equal('stRTKNRSR')
       expect(await stRSR.decimals()).to.equal(18)
       expect(await stRSR.totalSupply()).to.equal(0)
@@ -149,7 +149,6 @@ describe('DeployerP0 contract', () => {
           'RTKN',
           owner.address,
           vault.address,
-          rsr.address,
           config,
           compoundMock.address,
           aaveMock.address,

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -110,6 +112,12 @@ interface IMainCommon {
 
     /// @return The timestamp of the next rewards event
     function nextRewards() external view returns (uint256);
+
+    /// @return The RToken deployment
+    function rToken() external view returns (IRToken);
+
+    /// @return The RSR deployment
+    function rsr() external view returns (IERC20);
 
     /// @return The system configuration
     function config() external view returns (Config memory);

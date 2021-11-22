@@ -212,7 +212,7 @@ contract VaultP0 is IVault, Ownable {
         backups = backupVaults;
     }
 
-    function setMain(IMain main_) external onlyOwner {
+    function setMain(IMain main_) external override onlyOwner {
         main = main_;
     }
 }

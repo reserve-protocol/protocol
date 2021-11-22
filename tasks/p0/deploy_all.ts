@@ -188,7 +188,6 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
       'RTKN',
       deployer.address,
       vault.address,
-      rsr.address,
       config,
       compoundMock.address,
       aaveMock.address,

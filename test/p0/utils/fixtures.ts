@@ -225,7 +225,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
       'RTKN',
       owner.address,
       vault.address,
-      rsr.address,
       config,
       compoundMock.address,
       aaveMock.address,

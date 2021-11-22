@@ -40,7 +40,6 @@ contract DeployerP0 is IDeployer {
     /// @param symbol The symbol of the RToken to deploy
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param vault The initial vault that backs the RToken
-    /// @param rsr The deployment of RSR on this chain
     /// @param config Governance params
     /// @param compound The deployment of the Comptroller on this chain
     /// @param aave The deployment of the AaveLendingPool on this chain
@@ -52,7 +51,6 @@ contract DeployerP0 is IDeployer {
         string memory symbol,
         address owner,
         IVault vault,
-        IERC20 rsr,
         Config memory config,
         IComptroller compound,
         IAaveLendingPool aave,
@@ -61,7 +59,7 @@ contract DeployerP0 is IDeployer {
     ) external override returns (address) {
         Oracle.Info memory oracle = Oracle.Info(compound, aave);
 
-        IMain main = _deployMain(oracle, config, rsr);
+        IMain main = _deployMain(oracle, config);
         deployments.push(main);
 
         {
@@ -71,7 +69,6 @@ contract DeployerP0 is IDeployer {
 
         {
             IRToken rToken = _deployRToken(main, name, symbol);
-            main.setRToken(rToken);
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken));
             main.setAssets(rTokenAsset, nonCollateral.rsrAsset, nonCollateral.compAsset, nonCollateral.aaveAsset);
             FurnaceP0 furnace = new FurnaceP0(address(rToken));
@@ -81,7 +78,7 @@ contract DeployerP0 is IDeployer {
         {
             IStRSR stRSR = _deployStRSR(
                 main,
-                string(abi.encodePacked("Staked RSR - ", name)),
+                string(abi.encodePacked("st", symbol, "RSR Token")),
                 string(abi.encodePacked("st", symbol, "RSR"))
             );
             main.setStRSR(stRSR);
@@ -98,16 +95,12 @@ contract DeployerP0 is IDeployer {
         return (address(main));
     }
 
-    /// @dev Used for testing override to manipulate msg.sender
-    function _deployMain(
-        Oracle.Info memory oracle,
-        Config memory config,
-        IERC20 rsr
-    ) internal virtual returns (IMain) {
-        return new MainP0(oracle, config, rsr);
+    /// @dev Used for testing to inject msg.sender
+    function _deployMain(Oracle.Info memory oracle, Config memory config) internal virtual returns (IMain) {
+        return new MainP0(oracle, config);
     }
 
-    /// @dev Used for testing override to manipulate msg.sender
+    /// @dev Used for testing to inject msg.sender
     function _deployRToken(
         IMain main,
         string memory name,
@@ -116,7 +109,7 @@ contract DeployerP0 is IDeployer {
         return new RTokenP0(main, name, symbol);
     }
 
-    /// @dev Used for testing override to manipulate msg.sender
+    /// @dev Used for testing to inject msg.sender
     function _deployStRSR(
         IMain main,
         string memory name,

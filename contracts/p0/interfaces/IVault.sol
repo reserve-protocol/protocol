@@ -64,6 +64,9 @@ interface IVault {
     /// Claims all earned COMP/AAVE and sends it to the asset manager
     function claimAndSweepRewardsToManager() external;
 
+    /// Main Setter
+    function setMain(IMain main) external;
+
     /// @return {USD/qBU} The USD value of 1 BU if all fiatcoins hold peg
     function basketRate() external returns (Fix);
 

@@ -1,19 +1,28 @@
-import { expect } from 'chai'
-import { ethers } from 'hardhat'
-import { ContractFactory } from 'ethers'
-import { getLatestBlockTimestamp } from '../utils/time'
-import { bn, fp } from '../../common/numbers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
-import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
-import { AaveLendingAddrProviderMockP0 } from '../../typechain/AaveLendingAddrProviderMockP0'
-import { ProtoDriver } from '../../typechain/ProtoDriver'
-import { AdapterP0 } from '../../typechain/AdapterP0'
-import { IManagerConfig } from '../p0/utils/fixtures'
+import { expect } from 'chai'
+import { BigNumber, ContractFactory } from 'ethers'
+import { ethers } from 'hardhat'
 
-/// @dev Must match `types.CollateralToken`
+import { bn, fp } from '../../common/numbers'
+import { AaveLendingAddrProviderMockP0 } from '../../typechain/AaveLendingAddrProviderMockP0'
+import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
+import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
+import { AdapterP0 } from '../../typechain/AdapterP0'
+import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
+import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
+import { ProtoAdapter } from '../../typechain/ProtoAdapter'
+import { ProtosDriver } from '../../typechain/ProtosDriver'
+import { IManagerConfig } from '../p0/utils/fixtures'
+import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
+
+/*
+ * The Generic Unit tests are written against ProtoState and ProtosDriver. The ProtosDriver can be set
+ * up with any number of implementations to test in parallel, and will check to ensure that the states
+ * match across implementations after each command. It also checks the invariants. This enables
+ * the generic test suite to pretend it is interacting with a single system.
+ */
+
+// Must match `ProtoState.CollateralToken`
 enum CollateralToken {
   DAI,
   USDC,
@@ -27,117 +36,180 @@ enum CollateralToken {
   aUSDT,
   aBUSD,
 }
+const COLLATERAL_TOKEN_LEN = 11
 
-/// @dev Must match `types.Account`
+// Must match `ProtoState.Account`
 enum Account {
   ALICE,
   BOB,
   CHARLIE,
   DAVE,
   EVE,
+  //
+  RTOKEN,
+  STRSR,
+  MAIN,
+}
+const ACCOUNTS_LEN = 8
+
+/// Helper to prepare two-dimensional allowance arrays
+const prepareAllowances = (...allowance: Array<[Account, Account, BigNumber]>) => {
+  const toReturn: BigNumber[][] = [] // 2d
+  for (let i = 0; i < ACCOUNTS_LEN; i++) {
+    toReturn.push([])
+    for (let j = 0; j < ACCOUNTS_LEN; j++) {
+      toReturn[i].push(bn(0))
+    }
+  }
+  for (let i = 0; i < allowance.length; i++) {
+    toReturn[allowance[i][0]][allowance[i][1]] = allowance[i][2]
+  }
+  return toReturn
+}
+
+/// Helper to prepare balance arrays
+const prepareBalances = (...balance: Array<[Account, BigNumber]>) => {
+  const toReturn: BigNumber[] = []
+  for (let i = 0; i < ACCOUNTS_LEN; i++) {
+    toReturn.push(bn(0))
+  }
+  for (let i = 0; i < balance.length; i++) {
+    toReturn[balance[i][0]] = balance[i][1]
+  }
+  return toReturn
+}
+
+const sum = (arr: Array<BigNumber>) => {
+  let total = bn(0)
+  for (let i = 0; i < arr.length; i++) {
+    total = total.add(arr[i])
+  }
+  return total
 }
 
 describe('Generic unit tests', () => {
   let owner: SignerWithAddress
-  let compoundOracle: CompoundOracleMockP0
-  let aaveOracle: AaveOracleMockP0
-  let comptroller: ComptrollerMockP0
-  let aaveLendingPool: AaveLendingPoolMockP0
-  let config: IManagerConfig
-
-  let P0: ContractFactory
+  let Impls: ContractFactory[]
+  let driver: ProtosDriver
 
   beforeEach(async () => {
     ;[owner] = await ethers.getSigners()
 
-    P0 = await ethers.getContractFactory('AdapterP0')
-
-    // Config
-    config = {
-      rewardStart: bn(await getLatestBlockTimestamp()),
-      rewardPeriod: bn('604800'), // 1 week
-      auctionPeriod: bn('1800'), // 30 minutes
-      stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
-      defaultDelay: bn('86400'), // 24 hrs
-      maxTradeSlippage: fp('0.05'), // 5%
-      maxAuctionSize: fp('0.01'), // 1%
-      minRecapitalizationAuctionSize: fp('0.001'), // 0.1%
-      minRevenueAuctionSize: fp('0.0001'), // 0.01%
-      migrationChunk: fp('0.2'), // 20%
-      issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-      defaultThreshold: fp('0.05'), // 5% deviation
-      f: fp('0.60'), // 60% to stakers
-    }
-
-    // Compound
-    const CompoundOracle = await ethers.getContractFactory('CompoundOracleMockP0')
-    compoundOracle = <CompoundOracleMockP0>await CompoundOracle.connect(owner).deploy()
-    const Comptroller = await ethers.getContractFactory('ComptrollerMockP0')
-    comptroller = <ComptrollerMockP0>await Comptroller.connect(owner).deploy(compoundOracle.address)
-
-    // Aave
-    const Weth = await ethers.getContractFactory('ERC20Mock')
-    const weth = await Weth.connect(owner).deploy('Wrapped ETH', 'WETH')
-    const AaveOracle = await ethers.getContractFactory('AaveOracleMockP0')
-    aaveOracle = <AaveOracleMockP0>await AaveOracle.connect(owner).deploy(weth.address)
-    const AaveAddrProvider = await ethers.getContractFactory('AaveLendingAddrProviderMockP0')
-    const aaveAddrProvider = await AaveAddrProvider.connect(owner).deploy(aaveOracle.address)
-    const AaveLendingPool = await ethers.getContractFactory('AaveLendingPoolMockP0')
-    aaveLendingPool = <AaveLendingPoolMockP0>await AaveLendingPool.connect(owner).deploy(aaveAddrProvider.address)
+    // ADD PROTOS TO THIS ARRAY AS WE FINISH THEM
+    Impls = [await ethers.getContractFactory('AdapterP0')]
   })
 
   describe('Setup', () => {
-    let p0: ProtoDriver
+    let initialState: any
 
     beforeEach(async () => {
-      const b1 = { tokens: [CollateralToken.cDAI, CollateralToken.DAI], quantities: [bn('5e7'), bn('5e17')] }
-      const b2 = { tokens: [CollateralToken.DAI], quantities: [bn('1e18')] }
-      const baskets = [b1, b2]
-      const rToken = { name: 'USD+ RToken', symbol: 'USD+', balances: [], totalSupply: 0 }
-      const rsr = { name: 'Reserve Rights Token', symbol: 'RSR', balances: [], totalSupply: 0 }
-      const stRSR = { name: 'Staked RSR', symbol: 'stRSR', balances: [], totalSupply: 0 }
-      const comp = { name: 'Compound Token', symbol: 'COMP', balances: [], totalSupply: 0 }
-      const aave = { name: 'Aave Token', symbol: 'AAVE', balances: [], totalSupply: 0 }
+      // Config
+      const config: IManagerConfig = {
+        rewardStart: bn(await getLatestBlockTimestamp()),
+        rewardPeriod: bn('604800'), // 1 week
+        auctionPeriod: bn('1800'), // 30 minutes
+        stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
+        defaultDelay: bn('86400'), // 24 hrs
+        maxTradeSlippage: fp('0.05'), // 5%
+        maxAuctionSize: fp('0.01'), // 1%
+        minRecapitalizationAuctionSize: fp('0.001'), // 0.1%
+        minRevenueAuctionSize: fp('0.0001'), // 0.01%
+        migrationChunk: fp('0.2'), // 20%
+        issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
+        defaultThreshold: fp('0.05'), // 5% deviation
+        f: fp('0.60'), // 60% to stakers
+      }
+
+      // $4k ETH
+      const ethPrice = { inUSD: bn('4000e6'), inETH: bn('1e18') }
+      const makeToken = (
+        symbol: string,
+        balances: Array<[Account, BigNumber]>,
+        allowances: Array<[Account, Account, BigNumber]>,
+        microUSDPrice: BigNumber
+      ) => {
+        const bals = prepareBalances(...balances)
+        return {
+          name: symbol + ' Token',
+          symbol: symbol,
+          balances: bals,
+          allowances: prepareAllowances(...allowances),
+          totalSupply: sum(bals),
+          price: { inUSD: microUSDPrice, inETH: microUSDPrice.mul(bn('1e12')).div(ethPrice.inUSD) },
+        }
+      }
+
+      // {symbol}, {balances}, {allowances}, {microUSD price}
+      const rToken = makeToken('USD+', [], [], bn('1e6'))
+      const rsr = makeToken('RSR', [], [], bn('1e6'))
+      const stRSR = makeToken('stUSD+RSR', [], [], bn('1e6'))
+      const comp = makeToken('COMP', [], [], bn('1e6'))
+      const aave = makeToken('AAVE', [], [], bn('1e6'))
       const collateral = [
-        { name: 'DAI Token', symbol: CollateralToken[CollateralToken.DAI], balances: [], totalSupply: 0 },
-        { name: 'USDC Token', symbol: CollateralToken[CollateralToken.USDC], balances: [], totalSupply: 0 },
-        { name: 'USDT Token', symbol: CollateralToken[CollateralToken.USDT], balances: [], totalSupply: 0 },
-        { name: 'BUSD Token', symbol: CollateralToken[CollateralToken.BUSD], balances: [], totalSupply: 0 },
-        { name: 'cDAI Token', symbol: CollateralToken[CollateralToken.cDAI], balances: [], totalSupply: 0 },
-        { name: 'cUSDC Token', symbol: CollateralToken[CollateralToken.cUSDC], balances: [], totalSupply: 0 },
-        { name: 'cUSDT Token', symbol: CollateralToken[CollateralToken.cUSDT], balances: [], totalSupply: 0 },
-        { name: 'aDAI Token', symbol: CollateralToken[CollateralToken.aDAI], balances: [], totalSupply: 0 },
-        { name: 'aUSDC Token', symbol: CollateralToken[CollateralToken.aUSDC], balances: [], totalSupply: 0 },
-        { name: 'aUSDT Token', symbol: CollateralToken[CollateralToken.aUSDT], balances: [], totalSupply: 0 },
-        { name: 'aBUSD Token', symbol: CollateralToken[CollateralToken.aBUSD], balances: [], totalSupply: 0 },
+        makeToken('DAI', [[Account.ALICE, bn('1e36')]], [[Account.ALICE, Account.MAIN, bn('1e36')]], bn('1e6')),
+        makeToken('USDC', [], [], bn('1e6')),
+        makeToken('USDT', [], [], bn('1e6')),
+        makeToken('BUSD', [], [], bn('1e6')),
+        makeToken('cDAI', [[Account.ALICE, bn('1e36')]], [[Account.ALICE, Account.MAIN, bn('1e36')]], bn('1e6')),
+        makeToken('cUSDC', [], [], bn('1e6')),
+        makeToken('cUSDT', [], [], bn('1e6')),
+        makeToken('aDAI', [], [], bn('1e6')),
+        makeToken('aUSDC', [], [], bn('1e6')),
+        makeToken('aUSDT', [], [], bn('1e6')),
+        makeToken('aBUSD', [], [], bn('1e6')),
       ]
 
-      const state = {
+      const b1 = { tokens: [CollateralToken.cDAI, CollateralToken.DAI], quantities: [bn('5e7'), bn('5e17')] }
+      const b2 = { tokens: [CollateralToken.DAI], quantities: [bn('1e18')] }
+      const bu_s = [b1, b2]
+
+      initialState = {
+        bu_s: bu_s,
         config: config,
-        comptroller: comptroller.address,
-        aaveLendingPool: aaveLendingPool.address,
-        baskets: baskets,
-        //
-        rTokenRedemption: b1,
+        rTokenDefinition: b1,
         rToken: rToken,
         rsr: rsr,
         stRSR: stRSR,
         comp: comp,
         aave: aave,
         collateral: collateral,
+        ethPrice: ethPrice,
       }
 
-      p0 = <AdapterP0>await P0.deploy()
-      await p0.init(state)
+      const impls = []
+      for (let i = 0; i < Impls.length; i++) {
+        impls.push((<ProtoAdapter>await Impls[i].deploy()).address)
+      }
+
+      const Driver = await ethers.getContractFactory('ProtosDriver')
+      driver = await Driver.deploy(impls)
+      await driver.init(initialState)
     })
 
-    it('Should setup correctly', async () => {
-      const state = await p0.callStatic.state()
-      console.log(state)
+    it('Should exactly match initialState', async () => {
+      expect(await driver.callStatic.matches(initialState)).to.equal(true)
     })
-    // it('Should issue', async () => {
-    // expect(await p0.init())
-    // expect(await rTokenAsset.callStatic.priceUSD(main.address)).to.equal(fp('1'))
-    // })
+
+    it('Should issue, slowly', async () => {
+      const amt = bn('1e18')
+      await driver.CMD_issue(Account.ALICE, amt)
+      let state = await driver.callStatic.state()
+      expect(state.rToken.balances[Account.ALICE]).to.equal(0)
+
+      await driver.CMD_poke() // advance 1 block to cause minting
+      state = await driver.callStatic.state()
+      expect(state.rToken.balances[Account.ALICE]).to.equal(bn('1e18'))
+    })
+
+    it('Should redeem', async () => {
+      const amt = bn('1e18')
+      await driver.CMD_issue(Account.ALICE, amt)
+      await driver.CMD_poke() // advance 1 block to cause minting
+      let state = await driver.callStatic.state()
+      expect(state.rToken.balances[Account.ALICE]).to.equal(bn('1e18'))
+      await driver.CMD_redeem(Account.ALICE, amt)
+      state = await driver.callStatic.state()
+      expect(state.rToken.balances[Account.ALICE]).to.equal(bn('0'))
+    })
   })
 })

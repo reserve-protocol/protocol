@@ -19,8 +19,6 @@ contract SettingsP0 is Ownable {
     Oracle.Info internal _oracle;    // TODO: is this intended to be immutable after construction? Should we have setOracle()?
     Config internal _config;
 
-    IERC20 public override rsr;      // TODO: why are rsr and rToken ever separable from their assets?
-    IRToken public override rToken;  // if we even have them, shouldn't they just be set in setAssets?
     IStRSR public override stRSR;
     IFurnace public override furnace;
     IAssetManager public override manager;
@@ -41,16 +39,16 @@ contract SettingsP0 is Ownable {
         rsr = rsr_;
     }
 
+    function setOracle(Oracle.Info memory oracle) external override onlyOwner {
+        _oracle = oracle;
+    }
+
     function setConfig(Config memory config_) external override onlyOwner {
         // When f changes we need to accumulate the historical basket dilution
         if (_config.f.neq(config_.f)) {
             manager.accumulate();
         }
         _config = config_;
-    }
-
-    function setRToken(IRToken rToken_) external override onlyOwner {
-        rToken = rToken_;
     }
 
     function setStRSR(IStRSR stRSR_) external override onlyOwner {
@@ -81,7 +79,7 @@ contract SettingsP0 is Ownable {
         aaveAsset = aave_;
     }
 
-    // Some utility functions for reading potions of the state
+    // Useful view functions for reading portions of the state
 
     /// @return {attoUSD/qTok} The price in attoUSD of a `qTok` on oracle `source`.
     function consultOracle(Oracle.Source source, address token) external view override returns (Fix) {
@@ -96,6 +94,16 @@ contract SettingsP0 is Ownable {
     /// @return The deployment of the aave lending pool on this chain
     function aaveLendingPool() external view override returns (IAaveLendingPool) {
         return _oracle.aave;
+    }
+
+    /// @return The RToken deployment
+    function rToken() external view override returns (IRToken) {
+        return IRToken(address(rTokenAsset.erc20()));
+    }
+
+    /// @return The RSR deployment
+    function rsr() external view override returns (IERC20) {
+        return rsrAsset.erc20();
     }
 
     /// @return The system configuration
