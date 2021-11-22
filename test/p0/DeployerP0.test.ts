@@ -1,25 +1,26 @@
-import { expect } from 'chai'
-import { ethers, waffle } from 'hardhat'
-import { Wallet } from 'ethers'
-import { bn } from '../../common/numbers'
-import { defaultFixture, IManagerConfig, IParamsAssets } from './utils/fixtures'
-import { MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
-import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
+import { expect } from 'chai'
+import { Wallet } from 'ethers'
+import { ethers, waffle } from 'hardhat'
+
+import { MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
+import { bn } from '../../common/numbers'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { DeployerP0 } from '../../typechain/DeployerP0'
-import { MainP0 } from '../../typechain/MainP0'
-import { VaultP0 } from '../../typechain/VaultP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
-import { FurnaceP0 } from '../../typechain/FurnaceP0'
-import { StRSRP0 } from '../../typechain/StRSRP0'
 import { AssetManagerP0 } from '../../typechain/AssetManagerP0'
+import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
+import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
 import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
+import { DeployerP0 } from '../../typechain/DeployerP0'
+import { ERC20Mock } from '../../typechain/ERC20Mock'
+import { FurnaceP0 } from '../../typechain/FurnaceP0'
+import { MainP0 } from '../../typechain/MainP0'
+import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
+import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
+import { RTokenP0 } from '../../typechain/RTokenP0'
+import { StRSRP0 } from '../../typechain/StRSRP0'
+import { VaultP0 } from '../../typechain/VaultP0'
+import { defaultFixture, IManagerConfig } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -137,11 +138,6 @@ describe('DeployerP0 contract', () => {
 
     it('Should revert if Vault has unapproved collateral', async () => {
       const approvedCollateral = [collateral[0]]
-      const paramsAssets: IParamsAssets = {
-        rsrAsset: rsrAsset.address,
-        compAsset: compAsset.address,
-        aaveAsset: aaveAsset.address,
-      }
 
       await expect(
         deployer.deploy(
@@ -152,7 +148,6 @@ describe('DeployerP0 contract', () => {
           config,
           compoundMock.address,
           aaveMock.address,
-          paramsAssets,
           approvedCollateral
         )
       ).to.be.revertedWith('UnapprovedCollateral()')

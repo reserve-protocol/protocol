@@ -21,15 +21,6 @@ interface IDeployer {
 
     //
 
-    /// @param rsrAsset RSR as an IAsset
-    /// @param compAsset COMP as an IAsset
-    /// @param aaveAsset AAVE as an IAsset
-    struct ParamsAssets {
-        RSRAssetP0 rsrAsset;
-        COMPAssetP0 compAsset;
-        AAVEAssetP0 aaveAsset;
-    }
-
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
@@ -38,7 +29,6 @@ interface IDeployer {
     /// @param config Governance param
     /// @param compound The deployment of the Comptroller on this chain
     /// @param aave The deployment of the AaveLendingPool on this chain
-    /// @param nonCollateral The non-collateral assets in the system
     /// @param collateral The collateral assets in the system
     /// @return The address of the newly deployed Main instance.
     function deploy(
@@ -49,7 +39,6 @@ interface IDeployer {
         Config memory config,
         IComptroller compound,
         IAaveLendingPool aave,
-        ParamsAssets memory nonCollateral,
         ICollateral[] memory collateral
     ) external returns (address);
 }

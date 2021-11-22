@@ -1,27 +1,28 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { bn, fp } from '../../common/numbers'
-import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { BigNumber, ContractFactory } from 'ethers'
 import { task } from 'hardhat/config'
-import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
+import { HardhatRuntimeEnvironment } from 'hardhat/types'
+
+import { expectInReceipt } from '../../common/events'
+import { bn, fp } from '../../common/numbers'
+import { IManagerConfig } from '../../test/p0/utils/fixtures'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
-import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
 import { AaveLendingAddrProviderMockP0 } from '../../typechain/AaveLendingAddrProviderMockP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { VaultP0 } from '../../typechain/VaultP0'
-import { IManagerConfig, IParamsAssets } from '../../test/p0/utils/fixtures'
-import { DeployerP0 } from '../../typechain/DeployerP0'
-import { expectInReceipt } from '../../common/events'
-import { MainP0 } from '../../typechain/MainP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { FurnaceP0 } from '../../typechain/FurnaceP0'
-import { StRSRP0 } from '../../typechain/StRSRP0'
-import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
+import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
 import { AssetManagerP0 } from '../../typechain/AssetManagerP0'
+import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
+import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
+import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
+import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
+import { DeployerP0 } from '../../typechain/DeployerP0'
+import { ERC20Mock } from '../../typechain/ERC20Mock'
+import { FurnaceP0 } from '../../typechain/FurnaceP0'
+import { MainP0 } from '../../typechain/MainP0'
+import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
+import { RTokenP0 } from '../../typechain/RTokenP0'
+import { StRSRP0 } from '../../typechain/StRSRP0'
+import { VaultP0 } from '../../typechain/VaultP0'
 
 const qtyHalf: BigNumber = bn('1e18').div(2)
 const qtyThird: BigNumber = bn('1e18').div(3)
@@ -150,12 +151,6 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
   await aaveOracle.setPrice(aaveToken.address, bn('1e18'))
   await aaveOracle.setPrice(compToken.address, bn('1e18'))
 
-  const paramsAssets: IParamsAssets = {
-    rsrAsset: rsrAsset.address,
-    compAsset: compAsset.address,
-    aaveAsset: aaveAsset.address,
-  }
-
   // Setup Config
   const latestBlock = await hre.ethers.provider.getBlock('latest')
   const rewardStart: BigNumber = bn(await latestBlock.timestamp)
@@ -178,7 +173,9 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
   console.log('Deploy RToken...')
   // Create Deployer
   const DeployerFactory: ContractFactory = await hre.ethers.getContractFactory('DeployerP0')
-  const rtokenDeployer: DeployerP0 = <DeployerP0>await DeployerFactory.connect(deployer).deploy()
+  const rtokenDeployer: DeployerP0 = <DeployerP0>(
+    await DeployerFactory.connect(deployer).deploy(rsrAsset.address, compAsset.address, aaveAsset.address)
+  )
   await rtokenDeployer.deployed()
 
   // Deploy actual contracts
@@ -191,7 +188,6 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
       config,
       compoundMock.address,
       aaveMock.address,
-      paramsAssets,
       collaterals.map((c) => c.address)
     )
   ).wait()
