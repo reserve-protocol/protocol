@@ -4,6 +4,8 @@ pragma solidity 0.8.9;
 import "./ProtoState.sol";
 import "./Lib.sol";
 
+import "hardhat/console.sol";
+
 interface ProtoCommon {
     function init(ProtoState memory state) external;
 
