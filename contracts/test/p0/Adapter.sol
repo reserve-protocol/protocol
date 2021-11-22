@@ -37,7 +37,7 @@ import "./StRSRExtension.sol";
 interface IMockERC20 is IERC20Metadata {
     function mint(address recipient, uint256 amount) external;
 
-    function setAllowance(
+    function approve(
         address owner,
         address spender,
         uint256 amount
@@ -66,7 +66,7 @@ contract AdapterP0 is ProtoAdapter {
 
     // Collateral
     mapping(CollateralToken => ICollateral) internal _collateral;
-    mapping(IERC20 => CollateralToken) internal _reverseCollateral; // by the ERC20 of the collateral
+    mapping(IMockERC20 => CollateralToken) internal _reverseCollateral; // by the ERC20 of the collateral
 
     function init(ProtoState memory s) external override {
         // Deploy deployer factory
@@ -160,31 +160,41 @@ contract AdapterP0 is ProtoAdapter {
 
         // Populate token ledgers + oracle prices
         {
+            _initERC20(IMockERC20(address(_rsr)), s.rsr);
+            _initERC20(IMockERC20(address(_comp)), s.comp);
+            _initERC20(IMockERC20(address(_aave)), s.aave);
             for (uint256 i = 0; i < uint256(type(CollateralToken).max) + 1; i++) {
                 _initERC20(IMockERC20(address(collateral[i].erc20())), s.collateral[i]);
             }
+            // Mint stRSR to RSR initially, then stake
             for (uint256 i = 0; i < s.stRSR.balances.length; i++) {
-                // Mint stRSR to RSR initially, then stake
                 if (s.stRSR.balances[i] > 0) {
                     _rsr.mint(_address(i), s.stRSR.balances[i]);
+                    _rsr.approve(_address(i), address(_stRSR), s.stRSR.balances[i]);
                     _stRSR.connect(_address(i));
                     _stRSR.stake(s.stRSR.balances[i]);
                 }
             }
+
+            // Mint backing collateral and issue RToken
             for (uint256 i = 0; i < s.rToken.balances.length; i++) {
                 if (s.rToken.balances[i] > 0) {
+                    address[] memory tokens = _main.backingTokens();
+                    uint256[] memory quantities = _main.quote(s.rToken.balances[i]);
+                    for (uint256 j = 0; j < tokens.length; j++) {
+                        IMockERC20(tokens[i]).mint(address(this), quantities[i]);
+                        _main.issue(s.rToken.balances[i]);
+                        IMockERC20(tokens[i]).approve(address(_main), address(_main.manager()), quantities[i]);
+                    }
                     _rToken.adminMint(_address(i), s.rToken.balances[i]);
                 }
             }
 
+            // Oracle prices
             _aaveOracle.setPrice(address(_stRSR), s.stRSR.price.inETH);
             _compoundOracle.setPrice(IERC20Metadata(address(_stRSR)).symbol(), s.stRSR.price.inUSD);
             _aaveOracle.setPrice(address(_rToken), s.rToken.price.inETH);
             _compoundOracle.setPrice(IERC20Metadata(address(_rToken)).symbol(), s.rToken.price.inUSD);
-
-            _initERC20(IMockERC20(address(_rsr)), s.rsr);
-            _initERC20(IMockERC20(address(_comp)), s.comp);
-            _initERC20(IMockERC20(address(_aave)), s.aave);
         }
     }
 
@@ -193,7 +203,7 @@ contract AdapterP0 is ProtoAdapter {
         address[] memory backingTokens = _main.backingTokens();
         CollateralToken[] memory backingCollateral = new CollateralToken[](backingTokens.length);
         for (uint256 i = 0; i < backingTokens.length; i++) {
-            backingCollateral[i] = _reverseCollateral[IERC20(backingTokens[i])];
+            backingCollateral[i] = _reverseCollateral[IMockERC20(backingTokens[i])];
         }
         s.rTokenDefinition = BU(backingCollateral, _main.quote(10**_main.rToken().decimals()));
         s.rToken = _dumpERC20(_main.rToken());
@@ -242,11 +252,14 @@ contract AdapterP0 is ProtoAdapter {
     }
 
     function CMD_stakeRSR(Account account, uint256 amount) external override {
+        _rsr.approve(_address(uint256(account)), address(_stRSR), amount);
         _stRSR.connect(_address(uint256(account)));
+        _stRSR.stake(amount);
     }
 
     function CMD_unstakeRSR(Account account, uint256 amount) external override {
         _stRSR.connect(_address(uint256(account)));
+        _stRSR.unstake(amount);
     }
 
     function CMD_setRTokenForMelting(uint256 amount) external override {}
@@ -301,7 +314,7 @@ contract AdapterP0 is ProtoAdapter {
         } else {
             _collateral[ct] = new CollateralP0(address(erc20));
         }
-        _reverseCollateral[_collateral[ct].erc20()] = ct;
+        _reverseCollateral[IMockERC20(address(_collateral[ct].erc20()))] = ct;
         return _collateral[ct];
     }
 
@@ -319,7 +332,7 @@ contract AdapterP0 is ProtoAdapter {
         for (uint256 i = 0; i < tokenState.allowances.length; i++) {
             for (uint256 j = 0; j < tokenState.allowances[i].length; j++) {
                 if (tokenState.allowances[i][j] > 0) {
-                    erc20.setAllowance(_address(i), _address(j), tokenState.allowances[i][j]);
+                    erc20.approve(_address(i), _address(j), tokenState.allowances[i][j]);
                 }
             }
         }
@@ -342,7 +355,7 @@ contract AdapterP0 is ProtoAdapter {
             }
             collateral = new CollateralToken[](v.size());
             for (uint256 i = 0; i < v.size(); i++) {
-                collateral[i] = _reverseCollateral[v.collateralAt(i).erc20()];
+                collateral[i] = _reverseCollateral[IMockERC20(address(v.collateralAt(i).erc20()))];
             }
             next[bu_s.length] = BU(collateral, v.tokenAmounts(10**v.BU_DECIMALS()));
             bu_s = next;
