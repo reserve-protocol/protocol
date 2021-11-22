@@ -20,8 +20,6 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title MainP0
  * @notice The central coordinator for the entire system, as well as the external interface.

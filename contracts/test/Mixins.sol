@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "hardhat/console.sol";
-
 interface IContextMixin {
     function connect(address account) external;
 }

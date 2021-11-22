@@ -4,8 +4,6 @@ pragma solidity 0.8.9;
 import "contracts/libraries/Fixed.sol";
 import "contracts/test/ProtoState.sol";
 
-import "hardhat/console.sol";
-
 /// Provides three types of equality comparison:
 ///   1. uint
 ///   2. str

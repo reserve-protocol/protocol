@@ -34,8 +34,6 @@ import "./MainExtension.sol";
 import "./RTokenExtension.sol";
 import "./StRSRExtension.sol";
 
-import "hardhat/console.sol";
-
 interface IMockERC20 is IERC20Metadata {
     function mint(address recipient, uint256 amount) external;
 
