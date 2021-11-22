@@ -1,22 +1,25 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/p0/libraries/Oracle.sol";
 import "contracts/IMain.sol";
 import "./Lib.sol";
 
 /// Address-abstracted accounts
 enum Account {
-    ALICE,
+    ALICE, // 0
     BOB,
     CHARLIE,
     DAVE,
-    EVE
+    EVE,
+    //
+    RTOKEN,
+    STRSR,
+    MAIN // 7
 }
 
 /// All eligible collateral
 enum CollateralToken {
-    DAI,
+    DAI, // 0
     USDC,
     USDT,
     BUSD,
@@ -26,37 +29,43 @@ enum CollateralToken {
     aDAI,
     aUSDC,
     aUSDT,
-    aBUSD
+    aBUSD // 10
 }
 
-struct GenericBasket {
+/// Basket Unit, ie 1e18{qBU}
+struct BU {
     CollateralToken[] tokens;
     uint256[] quantities; // {qTok/RToken}
 }
 
-struct ERC20State {
+/// Only one of these prices below
+struct OraclePrice {
+    uint256 inETH; // {qETH/tok}
+    uint256 inUSD; // {microUSD/tok}
+}
+
+struct TokenState {
     string name;
     string symbol;
-    uint256[] balances; // Account (as uint index) -> uint256
+    uint256[][] allowances; // allowances[Account owner][Account spender] = uint256
+    uint256[] balances; // balances[Account] = uint256
     uint256 totalSupply;
+    //
+    OraclePrice price;
 }
 
 /// Top-level state struct
 struct ProtoState {
-    // ==== Setup ====
-    GenericBasket[] baskets; // not currently part of equality checks
-    // Basket DAG
-    // 0th index is assumed to be the initial backing
-
-    // ==== Setup + Equality ====
+    // System-internal state
     Config config;
-    IComptroller comptroller;
-    IAaveLendingPool aaveLendingPool;
-    GenericBasket rTokenRedemption;
-    ERC20State rToken;
-    ERC20State rsr;
-    ERC20State stRSR;
-    ERC20State comp;
-    ERC20State aave;
-    ERC20State[] collateral; // same length and order as CollateralToken enum
+    BU rTokenDefinition;
+    TokenState rToken;
+    TokenState rsr;
+    TokenState stRSR;
+    BU[] bu_s; // The definition of 1e18{qBU} basket units for all vaults in the vault stick-DAG
+    // System-external state
+    TokenState comp;
+    TokenState aave;
+    TokenState[] collateral; // same length and order as CollateralToken enum
+    OraclePrice ethPrice; // use the USD sub-field
 }

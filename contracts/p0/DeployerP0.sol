@@ -78,7 +78,7 @@ contract DeployerP0 is IDeployer {
         {
             IStRSR stRSR = _deployStRSR(
                 main,
-                string(abi.encodePacked("Staked RSR - ", name)),
+                string(abi.encodePacked("st", symbol, "RSR Token")),
                 string(abi.encodePacked("st", symbol, "RSR"))
             );
             main.setStRSR(stRSR);
@@ -95,12 +95,12 @@ contract DeployerP0 is IDeployer {
         return (address(main));
     }
 
-    /// @dev Used for testing override to manipulate msg.sender
+    /// @dev Used for testing to inject msg.sender
     function _deployMain(Oracle.Info memory oracle, Config memory config) internal virtual returns (IMain) {
         return new MainP0(oracle, config);
     }
 
-    /// @dev Used for testing override to manipulate msg.sender
+    /// @dev Used for testing to inject msg.sender
     function _deployRToken(
         IMain main,
         string memory name,
@@ -109,7 +109,7 @@ contract DeployerP0 is IDeployer {
         return new RTokenP0(main, name, symbol);
     }
 
-    /// @dev Used for testing override to manipulate msg.sender
+    /// @dev Used for testing to inject msg.sender
     function _deployStRSR(
         IMain main,
         string memory name,
