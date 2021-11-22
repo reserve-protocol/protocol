@@ -32,8 +32,8 @@ interface IAssetManagerP1 {
     function redeem(address redeemer, uint256 amount) external;
 
     /// Performs any and all auctions in the system
-    /// @return A `State` enum representing the current state the system is in.
-    function doAuctions() external returns (State);
+    /// @return A `Mood` enum representing the current mood the system is in.
+    function doAuctions() external returns (Mood);
 
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
     function collectRevenue() external;

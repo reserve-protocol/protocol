@@ -52,7 +52,7 @@ contract MainP0 is IMain, Ownable, Pausable, SettingsP0 {
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     function issue(uint256 amount) external override notPaused always {
-        require(state == SystemState.CALM || state == SystemState.TRADING, "only during calm + trading");
+        require(mood == Mood.CALM || mood == Mood.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
 
         _processSlowIssuance();
@@ -104,15 +104,15 @@ contract MainP0 is IMain, Ownable, Pausable, SettingsP0 {
 
 
     // -------- Default detection --------
-    SystemState public state;
-    uint256 public stateRaisedAt; // timestamp when default occurred
+    Mood public mood;
+    uint256 public moodRaisedAt; // timestamp when default occurred
 
     function checkForHardDefault() internal view {
         ICollateral[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
         if (hardDefaulting.length > 0) {
             manager.switchVaults(hardDefaulting);
-            state = SystemState.TRADING;
-            // TODO: Set stateRaisedAt?
+            mood = Mood.TRADING;
+            // TODO: Set moodRaisedAt?
         }
     }
 
@@ -122,23 +122,23 @@ contract MainP0 is IMain, Ownable, Pausable, SettingsP0 {
 
         // If no defaults, walk back the default and enter CALM/TRADING
         if (softDefaulting.length == 0) {
-            SystemState newState = manager.fullyCapitalized() ? SystemState.CALM : SystemState.TRADING;
-            if (newState != state) {
-                emit SystemStateChanged(state, newState);
-                state = newState;
+            Mood newMood = manager.fullyCapitalized() ? Mood.CALM : Mood.TRADING;
+            if (newMood != mood) {
+                emit MoodChanged(mood, newMood);
+                mood = newMood;
             }
             return;
         }
 
-        // If state is DOUBT for >24h (default delay), switch vaults
-        if (state == SystemState.DOUBT && block.timestamp >= stateRaisedAt + _config.defaultDelay) {
+        // If mood is DOUBT for >24h (default delay), switch vaults
+        if (mood == Mood.DOUBT && block.timestamp >= moodRaisedAt + _config.defaultDelay) {
             manager.switchVaults(softDefaulting);
-            emit SystemStateChanged(state, SystemState.TRADING);
-            state = SystemState.TRADING;
-        } else if (state == SystemState.CALM || state == SystemState.TRADING) {
-            emit SystemStateChanged(state, SystemState.DOUBT);
-            state = SystemState.DOUBT;
-            stateRaisedAt = block.timestamp;
+            emit MoodChanged(mood, Mood.TRADING);
+            mood = Mood.TRADING;
+        } else if (mood == Mood.CALM || mood == Mood.TRADING) {
+            emit MoodChanged(mood, Mood.DOUBT);
+            mood = Mood.DOUBT;
+            moodRaisedAt = block.timestamp;
         }
     }
 
@@ -167,10 +167,10 @@ contract MainP0 is IMain, Ownable, Pausable, SettingsP0 {
     // -------- frequent checks... --------
     /// Runs the central auction loop
     function poke() external override notPaused always {
-        require(state == SystemState.CALM || state == SystemState.TRADING, "only during calm + trading");
+        require(mood == Mood.CALM || mood == Mood.TRADING, "only during calm + trading");
         _processSlowIssuance();
 
-        if (state == SystemState.CALM) {
+        if (mood == Mood.CALM) {
             (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
             if (!rewardsClaimed[prevRewards]) {
                 manager.collectRevenue();
@@ -178,10 +178,10 @@ contract MainP0 is IMain, Ownable, Pausable, SettingsP0 {
             }
         }
 
-        SystemState newState = manager.doAuctions();
-        if (newState != state) {
-            emit SystemStateChanged(state, newState);
-            state = newState;
+        Mood newMood = manager.doAuctions();
+        if (newMood != mood) {
+            emit MoodChanged(mood, newMood);
+            mood = newMood;
         }
     }
 

@@ -33,7 +33,7 @@ contract FurnaceP1 is Context, IFurnaceP1 {
     function burnOverPeriod(uint256 newAmount, uint256 duration) external override {
         require(newAmount > 0, "Cannot burn a batch of zero");
         require(duration > 0, "Will not burn in 0 time");
-        // Bring state up-to-date
+        // Bring mood up-to-date
         doBurn();
 
         uint256 oldAmount = _bal();

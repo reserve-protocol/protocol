@@ -10,7 +10,7 @@ import "contracts/libraries/Fixed.sol";
 
 /**
  * @title DefaultMonitorP1
- * @notice The default monitor checks for default states in other systems.
+ * @notice The default monitor checks for default moods in other systems.
  */
 contract DefaultMonitorP1 is Context, IDefaultMonitorP1 {
     using FixLib for Fix;

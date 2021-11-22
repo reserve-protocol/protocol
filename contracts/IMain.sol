@@ -6,10 +6,10 @@ import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
-/// The 3 canonical states of the system
-enum SystemState {
+/// The 3 canonical moods of the system
+enum Mood {
     CALM, // 100% capitalized + no auctions
-    DOUBT, // in this state for 24h before default, no auctions or unstaking
+    DOUBT, // in this mood for 24h before default, no auctions or unstaking
     TRADING // auctions in progress, no unstaking
 }
 
@@ -81,8 +81,8 @@ interface IMainCommon {
     /// @param amount The quantity of RToken being redeemed
     event Redemption(address indexed redeemer, uint256 indexed amount);
 
-    /// Emitted when there is a change in system state.
-    event SystemStateChanged(SystemState indexed oldState, SystemState indexed newState);
+    /// Emitted when there is a change in system mood.
+    event MoodChanged(Mood indexed oldMood, Mood indexed newMood);
 
     //
 

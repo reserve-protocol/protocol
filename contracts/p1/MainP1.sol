@@ -56,8 +56,8 @@ contract MainP1 is IMainP1, Ownable {
     SlowIssuance[] public issuances;
 
     // Default detection.
-    State public state;
-    uint256 public stateRaisedAt; // timestamp when default occurred
+    Mood public mood;
+    uint256 public moodRaisedAt; // timestamp when default occurred
 
     constructor(
         OracleP1.Info memory oracle_,
@@ -75,7 +75,7 @@ contract MainP1 is IMainP1, Ownable {
         ICollateral[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
         if (hardDefaulting.length > 0) {
             manager.switchVaults(hardDefaulting);
-            state = State.TRADING;
+            mood = Mood.TRADING;
         }
         _;
     }
@@ -88,7 +88,7 @@ contract MainP1 is IMainP1, Ownable {
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     function issue(uint256 amount) external override notPaused always {
-        require(state == State.CALM || state == State.TRADING, "only during calm + trading");
+        require(mood == Mood.CALM || mood == Mood.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
 
         _processSlowIssuance();
@@ -129,10 +129,10 @@ contract MainP1 is IMainP1, Ownable {
 
     /// Runs the central auction loop
     function poke() external override notPaused always {
-        require(state == State.CALM || state == State.TRADING, "only during calm + trading");
+        require(mood == Mood.CALM || mood == Mood.TRADING, "only during calm + trading");
         _processSlowIssuance();
 
-        if (state == State.CALM) {
+        if (mood == Mood.CALM) {
             (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
             if (!rewardsClaimed[prevRewards]) {
                 manager.collectRevenue();
@@ -140,10 +140,10 @@ contract MainP1 is IMainP1, Ownable {
             }
         }
 
-        State newState = manager.doAuctions();
-        if (newState != state) {
-            emit StateChanged(state, newState);
-            state = newState;
+        Mood newMood = manager.doAuctions();
+        if (newMood != mood) {
+            emit MoodChanged(mood, newMood);
+            mood = newMood;
         }
     }
 
@@ -153,23 +153,23 @@ contract MainP1 is IMainP1, Ownable {
 
         // If no defaults, walk back the default and enter CALM/TRADING
         if (softDefaulting.length == 0) {
-            State newState = manager.fullyCapitalized() ? State.CALM : State.TRADING;
-            if (newState != state) {
-                emit StateChanged(state, newState);
-                state = newState;
+            Mood newMood = manager.fullyCapitalized() ? Mood.CALM : Mood.TRADING;
+            if (newMood != mood) {
+                emit MoodChanged(mood, newMood);
+                mood = newMood;
             }
             return;
         }
 
-        // If state is DOUBT for >24h (default delay), switch vaults
-        if (state == State.DOUBT && block.timestamp >= stateRaisedAt + _config.defaultDelay) {
+        // If mood is DOUBT for >24h (default delay), switch vaults
+        if (mood == Mood.DOUBT && block.timestamp >= moodRaisedAt + _config.defaultDelay) {
             manager.switchVaults(softDefaulting);
-            emit StateChanged(state, State.TRADING);
-            state = State.TRADING;
-        } else if (state == State.CALM || state == State.TRADING) {
-            emit StateChanged(state, State.DOUBT);
-            state = State.DOUBT;
-            stateRaisedAt = block.timestamp;
+            emit MoodChanged(mood, Mood.TRADING);
+            mood = Mood.TRADING;
+        } else if (mood == Mood.CALM || mood == Mood.TRADING) {
+            emit MoodChanged(mood, Mood.DOUBT);
+            mood = Mood.DOUBT;
+            moodRaisedAt = block.timestamp;
         }
     }
 

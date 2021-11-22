@@ -134,8 +134,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     /// Performs any and all auctions in the system
-    /// @return The current enum `SystemState`
-    function doAuctions() external override returns (SystemState) {
+    /// @return The current enum `Mood`
+    function doAuctions() external override returns (Mood) {
         // Outline:
         //  1. Closeout running auctions
         //  2. Create new BUs from collateral
@@ -148,7 +148,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             Auction.Info storage auction = auctions[i];
             if (auction.isOpen) {
                 if (block.timestamp <= auction.endTime) {
-                    return SystemState.TRADING;
+                    return Mood.TRADING;
                 }
                 auction.close(main);
             }
@@ -293,7 +293,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     }
 
     /// Runs all auctions for recapitalization
-    function _doRecapitalizationAuctions() internal returns (SystemState) {
+    function _doRecapitalizationAuctions() internal returns (Mood) {
         // Are we able to trade sideways, or is it all dust?
         (
             ICollateral sell,
@@ -311,7 +311,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         );
         if (trade) {
             _launchAuction(auction);
-            return SystemState.TRADING;
+            return Mood.TRADING;
         }
 
         // Redeem BUs to open up spare collateral
@@ -335,7 +335,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         );
         if (trade) {
             _launchAuction(auction);
-            return SystemState.TRADING;
+            return Mood.TRADING;
         }
 
         // Fallback to seizing RSR stake
@@ -353,7 +353,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             if (trade) {
                 main.stRSR().seizeRSR(auction.sellAmount - main.rsr().balanceOf(address(this)));
                 _launchAuction(auction);
-                return SystemState.TRADING;
+                return Mood.TRADING;
             }
         }
 
@@ -361,11 +361,11 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         _accumulate();
         Fix melting = (toFix(totalSupply).plusu(main.furnace().totalBurnt())).divu(totalSupply);
         _historicalBasketDilution = melting.mulu(vault.basketUnits(address(this))).divu(totalSupply);
-        return SystemState.CALM;
+        return Mood.CALM;
     }
 
     /// Runs all auctions for revenue
-    function _doRevenueAuctions() internal returns (SystemState) {
+    function _doRevenueAuctions() internal returns (Mood) {
         uint256 auctionLenSnapshot = auctions.length;
 
         // Empty oldest vault
@@ -435,7 +435,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             _launchAuction(auction2);
         }
 
-        return auctions.length == auctionLenSnapshot ? SystemState.CALM : SystemState.TRADING;
+        return auctions.length == auctionLenSnapshot ? Mood.CALM : Mood.TRADING;
     }
 
     /// Determines what the largest collateral-for-collateral trade is.

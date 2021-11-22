@@ -11,10 +11,10 @@ import "./IRTokenP1.sol";
 import "./IStRSRP1.sol";
 import "./IVaultP1.sol";
 
-/// The 3 canonical states of the system
-enum State {
+/// The 3 canonical moods of the system
+enum Mood {
     CALM, // 100% capitalized + no auctions
-    DOUBT, // in this state for 24h before default, no auctions or unstaking
+    DOUBT, // in this mood for 24h before default, no auctions or unstaking
     TRADING // auctions in progress, no unstaking
 }
 
@@ -105,8 +105,8 @@ interface IMainP1 {
     /// @param amount The quantity of RToken being redeemed
     event Redemption(address indexed redeemer, uint256 indexed amount);
 
-    /// Emitted when there is a change in system state.
-    event StateChanged(State indexed oldState, State indexed newState);
+    /// Emitted when there is a change in system mood.
+    event MoodChanged(Mood indexed oldMood, Mood indexed newMood);
 
     //
 
