@@ -29,7 +29,10 @@ import "contracts/p0/VaultP0.sol";
 import "contracts/test/Lib.sol";
 import "contracts/test/ProtosDriver.sol";
 import "contracts/test/ProtoState.sol";
-import "./Extensions.sol";
+import "./DeployerExtension.sol";
+import "./MainExtension.sol";
+import "./RTokenExtension.sol";
+import "./StRSRExtension.sol";
 
 import "hardhat/console.sol";
 
@@ -51,13 +54,13 @@ contract AdapterP0 is ProtoAdapter {
     string constant ETH = "ETH";
 
     // Deployed system contracts
-    IDeployer internal _deployer;
+    DeployerExtension internal _deployer;
     IMockERC20 internal _rsr;
     IMockERC20 internal _comp;
     IMockERC20 internal _aave;
-    IMainExtension internal _main;
-    IStRSRExtension internal _stRSR;
-    IRTokenExtension internal _rToken;
+    MainExtension internal _main;
+    StRSRExtension internal _stRSR;
+    RTokenExtension internal _rToken;
 
     // Oracles
     CompoundOracleMockP0 internal _compoundOracle;
@@ -101,21 +104,21 @@ contract AdapterP0 is ProtoAdapter {
         }
 
         // Deploy vault for each basket
-        IVault[] memory vaults = new IVault[](s.baskets.length);
+        IVault[] memory vaults = new IVault[](s.bu_s.length);
         {
-            for (int256 i = int256(s.baskets.length) - 1; i >= 0; i--) {
+            for (int256 i = int256(s.bu_s.length) - 1; i >= 0; i--) {
                 uint256 iUint = uint256(i);
-                IVault[] memory prevVaults = new IVault[](s.baskets.length - 1 - iUint);
-                for (uint256 j = iUint + 1; j < s.baskets.length; j++) {
+                IVault[] memory prevVaults = new IVault[](s.bu_s.length - 1 - iUint);
+                for (uint256 j = iUint + 1; j < s.bu_s.length; j++) {
                     prevVaults[j - (iUint + 1)] = vaults[j];
                 }
 
-                ICollateral[] memory backing = new ICollateral[](s.baskets[iUint].tokens.length);
-                for (uint256 j = 0; j < s.baskets[iUint].tokens.length; j++) {
-                    backing[j] = _collateral[s.baskets[iUint].tokens[j]];
+                ICollateral[] memory backing = new ICollateral[](s.bu_s[iUint].tokens.length);
+                for (uint256 j = 0; j < s.bu_s[iUint].tokens.length; j++) {
+                    backing[j] = _collateral[s.bu_s[iUint].tokens[j]];
                 }
 
-                vaults[iUint] = new VaultP0(backing, s.baskets[iUint].quantities, prevVaults);
+                vaults[iUint] = new VaultP0(backing, s.bu_s[iUint].quantities, prevVaults);
             }
         }
 
@@ -140,13 +143,12 @@ contract AdapterP0 is ProtoAdapter {
                 address(new AaveLendingAddrProviderMockP0(address(_aaveOracle)))
             );
 
-            _main = IMainExtension(
+            _main = MainExtension(
                 _deployer.deploy(
                     s.rToken.name,
                     s.rToken.symbol,
                     address(this),
                     vaults[0],
-                    _rsr,
                     s.config,
                     comptroller,
                     aaveLendingPool,
@@ -154,8 +156,8 @@ contract AdapterP0 is ProtoAdapter {
                     collateral
                 )
             );
-            _stRSR = IStRSRExtension(address(_main.stRSR()));
-            _rToken = IRTokenExtension(address(_main.rToken()));
+            _stRSR = StRSRExtension(address(_main.stRSR()));
+            _rToken = RTokenExtension(address(_main.rToken()));
         }
 
         for (uint256 i = 0; i < vaults.length; i++) {
@@ -199,10 +201,11 @@ contract AdapterP0 is ProtoAdapter {
         for (uint256 i = 0; i < backingTokens.length; i++) {
             backingCollateral[i] = _reverseCollateral[IERC20(backingTokens[i])];
         }
-        s.rTokenRedemption = GenericBasket(backingCollateral, _main.quote(10**_main.rToken().decimals()));
+        s.rTokenDefinition = BU(backingCollateral, _main.quote(10**_main.rToken().decimals()));
         s.rToken = _dumpERC20(_main.rToken());
         s.rsr = _dumpERC20(_main.rsr());
         s.stRSR = _dumpERC20(_main.stRSR());
+        s.bu_s = _traverseVaults();
         s.comp = _dumpERC20(_main.compAsset().erc20());
         s.aave = _dumpERC20(_main.aaveAsset().erc20());
         s.collateral = new TokenState[](uint256(type(CollateralToken).max) + 1);
@@ -213,7 +216,15 @@ contract AdapterP0 is ProtoAdapter {
     }
 
     function matches(ProtoState memory s) external override returns (bool) {
-        return s.eq(state());
+        return state().eq(s);
+    }
+
+    function checkInvariants() external override returns (bool) {
+        return
+            _deployer.checkInvariants() &&
+            _main.checkInvariants() &&
+            _rToken.checkInvariants() &&
+            _stRSR.checkInvariants();
     }
 
     // === COMMANDS ====
@@ -260,12 +271,6 @@ contract AdapterP0 is ProtoAdapter {
         uint256 amount
     ) external override {
         _stRSR.connect(_address(uint256(from)));
-    }
-
-    // === INVARIANTS ====
-
-    function INVARIANT_isFullyCapitalized() external view override returns (bool) {
-        return _main.manager().fullyCapitalized();
     }
 
     // =================================================================
@@ -328,6 +333,29 @@ contract AdapterP0 is ProtoAdapter {
         // Oracle price information
         _aaveOracle.setPrice(address(erc20), tokenState.price.inETH);
         _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUSD);
+    }
+
+    /// @return bu_s The Basket Units of the stick DAG
+    function _traverseVaults() internal returns (BU[] memory bu_s) {
+        IVault v = _main.manager().vault();
+        CollateralToken[] memory collateral;
+        IVault[] memory backups;
+        do {
+            backups = v.getBackups();
+            BU[] memory next = new BU[](bu_s.length + 1);
+            for (uint256 i = 0; i < bu_s.length; i++) {
+                next[i] = bu_s[i];
+            }
+            collateral = new CollateralToken[](v.size());
+            for (uint256 i = 0; i < v.size(); i++) {
+                collateral[i] = _reverseCollateral[v.collateralAt(i).erc20()];
+            }
+            next[bu_s.length] = BU(collateral, v.tokenAmounts(10**v.BU_DECIMALS()));
+            bu_s = next;
+            if (backups.length > 0) {
+                v = backups[0]; // walk the DAG
+            }
+        } while (backups.length > 0);
     }
 
     /// Account index -> address

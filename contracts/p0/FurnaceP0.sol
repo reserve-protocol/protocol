@@ -10,7 +10,7 @@ import "contracts/p0/interfaces/IRToken.sol";
 
 /**
  * @title FurnaceP0
- * @notice A helper contract to burn RTokens slowly and permisionlessly.
+ * @notice A helper to burn RTokens slowly and permisionlessly.
  */
 contract FurnaceP0 is Context, IFurnace {
     using SafeERC20 for IRToken;

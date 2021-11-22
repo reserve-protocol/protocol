@@ -46,14 +46,20 @@ library Lib {
     function eq(ProtoState memory a, ProtoState memory b) internal returns (bool ok) {
         ok =
             _eqConfig(a.config, b.config) &&
-            _eqBasket(a.rTokenRedemption, b.rTokenRedemption) &&
+            _eqBU(a.rTokenDefinition, b.rTokenDefinition) &&
             _eqTokenState(a.rToken, b.rToken, "RToken") &&
             _eqTokenState(a.rsr, b.rsr, "RSR") &&
             _eqTokenState(a.stRSR, b.stRSR, "stRSR") &&
             _eqTokenState(a.comp, b.comp, "COMP") &&
             _eqTokenState(a.aave, b.aave, "AAVE") &&
             _eqOraclePrice(a.ethPrice, b.ethPrice) &&
+            eq(a.bu_s.length, b.bu_s.length, "Baskets size mismatch") &&
             eq(a.collateral.length, b.collateral.length, "Collateral length mismatch");
+
+        // Baskets
+        for (uint256 i = 0; ok && i < a.bu_s.length; i++) {
+            ok = ok && _eqBU(a.bu_s[i], b.bu_s[i]);
+        }
 
         // Collateral
         for (uint256 i = 0; ok && i < a.collateral.length; i++) {
@@ -138,8 +144,8 @@ library Lib {
         }
     }
 
-    /// @return ok Whether two baskets are equal
-    function _eqBasket(GenericBasket memory a, GenericBasket memory b) internal view returns (bool ok) {
+    /// @return ok Whether two BU sets are equal
+    function _eqBU(BU memory a, BU memory b) internal view returns (bool ok) {
         ok =
             eq(a.tokens.length, b.tokens.length, "Tokens size mismatch") &&
             eq(a.quantities.length, b.quantities.length, "Quantities size mismatch") &&
@@ -147,7 +153,7 @@ library Lib {
 
         for (uint256 i = 0; ok && i < a.quantities.length; i++) {
             // TODO: Do fuzzy check
-            ok = eq(a.quantities[i], b.quantities[i], "Basket quantities mismatch");
+            ok = eq(a.quantities[i], b.quantities[i], "BU quantities mismatch");
             if (!ok) {
                 console.log("Index: %s", i);
                 return false;

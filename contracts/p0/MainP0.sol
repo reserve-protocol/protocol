@@ -107,6 +107,7 @@ contract MainP0 is IMain, Ownable {
             IERC20(iss.vault.collateralAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.deposits[i]);
             IERC20(iss.vault.collateralAt(i).erc20()).safeApprove(address(iss.vault), iss.deposits[i]);
         }
+
         iss.vault.issue(address(this), iss.BUs);
         emit IssuanceStarted(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
     }
@@ -233,12 +234,12 @@ contract MainP0 is IMain, Ownable {
 
     /// @dev view
     /// @return The token quantities required to issue `amount` RToken.
-    function quote(uint256 amount) external override returns (uint256[] memory) {
+    function quote(uint256 amount) public override returns (uint256[] memory) {
         return manager.vault().tokenAmounts(manager.toBUs(amount));
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
-    function backingTokens() external view override returns (address[] memory erc20s) {
+    function backingTokens() public view override returns (address[] memory erc20s) {
         erc20s = new address[](manager.vault().size());
         for (uint256 i = 0; i < manager.vault().size(); i++) {
             erc20s[i] = address(manager.vault().collateralAt(i).erc20());

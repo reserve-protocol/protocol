@@ -45,8 +45,7 @@ interface ProtoCommon {
 }
 
 interface ProtoAdapter is ProtoCommon {
-    function INVARIANT_isFullyCapitalized() external view returns (bool);
-    // ...more
+    function checkInvariants() external returns (bool);
 }
 
 /// A single point of contact for the TS testing suite that ensures all provided impls stay in sync and
@@ -82,14 +81,9 @@ contract ProtosDriver is ProtoCommon {
         return _adapters[0].state();
     }
 
-    /// @return Whether all protos match the given state
+    /// @return Whether the state of the synced simulations matches
     function matches(ProtoState memory s) external override returns (bool) {
-        for (uint256 i = 0; i < _adapters.length; i++) {
-            if (!_adapters[i].matches(s)) {
-                return false;
-            }
-        }
-        return true;
+        return _adapters[0].matches(s);
     }
 
     function CMD_issue(Account account, uint256 amount) external override afterCMD {
@@ -157,8 +151,8 @@ contract ProtosDriver is ProtoCommon {
     /// @return Whether all adapters are meeting their invariants
     function _checkInvariants() internal returns (bool) {
         for (uint256 i = 0; i < _adapters.length; i++) {
-            if (!_adapters[i].INVARIANT_isFullyCapitalized()) {
-                console.log("Implementation %s is not fully capitalized", i);
+            if (!_adapters[i].checkInvariants()) {
+                console.log("Adapter %s invariant violation", i);
                 return false;
             }
         }
