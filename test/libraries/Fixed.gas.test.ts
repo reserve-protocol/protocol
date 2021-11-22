@@ -1,12 +1,12 @@
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ethers } from 'hardhat'
-import { BN_SCALE_FACTOR } from '../../common/constants'
-import { fp, bn } from '../../common/numbers'
-
 import { ContractFactory } from 'ethers'
 import { BigNumber, BigNumberish } from 'ethers'
+import { ethers } from 'hardhat'
+
+import { BN_SCALE_FACTOR } from '../../common/constants'
+import { bn, fp } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 describe('In FixLib,', async () => {
   let owner: SignerWithAddress
