@@ -6,10 +6,10 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
+import "contracts/test/Mixins.sol";
 import "./MainExtension.sol";
 import "./RTokenExtension.sol";
 import "./StRSRExtension.sol";
-import "./IExtension.sol";
 
 /// Inject wrapper contracts into Deployer
 contract DeployerExtension is IExtension, DeployerP0 {
@@ -24,8 +24,8 @@ contract DeployerExtension is IExtension, DeployerP0 {
         _deployer = msg.sender;
     }
 
-    function checkInvariants() external override returns (bool) {
-        return INVARIANT_currentDeploymentRegistered();
+    function assertInvariants() external override {
+        INVARIANT_currentDeploymentRegistered();
     }
 
     /// @dev Used for testing override to manipulate msg.sender
@@ -52,12 +52,9 @@ contract DeployerExtension is IExtension, DeployerP0 {
         return new StRSRExtension(_deployer, main, name, symbol);
     }
 
-    function INVARIANT_currentDeploymentRegistered() internal view returns (bool) {
+    function INVARIANT_currentDeploymentRegistered() internal view {
         for (uint256 i = 0; i < deployments.length; i++) {
-            if (_main == deployments[i]) {
-                return true;
-            }
+            assert(_main == deployments[i]);
         }
-        return false;
     }
 }

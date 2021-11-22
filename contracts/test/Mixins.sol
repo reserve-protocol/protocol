@@ -5,6 +5,10 @@ interface IContextMixin {
     function connect(address account) external;
 }
 
+interface IExtension {
+    function assertInvariants() external;
+}
+
 /**
  * @dev Provides information about the current execution context, including the
  * sender of the transaction and its data. While these are generally available

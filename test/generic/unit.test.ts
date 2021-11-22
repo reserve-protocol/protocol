@@ -1,19 +1,13 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { expect } from 'chai';
-import { BigNumber, ContractFactory } from 'ethers';
-import { ethers } from 'hardhat';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { expect } from 'chai'
+import { BigNumber, ContractFactory } from 'ethers'
+import { ethers } from 'hardhat'
 
-import { bn, fp } from '../../common/numbers';
-import { AaveLendingAddrProviderMockP0 } from '../../typechain/AaveLendingAddrProviderMockP0';
-import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0';
-import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0';
-import { AdapterP0 } from '../../typechain/AdapterP0';
-import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0';
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0';
-import { ProtoAdapter } from '../../typechain/ProtoAdapter';
-import { ProtosDriver } from '../../typechain/ProtosDriver';
-import { IManagerConfig } from '../p0/utils/fixtures';
-import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time';
+import { bn, fp } from '../../common/numbers'
+import { ProtoAdapter } from '../../typechain/ProtoAdapter'
+import { ProtosDriver } from '../../typechain/ProtosDriver'
+import { IManagerConfig } from '../p0/utils/fixtures'
+import { getLatestBlockTimestamp } from '../utils/time'
 
 /*
  * The Generic Unit tests are written against ProtoState and ProtosDriver. The ProtosDriver can be set
@@ -52,8 +46,11 @@ enum Account {
 }
 const ACCOUNTS_LEN = 8
 
+type Allowance = Array<[Account, Account, BigNumber]>
+type Balance = Array<[Account, BigNumber]>
+
 /// Helper to prepare two-dimensional allowance arrays
-const prepareAllowances = (...allowance: Array<[Account, Account, BigNumber]>) => {
+const prepareAllowances = (...allowance: Allowance) => {
   const toReturn: BigNumber[][] = [] // 2d
   for (let i = 0; i < ACCOUNTS_LEN; i++) {
     toReturn.push([])
@@ -68,7 +65,7 @@ const prepareAllowances = (...allowance: Array<[Account, Account, BigNumber]>) =
 }
 
 /// Helper to prepare balance arrays
-const prepareBalances = (...balance: Array<[Account, BigNumber]>) => {
+const prepareBalances = (...balance: Balance) => {
   const toReturn: BigNumber[] = []
   for (let i = 0; i < ACCOUNTS_LEN; i++) {
     toReturn.push(bn(0))
@@ -85,6 +82,71 @@ const sum = (arr: Array<BigNumber>) => {
     total = total.add(arr[i])
   }
   return total
+}
+
+const makeState = (
+  config: IManagerConfig,
+  ethPriceMicroUSD: BigNumber,
+  rTokenBalances: Array<[Account, BigNumber]>
+) => {
+  // $4k ETH
+  const ethPrice = { inUSD: ethPriceMicroUSD, inETH: bn('1e18') }
+  const makeToken = (
+    symbol: string,
+    balances: Array<[Account, BigNumber]>,
+    allowances: Array<[Account, Account, BigNumber]>,
+    microUSDPrice: BigNumber
+  ) => {
+    const bals = prepareBalances(...balances)
+    return {
+      name: symbol + ' Token',
+      symbol: symbol,
+      balances: bals,
+      allowances: prepareAllowances(...allowances),
+      totalSupply: sum(bals),
+      price: { inUSD: microUSDPrice, inETH: microUSDPrice.mul(bn('1e12')).div(ethPrice.inUSD) },
+    }
+  }
+
+  // {symbol}, {balances}, {allowances}, {microUSD price}
+  // Do not populate token balances at contract addresses
+  // TODO: There is an unnormalized data issue here
+
+  const rToken = makeToken('USD+', [], [], bn('1e6')) // do not mirror collateral balances for RToken that appears here
+  const rsr = makeToken('RSR', [[Account.ALICE, bn('1e36')]], [], bn('1e6'))
+  const stRSR = makeToken('stUSD+RSR', [[Account.EVE, bn('1e20')]], [], bn('1e6')) // do not create RSR balances for StRSR that appears here
+  const comp = makeToken('COMP', [], [], bn('1e6'))
+  const aave = makeToken('AAVE', [], [], bn('1e6'))
+  const collateral = [
+    makeToken('DAI', [[Account.ALICE, bn('1e36')]], [[Account.ALICE, Account.MAIN, bn('1e36')]], bn('1e6')),
+    makeToken('USDC', [], [], bn('1e6')),
+    makeToken('USDT', [], [], bn('1e6')),
+    makeToken('BUSD', [], [], bn('1e6')),
+    makeToken('cDAI', [[Account.ALICE, bn('1e36')]], [[Account.ALICE, Account.MAIN, bn('1e36')]], bn('1e6')),
+    makeToken('cUSDC', [], [], bn('1e6')),
+    makeToken('cUSDT', [], [], bn('1e6')),
+    makeToken('aDAI', [], [], bn('1e6')),
+    makeToken('aUSDC', [], [], bn('1e6')),
+    makeToken('aUSDT', [], [], bn('1e6')),
+    makeToken('aBUSD', [], [], bn('1e6')),
+  ]
+
+  const b1 = { tokens: [CollateralToken.cDAI, CollateralToken.DAI], quantities: [bn('5e7'), bn('5e17')] }
+  const b2 = { tokens: [CollateralToken.DAI], quantities: [bn('1e18')] }
+  const bu_s = [b1, b2]
+
+  initialState = {
+    bu_s: bu_s,
+    config: config,
+    rTokenDefinition: b1,
+    rToken: rToken,
+    rsr: rsr,
+    stRSR: stRSR,
+    comp: comp,
+    aave: aave,
+    collateral: collateral,
+    ethPrice: ethPrice,
+  }
 }
 
 describe('Generic unit tests', () => {
@@ -139,9 +201,11 @@ describe('Generic unit tests', () => {
         }
       }
 
+      const
+
       // {symbol}, {balances}, {allowances}, {microUSD price}
       // Do not populate token balances at contract addresses
-      // TODO: There is an unnormalized data issue here 
+      // TODO: There is an unnormalized data issue here
 
       const rToken = makeToken('USD+', [], [], bn('1e6')) // do not mirror collateral balances for RToken that appears here
       const rsr = makeToken('RSR', [[Account.ALICE, bn('1e36')]], [], bn('1e6'))
