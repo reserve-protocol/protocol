@@ -35,7 +35,7 @@ struct SlowIssuance {
  * @notice The central coordinator for the entire system, as well as the external interface.
  * @dev The p0-specific IMain
  */
-interface IMain is IMainCommon {
+interface IMainP0 is IMainCommon {
     /// @return The RSR ERC20 deployment on this chain
     function rsr() external view returns (IERC20);
 

@@ -26,7 +26,7 @@ import "contracts/Pausable.sol";
  * @title MainP0
  * @notice The central coordinator for the entire system, as well as the external interface.
  */
-contract MainP0 is IMain, Ownable, Pausable, SettingsP0 {
+contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
     using SafeERC20 for IERC20;
     using Oracle for Oracle.Info;
     using FixLib for Fix;
@@ -37,11 +37,7 @@ contract MainP0 is IMain, Ownable, Pausable, SettingsP0 {
     // Slow Issuance
     SlowIssuance[] public issuances;
 
-    constructor(
-        Oracle.Info memory oracle_,
-        Config memory config_,
-        IERC20 rsr_
-    ) Settings(oracle_, config_, rsr_) {}
+    constructor(Oracle.Info memory oracle_, Config memory config_) SettingsP0(oracle_, config_) {}
 
     /// This modifier runs before every function including redemption, so it must be very safe.
     modifier always() {
@@ -84,8 +80,8 @@ contract MainP0 is IMain, Ownable, Pausable, SettingsP0 {
     // Returns the future block number at which an issuance for *amount* now can complete
     function _nextIssuanceBlockAvailable(uint256 amount) internal view returns (uint256) {
         uint256 perBlock = Math.max(
-            10_000 * 10**rToken.decimals(), // lower-bound: 10k whole RToken per block
-            toFix(rToken.totalSupply()).mul(_config.issuanceRate).toUint()
+            10_000 * 10**rToken().decimals(), // lower-bound: 10k whole RToken per block
+            toFix(rToken().totalSupply()).mul(_config.issuanceRate).toUint()
         ); // {RToken/block}
         uint256 blockStart = issuances.length == 0 ? block.number : issuances[issuances.length - 1].blockAvailableAt;
         return Math.max(blockStart, block.number) + Math.ceilDiv(amount, perBlock);
@@ -101,7 +97,6 @@ contract MainP0 is IMain, Ownable, Pausable, SettingsP0 {
         manager.redeem(_msgSender(), amount);
         emit Redemption(_msgSender(), amount);
     }
-
 
     // -------- Default detection --------
     Mood public mood;
@@ -184,7 +179,6 @@ contract MainP0 is IMain, Ownable, Pausable, SettingsP0 {
             mood = newMood;
         }
     }
-
 
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowIssuance() internal {

@@ -56,7 +56,7 @@ struct Config {
  * @notice The central coordinator for the entire system, as well as the external interface.
  * @dev A common interface that all prototypes share.
  */
-interface IMainCommon {
+interface IMainEvents {
     /// Emitted when issuance is started, at the point collateral is taken in
     /// @param issuanceId The index off the issuance, a globally unique identifier
     /// @param issuer The account performing the issuance
@@ -83,8 +83,9 @@ interface IMainCommon {
 
     /// Emitted when there is a change in system mood.
     event MoodChanged(Mood indexed oldMood, Mood indexed newMood);
+}
 
-    //
+interface IMainCommon is IMainEvents{
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount The quantity {qRToken} of RToken to issue

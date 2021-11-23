@@ -24,17 +24,21 @@ contract Pausable is Ownable {
     }
 
     function pause() external {
-        require(_msgSender() == pauser || _msgSender() == owner(), "only pauser or owner");
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         paused = true;
     }
 
     function unpause() external {
-        require(_msgSender() == pauser || _msgSender() == owner(), "only pauser or owner");
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         paused = false;
+    }
+
+    function pauser() public returns (address) {
+        return pauser;
     }
 
     function setPauser(address pauser_) external {
         require(_msgSender() == pauser || _msgSender() == owner(), "only pauser or owner");
-        pauser = pauser_;
+        _pauser = pauser_;
     }
 }

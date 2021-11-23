@@ -8,6 +8,7 @@ import "contracts/p0/interfaces/IAssetManager.sol";
 import "contracts/p0/interfaces/IDefaultMonitor.sol";
 import "contracts/p0/interfaces/IFurnace.sol";
 import "contracts/p0/interfaces/IRToken.sol";
+import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/Pausable.sol";
 
 import "contracts/p0/SettingsP0.sol";
@@ -16,7 +17,7 @@ import "contracts/p0/SettingsP0.sol";
 contract SettingsP0 is Ownable {
     using Oracle for Oracle.Info;
 
-    Oracle.Info internal _oracle;    // TODO: is this intended to be immutable after construction? Should we have setOracle()?
+    Oracle.Info internal _oracle; // TODO: is this intended to be immutable after construction? Should we have setOracle()?
     Config internal _config;
 
     IStRSR public override stRSR;
@@ -29,14 +30,9 @@ contract SettingsP0 is Ownable {
     IAsset public override compAsset;
     IAsset public override aaveAsset;
 
-    constructor(
-        Oracle.Info memory oracle_,
-        Config memory config_,
-        IERC20 rsr_
-    ) {
+    constructor(Oracle.Info memory oracle_, Config memory config_) {
         _oracle = oracle_;
         _config = config_;
-        rsr = rsr_;
     }
 
     function setOracle(Oracle.Info memory oracle) external override onlyOwner {
@@ -82,33 +78,32 @@ contract SettingsP0 is Ownable {
     // Useful view functions for reading portions of the state
 
     /// @return {attoUSD/qTok} The price in attoUSD of a `qTok` on oracle `source`.
-    function consultOracle(Oracle.Source source, address token) external view override returns (Fix) {
+    function consultOracle(Oracle.Source source, address token) public view override returns (Fix) {
         return _oracle.consult(source, token);
     }
 
     /// @return The deployment of the comptroller on this chain
-    function comptroller() external view override returns (IComptroller) {
+    function comptroller() public view override returns (IComptroller) {
         return _oracle.compound;
     }
 
     /// @return The deployment of the aave lending pool on this chain
-    function aaveLendingPool() external view override returns (IAaveLendingPool) {
+    function aaveLendingPool() public view override returns (IAaveLendingPool) {
         return _oracle.aave;
     }
 
     /// @return The RToken deployment
-    function rToken() external view override returns (IRToken) {
+    function rToken() public view override returns (IRToken) {
         return IRToken(address(rTokenAsset.erc20()));
     }
 
     /// @return The RSR deployment
-    function rsr() external view override returns (IERC20) {
+    function rsr() public view override returns (IERC20) {
         return rsrAsset.erc20();
     }
 
     /// @return The system configuration
-    function config() external view override returns (Config memory) {
+    function config() public view override returns (Config memory) {
         return _config;
     }
-
 }
