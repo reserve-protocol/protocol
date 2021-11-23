@@ -143,6 +143,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         //  4. Run revenue auctions
 
         require(_msgSender() == address(main), "only main can mutate the asset manager");
+
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctions.length; i++) {
             Auction.Info storage auction = auctions[i];
@@ -258,8 +259,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// Runs infrequently to accumulate the historical dilution factor
     function _accumulate() internal {
-        _historicalBasketDilution = _basketDilutionFactor();
         _prevBasketRate = vault.basketRate();
+        _historicalBasketDilution = _basketDilutionFactor();
     }
 
     function _switchVault(IVault vault_) internal {
@@ -391,6 +392,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         Fix compBal = toFix(main.compAsset().erc20().balanceOf(address(this)));
         Fix amountForRSR = compBal.mul(main.config().f);
         Fix amountForRToken = compBal.minus(amountForRSR);
+
         (launch, auction) = _prepareAuctionSell(
             main.config().minRevenueAuctionSize,
             main.compAsset(),
@@ -412,9 +414,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
 
         // AAVE -> dividend RSR + melting RToken
-        Fix aaveBal = toFix(main.compAsset().erc20().balanceOf(address(this)));
+        Fix aaveBal = toFix(main.aaveAsset().erc20().balanceOf(address(this)));
         amountForRSR = aaveBal.mul(main.config().f);
         amountForRToken = aaveBal.minus(amountForRSR);
+
         (launch, auction) = _prepareAuctionSell(
             main.config().minRevenueAuctionSize,
             main.aaveAsset(),
@@ -538,6 +541,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(main)).toUint()); // {qSellTok}
         Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(main)).div(buy.priceUSD(main)); // {qBuyTok}
         Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.config().maxTradeSlippage)); // {qBuyTok}
+
         return (
             true,
             Auction.Info({
