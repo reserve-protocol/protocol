@@ -16,7 +16,7 @@ import { getLatestBlockTimestamp } from '../utils/time'
  * the generic test suite to pretend it is interacting with a single system.
  */
 
-// Must match `ProtoState.CollateralToken`
+// @dev Must match `ProtoState.CollateralToken`
 enum CollateralToken {
   DAI,
   USDC,
@@ -32,7 +32,7 @@ enum CollateralToken {
 }
 const COLLATERAL_TOKEN_LEN = 11
 
-// Must match `ProtoState.Account`
+// @dev Must match `ProtoState.Account`
 enum Account {
   ALICE,
   BOB,
@@ -46,108 +46,9 @@ enum Account {
 }
 const ACCOUNTS_LEN = 8
 
-type Allowance = Array<[Account, Account, BigNumber]>
-type Balance = Array<[Account, BigNumber]>
-
-/// Helper to prepare two-dimensional allowance arrays
-const prepareAllowances = (...allowance: Allowance) => {
-  const toReturn: BigNumber[][] = [] // 2d
-  for (let i = 0; i < ACCOUNTS_LEN; i++) {
-    toReturn.push([])
-    for (let j = 0; j < ACCOUNTS_LEN; j++) {
-      toReturn[i].push(bn(0))
-    }
-  }
-  for (let i = 0; i < allowance.length; i++) {
-    toReturn[allowance[i][0]][allowance[i][1]] = allowance[i][2]
-  }
-  return toReturn
-}
-
-/// Helper to prepare balance arrays
-const prepareBalances = (...balance: Balance) => {
-  const toReturn: BigNumber[] = []
-  for (let i = 0; i < ACCOUNTS_LEN; i++) {
-    toReturn.push(bn(0))
-  }
-  for (let i = 0; i < balance.length; i++) {
-    toReturn[balance[i][0]] = balance[i][1]
-  }
-  return toReturn
-}
-
-const sum = (arr: Array<BigNumber>) => {
-  let total = bn(0)
-  for (let i = 0; i < arr.length; i++) {
-    total = total.add(arr[i])
-  }
-  return total
-}
-
-const makeState = (
-  config: IManagerConfig,
-  ethPriceMicroUSD: BigNumber,
-  rTokenBalances: Array<[Account, BigNumber]>
-) => {
-  // $4k ETH
-  const ethPrice = { inUSD: ethPriceMicroUSD, inETH: bn('1e18') }
-  const makeToken = (
-    symbol: string,
-    balances: Array<[Account, BigNumber]>,
-    allowances: Array<[Account, Account, BigNumber]>,
-    microUSDPrice: BigNumber
-  ) => {
-    const bals = prepareBalances(...balances)
-    return {
-      name: symbol + ' Token',
-      symbol: symbol,
-      balances: bals,
-      allowances: prepareAllowances(...allowances),
-      totalSupply: sum(bals),
-      price: { inUSD: microUSDPrice, inETH: microUSDPrice.mul(bn('1e12')).div(ethPrice.inUSD) },
-    }
-  }
-
-  // {symbol}, {balances}, {allowances}, {microUSD price}
-  // Do not populate token balances at contract addresses
-  // TODO: There is an unnormalized data issue here
-
-  const rToken = makeToken('USD+', [], [], bn('1e6')) // do not mirror collateral balances for RToken that appears here
-  const rsr = makeToken('RSR', [[Account.ALICE, bn('1e36')]], [], bn('1e6'))
-  const stRSR = makeToken('stUSD+RSR', [[Account.EVE, bn('1e20')]], [], bn('1e6')) // do not create RSR balances for StRSR that appears here
-  const comp = makeToken('COMP', [], [], bn('1e6'))
-  const aave = makeToken('AAVE', [], [], bn('1e6'))
-  const collateral = [
-    makeToken('DAI', [[Account.ALICE, bn('1e36')]], [[Account.ALICE, Account.MAIN, bn('1e36')]], bn('1e6')),
-    makeToken('USDC', [], [], bn('1e6')),
-    makeToken('USDT', [], [], bn('1e6')),
-    makeToken('BUSD', [], [], bn('1e6')),
-    makeToken('cDAI', [[Account.ALICE, bn('1e36')]], [[Account.ALICE, Account.MAIN, bn('1e36')]], bn('1e6')),
-    makeToken('cUSDC', [], [], bn('1e6')),
-    makeToken('cUSDT', [], [], bn('1e6')),
-    makeToken('aDAI', [], [], bn('1e6')),
-    makeToken('aUSDC', [], [], bn('1e6')),
-    makeToken('aUSDT', [], [], bn('1e6')),
-    makeToken('aBUSD', [], [], bn('1e6')),
-  ]
-
-  const b1 = { tokens: [CollateralToken.cDAI, CollateralToken.DAI], quantities: [bn('5e7'), bn('5e17')] }
-  const b2 = { tokens: [CollateralToken.DAI], quantities: [bn('1e18')] }
-  const bu_s = [b1, b2]
-
-  initialState = {
-    bu_s: bu_s,
-    config: config,
-    rTokenDefinition: b1,
-    rToken: rToken,
-    rsr: rsr,
-    stRSR: stRSR,
-    comp: comp,
-    aave: aave,
-    collateral: collateral,
-    ethPrice: ethPrice,
-  }
-}
+type Allowance = [Account, Account, BigNumber]
+type Balance = [Account, BigNumber]
+type Basket = { tokens: CollateralToken[]; quantities: BigNumber[] }
 
 describe('Generic unit tests', () => {
   let owner: SignerWithAddress
@@ -157,7 +58,7 @@ describe('Generic unit tests', () => {
   beforeEach(async () => {
     ;[owner] = await ethers.getSigners()
 
-    // ADD PROTOS TO THIS ARRAY AS WE FINISH THEM
+    // ADD PROTOS (BY CONTRACT NAME) TO THIS ARRAY AS WE FINISH THEM
     Impls = [await ethers.getContractFactory('AdapterP0')]
   })
 
@@ -181,76 +82,26 @@ describe('Generic unit tests', () => {
         defaultThreshold: fp('0.05'), // 5% deviation
         f: fp('0.60'), // 60% to stakers
       }
-
-      // $4k ETH
-      const ethPrice = { inUSD: bn('4000e6'), inETH: bn('1e18') }
-      const makeToken = (
-        symbol: string,
-        balances: Array<[Account, BigNumber]>,
-        allowances: Array<[Account, Account, BigNumber]>,
-        microUSDPrice: BigNumber
-      ) => {
-        const bals = prepareBalances(...balances)
-        return {
-          name: symbol + ' Token',
-          symbol: symbol,
-          balances: bals,
-          allowances: prepareAllowances(...allowances),
-          totalSupply: sum(bals),
-          price: { inUSD: microUSDPrice, inETH: microUSDPrice.mul(bn('1e12')).div(ethPrice.inUSD) },
-        }
-      }
-
-      const
-
-      // {symbol}, {balances}, {allowances}, {microUSD price}
-      // Do not populate token balances at contract addresses
-      // TODO: There is an unnormalized data issue here
-
-      const rToken = makeToken('USD+', [], [], bn('1e6')) // do not mirror collateral balances for RToken that appears here
-      const rsr = makeToken('RSR', [[Account.ALICE, bn('1e36')]], [], bn('1e6'))
-      const stRSR = makeToken('stUSD+RSR', [[Account.EVE, bn('1e20')]], [], bn('1e6')) // do not create RSR balances for StRSR that appears here
-      const comp = makeToken('COMP', [], [], bn('1e6'))
-      const aave = makeToken('AAVE', [], [], bn('1e6'))
-      const collateral = [
-        makeToken('DAI', [[Account.ALICE, bn('1e36')]], [[Account.ALICE, Account.MAIN, bn('1e36')]], bn('1e6')),
-        makeToken('USDC', [], [], bn('1e6')),
-        makeToken('USDT', [], [], bn('1e6')),
-        makeToken('BUSD', [], [], bn('1e6')),
-        makeToken('cDAI', [[Account.ALICE, bn('1e36')]], [[Account.ALICE, Account.MAIN, bn('1e36')]], bn('1e6')),
-        makeToken('cUSDC', [], [], bn('1e6')),
-        makeToken('cUSDT', [], [], bn('1e6')),
-        makeToken('aDAI', [], [], bn('1e6')),
-        makeToken('aUSDC', [], [], bn('1e6')),
-        makeToken('aUSDT', [], [], bn('1e6')),
-        makeToken('aBUSD', [], [], bn('1e6')),
-      ]
-
       const b1 = { tokens: [CollateralToken.cDAI, CollateralToken.DAI], quantities: [bn('5e7'), bn('5e17')] }
       const b2 = { tokens: [CollateralToken.DAI], quantities: [bn('1e18')] }
       const bu_s = [b1, b2]
 
-      initialState = {
-        bu_s: bu_s,
-        config: config,
-        rTokenDefinition: b1,
-        rToken: rToken,
-        rsr: rsr,
-        stRSR: stRSR,
-        comp: comp,
-        aave: aave,
-        collateral: collateral,
-        ethPrice: ethPrice,
-      }
-
-      const impls = []
-      for (let i = 0; i < Impls.length; i++) {
-        impls.push((<ProtoAdapter>await Impls[i].deploy()).address)
-      }
+      // {Config}   {ETHMicroUSD}   {Balance[]}   {Baskets[]}
+      initialState = prepareState(config, bn('4000e6'), [[Account.EVE, bn('1e20')]], [[Account.EVE, bn('1e20')]], bu_s)
 
       const Driver = await ethers.getContractFactory('ProtosDriver')
+      const impls = await Promise.all(Impls.map(async (i) => (<ProtoAdapter>await i.deploy()).address))
       driver = await Driver.deploy(impls)
       await driver.init(initialState)
+    })
+
+    it('Should set up correctly', async () => {
+      const state = await driver.callStatic.state()
+      expect(state.rToken.balances[Account.ALICE]).to.equal(0)
+      expect(state.rToken.balances[Account.EVE]).to.equal(bn('1e20'))
+      expect(state.collateral[0].balances[Account.ALICE]).to.equal(bn('1e36'))
+      expect(state.rTokenDefinition.tokens.toString()).to.equal(initialState.rTokenDefinition.tokens.toString())
+      expect(state.rTokenDefinition.quantities.toString()).to.equal(initialState.rTokenDefinition.quantities.toString())
     })
 
     it('Should issue, slowly', async () => {
@@ -295,3 +146,88 @@ describe('Generic unit tests', () => {
     })
   })
 })
+
+/// Helper to prepare two-dimensional allowance arrays
+const prepareAllowances = (...allowance: Array<Allowance>) => {
+  const toReturn: BigNumber[][] = [] // 2d
+  for (let i = 0; i < ACCOUNTS_LEN; i++) {
+    toReturn.push([])
+    for (let j = 0; j < ACCOUNTS_LEN; j++) {
+      toReturn[i].push(bn(0))
+    }
+  }
+  for (let i = 0; i < allowance.length; i++) {
+    toReturn[allowance[i][0]][allowance[i][1]] = toReturn[allowance[i][0]][allowance[i][1]].add(allowance[i][2])
+  }
+  return toReturn
+}
+
+/// Helper to prepare balance arrays
+const prepareBalances = (...balance: Array<Balance>) => {
+  const toReturn: BigNumber[] = []
+  for (let i = 0; i < ACCOUNTS_LEN; i++) {
+    toReturn.push(bn(0))
+  }
+  for (let i = 0; i < balance.length; i++) {
+    toReturn[balance[i][0]] = toReturn[balance[i][0]].add(balance[i][1])
+  }
+  return toReturn
+}
+
+const sum = (arr: Array<BigNumber>) => {
+  let total = bn(0)
+  for (let i = 0; i < arr.length; i++) {
+    total = total.add(arr[i])
+  }
+  return total
+}
+
+// Creates a state where Alice has standing balances of all the "input" tokens (collateral + RSR + COMP + AAVE)
+// and the caller provides balances of RToken/stRSR.
+const prepareState = (
+  config: IManagerConfig,
+  ethPriceMicroUSD: BigNumber,
+  rTokenBalances: Balance[],
+  stRSRBalances: Balance[],
+  baskets: Basket[] // 0th basket is taken to be current RToken definition
+) => {
+  const ethPrice = { inUSD: ethPriceMicroUSD, inETH: bn('1e18') }
+  const makeToken = (
+    symbol: string,
+    balances: Array<[Account, BigNumber]>,
+    allowances: Array<[Account, Account, BigNumber]>,
+    microUSDPrice: BigNumber
+  ) => {
+    const bals = prepareBalances(...balances)
+    return {
+      name: symbol + ' Token',
+      symbol: symbol,
+      balances: bals,
+      allowances: prepareAllowances(...allowances),
+      totalSupply: sum(bals),
+      price: { inUSD: microUSDPrice, inETH: microUSDPrice.mul(bn('1e12')).div(ethPrice.inUSD) },
+    }
+  }
+  const rToken = makeToken('USD+', rTokenBalances, [], bn('1e6'))
+  const rsr = makeToken('RSR', [[Account.ALICE, bn('1e36')]], [], bn('1e6'))
+  const stRSR = makeToken('stUSD+RSR', stRSRBalances, [], bn('1e6'))
+  const comp = makeToken('COMP', [[Account.ALICE, bn('1e36')]], [], bn('1e6'))
+  const aave = makeToken('AAVE', [[Account.ALICE, bn('1e36')]], [], bn('1e6'))
+  const collateral = []
+  for (let i = 0; i < COLLATERAL_TOKEN_LEN; i++) {
+    collateral.push(makeToken(CollateralToken[i], [[Account.ALICE, bn('1e36')]], [], bn('1e6')))
+  }
+
+  return {
+    bu_s: baskets,
+    config: config,
+    rTokenDefinition: baskets[0],
+    rToken: rToken,
+    rsr: rsr,
+    stRSR: stRSR,
+    comp: comp,
+    aave: aave,
+    collateral: collateral,
+    ethPrice: ethPrice,
+  }
+}

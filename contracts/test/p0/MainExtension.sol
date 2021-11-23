@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/test/Mixins.sol";
+import "contracts/mocks/ERC20Mock.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/MainP0.sol";
 import "./RTokenExtension.sol";
@@ -14,6 +14,13 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
         Oracle.Info memory oracle_,
         Config memory config_
     ) ContextMixin(admin) MainP0(oracle_, config_) {}
+
+    function issueInstantly(address account, uint256 amount) public {
+        connect(account);
+        issue(amount);
+        issuances[issuances.length - 1].blockAvailableAt = block.number;
+        _processSlowIssuance();
+    }
 
     function assertInvariants() external override {
         _INVARIANT_isFullyCapitalized();
@@ -38,25 +45,17 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
         RTokenExtension rToken = RTokenExtension(address(rTokenAsset.erc20()));
         uint256 supply = rToken.totalSupply();
         if (supply > 0) {
-            SlowIssuance memory iss;
-            iss.vault = manager.vault();
-            iss.amount = supply;
-            iss.BUs = manager.toBUs(supply);
-            iss.issuer = address(this);
-            iss.blockAvailableAt = block.number;
-
             rToken.adminMint(address(this), supply);
-            manager.redeem(address(this), supply);
+            connect(address(this));
+            redeem(supply);
 
             address[] memory tokens = backingTokens();
             uint256[] memory quantities = quote(supply);
             for (uint256 i = 0; i < tokens.length; i++) {
-                IERC20(tokens[i]).approve(address(manager.vault()), quantities[i]);
+                ERC20Mock(tokens[i]).adminApprove(address(this), address(this), quantities[i]);
             }
 
-            manager.vault().issue(address(this), iss.BUs);
-            manager.vault().setAllowance(address(manager), iss.BUs);
-            manager.issue(iss);
+            issueInstantly(address(this), supply);
             rToken.burn(address(this), supply);
         }
         assert(true);

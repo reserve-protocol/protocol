@@ -80,7 +80,7 @@ contract MainP0 is IMain, Ownable {
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
-    function issue(uint256 amount) external override notPaused always {
+    function issue(uint256 amount) public override notPaused always {
         require(state == SystemState.CALM || state == SystemState.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
 
@@ -112,7 +112,7 @@ contract MainP0 is IMain, Ownable {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    function redeem(uint256 amount) external override always {
+    function redeem(uint256 amount) public override always {
         require(amount > 0, "Cannot redeem zero");
         if (!paused) {
             _processSlowIssuance();

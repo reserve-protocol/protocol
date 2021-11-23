@@ -172,11 +172,11 @@ contract AdapterP0 is ProtoAdapter {
                     address[] memory tokens = _main.backingTokens();
                     uint256[] memory quantities = _main.quote(s.rToken.balances[i]);
                     for (uint256 j = 0; j < tokens.length; j++) {
-                        ERC20Mock(tokens[i]).mint(address(this), quantities[i]);
-                        _main.issue(s.rToken.balances[i]);
-                        ERC20Mock(tokens[i]).adminApprove(address(_main), address(_main.manager()), quantities[i]);
+                        ERC20Mock(tokens[j]).mint(_address(i), quantities[j]);
+                        ERC20Mock(tokens[j]).adminApprove(_address(i), address(_main), quantities[j]);
                     }
-                    _rToken.adminMint(_address(i), s.rToken.balances[i]);
+                    _main.issueInstantly(_address(i), s.rToken.balances[i]);
+                    assert(_main.rToken().balanceOf(_address(i)) == s.rToken.balances[i]);
                 }
             }
 
@@ -224,6 +224,11 @@ contract AdapterP0 is ProtoAdapter {
 
     function CMD_issue(Account account, uint256 amount) external override {
         _main.connect(_address(uint256(account)));
+        address[] memory tokens = _main.backingTokens();
+        uint256[] memory quantities = _main.quote(amount);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            ERC20Mock(tokens[i]).adminApprove(_address(uint256(account)), address(_main), quantities[i]);
+        }
         _main.issue(amount);
     }
 
