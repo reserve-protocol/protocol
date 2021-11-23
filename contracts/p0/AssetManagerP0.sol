@@ -143,6 +143,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         //  4. Run revenue auctions
 
         require(_msgSender() == address(main), "only main can mutate the asset manager");
+
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctions.length; i++) {
             Auction.Info storage auction = auctions[i];
@@ -193,14 +194,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
     }
 
-    /// @return {qRTok/qBU} The base factor
-    function baseFactor() public override returns (Fix) {
-        main.furnace().doBurn();
-        return _meltingFactor().div(_basketDilutionFactor());
-    }
-
     /// {qRTok} -> {qBU}
-    function toBUs(uint256 amount) public override returns (uint256) {
+    function toBUs(uint256 amount) public view override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
             return amount;
         }
@@ -211,7 +206,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// {qBU} -> {qRTok}
     // solhint-disable-next-line func-param-name-mixedcase
-    function fromBUs(uint256 BUs) public override returns (uint256) {
+    function fromBUs(uint256 BUs) public view override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
             return BUs;
         }
@@ -220,10 +215,15 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         return toFix(BUs).div(baseFactor()).toUint();
     }
 
+    /// @return {qRTok/qBU} The base factor
+    function baseFactor() public view override returns (Fix) {
+        return _meltingFactor().div(_basketDilutionFactor());
+    }
+
     // ==== Internal ====
 
     /// @return {none) Denominator of the base factor
-    function _basketDilutionFactor() internal returns (Fix) {
+    function _basketDilutionFactor() internal view returns (Fix) {
         Fix currentRate = vault.basketRate();
 
         // currentDilution = (f * ((currentRate / _prevBasketRate) - 1)) + 1
@@ -258,8 +258,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// Runs infrequently to accumulate the historical dilution factor
     function _accumulate() internal {
-        _historicalBasketDilution = _basketDilutionFactor();
         _prevBasketRate = vault.basketRate();
+        _historicalBasketDilution = _basketDilutionFactor();
     }
 
     function _switchVault(IVault vault_) internal {
@@ -391,6 +391,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         Fix compBal = toFix(main.compAsset().erc20().balanceOf(address(this)));
         Fix amountForRSR = compBal.mul(main.config().f);
         Fix amountForRToken = compBal.minus(amountForRSR);
+
         (launch, auction) = _prepareAuctionSell(
             main.config().minRevenueAuctionSize,
             main.compAsset(),
@@ -412,9 +413,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
 
         // AAVE -> dividend RSR + melting RToken
-        Fix aaveBal = toFix(main.compAsset().erc20().balanceOf(address(this)));
+        Fix aaveBal = toFix(main.aaveAsset().erc20().balanceOf(address(this)));
         amountForRSR = aaveBal.mul(main.config().f);
         amountForRToken = aaveBal.minus(amountForRSR);
+
         (launch, auction) = _prepareAuctionSell(
             main.config().minRevenueAuctionSize,
             main.aaveAsset(),
@@ -538,6 +540,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(main)).toUint()); // {qSellTok}
         Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(main)).div(buy.priceUSD(main)); // {qBuyTok}
         Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.config().maxTradeSlippage)); // {qBuyTok}
+
         return (
             true,
             Auction.Info({

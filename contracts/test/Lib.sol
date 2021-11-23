@@ -126,10 +126,10 @@ library Lib {
         string memory message;
         ok = assertEq(a.length, b.length, "Allowances length mismatch");
         for (uint256 i = 0; i < a.length; i++) {
-            message = string(abi.encodePacked("Allowances array ", i, " length mismatch"));
+            message = string(abi.encodeWithSignature("Allowances array ", i, " length mismatch"));
             ok = ok && assertEq(a[i].length, b[i].length, message);
             for (uint256 j = 0; j < a[i].length; j++) {
-                message = string(abi.encodePacked("Account ", i, ", spender ", j, " allowance mismatch"));
+                message = string(abi.encodeWithSignature("Account ", i, ", spender ", j, " allowance mismatch"));
                 ok = ok && assertEq(a[i][j], b[i][j], message);
             }
         }
@@ -159,7 +159,7 @@ library Lib {
             assertEq(a.inUSD, b.inUSD, string(abi.encodePacked(str, ".price.inUSD")));
     }
 
-    function _rawFix(Fix fix) internal returns (uint256) {
+    function _rawFix(Fix fix) internal pure returns (uint256) {
         return uint256(int256(Fix.unwrap(fix)));
     }
 }

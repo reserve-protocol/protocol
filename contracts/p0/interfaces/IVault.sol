@@ -68,7 +68,7 @@ interface IVault {
     function setMain(IMain main) external;
 
     /// @return {USD/qBU} The USD value of 1 BU if all fiatcoins hold peg
-    function basketRate() external returns (Fix);
+    function basketRate() external view returns (Fix);
 
     /// @return {qTok} A list of token quantities required in order to issue `BUs`, in the order of the basket.
     function tokenAmounts(uint256 BUs) external view returns (uint256[] memory);

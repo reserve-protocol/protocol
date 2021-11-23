@@ -16,6 +16,26 @@ import "./IVault.sol";
  *    - Runs recapitalization and revenue auctions
  */
 interface IAssetManager {
+    /// Emitted when an auction is started
+    /// @param sell The token to sell
+    /// @param buy The token to buy
+    /// @param sellAmount {qSellTok} The quantity of the selling token
+    /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
+    /// @param fate The fate of the soon-to-be-purchased tokens
+    /// @dev Must be kept in sync with its duplicate in `IAssetManager.sol`
+    event AuctionStarted(
+        address indexed sell,
+        address indexed buy,
+        uint256 sellAmount, // {qSellTok}
+        uint256 minBuyAmount, // {qBuyTok}
+        Fate fate
+    );
+
+    /// Emitted after an auction ends
+    /// @param sellAmount {qSellTok} The quantity of the token sold
+    /// @param buyAmount {qBuyTok} The quantity of the token bought
+    event AuctionEnded(address indexed sell, address indexed buy, uint256 sellAmount, uint256 buyAmount, Fate fate);
+
     /// Emitted when the current vault is changed
     /// @param oldVault The address of the old vault
     /// @param newVault The address of the new vault
@@ -46,18 +66,18 @@ interface IAssetManager {
     /// @param defaulting The list of collateral that are ineligible to be in the next vault
     function switchVaults(ICollateral[] memory defaulting) external;
 
-    /// @return {qRTok/qBU} The base factor
-    function baseFactor() external returns (Fix);
-
     /// BUs -> RToken
     /// @param {qRTok} amount The quantity of RToken to convert to BUs
     /// @return {qBU} The equivalent amount of BUs at the current base factor
-    function toBUs(uint256 amount) external returns (uint256);
+    function toBUs(uint256 amount) external view returns (uint256);
 
     /// BUs -> RToken
     /// @param {qBU} BUs The quantity of BUs to convert to RToken
     /// @return {qRTok} The equivalent amount of RToken at the current base factor
-    function fromBUs(uint256 BUs) external returns (uint256);
+    function fromBUs(uint256 BUs) external view returns (uint256);
+
+    /// @return {qRTok/qBU} The base factor
+    function baseFactor() external view returns (Fix);
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() external view returns (bool);

@@ -8,10 +8,10 @@ interface ProtoCommon {
     function init(ProtoState memory state) external;
 
     /// @dev view
-    function state() external returns (ProtoState memory);
+    function state() external view returns (ProtoState memory);
 
     /// @dev view
-    function matches(ProtoState memory state) external returns (bool);
+    function matches(ProtoState memory state) external view returns (bool);
 
     // ==== COMMANDS ====
 
@@ -75,12 +75,12 @@ contract ProtosDriver is ProtoCommon {
     }
 
     /// @return The first state, since txs only succeed if states match at end of tx
-    function state() external override returns (ProtoState memory) {
+    function state() external view override returns (ProtoState memory) {
         return _adapters[0].state();
     }
 
     /// @return Whether the state of the synced simulations matches
-    function matches(ProtoState memory s) external override returns (bool) {
+    function matches(ProtoState memory s) external view override returns (bool) {
         return _adapters[0].matches(s);
     }
 

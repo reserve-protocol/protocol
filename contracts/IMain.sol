@@ -102,7 +102,7 @@ interface IMainCommon {
 
     /// @dev pseudo-view
     /// @return The token quantities required to issue `amount` RToken.
-    function quote(uint256 amount) external returns (uint256[] memory);
+    function quote(uint256 amount) external view returns (uint256[] memory);
 
     /// @return Whether the system is paused
     function paused() external view returns (bool);
