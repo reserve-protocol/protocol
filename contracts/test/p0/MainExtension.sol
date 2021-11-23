@@ -17,10 +17,8 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
     ) ContextMixin(admin) MainP0(oracle_, config_) {}
 
     function checkInvariants() external override returns (bool) {
-        return
-            _INVARIANT_isFullyCapitalized() &&
-            _INVARIANT_tokensAndQuantitiesSameLength() &&
-            _INVARIANT_canAlwaysRedeemEverything();
+        return _INVARIANT_isFullyCapitalized() && _INVARIANT_tokensAndQuantitiesSameLength();
+        // _INVARIANT_canAlwaysRedeemEverything();
     }
 
     function _msgSender() internal view override returns (address) {
@@ -36,31 +34,31 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
     }
 
     /// Redeems the entire outstanding RToken supply and re-issues it
-    function _INVARIANT_canAlwaysRedeemEverything() internal returns (bool) {
-        RTokenExtension rToken = RTokenExtension(address(rTokenAsset.erc20()));
-        uint256 supply = rToken.totalSupply();
-        if (supply > 0) {
-            SlowIssuance memory iss;
-            iss.vault = manager.vault();
-            iss.amount = supply;
-            iss.BUs = manager.toBUs(supply);
-            iss.issuer = address(this);
-            iss.blockAvailableAt = block.number;
+    // function _INVARIANT_canAlwaysRedeemEverything() internal returns (bool) {
+    //     RTokenExtension rToken = RTokenExtension(address(rTokenAsset.erc20()));
+    //     uint256 supply = rToken.totalSupply();
+    //     if (supply > 0) {
+    //         SlowIssuance memory iss;
+    //         iss.vault = manager.vault();
+    //         iss.amount = supply;
+    //         iss.BUs = manager.toBUs(supply);
+    //         iss.issuer = address(this);
+    //         iss.blockAvailableAt = block.number;
 
-            rToken.adminMint(address(this), supply);
-            manager.redeem(address(this), supply);
+    //         rToken.adminMint(address(this), supply);
+    //         manager.redeem(address(this), supply);
 
-            address[] memory tokens = backingTokens();
-            uint256[] memory quantities = quote(supply);
-            for (uint256 i = 0; i < tokens.length; i++) {
-                IERC20(tokens[i]).approve(address(manager.vault()), quantities[i]);
-            }
+    //         address[] memory tokens = backingTokens();
+    //         uint256[] memory quantities = quote(supply);
+    //         for (uint256 i = 0; i < tokens.length; i++) {
+    //             IERC20(tokens[i]).approve(address(manager.vault()), quantities[i]);
+    //         }
 
-            manager.vault().issue(address(this), iss.BUs);
-            manager.vault().setAllowance(address(manager), iss.BUs);
-            manager.issue(iss);
-            rToken.burn(address(this), supply);
-        }
-        return true;
-    }
+    //         manager.vault().issue(address(this), iss.BUs);
+    //         manager.vault().setAllowance(address(manager), iss.BUs);
+    //         manager.issue(iss);
+    //         rToken.burn(address(this), supply);
+    //     }
+    //     return true;
+    // }
 }

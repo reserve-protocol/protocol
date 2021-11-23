@@ -140,9 +140,9 @@ describe('Generic unit tests', () => {
       }
 
       // {symbol}, {balances}, {allowances}, {microUSD price}
-      const rToken = makeToken('USD+', [], [], bn('1e6'))
+      const rToken = makeToken('RTKN', [], [], bn('1e6'))
       const rsr = makeToken('RSR', [], [], bn('1e6'))
-      const stRSR = makeToken('stUSD+RSR', [], [], bn('1e6'))
+      const stRSR = makeToken('stRTKNRSR', [], [], bn('1e6'))
       const comp = makeToken('COMP', [], [], bn('1e6'))
       const aave = makeToken('AAVE', [], [], bn('1e6'))
       const collateral = [

@@ -153,7 +153,7 @@ contract VaultP0 is IVault, Ownable {
     }
 
     /// @return sum {attoUSD/BU} The attoUSD value of 1 BU if all fiatcoins hold peg
-    function basketRate() external override returns (Fix sum) {
+    function basketRate() external view override returns (Fix sum) {
         for (uint256 i = 0; i < _basket.size; i++) {
             ICollateral a = _basket.collateral[i];
 

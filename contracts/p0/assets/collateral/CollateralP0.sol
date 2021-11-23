@@ -22,19 +22,19 @@ contract CollateralP0 is ICollateral {
     }
 
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
-    function rateFiatcoin() public virtual override returns (Fix) {
+    function rateFiatcoin() public view virtual override returns (Fix) {
         // {qFiatTok/qTok} = {qFiatTok/fiatTok} / {qTok/tok}
         return toFixWithShift(1, int8(fiatcoinDecimals()) - int8(decimals()));
     }
 
     /// @return {attoUSD/qTok} Without using oracles, returns the expected attoUSD value of one qTok.
-    function rateUSD() public virtual override returns (Fix) {
+    function rateUSD() public view virtual override returns (Fix) {
         // {attoUSD/qTok} = {attoUSD/tok} / {qTok/tok}
         return toFixWithShift(1, 18 - int8(decimals()));
     }
 
     /// @return {attoUSD/qTok} The price in attoUSD of the asset's smallest unit
-    function priceUSD(IMain main) public virtual override returns (Fix) {
+    function priceUSD(IMain main) public view virtual override returns (Fix) {
         if (isFiatcoin()) {
             return main.consultOracle(Oracle.Source.AAVE, _erc20);
         } else {

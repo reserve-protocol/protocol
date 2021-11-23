@@ -24,7 +24,7 @@ contract DeployerExtension is IExtension, DeployerP0 {
         _deployer = msg.sender;
     }
 
-    function checkInvariants() external override returns (bool) {
+    function checkInvariants() external view override returns (bool) {
         return INVARIANT_currentDeploymentRegistered();
     }
 

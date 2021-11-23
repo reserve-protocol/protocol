@@ -211,7 +211,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
   // Deploy actual contracts
   const receipt = await (
     await deployer.deploy(
-      'RToken',
+      'RTKN RToken',
       'RTKN',
       owner.address,
       vault.address,

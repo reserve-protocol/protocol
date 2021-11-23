@@ -194,14 +194,8 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
     }
 
-    /// @return {qRTok/qBU} The base factor
-    function baseFactor() public override returns (Fix) {
-        main.furnace().doBurn();
-        return _meltingFactor().div(_basketDilutionFactor());
-    }
-
     /// {qRTok} -> {qBU}
-    function toBUs(uint256 amount) public override returns (uint256) {
+    function toBUs(uint256 amount) public view override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
             return amount;
         }
@@ -212,7 +206,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// {qBU} -> {qRTok}
     // solhint-disable-next-line func-param-name-mixedcase
-    function fromBUs(uint256 BUs) public override returns (uint256) {
+    function fromBUs(uint256 BUs) public view override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
             return BUs;
         }
@@ -221,10 +215,15 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         return toFix(BUs).div(baseFactor()).toUint();
     }
 
+    /// @return {qRTok/qBU} The base factor
+    function baseFactor() public view override returns (Fix) {
+        return _meltingFactor().div(_basketDilutionFactor());
+    }
+
     // ==== Internal ====
 
     /// @return {none) Denominator of the base factor
-    function _basketDilutionFactor() internal returns (Fix) {
+    function _basketDilutionFactor() internal view returns (Fix) {
         Fix currentRate = vault.basketRate();
 
         // currentDilution = (f * ((currentRate / _prevBasketRate) - 1)) + 1
