@@ -67,18 +67,22 @@ library Auction {
         uint256 bal = self.buy.erc20().balanceOf(address(this)); // {qBuyTok}
 
         // solhint-disable no-empty-blocks
-        if (self.fate == Fate.Burn) {
-            self.buy.erc20().safeTransfer(address(0), bal);
-        } else if (self.fate == Fate.Melt) {
-            self.buy.erc20().safeApprove(address(main.furnace()), bal);
-            main.furnace().burnOverPeriod(bal, main.config().rewardPeriod);
-        } else if (self.fate == Fate.Stake) {
-            self.buy.erc20().safeApprove(address(main.stRSR()), bal);
-            main.stRSR().addRSR(bal);
-        } else if (self.fate == Fate.Stay) {
-            // Do nothing; token is already in the right place
-        } else {
-            assert(false);
+        if (bal > 0) {
+            if (self.fate == Fate.Burn) {
+                self.buy.erc20().safeTransfer(address(0), bal);
+            } else if (self.fate == Fate.Melt) {
+                self.buy.erc20().safeApprove(address(main.furnace()), bal);
+                main.furnace().burnOverPeriod(bal, main.config().rewardPeriod);
+            } else if (self.fate == Fate.Stake) {
+                main.stRSR().addRSR(bal);
+
+                // Restore allowance
+                self.buy.erc20().safeIncreaseAllowance(address(main.stRSR()), bal);
+            } else if (self.fate == Fate.Stay) {
+                // Do nothing; token is already in the right place
+            } else {
+                assert(false);
+            }
         }
         // solhint-enable no-empty-blocks
 
