@@ -20,7 +20,7 @@ library Lib {
         string memory str
     ) internal view returns (bool) {
         if (a != b) {
-            console.log(string(abi.encodePacked(str, " | %s != %s")), a, b);
+            console.log(string(abi.encodeWithSignature(str, " | %s != %s")), a, b);
             return false;
         }
         return true;
@@ -35,7 +35,7 @@ library Lib {
         string memory str
     ) internal view returns (bool) {
         if (keccak256(bytes(a)) != keccak256(bytes(b))) {
-            console.log(string(abi.encodePacked(str, " | %s != %s")), a, b);
+            console.log(string(abi.encodeWithSignature(str, " | %s != %s")), a, b);
             return false;
         }
         return true;
@@ -43,7 +43,7 @@ library Lib {
 
     /// ProtoState version
     /// Compares ProtoStates for equality
-    function eq(ProtoState memory a, ProtoState memory b) internal returns (bool ok) {
+    function eq(ProtoState memory a, ProtoState memory b) internal view returns (bool ok) {
         ok =
             _eqConfig(a.config, b.config) &&
             _eqBU(a.rTokenDefinition, b.rTokenDefinition) &&
@@ -68,7 +68,7 @@ library Lib {
     }
 
     /// @return Whether two Configs are equal
-    function _eqConfig(Config memory a, Config memory b) internal returns (bool) {
+    function _eqConfig(Config memory a, Config memory b) internal view returns (bool) {
         return
             eq(a.rewardStart, b.rewardStart, "Config.rewardStart") &&
             eq(a.rewardPeriod, b.rewardPeriod, "Config.rewardStart") &&
@@ -116,7 +116,7 @@ library Lib {
         string memory message;
         ok = eq(a.length, b.length, "Balances length mismatch");
         for (uint256 i = 0; i < a.length; i++) {
-            ok = ok && eq(a[i], b[i], string(abi.encodePacked("Account ", i, " balance mismatch")));
+            ok = ok && eq(a[i], b[i], string(abi.encodeWithSignature("Account ", i, " balance mismatch")));
         }
         if (!ok) {
             console.log("Token: %s", symbol);
@@ -132,10 +132,10 @@ library Lib {
         string memory message;
         ok = eq(a.length, b.length, "Allowances length mismatch");
         for (uint256 i = 0; i < a.length; i++) {
-            message = string(abi.encodePacked("Allowances array ", i, " length mismatch"));
+            message = string(abi.encodeWithSignature("Allowances array ", i, " length mismatch"));
             ok = ok && eq(a[i].length, b[i].length, message);
             for (uint256 j = 0; j < a[i].length; j++) {
-                message = string(abi.encodePacked("Account ", i, ", spender ", j, " allowance mismatch"));
+                message = string(abi.encodeWithSignature("Account ", i, ", spender ", j, " allowance mismatch"));
                 ok = ok && eq(a[i][j], b[i][j], message);
             }
         }
@@ -166,7 +166,7 @@ library Lib {
         return eq(a.inETH, b.inETH, "OraclePrice.inETH") && eq(a.inUSD, b.inUSD, "OraclePrice.inUSD");
     }
 
-    function _rawFix(Fix fix) internal returns (uint256) {
+    function _rawFix(Fix fix) internal pure returns (uint256) {
         return uint256(int256(Fix.unwrap(fix)));
     }
 }

@@ -46,18 +46,18 @@ interface IAssetManager {
     /// @param defaulting The list of collateral that are ineligible to be in the next vault
     function switchVaults(ICollateral[] memory defaulting) external;
 
-    /// @return {qRTok/qBU} The base factor
-    function baseFactor() external returns (Fix);
-
     /// BUs -> RToken
     /// @param {qRTok} amount The quantity of RToken to convert to BUs
     /// @return {qBU} The equivalent amount of BUs at the current base factor
-    function toBUs(uint256 amount) external returns (uint256);
+    function toBUs(uint256 amount) external view returns (uint256);
 
     /// BUs -> RToken
     /// @param {qBU} BUs The quantity of BUs to convert to RToken
     /// @return {qRTok} The equivalent amount of RToken at the current base factor
-    function fromBUs(uint256 BUs) external returns (uint256);
+    function fromBUs(uint256 BUs) external view returns (uint256);
+
+    /// @return {qRTok/qBU} The base factor
+    function baseFactor() external view returns (Fix);
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() external view returns (bool);

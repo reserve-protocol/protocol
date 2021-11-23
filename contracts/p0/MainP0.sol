@@ -65,6 +65,7 @@ contract MainP0 is IMain, Ownable {
 
     /// This modifier runs before every function including redemption, so it should be very safe.
     modifier always() {
+        furnace.doBurn();
         ICollateral[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
         if (hardDefaulting.length > 0) {
             manager.switchVaults(hardDefaulting);
@@ -80,7 +81,7 @@ contract MainP0 is IMain, Ownable {
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
-    function issue(uint256 amount) external override notPaused always {
+    function issue(uint256 amount) public override notPaused always {
         require(state == SystemState.CALM || state == SystemState.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
 
@@ -112,7 +113,7 @@ contract MainP0 is IMain, Ownable {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    function redeem(uint256 amount) external override always {
+    function redeem(uint256 amount) public override always {
         require(amount > 0, "Cannot redeem zero");
         if (!paused) {
             _processSlowIssuance();
@@ -232,7 +233,7 @@ contract MainP0 is IMain, Ownable {
 
     /// @dev view
     /// @return The token quantities required to issue `amount` RToken.
-    function quote(uint256 amount) public override returns (uint256[] memory) {
+    function quote(uint256 amount) public view override returns (uint256[] memory) {
         return manager.vault().tokenAmounts(manager.toBUs(amount));
     }
 
@@ -245,7 +246,7 @@ contract MainP0 is IMain, Ownable {
     }
 
     /// @return {attoUSD/qTok} The price in attoUSD of a `qTok` on oracle `source`.
-    function consultOracle(Oracle.Source source, address token) external view override returns (Fix) {
+    function consultOracle(Oracle.Source source, address token) public view override returns (Fix) {
         return _oracle.consult(source, token);
     }
 

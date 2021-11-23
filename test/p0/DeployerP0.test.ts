@@ -106,7 +106,7 @@ describe('DeployerP0 contract', () => {
     })
 
     it('Should setup RToken correctly', async () => {
-      expect(await rToken.name()).to.equal('RToken')
+      expect(await rToken.name()).to.equal('RTKN RToken')
       expect(await rToken.symbol()).to.equal('RTKN')
       expect(await rToken.decimals()).to.equal(18)
       expect(await rToken.totalSupply()).to.equal(bn(0))
@@ -141,7 +141,7 @@ describe('DeployerP0 contract', () => {
 
       await expect(
         deployer.deploy(
-          'RToken',
+          'RTKN RToken',
           'RTKN',
           owner.address,
           vault.address,

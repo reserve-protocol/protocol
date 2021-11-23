@@ -188,7 +188,7 @@ contract AdapterP0 is ProtoAdapter {
         }
     }
 
-    function state() public override returns (ProtoState memory s) {
+    function state() public view override returns (ProtoState memory s) {
         s.config = _main.config();
         address[] memory backingTokens = _main.backingTokens();
         CollateralToken[] memory backingCollateral = new CollateralToken[](backingTokens.length);
@@ -209,7 +209,7 @@ contract AdapterP0 is ProtoAdapter {
         s.ethPrice = OraclePrice(_aaveOracle.getAssetPrice(_aaveOracle.WETH()), _compoundOracle.price(ETH));
     }
 
-    function matches(ProtoState memory s) external override returns (bool) {
+    function matches(ProtoState memory s) external view override returns (bool) {
         return state().eq(s);
     }
 
@@ -330,7 +330,7 @@ contract AdapterP0 is ProtoAdapter {
     }
 
     /// @return bu_s The Basket Units of the stick DAG
-    function _traverseVaults() internal returns (BU[] memory bu_s) {
+    function _traverseVaults() internal view returns (BU[] memory bu_s) {
         IVault v = _main.manager().vault();
         CollateralToken[] memory collateral;
         IVault[] memory backups;
