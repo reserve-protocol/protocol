@@ -10,7 +10,7 @@ import "contracts/p0/RTokenP0.sol";
 contract RTokenExtension is IExtension, ContextMixin, RTokenP0 {
     constructor(
         address admin,
-        IMain main_,
+        IMainP0 main_,
         string memory name_,
         string memory symbol_
     ) ContextMixin(admin) RTokenP0(main_, name_, symbol_) {}

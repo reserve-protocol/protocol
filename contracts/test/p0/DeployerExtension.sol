@@ -13,7 +13,7 @@ import "./IExtension.sol";
 /// Inject wrapper contracts into Deployer
 contract DeployerExtension is IExtension, DeployerP0 {
     address internal _deployer;
-    IMain internal _main;
+    IMainP0 internal _main;
 
     constructor() {
         _deployer = msg.sender;
@@ -24,14 +24,14 @@ contract DeployerExtension is IExtension, DeployerP0 {
     }
 
     /// @dev Used for testing override to manipulate msg.sender
-    function _deployMain(Oracle.Info memory oracle, Config memory config) internal override returns (IMain) {
+    function _deployMain(Oracle.Info memory oracle, Config memory config) internal override returns (IMainP0) {
         _main = new MainExtension(_deployer, oracle, config);
         return _main;
     }
 
     /// @dev Used for testing override to manipulate msg.sender
     function _deployRToken(
-        IMain main,
+        IMainP0 main,
         string memory name,
         string memory symbol
     ) internal override returns (IRToken) {
@@ -40,7 +40,7 @@ contract DeployerExtension is IExtension, DeployerP0 {
 
     /// @dev Used for testing override to manipulate msg.sender
     function _deployStRSR(
-        IMain main,
+        IMainP0 main,
         string memory name,
         string memory symbol
     ) internal override returns (IStRSR) {

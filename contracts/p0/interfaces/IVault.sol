@@ -65,7 +65,7 @@ interface IVault {
     function claimAndSweepRewardsToManager() external;
 
     /// Main Setter
-    function setMain(IMain main) external;
+    function setMain(IMainP0 main) external;
 
     /// @return {USD/qBU} The USD value of 1 BU if all fiatcoins hold peg
     function basketRate() external returns (Fix);

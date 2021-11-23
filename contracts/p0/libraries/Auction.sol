@@ -59,7 +59,7 @@ library Auction {
 
     /// Closes out the auction and sends bought token to its fate
     /// @return buyAmount {qBuyTok} The clearing buyAmount for the auction
-    function close(Auction.Info storage self, IMain main) internal returns (uint256 buyAmount) {
+    function close(Auction.Info storage self, IMainP0 main) internal returns (uint256 buyAmount) {
         require(self.isOpen, "already closed out");
         require(self.endTime <= block.timestamp, "auction not over");
         // TODO: buyAmount = batchAuction.claim();

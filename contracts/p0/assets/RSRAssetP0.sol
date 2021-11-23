@@ -19,7 +19,7 @@ contract RSRAssetP0 is IAsset {
     }
 
     /// @return {attoUSD/qRSR}
-    function priceUSD(IMain main) public view override returns (Fix) {
+    function priceUSD(IMainP0 main) public view override returns (Fix) {
         return main.consultOracle(Oracle.Source.AAVE, _erc20);
     }
 

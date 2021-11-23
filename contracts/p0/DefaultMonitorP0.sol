@@ -16,9 +16,9 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
     using FixLib for Fix;
     mapping(address => Fix) internal _lastRatesUSD; // {attoUSD/qtok}
 
-    IMain public main;
+    IMainP0 public main;
 
-    constructor(IMain main_) {
+    constructor(IMainP0 main_) {
         main = main_;
     }
 

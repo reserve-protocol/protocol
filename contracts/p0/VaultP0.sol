@@ -32,7 +32,7 @@ contract VaultP0 is IVault, Ownable {
 
     IVault[] public backups;
 
-    IMain public main;
+    IMainP0 public main;
 
     // {BU} = 1e18{qBU}
 
@@ -212,7 +212,7 @@ contract VaultP0 is IVault, Ownable {
         backups = backupVaults;
     }
 
-    function setMain(IMain main_) external override onlyOwner {
+    function setMain(IMainP0 main_) external override onlyOwner {
         main = main_;
     }
 }

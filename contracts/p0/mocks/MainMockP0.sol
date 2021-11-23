@@ -20,12 +20,12 @@ import "./AaveLendingPoolMockP0.sol";
 
 contract ManagerInternalMockP0 {
     bool public fullyCapitalized;
-    IMain public main;
+    IMainP0 public main;
     IVault public vault;
 
     constructor(address main_) {
         fullyCapitalized = true;
-        main = IMain(main_);
+        main = IMainP0(main_);
     }
 
     function setFullyCapitalized(bool value) external {
@@ -82,7 +82,7 @@ contract MainMockP0 {
 
         rsr = rsr_;
         manager = new ManagerInternalMockP0(address(this));
-        monitor = new DefaultMonitorP0(IMain(address(this)));
+        monitor = new DefaultMonitorP0(IMainP0(address(this)));
         paused = false;
 
         _compOracle = new CompoundOracleMockP0();

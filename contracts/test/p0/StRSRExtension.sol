@@ -10,7 +10,7 @@ import "contracts/p0/StRSRP0.sol";
 contract StRSRExtension is IExtension, ContextMixin, StRSRP0 {
     constructor(
         address admin,
-        IMain main_,
+        IMainP0 main_,
         string memory name_,
         string memory symbol_
     ) ContextMixin(admin) StRSRP0(main_, name_, symbol_) {}

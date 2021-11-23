@@ -10,10 +10,10 @@ import "contracts/p0/interfaces/IRToken.sol";
  * @notice An ERC20 with an elastic supply.
  */
 contract RTokenP0 is IRToken, ERC20 {
-    IMain public main;
+    IMainP0 public main;
 
     constructor(
-        IMain main_,
+        IMainP0 main_,
         string memory name_,
         string memory symbol_
     ) ERC20(name_, symbol_) {

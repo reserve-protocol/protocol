@@ -49,14 +49,14 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     EnumerableSet.AddressSet internal _alltimeCollateral;
     EnumerableSet.AddressSet internal _fiatcoins;
 
-    IMain public main;
+    IMainP0 public main;
     IVault public override vault;
 
     IVault[] public pastVaults;
     Auction.Info[] public auctions;
 
     constructor(
-        IMain main_,
+        IMainP0 main_,
         IVault vault_,
         address owner_,
         ICollateral[] memory approvedCollateral_

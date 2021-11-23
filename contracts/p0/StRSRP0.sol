@@ -23,7 +23,7 @@ contract StRSRP0 is IStRSR, Context {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
-    IMain public main;
+    IMainP0 public main;
 
     // Staking Token Name and Symbol
     string private _name;
@@ -50,7 +50,7 @@ contract StRSRP0 is IStRSR, Context {
     uint256 public withdrawalIndex;
 
     constructor(
-        IMain main_,
+        IMainP0 main_,
         string memory name_,
         string memory symbol_
     ) {

@@ -33,7 +33,7 @@ interface IOwnable {
  * @notice The deployer for the entire system.
  */
 contract DeployerP0 is IDeployer {
-    IMain[] public deployments;
+    IMainP0[] public deployments;
 
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
@@ -59,7 +59,7 @@ contract DeployerP0 is IDeployer {
     ) external override returns (address) {
         Oracle.Info memory oracle = Oracle.Info(compound, aave);
 
-        IMain main = _deployMain(oracle, config);
+        IMainP0 main = _deployMain(oracle, config);
         deployments.push(main);
 
         {
@@ -96,13 +96,13 @@ contract DeployerP0 is IDeployer {
     }
 
     /// @dev Used for testing to inject msg.sender
-    function _deployMain(Oracle.Info memory oracle, Config memory config) internal virtual returns (IMain) {
+    function _deployMain(Oracle.Info memory oracle, Config memory config) internal virtual returns (IMainP0) {
         return new MainP0(oracle, config);
     }
 
     /// @dev Used for testing to inject msg.sender
     function _deployRToken(
-        IMain main,
+        IMainP0 main,
         string memory name,
         string memory symbol
     ) internal virtual returns (IRToken) {
@@ -111,7 +111,7 @@ contract DeployerP0 is IDeployer {
 
     /// @dev Used for testing to inject msg.sender
     function _deployStRSR(
-        IMain main,
+        IMainP0 main,
         string memory name,
         string memory symbol
     ) internal virtual returns (IStRSR) {
