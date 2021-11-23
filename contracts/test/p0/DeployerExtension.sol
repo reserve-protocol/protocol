@@ -25,7 +25,7 @@ contract DeployerExtension is IExtension, DeployerP0 {
 
     /// @dev Used for testing override to manipulate msg.sender
     function _deployMain(Oracle.Info memory oracle, Config memory config) internal override returns (IMainP0) {
-        _main = new MainExtension(_deployer, oracle, config);
+        _main = IMainP0(address(new MainExtension(_deployer, oracle, config)));
         return _main;
     }
 

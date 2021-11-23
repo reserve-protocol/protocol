@@ -97,7 +97,7 @@ contract DeployerP0 is IDeployer {
 
     /// @dev Used for testing to inject msg.sender
     function _deployMain(Oracle.Info memory oracle, Config memory config) internal virtual returns (IMainP0) {
-        return new MainP0(oracle, config);
+        return IMainP0(address(new MainP0(oracle, config)));
     }
 
     /// @dev Used for testing to inject msg.sender

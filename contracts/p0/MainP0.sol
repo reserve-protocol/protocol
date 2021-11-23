@@ -47,7 +47,7 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
-    function issue(uint256 amount) external override notPaused always {
+    function issue(uint256 amount) external notPaused always {
         require(mood == Mood.CALM || mood == Mood.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
 
@@ -89,7 +89,7 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    function redeem(uint256 amount) external override always {
+    function redeem(uint256 amount) external always {
         require(amount > 0, "Cannot redeem zero");
         if (!paused) {
             _processSlowIssuance();
@@ -112,7 +112,7 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
     }
 
     /// Performs the expensive checks for default, such as calculating VWAPs
-    function noticeDefault() external override notPaused always {
+    function noticeDefault() external notPaused always {
         ICollateral[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoins());
 
         // If no defaults, walk back the default and enter CALM/TRADING
@@ -140,19 +140,19 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
     // ==================================== Views ====================================
 
     /// @return The timestamp of the next rewards event
-    function nextRewards() public view override returns (uint256) {
+    function nextRewards() public view returns (uint256) {
         (, uint256 next) = _rewardsAdjacent(block.timestamp);
         return next;
     }
 
     /// @dev view
     /// @return The token quantities required to issue `amount` RToken.
-    function quote(uint256 amount) public override returns (uint256[] memory) {
+    function quote(uint256 amount) public returns (uint256[] memory) {
         return manager.vault().tokenAmounts(manager.toBUs(amount));
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
-    function backingTokens() public view override returns (address[] memory erc20s) {
+    function backingTokens() public view returns (address[] memory erc20s) {
         erc20s = new address[](manager.vault().size());
         for (uint256 i = 0; i < manager.vault().size(); i++) {
             erc20s[i] = address(manager.vault().collateralAt(i).erc20());
@@ -161,7 +161,7 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
 
     // -------- frequent checks... --------
     /// Runs the central auction loop
-    function poke() external override notPaused always {
+    function poke() external notPaused always {
         require(mood == Mood.CALM || mood == Mood.TRADING, "only during calm + trading");
         _processSlowIssuance();
 
@@ -198,9 +198,9 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
 
     // Returns the rewards boundaries on either side of *time*.
     function _rewardsAdjacent(uint256 time) internal view returns (uint256 left, uint256 right) {
-        int256 dist = (int256(time) - int256(_config.rewardStart)) % _config.rewardPeriod;
+        int256 dist = (int256(time) - int256(_config.rewardStart)) % int256(_config.rewardPeriod);
         if (dist < 0) {
-            dist += _config.rewardPeriod;
+            dist += int256(_config.rewardPeriod);
         }
         return (time - uint256(dist), time + uint256(dist));
     }

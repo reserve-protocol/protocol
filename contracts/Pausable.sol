@@ -12,7 +12,7 @@ import "./Ownable.sol";
  */
 contract Pausable is Ownable {
     address private _pauser;
-    bool public override paused;
+    bool public paused;
 
     constructor() {
         _pauser = _msgSender();
@@ -34,11 +34,11 @@ contract Pausable is Ownable {
     }
 
     function pauser() public returns (address) {
-        return pauser;
+        return _pauser;
     }
 
     function setPauser(address pauser_) external {
-        require(_msgSender() == pauser || _msgSender() == owner(), "only pauser or owner");
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         _pauser = pauser_;
     }
 }

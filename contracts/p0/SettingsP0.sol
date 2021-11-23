@@ -17,30 +17,31 @@ import "contracts/p0/SettingsP0.sol";
 /// Settings mixin for Main
 contract SettingsP0 is Ownable {
     using Oracle for Oracle.Info;
+    using FixLib for Fix;
 
     Oracle.Info internal _oracle; // TODO: is this intended to be immutable after construction? Should we have setOracle()?
     Config internal _config;
 
-    IStRSR public override stRSR;
-    IFurnace public override furnace;
-    IAssetManager public override manager;
-    IDefaultMonitor public override monitor;
+    IStRSR public stRSR;
+    IFurnace public furnace;
+    IAssetManager public manager;
+    IDefaultMonitor public monitor;
 
-    IAsset public override rTokenAsset;
-    IAsset public override rsrAsset;
-    IAsset public override compAsset;
-    IAsset public override aaveAsset;
+    IAsset public rTokenAsset;
+    IAsset public rsrAsset;
+    IAsset public compAsset;
+    IAsset public aaveAsset;
 
     constructor(Oracle.Info memory oracle_, Config memory config_) {
         _oracle = oracle_;
         _config = config_;
     }
 
-    function setOracle(Oracle.Info memory oracle) external override onlyOwner {
+    function setOracle(Oracle.Info memory oracle) external onlyOwner {
         _oracle = oracle;
     }
 
-    function setConfig(Config memory config_) external override onlyOwner {
+    function setConfig(Config memory config_) external onlyOwner {
         // When f changes we need to accumulate the historical basket dilution
         if (_config.f.neq(config_.f)) {
             manager.accumulate();
@@ -48,19 +49,19 @@ contract SettingsP0 is Ownable {
         _config = config_;
     }
 
-    function setStRSR(IStRSR stRSR_) external override onlyOwner {
+    function setStRSR(IStRSR stRSR_) external onlyOwner {
         stRSR = stRSR_;
     }
 
-    function setFurnace(IFurnace furnace_) external override onlyOwner {
+    function setFurnace(IFurnace furnace_) external onlyOwner {
         furnace = furnace_;
     }
 
-    function setManager(IAssetManager manager_) external override onlyOwner {
+    function setManager(IAssetManager manager_) external onlyOwner {
         manager = manager_;
     }
 
-    function setMonitor(IDefaultMonitor monitor_) external override onlyOwner {
+    function setMonitor(IDefaultMonitor monitor_) external onlyOwner {
         monitor = monitor_;
     }
 
@@ -69,7 +70,7 @@ contract SettingsP0 is Ownable {
         IAsset rsr_,
         IAsset comp_,
         IAsset aave_
-    ) external override onlyOwner {
+    ) external onlyOwner {
         rTokenAsset = rToken_;
         rsrAsset = rsr_;
         compAsset = comp_;
@@ -79,32 +80,32 @@ contract SettingsP0 is Ownable {
     // Useful view functions for reading portions of the state
 
     /// @return {attoUSD/qTok} The price in attoUSD of a `qTok` on oracle `source`.
-    function consultOracle(Oracle.Source source, address token) public view override returns (Fix) {
+    function consultOracle(Oracle.Source source, address token) public view returns (Fix) {
         return _oracle.consult(source, token);
     }
 
     /// @return The deployment of the comptroller on this chain
-    function comptroller() public view override returns (IComptroller) {
+    function comptroller() public view returns (IComptroller) {
         return _oracle.compound;
     }
 
     /// @return The deployment of the aave lending pool on this chain
-    function aaveLendingPool() public view override returns (IAaveLendingPool) {
+    function aaveLendingPool() public view returns (IAaveLendingPool) {
         return _oracle.aave;
     }
 
     /// @return The RToken deployment
-    function rToken() public view override returns (IRToken) {
+    function rToken() public view returns (IRToken) {
         return IRToken(address(rTokenAsset.erc20()));
     }
 
     /// @return The RSR deployment
-    function rsr() public view override returns (IERC20) {
+    function rsr() public view returns (IERC20) {
         return rsrAsset.erc20();
     }
 
     /// @return The system configuration
-    function config() public view override returns (Config memory) {
+    function config() public view returns (Config memory) {
         return _config;
     }
 }
