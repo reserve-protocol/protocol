@@ -33,7 +33,7 @@ contract Pausable is Ownable {
         paused = false;
     }
 
-    function pauser() public returns (address) {
+    function pauser() public view returns (address) {
         return _pauser;
     }
 

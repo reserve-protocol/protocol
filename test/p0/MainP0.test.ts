@@ -717,36 +717,36 @@ describe('MainP0 contract', () => {
     })
 
     it('Should not detect default and not impact state in normal situation', async () => {
-      expect(await main.state()).to.equal(State.CALM)
+      expect(await main.mood()).to.equal(Mood.CALM)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
 
       // Notice default
       await expect(main.noticeDefault()).to.not.emit
 
-      expect(await main.state()).to.equal(State.CALM)
+      expect(await main.mood()).to.equal(Mood.CALM)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
     })
 
     it('Should detect soft default and change state', async () => {
-      expect(await main.state()).to.equal(State.CALM)
+      expect(await main.mood()).to.equal(Mood.CALM)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
 
       // Default one of the tokens - reduce fiatcoin price in terms of Eth
       await aaveOracle.setPrice(token0.address, bn('1.5e14'))
 
       // Notice default
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.CALM, State.DOUBT)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(Mood.CALM, Mood.DOUBT)
 
-      expect(await main.state()).to.equal(State.DOUBT)
+      expect(await main.mood()).to.equal(Mood.DOUBT)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
 
       // If soft default is reversed goes back to calm state
       await aaveOracle.setPrice(token0.address, bn('2.5e14'))
 
       // Notice default
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.DOUBT, State.CALM)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(Mood.DOUBT, Mood.CALM)
 
-      expect(await main.state()).to.equal(State.CALM)
+      expect(await main.mood()).to.equal(Mood.CALM)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
     })
 
@@ -757,7 +757,7 @@ describe('MainP0 contract', () => {
       )
       await vault.setBackups([backupVault.address])
 
-      expect(await main.state()).to.equal(State.CALM)
+      expect(await main.mood()).to.equal(Mood.CALM)
       expect(await assetManager.vault()).to.equal(vault.address)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
 
@@ -765,9 +765,9 @@ describe('MainP0 contract', () => {
       await aaveOracle.setPrice(token0.address, bn('1.5e14'))
 
       // Notice default
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.CALM, State.DOUBT)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(Mood.CALM, Mood.DOUBT)
 
-      expect(await main.state()).to.equal(State.DOUBT)
+      expect(await main.mood()).to.equal(Mood.DOUBT)
       expect(await assetManager.vault()).to.equal(vault.address)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
 
@@ -777,17 +777,17 @@ describe('MainP0 contract', () => {
       // Notice default
       await expect(main.noticeDefault()).to.not.emit
 
-      expect(await main.state()).to.equal(State.DOUBT)
+      expect(await main.mood()).to.equal(Mood.DOUBT)
       expect(await assetManager.vault()).to.equal(vault.address)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
 
       // Advance time post defaultDelay
       await advanceTime(config.defaultDelay.toString())
 
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.DOUBT, State.TRADING)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(Mood.DOUBT, Mood.TRADING)
 
       // Check state
-      expect(await main.state()).to.equal(State.TRADING)
+      expect(await main.mood()).to.equal(Mood.TRADING)
       expect(await assetManager.vault()).to.equal(backupVault.address)
       expect(await assetManager.fullyCapitalized()).to.equal(false)
 
@@ -796,14 +796,14 @@ describe('MainP0 contract', () => {
       await aaveOracle.setPrice(token1.address, bn('0.5e14'))
 
       // Notice default
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.TRADING, State.DOUBT)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(Mood.TRADING, Mood.DOUBT)
 
       // Restore price
       await aaveOracle.setPrice(token1.address, bn('2.5e14'))
 
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.DOUBT, State.TRADING)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(Mood.DOUBT, Mood.TRADING)
 
-      expect(await main.state()).to.equal(State.TRADING)
+      expect(await main.mood()).to.equal(Mood.TRADING)
       expect(await assetManager.vault()).to.equal(backupVault.address)
       expect(await assetManager.fullyCapitalized()).to.equal(false)
     })
@@ -818,7 +818,7 @@ describe('MainP0 contract', () => {
       assetAToken1 = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aToken1.address, aToken1.decimals())
 
       // Check state
-      expect(await main.state()).to.equal(State.CALM)
+      expect(await main.mood()).to.equal(Mood.CALM)
       expect(await assetManager.vault()).to.equal(vault.address)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
 
@@ -836,15 +836,15 @@ describe('MainP0 contract', () => {
       await assetManager.connect(owner).switchVault(newVault.address)
 
       // Check state
-      expect(await main.state()).to.equal(State.CALM)
+      expect(await main.mood()).to.equal(Mood.CALM)
       expect(await assetManager.vault()).to.equal(newVault.address)
       expect(await assetManager.fullyCapitalized()).to.equal(false)
 
       // Call will not trigger hard default nor soft default in normal situation
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.CALM, State.TRADING)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(Mood.CALM, Mood.TRADING)
 
       // Check state
-      expect(await main.state()).to.equal(State.TRADING)
+      expect(await main.mood()).to.equal(Mood.TRADING)
       expect(await assetManager.vault()).to.equal(newVault.address)
       expect(await assetManager.fullyCapitalized()).to.equal(false)
 
@@ -855,7 +855,7 @@ describe('MainP0 contract', () => {
       await main.noticeDefault()
 
       // check state - backup vault was selected
-      expect(await main.state()).to.equal(State.TRADING)
+      expect(await main.mood()).to.equal(Mood.TRADING)
       expect(await assetManager.vault()).to.equal(backupVault.address)
       expect(await assetManager.fullyCapitalized()).to.equal(false)
     })

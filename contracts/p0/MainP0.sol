@@ -202,6 +202,6 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
         if (dist < 0) {
             dist += int256(_config.rewardPeriod);
         }
-        return (time - uint256(dist), time + uint256(dist));
+        return (time - uint256(dist), time - uint256(dist) + _config.rewardPeriod);
     }
 }
