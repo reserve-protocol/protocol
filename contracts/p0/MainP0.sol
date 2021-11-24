@@ -102,7 +102,7 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
     Mood public mood;
     uint256 public moodRaisedAt; // timestamp when default occurred
 
-    function checkForHardDefault() internal view {
+    function checkForHardDefault() internal {
         ICollateral[] memory hardDefaulting = monitor.checkForHardDefault(manager.vault());
         if (hardDefaulting.length > 0) {
             manager.switchVaults(hardDefaulting);

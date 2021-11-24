@@ -56,7 +56,8 @@ contract AdapterP0 is ProtoAdapter {
     IMockERC20 internal _rsr;
     IMockERC20 internal _comp;
     IMockERC20 internal _aave;
-    MainExtension internal _main;
+    MainExtension internal _main_ext;
+    IMainP0 internal _main;
     StRSRExtension internal _stRSR;
     RTokenExtension internal _rToken;
 
@@ -141,7 +142,7 @@ contract AdapterP0 is ProtoAdapter {
                 address(new AaveLendingAddrProviderMockP0(address(_aaveOracle)))
             );
 
-            _main = MainExtension(
+            _main_ext = MainExtension(
                 _deployer.deploy(
                     s.rToken.name,
                     s.rToken.symbol,
@@ -154,6 +155,7 @@ contract AdapterP0 is ProtoAdapter {
                     collateral
                 )
             );
+            _main = IMainP0(address(_main_ext));
             _stRSR = StRSRExtension(address(_main.stRSR()));
             _rToken = RTokenExtension(address(_main.rToken()));
         }
@@ -220,7 +222,7 @@ contract AdapterP0 is ProtoAdapter {
     function checkInvariants() external override returns (bool) {
         return
             _deployer.checkInvariants() &&
-            _main.checkInvariants() &&
+            _main_ext.checkInvariants() &&
             _rToken.checkInvariants() &&
             _stRSR.checkInvariants();
     }
@@ -228,12 +230,12 @@ contract AdapterP0 is ProtoAdapter {
     // === COMMANDS ====
 
     function CMD_issue(Account account, uint256 amount) external override {
-        _main.connect(_address(uint256(account)));
+        _main_ext.connect(_address(uint256(account)));
         _main.issue(amount);
     }
 
     function CMD_redeem(Account account, uint256 amount) external override {
-        _main.connect(_address(uint256(account)));
+        _main_ext.connect(_address(uint256(account)));
         _main.redeem(amount);
     }
 
