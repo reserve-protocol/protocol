@@ -49,7 +49,7 @@ contract FurnaceP0 is Context, IFurnace {
     }
 
     /// Performs any burning that has vested since last call. Idempotent
-    function doBurn() external override {
+    function doBurn() public override {
         uint256 amount = _burnable(block.timestamp);
         if (amount > 0) {
             bool success = rToken.burn(address(this), amount);

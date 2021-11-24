@@ -9,7 +9,9 @@ import "./assets/AAVEAssetP0.sol";
 import "../libraries/CommonErrors.sol";
 import "./libraries/Oracle.sol";
 import "./interfaces/IAsset.sol";
+import "./interfaces/IAssetManager.sol";
 import "./interfaces/IDeployer.sol";
+import "./interfaces/IFurnace.sol";
 import "./interfaces/IMain.sol";
 import "./interfaces/IVault.sol";
 import "./assets/RTokenAssetP0.sol";
@@ -33,19 +35,22 @@ interface IOwnable {
  * @notice The deployer for the entire system.
  */
 contract DeployerP0 is IDeployer {
-    IMain[] public deployments;
+    IMarket market;
     IAsset rsrAsset;
     IAsset compAsset;
     IAsset aaveAsset;
+    IMain[] public deployments;
 
     constructor(
         IAsset rsrAsset_,
         IAsset compAsset_,
-        IAsset aaveAsset_
+        IAsset aaveAsset_,
+        IMarket market_
     ) {
         rsrAsset = rsrAsset_;
         compAsset = compAsset_;
         aaveAsset = aaveAsset_;
+        market = market_;
     }
 
     /// Deploys an instance of the entire system
@@ -82,7 +87,7 @@ contract DeployerP0 is IDeployer {
             IRToken rToken = _deployRToken(main, name, symbol);
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken));
             main.setAssets(rTokenAsset, rsrAsset, compAsset, aaveAsset);
-            FurnaceP0 furnace = new FurnaceP0(address(rToken));
+            IFurnace furnace = _deployFurnace(address(rToken));
             main.setFurnace(furnace);
         }
 
@@ -96,7 +101,7 @@ contract DeployerP0 is IDeployer {
         }
 
         {
-            AssetManagerP0 manager = new AssetManagerP0(main, vault, owner, collateral);
+            IAssetManager manager = _deployAssetManager(main, vault, owner, collateral);
             main.setManager(manager);
         }
         main.setPauser(owner);
@@ -106,12 +111,13 @@ contract DeployerP0 is IDeployer {
         return (address(main));
     }
 
-    /// @dev Used for testing to inject msg.sender
+    // =================================================================
+    /// @dev Helpers used for testing to inject msg.sender and implement contract invariant checks
+
     function _deployMain(Oracle.Info memory oracle, Config memory config) internal virtual returns (IMain) {
         return new MainP0(oracle, config);
     }
 
-    /// @dev Used for testing to inject msg.sender
     function _deployRToken(
         IMain main,
         string memory name,
@@ -120,12 +126,24 @@ contract DeployerP0 is IDeployer {
         return new RTokenP0(main, name, symbol);
     }
 
-    /// @dev Used for testing to inject msg.sender
+    function _deployFurnace(address rToken) internal virtual returns (IFurnace) {
+        return new FurnaceP0(address(rToken));
+    }
+
     function _deployStRSR(
         IMain main,
         string memory name,
         string memory symbol
     ) internal virtual returns (IStRSR) {
         return new StRSRP0(main, name, symbol);
+    }
+
+    function _deployAssetManager(
+        IMain main_,
+        IVault vault_,
+        address owner_,
+        ICollateral[] memory approvedCollateral_
+    ) internal virtual returns (IAssetManager) {
+        return new AssetManagerP0(main_, vault_, market, owner_, approvedCollateral_);
     }
 }

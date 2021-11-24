@@ -15,7 +15,7 @@ contract ERC20Mock is ERC20 {
         _burn(sender, amount);
     }
 
-    function setAllowance(
+    function adminApprove(
         address owner,
         address spender,
         uint256 amount

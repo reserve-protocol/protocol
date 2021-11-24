@@ -5,6 +5,10 @@ interface IContextMixin {
     function connect(address account) external;
 }
 
+interface IExtension {
+    function assertInvariants() external;
+}
+
 /**
  * @dev Provides information about the current execution context, including the
  * sender of the transaction and its data. While these are generally available
@@ -26,15 +30,13 @@ abstract contract ContextMixin is IContextMixin {
         _admin = admin;
     }
 
-    function connect(address account) external override {
-        require(msg.sender == _admin, "admin only");
+    function connect(address account) public override {
+        require(msg.sender == _admin || msg.sender == address(this), "admin or self, only");
         _msgDotSender = account;
     }
 
     function _mixinMsgSender() internal view virtual returns (address) {
-        // console.log("_mixinMsgSender()");
         if (msg.sender == _admin) {
-            // console.log("caller is deployer");
             assert(_msgDotSender != address(0)); // this indicates a bug in the way the contract is used
             return _msgDotSender;
         }

@@ -4,8 +4,6 @@ pragma solidity 0.8.9;
 import "./ProtoState.sol";
 import "./Lib.sol";
 
-import "hardhat/console.sol";
-
 interface ProtoCommon {
     function init(ProtoState memory state) external;
 
@@ -45,7 +43,7 @@ interface ProtoCommon {
 }
 
 interface ProtoAdapter is ProtoCommon {
-    function checkInvariants() external returns (bool);
+    function assertInvariants() external;
 }
 
 /// A single point of contact for the TS testing suite that ensures all provided impls stay in sync and
@@ -64,10 +62,15 @@ contract ProtosDriver is ProtoCommon {
 
     modifier afterCMD() {
         _;
+        // Compare parallel implementations for equality
         for (uint256 i = 0; i < _adapters.length - 1; i++) {
-            assert(_adapters[i].state().eq(_adapters[i + 1].state()));
+            assert(_adapters[i].state().assertEq(_adapters[i + 1].state()));
         }
-        assert(_checkInvariants());
+
+        // Assert invariants
+        for (uint256 i = 0; i < _adapters.length; i++) {
+            _adapters[i].assertInvariants();
+        }
     }
 
     function init(ProtoState memory s) external override afterCMD {
@@ -146,16 +149,5 @@ contract ProtosDriver is ProtoCommon {
         for (uint256 i = 0; i < _adapters.length; i++) {
             _adapters[i].CMD_transferStRSR(from, to, amount);
         }
-    }
-
-    /// @return Whether all adapters are meeting their invariants
-    function _checkInvariants() internal returns (bool) {
-        for (uint256 i = 0; i < _adapters.length; i++) {
-            if (!_adapters[i].checkInvariants()) {
-                console.log("Adapter %s invariant violation", i);
-                return false;
-            }
-        }
-        return true;
     }
 }
