@@ -32,6 +32,7 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
 
     function assertInvariants() external override {
         _INVARIANT_stateDefined();
+        _INVARIANT_configurationValid();
         _INVARIANT_isFullyCapitalized();
         _INVARIANT_nextRewardsInFutureOrNow();
         _INVARIANT_stateIsAmongEnum();
@@ -57,6 +58,25 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
         assert(address(rsrAsset) != address(0));
         assert(address(compAsset) != address(0));
         assert(address(aaveAsset) != address(0));
+    }
+
+    function _INVARIANT_configurationValid() internal view {
+        assert(_config.rewardStart > 0);
+        assert(_config.rewardPeriod > 0);
+        assert(_config.auctionPeriod > 0);
+        assert(_config.stRSRWithdrawalDelay > 0);
+        assert(_config.defaultDelay > 0);
+
+        assert(_config.maxTradeSlippage.gte(FIX_ZERO) && _config.maxTradeSlippage.lte(FIX_ONE));
+        assert(_config.maxAuctionSize.gte(FIX_ZERO) && _config.maxAuctionSize.lte(FIX_ONE));
+        assert(
+            _config.minRecapitalizationAuctionSize.gte(FIX_ZERO) && _config.minRecapitalizationAuctionSize.lte(FIX_ONE)
+        );
+        assert(_config.minRevenueAuctionSize.gte(FIX_ZERO) && _config.minRevenueAuctionSize.lte(FIX_ONE));
+        assert(_config.migrationChunk.gte(FIX_ZERO) && _config.migrationChunk.lte(FIX_ONE));
+        assert(_config.issuanceRate.gte(FIX_ZERO) && _config.issuanceRate.lte(FIX_ONE));
+        assert(_config.defaultThreshold.gte(FIX_ZERO) && _config.defaultThreshold.lte(FIX_ONE));
+        assert(_config.f.gte(FIX_ZERO) && _config.f.lte(FIX_ONE));
     }
 
     function _INVARIANT_isFullyCapitalized() internal view {
