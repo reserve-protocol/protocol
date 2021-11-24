@@ -8,56 +8,22 @@ import { ProtoAdapter } from '../../typechain/ProtoAdapter'
 import { ProtosDriver } from '../../typechain/ProtosDriver'
 import { IManagerConfig } from '../p0/utils/fixtures'
 import { getLatestBlockTimestamp } from '../utils/time'
+import { Account, COLLATERAL_TOKEN_LEN, CollateralToken, prepareState } from './common'
 
 /*
- * The Generic Unit tests are written against ProtoState and ProtosDriver. The ProtosDriver can be set
- * up with any number of implementations to test in parallel, and will check to ensure that the states
- * match across implementations after each command. It also checks the invariants. This enables
- * the generic test suite to pretend it is interacting with a single system.
+ *  Generic Unit Tests
+ *
+ *  These tests assert that contract invariants are met after each individual tx. The tx will revert if:
+ *    (i)  an implementation invariant is violated.
+ *    (ii) implementations fall out of sync with each other (requires multiple implementations)
+ *
+ *
  */
-
-// @dev Must match `ProtoState.CollateralToken`
-enum CollateralToken {
-  DAI,
-  USDC,
-  USDT,
-  BUSD,
-  cDAI,
-  cUSDC,
-  cUSDT,
-  aDAI,
-  aUSDC,
-  aUSDT,
-  aBUSD,
-}
-const COLLATERAL_TOKEN_LEN = 11
-
-// @dev Must match `ProtoState.Account`
-enum Account {
-  ALICE,
-  BOB,
-  CHARLIE,
-  DAVE,
-  EVE,
-  //
-  RTOKEN,
-  STRSR,
-  MAIN,
-}
-const ACCOUNTS_LEN = 8
-
-type Allowance = [Account, Account, BigNumber]
-type Balance = [Account, BigNumber]
-type Basket = { tokens: CollateralToken[]; quantities: BigNumber[] }
-
 describe('Generic unit tests', () => {
-  let owner: SignerWithAddress
   let Impls: ContractFactory[]
   let driver: ProtosDriver
 
   beforeEach(async () => {
-    ;[owner] = await ethers.getSigners()
-
     // ADD PROTOS (BY CONTRACT NAME) TO THIS ARRAY AS WE FINISH THEM
     Impls = [await ethers.getContractFactory('AdapterP0')]
   })
@@ -100,6 +66,7 @@ describe('Generic unit tests', () => {
       expect(state.rToken.balances[Account.ALICE]).to.equal(0)
       expect(state.rToken.balances[Account.EVE]).to.equal(bn('1e20'))
       expect(state.collateral[0].balances[Account.ALICE]).to.equal(bn('1e36'))
+      expect(state.collateral[COLLATERAL_TOKEN_LEN - 1].balances[Account.ALICE]).to.equal(bn('1e36'))
       expect(state.rTokenDefinition.tokens.toString()).to.equal(initialState.rTokenDefinition.tokens.toString())
       expect(state.rTokenDefinition.quantities.toString()).to.equal(initialState.rTokenDefinition.quantities.toString())
     })
@@ -146,88 +113,3 @@ describe('Generic unit tests', () => {
     })
   })
 })
-
-/// Helper to prepare two-dimensional allowance arrays
-const prepareAllowances = (...allowance: Array<Allowance>) => {
-  const toReturn: BigNumber[][] = [] // 2d
-  for (let i = 0; i < ACCOUNTS_LEN; i++) {
-    toReturn.push([])
-    for (let j = 0; j < ACCOUNTS_LEN; j++) {
-      toReturn[i].push(bn(0))
-    }
-  }
-  for (let i = 0; i < allowance.length; i++) {
-    toReturn[allowance[i][0]][allowance[i][1]] = toReturn[allowance[i][0]][allowance[i][1]].add(allowance[i][2])
-  }
-  return toReturn
-}
-
-/// Helper to prepare balance arrays
-const prepareBalances = (...balance: Array<Balance>) => {
-  const toReturn: BigNumber[] = []
-  for (let i = 0; i < ACCOUNTS_LEN; i++) {
-    toReturn.push(bn(0))
-  }
-  for (let i = 0; i < balance.length; i++) {
-    toReturn[balance[i][0]] = toReturn[balance[i][0]].add(balance[i][1])
-  }
-  return toReturn
-}
-
-const sum = (arr: Array<BigNumber>) => {
-  let total = bn(0)
-  for (let i = 0; i < arr.length; i++) {
-    total = total.add(arr[i])
-  }
-  return total
-}
-
-// Creates a state where Alice has standing balances of all the "input" tokens (collateral + RSR + COMP + AAVE)
-// and the caller provides balances of RToken/stRSR.
-const prepareState = (
-  config: IManagerConfig,
-  ethPriceMicroUSD: BigNumber,
-  rTokenBalances: Balance[],
-  stRSRBalances: Balance[],
-  baskets: Basket[] // 0th basket is taken to be current RToken definition
-) => {
-  const ethPrice = { inUSD: ethPriceMicroUSD, inETH: bn('1e18') }
-  const makeToken = (
-    symbol: string,
-    balances: Array<[Account, BigNumber]>,
-    allowances: Array<[Account, Account, BigNumber]>,
-    microUSDPrice: BigNumber
-  ) => {
-    const bals = prepareBalances(...balances)
-    return {
-      name: symbol + ' Token',
-      symbol: symbol,
-      balances: bals,
-      allowances: prepareAllowances(...allowances),
-      totalSupply: sum(bals),
-      price: { inUSD: microUSDPrice, inETH: microUSDPrice.mul(bn('1e12')).div(ethPrice.inUSD) },
-    }
-  }
-  const rToken = makeToken('USD+', rTokenBalances, [], bn('1e6'))
-  const rsr = makeToken('RSR', [[Account.ALICE, bn('1e36')]], [], bn('1e6'))
-  const stRSR = makeToken('stUSD+RSR', stRSRBalances, [], bn('1e6'))
-  const comp = makeToken('COMP', [[Account.ALICE, bn('1e36')]], [], bn('1e6'))
-  const aave = makeToken('AAVE', [[Account.ALICE, bn('1e36')]], [], bn('1e6'))
-  const collateral = []
-  for (let i = 0; i < COLLATERAL_TOKEN_LEN; i++) {
-    collateral.push(makeToken(CollateralToken[i], [[Account.ALICE, bn('1e36')]], [], bn('1e6')))
-  }
-
-  return {
-    bu_s: baskets,
-    config: config,
-    rTokenDefinition: baskets[0],
-    rToken: rToken,
-    rsr: rsr,
-    stRSR: stRSR,
-    comp: comp,
-    aave: aave,
-    collateral: collateral,
-    ethPrice: ethPrice,
-  }
-}

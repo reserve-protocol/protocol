@@ -62,10 +62,15 @@ contract ProtosDriver is ProtoCommon {
 
     modifier afterCMD() {
         _;
+        // Compare parallel implementations for equality
         for (uint256 i = 0; i < _adapters.length - 1; i++) {
             assert(_adapters[i].state().assertEq(_adapters[i + 1].state()));
         }
-        _assertInvariants();
+
+        // Assert invariants
+        for (uint256 i = 0; i < _adapters.length; i++) {
+            _adapters[i].assertInvariants();
+        }
     }
 
     function init(ProtoState memory s) external override afterCMD {
@@ -143,13 +148,6 @@ contract ProtosDriver is ProtoCommon {
     ) external override afterCMD {
         for (uint256 i = 0; i < _adapters.length; i++) {
             _adapters[i].CMD_transferStRSR(from, to, amount);
-        }
-    }
-
-    /// Asserts all adapters are holding their invariants
-    function _assertInvariants() internal {
-        for (uint256 i = 0; i < _adapters.length; i++) {
-            _adapters[i].assertInvariants();
         }
     }
 }

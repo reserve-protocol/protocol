@@ -39,7 +39,7 @@ library Lib {
 
     /// ProtoState version
     /// Compares ProtoStates for equality
-    function assertEq(ProtoState memory a, ProtoState memory b) internal returns (bool ok) {
+    function assertEq(ProtoState memory a, ProtoState memory b) internal view returns (bool ok) {
         ok =
             _assertConfigEq(a.config, b.config) &&
             _assertBUEq(a.rTokenDefinition, b.rTokenDefinition) &&
@@ -64,7 +64,7 @@ library Lib {
     }
 
     /// @return Whether two Configs are equal
-    function _assertConfigEq(Config memory a, Config memory b) internal returns (bool) {
+    function _assertConfigEq(Config memory a, Config memory b) internal view returns (bool) {
         return
             assertEq(a.rewardStart, b.rewardStart, "Config.rewardStart") &&
             assertEq(a.rewardPeriod, b.rewardPeriod, "Config.rewardStart") &&

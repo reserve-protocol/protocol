@@ -8,6 +8,7 @@ import "contracts/libraries/test/strings.sol";
 import "contracts/mocks/ATokenMock.sol";
 import "contracts/mocks/CTokenMock.sol";
 import "contracts/mocks/ERC20Mock.sol";
+import "contracts/mocks/TradingMock.sol";
 import "contracts/mocks/USDCMock.sol";
 import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
 import "contracts/p0/assets/collateral/CollateralP0.sol";
@@ -50,6 +51,9 @@ contract AdapterP0 is ProtoAdapter {
     StRSRExtension internal _stRSR;
     RTokenExtension internal _rToken;
 
+    // Trading
+    TradingMock internal _trading;
+
     // Oracles
     CompoundOracleMockP0 internal _compoundOracle;
     AaveOracleMockP0 internal _aaveOracle;
@@ -59,15 +63,16 @@ contract AdapterP0 is ProtoAdapter {
     mapping(ERC20Mock => CollateralToken) internal _reverseCollateral; // by the ERC20 of the collateral
 
     function init(ProtoState memory s) external override {
-        // Deploy deployer factory
+        // Deploy Deployer (factory)
         {
-            _rsr = ERC20Mock(address(new ERC20Mock(s.rsr.name, s.rsr.symbol)));
-            _comp = ERC20Mock(address(new ERC20Mock(s.comp.name, s.comp.symbol)));
-            _aave = ERC20Mock(address(new ERC20Mock(s.aave.name, s.aave.symbol)));
+            _rsr = new ERC20Mock(s.rsr.name, s.rsr.symbol);
+            _comp = new ERC20Mock(s.comp.name, s.comp.symbol);
+            _aave = new ERC20Mock(s.aave.name, s.aave.symbol);
             IAsset rsrAsset = new RSRAssetP0(address(_rsr));
             IAsset compAsset = new COMPAssetP0(address(_comp));
             IAsset aaveAsset = new AAVEAssetP0(address(_aave));
-            _deployer = new DeployerExtension(rsrAsset, compAsset, aaveAsset);
+            _trading = new TradingMock();
+            _deployer = new DeployerExtension(rsrAsset, compAsset, aaveAsset, _trading);
         }
 
         // Deploy collateral assets
@@ -117,7 +122,7 @@ contract AdapterP0 is ProtoAdapter {
             }
         }
 
-        // Deploy rest of system
+        // Deploy oracles + Main/StRSR/RToken
         {
             _compoundOracle = new CompoundOracleMockP0();
             _compoundOracle.setPrice(ETH, s.ethPrice.inUSD);
@@ -142,10 +147,10 @@ contract AdapterP0 is ProtoAdapter {
             );
             _stRSR = StRSRExtension(address(_main.stRSR()));
             _rToken = RTokenExtension(address(_main.rToken()));
-        }
 
-        for (uint256 i = 0; i < vaults.length; i++) {
-            vaults[i].setMain(_main);
+            for (uint256 i = 0; i < vaults.length; i++) {
+                vaults[i].setMain(_main);
+            }
         }
 
         // Populate token ledgers + oracle prices
@@ -156,7 +161,7 @@ contract AdapterP0 is ProtoAdapter {
             for (uint256 i = 0; i < uint256(type(CollateralToken).max) + 1; i++) {
                 _initERC20(ERC20Mock(address(collateral[i].erc20())), s.collateral[i]);
             }
-            // Mint stRSR to RSR initially, then stake
+            // StRSR.balance = RSR.mint + StRSR.stake
             for (uint256 i = 0; i < s.stRSR.balances.length; i++) {
                 if (s.stRSR.balances[i] > 0) {
                     _rsr.mint(_address(i), s.stRSR.balances[i]);
