@@ -74,8 +74,8 @@ library Auction {
         uint256 internalAuctionId
     ) internal {
         market.initiateAuction(
-            address(self.sell),
-            address(self.buy),
+            self.sell.erc20(),
+            self.buy.erc20(),
             self.sellAmount,
             self.minBuyAmount,
             main.config().auctionPeriod

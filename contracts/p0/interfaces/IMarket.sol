@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 interface IMarket {
     /// @return auctionId
     function initiateAuction(
-        address sell,
-        address buy,
+        IERC20 sell,
+        IERC20 buy,
         uint256 sellAmount,
         uint256 minBuyAmount,
         uint256 auctionDuration

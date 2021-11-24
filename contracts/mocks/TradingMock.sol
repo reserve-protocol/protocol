@@ -15,8 +15,8 @@ interface ITrading {
 
 struct MockAuction {
     address origin;
-    address sell;
-    address buy;
+    IERC20 sell;
+    IERC20 buy;
     uint256 sellAmount; // {qSellTok}
     uint256 minBuyAmount; // {qBuyTok}
     uint256 startTime; // {sec}
@@ -40,13 +40,14 @@ contract TradingMock is IMarket, ITrading {
 
     /// @return auctionId The internal auction id
     function initiateAuction(
-        address sell,
-        address buy,
+        IERC20 sell,
+        IERC20 buy,
         uint256 sellAmount,
         uint256 minBuyAmount,
         uint256 auctionDuration
     ) external override returns (uint256 auctionId) {
         auctionId = _auctions.length;
+        IERC20(sell).safeTransferFrom(msg.sender, address(this), sellAmount);
         _auctions.push(
             MockAuction(
                 msg.sender,
@@ -63,7 +64,7 @@ contract TradingMock is IMarket, ITrading {
 
     /// @dev Requires allowances
     function setBid(uint256 auctionId, Bid memory bid) external override {
-        IERC20(_auctions[auctionId].buy).transferFrom(bid.bidder, address(this), bid.buyAmount);
+        _auctions[auctionId].buy.transferFrom(bid.bidder, address(this), bid.buyAmount);
         _bids[auctionId] = bid;
     }
 
@@ -91,10 +92,10 @@ contract TradingMock is IMarket, ITrading {
         }
 
         // Transfer tokens
-        IERC20(auction.sell).transfer(bid.bidder, clearingSellAmount);
-        IERC20(auction.sell).transfer(auction.origin, auction.sellAmount - clearingSellAmount);
-        IERC20(auction.buy).transfer(bid.bidder, bid.buyAmount - clearingBuyAmount);
-        IERC20(auction.buy).transfer(auction.origin, clearingBuyAmount);
+        auction.sell.safeTransfer(bid.bidder, clearingSellAmount);
+        auction.sell.safeTransfer(auction.origin, auction.sellAmount - clearingSellAmount);
+        auction.buy.safeTransfer(bid.bidder, bid.buyAmount - clearingBuyAmount);
+        auction.buy.safeTransfer(auction.origin, clearingBuyAmount);
         auction.isOpen = false;
     }
 }
