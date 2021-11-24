@@ -16,6 +16,36 @@ import "./IVault.sol";
  *    - Runs recapitalization and revenue auctions
  */
 interface IAssetManager {
+    /// Emitted when an auction is started
+    /// @param auctionId The index of the AssetManager.auctions array
+    /// @param sell The token to sell
+    /// @param buy The token to buy
+    /// @param sellAmount {qSellTok} The quantity of the selling token
+    /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
+    /// @param fate The fate of the soon-to-be-purchased tokens
+    /// @dev Must be kept in sync with its duplicate in `IAssetManager.sol`
+    event AuctionStarted(
+        uint256 indexed auctionId,
+        address indexed sell,
+        address indexed buy,
+        uint256 sellAmount, // {qSellTok}
+        uint256 minBuyAmount, // {qBuyTok}
+        Fate fate
+    );
+
+    /// Emitted after an auction ends
+    /// @param auctionId The index of the AssetManager.auctions array
+    /// @param sellAmount {qSellTok} The quantity of the token sold
+    /// @param buyAmount {qBuyTok} The quantity of the token bought
+    event AuctionEnded(
+        uint256 indexed auctionId,
+        address indexed sell,
+        address indexed buy,
+        uint256 sellAmount,
+        uint256 buyAmount,
+        Fate fate
+    );
+
     /// Emitted when the current vault is changed
     /// @param oldVault The address of the old vault
     /// @param newVault The address of the new vault

@@ -536,7 +536,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         Fix minSellUSD = rTokenMarketCapUSD.mul(minAuctionSize); // {attoUSD}
 
         // {qSellTok} < {attoUSD} / {attoUSD/qSellTok}
-        if (sellAmount < minSellUSD.div(sell.priceUSD(main)).toUint()) {
+        if (sellAmount == 0 || sellAmount < minSellUSD.div(sell.priceUSD(main)).toUint()) {
             return (false, auction);
         }
 
