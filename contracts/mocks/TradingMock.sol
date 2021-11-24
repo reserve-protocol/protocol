@@ -67,7 +67,7 @@ contract TradingMock is IMarket, ITrading {
         _bids[auctionId] = bid;
     }
 
-    /// Can only be called after an auction.endTime is past
+    /// Can only be called by the origin of the auction and only after auction.endTime is past
     function clear(uint256 auctionId)
         external
         override

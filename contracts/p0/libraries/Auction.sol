@@ -70,10 +70,10 @@ library Auction {
     function open(
         Auction.Info storage self,
         IMain main,
-        IMarket batchAuction,
+        IMarket market,
         uint256 internalAuctionId
     ) internal {
-        batchAuction.initiateAuction(
+        market.initiateAuction(
             address(self.sell),
             address(self.buy),
             self.sellAmount,
@@ -95,12 +95,12 @@ library Auction {
     function close(
         Auction.Info storage self,
         IMain main,
-        IMarket batchAuction,
+        IMarket market,
         uint256 internalAuctionId
     ) internal {
         require(self.isOpen, "already closed out");
         require(self.endTime <= block.timestamp, "auction not over");
-        (self.clearingSellAmount, self.clearingBuyAmount) = batchAuction.clear(internalAuctionId);
+        (self.clearingSellAmount, self.clearingBuyAmount) = market.clear(internalAuctionId);
 
         uint256 bal = self.buy.erc20().balanceOf(address(this)); // {qBuyTok}
 

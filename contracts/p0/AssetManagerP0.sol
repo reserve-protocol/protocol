@@ -51,7 +51,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     IMain public main;
     IVault public override vault;
-    IMarket public batchAuction;
+    IMarket public market;
 
     IVault[] public pastVaults;
     Auction.Info[] public auctions;
@@ -59,13 +59,13 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     constructor(
         IMain main_,
         IVault vault_,
-        IMarket batchAuction_,
+        IMarket market_,
         address owner_,
         ICollateral[] memory approvedCollateral_
     ) {
         main = main_;
         vault = vault_;
-        batchAuction = batchAuction_;
+        market = market_;
 
         for (uint256 i = 0; i < approvedCollateral_.length; i++) {
             _approveCollateral(approvedCollateral_[i]);
@@ -154,7 +154,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 if (block.timestamp <= auction.endTime) {
                     return SystemState.TRADING;
                 }
-                auction.close(main, batchAuction, i);
+                auction.close(main, market, i);
             }
         }
 
@@ -292,7 +292,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     /// Opens an `auction`
     function _launchAuction(Auction.Info memory auction) internal {
         auctions.push(auction);
-        auctions[auctions.length - 1].open(main, batchAuction, auctions.length - 1);
+        auctions[auctions.length - 1].open(main, market, auctions.length - 1);
     }
 
     /// Runs all auctions for recapitalization

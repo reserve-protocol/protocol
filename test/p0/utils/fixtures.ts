@@ -21,6 +21,7 @@ import { MainP0 } from '../../../typechain/MainP0'
 import { RSRAssetP0 } from '../../../typechain/RSRAssetP0'
 import { RTokenP0 } from '../../../typechain/RTokenP0'
 import { StRSRP0 } from '../../../typechain/StRSRP0'
+import { TradingMock } from '../../../typechain/TradingMock'
 import { VaultP0 } from '../../../typechain/VaultP0'
 import { getLatestBlockTimestamp } from '../../utils/time'
 
@@ -104,6 +105,16 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
   return { weth, compToken, compAsset, compoundOracle, compoundMock, aaveToken, aaveAsset, aaveOracle, aaveMock }
 }
 
+interface MarketFixture {
+  trading: TradingMock
+}
+
+async function marketFixture(): Promise<MarketFixture> {
+  const TradingMockFactory: ContractFactory = await ethers.getContractFactory('TradingMock')
+  const tradingMock: TradingMock = <TradingMock>await TradingMockFactory.deploy()
+  return { trading: tradingMock }
+}
+
 interface VaultFixture {
   token0: ERC20Mock
   token1: ERC20Mock
@@ -166,6 +177,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
     await vaultFixture()
   const { weth, compToken, compAsset, compoundOracle, compoundMock, aaveToken, aaveAsset, aaveOracle, aaveMock } =
     await compAaveFixture()
+  const { trading } = await marketFixture()
 
   // Set Default Oracle Prices
   await compoundOracle.setPrice('TKN0', bn('1e6'))
@@ -205,7 +217,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0')
   const deployer: DeployerP0 = <DeployerP0>(
-    await DeployerFactory.deploy(rsrAsset.address, compAsset.address, aaveAsset.address)
+    await DeployerFactory.deploy(rsrAsset.address, compAsset.address, aaveAsset.address, trading.address)
   )
 
   // Deploy actual contracts

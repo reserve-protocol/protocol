@@ -35,7 +35,7 @@ interface IOwnable {
  * @notice The deployer for the entire system.
  */
 contract DeployerP0 is IDeployer {
-    IMarket batchAuction;
+    IMarket market;
     IAsset rsrAsset;
     IAsset compAsset;
     IAsset aaveAsset;
@@ -45,12 +45,12 @@ contract DeployerP0 is IDeployer {
         IAsset rsrAsset_,
         IAsset compAsset_,
         IAsset aaveAsset_,
-        IMarket batchAuction_
+        IMarket market_
     ) {
         rsrAsset = rsrAsset_;
         compAsset = compAsset_;
         aaveAsset = aaveAsset_;
-        batchAuction = batchAuction_;
+        market = market_;
     }
 
     /// Deploys an instance of the entire system
@@ -144,6 +144,6 @@ contract DeployerP0 is IDeployer {
         address owner_,
         ICollateral[] memory approvedCollateral_
     ) internal virtual returns (IAssetManager) {
-        return new AssetManagerP0(main_, vault_, batchAuction, owner_, approvedCollateral_);
+        return new AssetManagerP0(main_, vault_, market, owner_, approvedCollateral_);
     }
 }

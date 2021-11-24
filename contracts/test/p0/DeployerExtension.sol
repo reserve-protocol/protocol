@@ -23,8 +23,8 @@ contract DeployerExtension is IExtension, DeployerP0 {
         IAsset rsr_,
         IAsset comp_,
         IAsset aave_,
-        IMarket batchAuction_
-    ) DeployerP0(rsr_, comp_, aave_, batchAuction_) {
+        IMarket market_
+    ) DeployerP0(rsr_, comp_, aave_, market_) {
         _admin = msg.sender;
     }
 
@@ -63,7 +63,7 @@ contract DeployerExtension is IExtension, DeployerP0 {
         address owner,
         ICollateral[] memory approvedCollateral
     ) internal override returns (IAssetManager) {
-        return new AssetManagerExtension(_admin, main, vault, batchAuction, owner, approvedCollateral);
+        return new AssetManagerExtension(_admin, main, vault, market, owner, approvedCollateral);
     }
 
     function INVARIANT_currentDeploymentRegistered() internal view {

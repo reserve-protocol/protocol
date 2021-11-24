@@ -21,10 +21,10 @@ contract AssetManagerExtension is IExtension, ContextMixin, AssetManagerP0 {
         address admin,
         IMain main,
         IVault vault,
-        IMarket batchAuction,
+        IMarket market,
         address owner,
         ICollateral[] memory approvedCollateral
-    ) ContextMixin(admin) AssetManagerP0(main, vault, batchAuction, owner, approvedCollateral) {}
+    ) ContextMixin(admin) AssetManagerP0(main, vault, market, owner, approvedCollateral) {}
 
     function assertInvariants() external override {
         _INVARIANT_baseFactorDefined();
