@@ -25,6 +25,19 @@ import { TradingMock } from '../../../typechain/TradingMock'
 import { VaultP0 } from '../../../typechain/VaultP0'
 import { getLatestBlockTimestamp } from '../../utils/time'
 
+export enum State {
+  CALM = 0,
+  DOUBT = 1,
+  TRADING = 2,
+}
+
+export enum Fate {
+  Melt = 0,
+  Stake = 1,
+  Burn = 2,
+  Stay = 3,
+}
+
 export interface IManagerConfig {
   rewardStart: BigNumber
   rewardPeriod: BigNumber
@@ -87,6 +100,7 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
 
   const ComptrollerMockFactory: ContractFactory = await ethers.getContractFactory('ComptrollerMockP0')
   const compoundMock: ComptrollerMockP0 = <ComptrollerMockP0>await ComptrollerMockFactory.deploy(compoundOracle.address)
+  await compoundMock.setCompToken(compToken.address)
 
   const AaveOracleMockFactory: ContractFactory = await ethers.getContractFactory('AaveOracleMockP0')
   const weth: ERC20Mock = <ERC20Mock>await ERC20.deploy('Wrapped ETH', 'WETH')
@@ -158,9 +172,9 @@ async function vaultFixture(): Promise<VaultFixture> {
   return { token0, token1, token2, token3, collateral0, collateral1, collateral2, collateral3, collateral, vault }
 }
 
-type RSRAndCompAaveAndVaultFixture = RSRFixture & COMPAAVEFixture & VaultFixture
+type RSRAndCompAaveAndVaultAndMarketFixture = RSRFixture & COMPAAVEFixture & VaultFixture & MarketFixture
 
-interface DefaultFixture extends RSRAndCompAaveAndVaultFixture {
+interface DefaultFixture extends RSRAndCompAaveAndVaultAndMarketFixture {
   config: IManagerConfig
   deployer: DeployerP0
   main: MainP0
@@ -192,9 +206,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
   await aaveOracle.setPrice(token2.address, bn('2.5e14'))
   await aaveOracle.setPrice(token3.address, bn('2.5e14'))
   await aaveOracle.setPrice(weth.address, bn('1e18'))
-  await aaveOracle.setPrice(aaveToken.address, bn('2e14'))
-  await aaveOracle.setPrice(compToken.address, bn('2e14'))
-  await aaveOracle.setPrice(rsr.address, bn('2e14'))
+  await aaveOracle.setPrice(aaveToken.address, bn('2.5e14'))
+  await aaveOracle.setPrice(compToken.address, bn('2.5e14'))
+  await aaveOracle.setPrice(rsr.address, bn('2.5e14'))
 
   // Setup Config
   const rewardStart: BigNumber = bn(await getLatestBlockTimestamp())
@@ -204,7 +218,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
     auctionPeriod: bn('1800'), // 30 minutes
     stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
     defaultDelay: bn('86400'), // 24 hs
-    maxTradeSlippage: fp('0.05'), // 5%
+    maxTradeSlippage: fp('0.01'), // 1%
     maxAuctionSize: fp('0.01'), // 1%
     minRecapitalizationAuctionSize: fp('0.001'), // 0.1%
     minRevenueAuctionSize: fp('0.0001'), // 0.01%
@@ -278,5 +292,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
     stRSR,
     assetManager,
     defaultMonitor,
+    trading,
   }
 }
