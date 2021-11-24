@@ -73,6 +73,7 @@ library Auction {
         IMarket market,
         uint256 internalAuctionId
     ) internal {
+        self.sell.erc20().safeApprove(address(market), self.sellAmount);
         market.initiateAuction(
             self.sell.erc20(),
             self.buy.erc20(),
