@@ -223,10 +223,12 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function _basketDilutionFactor() internal view returns (Fix) {
         Fix currentRate = vault.basketRate();
 
-        // currentDilution = (f * ((currentRate / _prevBasketRate) - 1)) + 1
-        // TODO: I think this might be wrong
-        Fix currentDilution = main.config().f.mul(currentRate.div(_prevBasketRate).minus(FIX_ONE)).plus(FIX_ONE);
-        Fix dilutionFactor = _historicalBasketDilution.mul(currentDilution);
+        // Assumption: Defi redemption rates are monotonically increasing
+        Fix delta = currentRate.minus(_prevBasketRate);
+
+        // r = p2 / (p1 + (p2-p1) * (1-f))
+        Fix r = currentRate.div(_prevBasketRate.plus(delta.mul(FIX_ONE.minus(main.config().f))));
+        Fix dilutionFactor = _historicalBasketDilution.mul(r);
         require(dilutionFactor.gt(FIX_ZERO), "dilutionFactor cannot be zero");
         return dilutionFactor;
     }
