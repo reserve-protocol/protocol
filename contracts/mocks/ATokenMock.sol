@@ -72,6 +72,15 @@ contract StaticATokenMock is ERC20Mock {
         aaveBalances[recipient] = amount;
     }
 
+    function claimRewardsToSelf(bool forceUpdate) external {
+        // Mint amount and update internal balances
+        if (address(aaveToken) != address(0)) {
+            uint256 amount = aaveBalances[msg.sender];
+            aaveBalances[msg.sender] = 0;
+            aaveToken.mint(msg.sender, amount);
+        }
+    }
+
     function _toExchangeRate(Fix fiatcoinRedemptionRate) internal pure returns (uint256) {
         return fiatcoinRedemptionRate.mulu(1e27).toUint();
     }

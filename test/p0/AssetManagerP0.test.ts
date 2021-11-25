@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+
 import { MAX_UINT256 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
@@ -331,8 +332,8 @@ describe('AssetManagerP0 contract', () => {
         expect(await assetManager.fromBUs(bn('1e18'))).to.equal(bn('1e18'))
 
         // Increase rate for ATokens CToken to double - 100% increase so a 60% applies to base factor (based on f)
-        await aToken.setExchangeRate(bn('2e27'))
-        await cToken.setExchangeRate(bn('4e26'))
+        await aToken.setExchangeRate(fp(2))
+        await cToken.setExchangeRate(fp(2))
 
         await assetManager.baseFactor()
 
@@ -342,8 +343,8 @@ describe('AssetManagerP0 contract', () => {
         expect(await assetManager.fromBUs(bn('1e18'))).to.equal(fp('1e18').div(await assetManager.baseFactor())) // 1.6e18
 
         // Double again (300% increase)
-        await aToken.setExchangeRate(bn('4e27'))
-        await cToken.setExchangeRate(bn('8e26'))
+        await aToken.setExchangeRate(fp(4))
+        await cToken.setExchangeRate(fp(4))
 
         // f = fp(0.6) - 60% of 300% increase = 180%
         expect(await assetManager.baseFactor()).to.equal(fp('1').mul(100).div(280))

@@ -231,7 +231,6 @@ contract MainP0 is IMain, Ownable {
         return next;
     }
 
-    /// @dev view
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) public view override returns (uint256[] memory) {
         return manager.vault().tokenAmounts(manager.toBUs(amount));
