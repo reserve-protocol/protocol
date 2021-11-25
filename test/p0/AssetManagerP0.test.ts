@@ -337,19 +337,25 @@ describe('AssetManagerP0 contract', () => {
 
         await assetManager.baseFactor()
 
-        // f = fp(0.6) - 60% of 100% increase = 60%
-        expect(await assetManager.baseFactor()).to.equal(fp('1').mul(100).div(160))
-        expect(await assetManager.toBUs(bn('1e18'))).to.equal(bn('1e18').mul(100).div(160))
-        expect(await assetManager.fromBUs(bn('1e18'))).to.equal(fp('1e18').div(await assetManager.baseFactor())) // 1.6e18
+        // f = fp(0.6) = 40% increase in price of RToken -> (1 + 0.4) / 2 = 7/10
+        let b = fp(1)
+          .add(bn(2 - 1).mul(fp(1).sub(config.f)))
+          .div(bn(2))
+        expect(await assetManager.baseFactor()).to.equal(b)
+        expect(await assetManager.toBUs(bn('1e18'))).to.equal(b)
+        expect(await assetManager.fromBUs(bn('1e18'))).to.equal(fp('1e18').div(b))
 
         // Double again (300% increase)
         await aToken.setExchangeRate(fp(4))
         await cToken.setExchangeRate(fp(4))
 
-        // f = fp(0.6) - 60% of 300% increase = 180%
-        expect(await assetManager.baseFactor()).to.equal(fp('1').mul(100).div(280))
-        expect(await assetManager.toBUs(bn('1e18'))).to.equal(bn('1e18').mul(100).div(280))
-        expect(await assetManager.fromBUs(bn('1e18'))).to.equal(fp('1e18').div(await assetManager.baseFactor())) //2.8e18
+        // f = fp(0.6) - 60% of 300% increase = 180% increase in price of RToken -> (1 + 1.8) / 4 = 7/10
+        b = fp(1)
+          .add(bn(4 - 1).mul(fp(1).sub(config.f)))
+          .div(bn(4))
+        expect(await assetManager.baseFactor()).to.equal(b)
+        expect(await assetManager.toBUs(bn('1e18'))).to.equal(b)
+        expect(await assetManager.fromBUs(bn('1e18'))).to.equal(fp('1e18').div(b))
       })
     })
   })
