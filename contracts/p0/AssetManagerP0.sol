@@ -475,7 +475,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             totalValue = totalValue.plus(a.priceUSD(main).mul(bal));
         }
         // {BU} = {attoUSD} / {attoUSD/BU}
-        Fix BUTarget = totalValue.div(vault.basketRate());
+        Fix targetBUs = totalValue.div(vault.basketRate());
 
         // Calculate surplus and deficits relative to the BU target.
         Fix[] memory surplus = new Fix[](_alltimeCollateral.length());
@@ -485,7 +485,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             Fix bal = toFix(IERC20(a.erc20()).balanceOf(address(this))); // {qTok}
 
             // {qTok} = {BU} * {qTok/BU}
-            Fix target = BUTarget.mulu(vault.quantity(a));
+            Fix target = targetBUs.mulu(vault.quantity(a));
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
                 surplus[i] = bal.minus(target).mul(a.priceUSD(main));

@@ -35,10 +35,10 @@ interface IOwnable {
  * @notice The deployer for the entire system.
  */
 contract DeployerP0 is IDeployer {
-    IMarket market;
-    IAsset rsrAsset;
-    IAsset compAsset;
-    IAsset aaveAsset;
+    IMarket internal market;
+    IAsset internal rsrAsset;
+    IAsset internal compAsset;
+    IAsset internal aaveAsset;
     IMain[] public deployments;
 
     constructor(

@@ -24,6 +24,7 @@ import "contracts/libraries/Fixed.sol";
  * @title MainP1
  * @notice The central coordinator for the entire system, as well as the external interface.
  */
+// solhint-disable max-states-count
 contract MainP1 is IMainP1, Ownable {
     using SafeERC20 for IERC20;
     using OracleP1 for OracleP1.Info;
@@ -294,3 +295,5 @@ contract MainP1 is IMainP1, Ownable {
         right = left + _config.rewardPeriod;
     }
 }
+
+// solhint-enable max-states-count
