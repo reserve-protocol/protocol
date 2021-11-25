@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "contracts/libraries/Fixed.sol";
 import "./ERC20Mock.sol";
 
 // This is the inner, rebasing ERC. It's not what we interact with.
@@ -24,6 +25,8 @@ contract ATokenMock is ERC20Mock {
 
 // This is the non-rebasing wrapper, which is what we care about.
 contract StaticATokenMock is ERC20Mock {
+    using FixLib for Fix;
+
     ATokenMock internal immutable aToken;
 
     uint256 internal _exchangeRate;
@@ -41,7 +44,7 @@ contract StaticATokenMock is ERC20Mock {
         aToken = new ATokenMock(name, symbol, underlyingAsset);
 
         // In Aave all rates are in {RAYs/tok}, and they are independent of the underlying's decimals
-        _exchangeRate = 1e27;
+        _exchangeRate = _toExchangeRate(FIX_ONE);
     }
 
     function decimals() public pure override returns (uint8) {
@@ -52,8 +55,8 @@ contract StaticATokenMock is ERC20Mock {
         return _exchangeRate;
     }
 
-    function setExchangeRate(uint256 rate_) external {
-        _exchangeRate = rate_;
+    function setExchangeRate(Fix fiatcoinRedemptionRate) external {
+        _exchangeRate = _toExchangeRate(fiatcoinRedemptionRate);
     }
 
     function setAaveToken(address aaveToken_) external {
@@ -69,12 +72,7 @@ contract StaticATokenMock is ERC20Mock {
         aaveBalances[recipient] = amount;
     }
 
-    function claimRewardsToSelf(bool forceUpdate) external {
-        // Mint amount and update internal balances
-        if (address(aaveToken) != address(0)) {
-            uint256 amount = aaveBalances[msg.sender];
-            aaveBalances[msg.sender] = 0;
-            aaveToken.mint(msg.sender, amount);
-        }
+    function _toExchangeRate(Fix fiatcoinRedemptionRate) internal pure returns (uint256) {
+        return fiatcoinRedemptionRate.mulu(1e27).toUint();
     }
 }

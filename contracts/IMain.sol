@@ -100,6 +100,9 @@ interface IMainCommon {
     /// Performs the expensive checks for default, such as calculating VWAPs
     function noticeDefault() external;
 
+    /// Getter for system state
+    function state() external view returns (SystemState);
+
     /// @dev pseudo-view
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) external view returns (uint256[] memory);

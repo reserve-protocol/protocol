@@ -139,12 +139,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     /// Performs any and all auctions in the system
     /// @return The current enum `SystemState`
     function doAuctions() external override returns (SystemState) {
-        // Outline:
-        //  1. Closeout running auctions
-        //  2. Create new BUs from collateral
-        //  3. Break apart old BUs and trade toward new basket
-        //  4. Run revenue auctions
-
         require(_msgSender() == address(main), "only main can mutate the asset manager");
 
         // Closeout open auctions or sleep if they are still ongoing.
@@ -185,7 +179,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() public view override returns (bool) {
-        return vault.basketUnits(address(this)) >= main.rToken().totalSupply();
+        return fromBUs(_allBUs()) >= main.rToken().totalSupply();
     }
 
     /// @return fiatcoins An array of approved fiatcoin collateral to be used for oracle USD determination
@@ -232,7 +226,9 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         // currentDilution = (f * ((currentRate / _prevBasketRate) - 1)) + 1
         // TODO: I think this might be wrong
         Fix currentDilution = main.config().f.mul(currentRate.div(_prevBasketRate).minus(FIX_ONE)).plus(FIX_ONE);
-        return _historicalBasketDilution.mul(currentDilution);
+        Fix dilutionFactor = _historicalBasketDilution.mul(currentDilution);
+        require(dilutionFactor.gt(FIX_ZERO), "dilutionFactor cannot be zero");
+        return dilutionFactor;
     }
 
     /// @return {none} Numerator of the base factor
@@ -249,7 +245,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// Returns the oldest vault that contains nonzero BUs.
     /// Note that this will pass over vaults with uneven holdings, it does not necessarily mean the vault
-    /// contains no collateral.
+    /// contains no collateral._oldestVault()
     function _oldestVault() internal view returns (IVault) {
         for (uint256 i = 0; i < pastVaults.length; i++) {
             if (pastVaults[i].basketUnits(address(this)) > 0) {
@@ -259,14 +255,22 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         return vault;
     }
 
+    /// @param amount {qBU} Total quantity of BUs across all vaults, not just the current one
+    function _allBUs() internal view returns (uint256 amount) {
+        amount += vault.basketUnits(address(this));
+        for (uint256 i = 0; i < pastVaults.length; i++) {
+            amount += pastVaults[i].basketUnits(address(this));
+        }
+    }
+
     /// Runs infrequently to accumulate the historical dilution factor
     function _accumulate() internal {
-        _prevBasketRate = vault.basketRate();
         _historicalBasketDilution = _basketDilutionFactor();
+        _prevBasketRate = vault.basketRate();
     }
 
     function _switchVault(IVault vault_) internal {
-        pastVaults.push(vault_);
+        pastVaults.push(vault);
         emit NewVaultSet(address(vault), address(vault_));
         vault = vault_;
 
@@ -336,6 +340,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             _approvedCollateral.contains(address(sell)) ? targetBuy : 0,
             Fate.Stay
         );
+
         if (trade) {
             _launchAuction(auction);
             return SystemState.TRADING;
@@ -349,7 +354,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 main.rsrAsset(),
                 main.rTokenAsset(),
                 main.rsr().balanceOf(address(main.stRSR())),
-                totalSupply - fromBUs(vault.basketUnits(address(this))),
+                totalSupply - _allBUs(),
                 Fate.Burn
             );
 
@@ -363,7 +368,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         // The ultimate endgame: a haircut for RToken holders.
         _accumulate();
         Fix melting = (toFix(totalSupply).plusu(main.furnace().totalBurnt())).divu(totalSupply);
-        _historicalBasketDilution = melting.mulu(vault.basketUnits(address(this))).divu(totalSupply);
+        _historicalBasketDilution = melting.mulu(_allBUs()).divu(totalSupply);
         return SystemState.CALM;
     }
 

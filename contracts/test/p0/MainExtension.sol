@@ -12,6 +12,8 @@ import "contracts/p0/libraries/Oracle.sol";
 import "contracts/p0/MainP0.sol";
 import "./RTokenExtension.sol";
 
+import "hardhat/console.sol";
+
 /// Enables generic testing harness to set _msgSender() for Main.
 contract MainExtension is IExtension, ContextMixin, MainP0 {
     using Address for address;
@@ -24,130 +26,139 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
     ) ContextMixin(admin) MainP0(oracle, config) {}
 
     function issueInstantly(address account, uint256 amount) public {
+        uint256 start = rTokenAsset.erc20().balanceOf(account);
         connect(account);
         issue(amount);
         issuances[issuances.length - 1].blockAvailableAt = block.number;
         _processSlowIssuance();
+        require(rTokenAsset.erc20().balanceOf(account) - start == amount, "issue failure");
     }
 
-    function assertInvariants() external override {
-        _INVARIANT_stateDefined();
-        _INVARIANT_configurationValid();
-        _INVARIANT_isFullyCapitalized();
-        _INVARIANT_nextRewardsInFutureOrNow();
-        _INVARIANT_stateIsAmongEnum();
-        _INVARIANT_quoteMonotonic();
-        _INVARIANT_tokensAndQuantitiesSameLength();
-        _INVARIANT_pricesDefinedForAllAssets();
-        _INVARIANT_issuancesAreValid();
-        _INVARIANT_canAlwaysRedeemEverything();
+    function assertInvariants() external view override {
+        assert(_INVARIANT_stateDefined());
+        assert(_INVARIANT_configurationValid());
+        assert(_INVARIANT_fullyCapitalizedOrNotCalm());
+        assert(_INVARIANT_nextRewardsInFutureOrNow());
+        assert(_INVARIANT_quoteMonotonic());
+        assert(_INVARIANT_tokensAndQuantitiesSameLength());
+        assert(_INVARIANT_pricesDefined());
+        assert(_INVARIANT_issuancesAreValid());
     }
 
     function _msgSender() internal view override returns (address) {
         return _mixinMsgSender();
     }
 
-    function _INVARIANT_stateDefined() internal view {
-        assert(address(_oracle.compound) != address(0));
-        assert(address(_oracle.aave) != address(0));
-        assert(address(furnace) != address(0));
-        assert(address(stRSR) != address(0));
-        assert(address(manager) != address(0));
-        assert(address(monitor) != address(0));
-        assert(address(rTokenAsset) != address(0));
-        assert(address(rsrAsset) != address(0));
-        assert(address(compAsset) != address(0));
-        assert(address(aaveAsset) != address(0));
+    function _INVARIANT_stateDefined() internal view returns (bool ok) {
+        ok = true;
+        ok = ok && address(_oracle.compound) != address(0);
+        ok = ok && address(_oracle.aave) != address(0);
+        ok = ok && address(furnace) != address(0);
+        ok = ok && address(stRSR) != address(0);
+        ok = ok && address(manager) != address(0);
+        ok = ok && address(monitor) != address(0);
+        ok = ok && address(rTokenAsset) != address(0);
+        ok = ok && address(rsrAsset) != address(0);
+        ok = ok && address(compAsset) != address(0);
+        ok = ok && address(aaveAsset) != address(0);
+        if (!ok) {
+            console.log("_INVARIANT_stateDefined violated");
+        }
     }
 
-    function _INVARIANT_configurationValid() internal view {
-        assert(_config.rewardStart > 0);
-        assert(_config.rewardPeriod > 0);
-        assert(_config.auctionPeriod > 0);
-        assert(_config.stRSRWithdrawalDelay > 0);
-        assert(_config.defaultDelay > 0);
-
-        assert(_config.maxTradeSlippage.gte(FIX_ZERO) && _config.maxTradeSlippage.lte(FIX_ONE));
-        assert(_config.maxAuctionSize.gte(FIX_ZERO) && _config.maxAuctionSize.lte(FIX_ONE));
-        assert(
-            _config.minRecapitalizationAuctionSize.gte(FIX_ZERO) && _config.minRecapitalizationAuctionSize.lte(FIX_ONE)
-        );
-        assert(_config.minRevenueAuctionSize.gte(FIX_ZERO) && _config.minRevenueAuctionSize.lte(FIX_ONE));
-        assert(_config.migrationChunk.gte(FIX_ZERO) && _config.migrationChunk.lte(FIX_ONE));
-        assert(_config.issuanceRate.gte(FIX_ZERO) && _config.issuanceRate.lte(FIX_ONE));
-        assert(_config.defaultThreshold.gte(FIX_ZERO) && _config.defaultThreshold.lte(FIX_ONE));
-        assert(_config.f.gte(FIX_ZERO) && _config.f.lte(FIX_ONE));
+    function _INVARIANT_configurationValid() internal view returns (bool ok) {
+        ok = true;
+        ok = ok && _config.rewardStart > 0;
+        ok = ok && _config.rewardPeriod > 0;
+        ok = ok && _config.auctionPeriod > 0;
+        ok = ok && _config.stRSRWithdrawalDelay > 0;
+        ok = ok && _config.defaultDelay > 0;
+        ok = ok && _config.maxTradeSlippage.gte(FIX_ZERO) && _config.maxTradeSlippage.lte(FIX_ONE);
+        ok = ok && _config.maxAuctionSize.gte(FIX_ZERO) && _config.maxAuctionSize.lte(FIX_ONE);
+        ok =
+            ok &&
+            _config.minRecapitalizationAuctionSize.gte(FIX_ZERO) &&
+            _config.minRecapitalizationAuctionSize.lte(FIX_ONE);
+        ok = ok && _config.minRevenueAuctionSize.gte(FIX_ZERO) && _config.minRevenueAuctionSize.lte(FIX_ONE);
+        ok = ok && _config.migrationChunk.gte(FIX_ZERO) && _config.migrationChunk.lte(FIX_ONE);
+        ok = ok && _config.issuanceRate.gte(FIX_ZERO) && _config.issuanceRate.lte(FIX_ONE);
+        ok = ok && _config.defaultThreshold.gte(FIX_ZERO) && _config.defaultThreshold.lte(FIX_ONE);
+        ok = ok && _config.f.gte(FIX_ZERO) && _config.f.lte(FIX_ONE);
+        if (!ok) {
+            console.log("_INVARIANT_configurationValid violated");
+        }
     }
 
-    function _INVARIANT_isFullyCapitalized() internal view {
-        assert(manager.fullyCapitalized());
+    function _INVARIANT_fullyCapitalizedOrNotCalm() internal view returns (bool ok) {
+        ok = true;
+        ok = ok && (manager.fullyCapitalized() || state != SystemState.CALM);
+        if (!ok) {
+            console.log("_INVARIANT_fullyCapitalizedOrNotCalm violated");
+        }
     }
 
-    function _INVARIANT_nextRewardsInFutureOrNow() internal view {
-        assert(nextRewards() >= block.timestamp);
+    function _INVARIANT_nextRewardsInFutureOrNow() internal view returns (bool ok) {
+        ok = true;
+        ok = ok && nextRewards() >= block.timestamp;
+        if (!ok) {
+            console.log("_INVARIANT_nextRewardsInFutureOrNow violated");
+        }
     }
 
-    function _INVARIANT_stateIsAmongEnum() internal view {
-        assert(state == SystemState.CALM || state == SystemState.DOUBT || state == SystemState.TRADING);
-    }
-
-    function _INVARIANT_quoteMonotonic() internal view {
+    function _INVARIANT_quoteMonotonic() internal view returns (bool ok) {
+        ok = true;
         bytes memory result = address(this).functionStaticCall(abi.encodeWithSignature("quote(uint256)", 1e18));
         uint256[] memory one = abi.decode(result, (uint256[]));
         bytes memory result2 = address(this).functionStaticCall(abi.encodeWithSignature("quote(uint256)", 1e18 + 1));
         uint256[] memory two = abi.decode(result2, (uint256[]));
         bytes memory result3 = address(this).functionStaticCall(abi.encodeWithSignature("quote(uint256)", 2e18));
         uint256[] memory three = abi.decode(result3, (uint256[]));
-        assert(one.length == two.length);
-        assert(two.length == three.length);
+        ok = ok && one.length == two.length;
+        ok = ok && two.length == three.length;
         for (uint256 i = 0; i < one.length; i++) {
-            assert(one[i] <= two[i]);
-            assert(two[i] <= three[i]);
+            ok = ok && one[i] <= two[i];
+            ok = ok && two[i] <= three[i];
+        }
+        if (!ok) {
+            console.log("_INVARIANT_quoteMonotonic violated");
         }
     }
 
-    function _INVARIANT_tokensAndQuantitiesSameLength() internal view {
+    function _INVARIANT_tokensAndQuantitiesSameLength() internal view returns (bool ok) {
+        ok = true;
         bytes memory result = address(this).functionStaticCall(abi.encodeWithSignature("quote(uint256)", 1e18));
         uint256[] memory quantities = abi.decode(result, (uint256[]));
-        assert(backingTokens().length == quantities.length);
+        ok = ok && backingTokens().length == quantities.length;
+        if (!ok) {
+            console.log("_INVARIANT_tokensAndQuantitiesSameLength violated");
+        }
     }
 
-    function _INVARIANT_pricesDefinedForAllAssets() internal view {
+    function _INVARIANT_pricesDefined() internal view returns (bool ok) {
+        ok = true;
         for (uint256 i = 0; i < manager.vault().size(); i++) {
             ICollateral c = manager.vault().collateralAt(i);
-            assert(consultOracle(Oracle.Source.AAVE, address(c.erc20())).gt(FIX_ZERO));
+            if (c.isFiatcoin()) {
+                ok = ok && consultOracle(Oracle.Source.AAVE, address(c.erc20())).gt(FIX_ZERO);
+            }
         }
-        assert(consultOracle(Oracle.Source.COMPOUND, address(compAsset.erc20())).gt(FIX_ZERO));
-        assert(consultOracle(Oracle.Source.AAVE, address(rsrAsset.erc20())).gt(FIX_ZERO));
-        assert(consultOracle(Oracle.Source.AAVE, address(aaveAsset.erc20())).gt(FIX_ZERO));
+        ok = ok && consultOracle(Oracle.Source.COMPOUND, address(compAsset.erc20())).gt(FIX_ZERO);
+        ok = ok && consultOracle(Oracle.Source.AAVE, address(rsrAsset.erc20())).gt(FIX_ZERO);
+        ok = ok && consultOracle(Oracle.Source.AAVE, address(aaveAsset.erc20())).gt(FIX_ZERO);
+        if (!ok) {
+            console.log("_INVARIANT_pricesDefined violated");
+        }
     }
 
-    function _INVARIANT_issuancesAreValid() internal view {
+    function _INVARIANT_issuancesAreValid() internal view returns (bool ok) {
+        ok = true;
         for (uint256 i = 0; i < issuances.length; i++) {
             if (issuances[i].processed && issuances[i].blockAvailableAt > block.number) {
-                assert(false);
+                ok = false;
             }
         }
-    }
-
-    /// Redeems the entire outstanding RToken supply and re-issues it
-    function _INVARIANT_canAlwaysRedeemEverything() internal {
-        RTokenExtension rToken = RTokenExtension(address(rTokenAsset.erc20()));
-        uint256 supply = rToken.totalSupply();
-        if (supply > 0) {
-            rToken.adminMint(address(this), supply);
-            connect(address(this));
-            redeem(supply);
-
-            address[] memory tokens = backingTokens();
-            uint256[] memory quantities = quote(supply);
-            for (uint256 i = 0; i < tokens.length; i++) {
-                ERC20Mock(tokens[i]).adminApprove(address(this), address(this), quantities[i]);
-            }
-
-            issueInstantly(address(this), supply);
-            rToken.burn(address(this), supply);
+        if (!ok) {
+            console.log("_INVARIANT_issuancesAreValid violated");
         }
-        assert(true);
     }
 }

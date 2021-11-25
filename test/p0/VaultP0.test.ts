@@ -336,18 +336,18 @@ describe('VaultP0 contract', () => {
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
 
       // Change redemption rate for AToken to double (rate increases by an additional half) - In Rays
-      await aTkn.setExchangeRate(bn('2e27'))
+      await aTkn.setExchangeRate(bn('2'))
       expect(await newVault.basketRate()).to.equal(fp(bn('1e18').add(qtyHalf)))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
 
       // Change also redemption rate for CToken to double (rate doubles)
       // By default the current exchange rate at genesis is 2e26 for CTokens
-      await cTkn.setExchangeRate(bn('4e26'))
+      await cTkn.setExchangeRate(fp('0.4'))
       expect(await newVault.basketRate()).to.equal(fp(bn('1e18').mul(2)))
       expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
 
       // Set new Vault with sinlge AToken - reduce redemption rate to a half  - In Rays
-      await aTkn.setExchangeRate(bn('5e26'))
+      await aTkn.setExchangeRate(fp('0.5'))
       newVault = <VaultP0>await VaultFactory.deploy([assetAToken.address], [bn('1e18')], [])
       expect(await newVault.basketRate()).to.equal(fp(qtyHalf))
       expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e18')])

@@ -54,7 +54,7 @@ contract MainP0 is IMain, Ownable {
     SlowIssuance[] public issuances;
 
     // Default detection.
-    SystemState public state;
+    SystemState public override state;
     uint256 public stateRaisedAt; // timestamp when default occurred
 
     constructor(Oracle.Info memory oracle_, Config memory config_) {
