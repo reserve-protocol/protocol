@@ -11,14 +11,15 @@ enum Account {
     CHARLIE,
     DAVE,
     EVE,
-    //
+    // Below: contract accounts only
     RTOKEN,
     STRSR,
     MAIN // 7
 }
 
-/// All eligible collateral
-enum CollateralToken {
+/// All assets in the system
+/// Only the first 11 are collateral-eligible
+enum Asset {
     DAI, // 0
     USDC,
     USDT,
@@ -29,12 +30,16 @@ enum CollateralToken {
     aDAI,
     aUSDC,
     aUSDT,
-    aBUSD // 10
+    aBUSD,
+    // Below: not collateral eligible
+    RSR,
+    COMP,
+    AAVE // 13
 }
 
 /// Basket Unit, ie 1e18{qBU}
 struct BU {
-    CollateralToken[] tokens;
+    Asset[] assets;
     uint256[] quantities; // {qTok/RToken}
 }
 
@@ -57,6 +62,7 @@ struct TokenState {
 /// Top-level state struct
 struct ProtoState {
     // System-internal state
+    SystemState state;
     Config config;
     BU rTokenDefinition;
     TokenState rToken;
@@ -66,6 +72,7 @@ struct ProtoState {
     // System-external state
     TokenState comp;
     TokenState aave;
-    TokenState[] collateral; // same length and order as CollateralToken enum
-    OraclePrice ethPrice; // use the USD sub-field
+    TokenState[] collateral; // Asset.DAI - Asset.aBUSD
+    Fix[] defiCollateralRates; // Asset.DAI - Asset.aBUSD, fiatcoins are ignored
+    OraclePrice ethPrice;
 }

@@ -54,7 +54,7 @@ contract MainP0 is IMain, Ownable {
     SlowIssuance[] public issuances;
 
     // Default detection.
-    SystemState public state;
+    SystemState public override state;
     uint256 public stateRaisedAt; // timestamp when default occurred
 
     constructor(Oracle.Info memory oracle_, Config memory config_) {
@@ -231,7 +231,6 @@ contract MainP0 is IMain, Ownable {
         return next;
     }
 
-    /// @dev view
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) public view override returns (uint256[] memory) {
         return manager.vault().tokenAmounts(manager.toBUs(amount));

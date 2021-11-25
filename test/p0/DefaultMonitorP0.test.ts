@@ -307,7 +307,7 @@ describe('DefaultMonitorP0 contract', () => {
 
       it('Should detect hard default if rate decreases for single token', async function () {
         // Change redemption rate for AToken
-        await aTkn.setExchangeRate(bn('0.98e27'))
+        await aTkn.setExchangeRate(fp('0.98'))
 
         // Detect Hard default
         defaulting = await main.callStatic.checkForHardDefault(newVault.address)
@@ -316,10 +316,10 @@ describe('DefaultMonitorP0 contract', () => {
 
       it('Should detect hard default if rate decreases for multiple tokens', async function () {
         // Change redemption rate for AToken
-        await aTkn.setExchangeRate(bn('0.98e27'))
+        await aTkn.setExchangeRate(fp('0.99'))
 
         // Change redemption rate for CToken  - Original rate is 2e26
-        await cTkn.setExchangeRate(bn('1.5e26'))
+        await cTkn.setExchangeRate(fp('0.99'))
 
         // Call a few times to make sure default is still detected
         await main.checkForHardDefault(newVault.address)

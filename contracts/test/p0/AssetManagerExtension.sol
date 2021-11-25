@@ -28,7 +28,6 @@ contract AssetManagerExtension is IExtension, ContextMixin, AssetManagerP0 {
 
     function assertInvariants() external override {
         _INVARIANT_baseFactorDefined();
-        _INVARIANT_fullyCapitalized();
         _INVARIANT_hasCollateralConfiguration();
         _INVARIANT_toBUInverseFromBU();
         _INVARIANT_fromBUInverseToBU();
@@ -55,10 +54,6 @@ contract AssetManagerExtension is IExtension, ContextMixin, AssetManagerP0 {
         bytes memory result = address(this).functionStaticCall(abi.encodeWithSignature("baseFactor()"));
         Fix b = abi.decode(result, (Fix));
         assert(b.gt(FIX_ZERO));
-    }
-
-    function _INVARIANT_fullyCapitalized() internal view {
-        assert(fullyCapitalized());
     }
 
     function _INVARIANT_hasCollateralConfiguration() internal view {

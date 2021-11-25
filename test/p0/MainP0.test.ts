@@ -843,7 +843,7 @@ describe('MainP0 contract', () => {
       expect(await assetManager.fullyCapitalized()).to.equal(false)
 
       // Set default rate
-      await aToken0.setExchangeRate(bn('0.98e27'))
+      await aToken0.setExchangeRate(bn('0.98'))
 
       // Call to detect vault switch and state change
       await main.noticeDefault()

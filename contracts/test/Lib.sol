@@ -138,9 +138,9 @@ library Lib {
     /// @return ok Whether two BU sets are equal
     function _assertBUEq(BU memory a, BU memory b) internal view returns (bool ok) {
         ok =
-            assertEq(a.tokens.length, b.tokens.length, "Tokens size mismatch") &&
+            assertEq(a.assets.length, b.assets.length, "Tokens size mismatch") &&
             assertEq(a.quantities.length, b.quantities.length, "Quantities size mismatch") &&
-            assertEq(a.tokens.length, a.quantities.length, "invalid input");
+            assertEq(a.assets.length, a.quantities.length, "invalid input");
 
         for (uint256 i = 0; ok && i < a.quantities.length; i++) {
             // TODO: Do fuzzy check
