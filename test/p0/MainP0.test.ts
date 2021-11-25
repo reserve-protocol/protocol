@@ -2,7 +2,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
@@ -26,15 +25,9 @@ import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { VaultP0 } from '../../typechain/VaultP0'
 import { advanceTime } from '../utils/time'
-import { defaultFixture, IManagerConfig } from './utils/fixtures'
+import { defaultFixture, IManagerConfig, State } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
-
-enum State {
-  CALM = 0,
-  DOUBT = 1,
-  TRADING = 2,
-}
 
 describe('MainP0 contract', () => {
   let owner: SignerWithAddress
