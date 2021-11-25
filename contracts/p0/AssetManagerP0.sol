@@ -397,54 +397,52 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             _launchAuction(auction);
         }
 
-        // COMP -> dividend RSR + melting RToken
-        Fix compBal = toFix(main.compAsset().erc20().balanceOf(address(this)));
-        Fix amountForRSR = compBal.mul(main.config().f);
-        Fix amountForRToken = compBal.minus(amountForRSR);
+        if (main.config().f.eq(FIX_ONE) || main.config().f.eq(FIX_ZERO)) {
+            // One auction only
+            IAsset buyAsset = (main.config().f.eq(FIX_ONE)) ? main.rsrAsset() : main.rTokenAsset();
+            Fate fate = (main.config().f.eq(FIX_ONE)) ? Fate.Stake : Fate.Melt;
 
-        (launch, auction) = _prepareAuctionSell(
-            main.config().minRevenueAuctionSize,
-            main.compAsset(),
-            main.rsrAsset(),
-            amountForRSR.toUint(),
-            Fate.Stake
-        );
-        (bool launch2, Auction.Info memory auction2) = _prepareAuctionSell(
-            main.config().minRevenueAuctionSize,
-            main.compAsset(),
-            main.rTokenAsset(),
-            amountForRToken.toUint(),
-            Fate.Melt
-        );
+            // COMP -> `buyAsset`
+            (launch, auction) = _prepareAuctionSell(
+                main.config().minRevenueAuctionSize,
+                main.compAsset(),
+                buyAsset,
+                main.compAsset().erc20().balanceOf(address(this)),
+                fate
+            );
+            if (launch) {
+                _launchAuction(auction);
+            }
 
-        if (launch && launch2) {
-            _launchAuction(auction);
-            _launchAuction(auction2);
-        }
+            // AAVE -> `buyAsset`
+            (launch, auction) = _prepareAuctionSell(
+                main.config().minRevenueAuctionSize,
+                main.aaveAsset(),
+                buyAsset,
+                main.aaveAsset().erc20().balanceOf(address(this)),
+                fate
+            );
+            if (launch) {
+                _launchAuction(auction);
+            }
+        } else {
+            // Auctions in pairs, sized based on `f:1-f`
+            bool launch2;
+            Auction.Info memory auction2;
 
-        // AAVE -> dividend RSR + melting RToken
-        Fix aaveBal = toFix(main.aaveAsset().erc20().balanceOf(address(this)));
-        amountForRSR = aaveBal.mul(main.config().f);
-        amountForRToken = aaveBal.minus(amountForRSR);
+            // COMP -> dividend RSR + melting RToken
+            (launch, launch2, auction, auction2) = _prepareRevenueAuctionPair(main.compAsset());
+            if (launch && launch2) {
+                _launchAuction(auction);
+                _launchAuction(auction2);
+            }
 
-        (launch, auction) = _prepareAuctionSell(
-            main.config().minRevenueAuctionSize,
-            main.aaveAsset(),
-            main.rsrAsset(),
-            amountForRSR.toUint(),
-            Fate.Stake
-        );
-        (launch2, auction2) = _prepareAuctionSell(
-            main.config().minRevenueAuctionSize,
-            main.aaveAsset(),
-            main.rTokenAsset(),
-            amountForRToken.toUint(),
-            Fate.Melt
-        );
-
-        if (launch && launch2) {
-            _launchAuction(auction);
-            _launchAuction(auction2);
+            // AAVE -> dividend RSR + melting RToken
+            (launch, launch2, auction, auction2) = _prepareRevenueAuctionPair(main.aaveAsset());
+            if (launch && launch2) {
+                _launchAuction(auction);
+                _launchAuction(auction2);
+            }
         }
 
         return auctions.length == auctionLenSnapshot ? SystemState.CALM : SystemState.TRADING;
@@ -522,6 +520,67 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         // {qBuyTok} = {attoUSD} / {attoUSD/qBuyTok}
         Fix buyAmount = deficitMax.div(buy.priceUSD(main));
         return (sell, buy, sellAmount.toUint(), buyAmount.toUint());
+    }
+
+    /// Prepares an auction pair for revenue RSR + revenue RToken that is sized `f:1-f`
+    /// @return launch Should launch auction 1?
+    /// @return launch2 Should launch auction 2?
+    /// @return auction An auction selling `asset` for RSR, sized `f`
+    /// @return auction2 An auction selling `asset` for RToken, sized `1-f`
+    function _prepareRevenueAuctionPair(IAsset asset)
+        internal
+        returns (
+            bool launch,
+            bool launch2,
+            Auction.Info memory auction,
+            Auction.Info memory auction2
+        )
+    {
+        // Calculate the two auctions without maintaining `f:1-f`
+        Fix bal = toFix(asset.erc20().balanceOf(address(this)));
+        Fix amountForRSR = bal.mul(main.config().f);
+        Fix amountForRToken = bal.minus(amountForRSR);
+
+        (launch, auction) = _prepareAuctionSell(
+            main.config().minRevenueAuctionSize,
+            asset,
+            main.rsrAsset(),
+            amountForRSR.toUint(),
+            Fate.Stake
+        );
+        (launch2, auction2) = _prepareAuctionSell(
+            main.config().minRevenueAuctionSize,
+            asset,
+            main.rTokenAsset(),
+            amountForRToken.toUint(),
+            Fate.Melt
+        );
+        if (!launch || !launch2) {
+            return (false, false, auction, auction2);
+        }
+
+        // Resize the smaller auction to cause the ratio to be `f:1-f`
+        Fix expectedRatio = amountForRSR.div(amountForRToken);
+        Fix actualRatio = toFix(auction.sellAmount).divu(auction2.sellAmount);
+        if (actualRatio.lt(expectedRatio)) {
+            Fix smallerAmountForRToken = amountForRSR.mul(FIX_ONE.minus(main.config().f)).div(main.config().f);
+            (launch2, auction2) = _prepareAuctionSell(
+                main.config().minRevenueAuctionSize,
+                asset,
+                main.rTokenAsset(),
+                smallerAmountForRToken.toUint(),
+                Fate.Melt
+            );
+        } else if (actualRatio.gt(expectedRatio)) {
+            Fix smallerAmountForRSR = amountForRToken.mul(main.config().f).div(FIX_ONE.minus(main.config().f));
+            (launch, auction) = _prepareAuctionSell(
+                main.config().minRevenueAuctionSize,
+                asset,
+                main.rsrAsset(),
+                smallerAmountForRSR.toUint(),
+                Fate.Stake
+            );
+        }
     }
 
     /// Prepares an auction where *sellAmount* is the independent variable and *minBuyAmount* is dependent.
