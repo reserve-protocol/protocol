@@ -86,7 +86,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function issue(SlowIssuance memory issuance) external override {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         require(!issuance.processed, "already processed");
-        issuance.vault.pullBUs(address(main), issuance.BUs); // Main should have set an allowance
+        issuance.vault.pullBUs(address(main), issuance.amtBUs); // Main should have set an allowance
         main.rToken().mint(issuance.issuer, issuance.amount);
     }
 
@@ -197,19 +197,19 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             return amount;
         }
 
-        // (_meltingFactor() / _basketDilutionFactor()) * BUs
+        // (_meltingFactor() / _basketDilutionFactor()) * amtBUs
         return baseFactor().mulu(amount).toUint();
     }
 
     /// {qBU} -> {qRTok}
     // solhint-disable-next-line func-param-name-mixedcase
-    function fromBUs(uint256 BUs) public view override returns (uint256) {
+    function fromBUs(uint256 amtBUs) public view override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
-            return BUs;
+            return amtBUs;
         }
 
         // (_basketDilutionFactor() / _meltingFactor()) * amount
-        return toFix(BUs).div(baseFactor()).toUint();
+        return toFix(amtBUs).div(baseFactor()).toUint();
     }
 
     /// @return {qRTok/qBU} The base factor

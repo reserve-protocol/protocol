@@ -22,18 +22,18 @@ interface IVault {
     /// Emitted whenever new BUs are issued
     /// @param to The account that earned the BUs
     /// @param by The account that paid for the BUs
-    /// @param BUs {qBU} The quantity of BUs issued
-    event BUsIssued(address indexed to, address indexed by, uint256 indexed BUs);
+    /// @param amtBUs {qBU} The quantity of BUs issued
+    event BUsIssued(address indexed to, address indexed by, uint256 indexed amtBUs);
     /// Emitted whenever BUs are redeemed
     /// @param to The account that received the resulting collateral
     /// @param by The account whose BUs are redeemed
-    /// @param BUs {qBU} The quantity of BUs redeemed
-    event BUsRedeemed(address indexed to, address indexed by, uint256 indexed BUs);
+    /// @param amtBUs {qBU} The quantity of BUs redeemed
+    event BUsRedeemed(address indexed to, address indexed by, uint256 indexed amtBUs);
     /// Emitted whenever BUs are transferred
     /// @param from The account that sent the BUs
     /// @param to The account that received for the BUs
-    /// @param BUs {qBU} The quantity of BUs transferred
-    event BUsTransferred(address indexed from, address indexed to, uint256 indexed BUs);
+    /// @param amtBUs {qBU} The quantity of BUs transferred
+    event BUsTransferred(address indexed from, address indexed to, uint256 indexed amtBUs);
     /// Emitted whenever rewards are claimed
     /// @param compAmount {qCOMP} The amount of COMP claimed
     /// @param aaveAmount {qAAVE} The amount of COMP claimed
@@ -43,23 +43,23 @@ interface IVault {
 
     /// Transfers collateral in and issues a quantity of BUs to the caller
     /// @param to The account to transfer collateral to
-    /// @param BUs {qBU} The quantity of BUs to issue
-    function issue(address to, uint256 BUs) external;
+    /// @param amtBUs {qBU} The quantity of BUs to issue
+    function issue(address to, uint256 amtBUs) external;
 
     /// Redeems a quantity of BUs and transfers collateral out
     /// @param to The account to transfer collateral to
-    /// @param BUs {qBU} The quantity of BUs to redeem
-    function redeem(address to, uint256 BUs) external;
+    /// @param amtBUs {qBU} The quantity of BUs to redeem
+    function redeem(address to, uint256 amtBUs) external;
 
-    /// Allows `spender` to spend `BUs` from the callers account
-    /// @param spender The account that is able to spend the `BUs`
-    /// @param BUs {qBU} The quantity of BUs that should be spendable
-    function setAllowance(address spender, uint256 BUs) external;
+    /// Allows `spender` to spend `amtBUs` from the callers account
+    /// @param spender The account that is able to spend the `amtBUs`
+    /// @param amtBUs {qBU} The quantity of BUs that should be spendable
+    function setAllowance(address spender, uint256 amtBUs) external;
 
     /// Pulls BUs over from one account to another (like `ERC20.transferFrom`), requiring allowance
     /// @param from The account to pull BUs from (must have set allowance)
-    /// @param BUs {qBU} The quantity of BUs to pull
-    function pullBUs(address from, uint256 BUs) external;
+    /// @param amtBUs {qBU} The quantity of BUs to pull
+    function pullBUs(address from, uint256 amtBUs) external;
 
     /// Claims all earned COMP/AAVE and sends it to the asset manager
     function claimAndSweepRewardsToManager() external;
@@ -70,8 +70,8 @@ interface IVault {
     /// @return {USD/qBU} The USD value of 1 BU if all fiatcoins hold peg
     function basketRate() external view returns (Fix);
 
-    /// @return {qTok} A list of token quantities required in order to issue `BUs`, in the order of the basket.
-    function tokenAmounts(uint256 BUs) external view returns (uint256[] memory);
+    /// @return {qTok} A list of token quantities required in order to issue `amtBUs`, in the order of the basket.
+    function tokenAmounts(uint256 amtBUs) external view returns (uint256[] memory);
 
     /// @return Whether the vault is made up only of collateral in `collateral`
     function containsOnly(address[] memory collateral) external view returns (bool);

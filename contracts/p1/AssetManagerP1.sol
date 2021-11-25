@@ -82,7 +82,7 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
     function issue(SlowIssuance memory issuance) external override {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
         require(!issuance.processed, "already processed");
-        issuance.vault.pullBUs(address(main), issuance.BUs); // Main should have set an allowance
+        issuance.vault.pullBUs(address(main), issuance.amtBUs); // Main should have set an allowance
         main.rToken().mint(issuance.issuer, issuance.amount);
     }
 
@@ -210,13 +210,13 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
 
     /// {qBU} -> {qRTok}
     // solhint-disable-next-line func-param-name-mixedcase
-    function fromBUs(uint256 BUs) public override returns (uint256) {
+    function fromBUs(uint256 amtBUs) public override returns (uint256) {
         if (main.rToken().totalSupply() == 0) {
-            return BUs;
+            return amtBUs;
         }
 
         // (_meltingFactor() / _basketDilutionFactor()) * BUs
-        return baseFactor().mulu(BUs).toUint();
+        return baseFactor().mulu(amtBUs).toUint();
     }
 
     //
@@ -465,7 +465,7 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
             totalValue = totalValue.plus(a.priceUSD(main).mul(bal));
         }
         // {BU} = {attoUSD} / {attoUSD/BU}
-        Fix BUTarget = totalValue.div(vault.basketRate());
+        Fix targetBUs = totalValue.div(vault.basketRate());
 
         // Calculate surplus and deficits relative to the BU target.
         Fix[] memory surplus = new Fix[](_alltimeCollateral.length());
@@ -475,7 +475,7 @@ contract AssetManagerP1 is IAssetManagerP1, Ownable {
             Fix bal = toFix(IERC20(a.erc20()).balanceOf(address(this))); // {qTok}
 
             // {qTok} = {BU} * {qTok/BU}
-            Fix target = BUTarget.mulu(vault.quantity(a));
+            Fix target = targetBUs.mulu(vault.quantity(a));
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
                 surplus[i] = bal.minus(target).mul(a.priceUSD(main));

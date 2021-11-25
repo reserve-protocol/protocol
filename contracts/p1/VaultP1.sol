@@ -54,58 +54,58 @@ contract VaultP1 is IVaultP1, Ownable {
 
     /// Transfers collateral in and issues a quantity of BUs to the caller
     /// @param to The account to transfer collateral to
-    /// @param BUs {qBU} The quantity of BUs to issue
-    function issue(address to, uint256 BUs) external override {
-        require(BUs > 0, "Cannot issue zero");
+    /// @param amtBUs {qBU} The quantity of BUs to issue
+    function issue(address to, uint256 amtBUs) external override {
+        require(amtBUs > 0, "Cannot issue zero");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory amounts = tokenAmounts(BUs);
+        uint256[] memory amounts = tokenAmounts(amtBUs);
 
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.collateral[i].erc20().safeTransferFrom(_msgSender(), address(this), amounts[i]);
         }
 
-        basketUnits[to] += BUs;
-        totalUnits += BUs;
-        emit BUsIssued(to, _msgSender(), BUs);
+        basketUnits[to] += amtBUs;
+        totalUnits += amtBUs;
+        emit BUsIssued(to, _msgSender(), amtBUs);
     }
 
     /// Redeems a quantity of BUs and transfers collateral out
     /// @param to The account to transfer collateral to
-    /// @param BUs {qBU} The quantity of BUs to redeem
-    function redeem(address to, uint256 BUs) external override {
-        require(BUs > 0, "Cannot redeem zero");
-        require(BUs <= basketUnits[_msgSender()], "Not enough units");
+    /// @param amtBUs {qBU} The quantity of BUs to redeem
+    function redeem(address to, uint256 amtBUs) external override {
+        require(amtBUs > 0, "Cannot redeem zero");
+        require(amtBUs <= basketUnits[_msgSender()], "Not enough units");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory amounts = tokenAmounts(BUs);
+        uint256[] memory amounts = tokenAmounts(amtBUs);
 
-        basketUnits[_msgSender()] -= BUs;
-        totalUnits -= BUs;
+        basketUnits[_msgSender()] -= amtBUs;
+        totalUnits -= amtBUs;
 
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.collateral[i].erc20().safeTransfer(to, amounts[i]);
         }
-        emit BUsRedeemed(to, _msgSender(), BUs);
+        emit BUsRedeemed(to, _msgSender(), amtBUs);
     }
 
-    /// Allows `spender` to spend `BUs` from the callers account
-    /// @param spender The account that is able to spend the `BUs`
-    /// @param BUs {qBU} The quantity of BUs that should be spendable
-    function setAllowance(address spender, uint256 BUs) external override {
-        _allowances[_msgSender()][spender] = BUs;
+    /// Allows `spender` to spend `amtBUs` from the callers account
+    /// @param spender The account that is able to spend the `amtBUs`
+    /// @param amtBUs {qBU} The quantity of BUs that should be spendable
+    function setAllowance(address spender, uint256 amtBUs) external override {
+        _allowances[_msgSender()][spender] = amtBUs;
     }
 
     /// Pulls BUs over from one account to another (like `ERC20.transferFrom`), requiring allowance
     /// @param from The account to pull BUs from (must have set allowance)
-    /// @param BUs {qBU} The quantity of BUs to pull
-    function pullBUs(address from, uint256 BUs) external override {
-        require(basketUnits[from] >= BUs, "not enough to transfer");
-        require(_allowances[from][_msgSender()] >= BUs, "not enough allowance");
-        _allowances[from][_msgSender()] -= BUs;
-        basketUnits[from] -= BUs;
-        basketUnits[_msgSender()] += BUs;
-        emit BUsTransferred(from, _msgSender(), BUs);
+    /// @param amtBUs {qBU} The quantity of BUs to pull
+    function pullBUs(address from, uint256 amtBUs) external override {
+        require(basketUnits[from] >= amtBUs, "not enough to transfer");
+        require(_allowances[from][_msgSender()] >= amtBUs, "not enough allowance");
+        _allowances[from][_msgSender()] -= amtBUs;
+        basketUnits[from] -= amtBUs;
+        basketUnits[_msgSender()] += amtBUs;
+        emit BUsTransferred(from, _msgSender(), amtBUs);
     }
 
     /// Claims all earned COMP/AAVE and sends it to the asset manager
@@ -133,13 +133,13 @@ contract VaultP1 is IVaultP1, Ownable {
         emit RewardsClaimed(compBal, aaveBal);
     }
 
-    /// @param BUs {qBU}
-    /// @return amounts {qTok} A list of token quantities required in order to issue `BUs`
-    function tokenAmounts(uint256 BUs) public view override returns (uint256[] memory amounts) {
+    /// @param amtBUs {qBU}
+    /// @return amounts {qTok} A list of token quantities required in order to issue `amtBUs`
+    function tokenAmounts(uint256 amtBUs) public view override returns (uint256[] memory amounts) {
         amounts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
             // {qTok} = {qTok/BU} * {qBU} / {qBU/BU}
-            amounts[i] = toFix(BUs).divu(1e18).mulu(_basket.quantities[_basket.collateral[i]]).toUint();
+            amounts[i] = toFix(amtBUs).divu(1e18).mulu(_basket.quantities[_basket.collateral[i]]).toUint();
         }
     }
 
@@ -179,11 +179,11 @@ contract VaultP1 is IVaultP1, Ownable {
         Fix min = FIX_MAX;
         for (uint256 i = 0; i < _basket.size; i++) {
             // {BU} = {qTok} / {qTok/BU}
-            Fix BUs = toFix(_basket.collateral[i].erc20().balanceOf(issuer)).divu(
+            Fix amtBUs = toFix(_basket.collateral[i].erc20().balanceOf(issuer)).divu(
                 _basket.quantities[_basket.collateral[i]]
             );
-            if (BUs.lt(min)) {
-                min = BUs;
+            if (amtBUs.lt(min)) {
+                min = amtBUs;
             }
         }
         return min.toUint();

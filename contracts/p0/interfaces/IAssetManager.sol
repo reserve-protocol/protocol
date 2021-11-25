@@ -82,9 +82,9 @@ interface IAssetManager {
     function toBUs(uint256 amount) external view returns (uint256);
 
     /// BUs -> RToken
-    /// @param {qBU} BUs The quantity of BUs to convert to RToken
+    /// @param {qBU} amtBUs The quantity of BUs to convert to RToken
     /// @return {qRTok} The equivalent amount of RToken at the current base factor
-    function fromBUs(uint256 BUs) external view returns (uint256);
+    function fromBUs(uint256 amtBUs) external view returns (uint256);
 
     /// @return {qRTok/qBU} The base factor
     function baseFactor() external view returns (Fix);
