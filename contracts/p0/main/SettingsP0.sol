@@ -12,8 +12,6 @@ import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/Pausable.sol";
 
-import "contracts/p0/SettingsP0.sol";
-
 /// Settings mixin for Main
 contract SettingsP0 is Ownable {
     using Oracle for Oracle.Info;

@@ -9,7 +9,7 @@ import "../interfaces/IVault.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/mocks/ERC20Mock.sol";
-import "contracts/p0/DefaultMonitorP0.sol";
+import "contracts/p0/main/DefaultMonitorP0.sol";
 import "contracts/p0/assets/COMPAssetP0.sol";
 import "contracts/p0/assets/AAVEAssetP0.sol";
 import "./CompoundOracleMockP0.sol";

@@ -18,7 +18,7 @@ import "contracts/p0/interfaces/IDefaultMonitor.sol";
 import "contracts/p0/interfaces/IFurnace.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
-import "contracts/p0/SettingsP0.sol";
+import "contracts/p0/main/SettingsP0.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 

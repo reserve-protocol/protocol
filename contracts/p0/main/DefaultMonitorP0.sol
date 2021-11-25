@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IDefaultMonitor.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/MainP0.sol";
+import "contracts/p0/main/MainP0.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**

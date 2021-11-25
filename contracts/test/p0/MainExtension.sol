@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/test/Mixins.sol";
 import "contracts/test/p0/IExtension.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/MainP0.sol";
+import "contracts/p0/main/MainP0.sol";
 import "./RTokenExtension.sol";
 
 /// Enables generic testing harness to set _msgSender() for Main.
