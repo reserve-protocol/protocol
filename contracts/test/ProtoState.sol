@@ -62,7 +62,7 @@ struct TokenState {
 /// Top-level state struct
 struct ProtoState {
     // System-internal state
-    SystemState state;
+    Mood mood;
     Config config;
     BU rTokenDefinition;
     TokenState rToken;

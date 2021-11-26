@@ -25,7 +25,7 @@ import { TradingMock } from '../../../typechain/TradingMock'
 import { VaultP0 } from '../../../typechain/VaultP0'
 import { getLatestBlockTimestamp } from '../../utils/time'
 
-export enum State {
+export enum Mood {
   CALM = 0,
   DOUBT = 1,
   TRADING = 2,

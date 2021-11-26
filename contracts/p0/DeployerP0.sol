@@ -15,10 +15,10 @@ import "./interfaces/IFurnace.sol";
 import "./interfaces/IMain.sol";
 import "./interfaces/IVault.sol";
 import "./assets/RTokenAssetP0.sol";
-import "./AssetManagerP0.sol";
-import "./DefaultMonitorP0.sol";
+import "./main/AssetManagerP0.sol";
+import "./main/DefaultMonitorP0.sol";
+import "./main/MainP0.sol";
 import "./FurnaceP0.sol";
-import "./MainP0.sol";
 import "./RTokenP0.sol";
 import "./StRSRP0.sol";
 
@@ -137,7 +137,7 @@ contract DeployerP0 is IDeployer {
     }
 
     function _deployAssetManager(
-        IMain main_,
+        IMainP0 main_,
         IVault vault_,
         address owner_,
         ICollateral[] memory approvedCollateral_

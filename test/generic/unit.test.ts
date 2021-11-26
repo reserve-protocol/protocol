@@ -17,7 +17,7 @@ import {
   prepareState,
   prepareToPrice,
   Price,
-  SystemState,
+  Mood,
 } from './common'
 
 /*
@@ -88,7 +88,7 @@ describe('Unit tests (Generic)', () => {
     it('Should set up correctly', async () => {
       const state = await driver.state()
       const lastCollateral = COLLATERAL_TOKEN_LEN - 1
-      expect(state.state).to.equal(SystemState.CALM)
+      expect(state.mood).to.equal(Mood.CALM)
       expect(state.rToken.balances[Account.ALICE]).to.equal(0)
       expect(state.rToken.balances[Account.EVE]).to.equal(bn('1e20'))
       expect(state.collateral[0].balances[Account.ALICE]).to.equal(bn('1e36'))
@@ -171,7 +171,7 @@ describe('Unit tests (Generic)', () => {
     //   await driver.setDefiCollateralRates([Asset.cDAI], [initialState.defiCollateralRates[Asset.cDAI].sub(bn(1))])
     //   await driver.CMD_poke()
     //   let state = await driver.state()
-    //   expect(state.state).to.equal(SystemState.TRADING)
+    //   expect(state.mood).to.equal(Mood.TRADING)
     //   expect(state.bu_s.length).to.equal(1)
     //   expect(state.rTokenDefinition).to.equal({ assets: [Asset.USDC], quantities: [bn('1e6')] })
     //   console.log(state.rTokenDefinition)

@@ -25,7 +25,7 @@ import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { VaultP0 } from '../../typechain/VaultP0'
 import { advanceTime } from '../utils/time'
-import { defaultFixture, IManagerConfig, State } from './utils/fixtures'
+import { defaultFixture, IManagerConfig, Mood } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 

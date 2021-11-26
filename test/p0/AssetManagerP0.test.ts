@@ -29,7 +29,7 @@ import { StRSRP0 } from '../../typechain/StRSRP0'
 import { TradingMock } from '../../typechain/TradingMock'
 import { VaultP0 } from '../../typechain/VaultP0'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { defaultFixture, Fate, IManagerConfig, State } from './utils/fixtures'
+import { defaultFixture, Fate, IManagerConfig, Mood } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -464,7 +464,7 @@ describe('AssetManagerP0 contract', () => {
         rewardAmountCOMP = bn('0.8e18')
 
         // Check initial state
-        expect(await main.state()).to.equal(State.CALM)
+        expect(await main.mood()).to.equal(Mood.CALM)
 
         // COMP Rewards
         await compoundMock.setRewards(newVault.address, rewardAmountCOMP)
@@ -564,7 +564,7 @@ describe('AssetManagerP0 contract', () => {
         })
 
         // State back to CALM
-        expect(await main.state()).to.equal(State.CALM)
+        expect(await main.mood()).to.equal(Mood.CALM)
       })
 
       it('Should claimm AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
@@ -574,7 +574,7 @@ describe('AssetManagerP0 contract', () => {
         rewardAmountAAVE = bn('0.5e18')
 
         // Check initial state
-        expect(await main.state()).to.equal(State.CALM)
+        expect(await main.mood()).to.equal(Mood.CALM)
 
         // AAVE Rewards
         await aToken.setRewards(newVault.address, rewardAmountAAVE)
@@ -647,7 +647,7 @@ describe('AssetManagerP0 contract', () => {
         expectAuctionOpen(1, false)
 
         // State back to CALM
-        expect(await main.state()).to.equal(State.CALM)
+        expect(await main.mood()).to.equal(Mood.CALM)
       })
 
       it.skip('Should handle large auctions using maxAucttionSize', async () => {
@@ -660,7 +660,7 @@ describe('AssetManagerP0 contract', () => {
         rewardAmountCOMP = bn('4e18')
 
         // Check initial state
-        expect(await main.state()).to.equal(State.CALM)
+        expect(await main.mood()).to.equal(Mood.CALM)
 
         // COMP Rewards
         await compoundMock.setRewards(newVault.address, rewardAmountCOMP)
@@ -713,7 +713,7 @@ describe('AssetManagerP0 contract', () => {
 
         // Another call should not create any new auctions if still ongoing
         await expect(main.poke()).to.not.emit(assetManager, 'AuctionStarted')
-        expect(await main.state()).to.equal(State.TRADING)
+        expect(await main.mood()).to.equal(Mood.TRADING)
 
         // Check existing auctions still open
         expectAuctionOpen(0, true)
@@ -769,7 +769,7 @@ describe('AssetManagerP0 contract', () => {
         })
 
         // State remains in TRADING
-        expect(await main.state()).to.equal(State.TRADING)
+        expect(await main.mood()).to.equal(Mood.TRADING)
 
         expectAuctionInfo(2, {
           sell: compAsset.address,
@@ -798,7 +798,7 @@ describe('AssetManagerP0 contract', () => {
         })
 
         // State remains in TRADING
-        expect(await main.state()).to.equal(State.TRADING)
+        expect(await main.mood()).to.equal(Mood.TRADING)
 
         // TODO: Run final auction until all funds are converted
       })

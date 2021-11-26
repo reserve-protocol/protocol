@@ -102,7 +102,7 @@ interface IMainCommon is IMainEvents{
     function noticeDefault() external;
 
     /// Getter for system state
-    function state() external view returns (SystemState);
+    function mood() external view returns (Mood);
 
     /// @dev pseudo-view
     /// @return The token quantities required to issue `amount` RToken.

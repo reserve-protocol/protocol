@@ -51,9 +51,9 @@ contract AdapterP0 is ProtoAdapter {
 
     // Deployed system contracts
     DeployerExtension internal _deployer;
-    IMockERC20 internal _rsr;
-    IMockERC20 internal _comp;
-    IMockERC20 internal _aave;
+    ERC20Mock internal _rsr;
+    ERC20Mock internal _comp;
+    ERC20Mock internal _aave;
     MainExtension internal _main_ext;
     IMainP0 internal _main;
     StRSRExtension internal _stRSR;
@@ -160,8 +160,8 @@ contract AdapterP0 is ProtoAdapter {
                 )
             );
             _main = IMainP0(address(_main_ext));
-            _stRSR = StRSRExtension(address(_main.stRSR()));
-            _rToken = RTokenExtension(address(_main.rToken()));
+            _stRSR = StRSRExtension(address(_main_ext.stRSR()));
+            _rToken = RTokenExtension(address(_main_ext.rToken()));
 
             for (uint256 i = 0; i < vaults.length; i++) {
                 vaults[i].setMain(_main);
@@ -189,13 +189,13 @@ contract AdapterP0 is ProtoAdapter {
             // Mint backing collateral and issue RToken
             for (uint256 i = 0; i < s.rToken.balances.length; i++) {
                 if (s.rToken.balances[i] > 0) {
-                    address[] memory tokens = _main.backingTokens();
-                    uint256[] memory quantities = _main.quote(s.rToken.balances[i]);
+                    address[] memory tokens = _main_ext.backingTokens();
+                    uint256[] memory quantities = _main_ext.quote(s.rToken.balances[i]);
                     for (uint256 j = 0; j < tokens.length; j++) {
                         ERC20Mock(tokens[j]).mint(_address(i), quantities[j]);
                         ERC20Mock(tokens[j]).adminApprove(_address(i), address(_main), quantities[j]);
                     }
-                    _main.issueInstantly(_address(i), s.rToken.balances[i]);
+                    _main_ext.issueInstantly(_address(i), s.rToken.balances[i]);
                     assert(_main.rToken().balanceOf(_address(i)) == s.rToken.balances[i]);
                 }
             }
@@ -209,11 +209,11 @@ contract AdapterP0 is ProtoAdapter {
     }
 
     function setConfig(Config memory config) external override {
-        _main.setConfig(config);
+        _main_ext.setConfig(config);
     }
 
     function state() public view override returns (ProtoState memory s) {
-        s.state = _main.state();
+        s.mood = _main.mood();
         s.config = _main.config();
         address[] memory backingTokens = _main.backingTokens();
         Asset[] memory backingCollateral = new Asset[](backingTokens.length);
@@ -248,7 +248,7 @@ contract AdapterP0 is ProtoAdapter {
 
     function assertInvariants() external override {
         _deployer.assertInvariants();
-        _main.assertInvariants();
+        _main_ext.assertInvariants();
         _rToken.assertInvariants();
         _stRSR.assertInvariants();
     }
@@ -278,18 +278,18 @@ contract AdapterP0 is ProtoAdapter {
     // === COMMANDS ====
 
     function CMD_issue(Account account, uint256 amount) external override {
-        _main.connect(_address(uint256(account)));
-        address[] memory tokens = _main.backingTokens();
-        uint256[] memory quantities = _main.quote(amount);
+        _main_ext.connect(_address(uint256(account)));
+        address[] memory tokens = _main_ext.backingTokens();
+        uint256[] memory quantities = _main_ext.quote(amount);
         for (uint256 i = 0; i < tokens.length; i++) {
             ERC20Mock(tokens[i]).adminApprove(_address(uint256(account)), address(_main), quantities[i]);
         }
-        _main.issue(amount);
+        _main_ext.issue(amount);
     }
 
     function CMD_redeem(Account account, uint256 amount) external override {
         _main_ext.connect(_address(uint256(account)));
-        _main.redeem(amount);
+        _main_ext.redeem(amount);
     }
 
     function CMD_checkForDefault() external override {
@@ -412,7 +412,7 @@ contract AdapterP0 is ProtoAdapter {
 
     /// @return bu_s The Basket Units of the stick DAG
     function _traverseVaults() internal view returns (BU[] memory bu_s) {
-        IVault v = _main.manager().vault();
+        IVault v = _main_ext.manager().vault();
         Asset[] memory collateral;
         IVault[] memory backups;
         do {

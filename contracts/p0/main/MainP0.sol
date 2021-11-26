@@ -47,7 +47,7 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
-    function issue(uint256 amount) external notPaused always {
+    function issue(uint256 amount) public notPaused always {
         require(mood == Mood.CALM || mood == Mood.TRADING, "only during calm + trading");
         require(amount > 0, "Cannot issue zero");
 
@@ -89,7 +89,7 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    function redeem(uint256 amount) external always {
+    function redeem(uint256 amount) public always {
         require(amount > 0, "Cannot redeem zero");
         if (!paused) {
             _processSlowIssuance();
@@ -112,7 +112,7 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
     }
 
     /// Performs the expensive checks for default, such as calculating VWAPs
-    function noticeDefault() external notPaused always {
+    function noticeDefault() public notPaused always {
         ICollateral[] memory softDefaulting = monitor.checkForSoftDefault(manager.vault(), manager.approvedFiatcoins());
 
         // If no defaults, walk back the default and enter CALM/TRADING
@@ -160,7 +160,7 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
 
     // -------- frequent checks... --------
     /// Runs the central auction loop
-    function poke() external notPaused always {
+    function poke() public notPaused always {
         require(mood == Mood.CALM || mood == Mood.TRADING, "only during calm + trading");
         _processSlowIssuance();
 

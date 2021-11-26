@@ -69,7 +69,7 @@ library Auction {
     /// @dev The struct must already be populated
     function open(
         Auction.Info storage self,
-        IMain main,
+        IMainP0 main,
         IMarket market,
         uint256 internalAuctionId
     ) internal {

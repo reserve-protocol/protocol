@@ -91,7 +91,7 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
 
     function _INVARIANT_fullyCapitalizedOrNotCalm() internal view returns (bool ok) {
         ok = true;
-        ok = ok && (manager.fullyCapitalized() || state != SystemState.CALM);
+        ok = ok && (manager.fullyCapitalized() || mood != Mood.CALM);
         if (!ok) {
             console.log("_INVARIANT_fullyCapitalizedOrNotCalm violated");
         }

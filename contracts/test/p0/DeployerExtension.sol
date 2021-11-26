@@ -17,7 +17,7 @@ import "./StRSRExtension.sol";
 /// Inject wrapper contracts into Deployer
 contract DeployerExtension is IExtension, DeployerP0 {
     address internal _admin;
-    IMain internal _main;
+    IMainP0 internal _main;
 
     constructor(
         IAsset rsr_,
@@ -32,8 +32,8 @@ contract DeployerExtension is IExtension, DeployerP0 {
         INVARIANT_currentDeploymentRegistered();
     }
 
-    function _deployMain(Oracle.Info memory oracle, Config memory config) internal override returns (IMain) {
-        _main = new MainExtension(_admin, oracle, config);
+    function _deployMain(Oracle.Info memory oracle, Config memory config) internal override returns (IMainP0) {
+        _main = IMainP0(address(new MainExtension(_admin, oracle, config)));
         return _main;
     }
 
@@ -58,7 +58,7 @@ contract DeployerExtension is IExtension, DeployerP0 {
     }
 
     function _deployAssetManager(
-        IMain main,
+        IMainP0 main,
         IVault vault,
         address owner,
         ICollateral[] memory approvedCollateral

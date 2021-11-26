@@ -8,7 +8,7 @@ import "contracts/test/Mixins.sol";
 import "contracts/mocks/ERC20Mock.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/AssetManagerP0.sol";
+import "contracts/p0/main/AssetManagerP0.sol";
 import "./RTokenExtension.sol";
 
 /// Enables generic testing harness to set _msgSender() for AssetManager.
@@ -19,7 +19,7 @@ contract AssetManagerExtension is IExtension, ContextMixin, AssetManagerP0 {
 
     constructor(
         address admin,
-        IMain main,
+        IMainP0 main,
         IVault vault,
         IMarket market,
         address owner,
