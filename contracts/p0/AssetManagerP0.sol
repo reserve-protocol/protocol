@@ -108,16 +108,9 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             }
         }
         // Expand the RToken supply to self
-        console.log("Expand RToken");
         uint256 possible = fromBUs(vault.basketUnits(address(this)));
-        console.log(possible);
-
         uint256 totalSupply = main.rToken().totalSupply();
-        console.log(totalSupply);
-
         if (fullyCapitalized() && possible > totalSupply) {
-
-            console.log("MINTS RTOKENS: %s", possible - totalSupply);
             main.rToken().mint(address(this), possible - totalSupply);
         }
     }
@@ -147,21 +140,16 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     function doAuctions() external override returns (SystemState) {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
 
-        console.log("Do Auctions 1");
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctions.length; i++) {
             Auction.Info storage auction = auctions[i];
             if (auction.isOpen) {
                 if (block.timestamp <= auction.endTime) {
-                    console.log("RETORNA YA HAY SUVBASTA");
-
                     return SystemState.TRADING;
                 }
                 auction.close(main, market, i);
             }
         }
-
-        console.log("Do Auctions 2");
 
         // Create new BUs
         uint256 issuable = vault.maxIssuable(address(this));
@@ -173,15 +161,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             vault.issue(address(this), issuable);
         }
 
-        console.log("Do Auctions 3");
         // Recapitalization auctions (break apart old BUs)
         if (!fullyCapitalized()) {
-            console.log("RECAPITALIZATION!");
             return _doRecapitalizationAuctions();
         }
-        console.log("Calls doRevenueAuctions");
-
-        console.log("Do Auctions 4");
         return _doRevenueAuctions();
     }
 
@@ -287,9 +270,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// Runs infrequently to accumulate the historical dilution factor
     function _accumulate() internal {
-        if (main.rToken().totalSupply() > 0) {
-            _historicalBasketDilution = _basketDilutionFactor();
-        }
+        _historicalBasketDilution = _basketDilutionFactor();
         _prevBasketRate = vault.basketRate();
     }
 
@@ -408,9 +389,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             oldVault.redeem(address(this), oldVault.basketUnits(address(this)));
         }
 
-        console.log("Auction RToken -> RSR");
-
-        console.log("RTokens available: %s", main.rToken().balanceOf(address(this)));
         // RToken -> dividend RSR
         (bool launch, Auction.Info memory auction) = _prepareAuctionSell(
             main.config().minRevenueAuctionSize,
@@ -421,7 +399,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         );
 
         if (launch) {
-            console.log("Launches RToken auction");
             _launchAuction(auction);
         }
 
@@ -624,17 +601,9 @@ contract AssetManagerP0 is IAssetManager, Ownable {
     ) internal returns (bool, Auction.Info memory auction) {
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
         Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(main).mulu(main.rToken().totalSupply());
-        console.log("RTokenMarketCapUSD");
-        console.logInt(Fix.unwrap(rTokenMarketCapUSD));
-        
         Fix maxSellUSD = rTokenMarketCapUSD.mul(main.config().maxAuctionSize); // {attoUSD}
-         console.log("MaxSell USD");
-        console.logInt(Fix.unwrap(maxSellUSD));
-      
         Fix minSellUSD = rTokenMarketCapUSD.mul(minAuctionSize); // {attoUSD}
- console.log("MinSell USD");
-        console.logInt(Fix.unwrap(minSellUSD));
-      
+
         // {qSellTok} < {attoUSD} / {attoUSD/qSellTok}
         if (sellAmount == 0 || sellAmount < minSellUSD.div(sell.priceUSD(main)).toUint()) {
             return (false, auction);
