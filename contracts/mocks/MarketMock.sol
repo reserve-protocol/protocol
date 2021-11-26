@@ -10,7 +10,7 @@ import "contracts/libraries/Fixed.sol";
 interface ITrading {
     /// @param auctionId An internal auction id, not the one from AssetManager
     /// @param bid A Bid
-    function setBid(uint256 auctionId, Bid memory bid) external;
+    function placeBid(uint256 auctionId, Bid memory bid) external;
 }
 
 struct MockAuction {
@@ -31,12 +31,12 @@ struct Bid {
 }
 
 /// A very simple trading partner that only supports 1 bid per auction
-contract TradingMock is IMarket, ITrading {
+contract MarketMock is IMarket, ITrading {
     using FixLib for Fix;
     using SafeERC20 for IERC20;
 
-    MockAuction[] internal _auctions;
-    mapping(uint256 => Bid) _bids; // auctionId -> Bid
+    MockAuction[] public auctions;
+    mapping(uint256 => Bid) public bids; // auctionId -> Bid
 
     /// @return auctionId The internal auction id
     function initiateAuction(
@@ -46,9 +46,9 @@ contract TradingMock is IMarket, ITrading {
         uint256 minBuyAmount,
         uint256 auctionDuration
     ) external override returns (uint256 auctionId) {
-        auctionId = _auctions.length;
+        auctionId = auctions.length;
         IERC20(sell).safeTransferFrom(msg.sender, address(this), sellAmount);
-        _auctions.push(
+        auctions.push(
             MockAuction(
                 msg.sender,
                 sell,
@@ -63,9 +63,9 @@ contract TradingMock is IMarket, ITrading {
     }
 
     /// @dev Requires allowances
-    function setBid(uint256 auctionId, Bid memory bid) external override {
-        _auctions[auctionId].buy.transferFrom(bid.bidder, address(this), bid.buyAmount);
-        _bids[auctionId] = bid;
+    function placeBid(uint256 auctionId, Bid memory bid) external override {
+        auctions[auctionId].buy.transferFrom(bid.bidder, address(this), bid.buyAmount);
+        bids[auctionId] = bid;
     }
 
     /// Can only be called by the origin of the auction and only after auction.endTime is past
@@ -74,12 +74,12 @@ contract TradingMock is IMarket, ITrading {
         override
         returns (uint256 clearingSellAmount, uint256 clearingBuyAmount)
     {
-        MockAuction storage auction = _auctions[auctionId];
+        MockAuction storage auction = auctions[auctionId];
         require(msg.sender == auction.origin, "only origin can claim");
         require(auction.isOpen, "auction already closed");
         require(auction.endTime <= block.timestamp, "too early to close auction");
 
-        Bid storage bid = _bids[auctionId];
+        Bid storage bid = bids[auctionId];
         if (bid.sellAmount > 0) {
             Fix a = toFix(auction.minBuyAmount).divu(auction.sellAmount);
             Fix b = toFix(bid.buyAmount).divu(bid.sellAmount);
@@ -97,5 +97,9 @@ contract TradingMock is IMarket, ITrading {
         auction.buy.safeTransfer(bid.bidder, bid.buyAmount - clearingBuyAmount);
         auction.buy.safeTransfer(auction.origin, clearingBuyAmount);
         auction.isOpen = false;
+    }
+
+    function numAuctions() external returns (uint256) {
+        return auctions.length;
     }
 }

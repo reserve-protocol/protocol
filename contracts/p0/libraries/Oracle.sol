@@ -65,10 +65,10 @@ library Oracle {
 
             Fix inETH = toFix(p); // {qETH/tok}
             Fix ethNorm = toFix(aaveOracle.getAssetPrice(aaveOracle.WETH())); // {qETH/ETH}
-            Fix ethInUsd = toFix(self.compound.oracle().price("ETH")).divu(1e6); // {microUSD/ETH} / {microUSD/USD}
-            int8 shiftLeft = 18 - int8(erc20.decimals());
+            Fix ethInUsd = toFix(self.compound.oracle().price("ETH")); // {microUSD/ETH}
+            int8 shiftLeft = 12 - int8(erc20.decimals()); // {attoUSD/microUSD} / {qTok/tok}
 
-            // {qETH/tok} * {USD/ETH} / {qETH/ETH} * {attoUSD/qTok}
+            // {qETH/tok} * {microUSD/ETH} / {qETH/ETH} * {attoUSD/microUSD} / {qTok/tok}
             return inETH.mul(ethInUsd).div(ethNorm).shiftLeft(shiftLeft);
         } else if (source == Source.COMPOUND) {
             // Compound stores prices with 6 decimals of precision

@@ -21,12 +21,12 @@ import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
+import { MarketMock } from '../../typechain/MarketMock'
 import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
 import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
-import { TradingMock } from '../../typechain/TradingMock'
 import { VaultP0 } from '../../typechain/VaultP0'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { defaultFixture, Fate, IManagerConfig, State } from './utils/fixtures'
@@ -109,7 +109,7 @@ describe('AssetManagerP0 contract', () => {
   let main: MainP0
   let assetManager: AssetManagerP0
   let defaultMonitor: DefaultMonitorP0
-  let trading: TradingMock
+  let trading: MarketMock
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -523,8 +523,8 @@ describe('AssetManagerP0 contract', () => {
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(trading.address, minBuyAmt)
         await rToken.connect(addr1).approve(trading.address, minBuyAmtRToken)
-        await trading.setBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
-        await trading.setBid(1, { bidder: addr1.address, sellAmount: sellAmtRToken, buyAmount: minBuyAmtRToken })
+        await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
+        await trading.placeBid(1, { bidder: addr1.address, sellAmount: sellAmtRToken, buyAmount: minBuyAmtRToken })
 
         // Close auctions
         await expect(main.poke())
@@ -632,8 +632,8 @@ describe('AssetManagerP0 contract', () => {
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(trading.address, minBuyAmt)
         await rToken.connect(addr1).approve(trading.address, minBuyAmtRToken)
-        await trading.setBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
-        await trading.setBid(1, { bidder: addr1.address, sellAmount: sellAmtRToken, buyAmount: minBuyAmtRToken })
+        await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
+        await trading.placeBid(1, { bidder: addr1.address, sellAmount: sellAmtRToken, buyAmount: minBuyAmtRToken })
 
         // Close auctions
         await expect(main.poke())
@@ -725,8 +725,8 @@ describe('AssetManagerP0 contract', () => {
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(trading.address, minBuyAmt)
         await rToken.connect(addr1).approve(trading.address, minBuyAmt)
-        await trading.setBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
-        await trading.setBid(1, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
+        await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
+        await trading.placeBid(1, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
 
         // Close auctions
         await expect(main.poke())

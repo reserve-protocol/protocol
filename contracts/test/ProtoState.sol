@@ -11,10 +11,11 @@ enum Account {
     CHARLIE,
     DAVE,
     EVE,
+    TRADER,
     // Below: contract accounts only
     RTOKEN,
     STRSR,
-    MAIN // 7
+    MAIN // 8
 }
 
 /// All assets in the system

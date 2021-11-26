@@ -8,6 +8,8 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title CollateralP0
  * @notice A vanilla asset such as a fiatcoin, to be extended by more complex assets such as cTokens.

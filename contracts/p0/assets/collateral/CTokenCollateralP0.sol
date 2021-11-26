@@ -12,8 +12,12 @@ import "contracts/p0/libraries/Oracle.sol";
 
 // https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 interface ICToken {
-    /// @dev From Compound Docs: The current exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
+    /// @dev From Compound Docs: The current (up to date) exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
+    /// Not currently used
     function exchangeRateCurrent() external returns (uint256);
+
+    /// @dev From Compound Docs: The stored exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
+    function exchangeRateStored() external view returns (uint256);
 
     function underlying() external view returns (address);
 }
@@ -32,8 +36,8 @@ contract CTokenCollateralP0 is CollateralP0 {
     /// @return {qFiatTok/qTok}
     function rateFiatcoin() public view override returns (Fix) {
         Fix rate = _exchangeRateRelativeToGenesis(); // {fiatTok/tok}
-        // {qFiatTok/qTok} = {fiatTok/tok} * {qFiatTok/fiatTok} / {qTok/tok}
 
+        // {qFiatTok/qTok} = {fiatTok/tok} * {qFiatTok/fiatTok} / {qTok/tok}
         int8 shiftLeft = int8(fiatcoinDecimals()) - int8(decimals());
         return rate.shiftLeft(shiftLeft);
     }
@@ -51,20 +55,15 @@ contract CTokenCollateralP0 is CollateralP0 {
         return IERC20(ICToken(_erc20).underlying());
     }
 
-    /// @return {attoUSD/qFiatTok}
-    function fiatcoinPriceUSD(IMain main) public view override returns (Fix) {
-        return main.consultOracle(Oracle.Source.AAVE, address(fiatcoin()));
-    }
-
     function isFiatcoin() public pure override returns (bool) {
         return false;
     }
 
     /// @return {fiatTok/tok}
     function _exchangeRateRelativeToGenesis() internal view returns (Fix) {
-        bytes memory result = Address.functionStaticCall(_erc20, abi.encodeWithSignature("exchangeRateCurrent()"));
+        uint256 rate = ICToken(_erc20).exchangeRateStored();
         int8 shiftLeft = int8(decimals()) - int8(fiatcoinDecimals()) - 18;
-        Fix rateNow = toFixWithShift(abi.decode(result, (uint256)), shiftLeft);
+        Fix rateNow = toFixWithShift(rate, shiftLeft);
         return rateNow.div(initialExchangeRate);
     }
 }

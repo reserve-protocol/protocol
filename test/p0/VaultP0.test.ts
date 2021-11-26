@@ -357,11 +357,11 @@ describe('VaultP0 contract', () => {
       expect(await vault.maxIssuable(owner.address)).to.equal(0)
 
       // Max issuable for user with tokens (Half of balance because a token requires qtyDouble)
-      expect(await vault.maxIssuable(addr1.address)).to.equal(initialBal.div(2).div(BN_SCALE_FACTOR))
+      expect(await vault.maxIssuable(addr1.address)).to.equal(initialBal.div(2))
 
       // Remove that token and recalculate
       let newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collateral[0]], [bn('1e18')], [])
-      expect(await newVault.maxIssuable(addr1.address)).to.equal(initialBal.div(BN_SCALE_FACTOR))
+      expect(await newVault.maxIssuable(addr1.address)).to.equal(initialBal)
     })
 
     it('Should issue BUs correctly', async function () {

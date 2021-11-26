@@ -168,8 +168,8 @@ contract StRSRP0 is IStRSR, Context {
                 withdrawals[index].amount -= amtToRemove.toUint();
             }
         }
-        // Transfer RSR to RToken
-        main.rsr().safeTransfer(address(main), amount);
+        // Transfer RSR to AssetManager
+        main.rsr().safeTransfer(address(main.manager()), amount);
         emit RSRSeized(_msgSender(), amount);
     }
 

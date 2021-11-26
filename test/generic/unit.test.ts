@@ -66,7 +66,8 @@ describe('Unit tests (Generic)', () => {
       }
       const b1 = { assets: [Asset.cDAI, Asset.USDC], quantities: [bn('5e7'), bn('5e5')] }
       const b2 = { assets: [Asset.USDC], quantities: [bn('1e6')] }
-      const baskets = [b1, b2]
+      const b3 = { assets: [Asset.cDAI], quantities: [bn('1e8')] }
+      const baskets = [b1, b2, b3]
 
       const ethPrice = { inUSD: bn('4000e6'), inETH: bn('1e18') }
       toPrice = prepareToPrice(ethPrice)
@@ -167,23 +168,28 @@ describe('Unit tests (Generic)', () => {
       expect(state.stRSR.balances[Account.ALICE]).to.equal(bn(0))
     })
 
-    // it.only('Should detect hard default + immediately migrate to backup vault', async () => {
-    //   await driver.setDefiCollateralRates([Asset.cDAI], [initialState.defiCollateralRates[Asset.cDAI].sub(bn(1))])
-    //   await driver.CMD_poke()
-    //   let state = await driver.state()
-    //   expect(state.state).to.equal(SystemState.TRADING)
-    //   expect(state.bu_s.length).to.equal(1)
-    //   expect(state.rTokenDefinition).to.equal({ assets: [Asset.USDC], quantities: [bn('1e6')] })
-    //   console.log(state.rTokenDefinition)
-    // })
+    it('Should detect hard default + immediately migrate to backup vault', async () => {
+      await driver.setDefiCollateralRates([Asset.cDAI], [initialState.defiCollateralRates[Asset.cDAI].sub(bn(1))])
+      await driver.CMD_poke()
+      let state = await driver.state()
+      expect(state.state).to.equal(SystemState.TRADING)
+      expect(state.bu_s.length).to.equal(2)
+      expect(state.rTokenDefinition.assets.toString()).to.equal([Asset.USDC].toString())
+      expect(state.rTokenDefinition.quantities.toString()).to.equal([bn('1e6')].toString())
+    })
 
-    // it('Should detect soft default + migrate to backup vault after 24h', async () => {
-    //   await driver.setBaseAssetPrices([Asset.USDC], [toPrice(bn('0.9e6'))])
-    //   await driver.CMD_checkForDefault()
-    //   advanceTime(initialState.config.defaultDelay)
-    //   await driver.CMD_checkForDefault()
-    //   await driver.CMD_poke()
-    // })
+    it('Should detect soft default + migrate to backup vault after 24h', async () => {
+      await driver.setBaseAssetPrices([Asset.USDC], [toPrice(bn('0.9e6'))])
+      await driver.CMD_checkForDefault()
+      advanceTime(initialState.config.defaultDelay)
+      await driver.CMD_checkForDefault()
+      await driver.CMD_poke()
+      let state = await driver.state()
+      expect(state.state).to.equal(SystemState.TRADING)
+      expect(state.bu_s.length).to.equal(1)
+      expect(state.rTokenDefinition.assets.toString()).to.equal([Asset.cDAI].toString())
+      expect(state.rTokenDefinition.quantities.toString()).to.equal([bn('1e8')].toString())
+    })
   })
 })
 

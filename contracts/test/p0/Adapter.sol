@@ -8,7 +8,7 @@ import "contracts/libraries/test/strings.sol";
 import "contracts/mocks/ATokenMock.sol";
 import "contracts/mocks/CTokenMock.sol";
 import "contracts/mocks/ERC20Mock.sol";
-import "contracts/mocks/TradingMock.sol";
+import "contracts/mocks/MarketMock.sol";
 import "contracts/mocks/USDCMock.sol";
 import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
 import "contracts/p0/assets/collateral/CollateralP0.sol";
@@ -39,6 +39,7 @@ import "./StRSRExtension.sol";
 import "hardhat/console.sol";
 
 contract AdapterP0 is ProtoAdapter {
+    using Oracle for Oracle.Info;
     using FixLib for Fix;
     using Lib for ProtoState;
     using strings for string;
@@ -59,7 +60,7 @@ contract AdapterP0 is ProtoAdapter {
     RTokenExtension internal _rToken;
 
     // Trading
-    TradingMock internal _trading;
+    MarketMock internal _market;
 
     // Oracles
     CompoundOracleMockP0 internal _compoundOracle;
@@ -111,8 +112,8 @@ contract AdapterP0 is ProtoAdapter {
             _reverseAssets[_comp] = Asset.COMP;
             _reverseAssets[_aave] = Asset.AAVE;
 
-            _trading = new TradingMock();
-            _deployer = new DeployerExtension(_assets[Asset.RSR], _assets[Asset.COMP], _assets[Asset.AAVE], _trading);
+            _market = new MarketMock();
+            _deployer = new DeployerExtension(_assets[Asset.RSR], _assets[Asset.COMP], _assets[Asset.AAVE], _market);
             _setDefiCollateralRates(s.defiCollateralRates);
         }
 
@@ -197,12 +198,6 @@ contract AdapterP0 is ProtoAdapter {
                     assert(_main.rToken().balanceOf(_address(i)) == s.rToken.balances[i]);
                 }
             }
-
-            // Oracle prices
-            _aaveOracle.setPrice(address(_stRSR), s.stRSR.price.inETH);
-            _compoundOracle.setPrice(IERC20Metadata(address(_stRSR)).symbol(), s.stRSR.price.inUSD);
-            _aaveOracle.setPrice(address(_rToken), s.rToken.price.inETH);
-            _compoundOracle.setPrice(IERC20Metadata(address(_rToken)).symbol(), s.rToken.price.inUSD);
         }
     }
 
@@ -259,18 +254,20 @@ contract AdapterP0 is ProtoAdapter {
         }
     }
 
-    /// @dev side-effect: calls `poke`
-    /// @param defiCollateral CTokens and ATokens
+    /// @param defiCollateral CTokens and ATokens, not necessarily of length 11
     function setDefiCollateralRates(Asset[] memory defiCollateral, Fix[] memory fiatcoinRedemptionRates)
         external
         override
     {
         Fix[] memory rates = new Fix[](NUM_COLLATERAL);
+        for (uint256 i = NUM_FIATCOINS; i < NUM_COLLATERAL; i++) {
+            rates[i] = _dumpDefiCollateralRate(ICollateral(address(_assets[Asset(i)])));
+        }
         for (uint256 i = 0; i < defiCollateral.length; i++) {
+            require(uint256(defiCollateral[i]) >= NUM_FIATCOINS, "cannot set defi rate for fiatcoin");
             rates[uint256(defiCollateral[i])] = fiatcoinRedemptionRates[i];
         }
         _setDefiCollateralRates(rates);
-        _main.poke();
     }
 
     // === COMMANDS ====
@@ -296,6 +293,7 @@ contract AdapterP0 is ProtoAdapter {
 
     function CMD_poke() external override {
         _main.poke();
+        _fillAuctions();
     }
 
     function CMD_stakeRSR(Account account, uint256 amount) external override {
@@ -403,8 +401,35 @@ contract AdapterP0 is ProtoAdapter {
         // Oracle price information
         Asset asset = _reverseAssets[erc20];
         if (uint256(asset) < NUM_FIATCOINS || uint256(asset) >= NUM_COLLATERAL) {
-            _aaveOracle.setPrice(address(erc20), tokenState.price.inETH);
-            _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUSD);
+            _aaveOracle.setPrice(address(erc20), tokenState.price.inETH); // {qETH/tok}
+            _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUSD); // {microUSD/tok}
+
+            Fix found = _main.consultOracle(Oracle.Source.AAVE, address(erc20)); // {attoUSD/qTok}
+            Fix expected = toFix(tokenState.price.inUSD).shiftLeft(12 - int8(erc20.decimals()));
+            assert(found.eq(expected));
+        }
+    }
+
+    /// Uses Account.TRADER as auction counterparty for all auctions
+    function _fillAuctions() internal {
+        uint256 numAuctions = _market.numAuctions();
+        for (uint256 i = 0; i < numAuctions; i++) {
+            (, IERC20 sell, IERC20 buy, uint256 sellAmount, , , , bool isOpen) = _market.auctions(i);
+            (address bidder, , uint256 buyAmount) = _market.bids(i);
+            if (isOpen && bidder == address(0)) {
+                Bid memory newBid;
+                newBid.bidder = _address(uint256(Account.TRADER));
+                newBid.sellAmount = sellAmount;
+                IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
+                IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
+                newBid.buyAmount = toFix(sellAmount)
+                .mul(buyAsset.priceUSD(_main))
+                .div(sellAsset.priceUSD(_main))
+                .toUint();
+                ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
+                ERC20Mock(address(buy)).adminApprove(newBid.bidder, address(_market), newBid.buyAmount);
+                _market.placeBid(i, newBid);
+            }
         }
     }
 
