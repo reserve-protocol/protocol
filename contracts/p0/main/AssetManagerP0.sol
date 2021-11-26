@@ -21,6 +21,8 @@ import "contracts/p0/StRSRP0.sol";
 import "contracts/libraries/CommonErrors.sol";
 import "contracts/libraries/Fixed.sol";
 
+import "contracts/p0/main/AssetRegistryP0.sol";
+
 /**
  * @title AssetManagerP0
  * @notice Handles the transfer and trade of assets
@@ -28,7 +30,7 @@ import "contracts/libraries/Fixed.sol";
  *    - Manages RToken backing via a Vault
  *    - Runs recapitalization and revenue auctions
  */
-contract AssetManagerP0 is IAssetManager, Ownable {
+contract AssetManagerP0 is Ownable, AssetRegistryP0 {
     using SafeERC20 for IERC20;
     using Auction for Auction.Info;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -44,10 +46,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     Fix internal _historicalBasketDilution; // the product of all historical basket dilutions
     Fix internal _prevBasketRate; // redemption value of the basket in fiatcoins last update
-
-    EnumerableSet.AddressSet internal _approvedCollateral;
-    EnumerableSet.AddressSet internal _alltimeCollateral;
-    EnumerableSet.AddressSet internal _fiatcoins;
 
     IMainP0 public main;
     IVault public override vault;
@@ -121,7 +119,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         require(_msgSender() == address(main), "only main can mutate the asset manager");
 
         for (uint256 i = 0; i < defaulting.length; i++) {
-            _unapproveAsset(defaulting[i]);
+            _unapproveCollateral(defaulting[i]);
         }
 
         IVault newVault = main.monitor().getNextVault(vault, _approvedCollateral.values(), _fiatcoins.values());
@@ -171,14 +169,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         return _doRevenueAuctions();
     }
 
-    function approveCollateral(ICollateral collateral) external onlyOwner {
-        _approveCollateral(collateral);
-    }
-
-    function unapproveCollateral(ICollateral collateral) external onlyOwner {
-        _unapproveAsset(collateral);
-    }
-
     function switchVault(IVault vault_) external onlyOwner {
         _switchVault(vault_);
     }
@@ -188,14 +178,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         return fromBUs(_allBUs()) >= main.rToken().totalSupply();
     }
 
-    /// @return fiatcoins An array of approved fiatcoin collateral to be used for oracle USD determination
-    function approvedFiatcoins() public view override returns (ICollateral[] memory fiatcoins) {
-        address[] memory addresses = _fiatcoins.values();
-        fiatcoins = new ICollateral[](addresses.length);
-        for (uint256 i = 0; i < addresses.length; i++) {
-            fiatcoins[i] = ICollateral(addresses[i]);
-        }
-    }
 
     /// {qRTok} -> {qBU}
     function toBUs(uint256 amount) public view override returns (uint256) {
@@ -286,20 +268,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         _accumulate();
     }
 
-    function _approveCollateral(ICollateral collateral) internal {
-        _approvedCollateral.add(address(collateral));
-        _alltimeCollateral.add(address(collateral));
-        if (collateral.isFiatcoin()) {
-            _fiatcoins.add(address(collateral));
-        }
-    }
-
-    function _unapproveAsset(ICollateral collateral) internal {
-        _approvedCollateral.remove(address(collateral));
-        if (collateral.isFiatcoin()) {
-            _fiatcoins.remove(address(collateral));
-        }
-    }
 
     /// Opens an `auction`
     function _launchAuction(Auction.Info memory auction) internal {
