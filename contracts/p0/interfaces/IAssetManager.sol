@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/IMain.sol";
 import "contracts/p0/libraries/Auction.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IAsset.sol";
@@ -63,8 +62,8 @@ interface IAssetManager {
     function redeem(address redeemer, uint256 amount) external;
 
     /// Performs any and all auctions in the system
-    /// @return A `SystemState` enum representing the current state the system is in.
-    function doAuctions() external returns (SystemState);
+    /// @return A `Mood` enum representing the current state the system is in.
+    function doAuctions() external returns (Mood);
 
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
     function collectRevenue() external;

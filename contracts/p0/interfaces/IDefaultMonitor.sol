@@ -27,7 +27,7 @@ interface IDefaultMonitor {
     /// @param fiatcoins An array of addresses of fiatcoin assets to use for median USD calculation
     function getNextVault(
         IVault vault,
-        address[] memory approvedCollateral,
-        address[] memory fiatcoins
+        ICollateral[] memory approvedCollateral,
+        ICollateral[] memory fiatcoins
     ) external returns (IVault);
 }

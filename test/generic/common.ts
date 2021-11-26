@@ -3,8 +3,8 @@ import { BigNumber } from 'ethers'
 import { bn, fp } from '../../common/numbers'
 import { IManagerConfig } from '../p0/utils/fixtures'
 
-// @dev Must match `IMain.SystemState`
-export enum SystemState {
+// @dev Must match `IMain.Mood`
+export enum Mood {
   CALM,
   DOUBT,
   TRADING,
@@ -168,7 +168,7 @@ export const prepareState = (
   }
 
   return {
-    state: SystemState.CALM,
+    mood: Mood.CALM,
     bu_s: baskets,
     config: config,
     rTokenDefinition: baskets[0],

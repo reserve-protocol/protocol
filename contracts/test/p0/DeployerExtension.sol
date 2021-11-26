@@ -8,7 +8,6 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/test/Mixins.sol";
-import "./AssetManagerExtension.sol";
 import "./FurnaceExtension.sol";
 import "./MainExtension.sol";
 import "./RTokenExtension.sol";
@@ -32,8 +31,14 @@ contract DeployerExtension is IExtension, DeployerP0 {
         INVARIANT_currentDeploymentRegistered();
     }
 
-    function _deployMain(Oracle.Info memory oracle, Config memory config) internal override returns (IMain) {
-        _main = new MainExtension(_admin, oracle, config);
+    function _deployMain(
+        Oracle.Info memory oracle,
+        Config memory config,
+        IVault vault,
+        IMarket market,
+        ICollateral[] memory approvedCollateral
+    ) internal override returns (IMain) {
+        _main = new MainExtension(_admin, oracle, config, vault, market, approvedCollateral);
         return _main;
     }
 
@@ -42,7 +47,7 @@ contract DeployerExtension is IExtension, DeployerP0 {
     }
 
     function _deployRToken(
-        IMain main,
+        address main,
         string memory name,
         string memory symbol
     ) internal override returns (IRToken) {
@@ -55,15 +60,6 @@ contract DeployerExtension is IExtension, DeployerP0 {
         string memory symbol
     ) internal override returns (IStRSR) {
         return new StRSRExtension(_admin, main, name, symbol);
-    }
-
-    function _deployAssetManager(
-        IMain main,
-        IVault vault,
-        address owner,
-        ICollateral[] memory approvedCollateral
-    ) internal override returns (IAssetManager) {
-        return new AssetManagerExtension(_admin, main, vault, market, owner, approvedCollateral);
     }
 
     function INVARIANT_currentDeploymentRegistered() internal view {

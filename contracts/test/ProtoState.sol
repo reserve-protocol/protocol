@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/IMain.sol";
+import "contracts/p0/interfaces/IMain.sol";
 import "./Lib.sol";
 
 /// Address-abstracted accounts
@@ -63,7 +63,7 @@ struct TokenState {
 /// Top-level state struct
 struct ProtoState {
     // System-internal state
-    SystemState state;
+    Mood mood;
     Config config;
     BU rTokenDefinition;
     TokenState rToken;

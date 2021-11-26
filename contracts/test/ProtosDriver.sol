@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "contracts/p0/interfaces/IAsset.sol";
-import "contracts/IMain.sol";
+
 import "./ProtoState.sol";
 import "./Lib.sol";
 

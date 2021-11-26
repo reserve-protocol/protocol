@@ -22,8 +22,11 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
     constructor(
         address admin,
         Oracle.Info memory oracle,
-        Config memory config
-    ) ContextMixin(admin) MainP0(oracle, config) {}
+        Config memory config,
+        IVault vault,
+        IMarket market,
+        ICollateral[] memory approvedCollateral
+    ) ContextMixin(admin) MainP0(oracle, config, vault, market, approvedCollateral) {}
 
     function issueInstantly(address account, uint256 amount) public {
         uint256 start = rTokenAsset.erc20().balanceOf(account);
@@ -43,6 +46,13 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
         assert(_INVARIANT_tokensAndQuantitiesSameLength());
         assert(_INVARIANT_pricesDefined());
         assert(_INVARIANT_issuancesAreValid());
+        // _INVARIANT_baseFactorDefined();
+        // _INVARIANT_hasCollateralConfiguration();
+        // _INVARIANT_toBUInverseFromBU();
+        // _INVARIANT_fromBUInverseToBU();
+        // _INVARIANT_vaultNotInPastVaults();
+        // _INVARIANT_auctionsPartitionCleanly();
+        // _INVARIANT_auctionsClosedInThePast();
     }
 
     function _msgSender() internal view override returns (address) {
@@ -55,7 +65,6 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
         ok = ok && address(_oracle.aave) != address(0);
         ok = ok && address(furnace) != address(0);
         ok = ok && address(stRSR) != address(0);
-        ok = ok && address(manager) != address(0);
         ok = ok && address(monitor) != address(0);
         ok = ok && address(rTokenAsset) != address(0);
         ok = ok && address(rsrAsset) != address(0);
@@ -91,7 +100,7 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
 
     function _INVARIANT_fullyCapitalizedOrNotCalm() internal view returns (bool ok) {
         ok = true;
-        ok = ok && (manager.fullyCapitalized() || state != SystemState.CALM);
+        ok = ok && (fullyCapitalized() || mood != Mood.CALM);
         if (!ok) {
             console.log("_INVARIANT_fullyCapitalizedOrNotCalm violated");
         }
@@ -136,8 +145,8 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
 
     function _INVARIANT_pricesDefined() internal view returns (bool ok) {
         ok = true;
-        for (uint256 i = 0; i < manager.vault().size(); i++) {
-            ICollateral c = manager.vault().collateralAt(i);
+        for (uint256 i = 0; i < vault.size(); i++) {
+            ICollateral c = vault.collateralAt(i);
             if (c.isFiatcoin()) {
                 ok = ok && consultOracle(Oracle.Source.AAVE, address(c.erc20())).gt(FIX_ZERO);
             }
@@ -161,4 +170,70 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
             console.log("_INVARIANT_issuancesAreValid violated");
         }
     }
+
+    // TODO: this
+    //     function _INVARIANT_stateDefined() internal view {
+    //     assert(_historicalBasketDilution.gt(FIX_ZERO));
+    //     assert(_prevBasketRate.gt(FIX_ZERO));
+    //     assert(_approvedCollateral.length() > 0);
+    //     assert(_alltimeCollateral.length() > 0);
+    //     assert(_fiatcoins.length() > 0);
+    //     assert(address(main) != address(0));
+    //     assert(address(vault) != address(0));
+    // }
+
+    // function _INVARIANT_baseFactorDefined() internal view {
+    //     bytes memory result = address(this).functionStaticCall(abi.encodeWithSignature("baseFactor()"));
+    //     Fix b = abi.decode(result, (Fix));
+    //     assert(b.gt(FIX_ZERO));
+    // }
+
+    // function _INVARIANT_hasCollateralConfiguration() internal view {
+    //     assert(approvedFiatcoins().length > 0);
+    // }
+
+    // function _INVARIANT_toBUInverseFromBU() internal view {
+    //     uint256 supply = main.rToken().totalSupply();
+    //     bytes memory result = address(this).functionStaticCall(abi.encodeWithSignature("toBUs(uint256)", supply));
+    //     bytes memory result2 = address(this).functionStaticCall(
+    //         abi.encodeWithSignature("fromBUs(uint256)", abi.decode(result, (uint256)))
+    //     );
+    //     assert(supply == abi.decode(result2, (uint256)));
+    // }
+
+    // function _INVARIANT_fromBUInverseToBU() internal view {
+    //     uint256 bu_s = vault.basketUnits(address(this));
+    //     bytes memory result = address(this).functionStaticCall(abi.encodeWithSignature("fromBUs(uint256)", bu_s));
+    //     bytes memory result2 = address(this).functionStaticCall(
+    //         abi.encodeWithSignature("toBUs(uint256)", abi.decode(result, (uint256)))
+    //     );
+    //     assert(bu_s == abi.decode(result2, (uint256)));
+    // }
+
+    // function _INVARIANT_vaultNotInPastVaults() internal view {
+    //     for (uint256 i = 0; i < pastVaults.length; i++) {
+    //         if (vault == pastVaults[i]) {
+    //             assert(false);
+    //         }
+    //     }
+    // }
+
+    // function _INVARIANT_auctionsPartitionCleanly() internal view {
+    //     bool foundOpen = false;
+    //     for (uint256 i = 0; i < auctions.length; i++) {
+    //         if (auctions[i].isOpen) {
+    //             foundOpen = true;
+    //         } else if (foundOpen) {
+    //             assert(false);
+    //         }
+    //     }
+    // }
+
+    // function _INVARIANT_auctionsClosedInThePast() internal view {
+    //     for (uint256 i = 0; i < auctions.length; i++) {
+    //         if (!auctions[i].isOpen && auctions[i].endTime > block.timestamp) {
+    //             assert(false);
+    //         }
+    //     }
+    // }
 }

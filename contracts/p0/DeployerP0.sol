@@ -15,7 +15,6 @@ import "./interfaces/IFurnace.sol";
 import "./interfaces/IMain.sol";
 import "./interfaces/IVault.sol";
 import "./assets/RTokenAssetP0.sol";
-import "./AssetManagerP0.sol";
 import "./DefaultMonitorP0.sol";
 import "./FurnaceP0.sol";
 import "./MainP0.sol";
@@ -75,7 +74,7 @@ contract DeployerP0 is IDeployer {
     ) external override returns (address) {
         Oracle.Info memory oracle = Oracle.Info(compound, aave);
 
-        IMain main = _deployMain(oracle, config);
+        IMain main = _deployMain(oracle, config, vault, market, collateral);
         deployments.push(main);
 
         {
@@ -84,9 +83,12 @@ contract DeployerP0 is IDeployer {
         }
 
         {
-            IRToken rToken = _deployRToken(main, name, symbol);
+            IRToken rToken = _deployRToken(address(main), name, symbol);
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken));
-            main.setAssets(rTokenAsset, rsrAsset, compAsset, aaveAsset);
+            main.setRTokenAsset(rTokenAsset);
+            main.setRSRAsset(rsrAsset);
+            main.setCompAsset(compAsset);
+            main.setAaveAsset(aaveAsset);
             IFurnace furnace = _deployFurnace(address(rToken));
             main.setFurnace(furnace);
         }
@@ -100,10 +102,6 @@ contract DeployerP0 is IDeployer {
             main.setStRSR(stRSR);
         }
 
-        {
-            IAssetManager manager = _deployAssetManager(main, vault, owner, collateral);
-            main.setManager(manager);
-        }
         main.setPauser(owner);
         IOwnable(address(main)).transferOwnership(owner);
 
@@ -114,12 +112,18 @@ contract DeployerP0 is IDeployer {
     // =================================================================
     /// @dev Helpers used for testing to inject msg.sender and implement contract invariant checks
 
-    function _deployMain(Oracle.Info memory oracle, Config memory config) internal virtual returns (IMain) {
-        return new MainP0(oracle, config);
+    function _deployMain(
+        Oracle.Info memory oracle,
+        Config memory config,
+        IVault vault,
+        IMarket market_,
+        ICollateral[] memory approvedCollateral
+    ) internal virtual returns (IMain) {
+        return new MainP0(oracle, config, vault, market_, approvedCollateral);
     }
 
     function _deployRToken(
-        IMain main,
+        address main,
         string memory name,
         string memory symbol
     ) internal virtual returns (IRToken) {
@@ -136,14 +140,5 @@ contract DeployerP0 is IDeployer {
         string memory symbol
     ) internal virtual returns (IStRSR) {
         return new StRSRP0(main, name, symbol);
-    }
-
-    function _deployAssetManager(
-        IMain main_,
-        IVault vault_,
-        address owner_,
-        ICollateral[] memory approvedCollateral_
-    ) internal virtual returns (IAssetManager) {
-        return new AssetManagerP0(main_, vault_, market, owner_, approvedCollateral_);
     }
 }

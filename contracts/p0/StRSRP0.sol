@@ -88,7 +88,7 @@ contract StRSRP0 is IStRSR, Context {
         _totalStaked -= amount;
 
         // Submit delayed withdrawal
-        uint256 availableAt = block.timestamp + main.config().stRSRWithdrawalDelay;
+        uint256 availableAt = block.timestamp + main.stRSRWithdrawalDelay();
         withdrawals.push(Withdrawal(_msgSender(), amount, availableAt));
         emit UnstakingStarted(withdrawals.length - 1, _msgSender(), amount, availableAt);
     }
@@ -98,7 +98,7 @@ contract StRSRP0 is IStRSR, Context {
     }
 
     function processWithdrawals() public {
-        if (main.paused() || !main.manager().fullyCapitalized()) {
+        if (main.paused() || !main.fullyCapitalized()) {
             return;
         }
         // Process all pending withdrawals
@@ -145,7 +145,7 @@ contract StRSRP0 is IStRSR, Context {
     /// auth: AssetManager only
     /// @param amount {qRSR}
     function seizeRSR(uint256 amount) external override {
-        require(_msgSender() == address(main.manager()), "Caller is not Asset Manager");
+        require(_msgSender() == address(main), "Caller is not Main");
         require(amount > 0, "Amount cannot be zero");
 
         // Process pending withdrawals
@@ -168,8 +168,8 @@ contract StRSRP0 is IStRSR, Context {
                 withdrawals[index].amount -= amtToRemove.toUint();
             }
         }
-        // Transfer RSR to AssetManager
-        main.rsr().safeTransfer(address(main.manager()), amount);
+        // Transfer RSR to Main
+        main.rsr().safeTransfer(address(main), amount);
         emit RSRSeized(_msgSender(), amount);
     }
 

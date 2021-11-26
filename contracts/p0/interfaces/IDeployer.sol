@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/assets/RSRAssetP0.sol";
 import "contracts/p0/assets/COMPAssetP0.sol";
 import "contracts/p0/assets/AAVEAssetP0.sol";
-import "contracts/IMain.sol";
+
 import "./IAsset.sol";
 import "./IVault.sol";
 

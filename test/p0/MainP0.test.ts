@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
@@ -729,7 +730,7 @@ describe('MainP0 contract', () => {
       await aaveOracle.setPrice(token0.address, bn('1.5e14'))
 
       // Notice default
-      await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.CALM, State.DOUBT)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.CALM, State.DOUBT)
 
       expect(await main.state()).to.equal(State.DOUBT)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
@@ -738,7 +739,7 @@ describe('MainP0 contract', () => {
       await aaveOracle.setPrice(token0.address, bn('2.5e14'))
 
       // Notice default
-      await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.DOUBT, State.CALM)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.DOUBT, State.CALM)
 
       expect(await main.state()).to.equal(State.CALM)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
@@ -759,7 +760,7 @@ describe('MainP0 contract', () => {
       await aaveOracle.setPrice(token0.address, bn('1.5e14'))
 
       // Notice default
-      await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.CALM, State.DOUBT)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.CALM, State.DOUBT)
 
       expect(await main.state()).to.equal(State.DOUBT)
       expect(await assetManager.vault()).to.equal(vault.address)
@@ -778,7 +779,7 @@ describe('MainP0 contract', () => {
       // Advance time post defaultDelay
       await advanceTime(config.defaultDelay.toString())
 
-      await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.DOUBT, State.TRADING)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.DOUBT, State.TRADING)
 
       // Check state
       expect(await main.state()).to.equal(State.TRADING)
@@ -790,12 +791,12 @@ describe('MainP0 contract', () => {
       await aaveOracle.setPrice(token1.address, bn('0.5e14'))
 
       // Notice default
-      await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.TRADING, State.DOUBT)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.TRADING, State.DOUBT)
 
       // Restore price
       await aaveOracle.setPrice(token1.address, bn('2.5e14'))
 
-      await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.DOUBT, State.TRADING)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.DOUBT, State.TRADING)
 
       expect(await main.state()).to.equal(State.TRADING)
       expect(await assetManager.vault()).to.equal(backupVault.address)
@@ -835,7 +836,7 @@ describe('MainP0 contract', () => {
       expect(await assetManager.fullyCapitalized()).to.equal(false)
 
       // Call will not trigger hard default nor soft default in normal situation
-      await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.CALM, State.TRADING)
+      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.CALM, State.TRADING)
 
       // Check state
       expect(await main.state()).to.equal(State.TRADING)

@@ -110,28 +110,28 @@ contract VaultP0 is IVault, Ownable {
     /// Claims all earned COMP/AAVE and sends it to the asset manager
     function claimAndSweepRewardsToManager() external override {
         require(address(main) != address(0), "main not set");
-
+        // TODO
         // Claim (covers all cTokens)
-        main.comptroller().claimComp(address(this));
-        for (uint256 i = 0; i < _basket.size; i++) {
-            // Only aTokens need to be claimed at the asset level
-            if (_basket.collateral[i].isAToken()) {
-                IStaticAToken(address(_basket.collateral[i].erc20())).claimRewardsToSelf(true);
-            }
-        }
+        // main.comptroller().claimComp(address(this));
+        // for (uint256 i = 0; i < _basket.size; i++) {
+        //     // Only aTokens need to be claimed at the asset level
+        //     if (_basket.collateral[i].isAToken()) {
+        //         IStaticAToken(address(_basket.collateral[i].erc20())).claimRewardsToSelf(true);
+        //     }
+        // }
 
-        // Sweep
-        IERC20 comp = main.compAsset().erc20();
-        uint256 compBal = comp.balanceOf(address(this));
-        if (compBal > 0) {
-            comp.safeTransfer(address(main.manager()), compBal);
-        }
-        IERC20 aave = main.aaveAsset().erc20();
-        uint256 aaveBal = aave.balanceOf(address(this));
-        if (aaveBal > 0) {
-            aave.safeTransfer(address(main.manager()), aaveBal);
-        }
-        emit RewardsClaimed(compBal, aaveBal);
+        // // Sweep
+        // IERC20 comp = main.compAsset().erc20();
+        // uint256 compBal = comp.balanceOf(address(this));
+        // if (compBal > 0) {
+        //     comp.safeTransfer(address(main.manager()), compBal);
+        // }
+        // IERC20 aave = main.aaveAsset().erc20();
+        // uint256 aaveBal = aave.balanceOf(address(this));
+        // if (aaveBal > 0) {
+        //     aave.safeTransfer(address(main.manager()), aaveBal);
+        // }
+        // emit RewardsClaimed(compBal, aaveBal);
     }
 
     /// @param amtBUs {qBU}
@@ -160,11 +160,11 @@ contract VaultP0 is IVault, Ownable {
     }
 
     /// @return Whether the vault is made up only of collateral in `collateral`
-    function containsOnly(address[] memory collateral) external view override returns (bool) {
+    function containsOnly(ICollateral[] memory collateral) external view override returns (bool) {
         for (uint256 i = 0; i < _basket.size; i++) {
             bool found = false;
             for (uint256 j = 0; j < collateral.length; j++) {
-                if (address(_basket.collateral[i]) == collateral[j]) {
+                if (_basket.collateral[i] == collateral[j]) {
                     found = true;
                 }
             }

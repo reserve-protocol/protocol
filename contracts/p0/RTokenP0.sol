@@ -10,10 +10,10 @@ import "contracts/p0/interfaces/IRToken.sol";
  * @notice An ERC20 with an elastic supply.
  */
 contract RTokenP0 is IRToken, ERC20 {
-    IMain public main;
+    address public main;
 
     constructor(
-        IMain main_,
+        address main_,
         string memory name_,
         string memory symbol_
     ) ERC20(name_, symbol_) {
@@ -25,7 +25,7 @@ contract RTokenP0 is IRToken, ERC20 {
     /// @param amount {qTok} The amount to be minted
     /// @return true
     function mint(address recipient, uint256 amount) external virtual override returns (bool) {
-        require(_msgSender() == address(main.manager()), "only asset manager");
+        require(_msgSender() == main, "only main");
         _mint(recipient, amount);
         return true;
     }
@@ -35,7 +35,7 @@ contract RTokenP0 is IRToken, ERC20 {
     /// @param amount {qTok} The amount to be burned
     /// @return true
     function burn(address from, uint256 amount) external virtual override returns (bool) {
-        require(_msgSender() == address(main.manager()) || _msgSender() == from, "only asset manager or self");
+        require(_msgSender() == main || _msgSender() == from, "only main or self");
         _burn(from, amount);
         return true;
     }

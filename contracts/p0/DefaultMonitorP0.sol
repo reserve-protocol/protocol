@@ -79,12 +79,12 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
     /// @param fiatcoins An array of addresses of fiatcoin assets to use for median USD calculation
     function getNextVault(
         IVault vault,
-        address[] memory approvedCollateral,
-        address[] memory fiatcoins
+        ICollateral[] memory approvedCollateral,
+        ICollateral[] memory fiatcoins
     ) external override returns (IVault) {
         ICollateral[] memory fiatcoinAssets = new ICollateral[](fiatcoins.length);
         for (uint256 i = 0; i < fiatcoins.length; i++) {
-            fiatcoinAssets[i] = ICollateral(fiatcoins[i]);
+            fiatcoinAssets[i] = fiatcoins[i];
         }
 
         Fix maxRate;
@@ -148,6 +148,6 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         }
 
         // median - (median * defaultThreshold)
-        return median.minus(median.mul(main.config().defaultThreshold));
+        return median.minus(median.mul(main.defaultThreshold()));
     }
 }

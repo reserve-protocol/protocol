@@ -30,7 +30,7 @@ import "contracts/p0/VaultP0.sol";
 import "contracts/test/Lib.sol";
 import "contracts/test/ProtosDriver.sol";
 import "contracts/test/ProtoState.sol";
-import "contracts/IMain.sol";
+
 import "./DeployerExtension.sol";
 import "./MainExtension.sol";
 import "./RTokenExtension.sol";
@@ -206,7 +206,7 @@ contract AdapterP0 is ProtoAdapter {
     }
 
     function state() public view override returns (ProtoState memory s) {
-        s.state = _main.state();
+        s.mood = _main.mood();
         s.config = _main.config();
         address[] memory backingTokens = _main.backingTokens();
         Asset[] memory backingCollateral = new Asset[](backingTokens.length);
@@ -435,7 +435,7 @@ contract AdapterP0 is ProtoAdapter {
 
     /// @return bu_s The Basket Units of the stick DAG
     function _traverseVaults() internal view returns (BU[] memory bu_s) {
-        IVault v = _main.manager().vault();
+        IVault v = _main.vault();
         Asset[] memory collateral;
         IVault[] memory backups;
         do {
