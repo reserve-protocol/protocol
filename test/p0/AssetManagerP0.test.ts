@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
-import { MAX_UINT256 } from '../../common/constants'
+import { BN_SCALE_FACTOR, MAX_UINT256 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
@@ -803,8 +803,90 @@ describe('AssetManagerP0 contract', () => {
         // TODO: Run final auction until all funds are converted
       })
 
-      it.skip('Should mint RTokens when collateral appreciates', async () => {})
-      it.skip('Should handle RToken revuenue auction correctly', async () => {})
+      it('Should mint RTokens when collateral appreciates and handle revenue auction correctly', async () => {
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        // Get RToken Asset
+        const rTokenAsset = <RTokenAssetP0>await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+
+        // Change redemption rate for AToken and CToken to double
+        await aToken.setExchangeRate(fp('2'))
+        await cToken.setExchangeRate(fp('2'))
+
+        // f = fp(0.6) = 40% increase in price of RToken -> (1 + 0.4) / 2 = 7/10
+        let b = fp(1)
+          .add(bn(2 - 1).mul(fp(1).sub(config.f)))
+          .div(bn(2))
+
+        // Check base factor
+        expect(await assetManager.baseFactor()).to.equal(b)
+
+        // Check initial state
+        expect(await main.state()).to.equal(State.CALM)
+
+        // Total value being auctioned = sellAmount * new price (1.4) - This is the exact amount of RSR required (because RSR = 1 USD )
+        // Note: for rounding division by 10 is done later in calculation
+        let currentTotalSupply: BigNumber = await rToken.totalSupply()
+        let newTotalSupply: BigNumber = fp(currentTotalSupply).div(b)
+        let sellAmt: BigNumber = newTotalSupply.div(100) // due to max auction size of 1%
+        let tempValueSell = sellAmt.mul(14)
+        let minBuyAmtRSR: BigNumber = tempValueSell.sub(tempValueSell.mul(config.maxTradeSlippage).div(BN_SCALE_FACTOR)) // due to trade slippage 1%
+        minBuyAmtRSR = minBuyAmtRSR.div(10)
+
+        // Call Poke to collect revenue and mint new tokens
+        await expect(main.poke())
+          .to.emit(assetManager, 'AuctionStarted')
+          .withArgs(0, rTokenAsset.address, rsrAsset.address, sellAmt, minBuyAmtRSR, Fate.Stake)
+
+        const auctionTimestamp: number = await getLatestBlockTimestamp()
+
+        // Check auctions registered
+        // RToken -> RSR Auction
+        expectAuctionInfo(0, {
+          sell: rTokenAsset.address,
+          buy: rsrAsset.address,
+          sellAmount: sellAmt,
+          minBuyAmount: minBuyAmtRSR,
+          startTime: auctionTimestamp,
+          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          clearingSellAmount: bn('0'),
+          clearingBuyAmount: bn('0'),
+          fate: Fate.Stake,
+          isOpen: true,
+        })
+
+        // Check new state
+        expect(await main.state()).to.equal(State.TRADING)
+
+        // Perform Mock Bids for RSR(addr1 has balance)
+        await rsr.connect(addr1).approve(trading.address, minBuyAmtRSR)
+        await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmtRSR })
+
+        // Advance time till auctioo ended
+        await advanceTime(config.auctionPeriod.add(100).toString())
+
+        // Call poke to end current auction, should start a new one with same amount
+        await expect(main.poke())
+          .to.emit(assetManager, 'AuctionEnded')
+          //.withArgs(0, rTokenAsset.address, rsrAsset.address, sellAmt, minBuyAmtRSR, Fate.Stake)
+          .and.to.emit(assetManager, 'AuctionStarted')
+          .withArgs(1, rTokenAsset.address, rsrAsset.address, sellAmt, minBuyAmtRSR, Fate.Stake)
+
+        // Check new auction
+        expectAuctionInfo(1, {
+          sell: rTokenAsset.address,
+          buy: rsrAsset.address,
+          sellAmount: sellAmt,
+          minBuyAmount: minBuyAmtRSR,
+          startTime: await getLatestBlockTimestamp(),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          clearingSellAmount: bn('0'),
+          clearingBuyAmount: bn('0'),
+          fate: Fate.Stake,
+          isOpen: true,
+        })
+      })
     })
   })
 })
