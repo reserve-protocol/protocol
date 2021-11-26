@@ -22,21 +22,20 @@ contract VaultP0 is IVault, Ownable {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
+    // {BU} = 1e18{qBU}
     uint8 public constant override BU_DECIMALS = 18;
 
     Basket internal _basket;
 
-    mapping(address => mapping(address => uint256)) internal _allowances;
-    mapping(address => uint256) public override basketUnits;
-    uint256 public totalUnits;
+    mapping(address => mapping(address => uint256)) internal _allowances; // {qBU}
+    mapping(address => uint256) public override basketUnits; // {qBU}
+    uint256 public totalUnits; // {qBU}
 
     IVault[] public backups;
 
     IMain public main;
 
-    // {BU} = 1e18{qBU}
-
-    // quantities = {qTok/BU}
+    /// @param quantities {qTok/BU}
     constructor(
         ICollateral[] memory collateral,
         uint256[] memory quantities,
@@ -178,7 +177,7 @@ contract VaultP0 is IVault, Ownable {
         return true;
     }
 
-    /// @return {BU} The maximum number of BUs the caller can issue
+    /// @return {qBU} The maximum number of basket units that `issuer` can issue
     function maxIssuable(address issuer) external view override returns (uint256) {
         Fix min = FIX_MAX;
         for (uint256 i = 0; i < _basket.size; i++) {
@@ -190,7 +189,7 @@ contract VaultP0 is IVault, Ownable {
                 min = amtBUs;
             }
         }
-        return min.toUint();
+        return min.shiftLeft(int8(BU_DECIMALS)).toUint();
     }
 
     /// @return The collateral asset at `index`

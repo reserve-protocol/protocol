@@ -54,13 +54,15 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         override
         returns (ICollateral[] memory defaulting)
     {
-        Fix defaultThreshold = _defaultThreshold(fiatcoins); // {attoUSD/qTok}
+        Fix defaultThreshold = _defaultThreshold(fiatcoins); // {attoUSD/fiatTok}
         ICollateral[] memory vaultAssets = new ICollateral[](vault.size());
 
         uint256 count;
         for (uint256 i = 0; i < vaultAssets.length; i++) {
             ICollateral a = vault.collateralAt(i);
-            if (a.fiatcoinPriceUSD(main).lt(defaultThreshold)) {
+
+            Fix price = a.fiatcoinPriceUSD(main).shiftLeft(int8(a.fiatcoinDecimals()));
+            if (price.lt(defaultThreshold)) {
                 vaultAssets[count] = a;
                 count++;
             }
@@ -111,12 +113,15 @@ contract DefaultMonitorP0 is Context, IDefaultMonitor {
         return backups[indexMax];
     }
 
-    /// @return {attoUSD/qTok} The USD price at which a fiatcoin can be said to be defaulting
+    /// @return {attoUSD/fiatTok} The USD price at which a fiatcoin can be said to be defaulting
     function _defaultThreshold(ICollateral[] memory fiatcoins) internal view returns (Fix) {
         // Collect prices
         Fix[] memory prices = new Fix[](fiatcoins.length);
         for (uint256 i = 0; i < fiatcoins.length; i++) {
-            prices[i] = fiatcoins[i].fiatcoinPriceUSD(main); // {attoUSD/qTok}
+            int8 decimals = int8(fiatcoins[i].fiatcoinDecimals());
+
+            // {attoUSD/fiatTok} = {attoUSD/qFiatTok} * {qFiatTok/fiatTok}
+            prices[i] = fiatcoins[i].fiatcoinPriceUSD(main).shiftLeft(decimals); // {attoUSD/fiatTok}
         }
 
         // Sort

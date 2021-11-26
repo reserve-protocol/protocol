@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "../Ownable.sol"; // temporary
 // import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -155,6 +156,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         // Create new BUs
         uint256 issuable = vault.maxIssuable(address(this));
         if (issuable > 0) {
+            uint256[] memory amounts = vault.tokenAmounts(issuable);
+            for (uint256 i = 0; i < amounts.length; i++) {
+                vault.collateralAt(i).erc20().safeApprove(address(vault), amounts[i]);
+            }
             vault.issue(address(this), issuable);
         }
 
@@ -179,7 +184,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() public view override returns (bool) {
-        return fromBUs(_allBUs()) >= main.rToken().totalSupply();
+        return fromBUs(vault.basketUnits(address(this))) >= main.rToken().totalSupply();
     }
 
     /// @return fiatcoins An array of approved fiatcoin collateral to be used for oracle USD determination
@@ -212,7 +217,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         return toFix(amtBUs).div(baseFactor()).toUint();
     }
 
-    /// @return {qRTok/qBU} The base factor
+    /// @return {qBU/qRTok} The base factor
     function baseFactor() public view override returns (Fix) {
         return _meltingFactor().div(_basketDilutionFactor());
     }
@@ -310,6 +315,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             uint256 maxSell,
             uint256 targetBuy
         ) = _largestCollateralForCollateralTrade();
+
         (bool trade, Auction.Info memory auction) = _prepareAuctionBuy(
             main.config().minRecapitalizationAuctionSize,
             sell,
@@ -318,6 +324,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             _approvedCollateral.contains(address(sell)) ? targetBuy : 0,
             Fate.Stay
         );
+
         if (trade) {
             _launchAuction(auction);
             return SystemState.TRADING;
@@ -356,7 +363,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 main.rsrAsset(),
                 main.rTokenAsset(),
                 main.rsr().balanceOf(address(main.stRSR())),
-                totalSupply - _allBUs(),
+                totalSupply - fromBUs(_allBUs()),
                 Fate.Burn
             );
 
@@ -469,7 +476,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         Fix totalValue; // {attoUSD}
         for (uint256 i = 0; i < _alltimeCollateral.length(); i++) {
             ICollateral a = ICollateral(_alltimeCollateral.at(i));
-            Fix bal = toFix(IERC20(a.erc20()).balanceOf(address(this)));
+            Fix bal = toFix(a.erc20().balanceOf(address(this)));
 
             // {attoUSD} = {attoUSD} + {attoUSD/qTok} * {qTok}
             totalValue = totalValue.plus(a.priceUSD(main).mul(bal));
@@ -482,7 +489,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         Fix[] memory deficit = new Fix[](_alltimeCollateral.length());
         for (uint256 i = 0; i < _alltimeCollateral.length(); i++) {
             ICollateral a = ICollateral(_alltimeCollateral.at(i));
-            Fix bal = toFix(IERC20(a.erc20()).balanceOf(address(this))); // {qTok}
+            Fix bal = toFix(a.erc20().balanceOf(address(this))); // {qTok}
 
             // {qTok} = {BU} * {qTok/BU}
             Fix target = targetBUs.mulu(vault.quantity(a));
@@ -594,8 +601,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         uint256 sellAmount,
         Fate fate
     ) internal returns (bool, Auction.Info memory auction) {
-        sellAmount = Math.min(sellAmount, sell.erc20().balanceOf(address(this)));
-
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
         Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(main).mulu(main.rToken().totalSupply());
         Fix maxSellUSD = rTokenMarketCapUSD.mul(main.config().maxAuctionSize); // {attoUSD}
@@ -645,8 +650,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         }
 
         if (auction.minBuyAmount > targetBuyAmount) {
-            auction.minBuyAmount = targetBuyAmount;
-
             // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
             Fix exactSellAmount = toFix(auction.minBuyAmount).mul(buy.priceUSD(main)).div(sell.priceUSD(main));
 

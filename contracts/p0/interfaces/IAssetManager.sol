@@ -86,7 +86,7 @@ interface IAssetManager {
     /// @return {qRTok} The equivalent amount of RToken at the current base factor
     function fromBUs(uint256 amtBUs) external view returns (uint256);
 
-    /// @return {qRTok/qBU} The base factor
+    /// @return {qBU/qRTok} The base factor
     function baseFactor() external view returns (Fix);
 
     /// @return Whether the vault is fully capitalized

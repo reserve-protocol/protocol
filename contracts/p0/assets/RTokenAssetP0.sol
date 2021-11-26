@@ -32,7 +32,7 @@ contract RTokenAssetP0 is IAsset {
         // {attoUSD/qBU} = {attoUSD/BU} / {qBU/BU}
         Fix perQBU = sum.divu(10**v.BU_DECIMALS());
 
-        // {attoUSD/qRTok} = {attoUSD/qBU} / {qRTok/qBU}
+        // {attoUSD/qRTok} = {attoUSD/qBU} * {qBU/qRTok}
         return perQBU.mul(main.manager().baseFactor());
     }
 

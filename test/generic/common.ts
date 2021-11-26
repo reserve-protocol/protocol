@@ -39,18 +39,21 @@ export enum Account {
   CHARLIE,
   DAVE,
   EVE,
+  TRADER,
   //
   RTOKEN,
   STRSR,
   MAIN,
 }
-export const ACCOUNTS_LEN = 8
+export const ACCOUNTS_LEN = 9
 
 export type Balance = [Account, BigNumber]
 export type Allowance = [Account, Account, BigNumber]
 export type DefiRate = [Asset, BigNumber]
 //
 export type Basket = { assets: Asset[]; quantities: BigNumber[] }
+
+// inETH: {qETH/tok}, inUSD: {microUSD/tok}
 export type Price = { inETH: BigNumber; inUSD: BigNumber }
 
 const check = (b: boolean, s: string) => {
@@ -107,13 +110,12 @@ export const prepareDefiRates = (...rates: DefiRate[]): BigNumber[] => {
   return toReturn
 }
 
-// @param microUSD ie bn('1e6')
-// @param multiplier ie fp('1'), used for fiatcoin redemption rates
+// @param microUSD {microUSD/tok}
 export const prepareToPrice = (ethPrice: Price): ((microUSD: BigNumber) => Price) => {
   const toPrice = (microUSD: BigNumber): Price => {
     return {
       inUSD: microUSD,
-      inETH: microUSD.mul(bn('1e12')).div(ethPrice.inUSD),
+      inETH: microUSD.mul(bn('1e18')).div(ethPrice.inUSD),
     }
   }
   return toPrice

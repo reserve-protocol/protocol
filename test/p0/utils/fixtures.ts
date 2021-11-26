@@ -18,10 +18,10 @@ import { DeployerP0 } from '../../../typechain/DeployerP0'
 import { ERC20Mock } from '../../../typechain/ERC20Mock'
 import { FurnaceP0 } from '../../../typechain/FurnaceP0'
 import { MainP0 } from '../../../typechain/MainP0'
+import { MarketMock } from '../../../typechain/MarketMock'
 import { RSRAssetP0 } from '../../../typechain/RSRAssetP0'
 import { RTokenP0 } from '../../../typechain/RTokenP0'
 import { StRSRP0 } from '../../../typechain/StRSRP0'
-import { TradingMock } from '../../../typechain/TradingMock'
 import { VaultP0 } from '../../../typechain/VaultP0'
 import { getLatestBlockTimestamp } from '../../utils/time'
 
@@ -120,12 +120,12 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
 }
 
 interface MarketFixture {
-  trading: TradingMock
+  trading: MarketMock
 }
 
 async function marketFixture(): Promise<MarketFixture> {
-  const TradingMockFactory: ContractFactory = await ethers.getContractFactory('TradingMock')
-  const tradingMock: TradingMock = <TradingMock>await TradingMockFactory.deploy()
+  const MarketMockFactory: ContractFactory = await ethers.getContractFactory('MarketMock')
+  const tradingMock: MarketMock = <MarketMock>await MarketMockFactory.deploy()
   return { trading: tradingMock }
 }
 
