@@ -73,8 +73,8 @@ contract DeployerP1 is IDeployerP1 {
         {
             StRSRP1 stRSR = new StRSRP1(
                 main,
-                string(abi.encodePacked("Staked RSR - ", name)),
-                string(abi.encodePacked("st", symbol, "RSR"))
+                string(abi.encodeWithSignature("Staked RSR - ", name)),
+                string(abi.encodeWithSignature("st", symbol, "RSR"))
             );
             main.setStRSR(stRSR);
         }

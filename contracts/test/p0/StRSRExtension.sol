@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "contracts/test/Mixins.sol";
-import "contracts/test/p0/IExtension.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/StRSRP0.sol";
 
@@ -15,8 +14,8 @@ contract StRSRExtension is IExtension, ContextMixin, StRSRP0 {
         string memory symbol_
     ) ContextMixin(admin) StRSRP0(main_, name_, symbol_) {}
 
-    function checkInvariants() external view override returns (bool) {
-        return true;
+    function assertInvariants() external view override {
+        assert(true);
     }
 
     function _msgSender() internal view override returns (address) {

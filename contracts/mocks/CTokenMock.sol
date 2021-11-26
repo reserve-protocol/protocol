@@ -17,11 +17,7 @@ contract CTokenMock is ERC20Mock {
         address underlyingAsset
     ) ERC20Mock(name, symbol) {
         _underlyingAsset = underlyingAsset;
-
-        /// From Compound Docs: The current exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
-        Fix start = toFixWithShift(2, -2); // 0.02
-        int8 leftShift = 18 - int8(decimals()) + int8(IERC20Metadata(underlyingAsset).decimals());
-        _exchangeRate = toFixWithShift(1, leftShift).mul(start).toUint();
+        _exchangeRate = _toExchangeRate(FIX_ONE);
     }
 
     function decimals() public pure override returns (uint8) {
@@ -32,12 +28,19 @@ contract CTokenMock is ERC20Mock {
         return _exchangeRate;
     }
 
-    /// @dev Make sure to follow the same preparation method from lines 21-22
-    function setExchangeRate(uint256 rate) external {
-        _exchangeRate = rate;
+    /// @param fiatcoinRedemptionRate {fiatTok/tok}
+    function setExchangeRate(Fix fiatcoinRedemptionRate) external {
+        _exchangeRate = _toExchangeRate(fiatcoinRedemptionRate);
     }
 
     function underlying() external view returns (address) {
         return _underlyingAsset;
+    }
+
+    function _toExchangeRate(Fix fiatcoinRedemptionRate) internal view returns (uint256) {
+        /// From Compound Docs: The current exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
+        Fix start = toFixWithShift(2, -2); // 0.02
+        int8 leftShift = 18 - int8(decimals()) + int8(IERC20Metadata(_underlyingAsset).decimals());
+        return fiatcoinRedemptionRate.shiftLeft(leftShift).mul(start).toUint();
     }
 }

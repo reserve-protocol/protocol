@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "contracts/test/Mixins.sol";
-import "contracts/test/p0/IExtension.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/RTokenP0.sol";
 
@@ -15,8 +14,8 @@ contract RTokenExtension is IExtension, ContextMixin, RTokenP0 {
         string memory symbol_
     ) ContextMixin(admin) RTokenP0(main_, name_, symbol_) {}
 
-    function checkInvariants() external view override returns (bool) {
-        return true;
+    function assertInvariants() external view override {
+        assert(true);
     }
 
     function adminMint(address recipient, uint256 amount) external returns (bool) {

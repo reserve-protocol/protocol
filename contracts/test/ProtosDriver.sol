@@ -1,19 +1,29 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "contracts/p0/interfaces/IAsset.sol";
+import "contracts/IMain.sol";
 import "./ProtoState.sol";
 import "./Lib.sol";
 
-import "hardhat/console.sol";
-
 interface ProtoCommon {
+    /// Deploys a fresh instance of the system
     function init(ProtoState memory state) external;
 
-    /// @dev view
-    function state() external returns (ProtoState memory);
+    /// Updates the configuration of the system instance
+    function setConfig(Config memory config) external;
 
-    /// @dev view
-    function matches(ProtoState memory state) external returns (bool);
+    /// Updates oracle prices
+    /// @param assets One-of DAI/USDC/USDT/BUSD/RSR/COMP/AAVE
+    function setBaseAssetPrices(Asset[] memory assets, OraclePrice[] memory prices) external;
+
+    /// Updates DeFi redemption rates
+    /// @param defiAssets CTokens and ATokens
+    function setDefiCollateralRates(Asset[] memory defiAssets, Fix[] memory fiatcoinRedemptionRates) external;
+
+    function state() external view returns (ProtoState memory);
+
+    function matches(ProtoState memory state) external view returns (bool);
 
     // ==== COMMANDS ====
 
@@ -45,7 +55,7 @@ interface ProtoCommon {
 }
 
 interface ProtoAdapter is ProtoCommon {
-    function checkInvariants() external returns (bool);
+    function assertInvariants() external;
 }
 
 /// A single point of contact for the TS testing suite that ensures all provided impls stay in sync and
@@ -64,27 +74,68 @@ contract ProtosDriver is ProtoCommon {
 
     modifier afterCMD() {
         _;
-        for (uint256 i = 0; i < _adapters.length - 1; i++) {
-            assert(_adapters[i].state().eq(_adapters[i + 1].state()));
+        // Assert invariants
+        for (uint256 i = 0; i < _adapters.length; i++) {
+            _adapters[i].assertInvariants();
         }
-        assert(_checkInvariants());
+
+        // Compare parallel implementations for equality
+        for (uint256 i = 0; i < _adapters.length - 1; i++) {
+            _adapters[i].state().assertEq(_adapters[i + 1].state());
+        }
     }
 
     function init(ProtoState memory s) external override afterCMD {
+        require(s.collateral.length == s.defiCollateralRates.length, "all collateral should have defi rates");
         for (uint256 i = 0; i < _adapters.length; i++) {
             _adapters[i].init(s);
         }
     }
 
+    function setConfig(Config memory config) external override {
+        for (uint256 i = 0; i < _adapters.length; i++) {
+            _adapters[i].setConfig(config);
+        }
+    }
+
+    /// @param baseAssets One-of DAI/USDC/USDT/BUSD/RSR/COMP/AAVE
+    function setBaseAssetPrices(Asset[] memory baseAssets, OraclePrice[] memory prices) external override {
+        require(baseAssets.length == prices.length, "baseAssets len mismatch prices");
+        for (uint256 i = 0; i < _adapters.length; i++) {
+            require(
+                uint256(baseAssets[i]) <= 3 || ((uint256(baseAssets[i])) >= 11 && uint256(baseAssets[i]) <= 13),
+                "fiatcoins + gov tokens only"
+            );
+            _adapters[i].setBaseAssetPrices(baseAssets, prices);
+        }
+    }
+
+    /// @param defiCollateral CTokens and ATokens
+    function setDefiCollateralRates(Asset[] memory defiCollateral, Fix[] memory fiatcoinRedemptionRates)
+        external
+        override
+    {
+        require(
+            defiCollateral.length == fiatcoinRedemptionRates.length,
+            "defiCollateral len mismatch fiatcoin redemption rate"
+        );
+        for (uint256 i = 0; i < _adapters.length; i++) {
+            require(uint256(defiCollateral[i]) >= 4 && uint256(defiCollateral[i]) <= 10, "cToken/aTokens only");
+            _adapters[i].setDefiCollateralRates(defiCollateral, fiatcoinRedemptionRates);
+        }
+    }
+
     /// @return The first state, since txs only succeed if states match at end of tx
-    function state() external override returns (ProtoState memory) {
+    function state() external view override returns (ProtoState memory) {
         return _adapters[0].state();
     }
 
     /// @return Whether the state of the synced simulations matches
-    function matches(ProtoState memory s) external override returns (bool) {
+    function matches(ProtoState memory s) external view override returns (bool) {
         return _adapters[0].matches(s);
     }
+
+    // ==== COMMANDS ====
 
     function CMD_issue(Account account, uint256 amount) external override afterCMD {
         for (uint256 i = 0; i < _adapters.length; i++) {
@@ -146,16 +197,5 @@ contract ProtosDriver is ProtoCommon {
         for (uint256 i = 0; i < _adapters.length; i++) {
             _adapters[i].CMD_transferStRSR(from, to, amount);
         }
-    }
-
-    /// @return Whether all adapters are meeting their invariants
-    function _checkInvariants() internal returns (bool) {
-        for (uint256 i = 0; i < _adapters.length; i++) {
-            if (!_adapters[i].checkInvariants()) {
-                console.log("Adapter %s invariant violation", i);
-                return false;
-            }
-        }
-        return true;
     }
 }

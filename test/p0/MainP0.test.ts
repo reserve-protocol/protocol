@@ -1,41 +1,35 @@
-import { expect } from 'chai'
-import { ethers, waffle } from 'hardhat'
-import { Wallet, BigNumber, ContractFactory } from 'ethers'
-import { bn, fp } from '../../common/numbers'
-import { defaultFixture, IManagerConfig } from './utils/fixtures'
-import { advanceTime } from '../utils/time'
-import { BN_SCALE_FACTOR } from '../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
-import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
+import { expect } from 'chai'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { ethers, waffle } from 'hardhat'
+import { BN_SCALE_FACTOR } from '../../common/constants'
+import { bn, fp } from '../../common/numbers'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { DeployerP0 } from '../../typechain/DeployerP0'
-import { MainP0 } from '../../typechain/MainP0'
-import { VaultP0 } from '../../typechain/VaultP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
-import { FurnaceP0 } from '../../typechain/FurnaceP0'
-import { StRSRP0 } from '../../typechain/StRSRP0'
-import { CollateralP0 } from '../../typechain/CollateralP0'
-import { AssetManagerP0 } from '../../typechain/AssetManagerP0'
-import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
-import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
 import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
+import { AssetManagerP0 } from '../../typechain/AssetManagerP0'
 import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
+import { CollateralP0 } from '../../typechain/CollateralP0'
+import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
+import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
+import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
+import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
+import { DeployerP0 } from '../../typechain/DeployerP0'
+import { ERC20Mock } from '../../typechain/ERC20Mock'
+import { FurnaceP0 } from '../../typechain/FurnaceP0'
+import { MainP0 } from '../../typechain/MainP0'
+import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
+import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
+import { RTokenP0 } from '../../typechain/RTokenP0'
+import { StaticATokenMock } from '../../typechain/StaticATokenMock'
+import { StRSRP0 } from '../../typechain/StRSRP0'
+import { VaultP0 } from '../../typechain/VaultP0'
+import { advanceTime } from '../utils/time'
+import { defaultFixture, IManagerConfig, State } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-enum Mood {
-  CALM = 0,
-  DOUBT = 1,
-  TRADING = 2,
-}
-
-describe('MainP0 contract', () => {
+ndescribe('MainP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -849,7 +843,7 @@ describe('MainP0 contract', () => {
       expect(await assetManager.fullyCapitalized()).to.equal(false)
 
       // Set default rate
-      await aToken0.setExchangeRate(bn('0.98e27'))
+      await aToken0.setExchangeRate(bn('0.98'))
 
       // Call to detect vault switch and state change
       await main.noticeDefault()

@@ -60,7 +60,7 @@ struct Config {
 /// Tracks data for an issuance
 /// @param vault The vault the issuance is against
 /// @param amount {qTok} The quantity of RToken the issuance is for
-/// @param BUs {qBU} The number of BUs that corresponded to `amount` at time of issuance
+/// @param amtBUs {qBU} The number of BUs that corresponded to `amount` at time of issuance
 /// @param deposits {qTok} The collateral token quantities that were used to pay for the issuance
 /// @param issuer The account issuing RToken
 /// @param blockAvailableAt {blockNumber} The block number at which the issuance can complete
@@ -68,7 +68,7 @@ struct Config {
 struct SlowIssuance {
     IVaultP1 vault;
     uint256 amount; // {qTok}
-    uint256 BUs; // {qBU}
+    uint256 amtBUs; // {qBU}
     uint256[] deposits; // {qTok}, same index as vault basket assets
     address issuer;
     uint256 blockAvailableAt; // {blockNumber}

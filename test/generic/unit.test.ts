@@ -1,106 +1,51 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 
 import { bn, fp } from '../../common/numbers'
-import { AaveLendingAddrProviderMockP0 } from '../../typechain/AaveLendingAddrProviderMockP0'
-import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
-import { AdapterP0 } from '../../typechain/AdapterP0'
-import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
 import { ProtoAdapter } from '../../typechain/ProtoAdapter'
 import { ProtosDriver } from '../../typechain/ProtosDriver'
 import { IManagerConfig } from '../p0/utils/fixtures'
-import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
+import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
+import {
+  Account,
+  Asset,
+  ASSET_TOKEN_LEN,
+  Balance,
+  COLLATERAL_TOKEN_LEN,
+  DefiRate,
+  prepareState,
+  prepareToPrice,
+  Price,
+  SystemState,
+} from './common'
 
 /*
- * The Generic Unit tests are written against ProtoState and ProtosDriver. The ProtosDriver can be set
- * up with any number of implementations to test in parallel, and will check to ensure that the states
- * match across implementations after each command. It also checks the invariants. This enables
- * the generic test suite to pretend it is interacting with a single system.
+ *  Generic Unit Tests
+ *
+ *  Unit tests leverage a generic testing interface in order to run small sets of transformations
+ *  and assert that a subset of the resulting state is correct.
+ *
+ *  I'm not sure how long we need to keep these around, they are mostly useful for testing the generic testing suite itself.
+ *
+ *  These tests also implicitly assert that contract invariants are met after each individual tx. The tx will revert if:
+ *    (i)  an implementation invariant is violated.
+ *    (ii) implementations fall out of sync with each other (requires multiple implementations)
+ *
+ *
  */
-
-// Must match `ProtoState.CollateralToken`
-enum CollateralToken {
-  DAI,
-  USDC,
-  USDT,
-  BUSD,
-  cDAI,
-  cUSDC,
-  cUSDT,
-  aDAI,
-  aUSDC,
-  aUSDT,
-  aBUSD,
-}
-const COLLATERAL_TOKEN_LEN = 11
-
-// Must match `ProtoState.Account`
-enum Account {
-  ALICE,
-  BOB,
-  CHARLIE,
-  DAVE,
-  EVE,
-  //
-  RTOKEN,
-  STRSR,
-  MAIN,
-}
-const ACCOUNTS_LEN = 8
-
-/// Helper to prepare two-dimensional allowance arrays
-const prepareAllowances = (...allowance: Array<[Account, Account, BigNumber]>) => {
-  const toReturn: BigNumber[][] = [] // 2d
-  for (let i = 0; i < ACCOUNTS_LEN; i++) {
-    toReturn.push([])
-    for (let j = 0; j < ACCOUNTS_LEN; j++) {
-      toReturn[i].push(bn(0))
-    }
-  }
-  for (let i = 0; i < allowance.length; i++) {
-    toReturn[allowance[i][0]][allowance[i][1]] = allowance[i][2]
-  }
-  return toReturn
-}
-
-/// Helper to prepare balance arrays
-const prepareBalances = (...balance: Array<[Account, BigNumber]>) => {
-  const toReturn: BigNumber[] = []
-  for (let i = 0; i < ACCOUNTS_LEN; i++) {
-    toReturn.push(bn(0))
-  }
-  for (let i = 0; i < balance.length; i++) {
-    toReturn[balance[i][0]] = balance[i][1]
-  }
-  return toReturn
-}
-
-const sum = (arr: Array<BigNumber>) => {
-  let total = bn(0)
-  for (let i = 0; i < arr.length; i++) {
-    total = total.add(arr[i])
-  }
-  return total
-}
-
-describe('Generic unit tests', () => {
-  let owner: SignerWithAddress
+describe('Unit tests (Generic)', () => {
   let Impls: ContractFactory[]
   let driver: ProtosDriver
 
   beforeEach(async () => {
-    ;[owner] = await ethers.getSigners()
-
-    // ADD PROTOS TO THIS ARRAY AS WE FINISH THEM
+    // ADD PROTOS (BY CONTRACT NAME) TO THIS ARRAY AS WE FINISH THEM
     Impls = [await ethers.getContractFactory('AdapterP0')]
   })
 
   describe('Setup', () => {
     let initialState: any
+    let toPrice: (microUSD: BigNumber) => Price
 
     beforeEach(async () => {
       // Config
@@ -119,97 +64,135 @@ describe('Generic unit tests', () => {
         defaultThreshold: fp('0.05'), // 5% deviation
         f: fp('0.60'), // 60% to stakers
       }
+      const b1 = { assets: [Asset.cDAI, Asset.USDC], quantities: [bn('5e7'), bn('5e5')] }
+      const b2 = { assets: [Asset.USDC], quantities: [bn('1e6')] }
+      const baskets = [b1, b2]
 
-      // $4k ETH
       const ethPrice = { inUSD: bn('4000e6'), inETH: bn('1e18') }
-      const makeToken = (
-        symbol: string,
-        balances: Array<[Account, BigNumber]>,
-        allowances: Array<[Account, Account, BigNumber]>,
-        microUSDPrice: BigNumber
-      ) => {
-        const bals = prepareBalances(...balances)
-        return {
-          name: symbol + ' Token',
-          symbol: symbol,
-          balances: bals,
-          allowances: prepareAllowances(...allowances),
-          totalSupply: sum(bals),
-          price: { inUSD: microUSDPrice, inETH: microUSDPrice.mul(bn('1e12')).div(ethPrice.inUSD) },
-        }
-      }
+      toPrice = prepareToPrice(ethPrice)
 
-      // {symbol}, {balances}, {allowances}, {microUSD price}
-      const rToken = makeToken('USD+', [], [], bn('1e6'))
-      const rsr = makeToken('RSR', [], [], bn('1e6'))
-      const stRSR = makeToken('stUSD+RSR', [], [], bn('1e6'))
-      const comp = makeToken('COMP', [], [], bn('1e6'))
-      const aave = makeToken('AAVE', [], [], bn('1e6'))
-      const collateral = [
-        makeToken('DAI', [[Account.ALICE, bn('1e36')]], [[Account.ALICE, Account.MAIN, bn('1e36')]], bn('1e6')),
-        makeToken('USDC', [], [], bn('1e6')),
-        makeToken('USDT', [], [], bn('1e6')),
-        makeToken('BUSD', [], [], bn('1e6')),
-        makeToken('cDAI', [[Account.ALICE, bn('1e36')]], [[Account.ALICE, Account.MAIN, bn('1e36')]], bn('1e6')),
-        makeToken('cUSDC', [], [], bn('1e6')),
-        makeToken('cUSDT', [], [], bn('1e6')),
-        makeToken('aDAI', [], [], bn('1e6')),
-        makeToken('aUSDC', [], [], bn('1e6')),
-        makeToken('aUSDT', [], [], bn('1e6')),
-        makeToken('aBUSD', [], [], bn('1e6')),
-      ]
+      /// Human-usable configuration from common
+      const rTokenBal: Balance[] = [[Account.EVE, bn('1e20')]]
+      const stRSRBal: Balance[] = [[Account.EVE, bn('1e20')]]
+      const defiRates: DefiRate[] = []
 
-      const b1 = { tokens: [CollateralToken.cDAI, CollateralToken.DAI], quantities: [bn('5e7'), bn('5e17')] }
-      const b2 = { tokens: [CollateralToken.DAI], quantities: [bn('1e18')] }
-      const bu_s = [b1, b2]
-
-      initialState = {
-        bu_s: bu_s,
-        config: config,
-        rTokenDefinition: b1,
-        rToken: rToken,
-        rsr: rsr,
-        stRSR: stRSR,
-        comp: comp,
-        aave: aave,
-        collateral: collateral,
-        ethPrice: ethPrice,
-      }
-
-      const impls = []
-      for (let i = 0; i < Impls.length; i++) {
-        impls.push((<ProtoAdapter>await Impls[i].deploy()).address)
-      }
+      initialState = prepareState(config, ethPrice, rTokenBal, stRSRBal, defiRates, baskets)
+      // console.log(initialState)
 
       const Driver = await ethers.getContractFactory('ProtosDriver')
-      driver = await Driver.deploy(impls)
+      const impls = await Promise.all(Impls.map(async (i) => (<ProtoAdapter>await i.deploy()).address))
+      driver = <ProtosDriver>await Driver.deploy(impls)
       await driver.init(initialState)
     })
 
-    it('Should exactly match initialState', async () => {
-      expect(await driver.callStatic.matches(initialState)).to.equal(true)
+    it('Should set up correctly', async () => {
+      const state = await driver.state()
+      const lastCollateral = COLLATERAL_TOKEN_LEN - 1
+      expect(state.state).to.equal(SystemState.CALM)
+      expect(state.rToken.balances[Account.ALICE]).to.equal(0)
+      expect(state.rToken.balances[Account.EVE]).to.equal(bn('1e20'))
+      expect(state.collateral[0].balances[Account.ALICE]).to.equal(bn('1e36'))
+      expect(state.collateral[lastCollateral].balances[Account.ALICE]).to.equal(bn('1e36'))
+      expect(state.comp.balances[Account.ALICE]).to.equal(bn('1e36'))
+      expect(state.rTokenDefinition.assets.toString()).to.equal(initialState.rTokenDefinition.assets.toString())
+      expect(state.rTokenDefinition.quantities.toString()).to.equal(initialState.rTokenDefinition.quantities.toString())
+      expect(state.defiCollateralRates[0]).to.equal(initialState.defiCollateralRates[0])
+      expect(state.defiCollateralRates[lastCollateral]).to.equal(initialState.defiCollateralRates[lastCollateral])
+      expect(state.defiCollateralRates.length).to.equal(state.collateral.length)
+    })
+
+    it('Prices can be set', async () => {
+      let state = await driver.state()
+      expectPricesEqual(state.comp.price, toPrice(bn('1e6')))
+      expectPricesEqual(state.collateral[Asset.USDC].price, toPrice(bn('1e6')))
+      const compPrice = toPrice(bn('2e6'))
+      const collatPrice = toPrice(bn('0.5e6'))
+      await driver.setBaseAssetPrices([Asset.COMP, Asset.USDC], [compPrice, collatPrice])
+      state = await driver.state()
+      expectPricesEqual(state.comp.price, compPrice)
+      expectPricesEqual(state.collateral[Asset.USDC].price, collatPrice)
+      expectPricesEqual(state.collateral[Asset.cUSDC].price, toPrice(bn(0)))
+      expectPricesEqual(state.collateral[Asset.aUSDC].price, toPrice(bn(0)))
+    })
+
+    it('Defi rates can be set', async () => {
+      let state = await driver.state()
+      const lastCollateral = COLLATERAL_TOKEN_LEN - 1
+      expect(state.defiCollateralRates[0]).to.equal(fp('0'))
+      expect(state.defiCollateralRates[lastCollateral]).to.equal(fp('1'))
+      const cDaiRate = fp('0.9')
+      const aBUSDRate = fp('1.1')
+      await driver.setDefiCollateralRates([Asset.cDAI, Asset.aBUSD], [cDaiRate, aBUSDRate])
+      state = await driver.state()
+      expect(state.defiCollateralRates[Asset.cDAI]).to.equal(cDaiRate)
+      expect(state.defiCollateralRates[Asset.aBUSD]).to.equal(aBUSDRate)
     })
 
     it('Should issue, slowly', async () => {
       const amt = bn('1e18')
       await driver.CMD_issue(Account.ALICE, amt)
-      let state = await driver.callStatic.state()
+      let state = await driver.state()
       expect(state.rToken.balances[Account.ALICE]).to.equal(0)
 
       await driver.CMD_poke() // advance 1 block to cause minting
-      state = await driver.callStatic.state()
-      expect(state.rToken.balances[Account.ALICE]).to.equal(bn('1e18'))
+      state = await driver.state()
+      expect(state.rToken.balances[Account.ALICE]).to.equal(amt)
     })
 
     it('Should redeem', async () => {
-      const amt = bn('1e18')
-      await driver.CMD_issue(Account.ALICE, amt)
-      await driver.CMD_poke() // advance 1 block to cause minting
-      let state = await driver.callStatic.state()
-      expect(state.rToken.balances[Account.ALICE]).to.equal(bn('1e18'))
-      await driver.CMD_redeem(Account.ALICE, amt)
-      state = await driver.callStatic.state()
-      expect(state.rToken.balances[Account.ALICE]).to.equal(bn('0'))
+      const amt = bn('1e20')
+      let state = await driver.state()
+      expect(state.rToken.balances[Account.EVE]).to.equal(amt)
+      await driver.CMD_redeem(Account.EVE, amt)
+      state = await driver.state()
+      expect(state.rToken.balances[Account.EVE]).to.equal(bn(0))
     })
+
+    it('Should stake RSR', async () => {
+      let state = await driver.state()
+      expect(state.stRSR.balances[Account.ALICE]).to.equal(bn(0))
+      const amt = bn('1e18')
+      await driver.CMD_stakeRSR(Account.ALICE, amt)
+      state = await driver.state()
+      expect(state.stRSR.balances[Account.ALICE]).to.equal(amt)
+    })
+
+    it('Should unstake RSR', async () => {
+      const amt = bn('1e18')
+      await driver.CMD_stakeRSR(Account.ALICE, amt)
+      let state = await driver.state()
+      expect(state.stRSR.balances[Account.ALICE]).to.equal(amt)
+      await driver.CMD_unstakeRSR(Account.ALICE, amt)
+      state = await driver.state()
+      expect(state.stRSR.balances[Account.ALICE]).to.equal(bn(0))
+    })
+
+    // it.only('Should detect hard default + immediately migrate to backup vault', async () => {
+    //   await driver.setDefiCollateralRates([Asset.cDAI], [initialState.defiCollateralRates[Asset.cDAI].sub(bn(1))])
+    //   await driver.CMD_poke()
+    //   let state = await driver.state()
+    //   expect(state.state).to.equal(SystemState.TRADING)
+    //   expect(state.bu_s.length).to.equal(1)
+    //   expect(state.rTokenDefinition).to.equal({ assets: [Asset.USDC], quantities: [bn('1e6')] })
+    //   console.log(state.rTokenDefinition)
+    // })
+
+    // it('Should detect soft default + migrate to backup vault after 24h', async () => {
+    //   await driver.setBaseAssetPrices([Asset.USDC], [toPrice(bn('0.9e6'))])
+    //   await driver.CMD_checkForDefault()
+    //   advanceTime(initialState.config.defaultDelay)
+    //   await driver.CMD_checkForDefault()
+    //   await driver.CMD_poke()
+    // })
   })
 })
+
+const expectPricesEqual = (p1: Price | BigNumber[], p2: Price): void => {
+  if (Object.prototype.toString.call(p1) === '[object Array]') {
+    p1 = p1 as BigNumber[]
+    p1 = { inETH: p1[0], inUSD: p1[1] }
+  }
+  p1 = p1 as Price
+  expect(p1.inETH).to.equal(p2.inETH)
+  expect(p1.inUSD).to.equal(p2.inUSD)
+}

@@ -25,13 +25,11 @@ export default <HardhatUserConfig>{
       gas: 999999999999,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
-      timeout: 60,
     },
     localhost: {
       gas: 999999999999,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
-      timeout: 60,
     },
     ropsten: {
       chainId: 3,

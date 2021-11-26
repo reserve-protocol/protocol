@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/assets/collateral/CollateralP0.sol";
@@ -20,12 +21,16 @@ interface ICToken {
 contract CTokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
 
+    Fix public immutable initialExchangeRate; // 0.02, their hardcoded starting rate
+
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
     // solhint-disable-next-line no-empty-blocks
-    constructor(address erc20_) CollateralP0(erc20_) {}
+    constructor(address erc20_) CollateralP0(erc20_) {
+        initialExchangeRate = toFixWithShift(2, -2);
+    }
 
     /// @return {qFiatTok/qTok}
-    function rateFiatcoin() public override returns (Fix) {
+    function rateFiatcoin() public view override returns (Fix) {
         Fix rate = _exchangeRateRelativeToGenesis(); // {fiatTok/tok}
         // {qFiatTok/qTok} = {fiatTok/tok} * {qFiatTok/fiatTok} / {qTok/tok}
 
@@ -34,7 +39,7 @@ contract CTokenCollateralP0 is CollateralP0 {
     }
 
     /// @return {attoUSD/qTok} Without using oracles, returns the expected USD value of one qTok.
-    function rateUSD() public override returns (Fix) {
+    function rateUSD() public view override returns (Fix) {
         Fix rate = _exchangeRateRelativeToGenesis(); // {fiatTok/tok}
 
         // {attoUSD/qTok} = {fiatTok/tok} * {attoUSD/fiatTok} / {qTok/tok}
@@ -56,11 +61,10 @@ contract CTokenCollateralP0 is CollateralP0 {
     }
 
     /// @return {fiatTok/tok}
-    function _exchangeRateRelativeToGenesis() internal returns (Fix) {
-        Fix genesis = toFixWithShift(2, -2); // 0.02, their hardcoded starting rate
-        uint256 r = ICToken(_erc20).exchangeRateCurrent();
+    function _exchangeRateRelativeToGenesis() internal view returns (Fix) {
+        bytes memory result = Address.functionStaticCall(_erc20, abi.encodeWithSignature("exchangeRateCurrent()"));
         int8 shiftLeft = int8(decimals()) - int8(fiatcoinDecimals()) - 18;
-        Fix rateNow = toFixWithShift(r, shiftLeft);
-        return rateNow.div(genesis);
+        Fix rateNow = toFixWithShift(abi.decode(result, (uint256)), shiftLeft);
+        return rateNow.div(initialExchangeRate);
     }
 }

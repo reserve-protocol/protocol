@@ -9,7 +9,9 @@ import "./assets/AAVEAssetP0.sol";
 import "../libraries/CommonErrors.sol";
 import "./libraries/Oracle.sol";
 import "./interfaces/IAsset.sol";
+import "./interfaces/IAssetManager.sol";
 import "./interfaces/IDeployer.sol";
+import "./interfaces/IFurnace.sol";
 import "./interfaces/IMain.sol";
 import "./interfaces/IVault.sol";
 import "./assets/RTokenAssetP0.sol";
@@ -34,6 +36,22 @@ interface IOwnable {
  */
 contract DeployerP0 is IDeployer {
     IMainP0[] public deployments;
+    IMarket internal market;
+    IAsset internal rsrAsset;
+    IAsset internal compAsset;
+    IAsset internal aaveAsset;
+
+    constructor(
+        IAsset rsrAsset_,
+        IAsset compAsset_,
+        IAsset aaveAsset_,
+        IMarket market_
+    ) {
+        rsrAsset = rsrAsset_;
+        compAsset = compAsset_;
+        aaveAsset = aaveAsset_;
+        market = market_;
+    }
 
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
@@ -43,7 +61,6 @@ contract DeployerP0 is IDeployer {
     /// @param config Governance params
     /// @param compound The deployment of the Comptroller on this chain
     /// @param aave The deployment of the AaveLendingPool on this chain
-    /// @param nonCollateral The non-collateral assets in the system
     /// @param collateral The collateral assets in the system
     /// @return The address of the newly deployed Main instance.
     function deploy(
@@ -54,7 +71,6 @@ contract DeployerP0 is IDeployer {
         Config memory config,
         IComptroller compound,
         IAaveLendingPool aave,
-        ParamsAssets memory nonCollateral,
         ICollateral[] memory collateral
     ) external override returns (address) {
         Oracle.Info memory oracle = Oracle.Info(compound, aave);
@@ -70,8 +86,8 @@ contract DeployerP0 is IDeployer {
         {
             IRToken rToken = _deployRToken(main, name, symbol);
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken));
-            main.setAssets(rTokenAsset, nonCollateral.rsrAsset, nonCollateral.compAsset, nonCollateral.aaveAsset);
-            FurnaceP0 furnace = new FurnaceP0(address(rToken));
+            main.setAssets(rTokenAsset, rsrAsset, compAsset, aaveAsset);
+            IFurnace furnace = _deployFurnace(address(rToken));
             main.setFurnace(furnace);
         }
 
@@ -85,7 +101,7 @@ contract DeployerP0 is IDeployer {
         }
 
         {
-            AssetManagerP0 manager = new AssetManagerP0(main, vault, owner, collateral);
+            IAssetManager manager = _deployAssetManager(main, vault, owner, collateral);
             main.setManager(manager);
         }
         main.setPauser(owner);
@@ -95,12 +111,11 @@ contract DeployerP0 is IDeployer {
         return (address(main));
     }
 
-    /// @dev Used for testing to inject msg.sender
+    /// @dev Helpers used for testing to inject msg.sender and implement contract invariant checks
     function _deployMain(Oracle.Info memory oracle, Config memory config) internal virtual returns (IMainP0) {
         return IMainP0(address(new MainP0(oracle, config)));
     }
 
-    /// @dev Used for testing to inject msg.sender
     function _deployRToken(
         IMainP0 main,
         string memory name,
@@ -109,12 +124,24 @@ contract DeployerP0 is IDeployer {
         return new RTokenP0(main, name, symbol);
     }
 
-    /// @dev Used for testing to inject msg.sender
+    function _deployFurnace(address rToken) internal virtual returns (IFurnace) {
+        return new FurnaceP0(address(rToken));
+    }
+
     function _deployStRSR(
         IMainP0 main,
         string memory name,
         string memory symbol
     ) internal virtual returns (IStRSR) {
         return new StRSRP0(main, name, symbol);
+    }
+
+    function _deployAssetManager(
+        IMain main_,
+        IVault vault_,
+        address owner_,
+        ICollateral[] memory approvedCollateral_
+    ) internal virtual returns (IAssetManager) {
+        return new AssetManagerP0(main_, vault_, market, owner_, approvedCollateral_);
     }
 }

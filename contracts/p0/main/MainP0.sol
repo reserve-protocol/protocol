@@ -53,15 +53,15 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
 
         _processSlowIssuance();
 
-        uint256 BUs = manager.toBUs(amount);
+        uint256 amtBUs = manager.toBUs(amount);
 
         // During SlowIssuance, BUs are created up front and held by `Main` until the issuance vests,
         // at which point the BUs are transferred to the AssetManager and RToken is minted to the issuer.
         SlowIssuance memory iss = SlowIssuance({
             vault: manager.vault(),
             amount: amount,
-            BUs: BUs,
-            deposits: manager.vault().tokenAmounts(BUs),
+            amtBUs: amtBUs,
+            deposits: manager.vault().tokenAmounts(amtBUs),
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
@@ -73,7 +73,7 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
             IERC20(iss.vault.collateralAt(i).erc20()).safeApprove(address(iss.vault), iss.deposits[i]);
         }
 
-        iss.vault.issue(address(this), iss.BUs);
+        iss.vault.issue(address(this), iss.amtBUs);
         emit IssuanceStarted(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
     }
 
@@ -145,9 +145,8 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
         return next;
     }
 
-    /// @dev view
     /// @return The token quantities required to issue `amount` RToken.
-    function quote(uint256 amount) public returns (uint256[] memory) {
+    function quote(uint256 amount) public view returns (uint256[] memory) {
         return manager.vault().tokenAmounts(manager.toBUs(amount));
     }
 
@@ -184,11 +183,11 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
     function _processSlowIssuance() internal {
         for (uint256 i = 0; i < issuances.length; i++) {
             if (!issuances[i].processed && issuances[i].vault != manager.vault()) {
-                issuances[i].vault.redeem(issuances[i].issuer, issuances[i].BUs);
+                issuances[i].vault.redeem(issuances[i].issuer, issuances[i].amtBUs);
                 issuances[i].processed = true;
                 emit IssuanceCanceled(i);
             } else if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
-                issuances[i].vault.setAllowance(address(manager), issuances[i].BUs);
+                issuances[i].vault.setAllowance(address(manager), issuances[i].amtBUs);
                 manager.issue(issuances[i]);
                 issuances[i].processed = true;
                 emit IssuanceCompleted(i);
@@ -205,3 +204,5 @@ contract MainP0 is IMainEvents, Ownable, Pausable, SettingsP0 {
         return (time - uint256(dist), time - uint256(dist) + _config.rewardPeriod);
     }
 }
+
+// solhint-enable max-states-count

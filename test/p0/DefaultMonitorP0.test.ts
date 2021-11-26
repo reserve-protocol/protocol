@@ -1,21 +1,22 @@
-import { expect } from 'chai'
-import { ethers } from 'hardhat'
-import { BigNumber, ContractFactory } from 'ethers'
-import { bn, fp } from '../../common/numbers'
-import { BN_SCALE_FACTOR, ZERO_ADDRESS } from '../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { USDCMock } from '../../typechain/USDCMock'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { CTokenMock } from '../../typechain/CTokenMock'
-import { CollateralP0 } from '../../typechain/CollateralP0'
-import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
-import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
-import { VaultP0 } from '../../typechain/VaultP0'
-import { MainMockP0 } from '../../typechain/MainMockP0'
-import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
-import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
+import { expect } from 'chai'
+import { BigNumber, ContractFactory } from 'ethers'
+import { ethers } from 'hardhat'
+
+import { BN_SCALE_FACTOR, ZERO_ADDRESS } from '../../common/constants'
+import { bn, fp } from '../../common/numbers'
 import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
+import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
+import { CollateralP0 } from '../../typechain/CollateralP0'
+import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
+import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
+import { CTokenMock } from '../../typechain/CTokenMock'
+import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
+import { ERC20Mock } from '../../typechain/ERC20Mock'
+import { MainMockP0 } from '../../typechain/MainMockP0'
+import { StaticATokenMock } from '../../typechain/StaticATokenMock'
+import { USDCMock } from '../../typechain/USDCMock'
+import { VaultP0 } from '../../typechain/VaultP0'
 
 describe('DefaultMonitorP0 contract', () => {
   let owner: SignerWithAddress
@@ -306,7 +307,7 @@ describe('DefaultMonitorP0 contract', () => {
 
       it('Should detect hard default if rate decreases for single token', async function () {
         // Change redemption rate for AToken
-        await aTkn.setExchangeRate(bn('0.98e27'))
+        await aTkn.setExchangeRate(fp('0.98'))
 
         // Detect Hard default
         defaulting = await main.callStatic.checkForHardDefault(newVault.address)
@@ -315,10 +316,10 @@ describe('DefaultMonitorP0 contract', () => {
 
       it('Should detect hard default if rate decreases for multiple tokens', async function () {
         // Change redemption rate for AToken
-        await aTkn.setExchangeRate(bn('0.98e27'))
+        await aTkn.setExchangeRate(fp('0.99'))
 
         // Change redemption rate for CToken  - Original rate is 2e26
-        await cTkn.setExchangeRate(bn('1.5e26'))
+        await cTkn.setExchangeRate(fp('0.99'))
 
         // Call a few times to make sure default is still detected
         await main.checkForHardDefault(newVault.address)

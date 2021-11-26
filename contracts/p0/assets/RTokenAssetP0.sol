@@ -19,7 +19,7 @@ contract RTokenAssetP0 is IAsset {
     }
 
     /// @return {attoUSD/qRTok}
-    function priceUSD(IMainP0 main) public override returns (Fix) {
+    function priceUSD(IMainP0 main) public view override returns (Fix) {
         Fix sum; // {attoUSD/BU}
         IVault v = main.manager().vault();
         for (uint256 i = 0; i < v.size(); i++) {

@@ -1,13 +1,14 @@
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
+import { BigNumber, ContractFactory } from 'ethers'
 import hre from 'hardhat'
 import { ethers } from 'hardhat'
-import { BigNumber, ContractFactory } from 'ethers'
-import { bn } from '../../common/numbers'
+
 import { ZERO_ADDRESS } from '../../common/constants'
-import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { RTokenMockP0 } from '../../typechain/RTokenMockP0'
+import { bn } from '../../common/numbers'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
+import { RTokenMockP0 } from '../../typechain/RTokenMockP0'
+import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
 
 interface IBatchInfo {
   amount: BigNumber

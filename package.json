@@ -8,9 +8,7 @@
     "scripts": {
         "compile": "TS_NODE_TRANSPILE_ONLY=1 npx hardhat typechain && npx hardhat compile",
         "coverage": "npx hardhat coverage --temp artifacts",
-        "deploy:p0": "npx hardhat run scripts/p0/deploy_all.ts --network localhost --show-stack-traces",
-        "deploy:localhost": "npx hardhat run scripts/deploy_all.ts --network localhost",
-        "deploy:ropsten": "npx hardhat run scripts/deploy_all.ts --network ropsten",
+        "deploy:p0": "npx hardhat run scripts/proto0/deploy_all.ts --network localhost",
         "devchain": "npx hardhat node",
         "test": "npx hardhat test",
         "test:generic": "npx hardhat test test/generic/*.test.ts",

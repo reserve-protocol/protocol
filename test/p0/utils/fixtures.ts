@@ -1,28 +1,42 @@
+import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
-import { bn, fp } from '../../../common/numbers'
-import { expectInReceipt } from '../../../common/events'
-import { getLatestBlockTimestamp } from '../../utils/time'
-import { ERC20Mock } from '../../../typechain/ERC20Mock'
-import { CollateralP0 } from '../../../typechain/CollateralP0'
-import { RSRAssetP0 } from '../../../typechain/RSRAssetP0'
-import { COMPAssetP0 } from '../../../typechain/COMPAssetP0'
-import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
-import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
-import { AAVEAssetP0 } from '../../../typechain/AAVEAssetP0'
-import { AaveLendingPoolMockP0 } from '../../../typechain/AaveLendingPoolMockP0'
-import { AaveLendingAddrProviderMockP0 } from '../../../typechain/AaveLendingAddrProviderMockP0'
-import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
-import { DeployerP0 } from '../../../typechain/DeployerP0'
-import { MainP0 } from '../../../typechain/MainP0'
-import { VaultP0 } from '../../../typechain/VaultP0'
-import { RTokenP0 } from '../../../typechain/RTokenP0'
-import { FurnaceP0 } from '../../../typechain/FurnaceP0'
-import { StRSRP0 } from '../../../typechain/StRSRP0'
-import { AssetManagerP0 } from '../../../typechain/AssetManagerP0'
-import { DefaultMonitorP0 } from '../../../typechain/DefaultMonitorP0'
 
-import { Fixture } from 'ethereum-waffle'
+import { expectInReceipt } from '../../../common/events'
+import { bn, fp } from '../../../common/numbers'
+import { AAVEAssetP0 } from '../../../typechain/AAVEAssetP0'
+import { AaveLendingAddrProviderMockP0 } from '../../../typechain/AaveLendingAddrProviderMockP0'
+import { AaveLendingPoolMockP0 } from '../../../typechain/AaveLendingPoolMockP0'
+import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
+import { AssetManagerP0 } from '../../../typechain/AssetManagerP0'
+import { CollateralP0 } from '../../../typechain/CollateralP0'
+import { COMPAssetP0 } from '../../../typechain/COMPAssetP0'
+import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
+import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
+import { DefaultMonitorP0 } from '../../../typechain/DefaultMonitorP0'
+import { DeployerP0 } from '../../../typechain/DeployerP0'
+import { ERC20Mock } from '../../../typechain/ERC20Mock'
+import { FurnaceP0 } from '../../../typechain/FurnaceP0'
+import { MainP0 } from '../../../typechain/MainP0'
+import { RSRAssetP0 } from '../../../typechain/RSRAssetP0'
+import { RTokenP0 } from '../../../typechain/RTokenP0'
+import { StRSRP0 } from '../../../typechain/StRSRP0'
+import { TradingMock } from '../../../typechain/TradingMock'
+import { VaultP0 } from '../../../typechain/VaultP0'
+import { getLatestBlockTimestamp } from '../../utils/time'
+
+export enum State {
+  CALM = 0,
+  DOUBT = 1,
+  TRADING = 2,
+}
+
+export enum Fate {
+  Melt = 0,
+  Stake = 1,
+  Burn = 2,
+  Stay = 3,
+}
 
 export interface IManagerConfig {
   rewardStart: BigNumber
@@ -38,12 +52,6 @@ export interface IManagerConfig {
   issuanceRate: BigNumber
   defaultThreshold: BigNumber
   f: BigNumber
-}
-
-export interface IParamsAssets {
-  rsrAsset: string
-  compAsset: string
-  aaveAsset: string
 }
 
 interface RSRFixture {
@@ -92,6 +100,7 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
 
   const ComptrollerMockFactory: ContractFactory = await ethers.getContractFactory('ComptrollerMockP0')
   const compoundMock: ComptrollerMockP0 = <ComptrollerMockP0>await ComptrollerMockFactory.deploy(compoundOracle.address)
+  await compoundMock.setCompToken(compToken.address)
 
   const AaveOracleMockFactory: ContractFactory = await ethers.getContractFactory('AaveOracleMockP0')
   const weth: ERC20Mock = <ERC20Mock>await ERC20.deploy('Wrapped ETH', 'WETH')
@@ -108,6 +117,16 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
   )
 
   return { weth, compToken, compAsset, compoundOracle, compoundMock, aaveToken, aaveAsset, aaveOracle, aaveMock }
+}
+
+interface MarketFixture {
+  trading: TradingMock
+}
+
+async function marketFixture(): Promise<MarketFixture> {
+  const TradingMockFactory: ContractFactory = await ethers.getContractFactory('TradingMock')
+  const tradingMock: TradingMock = <TradingMock>await TradingMockFactory.deploy()
+  return { trading: tradingMock }
 }
 
 interface VaultFixture {
@@ -153,9 +172,9 @@ async function vaultFixture(): Promise<VaultFixture> {
   return { token0, token1, token2, token3, collateral0, collateral1, collateral2, collateral3, collateral, vault }
 }
 
-type RSRAndCompAaveAndVaultFixture = RSRFixture & COMPAAVEFixture & VaultFixture
+type RSRAndCompAaveAndVaultAndMarketFixture = RSRFixture & COMPAAVEFixture & VaultFixture & MarketFixture
 
-interface DefaultFixture extends RSRAndCompAaveAndVaultFixture {
+interface DefaultFixture extends RSRAndCompAaveAndVaultAndMarketFixture {
   config: IManagerConfig
   deployer: DeployerP0
   main: MainP0
@@ -172,6 +191,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
     await vaultFixture()
   const { weth, compToken, compAsset, compoundOracle, compoundMock, aaveToken, aaveAsset, aaveOracle, aaveMock } =
     await compAaveFixture()
+  const { trading } = await marketFixture()
 
   // Set Default Oracle Prices
   await compoundOracle.setPrice('TKN0', bn('1e6'))
@@ -186,15 +206,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
   await aaveOracle.setPrice(token2.address, bn('2.5e14'))
   await aaveOracle.setPrice(token3.address, bn('2.5e14'))
   await aaveOracle.setPrice(weth.address, bn('1e18'))
-  await aaveOracle.setPrice(aaveToken.address, bn('2e14'))
-  await aaveOracle.setPrice(compToken.address, bn('2e14'))
-  await aaveOracle.setPrice(rsr.address, bn('2e14'))
-
-  const paramsAssets: IParamsAssets = {
-    rsrAsset: rsrAsset.address,
-    compAsset: compAsset.address,
-    aaveAsset: aaveAsset.address,
-  }
+  await aaveOracle.setPrice(aaveToken.address, bn('2.5e14'))
+  await aaveOracle.setPrice(compToken.address, bn('2.5e14'))
+  await aaveOracle.setPrice(rsr.address, bn('2.5e14'))
 
   // Setup Config
   const rewardStart: BigNumber = bn(await getLatestBlockTimestamp())
@@ -204,7 +218,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
     auctionPeriod: bn('1800'), // 30 minutes
     stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
     defaultDelay: bn('86400'), // 24 hs
-    maxTradeSlippage: fp('0.05'), // 5%
+    maxTradeSlippage: fp('0.01'), // 1%
     maxAuctionSize: fp('0.01'), // 1%
     minRecapitalizationAuctionSize: fp('0.001'), // 0.1%
     minRevenueAuctionSize: fp('0.0001'), // 0.01%
@@ -216,19 +230,20 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
 
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0')
-  const deployer: DeployerP0 = <DeployerP0>await DeployerFactory.deploy()
+  const deployer: DeployerP0 = <DeployerP0>(
+    await DeployerFactory.deploy(rsrAsset.address, compAsset.address, aaveAsset.address, trading.address)
+  )
 
   // Deploy actual contracts
   const receipt = await (
     await deployer.deploy(
-      'RToken',
+      'RTKN RToken',
       'RTKN',
       owner.address,
       vault.address,
       config,
       compoundMock.address,
       aaveMock.address,
-      paramsAssets,
       collateral
     )
   ).wait()
@@ -277,5 +292,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]):
     stRSR,
     assetManager,
     defaultMonitor,
+    trading,
   }
 }

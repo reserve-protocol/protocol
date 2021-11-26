@@ -52,7 +52,7 @@ library AuctionP1 {
     }
 
     function open(AuctionP1.Info storage self) internal {
-        // TODO: batchAuction.initiateAuction()
+        // TODO: market.initiateAuction()
         self.isOpen = true;
         emit AuctionStarted(address(self.sell), address(self.buy), self.sellAmount, self.minBuyAmount, self.fate);
     }
@@ -62,7 +62,7 @@ library AuctionP1 {
     function close(AuctionP1.Info storage self, IMainP1 main) internal returns (uint256 buyAmount) {
         require(self.isOpen, "already closed out");
         require(self.endTime <= block.timestamp, "auction not over");
-        // TODO: buyAmount = batchAuction.claim();
+        // TODO: buyAmount = market.claim();
 
         uint256 bal = self.buy.erc20().balanceOf(address(this)); // {qBuyTok}
 
