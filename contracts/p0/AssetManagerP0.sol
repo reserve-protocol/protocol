@@ -165,6 +165,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         if (!fullyCapitalized()) {
             return _doRecapitalizationAuctions();
         }
+
         return _doRevenueAuctions();
     }
 
@@ -270,7 +271,9 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
     /// Runs infrequently to accumulate the historical dilution factor
     function _accumulate() internal {
-        _historicalBasketDilution = _basketDilutionFactor();
+        if (main.rToken().totalSupply() > 0) {
+            _historicalBasketDilution = _basketDilutionFactor();
+        }
         _prevBasketRate = vault.basketRate();
     }
 
@@ -567,8 +570,12 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         // Resize the smaller auction to cause the ratio to be `f:1-f`
         Fix expectedRatio = amountForRSR.div(amountForRToken);
         Fix actualRatio = toFix(auction.sellAmount).divu(auction2.sellAmount);
+
         if (actualRatio.lt(expectedRatio)) {
-            Fix smallerAmountForRToken = amountForRSR.mul(FIX_ONE.minus(main.config().f)).div(main.config().f);
+            Fix smallerAmountForRToken = toFix(auction.sellAmount).mul(FIX_ONE.minus(main.config().f)).div(
+                main.config().f
+            );
+
             (launch2, auction2) = _prepareAuctionSell(
                 main.config().minRevenueAuctionSize,
                 asset,
@@ -577,7 +584,10 @@ contract AssetManagerP0 is IAssetManager, Ownable {
                 Fate.Melt
             );
         } else if (actualRatio.gt(expectedRatio)) {
-            Fix smallerAmountForRSR = amountForRToken.mul(main.config().f).div(FIX_ONE.minus(main.config().f));
+            Fix smallerAmountForRSR = toFix(auction2.sellAmount).mul(main.config().f).div(
+                FIX_ONE.minus(main.config().f)
+            );
+
             (launch, auction) = _prepareAuctionSell(
                 main.config().minRevenueAuctionSize,
                 asset,
