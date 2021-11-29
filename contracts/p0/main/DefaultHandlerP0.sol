@@ -42,7 +42,13 @@ contract DefaultHandlerP0 is
 
     mapping(ICollateral => Fix) private _lastRatesUSD; // {attoUSD/qtok}
 
-    // TODO: Need `init?`
+    function init(ConstructorArgs calldata args)
+        public
+        virtual
+        override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
+    {
+        super.init(args);
+    }
 
     function poke() public virtual override notPaused {
         ICollateral[] memory softDefaulting = _checkForSoftDefault();

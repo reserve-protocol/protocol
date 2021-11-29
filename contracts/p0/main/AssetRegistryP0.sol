@@ -16,7 +16,7 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     function init(ConstructorArgs calldata args) public virtual override {
         super.init(args);
         for (uint256 i = 0; i < args.approvedCollateral.length; i++) {
-            _approveCollateral(args.approvedCollateral_[i]);
+            _approveCollateral(args.approvedCollateral[i]);
         }
     }
 

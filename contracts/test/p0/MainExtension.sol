@@ -19,14 +19,11 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     using Address for address;
     using FixLib for Fix;
 
-    constructor(
-        address admin,
-        Oracle.Info memory oracle,
-        Config memory config,
-        IVault vault,
-        IMarket market,
-        ICollateral[] memory approvedCollateral
-    ) ContextMixin(admin) MainP0(oracle, config, vault, market, approvedCollateral) {}
+    constructor(address admin) ContextMixin(admin) {}
+
+    function init(ConstructorArgs calldata args) public virtual override {
+        super.init(args);
+    }
 
     function issueInstantly(address account, uint256 amount) public {
         uint256 start = rTokenAsset.erc20().balanceOf(account);
@@ -99,7 +96,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_fullyCapitalizedOrNotCalm() internal view returns (bool ok) {
         ok = true;
-        ok = ok && (fullyCapitalized() || mood != Mood.CALM);
+        ok = ok && (fullyCapitalized() || _mood != Mood.CALM);
         if (!ok) {
             console.log("_INVARIANT_fullyCapitalizedOrNotCalm violated");
         }

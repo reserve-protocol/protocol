@@ -34,12 +34,17 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
 
     IMarket private _market;
 
-    function init(ConstructorArgs calldata args) public virtual override {
+    function init(ConstructorArgs calldata args)
+        public
+        virtual
+        override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
+    {
         super.init(args);
         _market = args.market;
     }
 
-    function poke() external virtual override notPaused {
+    function poke() public virtual override notPaused {
+        super.poke();
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctions.length; i++) {
             Auction.Info storage auction = auctions[i];

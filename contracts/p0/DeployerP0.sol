@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./assets/RTokenAssetP0.sol";
 import "./assets/RSRAssetP0.sol";
@@ -19,14 +20,6 @@ import "./FurnaceP0.sol";
 import "./MainP0.sol";
 import "./RTokenP0.sol";
 import "./StRSRP0.sol";
-
-/**
- * @dev Transfers ownership of the contract to a new account (`newOwner`).
- * Can only be called by the current owner.
- */
-interface IOwnable {
-    function transferOwnership(address newOwner) external;
-}
 
 /**
  * @title DeployerP0
@@ -97,7 +90,7 @@ contract DeployerP0 is IDeployer {
         }
 
         main.setPauser(owner);
-        IOwnable(address(main)).transferOwnership(owner);
+        Ownable(address(main)).transferOwnership(owner);
 
         emit RTokenCreated(address(main), address(main.rToken()), owner);
         return (address(main));
@@ -113,7 +106,9 @@ contract DeployerP0 is IDeployer {
         IMarket market_,
         ICollateral[] memory approvedCollateral
     ) internal virtual returns (IMain) {
-        return new MainP0(oracle, config, vault, market_, approvedCollateral);
+        IMain m = new MainP0();
+        m.init(ConstructorArgs(approvedCollateral, oracle, config, vault, market_));
+        return m;
     }
 
     function _deployRToken(

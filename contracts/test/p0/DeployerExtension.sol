@@ -38,7 +38,8 @@ contract DeployerExtension is DeployerP0, IExtension {
         IMarket market,
         ICollateral[] memory approvedCollateral
     ) internal override returns (IMain) {
-        _main = new MainExtension(_admin, oracle, config, vault, market, approvedCollateral);
+        _main = new MainExtension(_admin);
+        _main.init(ConstructorArgs(approvedCollateral, oracle, config, vault, market));
         return _main;
     }
 

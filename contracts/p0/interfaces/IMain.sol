@@ -182,9 +182,9 @@ interface IVaultHandler {
 
     function setF(Fix newF) external;
 
-    function toBUs(uint256 amount) external returns (uint256);
+    function toBUs(uint256 amount) external view returns (uint256);
 
-    function fromBUs(uint256 amtBUs) external returns (uint256);
+    function fromBUs(uint256 amtBUs) external view returns (uint256);
 
     function fullyCapitalized() external view returns (bool);
 

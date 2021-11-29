@@ -163,7 +163,7 @@ contract AdapterP0 is ProtoAdapter {
             _rToken = RTokenExtension(address(_main.rToken()));
 
             for (uint256 i = 0; i < vaults.length; i++) {
-                vaults[i].setMain(_main);
+                vaults[i].setMain(address(_main));
             }
         }
 
@@ -285,10 +285,6 @@ contract AdapterP0 is ProtoAdapter {
     function CMD_redeem(Account account, uint256 amount) external override {
         _main.connect(_address(uint256(account)));
         _main.redeem(amount);
-    }
-
-    function CMD_checkForDefault() external override {
-        _main.noticeDefault();
     }
 
     function CMD_poke() external virtual override {
@@ -423,8 +419,8 @@ contract AdapterP0 is ProtoAdapter {
                 IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
                 IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
                 newBid.buyAmount = toFix(sellAmount)
-                .mul(buyAsset.priceUSD(_main))
-                .div(sellAsset.priceUSD(_main))
+                .mul(buyAsset.priceUSD(address(_main)))
+                .div(sellAsset.priceUSD(address(_main)))
                 .toUint();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(newBid.bidder, address(_market), newBid.buyAmount);

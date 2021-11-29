@@ -67,8 +67,17 @@ contract RTokenIssuerP0 is
         _;
     }
 
+    function init(ConstructorArgs calldata args)
+        public
+        virtual
+        override(Mixin, SettingsHandlerP0, VaultHandlerP0, DefaultHandlerP0)
+    {
+        super.init(args);
+    }
+
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
-    function poke() external virtual override(IMixin, DefaultHandlerP0) notPaused notInDoubt always {
+    function poke() public virtual override(Mixin, DefaultHandlerP0) notPaused notInDoubt always {
+        super.poke();
         _processSlowIssuance();
     }
 

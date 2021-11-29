@@ -34,15 +34,28 @@ contract MainP0 is
 {
     using FixLib for Fix;
 
-    constructor(
-        Oracle.Info memory oracle_,
-        Config memory config_,
-        IVault vault_,
-        IMarket market_,
-        ICollateral[] memory approvedCollateral_
-    ) AuctioneerP0(oracle_, config_, vault_, market_) {}
+    function init(ConstructorArgs calldata args)
+        public
+        virtual
+        override(
+            IMixin,
+            Mixin,
+            AssetRegistryP0,
+            SettingsHandlerP0,
+            DefaultHandlerP0,
+            AuctioneerP0,
+            RevenueHandlerP0,
+            RTokenIssuerP0
+        )
+    {
+        super.init(args);
+    }
 
-    function poke() public virtual override(IMixin, DefaultHandlerP0, AuctioneerP0, RevenueHandlerP0, RTokenIssuerP0) {
+    function poke()
+        public
+        virtual
+        override(IMixin, Mixin, DefaultHandlerP0, AuctioneerP0, RevenueHandlerP0, RTokenIssuerP0)
+    {
         super.poke();
     }
 

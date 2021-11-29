@@ -31,8 +31,6 @@ interface ProtoCommon {
 
     function CMD_redeem(Account account, uint256 amount) external;
 
-    function CMD_checkForDefault() external;
-
     function CMD_poke() external;
 
     function CMD_stakeRSR(Account account, uint256 amount) external;
@@ -146,12 +144,6 @@ contract ProtosDriver is ProtoCommon {
     function CMD_redeem(Account account, uint256 amount) external override afterCMD {
         for (uint256 i = 0; i < _adapters.length; i++) {
             _adapters[i].CMD_redeem(account, amount);
-        }
-    }
-
-    function CMD_checkForDefault() external override afterCMD {
-        for (uint256 i = 0; i < _adapters.length; i++) {
-            _adapters[i].CMD_checkForDefault();
         }
     }
 

@@ -37,7 +37,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
     IVault public override vault;
     IVault[] public pastVaults;
 
-    function init(ConstructorArgs calldata args) public virtual override {
+    function init(ConstructorArgs calldata args) public virtual override(Mixin, SettingsHandlerP0) {
         super.init(args);
         vault = args.vault;
         _prevBasketRate = args.vault.basketRate();

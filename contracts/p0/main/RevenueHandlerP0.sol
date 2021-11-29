@@ -24,8 +24,13 @@ contract RevenueHandlerP0 is Pausable, Mixin, MoodyP0, SettingsHandlerP0, VaultH
     // timestamp -> whether rewards have been claimed.
     mapping(uint256 => bool) private _rewardsClaimed;
 
+    function init(ConstructorArgs calldata args) public virtual override(Mixin, SettingsHandlerP0, VaultHandlerP0) {
+        super.init(args);
+    }
+
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
-    function poke() external virtual override notPaused calm {
+    function poke() public virtual override notPaused calm {
+        super.poke();
         (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
         if (!_rewardsClaimed[prevRewards]) {
             _doRewards();
