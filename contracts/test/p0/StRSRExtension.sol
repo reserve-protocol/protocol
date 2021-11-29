@@ -6,7 +6,7 @@ import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/StRSRP0.sol";
 
 /// Enables generic testing harness to set _msgSender() for StRSR.
-contract StRSRExtension is IExtension, ContextMixin, StRSRP0 {
+contract StRSRExtension is ContextMixin, StRSRP0, IExtension {
     constructor(
         address admin,
         IMain main_,

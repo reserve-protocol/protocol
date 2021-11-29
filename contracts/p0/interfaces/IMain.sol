@@ -4,36 +4,25 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "./IAsset.sol";
-import "./IAssetManager.sol";
-import "./IDefaultMonitor.sol";
 import "./IFurnace.sol";
+import "./IMarket.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./IVault.sol";
 
-/// Tracks data for an issuance
-/// @param vault The vault the issuance is against
-/// @param amount {qTok} The quantity of RToken the issuance is for
-/// @param amtBUs {qBU} The number of BUs that corresponded to `amount` at time of issuance
-/// @param deposits {qTok} The collateral token quantities that were used to pay for the issuance
-/// @param issuer The account issuing RToken
-/// @param blockAvailableAt {blockNumber} The block number at which the issuance can complete
-/// @param processed false when the issuance is still vesting
-struct SlowIssuance {
-    IVault vault;
-    uint256 amount; // {qTok}
-    uint256 amtBUs; // {qBU}
-    uint256[] deposits; // {qTok}, same index as vault basket assets
-    address issuer;
-    uint256 blockAvailableAt; // {blockNumber}
-    bool processed;
-}
-
-/// The 3 canonical states of the system
+/// The state of the system, as a personified mood
 enum Mood {
     CALM, // 100% capitalized + no auctions
     DOUBT, // in this state for 24h before default, no auctions or unstaking
     TRADING // auctions in progress, no unstaking
+}
+
+/// What should happen to auction tokens after the auctinon clears
+enum Fate {
+    Melt, // RToken melting in the furnace
+    Stake, // RSR dividend to stRSR
+    Burn, // RToken burning
+    Stay // No action needs to be taken; tokens can be left at the callers address
 }
 
 /// Configuration of the system
@@ -74,13 +63,18 @@ struct Config {
     // f = 0.6 (60% to stakers)
 }
 
-/// Base template for cooperative mixin functions
-interface IMixin {
-    function poke() external;
+struct ConstructorArgs {
+    ICollateral[] approvedCollateral;
+    Oracle.Info oracle;
+    Config config;
+    IVault vault;
+    IMarket market;
 }
 
-contract Mixin is IMixin {
-    function poke() external virtual override {}
+interface IMixin {
+    function init(ConstructorArgs calldata args) external;
+
+    function poke() external;
 }
 
 interface IPausable {
@@ -96,6 +90,8 @@ interface IPausable {
 }
 
 interface IMoody {
+    /// The 3 canonical states of the system
+
     /// Emitted when there is a change in system state.
     event MoodChanged(Mood indexed oldState, Mood indexed newState);
 
@@ -140,8 +136,6 @@ interface ISettingsHandler {
 
     function setFurnace(IFurnace furnace) external;
 
-    function setMonitor(IDefaultMonitor monitor) external;
-
     function setRTokenAsset(IAsset rTokenAsset) external;
 
     function setRSRAsset(IAsset rsrAsset) external;
@@ -149,6 +143,8 @@ interface ISettingsHandler {
     function setCompAsset(IAsset compAsset) external;
 
     function setAaveAsset(IAsset aaveAsset) external;
+
+    function setConfig(Config memory config_) external;
 
     // TODO: Delete
 
@@ -168,29 +164,36 @@ interface ISettingsHandler {
 
     function stRSRWithdrawalDelay() external view returns (uint256);
 
-    function setConfig(Config memory config_) external;
-
     function consultOracle(Oracle.Source source, address token) external view returns (Fix);
 }
 
 interface IVaultHandler {
+    /// Emitted when parameter `f` (proportion of revenue to stakers) is changed
+    /// @param oldF The old value of `f`, as a Fix
+    /// @param newF The new value of `f`, as a Fix
+    event ParamFSet(Fix oldF, Fix newF);
+
+    /// Emitted when the current vault is changed
+    /// @param oldVault The address of the old vault
+    /// @param newVault The address of the new vault
+    event NewVaultSet(address indexed oldVault, address indexed newVault);
+
     function switchVault(IVault vault) external;
 
-    function toBUs(uint256 amount) external view returns (uint256);
+    function setF(Fix newF) external;
 
-    function fromBUs(uint256 amtBUs) external view returns (uint256);
+    function toBUs(uint256 amount) external returns (uint256);
 
-    function vault() external view returns (IVault);
+    function fromBUs(uint256 amtBUs) external returns (uint256);
 
     function fullyCapitalized() external view returns (bool);
-    // function setF(Fix newF) external;
+
+    function vault() external view returns (IVault);
 }
 
-interface IDefaultHandler is IMixin {
-    function noticeDefault() external;
-}
+interface IDefaultHandler {}
 
-interface IAuctioneer is IMixin {
+interface IAuctioneer {
     /// Emitted when an auction is started
     /// @param auctionId The index of the AssetManager.auctions array
     /// @param sell The token to sell
@@ -198,7 +201,6 @@ interface IAuctioneer is IMixin {
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
     /// @param fate The fate of the soon-to-be-purchased tokens
-    /// @dev Must be kept in sync with its duplicate in `IAssetManager.sol`
     event AuctionStarted(
         uint256 indexed auctionId,
         address indexed sell,
@@ -220,18 +222,13 @@ interface IAuctioneer is IMixin {
         uint256 buyAmount,
         Fate fate
     );
-
-    /// Emitted when the current vault is changed
-    /// @param oldVault The address of the old vault
-    /// @param newVault The address of the new vault
-    event NewVaultSet(address indexed oldVault, address indexed newVault);
 }
 
-interface IRevenueHandler is IMixin {
+interface IRevenueHandler {
     function nextRewards() external view returns (uint256);
 }
 
-interface IRTokenIssuer is IMixin {
+interface IRTokenIssuer {
     /// Emitted when issuance is started, at the point collateral is taken in
     /// @param issuanceId The index off the issuance, a globally unique identifier
     /// @param issuer The account performing the issuance
@@ -271,8 +268,8 @@ interface IRTokenIssuer is IMixin {
  * @dev The p0-specific IMain
  */
 interface IMain is
-    IMixin,
     IPausable,
+    IMixin,
     IMoody,
     IAssetRegistry,
     ISettingsHandler,

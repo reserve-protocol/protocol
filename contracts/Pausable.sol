@@ -11,7 +11,7 @@ import "contracts/p0/interfaces/IMain.sol";
  * - Pause and unpause commands, to allow either pauser or owner to set the paused flag.
  * - The `notPaused` modifier.
  */
-contract Pausable is IPausable, Ownable {
+contract Pausable is Ownable, IPausable {
     address private _pauser;
     bool public override paused;
 
@@ -24,21 +24,21 @@ contract Pausable is IPausable, Ownable {
         _;
     }
 
-    function pause() external {
+    function pause() external override {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         paused = true;
     }
 
-    function unpause() external {
+    function unpause() external override {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         paused = false;
     }
 
-    function pauser() public view returns (address) {
+    function pauser() external view override returns (address) {
         return _pauser;
     }
 
-    function setPauser(address pauser_) public {
+    function setPauser(address pauser_) external override {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         _pauser = pauser_;
     }

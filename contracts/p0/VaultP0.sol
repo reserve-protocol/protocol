@@ -31,7 +31,7 @@ contract VaultP0 is IVault, Ownable {
 
     IVault[] public backups;
 
-    IMain public main;
+    address public main;
 
     /// @param quantities {qTok/BU}
     constructor(
@@ -88,50 +88,8 @@ contract VaultP0 is IVault, Ownable {
         emit BUsRedeemed(to, _msgSender(), amtBUs);
     }
 
-    /// Allows `spender` to spend `amtBUs` from the callers account
-    /// @param spender The account that is able to spend the `amtBUs`
-    /// @param amtBUs {qBU} The quantity of BUs that should be spendable
-    function setAllowance(address spender, uint256 amtBUs) external override {
-        _allowances[_msgSender()][spender] = amtBUs;
-    }
-
-    /// Pulls BUs over from one account to another (like `ERC20.transferFrom`), requiring allowance
-    /// @param from The account to pull BUs from (must have set allowance)
-    /// @param amtBUs {qBU} The quantity of BUs to pull
-    function pullBUs(address from, uint256 amtBUs) external override {
-        require(basketUnits[from] >= amtBUs, "not enough to transfer");
-        require(_allowances[from][_msgSender()] >= amtBUs, "not enough allowance");
-        _allowances[from][_msgSender()] -= amtBUs;
-        basketUnits[from] -= amtBUs;
-        basketUnits[_msgSender()] += amtBUs;
-        emit BUsTransferred(from, _msgSender(), amtBUs);
-    }
-
-    /// Claims all earned COMP/AAVE and sends it to the asset manager
-    function claimAndSweepRewardsToManager() external override {
-        require(address(main) != address(0), "main not set");
-        // TODO
-        // Claim (covers all cTokens)
-        // main.comptroller().claimComp(address(this));
-        // for (uint256 i = 0; i < _basket.size; i++) {
-        //     // Only aTokens need to be claimed at the asset level
-        //     if (_basket.collateral[i].isAToken()) {
-        //         IStaticAToken(address(_basket.collateral[i].erc20())).claimRewardsToSelf(true);
-        //     }
-        // }
-
-        // // Sweep
-        // IERC20 comp = main.compAsset().erc20();
-        // uint256 compBal = comp.balanceOf(address(this));
-        // if (compBal > 0) {
-        //     comp.safeTransfer(address(main.manager()), compBal);
-        // }
-        // IERC20 aave = main.aaveAsset().erc20();
-        // uint256 aaveBal = aave.balanceOf(address(this));
-        // if (aaveBal > 0) {
-        //     aave.safeTransfer(address(main.manager()), aaveBal);
-        // }
-        // emit RewardsClaimed(compBal, aaveBal);
+    function sweepToken(address token) external override {
+        IERC20(token).safeTransfer(main, IERC20(token).balanceOf(address(this)));
     }
 
     /// @param amtBUs {qBU}
@@ -157,22 +115,6 @@ contract VaultP0 is IVault, Ownable {
             // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
             sum = sum.plus(a.rateUSD().mulu(_basket.quantities[a]));
         }
-    }
-
-    /// @return Whether the vault is made up only of collateral in `collateral`
-    function containsOnly(ICollateral[] memory collateral) external view override returns (bool) {
-        for (uint256 i = 0; i < _basket.size; i++) {
-            bool found = false;
-            for (uint256 j = 0; j < collateral.length; j++) {
-                if (_basket.collateral[i] == collateral[j]) {
-                    found = true;
-                }
-            }
-            if (!found) {
-                return false;
-            }
-        }
-        return true;
     }
 
     /// @return {qBU} The maximum number of basket units that `issuer` can issue
@@ -209,7 +151,7 @@ contract VaultP0 is IVault, Ownable {
         backups = backupVaults;
     }
 
-    function setMain(IMain main_) external override onlyOwner {
+    function setMain(address main_) external override onlyOwner {
         main = main_;
     }
 }

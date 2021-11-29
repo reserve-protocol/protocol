@@ -18,8 +18,8 @@ contract COMPAssetP0 is IAsset {
     }
 
     // @return {attoUSD/qCOMP}
-    function priceUSD(IMain main) public view override returns (Fix) {
-        return main.consultOracle(Oracle.Source.COMPOUND, _erc20);
+    function priceUSD(address main) public view override returns (Fix) {
+        return IMain(main).consultOracle(Oracle.Source.COMPOUND, _erc20);
     }
 
     /// @return The ERC20 contract of the central token

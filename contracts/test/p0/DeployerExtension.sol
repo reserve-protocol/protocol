@@ -14,7 +14,7 @@ import "./RTokenExtension.sol";
 import "./StRSRExtension.sol";
 
 /// Inject wrapper contracts into Deployer
-contract DeployerExtension is IExtension, DeployerP0 {
+contract DeployerExtension is DeployerP0, IExtension {
     address internal _admin;
     IMain internal _main;
 

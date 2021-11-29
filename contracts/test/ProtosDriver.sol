@@ -155,7 +155,7 @@ contract ProtosDriver is ProtoCommon {
         }
     }
 
-    function CMD_poke() external override afterCMD {
+    function CMD_poke() external virtual override afterCMD {
         for (uint256 i = 0; i < _adapters.length; i++) {
             _adapters[i].CMD_poke();
         }

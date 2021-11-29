@@ -11,7 +11,7 @@ import "contracts/p0/FurnaceP0.sol";
 import "./RTokenExtension.sol";
 
 /// Enables generic testing harness to set _msgSender() for AssetManager.
-contract FurnaceExtension is IExtension, ContextMixin, FurnaceP0 {
+contract FurnaceExtension is ContextMixin, FurnaceP0, IExtension {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using Address for address;

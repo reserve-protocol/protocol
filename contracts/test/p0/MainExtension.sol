@@ -15,7 +15,7 @@ import "./RTokenExtension.sol";
 import "hardhat/console.sol";
 
 /// Enables generic testing harness to set _msgSender() for Main.
-contract MainExtension is IExtension, ContextMixin, MainP0 {
+contract MainExtension is ContextMixin, MainP0, IExtension {
     using Address for address;
     using FixLib for Fix;
 
@@ -65,7 +65,6 @@ contract MainExtension is IExtension, ContextMixin, MainP0 {
         ok = ok && address(_oracle.aave) != address(0);
         ok = ok && address(furnace) != address(0);
         ok = ok && address(stRSR) != address(0);
-        ok = ok && address(monitor) != address(0);
         ok = ok && address(rTokenAsset) != address(0);
         ok = ok && address(rsrAsset) != address(0);
         ok = ok && address(compAsset) != address(0);

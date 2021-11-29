@@ -18,8 +18,8 @@ contract AAVEAssetP0 is IAsset {
     }
 
     // @return {attoUSD/qAAVE}
-    function priceUSD(IMain main) public view override returns (Fix) {
-        return main.consultOracle(Oracle.Source.AAVE, _erc20);
+    function priceUSD(address main) public view override returns (Fix) {
+        return IMain(main).consultOracle(Oracle.Source.AAVE, _erc20);
     }
 
     /// @return The ERC20 contract of the central token

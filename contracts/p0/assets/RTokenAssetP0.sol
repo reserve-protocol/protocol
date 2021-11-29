@@ -19,9 +19,9 @@ contract RTokenAssetP0 is IAsset {
     }
 
     /// @return {attoUSD/qRTok}
-    function priceUSD(IMain main) public view override returns (Fix) {
+    function priceUSD(address main) public view override returns (Fix) {
         Fix sum; // {attoUSD/BU}
-        IVault v = main.vault();
+        IVault v = IMain(main).vault();
         for (uint256 i = 0; i < v.size(); i++) {
             ICollateral c = v.collateralAt(i);
 
@@ -33,7 +33,7 @@ contract RTokenAssetP0 is IAsset {
         uint256 perQBU = sum.divu(10**v.BU_DECIMALS()).toUint();
 
         // {attoUSD/qRTok} = {attoUSD/qBU} * {qBU/qRTok}
-        return toFix(main.fromBUs(perQBU));
+        return toFix(IMain(main).fromBUs(perQBU));
     }
 
     /// @return The ERC20 contract of the central token

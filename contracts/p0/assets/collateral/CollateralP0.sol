@@ -36,9 +36,9 @@ contract CollateralP0 is ICollateral {
     }
 
     /// @return {attoUSD/qTok} The price in attoUSD of the asset's smallest unit
-    function priceUSD(IMain main) public view virtual override returns (Fix) {
+    function priceUSD(address main) public view virtual override returns (Fix) {
         if (isFiatcoin()) {
-            return main.consultOracle(Oracle.Source.AAVE, _erc20);
+            return IMain(main).consultOracle(Oracle.Source.AAVE, _erc20);
         } else {
             // {attoUSD/qTok} = {attoUSD/qFiatTok} * {qFiatTok/qTok}
             return fiatcoinPriceUSD(main).mul(rateFiatcoin());
@@ -66,8 +66,8 @@ contract CollateralP0 is ICollateral {
     }
 
     /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
-    function fiatcoinPriceUSD(IMain main) public view virtual override returns (Fix) {
-        return main.consultOracle(Oracle.Source.AAVE, address(fiatcoin()));
+    function fiatcoinPriceUSD(address main) public view virtual override returns (Fix) {
+        return IMain(main).consultOracle(Oracle.Source.AAVE, address(fiatcoin()));
     }
 
     /// @return Whether `_erc20` is a fiatcoin

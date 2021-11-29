@@ -291,7 +291,7 @@ contract AdapterP0 is ProtoAdapter {
         _main.noticeDefault();
     }
 
-    function CMD_poke() external override {
+    function CMD_poke() external virtual override {
         _main.poke();
         _fillAuctions();
     }

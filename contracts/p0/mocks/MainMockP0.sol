@@ -9,7 +9,6 @@ import "../interfaces/IVault.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/mocks/ERC20Mock.sol";
-import "contracts/p0/DefaultMonitorP0.sol";
 import "contracts/p0/assets/COMPAssetP0.sol";
 import "contracts/p0/assets/AAVEAssetP0.sol";
 import "./CompoundOracleMockP0.sol";
@@ -53,7 +52,6 @@ contract MainMockP0 {
     bool public paused;
 
     IStRSR public stRSR;
-    IDefaultMonitor public monitor;
 
     Config private _config;
 
@@ -82,7 +80,6 @@ contract MainMockP0 {
 
         rsr = rsr_;
         manager = new ManagerInternalMockP0(address(this));
-        monitor = new DefaultMonitorP0(IMain(address(this)));
         paused = false;
 
         _compOracle = new CompoundOracleMockP0();
@@ -137,9 +134,5 @@ contract MainMockP0 {
 
     function setVault(IVault vault) external {
         manager.setVault(vault);
-    }
-
-    function checkForHardDefault(IVault vault) external returns (ICollateral[] memory defaulting) {
-        return monitor.checkForHardDefault(vault);
     }
 }

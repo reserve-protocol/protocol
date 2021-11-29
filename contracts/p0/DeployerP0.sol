@@ -9,13 +9,12 @@ import "./assets/AAVEAssetP0.sol";
 import "../libraries/CommonErrors.sol";
 import "./libraries/Oracle.sol";
 import "./interfaces/IAsset.sol";
-import "./interfaces/IAssetManager.sol";
 import "./interfaces/IDeployer.sol";
 import "./interfaces/IFurnace.sol";
 import "./interfaces/IMain.sol";
+import "./interfaces/IMarket.sol";
 import "./interfaces/IVault.sol";
 import "./assets/RTokenAssetP0.sol";
-import "./DefaultMonitorP0.sol";
 import "./FurnaceP0.sol";
 import "./MainP0.sol";
 import "./RTokenP0.sol";
@@ -76,11 +75,6 @@ contract DeployerP0 is IDeployer {
 
         IMain main = _deployMain(oracle, config, vault, market, collateral);
         deployments.push(main);
-
-        {
-            DefaultMonitorP0 monitor = new DefaultMonitorP0(main);
-            main.setMonitor(monitor);
-        }
 
         {
             IRToken rToken = _deployRToken(address(main), name, symbol);

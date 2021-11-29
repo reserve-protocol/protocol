@@ -6,7 +6,7 @@ import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/RTokenP0.sol";
 
 /// Enables generic testing harness to set _msgSender() for RToken.
-contract RTokenExtension is IExtension, ContextMixin, RTokenP0 {
+contract RTokenExtension is ContextMixin, RTokenP0, IExtension {
     constructor(
         address admin,
         address main_,

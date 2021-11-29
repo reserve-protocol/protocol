@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -14,7 +13,7 @@ import "contracts/libraries/Fixed.sol";
  */
 interface IAsset {
     /// @return {attoUSD/qTok} The price in USD of the asset as a function of DeFi redemption rates + oracle data
-    function priceUSD(IMain main) external view returns (Fix);
+    function priceUSD(address main) external view returns (Fix);
 
     /// @return The ERC20 contract of the central token
     function erc20() external view returns (IERC20);
@@ -41,7 +40,7 @@ interface ICollateral is IAsset {
     function fiatcoin() external view returns (IERC20);
 
     /// @return {attoUSD/qTok} The price in USD of the fiatcoin underlying the ERC20 (or the price of the ERC20 itself)
-    function fiatcoinPriceUSD(IMain main) external view returns (Fix);
+    function fiatcoinPriceUSD(address main) external view returns (Fix);
 
     /// @return Whether the asset is (directly) a fiatcoin
     function isFiatcoin() external view returns (bool);

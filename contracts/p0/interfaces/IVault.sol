@@ -51,30 +51,17 @@ interface IVault {
     /// @param amtBUs {qBU} The quantity of BUs to redeem
     function redeem(address to, uint256 amtBUs) external;
 
-    /// Allows `spender` to spend `amtBUs` from the callers account
-    /// @param spender The account that is able to spend the `amtBUs`
-    /// @param amtBUs {qBU} The quantity of BUs that should be spendable
-    function setAllowance(address spender, uint256 amtBUs) external;
-
-    /// Pulls BUs over from one account to another (like `ERC20.transferFrom`), requiring allowance
-    /// @param from The account to pull BUs from (must have set allowance)
-    /// @param amtBUs {qBU} The quantity of BUs to pull
-    function pullBUs(address from, uint256 amtBUs) external;
-
-    /// Claims all earned COMP/AAVE and sends it to the asset manager
-    function claimAndSweepRewardsToManager() external;
+    /// Moves all balance of `token` to main
+    function sweepToken(address token) external;
 
     /// Main Setter
-    function setMain(IMain main) external;
+    function setMain(address main) external;
 
     /// @return {USD/qBU} The USD value of 1 BU if all fiatcoins hold peg
     function basketRate() external view returns (Fix);
 
     /// @return {qTok} A list of token quantities required in order to issue `amtBUs`, in the order of the basket.
     function tokenAmounts(uint256 amtBUs) external view returns (uint256[] memory);
-
-    /// @return Whether the vault is made up only of collateral in `collateral`
-    function containsOnly(ICollateral[] memory collateral) external view returns (bool);
 
     /// @return {qBU} The maximum number of BUs the caller can issue
     function maxIssuable(address issuer) external view returns (uint256);

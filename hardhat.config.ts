@@ -1,13 +1,14 @@
+import './tasks'
+import '@nomiclabs/hardhat-ethers'
+import '@nomiclabs/hardhat-waffle'
+import '@typechain/hardhat'
+import 'hardhat-gas-reporter'
+import 'solidity-coverage'
+
+import dotenv from 'dotenv'
 import { HardhatUserConfig } from 'hardhat/types'
 
-import '@nomiclabs/hardhat-waffle'
-import '@nomiclabs/hardhat-ethers'
 // import '@openzeppelin/hardhat-upgrades'
-import '@typechain/hardhat'
-import 'solidity-coverage'
-import 'hardhat-gas-reporter'
-import './tasks'
-import dotenv from 'dotenv'
 dotenv.config()
 
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || process.env.ALCHEMY_MAINNET_RPC_URL || ''
@@ -46,6 +47,16 @@ export default <HardhatUserConfig>{
         enabled: true,
         runs: 2000,
       },
+    },
+    debug: {
+      // How to treat revert (and require) reason strings. Settings are
+      // "default", "strip", "debug" and "verboseDebug".
+      // "default" does not inject compiler-generated revert strings and keeps user-supplied ones.
+      // "strip" removes all revert strings (if possible, i.e. if literals are used) keeping side-effects
+      // "debug" injects strings for compiler-generated internal reverts, implemented for ABI encoders V1 and V2 for now.
+      // "verboseDebug" even appends further information to user-supplied revert strings (not yet implemented)
+      revertStrings: 'default',
+      // revertStrings: 'debug',
     },
   },
   mocha: {
