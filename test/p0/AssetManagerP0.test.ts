@@ -929,13 +929,32 @@ describe('AssetManagerP0 contract', () => {
         expect(await main.state()).to.equal(State.CALM)
       })
 
-      it.skip('Should handle large auctions using maxAuctionSize with revenue split RSR/RToken', async () => {
-        // TODO: Fails. Need to fix the issue of splitting each iteration
-
+      it('Should handle large auctions using maxAuctionSize with revenue split RSR/RToken', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
+        // Set f = 1
+        const newConfig: IManagerConfig = {
+          rewardStart: config.rewardStart,
+          rewardPeriod: config.rewardPeriod,
+          auctionPeriod: config.auctionPeriod,
+          stRSRWithdrawalDelay: config.stRSRWithdrawalDelay,
+          defaultDelay: config.defaultDelay,
+          maxTradeSlippage: config.maxTradeSlippage,
+          maxAuctionSize: fp('0.02'), // 2%
+          minRecapitalizationAuctionSize: config.minRecapitalizationAuctionSize,
+          minRevenueAuctionSize: config.minRevenueAuctionSize,
+          migrationChunk: config.migrationChunk,
+          issuanceRate: config.issuanceRate,
+          defaultThreshold: config.defaultThreshold,
+          f: fp('0.8'), // 80% to stakerss
+        }
+
+        // update config
+        await main.connect(owner).setConfig(newConfig)
+
         // Set COMP tokens as reward
+        // Based on current f -> 3.2e18 to RSR and 0.8e18 to Rtoken
         rewardAmountCOMP = bn('4e18')
 
         // Check initial state
@@ -949,8 +968,11 @@ describe('AssetManagerP0 contract', () => {
 
         // Collect revenue - Called via poke
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
+        let sellAmt: BigNumber = (await rToken.totalSupply()).mul(2).div(100) // due to 2% max auction size
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+
+        let sellAmtRToken: BigNumber = sellAmt.div(4) // keep ratio of 1-f in each auction (Rtoken should be 25% of RSR in this example)
+        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         await expect(main.poke())
           .to.emit(newVault, 'RewardsClaimed')
@@ -958,7 +980,7 @@ describe('AssetManagerP0 contract', () => {
           .and.to.emit(assetManager, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt, Fate.Stake)
           .and.to.emit(assetManager, 'AuctionStarted')
-          .withArgs(1, compAsset.address, rTokenAsset.address, sellAmt, minBuyAmt, Fate.Melt)
+          .withArgs(1, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken, Fate.Melt)
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
         // Check auctions registered
@@ -980,8 +1002,8 @@ describe('AssetManagerP0 contract', () => {
         expectAuctionInfo(1, {
           sell: compAsset.address,
           buy: rTokenAsset.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
+          sellAmount: sellAmtRToken,
+          minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionPeriod),
           clearingSellAmount: bn('0'),
@@ -1003,20 +1025,35 @@ describe('AssetManagerP0 contract', () => {
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(trading.address, minBuyAmt)
-        await rToken.connect(addr1).approve(trading.address, minBuyAmt)
+        await rToken.connect(addr1).approve(trading.address, minBuyAmtRToken)
         await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
-        await trading.placeBid(1, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
+        await trading.placeBid(1, { bidder: addr1.address, sellAmount: sellAmtRToken, buyAmount: minBuyAmtRToken })
 
-        // // Close auctions
+        // Close auctions
+
+        // Calculate pending amount
+        let sellAmtRemainder: BigNumber = rewardAmountCOMP.sub(sellAmt).sub(sellAmtRToken).mul(80).div(100) // f=0.8 of remaining funds
+        let minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
+
+        let sellAmtRTokenRemainder: BigNumber = sellAmtRemainder.div(4) // keep ratio of 1-f in each auction (Rtoken should be 25% of RSR in this example)
+        let minBuyAmtRTokenRemainder: BigNumber = sellAmtRTokenRemainder.sub(sellAmtRTokenRemainder.div(100)) // due to trade slippage 1%
+
         await expect(main.poke())
           .to.emit(assetManager, 'AuctionEnded')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt, Fate.Stake)
           .and.to.emit(assetManager, 'AuctionEnded')
-          .withArgs(1, compAsset.address, rTokenAsset.address, sellAmt, minBuyAmt, Fate.Melt)
+          .withArgs(1, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken, Fate.Melt)
           .and.to.emit(assetManager, 'AuctionStarted')
-          .withArgs(2, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt, Fate.Stake)
+          .withArgs(2, compAsset.address, rsrAsset.address, sellAmtRemainder, minBuyAmtRemainder, Fate.Stake)
           .and.to.emit(assetManager, 'AuctionStarted')
-        // .withArgs(3, compAsset.address, rTokenAsset.address, sellAmt, minBuyAmt, Fate.Melt)
+          .withArgs(
+            3,
+            compAsset.address,
+            rTokenAsset.address,
+            sellAmtRTokenRemainder,
+            minBuyAmtRTokenRemainder,
+            Fate.Melt
+          )
 
         // Check previous auctions closed
         // COMP -> RSR Auction
@@ -1037,12 +1074,12 @@ describe('AssetManagerP0 contract', () => {
         expectAuctionInfo(1, {
           sell: compAsset.address,
           buy: rTokenAsset.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
+          sellAmount: sellAmtRToken,
+          minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionPeriod),
-          clearingSellAmount: sellAmt,
-          clearingBuyAmount: minBuyAmt,
+          clearingSellAmount: sellAmtRToken,
+          clearingBuyAmount: minBuyAmtRToken,
           fate: Fate.Melt,
           isOpen: false,
         })
@@ -1053,8 +1090,8 @@ describe('AssetManagerP0 contract', () => {
         expectAuctionInfo(2, {
           sell: compAsset.address,
           buy: rsrAsset.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
+          sellAmount: sellAmtRemainder,
+          minBuyAmount: minBuyAmtRemainder,
           startTime: await getLatestBlockTimestamp(),
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
           clearingSellAmount: bn('0'),
@@ -1066,8 +1103,8 @@ describe('AssetManagerP0 contract', () => {
         expectAuctionInfo(3, {
           sell: compAsset.address,
           buy: rTokenAsset.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
+          sellAmount: sellAmtRTokenRemainder,
+          minBuyAmount: minBuyAmtRTokenRemainder,
           startTime: await getLatestBlockTimestamp(),
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
           clearingSellAmount: bn('0'),
@@ -1076,10 +1113,55 @@ describe('AssetManagerP0 contract', () => {
           isOpen: true,
         })
 
-        // State remains in TRADING
-        // expect(await main.state()).to.equal(State.TRADING)
+        // Check auctions open/closed
+        expectAuctionOpen(0, false)
+        expectAuctionOpen(1, false)
+        expectAuctionOpen(2, true)
+        expectAuctionOpen(3, true)
 
-        // TODO: Run final auction until all funds are converted
+        // State remains in TRADING
+        expect(await main.state()).to.equal(State.TRADING)
+
+        // Run final auction until all funds are converted
+        // Advance time till auction ended
+        await advanceTime(config.auctionPeriod.add(100).toString())
+
+        // Perform Mock Bids for RSR and RToken (addr1 has balance)
+        await rsr.connect(addr1).approve(trading.address, minBuyAmtRemainder)
+        await rToken.connect(addr1).approve(trading.address, minBuyAmtRTokenRemainder)
+        await trading.placeBid(2, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRemainder,
+          buyAmount: minBuyAmtRemainder,
+        })
+        await trading.placeBid(3, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRTokenRemainder,
+          buyAmount: minBuyAmtRTokenRemainder,
+        })
+
+        await expect(main.poke())
+          .to.emit(assetManager, 'AuctionEnded')
+          .withArgs(2, compAsset.address, rsrAsset.address, sellAmtRemainder, minBuyAmtRemainder, Fate.Stake)
+          .and.to.emit(assetManager, 'AuctionEnded')
+          .withArgs(
+            3,
+            compAsset.address,
+            rTokenAsset.address,
+            sellAmtRTokenRemainder,
+            minBuyAmtRTokenRemainder,
+            Fate.Melt
+          )
+          .and.to.not.emit(assetManager, 'AuctionStarted')
+
+        // Check all auctions are closed
+        expectAuctionOpen(0, false)
+        expectAuctionOpen(1, false)
+        expectAuctionOpen(2, false)
+        expectAuctionOpen(3, false)
+
+        // State is now CALM
+        expect(await main.state()).to.equal(State.CALM)
       })
 
       it('Should mint RTokens when collateral appreciates and handle revenue auction correctly', async () => {
@@ -1165,6 +1247,80 @@ describe('AssetManagerP0 contract', () => {
           fate: Fate.Stake,
           isOpen: true,
         })
+      })
+    })
+  })
+
+  describe('Recapitalization', () => {
+    context('With very simple Basket - Single stablecoin', async function () {
+      let issueAmount: BigNumber
+      let backupVault: VaultP0
+      let newVault: VaultP0
+
+      beforeEach(async function () {
+        // For simple vault with one token (1 to 1) - And backup
+        backupVault = <VaultP0>await VaultFactory.deploy([collateral[1]], [bn('1e18')], [])
+
+        newVault = <VaultP0>await VaultFactory.deploy([collateral[0]], [bn('1e18')], [backupVault.address])
+
+        console.log('Token in basket: ' + (await token0.address))
+        console.log('Backup token: ' + (await token1.address))
+
+        // Setup Main
+        await newVault.connect(owner).setMain(main.address)
+
+        // Switch Vault
+        await assetManager.connect(owner).switchVault(newVault.address)
+
+        // Issue some RTokens to user
+        issueAmount = bn('100e18')
+        // Provide approvals
+        await token0.connect(addr1).approve(main.address, initialBal)
+
+        // Issue rTokens
+        await main.connect(addr1).issue(issueAmount)
+
+        console.log('Balance Before: ' + (await token0.balanceOf(assetManager.address)))
+        console.log('Balance Before- Vault: ' + (await token0.balanceOf(vault.address)))
+
+        // Process the issuance
+        await main.poke()
+
+        console.log('Balance After: ' + (await token0.balanceOf(assetManager.address)))
+        console.log('Balance After - Vault: ' + (await token0.balanceOf(newVault.address)))
+      })
+
+      it.skip('Should recapitalize correctly in case of default', async () => {
+        // Set Token0 to default
+        await aaveOracle.setPrice(token0.address, bn('1.5e14'))
+
+        // Check initial state
+        expect(await main.state()).to.equal(State.CALM)
+
+        // Running auctions will not trigger recapitalization until default flag is up
+        await expect(main.poke()).to.not.emit(assetManager, 'AuctionStarted')
+
+        // Notice default
+        await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.CALM, State.DOUBT)
+
+        // Check initial state
+        expect(await main.state()).to.equal(State.DOUBT)
+
+        // Cannot run again poke during Doubt state
+        await expect(main.poke()).to.be.revertedWith('only during calm + trading')
+
+        // Advance time post defaultDelay
+        await advanceTime(config.defaultDelay.toString())
+
+        await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.DOUBT, State.TRADING)
+
+        // Check state
+        expect(await main.state()).to.equal(State.TRADING)
+        expect(await assetManager.vault()).to.equal(backupVault.address)
+        expect(await assetManager.fullyCapitalized()).to.equal(false)
+
+        // Now run recapitalization auction
+        await expect(main.poke()).to.emit(assetManager, 'AuctionStarted')
       })
     })
   })
