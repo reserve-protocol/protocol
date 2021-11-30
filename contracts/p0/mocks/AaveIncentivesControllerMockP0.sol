@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
 
-contract AaveIncentivesControllerMock is IAaveIncentivesController {
+contract AaveIncentivesControllerMockP0 is IAaveIncentivesController {
     // TODO: Fill in functions in order to test rewards claiming
 
     function setClaimer(address user, address claimer) external override {}

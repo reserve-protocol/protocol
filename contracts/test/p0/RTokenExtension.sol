@@ -9,10 +9,9 @@ import "contracts/p0/RTokenP0.sol";
 contract RTokenExtension is ContextMixin, RTokenP0, IExtension {
     constructor(
         address admin,
-        address main_,
         string memory name_,
         string memory symbol_
-    ) ContextMixin(admin) RTokenP0(main_, name_, symbol_) {}
+    ) ContextMixin(admin) RTokenP0(name_, symbol_) {}
 
     function assertInvariants() external view override {
         assert(true);

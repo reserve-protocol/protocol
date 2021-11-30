@@ -21,7 +21,6 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     }
 
     /// @return fiatcoins An array of approved fiatcoin collateral to be used for oracle USD determination
-    // TODO: make `fiatcoins` storage instead of memory
     function approvedFiatcoins() public view returns (ICollateral[] memory fiatcoins) {}
 
     function approveCollateral(ICollateral collateral) external onlyOwner {

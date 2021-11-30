@@ -22,6 +22,7 @@ import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/p0/mocks/AaveLendingPoolMockP0.sol";
 import "contracts/p0/mocks/AaveLendingAddrProviderMockP0.sol";
+import "contracts/p0/mocks/AaveIncentivesControllerMockP0.sol";
 import "contracts/p0/mocks/AaveOracleMockP0.sol";
 import "contracts/p0/mocks/CompoundOracleMockP0.sol";
 import "contracts/p0/mocks/ComptrollerMockP0.sol";
@@ -74,6 +75,7 @@ contract AdapterP0 is ProtoAdapter {
         // Deploy assets + deployer
         ICollateral[] memory collateral = new ICollateral[](NUM_COLLATERAL);
         {
+            IAaveIncentivesController iac = new AaveIncentivesControllerMockP0();
             ERC20Mock dai = new ERC20Mock(s.collateral[0].name, s.collateral[0].symbol);
             USDCMock usdc = new USDCMock(s.collateral[1].name, s.collateral[1].symbol);
             ERC20Mock usdt = new ERC20Mock(s.collateral[2].name, s.collateral[2].symbol);
@@ -81,13 +83,29 @@ contract AdapterP0 is ProtoAdapter {
             CTokenMock cDAI = new CTokenMock(s.collateral[4].name, s.collateral[4].symbol, address(dai));
             CTokenMock cUSDC = new CTokenMock(s.collateral[5].name, s.collateral[5].symbol, address(usdc));
             CTokenMock cUSDT = new CTokenMock(s.collateral[6].name, s.collateral[6].symbol, address(usdt));
-            StaticATokenMock aDAI = new StaticATokenMock(s.collateral[7].name, s.collateral[7].symbol, address(dai));
-            StaticATokenMock aUSDC = new StaticATokenMock(s.collateral[8].name, s.collateral[8].symbol, address(usdc));
-            StaticATokenMock aUSDT = new StaticATokenMock(s.collateral[9].name, s.collateral[9].symbol, address(usdt));
+            StaticATokenMock aDAI = new StaticATokenMock(
+                s.collateral[7].name,
+                s.collateral[7].symbol,
+                address(dai),
+                iac
+            );
+            StaticATokenMock aUSDC = new StaticATokenMock(
+                s.collateral[8].name,
+                s.collateral[8].symbol,
+                address(usdc),
+                iac
+            );
+            StaticATokenMock aUSDT = new StaticATokenMock(
+                s.collateral[9].name,
+                s.collateral[9].symbol,
+                address(usdt),
+                iac
+            );
             StaticATokenMock aBUSD = new StaticATokenMock(
                 s.collateral[10].name,
                 s.collateral[10].symbol,
-                address(busd)
+                address(busd),
+                iac
             );
             _rsr = new ERC20Mock(s.rsr.name, s.rsr.symbol);
             _comp = new ERC20Mock(s.comp.name, s.comp.symbol);
@@ -203,7 +221,21 @@ contract AdapterP0 is ProtoAdapter {
 
     function state() public view override returns (ProtoState memory s) {
         s.mood = _main.mood();
-        s.config = _main.config();
+        s.config = Config(
+            _main.rewardStart(),
+            _main.rewardPeriod(),
+            _main.auctionPeriod(),
+            _main.stRSRWithdrawalDelay(),
+            _main.defaultDelay(),
+            _main.maxTradeSlippage(),
+            _main.maxAuctionSize(),
+            _main.minRecapitalizationAuctionSize(),
+            _main.minRevenueAuctionSize(),
+            _main.migrationChunk(),
+            _main.issuanceRate(),
+            _main.defaultThreshold(),
+            _main.cut()
+        );
         address[] memory backingTokens = _main.backingTokens();
         Asset[] memory backingCollateral = new Asset[](backingTokens.length);
         for (uint256 i = 0; i < backingTokens.length; i++) {
@@ -396,7 +428,7 @@ contract AdapterP0 is ProtoAdapter {
             _aaveOracle.setPrice(address(erc20), tokenState.price.inETH); // {qETH/tok}
             _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUSD); // {microUSD/tok}
 
-            Fix found = _main.consultOracle(Oracle.Source.AAVE, address(erc20)); // {attoUSD/qTok}
+            Fix found = _main.oracle().consult(Oracle.Source.AAVE, address(erc20)); // {attoUSD/qTok}
             Fix expected = toFix(tokenState.price.inUSD).shiftLeft(12 - int8(erc20.decimals()));
             assert(found.eq(expected));
         }
@@ -415,8 +447,8 @@ contract AdapterP0 is ProtoAdapter {
                 IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
                 IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
                 newBid.buyAmount = toFix(sellAmount)
-                .mul(buyAsset.priceUSD(address(_main)))
-                .div(sellAsset.priceUSD(address(_main)))
+                .mul(buyAsset.priceUSD(_main.oracle()))
+                .div(sellAsset.priceUSD(_main.oracle()))
                 .toUint();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(newBid.bidder, address(_market), newBid.buyAmount);

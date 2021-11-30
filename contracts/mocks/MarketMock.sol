@@ -42,15 +42,15 @@ contract MarketMock is IMarket, ITrading {
     function initiateAuction(
         IERC20 auctioningToken,
         IERC20 biddingToken,
-        uint256 orderCancellationEndDate,
+        uint256,
         uint256 auctionEndDate,
         uint96 auctionedSellAmount,
         uint96 minBuyAmount,
-        uint256 minimumBiddingAmountPerOrder,
-        uint256 minFundingThreshold,
-        bool isAtomicClosureAllowed,
-        address accessManagerContract,
-        bytes memory accessManagerContractData
+        uint256,
+        uint256,
+        bool,
+        address,
+        bytes memory
     ) external override returns (uint256 auctionId) {
         auctionId = auctions.length;
         auctioningToken.safeTransferFrom(msg.sender, address(this), auctionedSellAmount);
@@ -75,16 +75,14 @@ contract MarketMock is IMarket, ITrading {
     }
 
     /// Can only be called by the origin of the auction and only after auction.endTime is past
-    function clear(uint256 auctionId)
-        external
-        override
-        returns (uint256 clearingSellAmount, uint256 clearingBuyAmount)
-    {
+    function settleAuction(uint256 auctionId) external override returns (bytes32 encodedOrder) {
         MockAuction storage auction = auctions[auctionId];
         require(msg.sender == auction.origin, "only origin can claim");
         require(auction.isOpen, "auction already closed");
         require(auction.endTime <= block.timestamp, "too early to close auction");
 
+        uint256 clearingSellAmount;
+        uint256 clearingBuyAmount;
         Bid storage bid = bids[auctionId];
         if (bid.sellAmount > 0) {
             Fix a = toFix(auction.minBuyAmount).divu(auction.sellAmount);
@@ -103,9 +101,18 @@ contract MarketMock is IMarket, ITrading {
         auction.buy.safeTransfer(bid.bidder, bid.buyAmount - clearingBuyAmount);
         auction.buy.safeTransfer(auction.origin, clearingBuyAmount);
         auction.isOpen = false;
+        return _encodeOrder(0, uint96(clearingBuyAmount), uint96(clearingSellAmount));
     }
 
     function numAuctions() external returns (uint256) {
         return auctions.length;
+    }
+
+    function _encodeOrder(
+        uint64 userId,
+        uint96 buyAmount,
+        uint96 sellAmount
+    ) internal pure returns (bytes32) {
+        return bytes32((uint256(userId) << 192) + (uint256(buyAmount) << 96) + uint256(sellAmount));
     }
 }

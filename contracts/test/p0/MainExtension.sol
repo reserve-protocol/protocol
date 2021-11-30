@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/libraries/Oracle.sol";
 import "contracts/test/Mixins.sol";
 import "contracts/mocks/ERC20Mock.sol";
 import "contracts/p0/interfaces/IAsset.sol";
@@ -17,7 +19,9 @@ import "hardhat/console.sol";
 /// Enables generic testing harness to set _msgSender() for Main.
 contract MainExtension is ContextMixin, MainP0, IExtension {
     using Address for address;
+    using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
+    using Oracle for Oracle.Info;
 
     constructor(address admin) ContextMixin(admin) {}
 
@@ -26,12 +30,12 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     }
 
     function issueInstantly(address account, uint256 amount) public {
-        uint256 start = rTokenAsset.erc20().balanceOf(account);
+        uint256 start = rTokenAsset().erc20().balanceOf(account);
         connect(account);
         issue(amount);
         issuances[issuances.length - 1].blockAvailableAt = block.number;
         _processSlowIssuance();
-        require(rTokenAsset.erc20().balanceOf(account) - start == amount, "issue failure");
+        require(rTokenAsset().erc20().balanceOf(account) - start == amount, "issue failure");
     }
 
     function assertInvariants() external view override {
@@ -58,14 +62,14 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_stateDefined() internal view returns (bool ok) {
         ok = true;
-        ok = ok && address(_oracle.compound) != address(0);
-        ok = ok && address(_oracle.aave) != address(0);
-        ok = ok && address(furnace) != address(0);
-        ok = ok && address(stRSR) != address(0);
-        ok = ok && address(rTokenAsset) != address(0);
-        ok = ok && address(rsrAsset) != address(0);
-        ok = ok && address(compAsset) != address(0);
-        ok = ok && address(aaveAsset) != address(0);
+        ok = ok && address(oracle().compound) != address(0);
+        ok = ok && address(oracle().aave) != address(0);
+        ok = ok && address(furnace()) != address(0);
+        ok = ok && address(stRSR()) != address(0);
+        ok = ok && address(rTokenAsset()) != address(0);
+        ok = ok && address(rsrAsset()) != address(0);
+        ok = ok && address(compAsset()) != address(0);
+        ok = ok && address(aaveAsset()) != address(0);
         ok = ok && _historicalBasketDilution.gt(FIX_ZERO);
         ok = ok && _approvedCollateral.length() > 0;
         ok = ok && _alltimeCollateral.length() > 0;
@@ -77,19 +81,19 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_configurationValid() internal view returns (bool ok) {
         ok = true;
-        ok = ok && rewardStart > 0;
-        ok = ok && rewardPeriod > 0;
-        ok = ok && auctionPeriod > 0;
-        ok = ok && stRSRWithdrawalDelay > 0;
-        ok = ok && defaultDelay > 0;
-        ok = ok && maxTradeSlippage.gte(FIX_ZERO) && maxTradeSlippage.lte(FIX_ONE);
-        ok = ok && maxAuctionSize.gte(FIX_ZERO) && maxAuctionSize.lte(FIX_ONE);
-        ok = ok && minRecapitalizationAuctionSize.gte(FIX_ZERO) && minRecapitalizationAuctionSize.lte(FIX_ONE);
-        ok = ok && minRevenueAuctionSize.gte(FIX_ZERO) && minRevenueAuctionSize.lte(FIX_ONE);
-        ok = ok && migrationChunk.gte(FIX_ZERO) && migrationChunk.lte(FIX_ONE);
-        ok = ok && issuanceRate.gte(FIX_ZERO) && issuanceRate.lte(FIX_ONE);
-        ok = ok && defaultThreshold.gte(FIX_ZERO) && defaultThreshold.lte(FIX_ONE);
-        ok = ok && f.gte(FIX_ZERO) && f.lte(FIX_ONE);
+        ok = ok && rewardStart() > 0;
+        ok = ok && rewardPeriod() > 0;
+        ok = ok && auctionPeriod() > 0;
+        ok = ok && stRSRWithdrawalDelay() > 0;
+        ok = ok && defaultDelay() > 0;
+        ok = ok && maxTradeSlippage().gte(FIX_ZERO) && maxTradeSlippage().lte(FIX_ONE);
+        ok = ok && maxAuctionSize().gte(FIX_ZERO) && maxAuctionSize().lte(FIX_ONE);
+        ok = ok && minRecapitalizationAuctionSize().gte(FIX_ZERO) && minRecapitalizationAuctionSize().lte(FIX_ONE);
+        ok = ok && minRevenueAuctionSize().gte(FIX_ZERO) && minRevenueAuctionSize().lte(FIX_ONE);
+        ok = ok && migrationChunk().gte(FIX_ZERO) && migrationChunk().lte(FIX_ONE);
+        ok = ok && issuanceRate().gte(FIX_ZERO) && issuanceRate().lte(FIX_ONE);
+        ok = ok && defaultThreshold().gte(FIX_ZERO) && defaultThreshold().lte(FIX_ONE);
+        ok = ok && cut().gte(FIX_ZERO) && cut().lte(FIX_ONE);
         if (!ok) {
             console.log("_INVARIANT_configurationValid violated");
         }
@@ -142,15 +146,16 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_pricesDefined() internal view returns (bool ok) {
         ok = true;
+        Oracle.Info memory oracle_ = oracle();
         for (uint256 i = 0; i < vault.size(); i++) {
             ICollateral c = vault.collateralAt(i);
             if (c.isFiatcoin()) {
-                ok = ok && consultOracle(Oracle.Source.AAVE, address(c.erc20())).gt(FIX_ZERO);
+                ok = ok && oracle_.consult(Oracle.Source.AAVE, address(c.erc20())).gt(FIX_ZERO);
             }
         }
-        ok = ok && consultOracle(Oracle.Source.COMPOUND, address(compAsset.erc20())).gt(FIX_ZERO);
-        ok = ok && consultOracle(Oracle.Source.AAVE, address(rsrAsset.erc20())).gt(FIX_ZERO);
-        ok = ok && consultOracle(Oracle.Source.AAVE, address(aaveAsset.erc20())).gt(FIX_ZERO);
+        ok = ok && oracle_.consult(Oracle.Source.COMPOUND, address(compAsset().erc20())).gt(FIX_ZERO);
+        ok = ok && oracle_.consult(Oracle.Source.AAVE, address(rsrAsset().erc20())).gt(FIX_ZERO);
+        ok = ok && oracle_.consult(Oracle.Source.AAVE, address(aaveAsset().erc20())).gt(FIX_ZERO);
         if (!ok) {
             console.log("_INVARIANT_pricesDefined violated");
         }
@@ -184,7 +189,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     }
 
     function _INVARIANT_toBUInverseFromBU() internal view returns (bool ok) {
-        uint256 supply = main.rToken().totalSupply();
+        uint256 supply = rToken().totalSupply();
         bytes memory result = address(this).functionStaticCall(abi.encodeWithSignature("toBUs(uint256)", supply));
         bytes memory result2 = address(this).functionStaticCall(
             abi.encodeWithSignature("fromBUs(uint256)", abi.decode(result, (uint256)))

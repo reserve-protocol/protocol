@@ -86,7 +86,7 @@ library Lib {
             assertEq(_rawFix(a.migrationChunk), _rawFix(b.migrationChunk), "Config.migrationChunk") &&
             assertEq(_rawFix(a.issuanceRate), _rawFix(b.issuanceRate), "Config.issuanceRate") &&
             assertEq(_rawFix(a.defaultThreshold), _rawFix(b.defaultThreshold), "Config.defaultThreshold") &&
-            assertEq(_rawFix(a.f), _rawFix(b.f), "Config.f");
+            assertEq(_rawFix(a.cut), _rawFix(b.cut), "Config.f");
     }
 
     /// @return ok Whether two TokenStates are equal, including checking balances for known accounts.

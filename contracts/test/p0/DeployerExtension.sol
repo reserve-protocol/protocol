@@ -41,12 +41,8 @@ contract DeployerExtension is DeployerP0, IExtension {
         return new FurnaceExtension(_admin, address(rToken));
     }
 
-    function _deployRToken(
-        address main,
-        string memory name,
-        string memory symbol
-    ) internal override returns (IRToken) {
-        return new RTokenExtension(_admin, main, name, symbol);
+    function _deployRToken(string memory name, string memory symbol) internal override returns (IRToken) {
+        return new RTokenExtension(_admin, name, symbol);
     }
 
     function _deployStRSR(
