@@ -30,7 +30,7 @@ interface ICollateral is IAsset {
     /// Forces an update in any underlying Defi protocol
     /// Idempotent
     /// @return Whether the collateral meets its invariants or not
-    function pokeDefi() external returns (bool);
+    function poke() external returns (bool);
 
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
     function rateFiatcoin() external view returns (Fix);

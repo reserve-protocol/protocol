@@ -70,7 +70,7 @@ contract DefaultHandlerP0 is
         ICollateral[] memory collateral = new ICollateral[](_approvedCollateral.length());
         uint256 count;
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            bool ok = ICollateral(_approvedCollateral.at(i)).pokeDefi();
+            bool ok = ICollateral(_approvedCollateral.at(i)).poke();
             if (!ok) {
                 collateral[count] = ICollateral(_approvedCollateral.at(i));
                 count++;

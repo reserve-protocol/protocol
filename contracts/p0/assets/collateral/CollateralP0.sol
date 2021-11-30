@@ -26,7 +26,7 @@ contract CollateralP0 is ICollateral {
 
     /// Forces an update in any underlying Defi protocol
     /// @return Whether the collateral meets its invariants or not
-    function pokeDefi() external virtual override returns (bool) {
+    function poke() external virtual override returns (bool) {
         return true;
     }
 
