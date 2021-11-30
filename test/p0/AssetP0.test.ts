@@ -79,9 +79,7 @@ describe('AssetsP0 contracts', () => {
 
     token = <ERC20Mock>await ERC20.deploy('Token', 'TKN')
     usdc = <USDCMock>await USDCMockFactory.deploy('USDC Token', 'USDC')
-    aToken = <StaticATokenMock>(
-      await ATokenMockFactory.deploy('Static AToken', 'aTKN', token.address)
-    )
+    aToken = <StaticATokenMock>await ATokenMockFactory.deploy('Static AToken', 'aTKN', token.address)
     cToken = <CTokenMock>await CTokenMockFactory.deploy('CToken', 'cTKN', usdc.address)
     rsr = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
     comp = <ERC20Mock>await ERC20.deploy('COMP Token', 'COMP')
@@ -111,31 +109,16 @@ describe('AssetsP0 contracts', () => {
     // Deploy Main Mock
     MainMockFactory = await ethers.getContractFactory('MainMockP0')
     main = <MainMockP0>(
-      await MainMockFactory.deploy(
-        rsr.address,
-        comp.address,
-        aave.address,
-        weth.address,
-        bn('0'),
-        fp('0')
-      )
+      await MainMockFactory.deploy(rsr.address, comp.address, aave.address, weth.address, bn('0'), fp('0'))
     )
 
     compoundOracle = <CompoundOracleMockP0>(
       await ethers.getContractAt('CompoundOracleMockP0', await main.compoundOracle())
     )
-    aaveOracle = <AaveOracleMockP0>(
-      await ethers.getContractAt('AaveOracleMockP0', await main.aaveOracle())
-    )
+    aaveOracle = <AaveOracleMockP0>await ethers.getContractAt('AaveOracleMockP0', await main.aaveOracle())
 
     VaultFactory = await ethers.getContractFactory('VaultP0')
-    vault = <VaultP0>(
-      await VaultFactory.deploy(
-        [tokenAsset.address, usdcAsset.address],
-        [bn('5e17'), bn('5e5')],
-        []
-      )
-    )
+    vault = <VaultP0>await VaultFactory.deploy([tokenAsset.address, usdcAsset.address], [bn('5e17'), bn('5e5')], [])
 
     // Set Vault and Main relationship
     await main.connect(owner).setVault(vault.address)
@@ -178,8 +161,8 @@ describe('AssetsP0 contracts', () => {
       expect(await tokenAsset.fiatcoinDecimals()).to.equal(await token.decimals())
       expect(await tokenAsset.rateFiatcoin()).to.equal(fp('1'))
       expect(await tokenAsset.rateUSD()).to.equal(fp('1'))
-      expect(await tokenAsset.priceUSD(main.address)).to.equal(fp('1'))
-      expect(await tokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1'))
+      expect(await tokenAsset.priceUSD(await main.oracle())).to.equal(fp('1'))
+      expect(await tokenAsset.fiatcoinPriceUSD(await main.oracle())).to.equal(fp('1'))
 
       // USDC Fiat Token
       expect(await usdcAsset.erc20()).to.equal(usdc.address)
@@ -191,8 +174,8 @@ describe('AssetsP0 contracts', () => {
       expect(await usdcAsset.fiatcoinDecimals()).to.equal(await usdc.decimals())
       expect(await usdcAsset.rateFiatcoin()).to.equal(fp('1'))
       expect(await usdcAsset.rateUSD()).to.equal(fp('1e12'))
-      expect(await usdcAsset.priceUSD(main.address)).to.equal(fp('1e12'))
-      expect(await usdcAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1e12'))
+      expect(await usdcAsset.priceUSD(await main.oracle())).to.equal(fp('1e12'))
+      expect(await usdcAsset.fiatcoinPriceUSD(await main.oracle())).to.equal(fp('1e12'))
 
       // AToken
       expect(await aTokenAsset.erc20()).to.equal(aToken.address)
@@ -204,8 +187,8 @@ describe('AssetsP0 contracts', () => {
       expect(await aTokenAsset.fiatcoinDecimals()).to.equal(await token.decimals())
       expect(await aTokenAsset.rateFiatcoin()).to.equal(fp('1'))
       expect(await aTokenAsset.rateUSD()).to.equal(fp('1'))
-      expect(await aTokenAsset.priceUSD(main.address)).to.equal(fp('1'))
-      expect(await aTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1'))
+      expect(await aTokenAsset.priceUSD(await main.oracle())).to.equal(fp('1'))
+      expect(await aTokenAsset.fiatcoinPriceUSD(await main.oracle())).to.equal(fp('1'))
 
       // CToken
       expect(await cTokenAsset.erc20()).to.equal(cToken.address)
@@ -217,32 +200,32 @@ describe('AssetsP0 contracts', () => {
       expect(await cTokenAsset.fiatcoinDecimals()).to.equal(await usdc.decimals())
       expect(await cTokenAsset.rateFiatcoin()).to.equal(fp('1e-2')) // 1/100 qUSDC per qcUSDC
       expect(await cTokenAsset.rateUSD()).to.equal(fp('1e10')) // 18 - 8 decimals = 10
-      expect(await cTokenAsset.priceUSD(main.address)).to.equal(fp('1e10'))
-      expect(await cTokenAsset.fiatcoinPriceUSD(main.address)).to.equal(fp('1e12')) // 18 - 6 decimals for USDC
+      expect(await cTokenAsset.priceUSD(await main.oracle())).to.equal(fp('1e10'))
+      expect(await cTokenAsset.fiatcoinPriceUSD(await main.oracle())).to.equal(fp('1e12')) // 18 - 6 decimals for USDC
 
       // RSR Asset
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
       expect(await rsrAsset.decimals()).to.equal(await rsr.decimals())
       expect(await rsrAsset.decimals()).to.equal(18)
-      expect(await rsrAsset.priceUSD(main.address)).to.equal(fp('1'))
+      expect(await rsrAsset.priceUSD(await main.oracle())).to.equal(fp('1'))
 
       // COMP Token
       expect(await compAsset.erc20()).to.equal(comp.address)
       expect(await compAsset.decimals()).to.equal(await comp.decimals())
       expect(await compAsset.decimals()).to.equal(18)
-      expect(await compAsset.priceUSD(main.address)).to.equal(fp('1'))
+      expect(await compAsset.priceUSD(await main.oracle())).to.equal(fp('1'))
 
       // AAVE Token
       expect(await aaveAsset.erc20()).to.equal(aave.address)
       expect(await aaveAsset.decimals()).to.equal(await aave.decimals())
       expect(await aaveAsset.decimals()).to.equal(18)
-      expect(await aaveAsset.priceUSD(main.address)).to.equal(fp('1'))
+      expect(await aaveAsset.priceUSD(await main.oracle())).to.equal(fp('1'))
 
       // RToken
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await rTokenAsset.decimals()).to.equal(await rToken.decimals())
       expect(await rTokenAsset.decimals()).to.equal(18)
-      expect(await rTokenAsset.priceUSD(main.address)).to.equal(fp('1'))
+      expect(await rTokenAsset.priceUSD(await main.oracle())).to.equal(fp('1'))
     })
   })
 })

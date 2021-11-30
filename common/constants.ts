@@ -10,3 +10,10 @@ export const MAX_UINT16 = 2 ** 16 - 1
 export const SCALE_DECIMALS = 18
 export const SCALE_FACTOR = 10 ** SCALE_DECIMALS
 export const BN_SCALE_FACTOR = BigNumber.from(SCALE_FACTOR.toString())
+
+// @dev Must match `IMain.Mood`.
+export enum Mood {
+  CALM,
+  DOUBT,
+  TRADING,
+}

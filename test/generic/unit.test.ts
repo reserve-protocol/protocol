@@ -3,6 +3,7 @@ import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 
 import { bn, fp } from '../../common/numbers'
+import { Mood } from '../../common/constants'
 import { ProtoAdapter } from '../../typechain/ProtoAdapter'
 import { ProtosDriver } from '../../typechain/ProtosDriver'
 import { IManagerConfig } from '../p0/utils/fixtures'
@@ -14,7 +15,6 @@ import {
   Balance,
   COLLATERAL_TOKEN_LEN,
   DefiRate,
-  Mood,
   prepareState,
   prepareToPrice,
   Price,
@@ -31,8 +31,6 @@ import {
  *  These tests also implicitly assert that contract invariants are met after each individual tx. The tx will revert if:
  *    (i)  an implementation invariant is violated.
  *    (ii) implementations fall out of sync with each other (requires multiple implementations)
- *
- *
  */
 describe('Unit tests (Generic)', () => {
   let Impls: ContractFactory[]

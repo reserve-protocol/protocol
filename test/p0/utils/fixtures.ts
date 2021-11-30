@@ -95,37 +95,23 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
   const aaveAsset: AAVEAssetP0 = <AAVEAssetP0>await AAVEAssetFactory.deploy(aaveToken.address)
 
   // Deploy Comp and Aave Oracle Mocks
-  const CompoundOracleMockFactory: ContractFactory = await ethers.getContractFactory(
-    'CompoundOracleMockP0'
-  )
-  const compoundOracle: CompoundOracleMockP0 = <CompoundOracleMockP0>(
-    await CompoundOracleMockFactory.deploy()
-  )
+  const CompoundOracleMockFactory: ContractFactory = await ethers.getContractFactory('CompoundOracleMockP0')
+  const compoundOracle: CompoundOracleMockP0 = <CompoundOracleMockP0>await CompoundOracleMockFactory.deploy()
 
-  const ComptrollerMockFactory: ContractFactory = await ethers.getContractFactory(
-    'ComptrollerMockP0'
-  )
-  const compoundMock: ComptrollerMockP0 = <ComptrollerMockP0>(
-    await ComptrollerMockFactory.deploy(compoundOracle.address)
-  )
+  const ComptrollerMockFactory: ContractFactory = await ethers.getContractFactory('ComptrollerMockP0')
+  const compoundMock: ComptrollerMockP0 = <ComptrollerMockP0>await ComptrollerMockFactory.deploy(compoundOracle.address)
   await compoundMock.setCompToken(compToken.address)
 
   const AaveOracleMockFactory: ContractFactory = await ethers.getContractFactory('AaveOracleMockP0')
   const weth: ERC20Mock = <ERC20Mock>await ERC20.deploy('Wrapped ETH', 'WETH')
-  const aaveOracle: AaveOracleMockP0 = <AaveOracleMockP0>(
-    await AaveOracleMockFactory.deploy(weth.address)
-  )
+  const aaveOracle: AaveOracleMockP0 = <AaveOracleMockP0>await AaveOracleMockFactory.deploy(weth.address)
 
-  const AaveAddrProviderFactory: ContractFactory = await ethers.getContractFactory(
-    'AaveLendingAddrProviderMockP0'
-  )
+  const AaveAddrProviderFactory: ContractFactory = await ethers.getContractFactory('AaveLendingAddrProviderMockP0')
   const aaveAddrProvider: AaveLendingAddrProviderMockP0 = <AaveLendingAddrProviderMockP0>(
     await AaveAddrProviderFactory.deploy(aaveOracle.address)
   )
 
-  const AaveLendingPoolMockFactory: ContractFactory = await ethers.getContractFactory(
-    'AaveLendingPoolMockP0'
-  )
+  const AaveLendingPoolMockFactory: ContractFactory = await ethers.getContractFactory('AaveLendingPoolMockP0')
   const aaveMock: AaveLendingPoolMockP0 = <AaveLendingPoolMockP0>(
     await AaveLendingPoolMockFactory.deploy(aaveAddrProvider.address)
   )
@@ -182,25 +168,12 @@ async function vaultFixture(): Promise<VaultFixture> {
 
   // Set Collateral Assets and Quantities
   const AssetFactory: ContractFactory = await ethers.getContractFactory('CollateralP0')
-  const collateral0: CollateralP0 = <CollateralP0>(
-    await AssetFactory.deploy(token0.address, token0.decimals())
-  )
-  const collateral1: CollateralP0 = <CollateralP0>(
-    await AssetFactory.deploy(token1.address, token1.decimals())
-  )
-  const collateral2: CollateralP0 = <CollateralP0>(
-    await AssetFactory.deploy(token2.address, token2.decimals())
-  )
-  const collateral3: CollateralP0 = <CollateralP0>(
-    await AssetFactory.deploy(token3.address, token3.decimals())
-  )
+  const collateral0: CollateralP0 = <CollateralP0>await AssetFactory.deploy(token0.address, token0.decimals())
+  const collateral1: CollateralP0 = <CollateralP0>await AssetFactory.deploy(token1.address, token1.decimals())
+  const collateral2: CollateralP0 = <CollateralP0>await AssetFactory.deploy(token2.address, token2.decimals())
+  const collateral3: CollateralP0 = <CollateralP0>await AssetFactory.deploy(token3.address, token3.decimals())
 
-  const collateral: string[] = [
-    collateral0.address,
-    collateral1.address,
-    collateral2.address,
-    collateral3.address,
-  ]
+  const collateral: string[] = [collateral0.address, collateral1.address, collateral2.address, collateral3.address]
   const quantities: BigNumber[] = [qtyHalf, qtyHalf, qtyThird, qtyDouble]
 
   const VaultFactory: ContractFactory = await ethers.getContractFactory('VaultP0')
@@ -220,10 +193,7 @@ async function vaultFixture(): Promise<VaultFixture> {
   }
 }
 
-type RSRAndCompAaveAndVaultAndMarketFixture = RSRFixture &
-  COMPAAVEFixture &
-  VaultFixture &
-  MarketFixture
+type RSRAndCompAaveAndVaultAndMarketFixture = RSRFixture & COMPAAVEFixture & VaultFixture & MarketFixture
 
 interface DefaultFixture extends RSRAndCompAaveAndVaultAndMarketFixture {
   config: IManagerConfig
@@ -236,33 +206,12 @@ interface DefaultFixture extends RSRAndCompAaveAndVaultAndMarketFixture {
   defaultMonitor: DefaultMonitorP0
 }
 
-export const defaultFixture: Fixture<DefaultFixture> = async function ([
-  owner,
-]): Promise<DefaultFixture> {
+export const defaultFixture: Fixture<DefaultFixture> = async function ([owner]): Promise<DefaultFixture> {
   const { rsr, rsrAsset } = await rsrFixture()
-  const {
-    token0,
-    token1,
-    token2,
-    token3,
-    collateral0,
-    collateral1,
-    collateral2,
-    collateral3,
-    collateral,
-    vault,
-  } = await vaultFixture()
-  const {
-    weth,
-    compToken,
-    compAsset,
-    compoundOracle,
-    compoundMock,
-    aaveToken,
-    aaveAsset,
-    aaveOracle,
-    aaveMock,
-  } = await compAaveFixture()
+  const { token0, token1, token2, token3, collateral0, collateral1, collateral2, collateral3, collateral, vault } =
+    await vaultFixture()
+  const { weth, compToken, compAsset, compoundOracle, compoundMock, aaveToken, aaveAsset, aaveOracle, aaveMock } =
+    await compAaveFixture()
   const { trading } = await marketFixture()
 
   // Set Default Oracle Prices
@@ -303,12 +252,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0')
   const deployer: DeployerP0 = <DeployerP0>(
-    await DeployerFactory.deploy(
-      rsrAsset.address,
-      compAsset.address,
-      aaveAsset.address,
-      trading.address
-    )
+    await DeployerFactory.deploy(rsrAsset.address, compAsset.address, aaveAsset.address, trading.address)
   )
 
   // Deploy actual contracts
@@ -330,9 +274,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Get Components
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
   const rToken: RTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', await main.rToken())
-  const furnace: FurnaceP0 = <FurnaceP0>(
-    await ethers.getContractAt('FurnaceP0', await main.furnace())
-  )
+  const furnace: FurnaceP0 = <FurnaceP0>await ethers.getContractAt('FurnaceP0', await main.furnace())
   const stRSR: StRSRP0 = <StRSRP0>await ethers.getContractAt('StRSRP0', await main.stRSR())
   const assetManager: AssetManagerP0 = <AssetManagerP0>(
     await ethers.getContractAt('AssetManagerP0', await main.manager())
