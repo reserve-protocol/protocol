@@ -56,7 +56,7 @@ contract DefaultHandlerP0 is
         if (softDefaulting.length == 0) {
             // Default expires before 24h
             _setMood(fullyCapitalized() ? Mood.CALM : Mood.TRADING);
-        } else if (_mood == Mood.DOUBT && block.timestamp >= _lastMoodChange + _config.defaultDelay) {
+        } else if (_mood == Mood.DOUBT && block.timestamp >= _lastMoodChange + defaultDelay) {
             // If mood is DOUBT for >24h (default delay), switch vaults
 
             for (uint256 i = 0; i < softDefaulting.length; i++) {

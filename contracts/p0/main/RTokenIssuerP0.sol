@@ -142,7 +142,7 @@ contract RTokenIssuerP0 is
     function _nextIssuanceBlockAvailable(uint256 amount) private view returns (uint256) {
         uint256 perBlock = Math.max(
             10_000 * 10**rTokenAsset.decimals(), // lower-bound: 10k whole RToken per block
-            toFix(rTokenAsset.erc20().totalSupply()).mul(_config.issuanceRate).toUint()
+            toFix(rTokenAsset.erc20().totalSupply()).mul(issuanceRate).toUint()
         ); // {RToken/block}
         uint256 blockStart = issuances.length == 0 ? block.number : issuances[issuances.length - 1].blockAvailableAt;
         return Math.max(blockStart, block.number) + Math.ceilDiv(amount, perBlock);

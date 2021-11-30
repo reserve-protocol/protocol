@@ -32,7 +32,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
     Fix internal _historicalBasketDilution; // the product of all historical basket dilutions
     Fix internal _prevBasketRate; // redemption value of the basket in fiatcoins last update
 
-    Fix internal _f; // The Revenue Factor: the fraction of revenue that goes to stakers
+    Fix private _cut; // Revenue Cut: the fraction of revenue that goes to stakers
 
     IVault public override vault;
     IVault[] public pastVaults;
@@ -40,6 +40,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
     function init(ConstructorArgs calldata args) public virtual override(Mixin, SettingsHandlerP0) {
         super.init(args);
         vault = args.vault;
+        _cut = args.config.cut;
         _prevBasketRate = args.vault.basketRate();
         _historicalBasketDilution = FIX_ONE;
     }
@@ -48,9 +49,11 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
         _switchVault(vault_);
     }
 
-    function setF(Fix newF) external override onlyOwner {
-        emit ParamFSet(_f, newF);
-        _f = newF;
+    function cut() public view returns (Fix) { return _cut; }
+
+    function setCut(Fix newCut) external override onlyOwner {
+        emit CutSet(_cut, newCut);
+        _cut = newCut;
     }
 
     /// @return Whether the vault is fully capitalized
@@ -102,8 +105,8 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
         // Assumption: Defi redemption rates are monotonically increasing
         Fix delta = currentRate.minus(_prevBasketRate);
 
-        // r = p2 / (p1 + (p2-p1) * (1-f))
-        Fix r = currentRate.div(_prevBasketRate.plus(delta.mul(FIX_ONE.minus(_config.f))));
+        // r = p2 / (p1 + (p2-p1) * (1-cut))
+        Fix r = currentRate.div(_prevBasketRate.plus(delta.mul(FIX_ONE.minus(_cut))));
         Fix dilutionFactor = _historicalBasketDilution.mul(r);
         require(dilutionFactor.gt(FIX_ZERO), "dilutionFactor cannot be zero");
         return dilutionFactor;

@@ -71,8 +71,8 @@ contract RevenueHandlerP0 is Pausable, Mixin, MoodyP0, SettingsHandlerP0, VaultH
 
     // Returns the rewards boundaries on either side of *time*.
     function _rewardsAdjacent(uint256 time) private view returns (uint256 left, uint256 right) {
-        int256 reps = (int256(time) - int256(_config.rewardStart)) / int256(_config.rewardPeriod);
-        left = uint256(reps * int256(_config.rewardPeriod) + int256(_config.rewardStart));
-        right = left + _config.rewardPeriod;
+        int256 reps = (int256(time) - int256(rewardStart)) / int256(rewardPeriod);
+        left = uint256(reps * int256(rewardPeriod) + int256(rewardStart));
+        right = left + rewardPeriod;
     }
 }

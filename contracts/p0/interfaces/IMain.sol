@@ -41,7 +41,7 @@ struct Config {
     Fix migrationChunk; // how much backing to migrate at a time, as a fraction of RToken supply
     Fix issuanceRate; // the number of RToken to issue per block, as a fraction of RToken supply
     Fix defaultThreshold; // the percent deviation required before a token is marked as in-default
-    Fix f; // The Revenue Factor: the fraction of revenue that goes to stakers
+    Fix cut; // The Revenue Factor: the fraction of revenue that goes to stakers
     // TODO: Revenue Distribution Map
 
     // Sample values
@@ -60,7 +60,7 @@ struct Config {
     // migrationChunk = 0.2 (20%)
     // issuanceRate = 0.00025 (0.025% per block, or ~0.1% per minute)
     // defaultThreshold = 0.05 (5% deviation)
-    // f = 0.6 (60% to stakers)
+    // cut = 0.6 (60% to stakers)
 }
 
 struct ConstructorArgs {
@@ -104,7 +104,7 @@ interface IAssetRegistry {
     function unapproveCollateral(ICollateral collateral) external;
 }
 
-// TODO: no f
+// TODO: no cut
 interface ISettingsHandler {
     // function setRewardStart(uint256 rewardStart) external;
 
@@ -144,10 +144,6 @@ interface ISettingsHandler {
 
     function setAaveAsset(IAsset aaveAsset) external;
 
-    // TODO: Delete
-
-    function config() external view returns (Config memory);
-
     /// @return The RToken deployment
     function rToken() external view returns (IRToken);
 
@@ -166,10 +162,10 @@ interface ISettingsHandler {
 }
 
 interface IVaultHandler {
-    /// Emitted when parameter `f` (proportion of revenue to stakers) is changed
-    /// @param oldF The old value of `f`, as a Fix
-    /// @param newF The new value of `f`, as a Fix
-    event ParamFSet(Fix oldF, Fix newF);
+    /// Emitted when parameter `cut` (proportion of revenue to stakers) is changed
+    /// @param oldCut The old value of `cut`, as a Fix
+    /// @param newCut The new value of `cut`, as a Fix
+    event CutSet(Fix oldCut, Fix newCut);
 
     /// Emitted when the current vault is changed
     /// @param oldVault The address of the old vault
@@ -178,7 +174,7 @@ interface IVaultHandler {
 
     function switchVault(IVault vault) external;
 
-    function setF(Fix newF) external;
+    function setCut(Fix newCut) external;
 
     function toBUs(uint256 amount) external view returns (uint256);
 

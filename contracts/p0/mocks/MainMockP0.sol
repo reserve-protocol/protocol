@@ -51,9 +51,10 @@ contract MainMockP0 {
     ManagerInternalMockP0 public manager;
     bool public paused;
 
-    IStRSR public stRSR;
+    uint256 public stRSRWithdrawalDelay;
+    Fix public defaultThreshold;
 
-    Config private _config;
+    IStRSR public stRSR;
 
     ICompoundOracle private _compOracle;
     IComptroller public comptroller;
@@ -75,8 +76,8 @@ contract MainMockP0 {
         uint256 stRSRWithdrawalDelay_,
         Fix defaultThreshold_
     ) {
-        _config.stRSRWithdrawalDelay = stRSRWithdrawalDelay_;
-        _config.defaultThreshold = defaultThreshold_;
+        stRSRWithdrawalDelay = stRSRWithdrawalDelay_;
+        defaultThreshold = defaultThreshold_;
 
         rsr = rsr_;
         manager = new ManagerInternalMockP0(address(this));
@@ -108,15 +109,11 @@ contract MainMockP0 {
     }
 
     function setStRSRWithdrawalDelay(uint256 stRSRWithdrawalDelay_) public {
-        _config.stRSRWithdrawalDelay = stRSRWithdrawalDelay_;
+        stRSRWithdrawalDelay = stRSRWithdrawalDelay_;
     }
 
     function setDefaultThreshold(Fix defaultThreshold_) public {
-        _config.defaultThreshold = defaultThreshold_;
-    }
-
-    function config() external view returns (Config memory) {
-        return _config;
+        defaultThreshold = defaultThreshold_;
     }
 
     /// @return {attoUSD/qTok} The price in attoUSD of a `qTok` on oracle `source`.

@@ -19,7 +19,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     using FixLib for Fix;
 
     Oracle.Info internal _oracle;
-    Config internal _config;
 
     uint256 public rewardStart;
     uint256 public rewardPeriod;
@@ -46,7 +45,20 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     function init(ConstructorArgs calldata args) public virtual override {
         super.init(args);
         _oracle = args.oracle;
-        _config = args.config;
+
+        rewardStart = args.config.rewardStart;
+        rewardPeriod = args.config.rewardPeriod;
+        auctionPeriod = args.config.auctionPeriod;
+        stRSRWithdrawalDelay = args.config.stRSRWithdrawalDelay;
+        defaultDelay = args.config.defaultDelay;
+
+        maxTradeSlippage = args.config.maxTradeSlippage;
+        maxAuctionSize = args.config.maxAuctionSize;
+        minRecapitalizationAuctionSize = args.config.minRecapitalizationAuctionSize;
+        minRevenueAuctionSize = args.config.minRevenueAuctionSize;
+        migrationChunk = args.config.migrationChunk;
+        issuanceRate = args.config.issuanceRate;
+        defaultThreshold = args.config.defaultThreshold;
     }
 
     function setOracle(Oracle.Info memory oracle_) external override onlyOwner {
@@ -102,10 +114,5 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     /// @return The RSR deployment
     function rsr() public view override returns (IERC20) {
         return rsrAsset.erc20();
-    }
-
-    /// @return The system configuration
-    function config() public view override returns (Config memory) {
-        return _config;
     }
 }

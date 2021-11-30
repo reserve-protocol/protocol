@@ -108,7 +108,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
         ) = _largestCollateralForCollateralTrade();
 
         (bool trade, Auction.Info memory auction) = _prepareAuctionBuy(
-            _config.minRecapitalizationAuctionSize,
+            minRecapitalizationAuctionSize,
             sell,
             buy,
             maxSell,
@@ -125,7 +125,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
         uint256 totalSupply = rToken().totalSupply();
         IVault oldVault = _oldestVault();
         if (oldVault != vault) {
-            uint256 max = _config.migrationChunk.mulu(totalSupply).toUint();
+            uint256 max = migrationChunk.mulu(totalSupply).toUint();
             uint256 chunk = Math.min(max, oldVault.basketUnits(address(this)));
             oldVault.redeem(address(this), chunk);
         }
@@ -133,7 +133,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
         // Re-check the sideways trade
         (sell, buy, maxSell, targetBuy) = _largestCollateralForCollateralTrade();
         (trade, auction) = _prepareAuctionBuy(
-            _config.minRecapitalizationAuctionSize,
+            minRecapitalizationAuctionSize,
             sell,
             buy,
             maxSell,
@@ -150,7 +150,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
         if (rsr().balanceOf(address(stRSR)) > 0) {
             // Recapitalization: RSR -> RToken
             (trade, auction) = _prepareAuctionBuy(
-                _config.minRecapitalizationAuctionSize,
+                minRecapitalizationAuctionSize,
                 rsrAsset,
                 rTokenAsset,
                 rsr().balanceOf(address(stRSR)),
@@ -187,7 +187,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
 
         // RToken -> dividend RSR
         (bool launch, Auction.Info memory auction) = _prepareAuctionSell(
-            _config.minRevenueAuctionSize,
+            minRevenueAuctionSize,
             rTokenAsset,
             rsrAsset,
             rToken().balanceOf(address(this)),
@@ -198,14 +198,14 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
             _launchAuction(auction);
         }
 
-        if (_config.f.eq(FIX_ONE) || _config.f.eq(FIX_ZERO)) {
+        if (cut().eq(FIX_ONE) || cut().eq(FIX_ZERO)) {
             // One auction only
-            IAsset buyAsset = (_config.f.eq(FIX_ONE)) ? rsrAsset : rTokenAsset;
-            Fate fate = (_config.f.eq(FIX_ONE)) ? Fate.Stake : Fate.Melt;
+            IAsset buyAsset = (cut().eq(FIX_ONE)) ? rsrAsset : rTokenAsset;
+            Fate fate = (cut().eq(FIX_ONE)) ? Fate.Stake : Fate.Melt;
 
             // COMP -> `buyAsset`
             (launch, auction) = _prepareAuctionSell(
-                _config.minRevenueAuctionSize,
+                minRevenueAuctionSize,
                 compAsset,
                 buyAsset,
                 compAsset.erc20().balanceOf(address(this)),
@@ -217,7 +217,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
 
             // AAVE -> `buyAsset`
             (launch, auction) = _prepareAuctionSell(
-                _config.minRevenueAuctionSize,
+                minRevenueAuctionSize,
                 aaveAsset,
                 buyAsset,
                 aaveAsset.erc20().balanceOf(address(this)),
@@ -227,7 +227,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
                 _launchAuction(auction);
             }
         } else {
-            // Auctions in pairs, sized based on `f:1-f`
+            // Auctions in pairs, sized based on `cut:1-cut`
             bool launch2;
             Auction.Info memory auction2;
 
@@ -321,11 +321,11 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
         return (sell, buy, sellAmount.toUint(), buyAmount.toUint());
     }
 
-    /// Prepares an auction pair for revenue RSR + revenue RToken that is sized `f:1-f`
+    /// Prepares an auction pair for revenue RSR + revenue RToken that is sized `cut:1-cut`
     /// @return launch Should launch auction 1?
     /// @return launch2 Should launch auction 2?
-    /// @return auction An auction selling `asset` for RSR, sized `f`
-    /// @return auction2 An auction selling `asset` for RToken, sized `1-f`
+    /// @return auction An auction selling `asset` for RSR, sized `cut`
+    /// @return auction2 An auction selling `asset` for RToken, sized `1-cut`
     function _prepareRevenueAuctionPair(IAsset asset)
         private
         returns (
@@ -335,20 +335,20 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
             Auction.Info memory auction2
         )
     {
-        // Calculate the two auctions without maintaining `f:1-f`
+        // Calculate the two auctions without maintaining `cut:1-cut`
         Fix bal = toFix(asset.erc20().balanceOf(address(this)));
-        Fix amountForRSR = bal.mul(_config.f);
+        Fix amountForRSR = bal.mul(cut());
         Fix amountForRToken = bal.minus(amountForRSR);
 
         (launch, auction) = _prepareAuctionSell(
-            _config.minRevenueAuctionSize,
+            minRevenueAuctionSize,
             asset,
             rsrAsset,
             amountForRSR.toUint(),
             Fate.Stake
         );
         (launch2, auction2) = _prepareAuctionSell(
-            _config.minRevenueAuctionSize,
+            minRevenueAuctionSize,
             asset,
             rTokenAsset,
             amountForRToken.toUint(),
@@ -358,22 +358,22 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
             return (false, false, auction, auction2);
         }
 
-        // Resize the smaller auction to cause the ratio to be `f:1-f`
+        // Resize the smaller auction to cause the ratio to be `cut:1-cut`
         Fix expectedRatio = amountForRSR.div(amountForRToken);
         Fix actualRatio = toFix(auction.sellAmount).divu(auction2.sellAmount);
         if (actualRatio.lt(expectedRatio)) {
-            Fix smallerAmountRToken = toFix(auction.sellAmount).mul(FIX_ONE.minus(_config.f)).div(_config.f);
+            Fix smallerAmountRToken = toFix(auction.sellAmount).mul(FIX_ONE.minus(cut())).div(cut());
             (launch2, auction2) = _prepareAuctionSell(
-                _config.minRevenueAuctionSize,
+                minRevenueAuctionSize,
                 asset,
                 rTokenAsset,
                 smallerAmountRToken.toUint(),
                 Fate.Melt
             );
         } else if (actualRatio.gt(expectedRatio)) {
-            Fix smallerAmountRSR = toFix(auction2.sellAmount).mul(_config.f).div(FIX_ONE.minus(_config.f));
+            Fix smallerAmountRSR = toFix(auction2.sellAmount).mul(cut()).div(FIX_ONE.minus(cut()));
             (launch, auction) = _prepareAuctionSell(
-                _config.minRevenueAuctionSize,
+                minRevenueAuctionSize,
                 asset,
                 rsrAsset,
                 smallerAmountRSR.toUint(),
@@ -397,7 +397,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
 
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
         Fix rTokenMarketCapUSD = rTokenAsset.priceUSD(address(this)).mulu(rToken().totalSupply());
-        Fix maxSellUSD = rTokenMarketCapUSD.mul(_config.maxAuctionSize); // {attoUSD}
+        Fix maxSellUSD = rTokenMarketCapUSD.mul(maxAuctionSize); // {attoUSD}
         Fix minSellUSD = rTokenMarketCapUSD.mul(minAuctionSize); // {attoUSD}
 
         // {qSellTok} < {attoUSD} / {attoUSD/qSellTok}
@@ -407,7 +407,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
 
         sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(address(this))).toUint()); // {qSellTok}
         Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(address(this))).div(buy.priceUSD(address(this))); // {qBuyTok}
-        Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(_config.maxTradeSlippage)); // {qBuyTok}
+        Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(maxTradeSlippage)); // {qBuyTok}
 
         return (
             true,
@@ -420,7 +420,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,
                 startTime: block.timestamp,
-                endTime: block.timestamp + _config.auctionPeriod,
+                endTime: block.timestamp + auctionPeriod,
                 fate: fate,
                 isOpen: false
             })
@@ -453,7 +453,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
             );
 
             // {qSellTok} = {qSellTok} / {none}
-            auction.sellAmount = exactSellAmount.div(FIX_ONE.minus(_config.maxTradeSlippage)).toUint();
+            auction.sellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage)).toUint();
             assert(auction.sellAmount < maxSellAmount);
 
             // {attoUSD} = {attoUSD/qRTok} * {qRTok}

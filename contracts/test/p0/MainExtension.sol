@@ -73,22 +73,22 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_configurationValid() internal view returns (bool ok) {
         ok = true;
-        ok = ok && _config.rewardStart > 0;
-        ok = ok && _config.rewardPeriod > 0;
-        ok = ok && _config.auctionPeriod > 0;
-        ok = ok && _config.stRSRWithdrawalDelay > 0;
-        ok = ok && _config.defaultDelay > 0;
-        ok = ok && _config.maxTradeSlippage.gte(FIX_ZERO) && _config.maxTradeSlippage.lte(FIX_ONE);
-        ok = ok && _config.maxAuctionSize.gte(FIX_ZERO) && _config.maxAuctionSize.lte(FIX_ONE);
+        ok = ok && rewardStart > 0;
+        ok = ok && rewardPeriod > 0;
+        ok = ok && auctionPeriod > 0;
+        ok = ok && stRSRWithdrawalDelay > 0;
+        ok = ok && defaultDelay > 0;
+        ok = ok && maxTradeSlippage.gte(FIX_ZERO) && maxTradeSlippage.lte(FIX_ONE);
+        ok = ok && maxAuctionSize.gte(FIX_ZERO) && maxAuctionSize.lte(FIX_ONE);
         ok =
             ok &&
-            _config.minRecapitalizationAuctionSize.gte(FIX_ZERO) &&
-            _config.minRecapitalizationAuctionSize.lte(FIX_ONE);
-        ok = ok && _config.minRevenueAuctionSize.gte(FIX_ZERO) && _config.minRevenueAuctionSize.lte(FIX_ONE);
-        ok = ok && _config.migrationChunk.gte(FIX_ZERO) && _config.migrationChunk.lte(FIX_ONE);
-        ok = ok && _config.issuanceRate.gte(FIX_ZERO) && _config.issuanceRate.lte(FIX_ONE);
-        ok = ok && _config.defaultThreshold.gte(FIX_ZERO) && _config.defaultThreshold.lte(FIX_ONE);
-        ok = ok && _config.f.gte(FIX_ZERO) && _config.f.lte(FIX_ONE);
+            minRecapitalizationAuctionSize.gte(FIX_ZERO) &&
+            minRecapitalizationAuctionSize.lte(FIX_ONE);
+        ok = ok && minRevenueAuctionSize.gte(FIX_ZERO) && minRevenueAuctionSize.lte(FIX_ONE);
+        ok = ok && migrationChunk.gte(FIX_ZERO) && migrationChunk.lte(FIX_ONE);
+        ok = ok && issuanceRate.gte(FIX_ZERO) && issuanceRate.lte(FIX_ONE);
+        ok = ok && defaultThreshold.gte(FIX_ZERO) && defaultThreshold.lte(FIX_ONE);
+        ok = ok && f.gte(FIX_ZERO) && f.lte(FIX_ONE);
         if (!ok) {
             console.log("_INVARIANT_configurationValid violated");
         }
