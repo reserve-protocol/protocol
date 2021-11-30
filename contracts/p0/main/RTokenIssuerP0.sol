@@ -28,6 +28,7 @@ contract RTokenIssuerP0 is
     IRTokenIssuer
 {
     using SafeERC20 for IERC20;
+    using SafeERC20 for IRToken;
     using FixLib for Fix;
 
     /// Tracks data for an issuance
@@ -62,6 +63,8 @@ contract RTokenIssuerP0 is
 
             _switchVault(_selectNextVault());
             _setMood(Mood.TRADING);
+        } else if (!paused) {
+            _processSlowIssuance();
         }
         _;
     }
@@ -77,7 +80,6 @@ contract RTokenIssuerP0 is
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
     function poke() public virtual override(Mixin, DefaultHandlerP0) notPaused notInDoubt always {
         super.poke();
-        _processSlowIssuance();
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -85,12 +87,9 @@ contract RTokenIssuerP0 is
     function issue(uint256 amount) public override notPaused notInDoubt always {
         require(amount > 0, "Cannot issue zero");
 
-        _processSlowIssuance();
-
         uint256 amtBUs = toBUs(amount);
 
-        // During SlowIssuance, BUs are created up front and held by `Main` until the issuance vests,
-        // at which point the BUs are transferred to the AssetManager and RToken is minted to the issuer.
+        // During SlowIssuance, RTokens are minted and held by Main until vesting completes
         SlowIssuance memory iss = SlowIssuance({
             vault: vault,
             amount: amount,
@@ -108,6 +107,7 @@ contract RTokenIssuerP0 is
         }
 
         iss.vault.issue(address(this), iss.amtBUs);
+        rToken().mint(address(rToken()), amount);
         emit IssuanceStarted(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
     }
 
@@ -115,9 +115,6 @@ contract RTokenIssuerP0 is
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     function redeem(uint256 amount) public override always {
         require(amount > 0, "Cannot redeem zero");
-        if (!paused) {
-            _processSlowIssuance();
-        }
 
         rToken().burn(_msgSender(), amount);
         _oldestVault().redeem(_msgSender(), toBUs(amount));
@@ -151,12 +148,12 @@ contract RTokenIssuerP0 is
     function _processSlowIssuance() internal {
         for (uint256 i = 0; i < issuances.length; i++) {
             if (!issuances[i].processed && issuances[i].vault != vault) {
+                rToken().burn(address(rToken()), issuances[i].amount);
                 issuances[i].vault.redeem(issuances[i].issuer, issuances[i].amtBUs);
                 issuances[i].processed = true;
                 emit IssuanceCanceled(i);
             } else if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
-                // TODO: Tracking two sets of BUs
-                rToken().mint(issuances[i].issuer, issuances[i].amount);
+                rToken().withdrawTo(issuances[i].issuer, issuances[i].amount);
                 issuances[i].processed = true;
                 emit IssuanceCompleted(i);
             }

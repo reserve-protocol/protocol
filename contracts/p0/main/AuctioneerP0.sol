@@ -170,8 +170,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
 
         // The ultimate endgame: a haircut for RToken holders.
         _accumulate();
-        Fix melting = (toFix(totalSupply).plusu(furnace().totalBurnt())).divu(totalSupply);
-        _historicalBasketDilution = melting.mulu(vault.basketUnits(address(this))).divu(totalSupply);
+        _historicalBasketDilution = _meltingFactor().mulu(vault.basketUnits(address(this))).divu(totalSupply);
         _setMood(Mood.CALM);
     }
 

@@ -47,11 +47,9 @@ contract RevenueHandlerP0 is Pausable, Mixin, MoodyP0, SettingsHandlerP0, VaultH
 
     /// Claims COMP + AAVE for self and vault, and sweeps into self
     function _doRewards() private {
-        Oracle.Info memory oracle = oracle();
-
         // Comp
-        oracle.compound.claimComp(address(this));
-        oracle.compound.claimComp(address(vault));
+        oracle().compound.claimComp(address(this));
+        oracle().compound.claimComp(address(vault));
         vault.sweepToken(address(compAsset()));
 
         // Aave
