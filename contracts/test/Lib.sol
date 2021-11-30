@@ -143,7 +143,6 @@ library Lib {
             assertEq(a.assets.length, a.quantities.length, "invalid input");
 
         for (uint256 i = 0; ok && i < a.quantities.length; i++) {
-            // TODO: Do fuzzy check
             ok = assertEq(a.quantities[i], b.quantities[i], "BU quantities mismatch");
         }
     }

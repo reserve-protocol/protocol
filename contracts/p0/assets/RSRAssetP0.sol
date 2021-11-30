@@ -20,7 +20,7 @@ contract RSRAssetP0 is IAsset {
     }
 
     /// @return {attoUSD/qRSR}
-    // TODO: janky
+    // TODO: RSR should get its price directly from Chainlink
     function priceUSD(Oracle.Info memory oracle) public view override returns (Fix) {
         return oracle.consult(Oracle.Source.AAVE, _erc20);
     }
