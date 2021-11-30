@@ -50,7 +50,7 @@ contract RevenueHandlerP0 is Pausable, Mixin, MoodyP0, SettingsHandlerP0, VaultH
         // Comp
         oracle().compound.claimComp(address(this));
         oracle().compound.claimComp(address(vault));
-        vault.sweepToken(address(compAsset()));
+        vault.withdrawToMain(address(compAsset().erc20()));
 
         // Aave
         for (uint256 i = 0; i < vault.size(); i++) {
@@ -60,7 +60,7 @@ contract RevenueHandlerP0 is Pausable, Mixin, MoodyP0, SettingsHandlerP0, VaultH
                 IStaticAToken(address(vault.collateralAt(i).erc20())).claimRewardsToSelf(true);
             }
         }
-        vault.sweepToken(address(aaveAsset()));
+        vault.withdrawToMain(address(aaveAsset().erc20()));
 
         // Expand the RToken supply to self
         uint256 possible = fromBUs(vault.basketUnits(address(this)));

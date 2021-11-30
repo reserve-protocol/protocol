@@ -88,7 +88,8 @@ contract VaultP0 is IVault, Ownable {
         emit BUsRedeemed(to, _msgSender(), amtBUs);
     }
 
-    function sweepToken(address token) external override {
+    /// Used to withdraw earned COMP/AAVE
+    function withdrawToMain(address token) external override {
         IERC20(token).safeTransfer(main, IERC20(token).balanceOf(address(this)));
     }
 

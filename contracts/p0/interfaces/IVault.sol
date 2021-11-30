@@ -52,7 +52,7 @@ interface IVault {
     function redeem(address to, uint256 amtBUs) external;
 
     /// Moves all balance of `token` to main
-    function sweepToken(address token) external;
+    function withdrawToMain(address token) external;
 
     /// Main Setter
     function setMain(address main) external;
