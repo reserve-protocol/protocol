@@ -59,7 +59,9 @@ library Lib {
 
         // Collateral
         for (uint256 i = 0; ok && i < a.collateral.length; i++) {
-            ok = ok && _assertTokenStateEq(a.collateral[i], b.collateral[i], a.collateral[i].symbol);
+            ok =
+                ok &&
+                _assertTokenStateEq(a.collateral[i], b.collateral[i], a.collateral[i].symbol);
         }
     }
 
@@ -71,8 +73,16 @@ library Lib {
             assertEq(a.auctionPeriod, b.auctionPeriod, "Config.rewardStart") &&
             assertEq(a.stRSRWithdrawalDelay, b.stRSRWithdrawalDelay, "Config.rewardStart") &&
             assertEq(a.defaultDelay, b.defaultDelay, "Config.rewardStart") &&
-            assertEq(_rawFix(a.maxTradeSlippage), _rawFix(b.maxTradeSlippage), "Config.maxTradeSlippage") &&
-            assertEq(_rawFix(a.maxAuctionSize), _rawFix(b.maxAuctionSize), "Config.maxAuctionSize") &&
+            assertEq(
+                _rawFix(a.maxTradeSlippage),
+                _rawFix(b.maxTradeSlippage),
+                "Config.maxTradeSlippage"
+            ) &&
+            assertEq(
+                _rawFix(a.maxAuctionSize),
+                _rawFix(b.maxAuctionSize),
+                "Config.maxAuctionSize"
+            ) &&
             assertEq(
                 _rawFix(a.minRecapitalizationAuctionSize),
                 _rawFix(b.minRecapitalizationAuctionSize),
@@ -83,9 +93,17 @@ library Lib {
                 _rawFix(b.minRevenueAuctionSize),
                 "Config.minRevenueAuctionSize"
             ) &&
-            assertEq(_rawFix(a.migrationChunk), _rawFix(b.migrationChunk), "Config.migrationChunk") &&
+            assertEq(
+                _rawFix(a.migrationChunk),
+                _rawFix(b.migrationChunk),
+                "Config.migrationChunk"
+            ) &&
             assertEq(_rawFix(a.issuanceRate), _rawFix(b.issuanceRate), "Config.issuanceRate") &&
-            assertEq(_rawFix(a.defaultThreshold), _rawFix(b.defaultThreshold), "Config.defaultThreshold") &&
+            assertEq(
+                _rawFix(a.defaultThreshold),
+                _rawFix(b.defaultThreshold),
+                "Config.defaultThreshold"
+            ) &&
             assertEq(_rawFix(a.cut), _rawFix(b.cut), "Config.f");
     }
 
@@ -113,7 +131,9 @@ library Lib {
         string memory message;
         ok = assertEq(a.length, b.length, "Balances length mismatch");
         for (uint256 i = 0; i < a.length; i++) {
-            ok = ok && assertEq(a[i], b[i], string(abi.encodePacked("Account ", i, " balance mismatch")));
+            ok =
+                ok &&
+                assertEq(a[i], b[i], string(abi.encodePacked("Account ", i, " balance mismatch")));
         }
     }
 
@@ -129,7 +149,9 @@ library Lib {
             message = string(abi.encodeWithSignature("Allowances array ", i, " length mismatch"));
             ok = ok && assertEq(a[i].length, b[i].length, message);
             for (uint256 j = 0; j < a[i].length; j++) {
-                message = string(abi.encodeWithSignature("Account ", i, ", spender ", j, " allowance mismatch"));
+                message = string(
+                    abi.encodeWithSignature("Account ", i, ", spender ", j, " allowance mismatch")
+                );
                 ok = ok && assertEq(a[i][j], b[i][j], message);
             }
         }

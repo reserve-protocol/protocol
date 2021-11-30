@@ -200,12 +200,16 @@ describe('AssetManagerP0 contract', () => {
     aToken = <StaticATokenMock>await ATokenMockFactory.deploy('AToken', 'ATKN0', token0.address)
     await aToken.setAaveToken(aaveToken.address)
     ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
-    assetAToken = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aToken.address, aToken.decimals())
+    assetAToken = <ATokenCollateralP0>(
+      await ATokenAssetFactory.deploy(aToken.address, aToken.decimals())
+    )
 
     CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
     cToken = <CTokenMock>await CTokenMockFactory.deploy('CToken', 'CTKN1', token1.address)
     CTokenAssetFactory = await ethers.getContractFactory('CTokenCollateralP0')
-    assetCToken = <CTokenCollateralP0>await CTokenAssetFactory.deploy(cToken.address, cToken.decimals())
+    assetCToken = <CTokenCollateralP0>(
+      await CTokenAssetFactory.deploy(cToken.address, cToken.decimals())
+    )
 
     // Mint ATokens and CTokens
     await aToken.connect(owner).mint(addr1.address, initialBal)
@@ -235,7 +239,9 @@ describe('AssetManagerP0 contract', () => {
       // Create a new asset manager with unapproved collateral in the vault
       AssetManagerFactory = await ethers.getContractFactory('AssetManagerP0')
       await expect(
-        AssetManagerFactory.deploy(main.address, vault.address, trading.address, owner.address, [collateral[0]])
+        AssetManagerFactory.deploy(main.address, vault.address, trading.address, owner.address, [
+          collateral[0],
+        ])
       ).to.be.revertedWith('UnapprovedCollateral()')
     })
   })
@@ -307,7 +313,11 @@ describe('AssetManagerP0 contract', () => {
         const qtyHalfCToken: BigNumber = bn('1e8').div(2)
 
         let newVault: VaultP0 = <VaultP0>(
-          await VaultFactory.deploy([assetAToken.address, assetCToken.address], [qtyHalf, qtyHalfCToken], [])
+          await VaultFactory.deploy(
+            [assetAToken.address, assetCToken.address],
+            [qtyHalf, qtyHalfCToken],
+            []
+          )
         )
         // Setup Main
         await newVault.connect(owner).setMain(main.address)
@@ -434,7 +444,11 @@ describe('AssetManagerP0 contract', () => {
         // Set vault with ATokens and CTokens
         const qtyHalfCToken: BigNumber = bn('1e8').div(2)
         newVault = <VaultP0>(
-          await VaultFactory.deploy([assetAToken.address, assetCToken.address], [qtyHalf, qtyHalfCToken], [])
+          await VaultFactory.deploy(
+            [assetAToken.address, assetCToken.address],
+            [qtyHalf, qtyHalfCToken],
+            []
+          )
         )
         // Setup Main
         await newVault.connect(owner).setMain(main.address)
@@ -470,7 +484,9 @@ describe('AssetManagerP0 contract', () => {
         await compoundMock.setRewards(newVault.address, rewardAmountCOMP)
 
         // Get RToken Asset
-        const rTokenAsset = <RTokenAssetP0>await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+        const rTokenAsset = <RTokenAssetP0>(
+          await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+        )
 
         // Collect revenue - Called via poke
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
@@ -484,7 +500,14 @@ describe('AssetManagerP0 contract', () => {
           .to.emit(assetManager, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt, Fate.Stake)
           .and.to.emit(assetManager, 'AuctionStarted')
-          .withArgs(1, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken, Fate.Melt)
+          .withArgs(
+            1,
+            compAsset.address,
+            rTokenAsset.address,
+            sellAmtRToken,
+            minBuyAmtRToken,
+            Fate.Melt
+          )
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
@@ -523,15 +546,30 @@ describe('AssetManagerP0 contract', () => {
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(trading.address, minBuyAmt)
         await rToken.connect(addr1).approve(trading.address, minBuyAmtRToken)
-        await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
-        await trading.placeBid(1, { bidder: addr1.address, sellAmount: sellAmtRToken, buyAmount: minBuyAmtRToken })
+        await trading.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
+        await trading.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRToken,
+          buyAmount: minBuyAmtRToken,
+        })
 
         // Close auctions
         await expect(main.poke())
           .to.emit(assetManager, 'AuctionEnded')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt, Fate.Stake)
           .and.to.emit(assetManager, 'AuctionEnded')
-          .withArgs(1, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken, Fate.Melt)
+          .withArgs(
+            1,
+            compAsset.address,
+            rTokenAsset.address,
+            sellAmtRToken,
+            minBuyAmtRToken,
+            Fate.Melt
+          )
           .and.to.not.emit(assetManager, 'AuctionStarted')
 
         // Check previous auctions closed
@@ -580,7 +618,9 @@ describe('AssetManagerP0 contract', () => {
         await aToken.setRewards(newVault.address, rewardAmountAAVE)
 
         // Get RToken Asset
-        const rTokenAsset = <RTokenAssetP0>await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+        const rTokenAsset = <RTokenAssetP0>(
+          await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+        )
 
         // Collect revenue - Called via poke
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
@@ -594,7 +634,14 @@ describe('AssetManagerP0 contract', () => {
           .to.emit(assetManager, 'AuctionStarted')
           .withArgs(0, aaveAsset.address, rsrAsset.address, sellAmt, minBuyAmt, Fate.Stake)
           .and.to.emit(assetManager, 'AuctionStarted')
-          .withArgs(1, aaveAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken, Fate.Melt)
+          .withArgs(
+            1,
+            aaveAsset.address,
+            rTokenAsset.address,
+            sellAmtRToken,
+            minBuyAmtRToken,
+            Fate.Melt
+          )
 
         // Check auctions registered
         // AAVE -> RSR Auction
@@ -632,15 +679,30 @@ describe('AssetManagerP0 contract', () => {
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(trading.address, minBuyAmt)
         await rToken.connect(addr1).approve(trading.address, minBuyAmtRToken)
-        await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
-        await trading.placeBid(1, { bidder: addr1.address, sellAmount: sellAmtRToken, buyAmount: minBuyAmtRToken })
+        await trading.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
+        await trading.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRToken,
+          buyAmount: minBuyAmtRToken,
+        })
 
         // Close auctions
         await expect(main.poke())
           .to.emit(assetManager, 'AuctionEnded')
           .withArgs(0, aaveAsset.address, rsrAsset.address, sellAmt, minBuyAmt, Fate.Stake)
           .and.to.emit(assetManager, 'AuctionEnded')
-          .withArgs(1, aaveAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken, Fate.Melt)
+          .withArgs(
+            1,
+            aaveAsset.address,
+            rTokenAsset.address,
+            sellAmtRToken,
+            minBuyAmtRToken,
+            Fate.Melt
+          )
           .and.to.not.emit(assetManager, 'AuctionStarted')
 
         expectAuctionOpen(0, false)
@@ -722,7 +784,11 @@ describe('AssetManagerP0 contract', () => {
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(trading.address, minBuyAmt)
-        await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
+        await trading.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
 
         // // Close auctions
         await expect(main.poke())
@@ -770,7 +836,11 @@ describe('AssetManagerP0 contract', () => {
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(trading.address, minBuyAmt)
-        await trading.placeBid(1, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
+        await trading.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
 
         // Close auction
         await expect(main.poke())
@@ -820,7 +890,9 @@ describe('AssetManagerP0 contract', () => {
         await aToken.setRewards(newVault.address, rewardAmountAAVE)
 
         // Get RToken Asset
-        const rTokenAsset = <RTokenAssetP0>await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+        const rTokenAsset = <RTokenAssetP0>(
+          await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+        )
 
         // Collect revenue - Called via poke
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
@@ -861,7 +933,11 @@ describe('AssetManagerP0 contract', () => {
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rToken.connect(addr1).approve(trading.address, minBuyAmt)
-        await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
+        await trading.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
 
         // Calculate pending amount
         let sellAmtRemainder: BigNumber = rewardAmountAAVE.sub(sellAmt)
@@ -872,7 +948,14 @@ describe('AssetManagerP0 contract', () => {
           .to.emit(assetManager, 'AuctionEnded')
           .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmt, minBuyAmt, Fate.Melt)
           .and.to.emit(assetManager, 'AuctionStarted')
-          .withArgs(1, aaveAsset.address, rTokenAsset.address, sellAmtRemainder, minBuyAmtRemainder, Fate.Melt)
+          .withArgs(
+            1,
+            aaveAsset.address,
+            rTokenAsset.address,
+            sellAmtRemainder,
+            minBuyAmtRemainder,
+            Fate.Melt
+          )
 
         // Check previous auctions closed
         // AAVE -> RToken Auction
@@ -910,7 +993,11 @@ describe('AssetManagerP0 contract', () => {
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rToken.connect(addr1).approve(trading.address, sellAmtRemainder)
-        await trading.placeBid(1, { bidder: addr1.address, sellAmount: sellAmtRemainder, buyAmount: sellAmtRemainder })
+        await trading.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRemainder,
+          buyAmount: sellAmtRemainder,
+        })
 
         // Advance time till auction ended
         await advanceTime(newConfig.auctionPeriod.add(100).toString())
@@ -918,7 +1005,14 @@ describe('AssetManagerP0 contract', () => {
         // Close auction
         await expect(main.poke())
           .to.emit(assetManager, 'AuctionEnded')
-          .withArgs(1, aaveAsset.address, rTokenAsset.address, sellAmtRemainder, sellAmtRemainder, Fate.Melt)
+          .withArgs(
+            1,
+            aaveAsset.address,
+            rTokenAsset.address,
+            sellAmtRemainder,
+            sellAmtRemainder,
+            Fate.Melt
+          )
           .and.to.not.emit(assetManager, 'AuctionStarted')
 
         //  Check existing auctions are closed
@@ -964,7 +1058,9 @@ describe('AssetManagerP0 contract', () => {
         await compoundMock.setRewards(newVault.address, rewardAmountCOMP)
 
         // Get RToken Asset
-        const rTokenAsset = <RTokenAssetP0>await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+        const rTokenAsset = <RTokenAssetP0>(
+          await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+        )
 
         // Collect revenue - Called via poke
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
@@ -980,7 +1076,14 @@ describe('AssetManagerP0 contract', () => {
           .and.to.emit(assetManager, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt, Fate.Stake)
           .and.to.emit(assetManager, 'AuctionStarted')
-          .withArgs(1, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken, Fate.Melt)
+          .withArgs(
+            1,
+            compAsset.address,
+            rTokenAsset.address,
+            sellAmtRToken,
+            minBuyAmtRToken,
+            Fate.Melt
+          )
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
         // Check auctions registered
@@ -1026,25 +1129,53 @@ describe('AssetManagerP0 contract', () => {
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(trading.address, minBuyAmt)
         await rToken.connect(addr1).approve(trading.address, minBuyAmtRToken)
-        await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmt })
-        await trading.placeBid(1, { bidder: addr1.address, sellAmount: sellAmtRToken, buyAmount: minBuyAmtRToken })
+        await trading.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
+        await trading.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRToken,
+          buyAmount: minBuyAmtRToken,
+        })
 
         // Close auctions
 
         // Calculate pending amount
-        let sellAmtRemainder: BigNumber = rewardAmountCOMP.sub(sellAmt).sub(sellAmtRToken).mul(80).div(100) // f=0.8 of remaining funds
+        let sellAmtRemainder: BigNumber = rewardAmountCOMP
+          .sub(sellAmt)
+          .sub(sellAmtRToken)
+          .mul(80)
+          .div(100) // f=0.8 of remaining funds
         let minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
 
         let sellAmtRTokenRemainder: BigNumber = sellAmtRemainder.div(4) // keep ratio of 1-f in each auction (Rtoken should be 25% of RSR in this example)
-        let minBuyAmtRTokenRemainder: BigNumber = sellAmtRTokenRemainder.sub(sellAmtRTokenRemainder.div(100)) // due to trade slippage 1%
+        let minBuyAmtRTokenRemainder: BigNumber = sellAmtRTokenRemainder.sub(
+          sellAmtRTokenRemainder.div(100)
+        ) // due to trade slippage 1%
 
         await expect(main.poke())
           .to.emit(assetManager, 'AuctionEnded')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt, Fate.Stake)
           .and.to.emit(assetManager, 'AuctionEnded')
-          .withArgs(1, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken, Fate.Melt)
+          .withArgs(
+            1,
+            compAsset.address,
+            rTokenAsset.address,
+            sellAmtRToken,
+            minBuyAmtRToken,
+            Fate.Melt
+          )
           .and.to.emit(assetManager, 'AuctionStarted')
-          .withArgs(2, compAsset.address, rsrAsset.address, sellAmtRemainder, minBuyAmtRemainder, Fate.Stake)
+          .withArgs(
+            2,
+            compAsset.address,
+            rsrAsset.address,
+            sellAmtRemainder,
+            minBuyAmtRemainder,
+            Fate.Stake
+          )
           .and.to.emit(assetManager, 'AuctionStarted')
           .withArgs(
             3,
@@ -1142,7 +1273,14 @@ describe('AssetManagerP0 contract', () => {
 
         await expect(main.poke())
           .to.emit(assetManager, 'AuctionEnded')
-          .withArgs(2, compAsset.address, rsrAsset.address, sellAmtRemainder, minBuyAmtRemainder, Fate.Stake)
+          .withArgs(
+            2,
+            compAsset.address,
+            rsrAsset.address,
+            sellAmtRemainder,
+            minBuyAmtRemainder,
+            Fate.Stake
+          )
           .and.to.emit(assetManager, 'AuctionEnded')
           .withArgs(
             3,
@@ -1169,7 +1307,9 @@ describe('AssetManagerP0 contract', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Get RToken Asset
-        const rTokenAsset = <RTokenAssetP0>await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+        const rTokenAsset = <RTokenAssetP0>(
+          await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+        )
 
         // Change redemption rate for AToken and CToken to double
         await aToken.setExchangeRate(fp('2'))
@@ -1192,7 +1332,9 @@ describe('AssetManagerP0 contract', () => {
         let newTotalSupply: BigNumber = fp(currentTotalSupply).div(b)
         let sellAmt: BigNumber = newTotalSupply.div(100) // due to max auction size of 1%
         let tempValueSell = sellAmt.mul(14)
-        let minBuyAmtRSR: BigNumber = tempValueSell.sub(tempValueSell.mul(config.maxTradeSlippage).div(BN_SCALE_FACTOR)) // due to trade slippage 1%
+        let minBuyAmtRSR: BigNumber = tempValueSell.sub(
+          tempValueSell.mul(config.maxTradeSlippage).div(BN_SCALE_FACTOR)
+        ) // due to trade slippage 1%
         minBuyAmtRSR = minBuyAmtRSR.div(10)
 
         // Call Poke to collect revenue and mint new tokens
@@ -1222,7 +1364,11 @@ describe('AssetManagerP0 contract', () => {
 
         // Perform Mock Bids for RSR(addr1 has balance)
         await rsr.connect(addr1).approve(trading.address, minBuyAmtRSR)
-        await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: minBuyAmtRSR })
+        await trading.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmtRSR,
+        })
 
         // Advance time till auctioo ended
         await advanceTime(config.auctionPeriod.add(100).toString())
@@ -1261,7 +1407,9 @@ describe('AssetManagerP0 contract', () => {
         // For simple vault with one token (1 to 1) - And backup
         backupVault = <VaultP0>await VaultFactory.deploy([collateral[1]], [bn('1e18')], [])
 
-        newVault = <VaultP0>await VaultFactory.deploy([collateral[0]], [bn('1e18')], [backupVault.address])
+        newVault = <VaultP0>(
+          await VaultFactory.deploy([collateral[0]], [bn('1e18')], [backupVault.address])
+        )
 
         console.log('Token in basket: ' + (await token0.address))
         console.log('Backup token: ' + (await token1.address))
@@ -1301,7 +1449,9 @@ describe('AssetManagerP0 contract', () => {
         await expect(main.poke()).to.not.emit(assetManager, 'AuctionStarted')
 
         // Notice default
-        await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.CALM, State.DOUBT)
+        await expect(main.noticeDefault())
+          .to.emit(main, 'SystemStateChanged')
+          .withArgs(State.CALM, State.DOUBT)
 
         // Check initial state
         expect(await main.state()).to.equal(State.DOUBT)
@@ -1312,7 +1462,9 @@ describe('AssetManagerP0 contract', () => {
         // Advance time post defaultDelay
         await advanceTime(config.defaultDelay.toString())
 
-        await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.DOUBT, State.TRADING)
+        await expect(main.noticeDefault())
+          .to.emit(main, 'SystemStateChanged')
+          .withArgs(State.DOUBT, State.TRADING)
 
         // Check state
         expect(await main.state()).to.equal(State.TRADING)

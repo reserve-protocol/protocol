@@ -151,7 +151,9 @@ describe('MainP0 contract', () => {
       expect(await assetManager.vault()).to.equal(vault.address)
       expect(await main.comptroller()).to.equal(compoundMock.address)
       expect(await main.config()).to.eql(Object.values(config))
-      const rTokenAsset = <RTokenAssetP0>await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+      const rTokenAsset = <RTokenAssetP0>(
+        await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+      )
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await main.state()).to.equal(State.CALM)
       expect(await main.owner()).to.equal(owner.address)
@@ -225,7 +227,9 @@ describe('MainP0 contract', () => {
       await main.connect(owner).setPauser(addr1.address)
 
       // Set Pauser
-      await expect(main.connect(other).setPauser(other.address)).to.be.revertedWith('only pauser or owner')
+      await expect(main.connect(other).setPauser(other.address)).to.be.revertedWith(
+        'only pauser or owner'
+      )
 
       // Check Pauser not updated
       expect(await main.pauser()).to.equal(addr1.address)
@@ -301,7 +305,9 @@ describe('MainP0 contract', () => {
     it('Should revert if user does not have the required Tokens', async function () {
       const issueAmount: BigNumber = bn('10000000000e18')
 
-      await expect(main.connect(addr1).issue(issueAmount)).to.be.revertedWith('ERC20: transfer amount exceeds balance')
+      await expect(main.connect(addr1).issue(issueAmount)).to.be.revertedWith(
+        'ERC20: transfer amount exceeds balance'
+      )
       expect(await rToken.totalSupply()).to.equal(bn('0'))
       expect(await vault.basketUnits(main.address)).to.equal(0)
     })
@@ -346,10 +352,18 @@ describe('MainP0 contract', () => {
     it('Should issue RTokens correctly for more complex basket multiple users', async function () {
       const issueAmount: BigNumber = bn('10e18')
 
-      const expectedTkn0: BigNumber = issueAmount.mul(await vault.quantity(collateral0.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn1: BigNumber = issueAmount.mul(await vault.quantity(collateral1.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn2: BigNumber = issueAmount.mul(await vault.quantity(collateral2.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn3: BigNumber = issueAmount.mul(await vault.quantity(collateral3.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn0: BigNumber = issueAmount
+        .mul(await vault.quantity(collateral0.address))
+        .div(BN_SCALE_FACTOR)
+      const expectedTkn1: BigNumber = issueAmount
+        .mul(await vault.quantity(collateral1.address))
+        .div(BN_SCALE_FACTOR)
+      const expectedTkn2: BigNumber = issueAmount
+        .mul(await vault.quantity(collateral2.address))
+        .div(BN_SCALE_FACTOR)
+      const expectedTkn3: BigNumber = issueAmount
+        .mul(await vault.quantity(collateral3.address))
+        .div(BN_SCALE_FACTOR)
 
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)
@@ -444,10 +458,18 @@ describe('MainP0 contract', () => {
     it('Should process issuances in multiple attempts (2 blocks)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
-      const expectedTkn0: BigNumber = issueAmount.mul(await vault.quantity(collateral0.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn1: BigNumber = issueAmount.mul(await vault.quantity(collateral1.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn2: BigNumber = issueAmount.mul(await vault.quantity(collateral2.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn3: BigNumber = issueAmount.mul(await vault.quantity(collateral3.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn0: BigNumber = issueAmount
+        .mul(await vault.quantity(collateral0.address))
+        .div(BN_SCALE_FACTOR)
+      const expectedTkn1: BigNumber = issueAmount
+        .mul(await vault.quantity(collateral1.address))
+        .div(BN_SCALE_FACTOR)
+      const expectedTkn2: BigNumber = issueAmount
+        .mul(await vault.quantity(collateral2.address))
+        .div(BN_SCALE_FACTOR)
+      const expectedTkn3: BigNumber = issueAmount
+        .mul(await vault.quantity(collateral3.address))
+        .div(BN_SCALE_FACTOR)
 
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)
@@ -510,10 +532,18 @@ describe('MainP0 contract', () => {
     it('Should rollback mintings if Vault changes (2 blocks)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
-      const expectedTkn0: BigNumber = issueAmount.mul(await vault.quantity(collateral0.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn1: BigNumber = issueAmount.mul(await vault.quantity(collateral1.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn2: BigNumber = issueAmount.mul(await vault.quantity(collateral2.address)).div(BN_SCALE_FACTOR)
-      const expectedTkn3: BigNumber = issueAmount.mul(await vault.quantity(collateral3.address)).div(BN_SCALE_FACTOR)
+      const expectedTkn0: BigNumber = issueAmount
+        .mul(await vault.quantity(collateral0.address))
+        .div(BN_SCALE_FACTOR)
+      const expectedTkn1: BigNumber = issueAmount
+        .mul(await vault.quantity(collateral1.address))
+        .div(BN_SCALE_FACTOR)
+      const expectedTkn2: BigNumber = issueAmount
+        .mul(await vault.quantity(collateral2.address))
+        .div(BN_SCALE_FACTOR)
+      const expectedTkn3: BigNumber = issueAmount
+        .mul(await vault.quantity(collateral3.address))
+        .div(BN_SCALE_FACTOR)
 
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)
@@ -552,7 +582,9 @@ describe('MainP0 contract', () => {
       await main.poke()
 
       // Change Vault
-      const newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collateral[1]], [bn('1e18')], [])
+      const newVault: VaultP0 = <VaultP0>(
+        await VaultFactory.deploy([collateral[1]], [bn('1e18')], [])
+      )
       await assetManager.connect(owner).switchVault(newVault.address)
 
       // Process slow mintings again
@@ -592,7 +624,9 @@ describe('MainP0 contract', () => {
     it('Should revert if no balance of RToken', async function () {
       const redeemAmount: BigNumber = bn('1000e18')
 
-      await expect(main.connect(addr1).redeem(redeemAmount)).to.be.revertedWith('ERC20: burn amount exceeds balance')
+      await expect(main.connect(addr1).redeem(redeemAmount)).to.be.revertedWith(
+        'ERC20: burn amount exceeds balance'
+      )
     })
 
     context('With issued RTokens', async function () {
@@ -714,7 +748,9 @@ describe('MainP0 contract', () => {
       await aaveOracle.setPrice(token0.address, bn('1.5e14'))
 
       // Notice default
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.CALM, State.DOUBT)
+      await expect(main.noticeDefault())
+        .to.emit(main, 'MoodChanged')
+        .withArgs(State.CALM, State.DOUBT)
 
       expect(await main.state()).to.equal(State.DOUBT)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
@@ -723,7 +759,9 @@ describe('MainP0 contract', () => {
       await aaveOracle.setPrice(token0.address, bn('2.5e14'))
 
       // Notice default
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.DOUBT, State.CALM)
+      await expect(main.noticeDefault())
+        .to.emit(main, 'MoodChanged')
+        .withArgs(State.DOUBT, State.CALM)
 
       expect(await main.state()).to.equal(State.CALM)
       expect(await assetManager.fullyCapitalized()).to.equal(true)
@@ -744,7 +782,9 @@ describe('MainP0 contract', () => {
       await aaveOracle.setPrice(token0.address, bn('1.5e14'))
 
       // Notice default
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.CALM, State.DOUBT)
+      await expect(main.noticeDefault())
+        .to.emit(main, 'MoodChanged')
+        .withArgs(State.CALM, State.DOUBT)
 
       expect(await main.state()).to.equal(State.DOUBT)
       expect(await assetManager.vault()).to.equal(vault.address)
@@ -763,7 +803,9 @@ describe('MainP0 contract', () => {
       // Advance time post defaultDelay
       await advanceTime(config.defaultDelay.toString())
 
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.DOUBT, State.TRADING)
+      await expect(main.noticeDefault())
+        .to.emit(main, 'MoodChanged')
+        .withArgs(State.DOUBT, State.TRADING)
 
       // Check state
       expect(await main.state()).to.equal(State.TRADING)
@@ -775,12 +817,16 @@ describe('MainP0 contract', () => {
       await aaveOracle.setPrice(token1.address, bn('0.5e14'))
 
       // Notice default
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.TRADING, State.DOUBT)
+      await expect(main.noticeDefault())
+        .to.emit(main, 'MoodChanged')
+        .withArgs(State.TRADING, State.DOUBT)
 
       // Restore price
       await aaveOracle.setPrice(token1.address, bn('2.5e14'))
 
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.DOUBT, State.TRADING)
+      await expect(main.noticeDefault())
+        .to.emit(main, 'MoodChanged')
+        .withArgs(State.DOUBT, State.TRADING)
 
       expect(await main.state()).to.equal(State.TRADING)
       expect(await assetManager.vault()).to.equal(backupVault.address)
@@ -790,11 +836,19 @@ describe('MainP0 contract', () => {
     it('Should detect hard default and switch state and vault', async () => {
       // Define AToken
       ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
-      aToken0 = <StaticATokenMock>await ATokenMockFactory.deploy('AToken 0', 'ATKN0', token0.address)
-      aToken1 = <StaticATokenMock>await ATokenMockFactory.deploy('AToken 1', 'ATKN1', token1.address)
+      aToken0 = <StaticATokenMock>(
+        await ATokenMockFactory.deploy('AToken 0', 'ATKN0', token0.address)
+      )
+      aToken1 = <StaticATokenMock>(
+        await ATokenMockFactory.deploy('AToken 1', 'ATKN1', token1.address)
+      )
       ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
-      assetAToken0 = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aToken0.address, aToken0.decimals())
-      assetAToken1 = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aToken1.address, aToken1.decimals())
+      assetAToken0 = <ATokenCollateralP0>(
+        await ATokenAssetFactory.deploy(aToken0.address, aToken0.decimals())
+      )
+      assetAToken1 = <ATokenCollateralP0>(
+        await ATokenAssetFactory.deploy(aToken1.address, aToken1.decimals())
+      )
 
       // Check state
       expect(await main.state()).to.equal(State.CALM)
@@ -802,7 +856,9 @@ describe('MainP0 contract', () => {
       expect(await assetManager.fullyCapitalized()).to.equal(true)
 
       // Setup new Vault with AToken and capitalize Vault
-      const backupVault: VaultP0 = <VaultP0>await VaultFactory.deploy([assetAToken1.address], [bn('1e18')], [])
+      const backupVault: VaultP0 = <VaultP0>(
+        await VaultFactory.deploy([assetAToken1.address], [bn('1e18')], [])
+      )
       const newVault: VaultP0 = <VaultP0>(
         await VaultFactory.deploy([assetAToken0.address], [bn('1e18')], [backupVault.address])
       )
@@ -820,7 +876,9 @@ describe('MainP0 contract', () => {
       expect(await assetManager.fullyCapitalized()).to.equal(false)
 
       // Call will not trigger hard default nor soft default in normal situation
-      await expect(main.noticeDefault()).to.emit(main, 'MoodChanged').withArgs(State.CALM, State.TRADING)
+      await expect(main.noticeDefault())
+        .to.emit(main, 'MoodChanged')
+        .withArgs(State.CALM, State.TRADING)
 
       // Check state
       expect(await main.state()).to.equal(State.TRADING)

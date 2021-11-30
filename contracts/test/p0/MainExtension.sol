@@ -88,7 +88,10 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && defaultDelay() > 0;
         ok = ok && maxTradeSlippage().gte(FIX_ZERO) && maxTradeSlippage().lte(FIX_ONE);
         ok = ok && maxAuctionSize().gte(FIX_ZERO) && maxAuctionSize().lte(FIX_ONE);
-        ok = ok && minRecapitalizationAuctionSize().gte(FIX_ZERO) && minRecapitalizationAuctionSize().lte(FIX_ONE);
+        ok =
+            ok &&
+            minRecapitalizationAuctionSize().gte(FIX_ZERO) &&
+            minRecapitalizationAuctionSize().lte(FIX_ONE);
         ok = ok && minRevenueAuctionSize().gte(FIX_ZERO) && minRevenueAuctionSize().lte(FIX_ONE);
         ok = ok && migrationChunk().gte(FIX_ZERO) && migrationChunk().lte(FIX_ONE);
         ok = ok && issuanceRate().gte(FIX_ZERO) && issuanceRate().lte(FIX_ONE);
@@ -117,11 +120,17 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_quoteMonotonic() internal view returns (bool ok) {
         ok = true;
-        bytes memory result = address(this).functionStaticCall(abi.encodeWithSignature("quote(uint256)", 1e18));
+        bytes memory result = address(this).functionStaticCall(
+            abi.encodeWithSignature("quote(uint256)", 1e18)
+        );
         uint256[] memory one = abi.decode(result, (uint256[]));
-        bytes memory result2 = address(this).functionStaticCall(abi.encodeWithSignature("quote(uint256)", 1e18 + 1));
+        bytes memory result2 = address(this).functionStaticCall(
+            abi.encodeWithSignature("quote(uint256)", 1e18 + 1)
+        );
         uint256[] memory two = abi.decode(result2, (uint256[]));
-        bytes memory result3 = address(this).functionStaticCall(abi.encodeWithSignature("quote(uint256)", 2e18));
+        bytes memory result3 = address(this).functionStaticCall(
+            abi.encodeWithSignature("quote(uint256)", 2e18)
+        );
         uint256[] memory three = abi.decode(result3, (uint256[]));
         ok = ok && one.length == two.length;
         ok = ok && two.length == three.length;
@@ -136,7 +145,9 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_tokensAndQuantitiesSameLength() internal view returns (bool ok) {
         ok = true;
-        bytes memory result = address(this).functionStaticCall(abi.encodeWithSignature("quote(uint256)", 1e18));
+        bytes memory result = address(this).functionStaticCall(
+            abi.encodeWithSignature("quote(uint256)", 1e18)
+        );
         uint256[] memory quantities = abi.decode(result, (uint256[]));
         ok = ok && backingTokens().length == quantities.length;
         if (!ok) {
@@ -153,7 +164,9 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
                 ok = ok && oracle_.consult(Oracle.Source.AAVE, address(c.erc20())).gt(FIX_ZERO);
             }
         }
-        ok = ok && oracle_.consult(Oracle.Source.COMPOUND, address(compAsset().erc20())).gt(FIX_ZERO);
+        ok =
+            ok &&
+            oracle_.consult(Oracle.Source.COMPOUND, address(compAsset().erc20())).gt(FIX_ZERO);
         ok = ok && oracle_.consult(Oracle.Source.AAVE, address(rsrAsset().erc20())).gt(FIX_ZERO);
         ok = ok && oracle_.consult(Oracle.Source.AAVE, address(aaveAsset().erc20())).gt(FIX_ZERO);
         if (!ok) {
@@ -176,7 +189,9 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     // Ex-asset manager
 
     function _INVARIANT_baseFactorDefined() internal view returns (bool ok) {
-        bytes memory result = address(this).functionStaticCall(abi.encodeWithSignature("baseFactor()"));
+        bytes memory result = address(this).functionStaticCall(
+            abi.encodeWithSignature("baseFactor()")
+        );
         Fix b = abi.decode(result, (Fix));
         ok = b.gt(FIX_ZERO);
         if (!ok) {
@@ -190,7 +205,9 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_toBUInverseFromBU() internal view returns (bool ok) {
         uint256 supply = rToken().totalSupply();
-        bytes memory result = address(this).functionStaticCall(abi.encodeWithSignature("toBUs(uint256)", supply));
+        bytes memory result = address(this).functionStaticCall(
+            abi.encodeWithSignature("toBUs(uint256)", supply)
+        );
         bytes memory result2 = address(this).functionStaticCall(
             abi.encodeWithSignature("fromBUs(uint256)", abi.decode(result, (uint256)))
         );
@@ -202,7 +219,9 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_fromBUInverseToBU() internal view returns (bool ok) {
         uint256 bu_s = vault.basketUnits(address(this));
-        bytes memory result = address(this).functionStaticCall(abi.encodeWithSignature("fromBUs(uint256)", bu_s));
+        bytes memory result = address(this).functionStaticCall(
+            abi.encodeWithSignature("fromBUs(uint256)", bu_s)
+        );
         bytes memory result2 = address(this).functionStaticCall(
             abi.encodeWithSignature("toBUs(uint256)", abi.decode(result, (uint256)))
         );

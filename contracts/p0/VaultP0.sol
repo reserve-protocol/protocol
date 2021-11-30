@@ -104,7 +104,10 @@ contract VaultP0 is IVault, Ownable {
         amounts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
             // {qTok} = {qTok/BU} * {qBU} / {qBU/BU}
-            amounts[i] = toFix(amtBUs).divu(1e18).mulu(_basket.quantities[_basket.collateral[i]]).toUint();
+            amounts[i] = toFix(amtBUs)
+            .divu(1e18)
+            .mulu(_basket.quantities[_basket.collateral[i]])
+            .toUint();
         }
     }
 

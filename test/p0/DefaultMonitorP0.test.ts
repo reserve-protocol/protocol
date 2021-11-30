@@ -158,7 +158,12 @@ describe('DefaultMonitorP0 contract', () => {
     quantity2 = qtyThird
     quantity3 = qtyDouble
 
-    collateral = [collateral0.address, collateral1.address, collateral2.address, collateral3.address]
+    collateral = [
+      collateral0.address,
+      collateral1.address,
+      collateral2.address,
+      collateral3.address,
+    ]
     quantities = [quantity0, quantity1, quantity2, quantity3]
 
     VaultFactory = await ethers.getContractFactory('VaultP0')
@@ -174,7 +179,9 @@ describe('DefaultMonitorP0 contract', () => {
     compoundOracle = <CompoundOracleMockP0>(
       await ethers.getContractAt('CompoundOracleMockP0', await main.compoundOracle())
     )
-    aaveOracle = <AaveOracleMockP0>await ethers.getContractAt('AaveOracleMockP0', await main.aaveOracle())
+    aaveOracle = <AaveOracleMockP0>(
+      await ethers.getContractAt('AaveOracleMockP0', await main.aaveOracle())
+    )
 
     // Set Default Oracle Prices
     await compoundOracle.setPrice('TKN0', bn('1e6'))
@@ -289,7 +296,11 @@ describe('DefaultMonitorP0 contract', () => {
         const qtyHalfCToken: BigNumber = bn('1e8').div(2)
 
         newVault = <VaultP0>(
-          await VaultFactory.deploy([assetAToken.address, assetCToken.address], [qtyHalf, qtyHalfCToken], [])
+          await VaultFactory.deploy(
+            [assetAToken.address, assetCToken.address],
+            [qtyHalf, qtyHalfCToken],
+            []
+          )
         )
 
         // Set new vault
@@ -342,7 +353,11 @@ describe('DefaultMonitorP0 contract', () => {
       // Deploy backup vaults
       backupVault1 = <VaultP0>await VaultFactory.deploy([collateral[0]], [quantities[0]], [])
       backupVault2 = <VaultP0>(
-        await VaultFactory.deploy([collateral[0], collateral[1]], [quantities[0], quantities[1]], [])
+        await VaultFactory.deploy(
+          [collateral[0], collateral[1]],
+          [quantities[0], quantities[1]],
+          []
+        )
       )
       backupVault3 = <VaultP0>(
         await VaultFactory.deploy(
@@ -352,12 +367,21 @@ describe('DefaultMonitorP0 contract', () => {
         )
       )
       backupVault4 = <VaultP0>(
-        await VaultFactory.deploy([collateral[1], collateral[2]], [quantities[1], quantities[2]], [])
+        await VaultFactory.deploy(
+          [collateral[1], collateral[2]],
+          [quantities[1], quantities[2]],
+          []
+        )
       )
 
       await vault
         .connect(owner)
-        .setBackups([backupVault1.address, backupVault2.address, backupVault3.address, backupVault4.address])
+        .setBackups([
+          backupVault1.address,
+          backupVault2.address,
+          backupVault3.address,
+          backupVault4.address,
+        ])
     })
 
     it('Should return zero address if there is no valid backup vault', async function () {

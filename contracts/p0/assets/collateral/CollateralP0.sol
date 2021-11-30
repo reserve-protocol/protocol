@@ -73,7 +73,13 @@ contract CollateralP0 is ICollateral {
     }
 
     /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
-    function fiatcoinPriceUSD(Oracle.Info memory oracle) public view virtual override returns (Fix) {
+    function fiatcoinPriceUSD(Oracle.Info memory oracle)
+        public
+        view
+        virtual
+        override
+        returns (Fix)
+    {
         return oracle.consult(Oracle.Source.AAVE, address(fiatcoin()));
     }
 

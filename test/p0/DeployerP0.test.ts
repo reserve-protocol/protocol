@@ -101,7 +101,9 @@ describe('DeployerP0 contract', () => {
     it('Should setup Main correctly', async () => {
       expect(await main.rsr()).to.equal(rsr.address)
       expect(await main.comptroller()).to.equal(compoundMock.address)
-      const rTokenAsset = <RTokenAssetP0>await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+      const rTokenAsset = <RTokenAssetP0>(
+        await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+      )
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
     })
 

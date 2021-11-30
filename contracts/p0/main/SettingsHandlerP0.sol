@@ -173,7 +173,11 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
         return _maxAuctionSize;
     }
 
-    function setMinRecapitalizationAuctionSize(Fix minRecapitalizationAuctionSize_) external override onlyOwner {
+    function setMinRecapitalizationAuctionSize(Fix minRecapitalizationAuctionSize_)
+        external
+        override
+        onlyOwner
+    {
         _minRecapitalizationAuctionSize = minRecapitalizationAuctionSize_;
     }
 

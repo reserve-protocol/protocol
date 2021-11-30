@@ -16,7 +16,8 @@ interface ProtoCommon {
 
     /// Updates DeFi redemption rates
     /// @param defiAssets CTokens and ATokens
-    function setDefiCollateralRates(Asset[] memory defiAssets, Fix[] memory fiatcoinRedemptionRates) external;
+    function setDefiCollateralRates(Asset[] memory defiAssets, Fix[] memory fiatcoinRedemptionRates)
+        external;
 
     function state() external view returns (ProtoState memory);
 
@@ -81,18 +82,25 @@ contract ProtosDriver is ProtoCommon {
     }
 
     function init(ProtoState memory s) external override afterCMD {
-        require(s.collateral.length == s.defiCollateralRates.length, "all collateral should have defi rates");
+        require(
+            s.collateral.length == s.defiCollateralRates.length,
+            "all collateral should have defi rates"
+        );
         for (uint256 i = 0; i < _adapters.length; i++) {
             _adapters[i].init(s);
         }
     }
 
     /// @param baseAssets One-of DAI/USDC/USDT/BUSD/RSR/COMP/AAVE
-    function setBaseAssetPrices(Asset[] memory baseAssets, OraclePrice[] memory prices) external override {
+    function setBaseAssetPrices(Asset[] memory baseAssets, OraclePrice[] memory prices)
+        external
+        override
+    {
         require(baseAssets.length == prices.length, "baseAssets len mismatch prices");
         for (uint256 i = 0; i < _adapters.length; i++) {
             require(
-                uint256(baseAssets[i]) <= 3 || ((uint256(baseAssets[i])) >= 11 && uint256(baseAssets[i]) <= 13),
+                uint256(baseAssets[i]) <= 3 ||
+                    ((uint256(baseAssets[i])) >= 11 && uint256(baseAssets[i]) <= 13),
                 "fiatcoins + gov tokens only"
             );
             _adapters[i].setBaseAssetPrices(baseAssets, prices);
@@ -100,16 +108,19 @@ contract ProtosDriver is ProtoCommon {
     }
 
     /// @param defiCollateral CTokens and ATokens
-    function setDefiCollateralRates(Asset[] memory defiCollateral, Fix[] memory fiatcoinRedemptionRates)
-        external
-        override
-    {
+    function setDefiCollateralRates(
+        Asset[] memory defiCollateral,
+        Fix[] memory fiatcoinRedemptionRates
+    ) external override {
         require(
             defiCollateral.length == fiatcoinRedemptionRates.length,
             "defiCollateral len mismatch fiatcoin redemption rate"
         );
         for (uint256 i = 0; i < _adapters.length; i++) {
-            require(uint256(defiCollateral[i]) >= 4 && uint256(defiCollateral[i]) <= 10, "cToken/aTokens only");
+            require(
+                uint256(defiCollateral[i]) >= 4 && uint256(defiCollateral[i]) <= 10,
+                "cToken/aTokens only"
+            );
             _adapters[i].setDefiCollateralRates(defiCollateral, fiatcoinRedemptionRates);
         }
     }

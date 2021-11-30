@@ -115,7 +115,11 @@ contract DeployerP0 is IDeployer {
         return m;
     }
 
-    function _deployRToken(string memory name, string memory symbol) internal virtual returns (IRToken) {
+    function _deployRToken(string memory name, string memory symbol)
+        internal
+        virtual
+        returns (IRToken)
+    {
         return new RTokenP0(name, symbol);
     }
 

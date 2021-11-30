@@ -21,7 +21,8 @@ export const pow10 = (exponent: BigNumberish): BigNumber => {
 
 export const fp = (x: BigNumberish): BigNumber => {
   if (typeof x === 'string') return _parseScientific(x, SCALE_DECIMALS)
-  if (typeof x === 'number' && !Number.isInteger(x)) return _parseScientific(x.toFixed(9), SCALE_DECIMALS)
+  if (typeof x === 'number' && !Number.isInteger(x))
+    return _parseScientific(x.toFixed(9), SCALE_DECIMALS)
   return BigNumber.from(x).mul(pow10(SCALE_DECIMALS))
 }
 
@@ -44,7 +45,9 @@ function _parseScientific(s: string, scale: BigNumberish = 0): BigNumber {
   // Scientific Notation: <INT>(.<DIGITS>)?(e<INT>)?
   // INT: [+-]?DIGITS
   // DIGITS: \d+
-  const match = s.match(/^(?<sign>[+-]?)(?<int_part>\d+)(\.(?<frac_part>\d+))?(e(?<exponent>[+-]?\d+))?$/)
+  const match = s.match(
+    /^(?<sign>[+-]?)(?<int_part>\d+)(\.(?<frac_part>\d+))?(e(?<exponent>[+-]?\d+))?$/
+  )
   if (!match || !match.groups) throw new Error(`Illegal decimal string ${s}`)
 
   let sign = match.groups.sign === '-' ? -1 : 1

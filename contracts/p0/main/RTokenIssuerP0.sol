@@ -102,8 +102,15 @@ contract RTokenIssuerP0 is
         issuances.push(iss);
 
         for (uint256 i = 0; i < iss.vault.size(); i++) {
-            IERC20(iss.vault.collateralAt(i).erc20()).safeTransferFrom(iss.issuer, address(this), iss.deposits[i]);
-            IERC20(iss.vault.collateralAt(i).erc20()).safeApprove(address(iss.vault), iss.deposits[i]);
+            IERC20(iss.vault.collateralAt(i).erc20()).safeTransferFrom(
+                iss.issuer,
+                address(this),
+                iss.deposits[i]
+            );
+            IERC20(iss.vault.collateralAt(i).erc20()).safeApprove(
+                address(iss.vault),
+                iss.deposits[i]
+            );
         }
 
         iss.vault.issue(address(this), iss.amtBUs);
@@ -140,7 +147,9 @@ contract RTokenIssuerP0 is
             10_000 * 10**rTokenAsset().decimals(), // lower-bound: 10k whole RToken per block
             toFix(rTokenAsset().erc20().totalSupply()).mul(issuanceRate()).toUint()
         ); // {RToken/block}
-        uint256 blockStart = issuances.length == 0 ? block.number : issuances[issuances.length - 1].blockAvailableAt;
+        uint256 blockStart = issuances.length == 0
+            ? block.number
+            : issuances[issuances.length - 1].blockAvailableAt;
         return Math.max(blockStart, block.number) + Math.ceilDiv(amount, perBlock);
     }
 

@@ -66,13 +66,17 @@ describe('StRSRP0 contract', () => {
 
     // Deploy StRSR_Sys0
     StRSRFactory = await ethers.getContractFactory('StRSRP0')
-    stRSR = <StRSRP0>await StRSRFactory.connect(owner).deploy(main.address, 'Staked RSR - RToken', 'stRTKNRSR')
+    stRSR = <StRSRP0>(
+      await StRSRFactory.connect(owner).deploy(main.address, 'Staked RSR - RToken', 'stRTKNRSR')
+    )
 
     // Set Main
     await main.connect(owner).setStRSR(stRSR.address)
 
     // Get Asset Manager (needs to be the caller for seize RSR)
-    assetManager = <ManagerInternalMockP0>await ethers.getContractAt('ManagerInternalMockP0', await main.manager())
+    assetManager = <ManagerInternalMockP0>(
+      await ethers.getContractAt('ManagerInternalMockP0', await main.manager())
+    )
   })
 
   describe('Deployment', () => {
@@ -406,7 +410,9 @@ describe('StRSRP0 contract', () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
-        expect(await rsr.balanceOf(addr2.address)).to.equal(prevAddr2Balance.add(amount2).add(amount3))
+        expect(await rsr.balanceOf(addr2.address)).to.equal(
+          prevAddr2Balance.add(amount2).add(amount3)
+        )
         expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
       })
     })
@@ -417,7 +423,9 @@ describe('StRSRP0 contract', () => {
       const amount: BigNumber = bn('1e18')
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
 
-      await expect(stRSR.connect(other).seizeRSR(amount)).to.be.revertedWith('Caller is not Asset Manager')
+      await expect(stRSR.connect(other).seizeRSR(amount)).to.be.revertedWith(
+        'Caller is not Asset Manager'
+      )
       expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
     })
 
@@ -428,7 +436,9 @@ describe('StRSRP0 contract', () => {
       await expect(stRSR.connect(owner).addRSR(zero)).to.be.revertedWith('Amount cannot be zero')
       expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
 
-      await expect(assetManager.connect(owner).seizeRSR(zero)).to.be.revertedWith('Amount cannot be zero')
+      await expect(assetManager.connect(owner).seizeRSR(zero)).to.be.revertedWith(
+        'Amount cannot be zero'
+      )
       expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
     })
 
@@ -799,9 +809,9 @@ describe('StRSRP0 contract', () => {
 
       // Set allowance and transfer
       expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
-      await expect(stRSR.connect(addr2).transferFrom(addr1.address, other.address, amount)).to.be.revertedWith(
-        'ERC20: transfer amount exceeds allowance'
-      )
+      await expect(
+        stRSR.connect(addr2).transferFrom(addr1.address, other.address, amount)
+      ).to.be.revertedWith('ERC20: transfer amount exceeds allowance')
       expect(await stRSR.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
       expect(await stRSR.balanceOf(other.address)).to.equal(0)

@@ -20,13 +20,24 @@ import "./VaultHandlerP0.sol";
  * @title RevenueHandler
  * @notice Handles claiming of rewards from other protocols.
  */
-contract RevenueHandlerP0 is Pausable, Mixin, MoodyP0, SettingsHandlerP0, VaultHandlerP0, IRevenueHandler {
+contract RevenueHandlerP0 is
+    Pausable,
+    Mixin,
+    MoodyP0,
+    SettingsHandlerP0,
+    VaultHandlerP0,
+    IRevenueHandler
+{
     using SafeERC20 for IERC20;
 
     // timestamp -> whether rewards have been claimed.
     mapping(uint256 => bool) private _rewardsClaimed;
 
-    function init(ConstructorArgs calldata args) public virtual override(Mixin, SettingsHandlerP0, VaultHandlerP0) {
+    function init(ConstructorArgs calldata args)
+        public
+        virtual
+        override(Mixin, SettingsHandlerP0, VaultHandlerP0)
+    {
         super.init(args);
     }
 

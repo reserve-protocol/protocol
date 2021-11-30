@@ -24,7 +24,15 @@ import "./VaultHandlerP0.sol";
  * @title Auctioneer
  * @notice Handles auctions.
  */
-contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0, IAuctioneer {
+contract AuctioneerP0 is
+    Pausable,
+    Mixin,
+    MoodyP0,
+    AssetRegistryP0,
+    SettingsHandlerP0,
+    VaultHandlerP0,
+    IAuctioneer
+{
     using Auction for Auction.Info;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
@@ -170,7 +178,9 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
 
         // The ultimate endgame: a haircut for RToken holders.
         _accumulate();
-        _historicalBasketDilution = _meltingFactor().mulu(vault.basketUnits(address(this))).divu(totalSupply);
+        _historicalBasketDilution = _meltingFactor().mulu(vault.basketUnits(address(this))).divu(
+            totalSupply
+        );
         _setMood(Mood.CALM);
     }
 
@@ -361,7 +371,9 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
         Fix expectedRatio = amountForRSR.div(amountForRToken);
         Fix actualRatio = toFix(auction.sellAmount).divu(auction2.sellAmount);
         if (actualRatio.lt(expectedRatio)) {
-            Fix smallerAmountRToken = toFix(auction.sellAmount).mul(FIX_ONE.minus(cut())).div(cut());
+            Fix smallerAmountRToken = toFix(auction.sellAmount).mul(FIX_ONE.minus(cut())).div(
+                cut()
+            );
             (launch2, auction2) = _prepareAuctionSell(
                 minRevenueAuctionSize(),
                 asset,
@@ -403,7 +415,9 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
         }
 
         sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(oracle())).toUint()); // {qSellTok}
-        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(oracle())).div(buy.priceUSD(oracle())); // {qBuyTok}
+        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(oracle())).div(
+            buy.priceUSD(oracle())
+        ); // {qBuyTok}
         Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(maxTradeSlippage())); // {qBuyTok}
 
         return (
@@ -455,7 +469,13 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
             );
         }
 
-        (bool trade, Auction.Info memory auction) = _prepareAuctionSell(minAuctionSize, sell, buy, maxSellAmount, fate);
+        (bool trade, Auction.Info memory auction) = _prepareAuctionSell(
+            minAuctionSize,
+            sell,
+            buy,
+            maxSellAmount,
+            fate
+        );
         if (!trade) {
             return (false, emptyAuction);
         }
@@ -464,7 +484,9 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
             auction.minBuyAmount = targetBuyAmount;
 
             // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
-            Fix exactSellAmount = toFix(auction.minBuyAmount).mul(buy.priceUSD(oracle())).div(sell.priceUSD(oracle()));
+            Fix exactSellAmount = toFix(auction.minBuyAmount).mul(buy.priceUSD(oracle())).div(
+                sell.priceUSD(oracle())
+            );
 
             // {qSellTok} = {qSellTok} / {none}
             auction.sellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage())).toUint();

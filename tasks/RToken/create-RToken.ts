@@ -10,28 +10,36 @@ task('create-RToken', 'Creates a new RToken from the RToken Deployer')
   .addParam('tokenconfig', 'Token Configuration object', undefined, types.json)
   .addParam('basketinfo', 'Basket information object', undefined, types.json)
   .addParam('rsrinfo', 'RSR information object', undefined, types.json)
-  .setAction(async ({ tokendeployer, owner, name, symbol, tokenconfig, basketinfo, rsrinfo }, hre) => {
-    const [deployer] = await hre.ethers.getSigners()
-    const chainId = await getChainId(hre)
-    const tokenDesc = symbol + '-' + name
+  .setAction(
+    async ({ tokendeployer, owner, name, symbol, tokenconfig, basketinfo, rsrinfo }, hre) => {
+      const [deployer] = await hre.ethers.getSigners()
+      const chainId = await getChainId(hre)
+      const tokenDesc = symbol + '-' + name
 
-    console.log(`* Creating new RToken ${tokenDesc} from factory...`)
+      console.log(`* Creating new RToken ${tokenDesc} from factory...`)
 
-    // Create a new RToken
-    const deployerInstance = await hre.ethers.getContractAt('RTokenDeployer', tokendeployer)
-    const receipt = await (
-      await deployerInstance.connect(deployer).deploy(owner, name, symbol, tokenconfig, basketinfo.tokens, rsrinfo)
-    ).wait()
-    const rTokenAddr = expectInReceipt(receipt, 'RTokenDeployed')?.args?.rToken
+      // Create a new RToken
+      const deployerInstance = await hre.ethers.getContractAt('RTokenDeployer', tokendeployer)
+      const receipt = await (
+        await deployerInstance
+          .connect(deployer)
+          .deploy(owner, name, symbol, tokenconfig, basketinfo.tokens, rsrinfo)
+      ).wait()
+      const rTokenAddr = expectInReceipt(receipt, 'RTokenDeployed')?.args?.rToken
 
-    const rTokenInstance = await hre.ethers.getContractAt('RToken', rTokenAddr)
-    const iPoolAddr = await rTokenInstance.insurancePool()
+      const rTokenInstance = await hre.ethers.getContractAt('RToken', rTokenAddr)
+      const iPoolAddr = await rTokenInstance.insurancePool()
 
-    console.log(`RToken ${tokenDesc} created at address: ${rTokenAddr} on network ${hre.network.name} (${chainId}).`)
-    console.log(`Insurance Pool created at address: ${iPoolAddr} on network ${hre.network.name} (${chainId}).`)
-    console.log(`Tx: ${receipt.transactionHash}\n`)
+      console.log(
+        `RToken ${tokenDesc} created at address: ${rTokenAddr} on network ${hre.network.name} (${chainId}).`
+      )
+      console.log(
+        `Insurance Pool created at address: ${iPoolAddr} on network ${hre.network.name} (${chainId}).`
+      )
+      console.log(`Tx: ${receipt.transactionHash}\n`)
 
-    return { rTokenAddr, iPoolAddr }
-  })
+      return { rTokenAddr, iPoolAddr }
+    }
+  )
 
 module.exports = {}

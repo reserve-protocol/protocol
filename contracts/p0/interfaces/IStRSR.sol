@@ -27,7 +27,11 @@ interface IStRSR is IERC20 {
     /// @param withdrawalId The id of the withdrawal, globally unique
     /// @param staker The address of the unstaker
     /// @param amount {qRSR} The quantity of RSR unstaked
-    event UnstakingCompleted(uint256 indexed withdrawalId, address indexed staker, uint256 indexed amount);
+    event UnstakingCompleted(
+        uint256 indexed withdrawalId,
+        address indexed staker,
+        uint256 indexed amount
+    );
     /// Emitted when dividend RSR is added to the pool
     /// @param from The address that sent the dividend RSR
     /// @param amount {qRSR} The quantity of RSR added

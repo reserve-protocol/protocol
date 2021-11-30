@@ -15,5 +15,10 @@ contract AaveIncentivesControllerMockP0 is IAaveIncentivesController {
         address to
     ) external override returns (uint256 rewards) {}
 
-    function getRewardsBalance(address[] calldata assets, address user) external view override returns (uint256 bal) {}
+    function getRewardsBalance(address[] calldata assets, address user)
+        external
+        view
+        override
+        returns (uint256 bal)
+    {}
 }
