@@ -61,7 +61,7 @@ contract RTokenIssuerP0 is
                 _unapproveCollateral(hardDefaulting[i]);
             }
 
-            _switchVault(_selectBackupVaultFromApprovedCollateral());
+            _switchVault(_selectNextVault());
             _setMood(Mood.TRADING);
         }
         _;

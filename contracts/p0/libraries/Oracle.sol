@@ -49,7 +49,7 @@ library Oracle {
 
     // @return {attoUSD/qTok} The price in attoUSD of a `qTok` on oracle `source`
     function consult(
-        Oracle.Info storage self,
+        Oracle.Info memory self,
         Source source,
         address token
     ) internal view returns (Fix) {

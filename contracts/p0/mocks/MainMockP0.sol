@@ -116,9 +116,8 @@ contract MainMockP0 {
         defaultThreshold = defaultThreshold_;
     }
 
-    /// @return {attoUSD/qTok} The price in attoUSD of a `qTok` on oracle `source`.
-    function consultOracle(Oracle.Source source, address token) external view returns (Fix) {
-        return _oracle.consult(source, token);
+    function oracle() external view returns (Oracle.Info memory) {
+        return _oracle;
     }
 
     function compoundOracle() external view returns (address) {

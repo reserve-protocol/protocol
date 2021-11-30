@@ -170,10 +170,6 @@ interface ISettingsHandler {
 
     function defaultThreshold() external view returns (Fix);
 
-    function comptroller() external view returns (IComptroller);
-
-    function aaveLendingPool() external view returns (IAaveLendingPool);
-
     function stRSR() external view returns (IStRSR);
 
     function furnace() external view returns (IFurnace);
@@ -182,11 +178,11 @@ interface ISettingsHandler {
 
     function rsrAsset() external view returns (IAsset);
 
-    function consultOracle(Oracle.Source source, address token) external view returns (Fix);
-
     function compAsset() external view returns (IAsset);
 
     function aaveAsset() external view returns (IAsset);
+
+    function oracle() external view returns (Oracle.Info memory);
 
     /// @return The RToken deployment
     function rToken() external view returns (IRToken);

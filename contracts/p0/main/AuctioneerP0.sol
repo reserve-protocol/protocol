@@ -271,7 +271,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
             Fix bal = toFix(IERC20(a.erc20()).balanceOf(address(this)));
 
             // {attoUSD} = {attoUSD} + {attoUSD/qTok} * {qTok}
-            totalValue = totalValue.plus(a.priceUSD(address(this)).mul(bal));
+            totalValue = totalValue.plus(a.priceUSD(oracle()).mul(bal));
         }
         // {BU} = {attoUSD} / {attoUSD/BU}
         Fix targetBUs = totalValue.div(vault.basketRate());
@@ -287,10 +287,10 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
             Fix target = targetBUs.mulu(vault.quantity(a));
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                surplus[i] = bal.minus(target).mul(a.priceUSD(address(this)));
+                surplus[i] = bal.minus(target).mul(a.priceUSD(oracle()));
             } else if (bal.lt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                deficit[i] = target.minus(bal).mul(a.priceUSD(address(this)));
+                deficit[i] = target.minus(bal).mul(a.priceUSD(oracle()));
             }
         }
 
@@ -314,10 +314,10 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
         ICollateral buy = ICollateral(_alltimeCollateral.at(buyIndex));
 
         // {qSellTok} = {attoUSD} / {attoUSD/qSellTok}
-        Fix sellAmount = surplusMax.div(sell.priceUSD(address(this)));
+        Fix sellAmount = surplusMax.div(sell.priceUSD(oracle()));
 
         // {qBuyTok} = {attoUSD} / {attoUSD/qBuyTok}
-        Fix buyAmount = deficitMax.div(buy.priceUSD(address(this)));
+        Fix buyAmount = deficitMax.div(buy.priceUSD(oracle()));
         return (sell, buy, sellAmount.toUint(), buyAmount.toUint());
     }
 
@@ -394,17 +394,17 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
         Fate fate
     ) private returns (bool, Auction.Info memory auction) {
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
-        Fix rTokenMarketCapUSD = rTokenAsset().priceUSD(address(this)).mulu(rToken().totalSupply());
+        Fix rTokenMarketCapUSD = rTokenAsset().priceUSD(oracle()).mulu(rToken().totalSupply());
         Fix maxSellUSD = rTokenMarketCapUSD.mul(maxAuctionSize()); // {attoUSD}
         Fix minSellUSD = rTokenMarketCapUSD.mul(minAuctionSize); // {attoUSD}
 
         // {qSellTok} < {attoUSD} / {attoUSD/qSellTok}
-        if (sellAmount == 0 || sellAmount < minSellUSD.div(sell.priceUSD(address(this))).toUint()) {
+        if (sellAmount == 0 || sellAmount < minSellUSD.div(sell.priceUSD(oracle())).toUint()) {
             return (false, auction);
         }
 
-        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(address(this))).toUint()); // {qSellTok}
-        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(address(this))).div(buy.priceUSD(address(this))); // {qBuyTok}
+        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(oracle())).toUint()); // {qSellTok}
+        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(oracle())).div(buy.priceUSD(oracle())); // {qBuyTok}
         Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(maxTradeSlippage())); // {qBuyTok}
 
         return (
@@ -465,20 +465,18 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
             auction.minBuyAmount = targetBuyAmount;
 
             // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
-            Fix exactSellAmount = toFix(auction.minBuyAmount).mul(buy.priceUSD(address(this))).div(
-                sell.priceUSD(address(this))
-            );
+            Fix exactSellAmount = toFix(auction.minBuyAmount).mul(buy.priceUSD(oracle())).div(sell.priceUSD(oracle()));
 
             // {qSellTok} = {qSellTok} / {none}
             auction.sellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage())).toUint();
             assert(auction.sellAmount < maxSellAmount);
 
             // {attoUSD} = {attoUSD/qRTok} * {qRTok}
-            Fix rTokenMarketCapUSD = rTokenAsset().priceUSD(address(this)).mulu(rToken().totalSupply());
+            Fix rTokenMarketCapUSD = rTokenAsset().priceUSD(oracle()).mulu(rToken().totalSupply());
             Fix minSellUSD = rTokenMarketCapUSD.mul(minAuctionSize);
 
             // {qSellTok} = {attoUSD} / {attoUSD/qSellTok}
-            uint256 minSellAmount = minSellUSD.div(sell.priceUSD(address(this))).toUint();
+            uint256 minSellAmount = minSellUSD.div(sell.priceUSD(oracle())).toUint();
             if (auction.sellAmount < minSellAmount) {
                 return (false, emptyAuction);
             }

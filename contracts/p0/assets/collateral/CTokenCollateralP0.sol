@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/assets/collateral/CollateralP0.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/libraries/Oracle.sol";
 
 // cToken initial exchange rate is 0.02
 

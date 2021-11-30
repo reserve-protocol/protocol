@@ -18,7 +18,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     using Oracle for Oracle.Info;
     using FixLib for Fix;
 
-    Oracle.Info internal _oracle;
+    Oracle.Info private _oracle;
 
     uint256 private _rewardStart;
     uint256 private _rewardPeriod;
@@ -65,18 +65,8 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
         _oracle = oracle_;
     }
 
-    /// @return The deployment of the comptroller on this chain
-    function comptroller() public view returns (IComptroller) {
-        return _oracle.compound;
-    }
-
-    /// @return The deployment of the aave lending pool on this chain
-    function aaveLendingPool() public view returns (IAaveLendingPool) {
-        return _oracle.aave;
-    }
-
-    function consultOracle(Oracle.Source source, address token) public view override returns (Fix) {
-        return _oracle.consult(source, token);
+    function oracle() public view override returns (Oracle.Info memory) {
+        return _oracle;
     }
 
     function setStRSR(IStRSR stRSR_) external override onlyOwner {

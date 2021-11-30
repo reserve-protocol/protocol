@@ -16,6 +16,7 @@ import "hardhat/console.sol";
  */
 contract CollateralP0 is ICollateral {
     using FixLib for Fix;
+    using Oracle for Oracle.Info;
 
     address internal immutable _erc20;
 
@@ -42,12 +43,12 @@ contract CollateralP0 is ICollateral {
     }
 
     /// @return {attoUSD/qTok} The price in attoUSD of the asset's smallest unit
-    function priceUSD(address main) public view virtual override returns (Fix) {
+    function priceUSD(Oracle.Info memory oracle) public view virtual override returns (Fix) {
         if (isFiatcoin()) {
-            return IMain(main).consultOracle(Oracle.Source.AAVE, _erc20);
+            return oracle.consult(Oracle.Source.AAVE, _erc20);
         } else {
             // {attoUSD/qTok} = {attoUSD/qFiatTok} * {qFiatTok/qTok}
-            return fiatcoinPriceUSD(main).mul(rateFiatcoin());
+            return fiatcoinPriceUSD(oracle).mul(rateFiatcoin());
         }
     }
 
@@ -72,8 +73,8 @@ contract CollateralP0 is ICollateral {
     }
 
     /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
-    function fiatcoinPriceUSD(address main) public view virtual override returns (Fix) {
-        return IMain(main).consultOracle(Oracle.Source.AAVE, address(fiatcoin()));
+    function fiatcoinPriceUSD(Oracle.Info memory oracle) public view virtual override returns (Fix) {
+        return oracle.consult(Oracle.Source.AAVE, address(fiatcoin()));
     }
 
     /// @return Whether `_erc20` is a fiatcoin

@@ -22,4 +22,6 @@ interface IRToken is IERC20Metadata {
     function burn(address from, uint256 amount) external returns (bool);
 
     function setMain(address main) external;
+
+    function main() external view returns (address);
 }

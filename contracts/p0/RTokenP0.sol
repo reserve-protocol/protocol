@@ -11,7 +11,7 @@ import "contracts/p0/interfaces/IRToken.sol";
  * @notice An ERC20 with an elastic supply.
  */
 contract RTokenP0 is Ownable, ERC20, IRToken {
-    address public main;
+    address public override main;
 
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
 

@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/p0/libraries/Auction.sol";
-import "contracts/p0/libraries/Oracle.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
@@ -48,6 +42,7 @@ contract DefaultHandlerP0 is
     }
 
     function poke() public virtual override notPaused {
+        super.poke();
         ICollateral[] memory softDefaulting = _checkForSoftDefault();
 
         if (softDefaulting.length == 0) {
@@ -60,7 +55,7 @@ contract DefaultHandlerP0 is
                 _unapproveCollateral(softDefaulting[i]); // TODO Unapprove only per-collateral defaulting, not all
             }
 
-            IVault nextVault = _selectBackupVaultFromApprovedCollateral();
+            IVault nextVault = _selectNextVault();
             _switchVault(nextVault);
             _setMood(Mood.TRADING);
         } else if (_mood == Mood.CALM || _mood == Mood.TRADING) {
@@ -95,7 +90,7 @@ contract DefaultHandlerP0 is
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
             ICollateral c = ICollateral(_approvedCollateral.at(i));
 
-            Fix price = c.fiatcoinPriceUSD(address(this)).shiftLeft(int8(c.fiatcoinDecimals()));
+            Fix price = c.fiatcoinPriceUSD(oracle()).shiftLeft(int8(c.fiatcoinDecimals()));
             if (price.lt(defaultThreshold)) {
                 collateral[count] = c;
                 count++;
@@ -108,7 +103,7 @@ contract DefaultHandlerP0 is
     }
 
     /// @return A vault from the list of backup vaults that is not defaulting, or the zero address
-    function _selectBackupVaultFromApprovedCollateral() internal view returns (IVault) {
+    function _selectNextVault() internal view returns (IVault) {
         Fix maxRate;
         uint256 indexMax = 0;
         IVault[] memory backups = vault.getBackups();
@@ -158,7 +153,7 @@ contract DefaultHandlerP0 is
             int8 decimals = int8(fiatcoins[i].fiatcoinDecimals());
 
             // {attoUSD/fiatTok} = {attoUSD/qFiatTok} * {qFiatTok/fiatTok}
-            prices[i] = fiatcoins[i].fiatcoinPriceUSD(address(this)).shiftLeft(decimals); // {attoUSD/fiatTok}
+            prices[i] = fiatcoins[i].fiatcoinPriceUSD(oracle()).shiftLeft(decimals); // {attoUSD/fiatTok}
         }
 
         // Sort

@@ -10,6 +10,7 @@ import "contracts/libraries/Fixed.sol";
 
 contract AAVEAssetP0 is IAsset {
     using FixLib for Fix;
+    using Oracle for Oracle.Info;
 
     address internal immutable _erc20;
 
@@ -18,8 +19,8 @@ contract AAVEAssetP0 is IAsset {
     }
 
     // @return {attoUSD/qAAVE}
-    function priceUSD(address main) public view override returns (Fix) {
-        return IMain(main).consultOracle(Oracle.Source.AAVE, _erc20);
+    function priceUSD(Oracle.Info memory oracle) public view override returns (Fix) {
+        return oracle.consult(Oracle.Source.AAVE, _erc20);
     }
 
     /// @return The ERC20 contract of the central token

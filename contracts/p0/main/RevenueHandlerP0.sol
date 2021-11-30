@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
+import "contracts/p0/libraries/Oracle.sol";
 import "contracts/p0/main/SettingsHandlerP0.sol";
 import "contracts/p0/main/VaultHandlerP0.sol";
 import "contracts/p0/main/MoodyP0.sol";
@@ -46,9 +47,11 @@ contract RevenueHandlerP0 is Pausable, Mixin, MoodyP0, SettingsHandlerP0, VaultH
 
     /// Claims COMP + AAVE for self and vault, and sweeps into self
     function _doRewards() private {
+        Oracle.Info memory oracle = oracle();
+
         // Comp
-        comptroller().claimComp(address(this));
-        comptroller().claimComp(address(vault));
+        oracle.compound.claimComp(address(this));
+        oracle.compound.claimComp(address(vault));
         vault.sweepToken(address(compAsset()));
 
         // Aave
