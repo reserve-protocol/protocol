@@ -20,6 +20,7 @@ const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || process.env.ALCHEMY_MAINN
 const ROPSTEN_RPC_URL = process.env.ROPSTEN_RPC_URL || ''
 const MNEMONIC = process.env.MNEMONIC || ''
 
+const settings = process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 2000 } }
 export default <HardhatUserConfig>{
   defaultNetwork: 'hardhat',
   networks: {
@@ -47,12 +48,7 @@ export default <HardhatUserConfig>{
   },
   solidity: {
     version: '0.8.9',
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 2000,
-      },
-    },
+    settings,
     debug: {
       // How to treat revert (and require) reason strings. Settings are
       // "default", "strip", "debug" and "verboseDebug".
