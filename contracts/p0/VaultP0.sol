@@ -88,9 +88,14 @@ contract VaultP0 is IVault, Ownable {
         emit BUsRedeemed(to, _msgSender(), amtBUs);
     }
 
-    /// Used to withdraw earned COMP/AAVE
+    /// Used to withdraw earned COMP
     function withdrawToMain(address token) external override {
         IERC20(token).safeTransfer(main, IERC20(token).balanceOf(address(this)));
+    }
+
+    /// Approves main to claim AAVE rewards
+    function setMainAsAaveClaimer(IAaveIncentivesController incentiveController) external override {
+        incentiveController.setClaimer(address(this), main);
     }
 
     /// @param amtBUs {qBU}

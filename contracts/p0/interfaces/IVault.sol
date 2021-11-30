@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
@@ -53,6 +54,9 @@ interface IVault {
 
     /// Moves all balance of `token` to main
     function withdrawToMain(address token) external;
+
+    /// Approves main to claim AAVE rewards
+    function setMainAsAaveClaimer(IAaveIncentivesController incentiveController) external;
 
     /// Main Setter
     function setMain(address main) external;
