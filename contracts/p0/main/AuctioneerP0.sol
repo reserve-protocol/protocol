@@ -52,7 +52,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
                 if (block.timestamp <= auction.endTime) {
                     return;
                 }
-                auction.close(address(this), _market);
+                auction.close(furnace, stRSR, rewardPeriod, _market);
                 emit AuctionEnded(
                     i,
                     address(auction.sell),
@@ -85,7 +85,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
     /// Opens an `auction`
     function _launchAuction(Auction.Info memory auction) internal {
         auctions.push(auction);
-        auctions[auctions.length - 1].open(address(this), _market);
+        auctions[auctions.length - 1].open(auctionPeriod, _market);
         emit AuctionStarted(
             auctions.length - 1,
             address(auctions[auctions.length - 1].sell),

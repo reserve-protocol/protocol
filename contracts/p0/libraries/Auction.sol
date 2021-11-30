@@ -32,7 +32,7 @@ library Auction {
     /// @dev The struct must already be populated
     function open(
         Auction.Info storage self,
-        address main,
+        uint256 auctionPeriod,
         IMarket market
     ) internal {
         self.sell.erc20().safeApprove(address(market), self.sellAmount);
@@ -41,7 +41,7 @@ library Auction {
             self.buy.erc20(),
             self.sellAmount,
             self.minBuyAmount,
-            IMain(main).config().auctionPeriod
+            auctionPeriod
         );
         self.isOpen = true;
     }
@@ -49,7 +49,9 @@ library Auction {
     /// Closes out the auction and sends bought token to its fate
     function close(
         Auction.Info storage self,
-        address main,
+        IFurnace furnace,
+        IStRSR stRSR,
+        uint256 rewardPeriod,
         IMarket market
     ) internal {
         require(self.isOpen, "already closed out");
@@ -63,13 +65,13 @@ library Auction {
             if (self.fate == Fate.Burn) {
                 self.buy.erc20().safeTransfer(address(0), bal);
             } else if (self.fate == Fate.Melt) {
-                self.buy.erc20().safeApprove(address(IMain(main).furnace()), bal);
-                IMain(main).furnace().burnOverPeriod(bal, IMain(main).config().rewardPeriod);
+                self.buy.erc20().safeApprove(address(furnace), bal);
+                furnace.burnOverPeriod(bal, rewardPeriod);
             } else if (self.fate == Fate.Stake) {
-                IMain(main).stRSR().addRSR(bal);
+                stRSR.addRSR(bal);
 
                 // Restore allowance
-                self.buy.erc20().safeIncreaseAllowance(address(IMain(main).stRSR()), bal);
+                self.buy.erc20().safeIncreaseAllowance(address(stRSR), bal);
             } else if (self.fate == Fate.Stay) {
                 // Do nothing; token is already in the right place
             } else {
