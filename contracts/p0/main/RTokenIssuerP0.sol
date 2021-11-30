@@ -54,7 +54,6 @@ contract RTokenIssuerP0 is
     /// This modifier runs before every function including redemption, so it should be very safe.
     modifier always() {
         furnace().doBurn();
-        // TODO: Update compound?
         ICollateral[] memory hardDefaulting = _checkForHardDefault();
         if (hardDefaulting.length > 0) {
             for (uint256 i = 0; i < hardDefaulting.length; i++) {

@@ -39,9 +39,15 @@ library Auction {
         self.externalAuctionId = market.initiateAuction(
             self.sell.erc20(),
             self.buy.erc20(),
-            self.sellAmount,
-            self.minBuyAmount,
-            auctionPeriod
+            block.timestamp + auctionPeriod,
+            block.timestamp + auctionPeriod,
+            uint96(self.sellAmount),
+            uint96(self.minBuyAmount),
+            0,
+            0,
+            false,
+            address(0),
+            new bytes(0)
         );
         self.isOpen = true;
     }
@@ -56,7 +62,8 @@ library Auction {
     ) internal {
         require(self.isOpen, "already closed out");
         require(self.endTime <= block.timestamp, "auction not over");
-        (self.clearingSellAmount, self.clearingBuyAmount) = market.clear(self.externalAuctionId);
+        bytes32 encodedOrder = market.settleAuction(self.externalAuctionId);
+        (self.clearingSellAmount, self.clearingBuyAmount) = _decodeOrder(encodedOrder);
 
         uint256 bal = self.buy.erc20().balanceOf(address(this)); // {qBuyTok}
 
@@ -81,5 +88,19 @@ library Auction {
         // solhint-enable no-empty-blocks
 
         self.isOpen = false;
+    }
+
+    /// Decodes the output of the EasyAuction
+    function _decodeOrder(bytes32 encodedOrder)
+        private
+        pure
+        returns (uint256 clearingSellAmount, uint256 clearingBuyAmount)
+    {
+        // Note: converting to uint discards the binary digits that do not fit
+        // the type.
+        // userId = uint64(uint256(encodedOrder) >> 192);
+
+        clearingSellAmount = uint256(encodedOrder);
+        clearingBuyAmount = uint256(uint96(uint256(encodedOrder) >> 96));
     }
 }

@@ -40,23 +40,29 @@ contract MarketMock is IMarket, ITrading {
 
     /// @return auctionId The internal auction id
     function initiateAuction(
-        IERC20 sell,
-        IERC20 buy,
-        uint256 sellAmount,
-        uint256 minBuyAmount,
-        uint256 auctionDuration
+        IERC20 auctioningToken,
+        IERC20 biddingToken,
+        uint256 orderCancellationEndDate,
+        uint256 auctionEndDate,
+        uint96 auctionedSellAmount,
+        uint96 minBuyAmount,
+        uint256 minimumBiddingAmountPerOrder,
+        uint256 minFundingThreshold,
+        bool isAtomicClosureAllowed,
+        address accessManagerContract,
+        bytes memory accessManagerContractData
     ) external override returns (uint256 auctionId) {
         auctionId = auctions.length;
-        IERC20(sell).safeTransferFrom(msg.sender, address(this), sellAmount);
+        auctioningToken.safeTransferFrom(msg.sender, address(this), auctionedSellAmount);
         auctions.push(
             MockAuction(
                 msg.sender,
-                sell,
-                buy,
-                sellAmount,
+                auctioningToken,
+                biddingToken,
+                auctionedSellAmount,
                 minBuyAmount,
                 block.timestamp,
-                block.timestamp + auctionDuration,
+                auctionEndDate,
                 true
             )
         );

@@ -64,6 +64,7 @@ contract DefaultHandlerP0 is
     }
 
     /// Checks for hard default in a vault by inspecting the redemption rates of collateral tokens
+    /// Forces updates in the underlying defi protocols
     /// @return defaulting All hard-defaulting tokens
     function _checkForHardDefault() internal returns (ICollateral[] memory defaulting) {
         ICollateral[] memory collateral = new ICollateral[](_approvedCollateral.length());
