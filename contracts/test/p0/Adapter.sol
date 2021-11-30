@@ -201,10 +201,6 @@ contract AdapterP0 is ProtoAdapter {
         }
     }
 
-    function setConfig(Config memory config) external override {
-        _main.setConfig(config);
-    }
-
     function state() public view override returns (ProtoState memory s) {
         s.mood = _main.mood();
         s.config = _main.config();

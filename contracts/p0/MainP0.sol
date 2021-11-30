@@ -58,22 +58,6 @@ contract MainP0 is
     {
         super.poke();
     }
-
-    function setConfig(Config memory config_) public virtual override(ISettingsHandler, SettingsHandlerP0) onlyOwner {
-        // TODO: (Taylor) I think we shouldn't do the closed form basket dilution...I think we should
-        // accumulate every block into a cumulative measure. This also solves the problem of
-        // the actual supply of the token mattering at the moment of accumulation. The closed
-        // form version of things implicitly assumes a non-zero supply, so would incorrectly
-        // dilute the basket even when no profits are earned (because there was no backing to appreciate).
-
-        // Hence, putting this at the top-level for now because it should go away.
-
-        // When f changes we need to accumulate the historical basket dilution
-        if (_config.f.neq(config_.f)) {
-            _accumulate();
-        }
-        SettingsHandlerP0.setConfig(config_);
-    }
 }
 
 // import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";

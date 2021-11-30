@@ -144,8 +144,6 @@ interface ISettingsHandler {
 
     function setAaveAsset(IAsset aaveAsset) external;
 
-    function setConfig(Config memory config_) external;
-
     // TODO: Delete
 
     function config() external view returns (Config memory);

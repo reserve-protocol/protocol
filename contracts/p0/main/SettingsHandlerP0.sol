@@ -53,10 +53,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
         _oracle = oracle_;
     }
 
-    function setConfig(Config memory config_) public virtual override onlyOwner {
-        _config = config_;
-    }
-
     function setStRSR(IStRSR stRSR_) external override onlyOwner {
         stRSR = stRSR_;
     }

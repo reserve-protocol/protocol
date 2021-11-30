@@ -233,23 +233,7 @@ describe('MainP0 contract', () => {
   })
 
   describe('Configuration/State', () => {
-    it('Should allow owner to update Config', async () => {
-      // Update some values in config
-      config.f = fp('0.50')
-      config.stRSRWithdrawalDelay = bn('3600')
-
-      // If not owner should not be able to update config
-      await expect(main.connect(other).setConfig(config)).to.be.revertedWith('Ownable: caller is not the owner')
-
-      // Check config was not updated\
-      expect(await main.config()).to.not.eql(Object.values(config))
-
-      // Set config as owner
-      await main.connect(owner).setConfig(config)
-
-      // Check config was updated\
-      expect(await main.config()).to.eql(Object.values(config))
-    })
+    // TODO: Check that owner can set settings
 
     it('Should return nextRewards correctly', async () => {
       // Check next immediate reward

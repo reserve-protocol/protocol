@@ -10,9 +10,6 @@ interface ProtoCommon {
     /// Deploys a fresh instance of the system
     function init(ProtoState memory state) external;
 
-    /// Updates the configuration of the system instance
-    function setConfig(Config memory config) external;
-
     /// Updates oracle prices
     /// @param assets One-of DAI/USDC/USDT/BUSD/RSR/COMP/AAVE
     function setBaseAssetPrices(Asset[] memory assets, OraclePrice[] memory prices) external;
@@ -87,12 +84,6 @@ contract ProtosDriver is ProtoCommon {
         require(s.collateral.length == s.defiCollateralRates.length, "all collateral should have defi rates");
         for (uint256 i = 0; i < _adapters.length; i++) {
             _adapters[i].init(s);
-        }
-    }
-
-    function setConfig(Config memory config) external override {
-        for (uint256 i = 0; i < _adapters.length; i++) {
-            _adapters[i].setConfig(config);
         }
     }
 
