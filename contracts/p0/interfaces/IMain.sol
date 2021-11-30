@@ -67,7 +67,12 @@ struct ConstructorArgs {
     ICollateral[] approvedCollateral;
     Oracle.Info oracle;
     Config config;
+    IAsset rTokenAsset;
+    IAsset rsrAsset;
+    IAsset compAsset;
+    IAsset aaveAsset;
     IVault vault;
+    IFurnace furnace;
     IMarket market;
 }
 
@@ -169,16 +174,22 @@ interface ISettingsHandler {
     function defaultThreshold() external view returns (Fix);
 
     function comptroller() external view returns (IComptroller);
+
     function aaveLendingPool() external view returns (IAaveLendingPool);
+
     function stRSR() external view returns (IStRSR);
-    function furnace() external view returns(IFurnace);
+
+    function furnace() external view returns (IFurnace);
+
     function rTokenAsset() external view returns (IAsset);
+
     function rsrAsset() external view returns (IAsset);
+
     function consultOracle(Oracle.Source source, address token) external view returns (Fix);
+
     function compAsset() external view returns (IAsset);
+
     function aaveAsset() external view returns (IAsset);
-
-
 
     /// @return The RToken deployment
     function rToken() external view returns (IRToken);

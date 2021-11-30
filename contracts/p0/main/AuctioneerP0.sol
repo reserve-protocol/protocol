@@ -393,8 +393,6 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
         uint256 sellAmount,
         Fate fate
     ) private returns (bool, Auction.Info memory auction) {
-        sellAmount = Math.min(sellAmount, sell.erc20().balanceOf(address(this)));
-
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
         Fix rTokenMarketCapUSD = rTokenAsset().priceUSD(address(this)).mulu(rToken().totalSupply());
         Fix maxSellUSD = rTokenMarketCapUSD.mul(maxAuctionSize()); // {attoUSD}
@@ -420,7 +418,7 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,
                 startTime: block.timestamp,
-                        endTime: block.timestamp + auctionPeriod(),
+                endTime: block.timestamp + auctionPeriod(),
                 fate: fate,
                 isOpen: false
             })
@@ -439,6 +437,25 @@ contract AuctioneerP0 is Pausable, Mixin, MoodyP0, AssetRegistryP0, SettingsHand
         uint256 targetBuyAmount,
         Fate fate
     ) private returns (bool, Auction.Info memory emptyAuction) {
+        if (targetBuyAmount == 0) {
+            return (
+                true,
+                Auction.Info({
+                    sell: sell,
+                    buy: buy,
+                    sellAmount: maxSellAmount,
+                    minBuyAmount: 0,
+                    clearingSellAmount: 0,
+                    clearingBuyAmount: 0,
+                    externalAuctionId: 0,
+                    startTime: block.timestamp,
+                    endTime: block.timestamp + auctionPeriod(),
+                    fate: fate,
+                    isOpen: false
+                })
+            );
+        }
+
         (bool trade, Auction.Info memory auction) = _prepareAuctionSell(minAuctionSize, sell, buy, maxSellAmount, fate);
         if (!trade) {
             return (false, emptyAuction);

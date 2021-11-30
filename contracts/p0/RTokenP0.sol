@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
@@ -9,16 +10,10 @@ import "contracts/p0/interfaces/IRToken.sol";
  * @title RTokenP0
  * @notice An ERC20 with an elastic supply.
  */
-contract RTokenP0 is IRToken, ERC20 {
+contract RTokenP0 is Ownable, ERC20, IRToken {
     address public main;
 
-    constructor(
-        address main_,
-        string memory name_,
-        string memory symbol_
-    ) ERC20(name_, symbol_) {
-        main = main_;
-    }
+    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
 
     /// Mints a quantity of RToken to the `recipient`, only callable by AssetManager
     /// @param recipient The recipient of the newly minted RToken
@@ -38,5 +33,9 @@ contract RTokenP0 is IRToken, ERC20 {
         require(_msgSender() == main || _msgSender() == from, "only main or self");
         _burn(from, amount);
         return true;
+    }
+
+    function setMain(address main_) external virtual override onlyOwner {
+        main = main_;
     }
 }

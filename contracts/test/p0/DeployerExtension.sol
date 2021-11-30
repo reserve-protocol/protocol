@@ -31,15 +31,9 @@ contract DeployerExtension is DeployerP0, IExtension {
         INVARIANT_currentDeploymentRegistered();
     }
 
-    function _deployMain(
-        Oracle.Info memory oracle,
-        Config memory config,
-        IVault vault,
-        IMarket market,
-        ICollateral[] memory approvedCollateral
-    ) internal override returns (IMain) {
+    function _deployMain(ConstructorArgs memory args) internal override returns (IMain) {
         _main = new MainExtension(_admin);
-        _main.init(ConstructorArgs(approvedCollateral, oracle, config, vault, market));
+        _main.init(args);
         return _main;
     }
 

@@ -66,18 +66,28 @@ contract DeployerP0 is IDeployer {
     ) external override returns (address) {
         Oracle.Info memory oracle = Oracle.Info(compound, aave);
 
-        IMain main = _deployMain(oracle, config, vault, market, collateral);
-        deployments.push(main);
-
+        IMain main;
         {
-            IRToken rToken = _deployRToken(address(main), name, symbol);
+            IRToken rToken = _deployRToken(name, symbol);
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken));
-            main.setRTokenAsset(rTokenAsset);
-            main.setRSRAsset(rsrAsset);
-            main.setCompAsset(compAsset);
-            main.setAaveAsset(aaveAsset);
             IFurnace furnace = _deployFurnace(address(rToken));
-            main.setFurnace(furnace);
+
+            main = _deployMain(
+                ConstructorArgs(
+                    collateral,
+                    oracle,
+                    config,
+                    rTokenAsset,
+                    rsrAsset,
+                    compAsset,
+                    aaveAsset,
+                    vault,
+                    furnace,
+                    market
+                )
+            );
+            deployments.push(main);
+            rToken.setMain(address(main));
         }
 
         {
@@ -99,24 +109,14 @@ contract DeployerP0 is IDeployer {
     // =================================================================
     /// @dev Helpers used for testing to inject msg.sender and implement contract invariant checks
 
-    function _deployMain(
-        Oracle.Info memory oracle,
-        Config memory config,
-        IVault vault,
-        IMarket market_,
-        ICollateral[] memory approvedCollateral
-    ) internal virtual returns (IMain) {
+    function _deployMain(ConstructorArgs memory args) internal virtual returns (IMain) {
         IMain m = new MainP0();
-        m.init(ConstructorArgs(approvedCollateral, oracle, config, vault, market_));
+        m.init(args);
         return m;
     }
 
-    function _deployRToken(
-        address main,
-        string memory name,
-        string memory symbol
-    ) internal virtual returns (IRToken) {
-        return new RTokenP0(main, name, symbol);
+    function _deployRToken(string memory name, string memory symbol) internal virtual returns (IRToken) {
+        return new RTokenP0(name, symbol);
     }
 
     function _deployFurnace(address rToken) internal virtual returns (IFurnace) {

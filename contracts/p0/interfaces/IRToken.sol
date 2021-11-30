@@ -20,4 +20,6 @@ interface IRToken is IERC20Metadata {
     /// @param amount {qTok} The amount to be burned
     /// @return true
     function burn(address from, uint256 amount) external returns (bool);
+
+    function setMain(address main) external;
 }
