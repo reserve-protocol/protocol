@@ -49,7 +49,9 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
         _switchVault(vault_);
     }
 
-    function cut() public view returns (Fix) { return _cut; }
+    function cut() public view returns (Fix) {
+        return _cut;
+    }
 
     function setCut(Fix newCut) external override onlyOwner {
         emit CutSet(_cut, newCut);

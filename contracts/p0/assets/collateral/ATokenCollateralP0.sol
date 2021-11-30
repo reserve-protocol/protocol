@@ -27,8 +27,27 @@ interface AToken {
 contract ATokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
 
+    mapping(uint256 => uint256) public rates; // block.number -> RAY{fiatTok/tok}
+    uint256 private _oneAgo; // block number
+    uint256 private _twoAgo; // block number
+
     // solhint-disable-next-line no-empty-blocks
-    constructor(address erc20_) CollateralP0(erc20_) {}
+    constructor(address erc20_) CollateralP0(erc20_) {
+        rates[block.number] = IStaticAToken(_erc20).rate();
+        _oneAgo = block.number;
+    }
+
+    /// Forces an update in any underlying Defi protocol
+    /// @return Whether the collateral meets its invariants or not
+    function pokeDefi() external override returns (bool) {
+        if (block.number != _oneAgo) {
+            rates[block.number] = IStaticAToken(_erc20).rate();
+            _twoAgo = _oneAgo;
+            _oneAgo = block.number;
+        }
+
+        return rates[_oneAgo] >= rates[_twoAgo];
+    }
 
     /// @return {qFiatTok/qTok}
     function rateFiatcoin() public view override returns (Fix) {

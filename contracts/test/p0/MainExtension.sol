@@ -80,10 +80,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && defaultDelay > 0;
         ok = ok && maxTradeSlippage.gte(FIX_ZERO) && maxTradeSlippage.lte(FIX_ONE);
         ok = ok && maxAuctionSize.gte(FIX_ZERO) && maxAuctionSize.lte(FIX_ONE);
-        ok =
-            ok &&
-            minRecapitalizationAuctionSize.gte(FIX_ZERO) &&
-            minRecapitalizationAuctionSize.lte(FIX_ONE);
+        ok = ok && minRecapitalizationAuctionSize.gte(FIX_ZERO) && minRecapitalizationAuctionSize.lte(FIX_ONE);
         ok = ok && minRevenueAuctionSize.gte(FIX_ZERO) && minRevenueAuctionSize.lte(FIX_ONE);
         ok = ok && migrationChunk.gte(FIX_ZERO) && migrationChunk.lte(FIX_ONE);
         ok = ok && issuanceRate.gte(FIX_ZERO) && issuanceRate.lte(FIX_ONE);

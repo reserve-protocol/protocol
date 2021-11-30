@@ -95,8 +95,6 @@ interface IPausable {
 }
 
 interface IMoody {
-    /// The 3 canonical states of the system
-
     /// Emitted when there is a change in system state.
     event MoodChanged(Mood indexed oldState, Mood indexed newState);
 
@@ -109,7 +107,6 @@ interface IAssetRegistry {
     function unapproveCollateral(ICollateral collateral) external;
 }
 
-// TODO: no cut
 interface ISettingsHandler {
     function setRewardStart(uint256 rewardStart) external;
 

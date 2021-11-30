@@ -13,7 +13,6 @@ import "contracts/p0/libraries/Oracle.sol";
 // https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 interface ICToken {
     /// @dev From Compound Docs: The current (up to date) exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
-    /// Not currently used
     function exchangeRateCurrent() external returns (uint256);
 
     /// @dev From Compound Docs: The stored exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
@@ -27,10 +26,29 @@ contract CTokenCollateralP0 is CollateralP0 {
 
     Fix public immutable initialExchangeRate; // 0.02, their hardcoded starting rate
 
+    mapping(uint256 => uint256) public rates; // block.number -> stored compound exchange rate (like 0.02)
+    uint256 private _oneAgo; // block number
+    uint256 private _twoAgo; // block number
+
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
     // solhint-disable-next-line no-empty-blocks
     constructor(address erc20_) CollateralP0(erc20_) {
         initialExchangeRate = toFixWithShift(2, -2);
+        rates[block.number] = ICToken(_erc20).exchangeRateCurrent();
+        _oneAgo = block.number;
+    }
+
+    /// Forces an update in any underlying Defi protocol
+    /// Idempotent
+    /// @return Whether the collateral meets its invariants or not
+    function pokeDefi() external override returns (bool) {
+        if (block.number != _oneAgo) {
+            rates[block.number] = ICToken(_erc20).exchangeRateCurrent();
+            _twoAgo = _oneAgo;
+            _oneAgo = block.number;
+        }
+
+        return rates[_oneAgo] >= rates[_twoAgo];
     }
 
     /// @return {qFiatTok/qTok}

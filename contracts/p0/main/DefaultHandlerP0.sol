@@ -26,8 +26,7 @@ import "./VaultHandlerP0.sol";
 /**
  * @title DefaultHandler
  * @notice Handles the process of default detection on the collateral as well as
- *    selection of the next vault.
- */
+ *    selection of the next vault. */
 contract DefaultHandlerP0 is
     Pausable,
     Mixin,
@@ -39,8 +38,6 @@ contract DefaultHandlerP0 is
 {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
-
-    mapping(ICollateral => Fix) private _lastRatesUSD; // {attoUSD/qtok}
 
     function init(ConstructorArgs calldata args)
         public
@@ -77,12 +74,10 @@ contract DefaultHandlerP0 is
         ICollateral[] memory collateral = new ICollateral[](_approvedCollateral.length());
         uint256 count;
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            ICollateral c = ICollateral(_approvedCollateral.at(i));
-            if (c.rateUSD().lt(_lastRatesUSD[c])) {
-                collateral[count] = c;
+            bool ok = ICollateral(_approvedCollateral.at(i)).pokeDefi();
+            if (!ok) {
+                collateral[count] = ICollateral(_approvedCollateral.at(i));
                 count++;
-            } else {
-                _lastRatesUSD[c] = c.rateUSD();
             }
         }
         defaulting = new ICollateral[](count);

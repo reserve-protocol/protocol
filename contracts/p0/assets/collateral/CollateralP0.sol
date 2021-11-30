@@ -23,6 +23,12 @@ contract CollateralP0 is ICollateral {
         _erc20 = erc20_;
     }
 
+    /// Forces an update in any underlying Defi protocol
+    /// @return Whether the collateral meets its invariants or not
+    function pokeDefi() external virtual override returns (bool) {
+        return true;
+    }
+
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
     function rateFiatcoin() public view virtual override returns (Fix) {
         // {qFiatTok/qTok} = {qFiatTok/fiatTok} / {qTok/tok}

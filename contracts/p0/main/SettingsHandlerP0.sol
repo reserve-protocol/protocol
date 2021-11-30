@@ -65,15 +65,16 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
         _oracle = oracle_;
     }
 
-
     /// @return The deployment of the comptroller on this chain
     function comptroller() public view returns (IComptroller) {
         return _oracle.compound;
     }
+
     /// @return The deployment of the aave lending pool on this chain
     function aaveLendingPool() public view returns (IAaveLendingPool) {
         return _oracle.aave;
     }
+
     function consultOracle(Oracle.Source source, address token) public view override returns (Fix) {
         return _oracle.consult(source, token);
     }
@@ -81,6 +82,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     function setStRSR(IStRSR stRSR_) external override onlyOwner {
         _stRSR = stRSR_;
     }
+
     function stRSR() public view override returns (IStRSR) {
         return _stRSR;
     }
@@ -88,13 +90,15 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     function setFurnace(IFurnace furnace_) external override onlyOwner {
         _furnace = furnace_;
     }
-    function furnace() public view override returns(IFurnace) {
+
+    function furnace() public view override returns (IFurnace) {
         return _furnace;
     }
 
     function setRTokenAsset(IAsset rTokenAsset_) external override onlyOwner {
         _rTokenAsset = rTokenAsset_;
     }
+
     function rTokenAsset() public view override returns (IAsset) {
         return _rTokenAsset;
     }
@@ -102,6 +106,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     function setRSRAsset(IAsset rsrAsset_) external override onlyOwner {
         _rsrAsset = rsrAsset_;
     }
+
     function rsrAsset() public view override returns (IAsset) {
         return _rsrAsset;
     }
@@ -109,6 +114,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     function setCompAsset(IAsset compAsset_) external override onlyOwner {
         _compAsset = compAsset_;
     }
+
     function compAsset() public view override returns (IAsset) {
         return _compAsset;
     }
@@ -116,6 +122,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     function setAaveAsset(IAsset aaveAsset_) external override onlyOwner {
         _aaveAsset = aaveAsset_;
     }
+
     function aaveAsset() public view override returns (IAsset) {
         return _aaveAsset;
     }

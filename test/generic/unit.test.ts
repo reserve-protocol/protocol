@@ -8,16 +8,16 @@ import { ProtosDriver } from '../../typechain/ProtosDriver'
 import { IManagerConfig } from '../p0/utils/fixtures'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import {
-    Account,
-    Asset,
-    ASSET_TOKEN_LEN,
-    Balance,
-    COLLATERAL_TOKEN_LEN,
-    DefiRate,
-    Mood,
-    prepareState,
-    prepareToPrice,
-    Price,
+  Account,
+  Asset,
+  ASSET_TOKEN_LEN,
+  Balance,
+  COLLATERAL_TOKEN_LEN,
+  DefiRate,
+  Mood,
+  prepareState,
+  prepareToPrice,
+  Price,
 } from './common'
 
 /*
