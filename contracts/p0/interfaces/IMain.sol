@@ -215,7 +215,10 @@ interface IVaultHandler {
     function vault() external view returns (IVault);
 }
 
-interface IDefaultHandler {}
+// solhint-disable-next-line no-empty-blocks
+interface IDefaultHandler {
+
+}
 
 interface IAuctioneer {
     /// Emitted when an auction is started
@@ -291,6 +294,7 @@ interface IRTokenIssuer {
  * @notice The central coordinator for the entire system, as well as the external interface.
  * @dev The p0-specific IMain
  */
+// solhint-disable-next-line no-empty-blocks
 interface IMain is
     IPausable,
     IMixin,

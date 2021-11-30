@@ -13,6 +13,7 @@ import "contracts/p0/interfaces/IRToken.sol";
 contract RTokenP0 is Ownable, ERC20, IRToken {
     address public override main;
 
+    // solhint-disable no-empty-blocks
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
 
     /// Mints a quantity of RToken to the `recipient`, only callable by AssetManager

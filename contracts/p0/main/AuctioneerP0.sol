@@ -186,8 +186,6 @@ contract AuctioneerP0 is
 
     /// Runs all auctions for revenue
     function _doRevenueAuctions() internal {
-        uint256 auctionLenSnapshot = auctions.length;
-
         // Empty oldest vault
         IVault oldVault = _oldestVault();
         if (oldVault != vault) {

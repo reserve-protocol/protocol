@@ -21,7 +21,23 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     }
 
     /// @return fiatcoins An array of approved fiatcoin collateral to be used for oracle USD determination
-    function approvedFiatcoins() public view returns (ICollateral[] memory fiatcoins) {}
+    function approvedFiatcoins() public view returns (ICollateral[] memory fiatcoins) {
+        address[] memory addresses = _approvedCollateral.values();
+        uint256 size;
+        for (uint256 i = 0; i < addresses.length; i++) {
+            if (ICollateral(addresses[i]).isFiatcoin()) {
+                size++;
+            }
+        }
+        fiatcoins = new ICollateral[](size);
+        size = 0;
+        for (uint256 i = 0; i < addresses.length; i++) {
+            if (ICollateral(addresses[i]).isFiatcoin()) {
+                fiatcoins[size] = ICollateral(addresses[i]);
+                size++;
+            }
+        }
+    }
 
     function approveCollateral(ICollateral collateral) external onlyOwner {
         _approveCollateral(collateral);

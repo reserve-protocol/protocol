@@ -7,7 +7,7 @@ import "contracts/p0/interfaces/IMain.sol";
 contract Mixin {
     bool private _initialized;
 
-    function init(ConstructorArgs calldata args) public virtual {
+    function init(ConstructorArgs calldata) public virtual {
         require(!_initialized, "already initialized");
         _initialized = true;
     }

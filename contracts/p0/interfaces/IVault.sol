@@ -86,5 +86,6 @@ interface IVault {
     function getBackups() external view returns (IVault[] memory);
 
     /// @return The number of decimals in a BU
+    // solhint-disable-next-line func-name-mixedcase
     function BU_DECIMALS() external view returns (uint8);
 }

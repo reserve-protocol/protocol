@@ -14,6 +14,7 @@ import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/main/Mixin.sol";
 
 /// Settings mixin for Main
+// solhint-disable max-states-count
 contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     using Oracle for Oracle.Info;
     using FixLib for Fix;

@@ -22,7 +22,7 @@ interface IMarket {
     ) external returns (uint256 auctionId);
 
     /// @param auctionId The external auction id
-    /// @dev See here for decoding: https://github.com/gnosis/ido-contracts/blob/0160b0d06ec8055f62b50fc6b6999a9536f9dae8/contracts/libraries/IterableOrderedOrderSet.sol#L205
+    /// @dev See here for decoding: https://git.io/JMang
     /// @return encodedOrder The order, encoded in a bytes 32
     function settleAuction(uint256 auctionId) external returns (bytes32 encodedOrder);
 }
