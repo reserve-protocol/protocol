@@ -106,29 +106,29 @@ interface IAssetRegistry {
 
 // TODO: no cut
 interface ISettingsHandler {
-    // function setRewardStart(uint256 rewardStart) external;
+    function setRewardStart(uint256 rewardStart) external;
 
-    // function setRewardPeriod(uint256 rewardPeriod) external;
+    function setRewardPeriod(uint256 rewardPeriod) external;
 
-    // function setAuctionPeriod(uint256 auctionPeriod) external;
+    function setAuctionPeriod(uint256 auctionPeriod) external;
 
-    // function setStRSRWithdrawalDelay(uint256 stRSRWithdrawalDelay) external;
+    function setStRSRWithdrawalDelay(uint256 stRSRWithdrawalDelay) external;
 
-    // function setDefaultDelay(uint256 defaultDelay) external;
+    function setDefaultDelay(uint256 defaultDelay) external;
 
-    // function setMaxTradeSlippage(Fix maxTradeSlippage) external;
+    function setMaxTradeSlippage(Fix maxTradeSlippage) external;
 
-    // function setMaxAuctionSize(Fix maxTradeSlippage) external;
+    function setMaxAuctionSize(Fix maxTradeSlippage) external;
 
-    // function setMinRecapitalizationAuctionSize(Fix minRecapitalizationAuctionSize) external;
+    function setMinRecapitalizationAuctionSize(Fix minRecapitalizationAuctionSize) external;
 
-    // function setMinRevenueSize(Fix minRevenueAuctionSize) external;
+    function setMinRevenueAuctionSize(Fix minRevenueAuctionSize) external;
 
-    // function setMigrationChunk(Fix migrationChunk) external;
+    function setMigrationChunk(Fix migrationChunk) external;
 
-    // function setIssuanceRate(Fix issuanceRate) external;
+    function setIssuanceRate(Fix issuanceRate) external;
 
-    // function setDefaultThreshold(Fix defaultThreshold) external;
+    function setDefaultThreshold(Fix defaultThreshold) external;
 
     function setOracle(Oracle.Info memory oracle) external;
 
@@ -144,21 +144,47 @@ interface ISettingsHandler {
 
     function setAaveAsset(IAsset aaveAsset) external;
 
+    function rewardStart() external view returns (uint256);
+
+    function rewardPeriod() external view returns (uint256);
+
+    function auctionPeriod() external view returns (uint256);
+
+    function stRSRWithdrawalDelay() external view returns (uint256);
+
+    function defaultDelay() external view returns (uint256);
+
+    function maxTradeSlippage() external view returns (Fix);
+
+    function maxAuctionSize() external view returns (Fix);
+
+    function minRecapitalizationAuctionSize() external view returns (Fix);
+
+    function minRevenueAuctionSize() external view returns (Fix);
+
+    function migrationChunk() external view returns (Fix);
+
+    function issuanceRate() external view returns (Fix);
+
+    function defaultThreshold() external view returns (Fix);
+
+    function comptroller() external view returns (IComptroller);
+    function aaveLendingPool() external view returns (IAaveLendingPool);
+    function stRSR() external view returns (IStRSR);
+    function furnace() external view returns(IFurnace);
+    function rTokenAsset() external view returns (IAsset);
+    function rsrAsset() external view returns (IAsset);
+    function consultOracle(Oracle.Source source, address token) external view returns (Fix);
+    function compAsset() external view returns (IAsset);
+    function aaveAsset() external view returns (IAsset);
+
+
+
     /// @return The RToken deployment
     function rToken() external view returns (IRToken);
 
     /// @return The RSR deployment
     function rsr() external view returns (IERC20);
-
-    function furnace() external view returns (IFurnace);
-
-    function stRSR() external view returns (IStRSR);
-
-    function defaultThreshold() external view returns (Fix);
-
-    function stRSRWithdrawalDelay() external view returns (uint256);
-
-    function consultOracle(Oracle.Source source, address token) external view returns (Fix);
 }
 
 interface IVaultHandler {

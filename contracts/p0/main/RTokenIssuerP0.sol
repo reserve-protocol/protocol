@@ -53,7 +53,7 @@ contract RTokenIssuerP0 is
 
     /// This modifier runs before every function including redemption, so it should be very safe.
     modifier always() {
-        furnace.doBurn();
+        furnace().doBurn();
         // TODO: Update compound?
         ICollateral[] memory hardDefaulting = _checkForHardDefault();
         if (hardDefaulting.length > 0) {
@@ -141,8 +141,8 @@ contract RTokenIssuerP0 is
     // Returns the future block number at which an issuance for *amount* now can complete
     function _nextIssuanceBlockAvailable(uint256 amount) private view returns (uint256) {
         uint256 perBlock = Math.max(
-            10_000 * 10**rTokenAsset.decimals(), // lower-bound: 10k whole RToken per block
-            toFix(rTokenAsset.erc20().totalSupply()).mul(issuanceRate).toUint()
+            10_000 * 10**rTokenAsset().decimals(), // lower-bound: 10k whole RToken per block
+            toFix(rTokenAsset().erc20().totalSupply()).mul(issuanceRate()).toUint()
         ); // {RToken/block}
         uint256 blockStart = issuances.length == 0 ? block.number : issuances[issuances.length - 1].blockAvailableAt;
         return Math.max(blockStart, block.number) + Math.ceilDiv(amount, perBlock);

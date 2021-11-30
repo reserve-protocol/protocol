@@ -115,7 +115,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
     /// @return {none} Numerator of the base factor
     function _meltingFactor() internal view returns (Fix) {
         Fix totalSupply = toFix(rToken().totalSupply()); // {RTok}
-        Fix totalBurnt = toFix(furnace.totalBurnt()); // {RTok}
+        Fix totalBurnt = toFix(furnace().totalBurnt()); // {RTok}
         if (totalSupply.eq(FIX_ZERO)) {
             return FIX_ONE;
         }

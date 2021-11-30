@@ -20,99 +20,210 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     Oracle.Info internal _oracle;
 
-    uint256 public rewardStart;
-    uint256 public rewardPeriod;
-    uint256 public auctionPeriod;
-    uint256 public stRSRWithdrawalDelay;
-    uint256 public defaultDelay;
+    uint256 private _rewardStart;
+    uint256 private _rewardPeriod;
+    uint256 private _auctionPeriod;
+    uint256 private _stRSRWithdrawalDelay;
+    uint256 private _defaultDelay;
 
-    Fix public maxTradeSlippage;
-    Fix public maxAuctionSize;
-    Fix public minRecapitalizationAuctionSize;
-    Fix public minRevenueAuctionSize;
-    Fix public migrationChunk;
-    Fix public issuanceRate;
-    Fix public defaultThreshold;
+    Fix private _maxTradeSlippage;
+    Fix private _maxAuctionSize;
+    Fix private _minRecapitalizationAuctionSize;
+    Fix private _minRevenueAuctionSize;
+    Fix private _migrationChunk;
+    Fix private _issuanceRate;
+    Fix private _defaultThreshold;
 
-    IStRSR public override stRSR;
-    IFurnace public override furnace;
+    IStRSR private _stRSR;
+    IFurnace private _furnace;
 
-    IAsset public rTokenAsset;
-    IAsset public rsrAsset;
-    IAsset public compAsset;
-    IAsset public aaveAsset;
+    IAsset private _rTokenAsset;
+    IAsset private _rsrAsset;
+    IAsset private _compAsset;
+    IAsset private _aaveAsset;
 
     function init(ConstructorArgs calldata args) public virtual override {
         super.init(args);
         _oracle = args.oracle;
 
-        rewardStart = args.config.rewardStart;
-        rewardPeriod = args.config.rewardPeriod;
-        auctionPeriod = args.config.auctionPeriod;
-        stRSRWithdrawalDelay = args.config.stRSRWithdrawalDelay;
-        defaultDelay = args.config.defaultDelay;
+        _rewardStart = args.config.rewardStart;
+        _rewardPeriod = args.config.rewardPeriod;
+        _auctionPeriod = args.config.auctionPeriod;
+        _stRSRWithdrawalDelay = args.config.stRSRWithdrawalDelay;
+        _defaultDelay = args.config.defaultDelay;
 
-        maxTradeSlippage = args.config.maxTradeSlippage;
-        maxAuctionSize = args.config.maxAuctionSize;
-        minRecapitalizationAuctionSize = args.config.minRecapitalizationAuctionSize;
-        minRevenueAuctionSize = args.config.minRevenueAuctionSize;
-        migrationChunk = args.config.migrationChunk;
-        issuanceRate = args.config.issuanceRate;
-        defaultThreshold = args.config.defaultThreshold;
+        _maxTradeSlippage = args.config.maxTradeSlippage;
+        _maxAuctionSize = args.config.maxAuctionSize;
+        _minRecapitalizationAuctionSize = args.config.minRecapitalizationAuctionSize;
+        _minRevenueAuctionSize = args.config.minRevenueAuctionSize;
+        _migrationChunk = args.config.migrationChunk;
+        _issuanceRate = args.config.issuanceRate;
+        _defaultThreshold = args.config.defaultThreshold;
     }
 
     function setOracle(Oracle.Info memory oracle_) external override onlyOwner {
         _oracle = oracle_;
     }
 
-    function setStRSR(IStRSR stRSR_) external override onlyOwner {
-        stRSR = stRSR_;
-    }
-
-    function setFurnace(IFurnace furnace_) external override onlyOwner {
-        furnace = furnace_;
-    }
-
-    function setRTokenAsset(IAsset rTokenAsset_) external override onlyOwner {
-        rTokenAsset = rTokenAsset_;
-    }
-
-    function setRSRAsset(IAsset rsrAsset_) external override onlyOwner {
-        rsrAsset = rsrAsset_;
-    }
-
-    function setCompAsset(IAsset compAsset_) external override onlyOwner {
-        compAsset = compAsset_;
-    }
-
-    function setAaveAsset(IAsset aaveAsset_) external override onlyOwner {
-        aaveAsset = aaveAsset_;
-    }
-
-    // Useful view functions for reading portions of the state
-
-    /// @return {attoUSD/qTok} The price in attoUSD of a `qTok` on _oracle `source`.
-    function consultOracle(Oracle.Source source, address token) public view override returns (Fix) {
-        return _oracle.consult(source, token);
-    }
 
     /// @return The deployment of the comptroller on this chain
     function comptroller() public view returns (IComptroller) {
         return _oracle.compound;
     }
-
     /// @return The deployment of the aave lending pool on this chain
     function aaveLendingPool() public view returns (IAaveLendingPool) {
         return _oracle.aave;
     }
+    function consultOracle(Oracle.Source source, address token) public view override returns (Fix) {
+        return _oracle.consult(source, token);
+    }
 
+    function setStRSR(IStRSR stRSR_) external override onlyOwner {
+        _stRSR = stRSR_;
+    }
+    function stRSR() public view override returns (IStRSR) {
+        return _stRSR;
+    }
+
+    function setFurnace(IFurnace furnace_) external override onlyOwner {
+        _furnace = furnace_;
+    }
+    function furnace() public view override returns(IFurnace) {
+        return _furnace;
+    }
+
+    function setRTokenAsset(IAsset rTokenAsset_) external override onlyOwner {
+        _rTokenAsset = rTokenAsset_;
+    }
+    function rTokenAsset() public view override returns (IAsset) {
+        return _rTokenAsset;
+    }
+
+    function setRSRAsset(IAsset rsrAsset_) external override onlyOwner {
+        _rsrAsset = rsrAsset_;
+    }
+    function rsrAsset() public view override returns (IAsset) {
+        return _rsrAsset;
+    }
+
+    function setCompAsset(IAsset compAsset_) external override onlyOwner {
+        _compAsset = compAsset_;
+    }
+    function compAsset() public view override returns (IAsset) {
+        return _compAsset;
+    }
+
+    function setAaveAsset(IAsset aaveAsset_) external override onlyOwner {
+        _aaveAsset = aaveAsset_;
+    }
+    function aaveAsset() public view override returns (IAsset) {
+        return _aaveAsset;
+    }
+
+    function setRewardStart(uint256 rewardStart_) external override onlyOwner {
+        _rewardStart = rewardStart_;
+    }
+
+    function rewardStart() public view override returns (uint256) {
+        return _rewardStart;
+    }
+
+    function setRewardPeriod(uint256 rewardPeriod_) external override onlyOwner {
+        _rewardPeriod = rewardPeriod_;
+    }
+
+    function rewardPeriod() public view override returns (uint256) {
+        return _rewardPeriod;
+    }
+
+    function setAuctionPeriod(uint256 auctionPeriod_) external override onlyOwner {
+        _auctionPeriod = auctionPeriod_;
+    }
+
+    function auctionPeriod() public view override returns (uint256) {
+        return _auctionPeriod;
+    }
+
+    function setStRSRWithdrawalDelay(uint256 stRSRWithdrawalDelay_) external override onlyOwner {
+        _stRSRWithdrawalDelay = stRSRWithdrawalDelay_;
+    }
+
+    function stRSRWithdrawalDelay() public view override returns (uint256) {
+        return _stRSRWithdrawalDelay;
+    }
+
+    function setDefaultDelay(uint256 defaultDelay_) external override onlyOwner {
+        _defaultDelay = defaultDelay_;
+    }
+
+    function defaultDelay() public view override returns (uint256) {
+        return _defaultDelay;
+    }
+
+    function setMaxTradeSlippage(Fix maxTradeSlippage_) external override onlyOwner {
+        _maxTradeSlippage = maxTradeSlippage_;
+    }
+
+    function maxTradeSlippage() public view override returns (Fix) {
+        return _maxTradeSlippage;
+    }
+
+    function setMaxAuctionSize(Fix maxAuctionSize_) external override onlyOwner {
+        _maxAuctionSize = maxAuctionSize_;
+    }
+
+    function maxAuctionSize() public view override returns (Fix) {
+        return _maxAuctionSize;
+    }
+
+    function setMinRecapitalizationAuctionSize(Fix minRecapitalizationAuctionSize_) external override onlyOwner {
+        _minRecapitalizationAuctionSize = minRecapitalizationAuctionSize_;
+    }
+
+    function minRecapitalizationAuctionSize() public view override returns (Fix) {
+        return _minRecapitalizationAuctionSize;
+    }
+
+    function setMinRevenueAuctionSize(Fix minRevenueAuctionSize_) external override onlyOwner {
+        _minRevenueAuctionSize = minRevenueAuctionSize_;
+    }
+
+    function minRevenueAuctionSize() public view override returns (Fix) {
+        return _minRevenueAuctionSize;
+    }
+
+    function setMigrationChunk(Fix migrationChunk_) external override onlyOwner {
+        _migrationChunk = migrationChunk_;
+    }
+
+    function migrationChunk() public view override returns (Fix) {
+        return _migrationChunk;
+    }
+
+    function setIssuanceRate(Fix issuanceRate_) external override onlyOwner {
+        _issuanceRate = issuanceRate_;
+    }
+
+    function issuanceRate() public view override returns (Fix) {
+        return _issuanceRate;
+    }
+
+    function setDefaultThreshold(Fix defaultThreshold_) external override onlyOwner {
+        _defaultThreshold = defaultThreshold_;
+    }
+
+    function defaultThreshold() public view override returns (Fix) {
+        return _defaultThreshold;
+    }
+
+    // Useful view functions for reading portions of the state
     /// @return The RToken deployment
     function rToken() public view override returns (IRToken) {
-        return IRToken(address(rTokenAsset.erc20()));
+        return IRToken(address(_rTokenAsset.erc20()));
     }
 
     /// @return The RSR deployment
     function rsr() public view override returns (IERC20) {
-        return rsrAsset.erc20();
+        return _rsrAsset.erc20();
     }
 }

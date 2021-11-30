@@ -49,7 +49,7 @@ contract RevenueHandlerP0 is Pausable, Mixin, MoodyP0, SettingsHandlerP0, VaultH
         // Comp
         comptroller().claimComp(address(this));
         comptroller().claimComp(address(vault));
-        vault.sweepToken(address(compAsset));
+        vault.sweepToken(address(compAsset()));
 
         // Aave
         for (uint256 i = 0; i < vault.size(); i++) {
@@ -59,7 +59,7 @@ contract RevenueHandlerP0 is Pausable, Mixin, MoodyP0, SettingsHandlerP0, VaultH
                 IStaticAToken(address(vault.collateralAt(i).erc20())).claimRewardsToSelf(true);
             }
         }
-        vault.sweepToken(address(aaveAsset));
+        vault.sweepToken(address(aaveAsset()));
 
         // Expand the RToken supply to self
         uint256 possible = fromBUs(vault.basketUnits(address(this)));
@@ -71,8 +71,8 @@ contract RevenueHandlerP0 is Pausable, Mixin, MoodyP0, SettingsHandlerP0, VaultH
 
     // Returns the rewards boundaries on either side of *time*.
     function _rewardsAdjacent(uint256 time) private view returns (uint256 left, uint256 right) {
-        int256 reps = (int256(time) - int256(rewardStart)) / int256(rewardPeriod);
-        left = uint256(reps * int256(rewardPeriod) + int256(rewardStart));
-        right = left + rewardPeriod;
+        int256 reps = (int256(time) - int256(rewardStart())) / int256(rewardPeriod());
+        left = uint256(reps * int256(rewardPeriod()) + int256(rewardStart()));
+        right = left + rewardPeriod();
     }
 }
