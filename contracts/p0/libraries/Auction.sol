@@ -8,6 +8,7 @@ import "contracts/p0/interfaces/IAssetManager.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IFurnace.sol";
 import "contracts/p0/interfaces/IMain.sol";
+import "contracts/p0/RTokenP0.sol";
 import "contracts/libraries/Fixed.sol";
 
 enum Fate {
@@ -108,7 +109,8 @@ library Auction {
         // solhint-disable no-empty-blocks
         if (bal > 0) {
             if (self.fate == Fate.Burn) {
-                self.buy.erc20().safeTransfer(address(0), bal);
+                // If the Fate is Burn, then the only valid buy token is RToken
+                RTokenP0(address(self.buy.erc20())).burn(address(this), bal);
             } else if (self.fate == Fate.Melt) {
                 self.buy.erc20().safeApprove(address(main.furnace()), bal);
                 main.furnace().burnOverPeriod(bal, main.config().rewardPeriod);

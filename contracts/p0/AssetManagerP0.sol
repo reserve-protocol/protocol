@@ -342,6 +342,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
         // Re-check the sideways trade
         (sell, buy, maxSell, targetBuy) = _largestCollateralForCollateralTrade();
+
         (trade, auction) = _prepareAuctionBuy(
             main.config().minRecapitalizationAuctionSize,
             sell,
@@ -377,8 +378,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
         // The ultimate endgame: a haircut for RToken holders.
         _accumulate();
-        Fix melting = (toFix(totalSupply).plusu(main.furnace().totalBurnt())).divu(totalSupply);
-        _historicalBasketDilution = melting.mulu(_allBUs()).divu(totalSupply);
+        _historicalBasketDilution = _meltingFactor().mulu(totalSupply).divu(_allBUs());
         return SystemState.CALM;
     }
 
@@ -482,6 +482,7 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             // {attoUSD} = {attoUSD} + {attoUSD/qTok} * {qTok}
             totalValue = totalValue.plus(a.priceUSD(main).mul(bal));
         }
+
         // {BU} = {attoUSD} / {attoUSD/BU}
         Fix targetBUs = totalValue.div(vault.basketRate());
 
@@ -651,18 +652,28 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         uint256 maxSellAmount,
         uint256 targetBuyAmount,
         Fate fate
-    ) internal returns (bool, Auction.Info memory emptyAuction) {
+    ) private returns (bool, Auction.Info memory emptyAuction) {
+        // TODO: Think carefully about desired auction behavior when there is only dust
         (bool trade, Auction.Info memory auction) = _prepareAuctionSell(minAuctionSize, sell, buy, maxSellAmount, fate);
         if (!trade) {
             return (false, emptyAuction);
         }
 
+        if (targetBuyAmount == 0) {
+            // If selling defaulted token, override minBuyAmount to zero
+            auction.minBuyAmount = 0;
+            return (true, auction);
+        }
+
         if (auction.minBuyAmount > targetBuyAmount) {
+            auction.minBuyAmount = targetBuyAmount;
+
             // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
             Fix exactSellAmount = toFix(auction.minBuyAmount).mul(buy.priceUSD(main)).div(sell.priceUSD(main));
 
             // {qSellTok} = {qSellTok} / {none}
-            auction.sellAmount = exactSellAmount.div(FIX_ONE.minus(main.config().maxTradeSlippage)).toUint();
+            auction.sellAmount = exactSellAmount.plus(exactSellAmount.mul(main.config().maxTradeSlippage)).toUint();
+
             assert(auction.sellAmount < maxSellAmount);
 
             // {attoUSD} = {attoUSD/qRTok} * {qRTok}
