@@ -342,7 +342,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
 
         // Re-check the sideways trade
         (sell, buy, maxSell, targetBuy) = _largestCollateralForCollateralTrade();
-
         (trade, auction) = _prepareAuctionBuy(
             main.config().minRecapitalizationAuctionSize,
             sell,
@@ -482,7 +481,6 @@ contract AssetManagerP0 is IAssetManager, Ownable {
             // {attoUSD} = {attoUSD} + {attoUSD/qTok} * {qTok}
             totalValue = totalValue.plus(a.priceUSD(main).mul(bal));
         }
-
         // {BU} = {attoUSD} / {attoUSD/BU}
         Fix targetBUs = totalValue.div(vault.basketRate());
 
