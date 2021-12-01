@@ -79,7 +79,9 @@ describe('AssetsP0 contracts', () => {
 
     token = <ERC20Mock>await ERC20.deploy('Token', 'TKN')
     usdc = <USDCMock>await USDCMockFactory.deploy('USDC Token', 'USDC')
-    aToken = <StaticATokenMock>await ATokenMockFactory.deploy('Static AToken', 'aTKN', token.address)
+    aToken = <StaticATokenMock>(
+      await ATokenMockFactory.deploy('Static AToken', 'aTKN', token.address)
+    )
     cToken = <CTokenMock>await CTokenMockFactory.deploy('CToken', 'cTKN', usdc.address)
     rsr = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
     comp = <ERC20Mock>await ERC20.deploy('COMP Token', 'COMP')
@@ -109,16 +111,31 @@ describe('AssetsP0 contracts', () => {
     // Deploy Main Mock
     MainMockFactory = await ethers.getContractFactory('MainMockP0')
     main = <MainMockP0>(
-      await MainMockFactory.deploy(rsr.address, comp.address, aave.address, weth.address, bn('0'), fp('0'))
+      await MainMockFactory.deploy(
+        rsr.address,
+        comp.address,
+        aave.address,
+        weth.address,
+        bn('0'),
+        fp('0')
+      )
     )
 
     compoundOracle = <CompoundOracleMockP0>(
       await ethers.getContractAt('CompoundOracleMockP0', await main.compoundOracle())
     )
-    aaveOracle = <AaveOracleMockP0>await ethers.getContractAt('AaveOracleMockP0', await main.aaveOracle())
+    aaveOracle = <AaveOracleMockP0>(
+      await ethers.getContractAt('AaveOracleMockP0', await main.aaveOracle())
+    )
 
     VaultFactory = await ethers.getContractFactory('VaultP0')
-    vault = <VaultP0>await VaultFactory.deploy([tokenAsset.address, usdcAsset.address], [bn('5e17'), bn('5e5')], [])
+    vault = <VaultP0>(
+      await VaultFactory.deploy(
+        [tokenAsset.address, usdcAsset.address],
+        [bn('5e17'), bn('5e5')],
+        []
+      )
+    )
 
     // Set Vault and Main relationship
     await main.connect(owner).setVault(vault.address)

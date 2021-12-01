@@ -66,7 +66,9 @@ export const prepareAllowances = (...allowance: Allowance[]): BigNumber[][] => {
     }
   }
   for (let i = 0; i < allowance.length; i++) {
-    toReturn[allowance[i][0]][allowance[i][1]] = toReturn[allowance[i][0]][allowance[i][1]].add(allowance[i][2])
+    toReturn[allowance[i][0]][allowance[i][1]] = toReturn[allowance[i][0]][allowance[i][1]].add(
+      allowance[i][2]
+    )
   }
   return toReturn
 }
@@ -155,7 +157,9 @@ export const prepareState = (
   const collateral = []
   for (let i = 0; i < COLLATERAL_TOKEN_LEN; i++) {
     if (i >= FIATCOIN_TOKEN_LEN && i < COLLATERAL_TOKEN_LEN) {
-      collateral.push(prepareToken(Asset[i], [[Account.ALICE, bn('1e36')]], [], bn('1e6'), defiCollateralRates[i]))
+      collateral.push(
+        prepareToken(Asset[i], [[Account.ALICE, bn('1e36')]], [], bn('1e6'), defiCollateralRates[i])
+      )
     } else {
       collateral.push(prepareToken(Asset[i], [[Account.ALICE, bn('1e36')]], [], bn('1e6')))
     }

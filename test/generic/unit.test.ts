@@ -79,7 +79,9 @@ describe('Unit tests (Generic)', () => {
       // console.log(initialState)
 
       const Driver = await ethers.getContractFactory('ProtosDriver')
-      const impls = await Promise.all(Impls.map(async (i) => (<ProtoAdapter>await i.deploy()).address))
+      const impls = await Promise.all(
+        Impls.map(async (i) => (<ProtoAdapter>await i.deploy()).address)
+      )
       driver = <ProtosDriver>await Driver.deploy(impls)
       await driver.init(initialState)
     })
@@ -93,10 +95,16 @@ describe('Unit tests (Generic)', () => {
       expect(state.collateral[0].balances[Account.ALICE]).to.equal(bn('1e36'))
       expect(state.collateral[lastCollateral].balances[Account.ALICE]).to.equal(bn('1e36'))
       expect(state.comp.balances[Account.ALICE]).to.equal(bn('1e36'))
-      expect(state.rTokenDefinition.assets.toString()).to.equal(initialState.rTokenDefinition.assets.toString())
-      expect(state.rTokenDefinition.quantities.toString()).to.equal(initialState.rTokenDefinition.quantities.toString())
+      expect(state.rTokenDefinition.assets.toString()).to.equal(
+        initialState.rTokenDefinition.assets.toString()
+      )
+      expect(state.rTokenDefinition.quantities.toString()).to.equal(
+        initialState.rTokenDefinition.quantities.toString()
+      )
       expect(state.defiCollateralRates[0]).to.equal(initialState.defiCollateralRates[0])
-      expect(state.defiCollateralRates[lastCollateral]).to.equal(initialState.defiCollateralRates[lastCollateral])
+      expect(state.defiCollateralRates[lastCollateral]).to.equal(
+        initialState.defiCollateralRates[lastCollateral]
+      )
       expect(state.defiCollateralRates.length).to.equal(state.collateral.length)
     })
 
@@ -167,7 +175,10 @@ describe('Unit tests (Generic)', () => {
     })
 
     it('Should detect hard default + immediately migrate to backup vault', async () => {
-      await driver.setDefiCollateralRates([Asset.cDAI], [initialState.defiCollateralRates[Asset.cDAI].sub(bn(1))])
+      await driver.setDefiCollateralRates(
+        [Asset.cDAI],
+        [initialState.defiCollateralRates[Asset.cDAI].sub(bn(1))]
+      )
       await driver.CMD_poke()
       let state = await driver.state()
       expect(state.mood).to.equal(Mood.TRADING)

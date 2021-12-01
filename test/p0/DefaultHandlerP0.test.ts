@@ -149,16 +149,12 @@ describe('DefaultHandlerP0 contract', () => {
     collateralUSDC = <CollateralP0>await AssetFactory.deploy(usdc.address, usdc.decimals())
 
     // Incentives controller
-    AaveIncentivesControllerFactory = await ethers.getContractFactory(
-      'AaveIncentivesControllerMockP0'
-    )
+    AaveIncentivesControllerFactory = await ethers.getContractFactory('AaveIncentivesControllerMockP0')
     aic = <AaveIncentivesControllerMockP0>await AaveIncentivesControllerFactory.deploy()
 
     // ATokens and CTokens
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
-    aTkn = <StaticATokenMock>(
-      await ATokenMockFactory.deploy('AToken', 'ATKN0', token0.address, aic.address)
-    )
+    aTkn = <StaticATokenMock>await ATokenMockFactory.deploy('AToken', 'ATKN0', token0.address, aic.address)
     ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
     assetAToken = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aTkn.address, aTkn.decimals())
 
@@ -173,12 +169,7 @@ describe('DefaultHandlerP0 contract', () => {
     quantity2 = qtyThird
     quantity3 = qtyDouble
 
-    collateral = [
-      collateral0.address,
-      collateral1.address,
-      collateral2.address,
-      collateral3.address,
-    ]
+    collateral = [collateral0.address, collateral1.address, collateral2.address, collateral3.address]
     quantities = [quantity0, quantity1, quantity2, quantity3]
 
     VaultFactory = await ethers.getContractFactory('VaultP0')
@@ -194,9 +185,7 @@ describe('DefaultHandlerP0 contract', () => {
     compoundOracle = <CompoundOracleMockP0>(
       await ethers.getContractAt('CompoundOracleMockP0', await main.compoundOracle())
     )
-    aaveOracle = <AaveOracleMockP0>(
-      await ethers.getContractAt('AaveOracleMockP0', await main.aaveOracle())
-    )
+    aaveOracle = <AaveOracleMockP0>await ethers.getContractAt('AaveOracleMockP0', await main.aaveOracle())
 
     const rTokenFactory: ContractFactory = await ethers.getContractFactory('RTokenMockP0')
     const rToken = <RTokenMockP0>await rTokenFactory.deploy('RTKN RToken', 'RTKN')
@@ -343,11 +332,7 @@ describe('DefaultHandlerP0 contract', () => {
         const qtyHalfCToken: BigNumber = bn('1e8').div(2)
 
         newVault = <VaultP0>(
-          await VaultFactory.deploy(
-            [assetAToken.address, assetCToken.address],
-            [qtyHalf, qtyHalfCToken],
-            []
-          )
+          await VaultFactory.deploy([assetAToken.address, assetCToken.address], [qtyHalf, qtyHalfCToken], [])
         )
 
         // Set new vault
@@ -393,11 +378,7 @@ describe('DefaultHandlerP0 contract', () => {
       // Deploy backup vaults
       backupVault1 = <VaultP0>await VaultFactory.deploy([collateral[0]], [quantities[0]], [])
       backupVault2 = <VaultP0>(
-        await VaultFactory.deploy(
-          [collateral[0], collateral[1]],
-          [quantities[0], quantities[1]],
-          []
-        )
+        await VaultFactory.deploy([collateral[0], collateral[1]], [quantities[0], quantities[1]], [])
       )
       backupVault3 = <VaultP0>(
         await VaultFactory.deploy(
@@ -407,21 +388,12 @@ describe('DefaultHandlerP0 contract', () => {
         )
       )
       backupVault4 = <VaultP0>(
-        await VaultFactory.deploy(
-          [collateral[1], collateral[2]],
-          [quantities[1], quantities[2]],
-          []
-        )
+        await VaultFactory.deploy([collateral[1], collateral[2]], [quantities[1], quantities[2]], [])
       )
 
       await vault
         .connect(owner)
-        .setBackups([
-          backupVault1.address,
-          backupVault2.address,
-          backupVault3.address,
-          backupVault4.address,
-        ])
+        .setBackups([backupVault1.address, backupVault2.address, backupVault3.address, backupVault4.address])
     })
 
     it('Vault should not change if there is no valid backup vault', async function () {
