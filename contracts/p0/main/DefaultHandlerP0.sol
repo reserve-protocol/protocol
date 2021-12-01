@@ -33,6 +33,9 @@ contract DefaultHandlerP0 is
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
+    ICollateral[] private _depegged;
+    mapping(ICollateral => uint256) private _timestampOfDepegging;
+
     function init(ConstructorArgs calldata args)
         public
         virtual
@@ -41,29 +44,32 @@ contract DefaultHandlerP0 is
         super.init(args);
     }
 
+    /// @dev This should handle parallel collateral defaults independently
     function poke() public virtual override notPaused {
         super.poke();
+
         ICollateral[] memory softDefaulting = _checkForSoftDefault();
+        for (uint256 i = 0; i < softDefaulting.length; i++) {
+            bool alreadyDepegged = _in(softDefaulting[i], _depegged);
+            if (!alreadyDepegged) {
+                _timestampOfDepegging[softDefaulting[i]] = block.timestamp;
+            } else if (block.timestamp >= defaultDelay() + _timestampOfDepegging[_depegged[i]]) {
+                _unapproveCollateral(_depegged[i]);
+            }
+        }
+        _depegged = softDefaulting;
 
         if (softDefaulting.length == 0) {
-            // Default expires before 24h
             _setMood(fullyCapitalized() ? Mood.CALM : Mood.TRADING);
-        } else if (_mood == Mood.DOUBT && block.timestamp >= _lastMoodChange + defaultDelay()) {
-            // If mood is DOUBT for >24h (default delay), switch vaults
-
-            for (uint256 i = 0; i < softDefaulting.length; i++) {
-                _unapproveCollateral(softDefaulting[i]); // TODO Unapprove only per-collateral defaulting, not all
-            }
-
-            IVault nextVault = _selectNextVault();
-            _switchVault(nextVault);
+        } else if (!_vaultIsOnlyApprovedCollateral(vault)) {
+            _switchVault(_selectNextVault());
             _setMood(Mood.TRADING);
-        } else if (_mood == Mood.CALM || _mood == Mood.TRADING) {
+        } else {
             _setMood(Mood.DOUBT);
         }
     }
 
-    /// Checks for hard default in a vault by inspecting the redemption rates of collateral tokens
+    /// Checks for hard default by inspecting the redemption rates of all collateral tokens
     /// Forces updates in the underlying defi protocols
     /// @return defaulting All hard-defaulting tokens
     function _checkForHardDefault() internal returns (ICollateral[] memory defaulting) {
@@ -200,5 +206,15 @@ contract DefaultHandlerP0 is
                 size++;
             }
         }
+    }
+
+    /// @return Whether `c` is in `arr`
+    function _in(ICollateral c, ICollateral[] storage arr) private view returns (bool) {
+        for (uint256 i = 0; i < arr.length; i++) {
+            if (c == arr[i]) {
+                return true;
+            }
+        }
+        return false;
     }
 }

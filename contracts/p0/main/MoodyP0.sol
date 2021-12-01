@@ -9,7 +9,6 @@ import "contracts/p0/interfaces/IMain.sol";
  */
 contract MoodyP0 is IMoody {
     Mood internal _mood;
-    uint256 internal _lastMoodChange; // timestamp
 
     modifier calm() {
         require(_mood == Mood.CALM, "not calm");
@@ -30,7 +29,6 @@ contract MoodyP0 is IMoody {
     function _setMood(Mood newMood) internal {
         if (_mood != newMood) {
             emit MoodChanged(_mood, newMood);
-            _lastMoodChange = block.timestamp;
             _mood = newMood;
         }
     }
