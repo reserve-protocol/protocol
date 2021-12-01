@@ -3,22 +3,27 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 
-import { BN_SCALE_FACTOR, ZERO_ADDRESS, Mood } from '../../common/constants'
+import { Mood, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
+import { AaveIncentivesControllerMockP0 } from '../../typechain/AaveIncentivesControllerMockP0'
 import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
 import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
 import { CollateralP0 } from '../../typechain/CollateralP0'
 import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
 import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
-import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
+import { DefaultHandlerP0 } from '../../typechain/DefaultHandlerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainMockP0 } from '../../typechain/MainMockP0'
+import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
+import { RTokenMockP0 } from '../../typechain/RTokenMockP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { USDCMock } from '../../typechain/USDCMock'
 import { VaultP0 } from '../../typechain/VaultP0'
+import { getLatestBlockTimestamp } from './../utils/time'
+import { IManagerConfig } from './utils/fixtures'
 
-describe('DefaultMonitorP0 contract', () => {
+describe('DefaultHandlerP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
@@ -27,8 +32,8 @@ describe('DefaultMonitorP0 contract', () => {
   let vault: VaultP0
 
   // Default Monitor
-  let DefaultMonitorFactory: ContractFactory
-  let defaultMonitor: DefaultMonitorP0
+  let DefaultHandlerFactory: ContractFactory
+  let defaultHandler: DefaultHandlerP0
 
   // Oracles
   let compoundOracle: CompoundOracleMockP0
@@ -66,6 +71,8 @@ describe('DefaultMonitorP0 contract', () => {
   let CTokenMockFactory: ContractFactory
   let ATokenAssetFactory: ContractFactory
   let CTokenAssetFactory: ContractFactory
+  let AaveIncentivesControllerFactory: ContractFactory
+  let aic: AaveIncentivesControllerMockP0
   let aTkn: StaticATokenMock
   let cTkn: CTokenMock
   let assetAToken: ATokenCollateralP0
@@ -141,9 +148,17 @@ describe('DefaultMonitorP0 contract', () => {
     collateral3 = <CollateralP0>await AssetFactory.deploy(token3.address, token3.decimals())
     collateralUSDC = <CollateralP0>await AssetFactory.deploy(usdc.address, usdc.decimals())
 
+    // Incentives controller
+    AaveIncentivesControllerFactory = await ethers.getContractFactory(
+      'AaveIncentivesControllerMockP0'
+    )
+    aic = <AaveIncentivesControllerMockP0>await AaveIncentivesControllerFactory.deploy()
+
     // ATokens and CTokens
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
-    aTkn = <StaticATokenMock>await ATokenMockFactory.deploy('AToken', 'ATKN0', token0.address)
+    aTkn = <StaticATokenMock>(
+      await ATokenMockFactory.deploy('AToken', 'ATKN0', token0.address, aic.address)
+    )
     ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
     assetAToken = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aTkn.address, aTkn.decimals())
 
@@ -158,7 +173,12 @@ describe('DefaultMonitorP0 contract', () => {
     quantity2 = qtyThird
     quantity3 = qtyDouble
 
-    collateral = [collateral0.address, collateral1.address, collateral2.address, collateral3.address]
+    collateral = [
+      collateral0.address,
+      collateral1.address,
+      collateral2.address,
+      collateral3.address,
+    ]
     quantities = [quantity0, quantity1, quantity2, quantity3]
 
     VaultFactory = await ethers.getContractFactory('VaultP0')
@@ -168,13 +188,21 @@ describe('DefaultMonitorP0 contract', () => {
     await vault.connect(owner).setMain(main.address)
 
     // Get Default Monitor
-    DefaultMonitorFactory = await ethers.getContractFactory('DefaultMonitorP0')
-    defaultMonitor = <DefaultMonitorP0>await DefaultMonitorFactory.deploy(main.address)
+    DefaultHandlerFactory = await ethers.getContractFactory('DefaultHandlerP0')
+    defaultHandler = <DefaultHandlerP0>await DefaultHandlerFactory.deploy()
 
     compoundOracle = <CompoundOracleMockP0>(
       await ethers.getContractAt('CompoundOracleMockP0', await main.compoundOracle())
     )
-    aaveOracle = <AaveOracleMockP0>await ethers.getContractAt('AaveOracleMockP0', await main.aaveOracle())
+    aaveOracle = <AaveOracleMockP0>(
+      await ethers.getContractAt('AaveOracleMockP0', await main.aaveOracle())
+    )
+
+    const rTokenFactory: ContractFactory = await ethers.getContractFactory('RTokenMockP0')
+    const rToken = <RTokenMockP0>await rTokenFactory.deploy('RTKN RToken', 'RTKN')
+
+    const rTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAssetP0')
+    const rTokenAsset = <RTokenAssetP0>await rTokenAssetFactory.deploy(rToken.address)
 
     // Set Default Oracle Prices
     await compoundOracle.setPrice('TKN0', bn('1e6'))
@@ -192,19 +220,49 @@ describe('DefaultMonitorP0 contract', () => {
     await aaveOracle.setPrice(aaveToken.address, bn('1e18'))
     await aaveOracle.setPrice(compToken.address, bn('1e18'))
     await aaveOracle.setPrice(rsr.address, bn('1e18'))
+
+    // Setup Config
+    const rewardStart: BigNumber = bn(await getLatestBlockTimestamp())
+    const config: IManagerConfig = {
+      rewardStart: rewardStart,
+      rewardPeriod: bn('604800'), // 1 week
+      auctionPeriod: bn('1800'), // 30 minutes
+      stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
+      defaultDelay: bn('86400'), // 24 hs
+      maxTradeSlippage: fp('0.01'), // 1%
+      maxAuctionSize: fp('0.01'), // 1%
+      minRecapitalizationAuctionSize: fp('0.001'), // 0.1%
+      minRevenueAuctionSize: fp('0.0001'), // 0.01%
+      migrationChunk: fp('0.2'), // 20%
+      issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
+      defaultThreshold: fp('0.05'), // 5% deviation
+      cut: fp('0.60'), // 60% to stakers
+    }
+    await defaultHandler.init({
+      approvedCollateral: collateral,
+      oracle: await main.oracle(),
+      config: config,
+      rTokenAsset: rTokenAsset.address,
+      rsrAsset: ZERO_ADDRESS,
+      compAsset: ZERO_ADDRESS,
+      aaveAsset: ZERO_ADDRESS,
+      vault: vault.address,
+      furnace: ZERO_ADDRESS,
+      market: ZERO_ADDRESS,
+    })
   })
 
   describe('Deployment', () => {
     it('Should setup Default Monitor correctly', async () => {
-      expect(await defaultMonitor.mood()).to.equal(Mood.CALM)
+      expect(await defaultHandler.mood()).to.equal(Mood.CALM)
     })
   })
 
   describe('Soft Default', function () {
     it('Should not detect soft default in normal situations', async function () {
       // Detect Soft default
-      await defaultMonitor.poke()
-      expect(await defaultMonitor.mood()).to.equal(Mood.CALM)
+      await defaultHandler.poke()
+      expect(await defaultHandler.mood()).to.equal(Mood.CALM)
     })
 
     it('Should not detect soft default if within default threshold', async function () {
@@ -212,24 +270,24 @@ describe('DefaultMonitorP0 contract', () => {
       await aaveOracle.setPrice(token0.address, bn('2.4e14'))
 
       // Detect Soft default
-      defaulting = await defaultMonitor.checkForSoftDefault(vault.address, collateral)
-      expect(defaulting).to.be.empty
+      await defaultHandler.poke()
+      expect(await defaultHandler.mood()).to.equal(Mood.CALM)
     })
 
     it('Should detect soft default for single token', async function () {
       // Change fiatcoin price - Reduce price significantly in terms of ETH
       await aaveOracle.setPrice(token0.address, bn('1.5e14'))
 
-      // Detect Soft Default
-      defaulting = await defaultMonitor.checkForSoftDefault(vault.address, collateral)
-      expect(defaulting).to.eql([collateral0.address])
+      // Detect Soft default
+      await defaultHandler.poke()
+      expect(await defaultHandler.mood()).to.equal(Mood.DOUBT)
 
       // Increase back significantly, this should not trigger default
       await aaveOracle.setPrice(token0.address, bn('4e14'))
 
-      // Detect Soft Default
-      defaulting = await defaultMonitor.checkForSoftDefault(vault.address, collateral)
-      expect(defaulting).to.be.empty
+      // Detect Soft default
+      await defaultHandler.poke()
+      expect(await defaultHandler.mood()).to.equal(Mood.CALM)
     })
 
     it('Should detect soft default for multiple tokens', async function () {
@@ -237,9 +295,9 @@ describe('DefaultMonitorP0 contract', () => {
       await aaveOracle.setPrice(token2.address, bn('1e14'))
       await aaveOracle.setPrice(token3.address, bn('1.5e14'))
 
-      // Detect Soft Default
-      defaulting = await defaultMonitor.checkForSoftDefault(vault.address, collateral)
-      expect(defaulting).to.eql([collateral2.address, collateral3.address])
+      // Detect Soft default
+      await defaultHandler.poke()
+      expect(await defaultHandler.mood()).to.equal(Mood.DOUBT)
     })
 
     it('Should detect soft default for basket with even number of tokens', async function () {
@@ -255,30 +313,26 @@ describe('DefaultMonitorP0 contract', () => {
 
       await aaveOracle.setPrice(token0.address, bn('1e14'))
 
-      // Detect Soft Default
-      defaulting = await defaultMonitor.checkForSoftDefault(newVault.address, [
-        collateral[0],
-        collateral[1],
-        collateral[2],
-      ])
-      expect(defaulting).to.eql([collateral0.address])
+      // Detect Soft default
+      await defaultHandler.poke()
+      expect(await defaultHandler.mood()).to.equal(Mood.DOUBT)
     })
   })
 
   describe('Hard Default', () => {
     it('Should not detect hard default in normal situations with fiat tokens', async function () {
-      // Detect Hard default - Needs to be called from Main
-      defaulting = await main.callStatic.checkForHardDefault(vault.address)
-      expect(defaulting).to.be.empty
+      // Detect hard default
+      await defaultHandler.poke()
+      expect(await defaultHandler.mood()).to.equal(Mood.CALM)
     })
 
     it('Should never detect hard default for fiat tokens', async function () {
-      // Change value for fiat token but this does not impact rateUSD
+      // Change price for fiat token but this does not impact rateUSD
       await aaveOracle.setPrice(token0.address, bn('1e14'))
 
-      // Detect Hard default
-      defaulting = await main.callStatic.checkForHardDefault(vault.address)
-      expect(defaulting).to.be.empty
+      // Detect hard default
+      await defaultHandler.poke()
+      expect(await defaultHandler.mood()).to.equal(Mood.CALM)
     })
 
     context('With ATokens and CTokens', async function () {
@@ -289,29 +343,30 @@ describe('DefaultMonitorP0 contract', () => {
         const qtyHalfCToken: BigNumber = bn('1e8').div(2)
 
         newVault = <VaultP0>(
-          await VaultFactory.deploy([assetAToken.address, assetCToken.address], [qtyHalf, qtyHalfCToken], [])
+          await VaultFactory.deploy(
+            [assetAToken.address, assetCToken.address],
+            [qtyHalf, qtyHalfCToken],
+            []
+          )
         )
 
         // Set new vault
         await main.connect(owner).setVault(newVault.address)
-
-        // Call to populate last rates
-        await main.checkForHardDefault(newVault.address)
       })
 
       it('Should not detect hard default in normal situations', async function () {
-        // Detect Hard default - Needs to be called from Main
-        defaulting = await main.callStatic.checkForHardDefault(newVault.address)
-        expect(defaulting).to.be.empty
+        // Detect hard default
+        await defaultHandler.poke()
+        expect(await defaultHandler.mood()).to.equal(Mood.CALM)
       })
 
       it('Should detect hard default if rate decreases for single token', async function () {
         // Change redemption rate for AToken
         await aTkn.setExchangeRate(fp('0.98'))
 
-        // Detect Hard default
-        defaulting = await main.callStatic.checkForHardDefault(newVault.address)
-        expect(defaulting).to.eql([assetAToken.address])
+        // Detect hard default
+        await defaultHandler.poke()
+        expect(await defaultHandler.mood()).to.equal(Mood.TRADING)
       })
 
       it('Should detect hard default if rate decreases for multiple tokens', async function () {
@@ -321,18 +376,14 @@ describe('DefaultMonitorP0 contract', () => {
         // Change redemption rate for CToken  - Original rate is 2e26
         await cTkn.setExchangeRate(fp('0.99'))
 
-        // Call a few times to make sure default is still detected
-        await main.checkForHardDefault(newVault.address)
-        await main.checkForHardDefault(newVault.address)
-
-        // Detect Hard default
-        defaulting = await main.callStatic.checkForHardDefault(newVault.address)
-        expect(defaulting).to.eql([assetAToken.address, assetCToken.address])
+        // Detect hard default
+        await defaultHandler.poke()
+        expect(await defaultHandler.mood()).to.equal(Mood.TRADING)
       })
     })
   })
 
-  describe('Get Next Vault', () => {
+  describe('Select Next Vault', () => {
     let backupVault1: VaultP0
     let backupVault2: VaultP0
     let backupVault3: VaultP0
@@ -342,7 +393,11 @@ describe('DefaultMonitorP0 contract', () => {
       // Deploy backup vaults
       backupVault1 = <VaultP0>await VaultFactory.deploy([collateral[0]], [quantities[0]], [])
       backupVault2 = <VaultP0>(
-        await VaultFactory.deploy([collateral[0], collateral[1]], [quantities[0], quantities[1]], [])
+        await VaultFactory.deploy(
+          [collateral[0], collateral[1]],
+          [quantities[0], quantities[1]],
+          []
+        )
       )
       backupVault3 = <VaultP0>(
         await VaultFactory.deploy(
@@ -352,58 +407,60 @@ describe('DefaultMonitorP0 contract', () => {
         )
       )
       backupVault4 = <VaultP0>(
-        await VaultFactory.deploy([collateral[1], collateral[2]], [quantities[1], quantities[2]], [])
+        await VaultFactory.deploy(
+          [collateral[1], collateral[2]],
+          [quantities[1], quantities[2]],
+          []
+        )
       )
 
       await vault
         .connect(owner)
-        .setBackups([backupVault1.address, backupVault2.address, backupVault3.address, backupVault4.address])
+        .setBackups([
+          backupVault1.address,
+          backupVault2.address,
+          backupVault3.address,
+          backupVault4.address,
+        ])
     })
 
-    it('Should return zero address if there is no valid backup vault', async function () {
+    it('Vault should not change if there is no valid backup vault', async function () {
       // Get next vault with different token
-      const nextVaultAddr: string = await defaultMonitor.callStatic.getNextVault(
-        vault.address,
-        [assetAToken.address],
-        collateral
-      )
-      expect(nextVaultAddr).to.equal(ZERO_ADDRESS)
+      await defaultHandler.connect(owner).unapproveCollateral(assetAToken.address)
+      await defaultHandler.poke()
+      expect(await defaultHandler.vault()).to.equal(vault.address) // no change
     })
 
-    it('Should return a valid vault based on accepted collateral', async function () {
+    it('Should change to a valid vault based on accepted collateral after 1 default', async function () {
       // Get the only valid vault that contains only approved collateral
-      let nextVaultAddr: string = await defaultMonitor.callStatic.getNextVault(
-        vault.address,
-        [collateral[0]],
-        collateral
-      )
-      expect(nextVaultAddr).to.equal(backupVault1.address)
-
-      // Another example
-      nextVaultAddr = await defaultMonitor.callStatic.getNextVault(
-        vault.address,
-        [collateral[1], collateral[2]],
-        collateral
-      )
-      expect(nextVaultAddr).to.equal(backupVault4.address)
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[0])
+      await defaultHandler.poke()
+      expect(await defaultHandler.vault()).to.equal(backupVault1.address) // no change
     })
 
-    it('Should return the one with highest rate', async function () {
-      // Return the vault with highest rate (all 3 candidates are valid)
-      let nextVaultAddr: string = await defaultMonitor.callStatic.getNextVault(
-        vault.address,
-        [collateral[0], collateral[1], collateral[2]],
-        collateral
-      )
-      expect(nextVaultAddr).to.equal(backupVault3.address)
+    it('Should change to a valid vault based on accepted collateral after 2 defaults', async function () {
+      // Get the only valid vault that contains only approved collateral
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[1])
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[2])
+      await defaultHandler.poke()
+      expect(await defaultHandler.vault()).to.equal(backupVault4.address) // no change
+    })
 
-      // Another example, backupVault2 now has the higer rate among the valid ones
-      nextVaultAddr = await defaultMonitor.callStatic.getNextVault(
-        vault.address,
-        [collateral[0], collateral[1]],
-        collateral
-      )
-      expect(nextVaultAddr).to.equal(backupVault2.address)
+    it('Should change to vault with the highest rate after 3 defaults', async function () {
+      // Return the vault with highest rate (all 3 candidates are valid)
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[0])
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[1])
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[2])
+      await defaultHandler.poke()
+      expect(await defaultHandler.vault()).to.equal(backupVault3.address) // no change
+    })
+
+    it('Should change to vault with the highest rate after 2 defaults', async function () {
+      // Return the vault with highest rate (all 3 candidates are valid)
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[0])
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[1])
+      await defaultHandler.poke()
+      expect(await defaultHandler.vault()).to.equal(backupVault2.address) // no change
     })
   })
 })

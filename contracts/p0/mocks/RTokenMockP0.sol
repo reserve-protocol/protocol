@@ -23,4 +23,9 @@ contract RTokenMockP0 is ERC20 {
         _burn(from, amount);
         return true;
     }
+
+    /// Main uses this to move tokens held directly by the RToken
+    function withdrawTo(address to, uint256 amount) external virtual {
+        _transfer(address(this), to, amount);
+    }
 }

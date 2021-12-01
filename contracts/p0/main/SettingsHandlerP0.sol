@@ -60,6 +60,11 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
         _migrationChunk = args.config.migrationChunk;
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
+
+        _rTokenAsset = args.rTokenAsset;
+        _rsrAsset = args.rsrAsset;
+        _compAsset = args.compAsset;
+        _aaveAsset = args.aaveAsset;
     }
 
     function setOracle(Oracle.Info memory oracle_) external override onlyOwner {
