@@ -60,8 +60,7 @@ contract BackingTraderP0 is TraderP0 {
                 surplus,
                 deficit,
                 surplusAmount,
-                deficitAmount,
-                Fate.STAY
+                deficitAmount
             );
         } else {
             (trade, auction) = _prepareAuctionSell(surplus, deficit, surplusAmount, Fate.STAY);
@@ -73,7 +72,24 @@ contract BackingTraderP0 is TraderP0 {
         }
 
         // If we're here, all the surplus is dust and we're still recapitalizing
-        // TODO: RSR case
+        // So it's time to seize and spend staked RSR
+        (trade, auction) = _prepareAuctionToCoverDeficit(
+            main.rsrAsset(),
+            deficit,
+            main.rsr().balanceOf(address(main.stRSR())), // max(RSR that can be seized)
+            deficitAmount
+            );
+        if (trade) {
+            uint256 balance = main.rsr().balanceOf(address(this));
+            if(auction.sellAmount > balance) {
+                main.stRSR().seizeRSR(auction.sellAmount - balance);
+            }
+            _launchAuction(auction);
+            return true;
+        }
+
+        // We did our best, we're out of (non-dust) funds. ;_;
+        return false;
     }
 
     /// Determines what the largest collateral-for-collateral trade is.

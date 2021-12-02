@@ -101,8 +101,7 @@ contract TraderP0 is Ownable, IAuctioneerEvents {
         IAsset sell,
         IAsset buy,
         uint256 maxSellAmount,
-        uint256 deficitAmount,
-        Fate fate
+        uint256 deficitAmount
     ) internal returns (bool notDust, Auction.Info memory auction) {
         Oracle.Info memory oracle = main.oracle();
         uint256 sellThreshold = _dustThreshold(sell);
@@ -126,7 +125,7 @@ contract TraderP0 is Ownable, IAuctioneerEvents {
         .toUint();
 
         uint256 sellAmount = Math.min(idealSellAmount, maxSellAmount);
-        return _prepareAuctionSell(sell, buy, sellAmount, fate);
+        return _prepareAuctionSell(sell, buy, sellAmount, Fate.STAY);
     }
 
     /// @return {qSellTok} The least amount of tokens worth trying to sell
