@@ -236,6 +236,11 @@ contract MainP0 is IMain, Ownable {
         return manager.vault().tokenAmounts(manager.toBUs(amount));
     }
 
+    /// @return How many RToken `account` can issue given current holdings
+    function maxIssuable(address account) external view override returns (uint256) {
+        return manager.fromBUs(manager.vault().maxIssuable(account));
+    }
+
     /// @return erc20s The addresses of the ERC20s backing the RToken
     function backingTokens() public view override returns (address[] memory erc20s) {
         erc20s = new address[](manager.vault().size());
