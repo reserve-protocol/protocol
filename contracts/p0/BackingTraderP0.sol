@@ -18,6 +18,7 @@ contract BackingTraderP0 is TraderP0 {
 
     uint256 public targetBUs;
 
+    // solhint-disable-next-line no-empty-blocks
     constructor(VaultHandlerP0 main_) TraderP0(main_) {}
 
     /// @return trading Whether an auction is live

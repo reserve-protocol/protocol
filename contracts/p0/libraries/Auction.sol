@@ -65,7 +65,6 @@ library Auction {
         Auction.Info storage self,
         IFurnace furnace,
         IStRSR stRSR,
-        uint256 rewardPeriod,
         IMarket market
     ) internal {
         require(self.status == Auction.Status.OPEN, "can only close in-progress auctions");

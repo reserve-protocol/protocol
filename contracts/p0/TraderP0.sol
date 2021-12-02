@@ -29,12 +29,7 @@ contract TraderP0 is Ownable, IAuctioneerEvents {
                 if (block.timestamp <= auction.endTime) {
                     return true;
                 }
-                auction.close(
-                    main.revenueFurnace(),
-                    main.stRSR(),
-                    main.rewardPeriod(),
-                    main.market()
-                );
+                auction.close(main.revenueFurnace(), main.stRSR(), main.market());
                 emit AuctionEnded(
                     i,
                     address(auction.sell),
