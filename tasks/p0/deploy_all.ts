@@ -1,4 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { MarketMock } from '@typechain/MarketMock'
 import { BigNumber, ContractFactory } from 'ethers'
 import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
@@ -24,9 +25,7 @@ import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { VaultP0 } from '../../typechain/VaultP0'
 
-const qtyHalf: BigNumber = bn('1e18').div(2)
 const qtyThird: BigNumber = bn('1e18').div(3)
-const qtyDouble: BigNumber = bn('1e18').mul(2)
 
 function waitDeployment(contracts: any[]) {
   return Promise.all(contracts.map((contract) => contract.deployed()))
@@ -45,10 +44,9 @@ const deployRSR = async (hre: HardhatRuntimeEnvironment, deployer: SignerWithAdd
 
 const deployVault = async (hre: HardhatRuntimeEnvironment, deployer: SignerWithAddress) => {
   const TOKENS = [
-    ['Token 0', 'TKN0'],
-    ['Token 1', 'TKN1'],
-    ['Token 2', 'TKN2'],
-    ['Token 3', 'TKN3'],
+    ['USD Test', 'USDT'],
+    ['USD Asdf', 'USDA'],
+    ['USD Plus', 'USDP'],
   ]
   const ERC20: ContractFactory = await hre.ethers.getContractFactory('ERC20Mock')
 
@@ -60,11 +58,11 @@ const deployVault = async (hre: HardhatRuntimeEnvironment, deployer: SignerWithA
   // Deploy vault tokens as collaterals
   const collaterals = await Promise.all(
     vaultTokens.map((token) => AssetFactory.connect(deployer).deploy(token.address, token.decimals()))
-  )
+  ) 
   await waitDeployment(collaterals)
 
   const collateral: string[] = collaterals.map((c) => c.address)
-  const quantities: BigNumber[] = [qtyHalf, qtyHalf, qtyThird, qtyDouble]
+  const quantities: BigNumber[] = [qtyThird, qtyThird, qtyThird]
 
   const VaultFactory: ContractFactory = await hre.ethers.getContractFactory('VaultP0')
   const vault: VaultP0 = <VaultP0>await VaultFactory.connect(deployer).deploy(collateral, quantities, [])
@@ -129,20 +127,23 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
   // RSR
   console.log('Deploying RSR...')
   const { rsr, rsrAsset } = await deployRSR(hre, deployer)
+  // Mint RSR
+  await rsr.mint(deployer.address, bn('1e18').mul(100000))
   // Vault
   console.log('Deploying token vault...')
   const { vaultTokens, collaterals, vault } = await deployVault(hre, deployer)
-  // Dependencies
+  // Mint collaterals
+  await Promise.all(vaultTokens.map(token => token.mint(deployer.address, bn('1e18').mul(100000))))
+    // Dependencies
   console.log('Deploying Aave/Compound/Oracle dependencies')
   const { weth, compToken, compAsset, compoundOracle, compoundMock, aaveToken, aaveAsset, aaveOracle, aaveMock } =
     await deployDependencies(hre, deployer)
 
   console.log('Setting prices...')
   // Set Default Oracle Prices
-  await compoundOracle.setPrice('TKN0', bn('1e6'))
-  await compoundOracle.setPrice('TKN1', bn('1e6'))
-  await compoundOracle.setPrice('TKN2', bn('1e6'))
-  await compoundOracle.setPrice('TKN3', bn('1e6'))
+  await compoundOracle.setPrice('USDT', bn('1e6'))
+  await compoundOracle.setPrice('USDA', bn('1e6'))
+  await compoundOracle.setPrice('USDP', bn('1e6'))
   await compoundOracle.setPrice('ETH', bn('1e6'))
   await compoundOracle.setPrice('COMP', bn('1e6'))
 
@@ -150,6 +151,11 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
   await aaveOracle.setPrice(weth.address, bn('1e18'))
   await aaveOracle.setPrice(aaveToken.address, bn('1e18'))
   await aaveOracle.setPrice(compToken.address, bn('1e18'))
+
+  // Deploy market
+  const MarketMockFactory: ContractFactory = await hre.ethers.getContractFactory('MarketMock')
+  const tradingMock: MarketMock = <MarketMock>await MarketMockFactory.connect(deployer).deploy()
+  await tradingMock.deployed()
 
   // Setup Config
   const latestBlock = await hre.ethers.provider.getBlock('latest')
@@ -174,7 +180,7 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
   // Create Deployer
   const DeployerFactory: ContractFactory = await hre.ethers.getContractFactory('DeployerP0')
   const rtokenDeployer: DeployerP0 = <DeployerP0>(
-    await DeployerFactory.connect(deployer).deploy(rsrAsset.address, compAsset.address, aaveAsset.address)
+    await DeployerFactory.connect(deployer).deploy(rsrAsset.address, compAsset.address, aaveAsset.address, tradingMock.address)
   )
   await rtokenDeployer.deployed()
 
@@ -229,6 +235,7 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
     stRSR           - ${stRSR.address}
     ASSET_MANAGER   - ${assetManager.address}
     DEFAULT_MONITOR - ${defaultMonitor.address}
+    TRADING_MOCK    - ${tradingMock.address}
     -------------------------
   `)
 
