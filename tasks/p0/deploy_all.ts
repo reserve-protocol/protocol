@@ -246,7 +246,7 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
       await hre.ethers.getContractAt('RTokenP0', await main.rToken())
     )
     const furnace: FurnaceP0 = <FurnaceP0>(
-      await hre.ethers.getContractAt('FurnaceP0', await main.furnace())
+      await hre.ethers.getContractAt('FurnaceP0', await main.revenueFurnace())
     )
     const stRSR: StRSRP0 = <StRSRP0>await hre.ethers.getContractAt('StRSRP0', await main.stRSR())
     const assetManager: AssetManagerP0 = <AssetManagerP0>(

@@ -12,7 +12,7 @@ import "contracts/p0/interfaces/IRToken.sol";
 
 /**
  * @title FurnaceP0
- * @notice A helper to burn RTokens slowly and permisionlessly.
+ * @notice A helper to melt RTokens slowly and permisionlessly.
  */
 contract FurnaceP0 is Ownable, IFurnace {
     using SafeERC20 for IRToken;
@@ -24,15 +24,14 @@ contract FurnaceP0 is Ownable, IFurnace {
         uint256 amount; // {qTok}
         uint256 start; // {timestamp}
         uint256 duration; // {sec}
-        uint256 burnt; // {qTok}
+        uint256 melted; // {qTok}
     }
 
     Batch[] public batches;
 
-    uint256 public override totalBurnt;
     uint256 public override batchDuration;
 
-    /// @param batchDuration_ {sec} The number of seconds to spread the burn over
+    /// @param batchDuration_ {sec} The number of seconds to spread the melt over
     constructor(IRToken rToken_, uint256 batchDuration_) {
         require(address(rToken_) != address(0), "rToken is zero address");
 
@@ -40,11 +39,11 @@ contract FurnaceP0 is Ownable, IFurnace {
         batchDuration = batchDuration_;
     }
 
-    /// Sets aside `amount` of RToken to be burnt over `timePeriod` seconds.
-    /// @param amount {qTok} The amount of RToken to be burnt
+    /// Sets aside `amount` of RToken to be melted over `timePeriod` seconds.
+    /// @param amount {qTok} The amount of RToken to be melted
     function receiveERC20(IERC20 erc20, uint256 amount) external override {
         require(address(erc20) == address(rToken), "RToken melting only");
-        require(amount > 0, "Cannot burn a batch of zero");
+        require(amount > 0, "Cannot melt a batch of zero");
 
         rToken.safeTransferFrom(_msgSender(), address(this), amount);
 
@@ -54,13 +53,12 @@ contract FurnaceP0 is Ownable, IFurnace {
     }
 
     /// Performs any burning that has vested since last call. Idempotent
-    function doBurn() public override {
+    function doMelt() public override {
         uint256 amount = _burnable(block.timestamp);
         if (amount > 0) {
-            bool success = rToken.burn(address(this), amount);
-            require(success, "should burn from self successfully");
-            totalBurnt += amount;
-            emit Burned(amount);
+            bool success = rToken.melt(address(this), amount);
+            require(success, "should melt from self successfully");
+            emit Melted(amount);
         }
     }
 
@@ -81,15 +79,15 @@ contract FurnaceP0 is Ownable, IFurnace {
         ) {
             Batch storage batch = batches[index];
 
-            // Check if there are still funds to be burnt
-            if (batch.burnt < batch.amount) {
+            // Check if there are still funds to be melted
+            if (batch.melted < batch.amount) {
                 uint256 vestedAmount = _vestedAmount(batch, timestamp);
 
                 // Release amount
-                releasable += vestedAmount - batch.burnt;
+                releasable += vestedAmount - batch.melted;
 
-                // Update burnt
-                batch.burnt = vestedAmount;
+                // Update melted
+                batch.melted = vestedAmount;
 
                 // Note: Potential optimization by cleaning up Batch once all consumed
             }

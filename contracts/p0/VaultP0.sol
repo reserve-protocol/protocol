@@ -88,9 +88,12 @@ contract VaultP0 is IVault, Ownable {
         emit BUsRedeemed(to, _msgSender(), amtBUs);
     }
 
-    /// Used to withdraw earned COMP
-    function withdrawToMain(address token) external override {
-        IERC20(token).safeTransfer(main, IERC20(token).balanceOf(address(this)));
+    /// Sweeps all balance of a non-backing token to main
+    function sweepNonBackingTokenToMain(IERC20 erc20) external override {
+        for (uint256 i = 0; i < _basket.size; i++) {
+            require(_basket.collateral[i].erc20() != erc20, "can't sweep a backing token");
+        }
+        erc20.safeTransfer(address(main), erc20.balanceOf(address(this)));
     }
 
     /// Approves main to claim AAVE rewards

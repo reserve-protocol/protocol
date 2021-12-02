@@ -70,7 +70,7 @@ contract DeployerP0 is IDeployer {
         {
             IRToken rToken = _deployRToken(name, symbol);
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken));
-            IFurnace furnace = _deployFurnace(address(rToken));
+            IFurnace revenueFurnace = _deployRevenueFurnace(rToken, config.rewardPeriod);
 
             main = _deployMain(
                 ConstructorArgs(
@@ -82,7 +82,7 @@ contract DeployerP0 is IDeployer {
                     compAsset,
                     aaveAsset,
                     vault,
-                    furnace,
+                    revenueFurnace,
                     market
                 )
             );
@@ -123,8 +123,12 @@ contract DeployerP0 is IDeployer {
         return new RTokenP0(name, symbol);
     }
 
-    function _deployFurnace(address rToken) internal virtual returns (IFurnace) {
-        return new FurnaceP0(address(rToken));
+    function _deployRevenueFurnace(IRToken rToken, uint256 batchDuration)
+        internal
+        virtual
+        returns (IFurnace)
+    {
+        return new FurnaceP0(rToken, batchDuration);
     }
 
     function _deployStRSR(

@@ -3,7 +3,6 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/libraries/Oracle.sol";
-import "contracts/p0/BackingTrader.sol";
 import "./IAsset.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
@@ -20,10 +19,10 @@ enum Mood {
 
 /// What should happen to auction tokens after the auctinon clears
 enum Fate {
-    Melt, // RToken melting in the furnace
-    Stake, // RSR dividend to stRSR
-    Burn, // RToken burning
-    Stay // No action needs to be taken; tokens can be left at the callers address
+    MELT, // RToken melting in the furnace
+    STAKE, // RSR dividend to stRSR
+    BURN, // RToken burning
+    STAY // No action
 }
 
 /// Configuration of the system
@@ -109,7 +108,7 @@ interface IAssetRegistry {
 
     function allAssets() external view returns (IAsset[] memory);
 
-    function isApproved(ICollateral collateral) external view returns (bool);
+    function isApproved(IAsset asset) external view returns (bool);
 }
 
 interface ISettingsHandler {
@@ -141,7 +140,7 @@ interface ISettingsHandler {
 
     function setStRSR(IStRSR stRSR) external;
 
-    function setFurnace(IFurnace furnace) external;
+    function setRevenueFurnace(IFurnace furnace) external;
 
     function setRTokenAsset(IAsset rTokenAsset) external;
 
@@ -181,7 +180,7 @@ interface ISettingsHandler {
 
     function stRSR() external view returns (IStRSR);
 
-    function furnace() external view returns (IFurnace);
+    function revenueFurnace() external view returns (IFurnace);
 
     function rTokenAsset() external view returns (IAsset);
 
@@ -231,7 +230,7 @@ interface IDefaultHandler {
 
 }
 
-interface IAuctioneer {
+interface IAuctioneerEvents {
     /// Emitted when an auction is started
     /// @param auctionId The index of the AssetManager.auctions array
     /// @param sell The token to sell
@@ -260,8 +259,10 @@ interface IAuctioneer {
         uint256 buyAmount,
         Fate fate
     );
+}
 
-    function backingTrader() external view returns (BackingTrader);
+interface IAuctioneer is IAuctioneerEvents {
+    function getBackingTrader() external view returns (address);
 }
 
 interface IRevenueHandler {
@@ -300,6 +301,8 @@ interface IRTokenIssuer {
     function backingTokens() external view returns (address[] memory);
 
     function quote(uint256 amount) external view returns (uint256[] memory);
+
+    function maxIssuable(address account) external view returns (uint256);
 }
 
 /**

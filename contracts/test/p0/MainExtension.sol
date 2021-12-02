@@ -64,7 +64,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = true;
         ok = ok && address(oracle().compound) != address(0);
         ok = ok && address(oracle().aave) != address(0);
-        ok = ok && address(furnace()) != address(0);
+        ok = ok && address(revenueFurnace()) != address(0);
         ok = ok && address(stRSR()) != address(0);
         ok = ok && address(rTokenAsset()) != address(0);
         ok = ok && address(rsrAsset()) != address(0);
@@ -244,7 +244,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     function _INVARIANT_auctionsPartitionCleanly() internal view returns (bool ok) {
         bool foundOpen = false;
         for (uint256 i = 0; i < auctions.length; i++) {
-            if (auctions[i].state == Auction.State.IN_PROGRESS) {
+            if (auctions[i].status == Auction.Status.OPEN) {
                 foundOpen = true;
             } else if (foundOpen) {
                 return false;
@@ -255,7 +255,10 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_auctionsClosedInThePast() internal view returns (bool ok) {
         for (uint256 i = 0; i < auctions.length; i++) {
-            ok = ok && (auctions[i].state != Auction.State.DONE || auctions[i].endTime < block.timestamp);
+            ok =
+                ok &&
+                (auctions[i].status != Auction.Status.DONE ||
+                    auctions[i].endTime < block.timestamp);
         }
         if (!ok) {
             console.log("_INVARIANT_auctionsClosedInThePast violated");

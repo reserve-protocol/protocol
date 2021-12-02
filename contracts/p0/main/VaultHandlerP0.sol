@@ -116,8 +116,8 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
 
     /// @return {none} Numerator of the base factor
     function _meltingFactor() internal view returns (Fix) {
-        Fix totalSupply = toFix(rToken().totalSupply()); // {RTok}
-        Fix totalBurnt = toFix(furnace().totalBurnt()); // {RTok}
+        Fix totalSupply = toFix(rToken().totalSupply()); // {qRTok}
+        Fix totalBurnt = toFix(rToken().totalMelted()); // {qRTok}
         if (totalSupply.eq(FIX_ZERO)) {
             return FIX_ONE;
         }
@@ -130,18 +130,13 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
     /// @return crackedBUs How many BUs were actually cracked
     function _crackOldVaults(address recipient, uint256 maxBUs)
         internal
-        view
         returns (uint256 crackedBUs)
     {
         for (uint256 i = 0; i < pastVaults.length && crackedBUs < maxBUs; i++) {
-            uint256 toCrack = Math.min(
-                pastVaults[i].basketUnits(address(this)),
-                maxBUs - crackedBUs
-            );
-            if (toCrack > 0) {
-                pastVaults[i].redeem(recipient, toCrack);
-                crackedBUs += toCrack;
-            }
+            crackedBUs += _crackFrom(pastVaults[i], recipient, maxBUs - crackedBUs);
+        }
+        if (crackedBUs < maxBUs) {
+            crackedBUs += _crackFrom(vault, recipient, maxBUs - crackedBUs);
         }
     }
 
@@ -149,5 +144,18 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
     function _accumulate() internal {
         _historicalBasketDilution = _basketDilutionFactor();
         _prevBasketRate = vault.basketRate();
+    }
+
+    /// @return How many BUs were cracked
+    function _crackFrom(
+        IVault vault,
+        address recipient,
+        uint256 maxToCrack
+    ) private returns (uint256) {
+        uint256 toCrack = Math.min(vault.basketUnits(address(this)), maxToCrack);
+        if (toCrack > 0) {
+            vault.redeem(recipient, toCrack);
+        }
+        return toCrack;
     }
 }

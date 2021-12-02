@@ -6,14 +6,17 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/libraries/Auction.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
+import "contracts/libraries/Fixed.sol";
+import "contracts/p0/main/VaultHandlerP0.sol";
 
-contract Trader is Ownable {
+contract TraderP0 is Ownable, IAuctioneerEvents {
+    using FixLib for Fix;
     using Auction for Auction.Info;
     Auction.Info[] public auctions;
 
-    IMain public main;
+    VaultHandlerP0 public main;
 
-    constructor(IMain main_) {
+    constructor(VaultHandlerP0 main_) {
         main = main_;
     }
 
@@ -22,12 +25,17 @@ contract Trader is Ownable {
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctions.length; i++) {
             Auction.Info storage auction = auctions[i];
-            if (auction.state == Auction.State.IN_PROGRESS) {
+            if (auction.status == Auction.Status.OPEN) {
                 if (block.timestamp <= auction.endTime) {
                     return true;
                 }
-                auction.close(main.furnace(), main.stRSR(), main.rewardPeriod(), main.market());
-                emit IAuctioneer.AuctionEnded(
+                auction.close(
+                    main.revenueFurnace(),
+                    main.stRSR(),
+                    main.rewardPeriod(),
+                    main.market()
+                );
+                emit AuctionEnded(
                     i,
                     address(auction.sell),
                     address(auction.buy),
@@ -40,17 +48,16 @@ contract Trader is Ownable {
         return false;
     }
 
-    function setMain(IMain main_) external onlyOwner {
+    function setMain(VaultHandlerP0 main_) external onlyOwner {
+        // TODO: Should Main be able to set itself?
         main = main_;
     }
 
     /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price
-    /// @param minAuctionSize {none}
     /// @param sellAmount {qSellTok}
     /// @return notDust Whether the prepared auction is large enough to be worth trading
     /// @return auction The prepared auction
     function _prepareAuctionSell(
-        Fix minAuctionSize, // TODO: currently unused
         IAsset sell,
         IAsset buy,
         uint256 sellAmount,
@@ -84,7 +91,7 @@ contract Trader is Ownable {
                 startTime: block.timestamp,
                 endTime: block.timestamp + main.auctionPeriod(),
                 fate: fate,
-                isOpen: false
+                status: Auction.Status.NOT_YET_OPEN
             })
         );
     }
@@ -96,7 +103,6 @@ contract Trader is Ownable {
     /// @return notDust Whether the prepared auction is large enough to be worth trading
     /// @return auction The prepared auction
     function _prepareAuctionToCoverDeficit(
-        Fix minAuctionSize,
         IAsset sell,
         IAsset buy,
         uint256 maxSellAmount,
@@ -125,7 +131,7 @@ contract Trader is Ownable {
         .toUint();
 
         uint256 sellAmount = Math.min(idealSellAmount, maxSellAmount);
-        return _prepareAuctionSell(minAuctionSize, sell, buy, sellAmount, fate);
+        return _prepareAuctionSell(sell, buy, sellAmount, fate);
     }
 
     /// @return {qSellTok} The least amount of tokens worth trying to sell
@@ -134,7 +140,7 @@ contract Trader is Ownable {
         Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(main.oracle()).mulu(
             main.rToken().totalSupply()
         );
-        Fix minSellUSD = rTokenMarketCapUSD.mul(main.minAuctionSize()); // {attoUSD}
+        Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize()); // {attoUSD}
 
         // {attoUSD} / {attoUSD/qSellTok}
         return minSellUSD.div(asset.priceUSD(main.oracle())).toUint();
@@ -144,7 +150,7 @@ contract Trader is Ownable {
     function _launchAuction(Auction.Info memory auction) internal {
         auctions.push(auction);
         auctions[auctions.length - 1].open(main.auctionPeriod(), main.market());
-        emit IAuctioneer.AuctionStarted(
+        emit AuctionStarted(
             auctions.length - 1,
             address(auctions[auctions.length - 1].sell),
             address(auctions[auctions.length - 1].buy),

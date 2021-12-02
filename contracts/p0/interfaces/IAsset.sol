@@ -20,6 +20,9 @@ interface IAsset {
 
     /// @return The number of decimals in the central token
     function decimals() external view returns (uint8);
+
+    /// @return Whether the asset is an AToken
+    function isAToken() external view returns (bool);
 }
 
 /**
@@ -49,7 +52,4 @@ interface ICollateral is IAsset {
 
     /// @return Whether the asset is (directly) a fiatcoin
     function isFiatcoin() external view returns (bool);
-
-    /// @return Whether the asset is an AToken
-    function isAToken() external view returns (bool);
 }

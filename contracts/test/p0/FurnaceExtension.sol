@@ -7,6 +7,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/test/Mixins.sol";
 import "contracts/mocks/ERC20Mock.sol";
 import "contracts/p0/interfaces/IMain.sol";
+import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/FurnaceP0.sol";
 import "./RTokenExtension.sol";
 
@@ -16,11 +17,15 @@ contract FurnaceExtension is ContextMixin, FurnaceP0, IExtension {
     using FixLib for Fix;
     using Address for address;
 
-    constructor(address admin, address rToken) ContextMixin(admin) FurnaceP0(rToken) {}
+    constructor(
+        address admin,
+        IRToken rToken,
+        uint256 batchDuration
+    ) ContextMixin(admin) FurnaceP0(rToken, batchDuration) {}
 
     function assertInvariants() external override {
         _INVARIANT_stateDefined();
-        _INVARIANT_burnIdempotent();
+        _INVARIANT_meltIdempotent();
     }
 
     function _msgSender() internal view override returns (address) {
@@ -32,10 +37,10 @@ contract FurnaceExtension is ContextMixin, FurnaceP0, IExtension {
     }
 
     /// Burns any vested RToken and checks that the second call is a no-op
-    function _INVARIANT_burnIdempotent() internal {
-        doBurn();
-        uint256 mid = totalBurnt;
-        doBurn();
-        assert(mid == totalBurnt);
+    function _INVARIANT_meltIdempotent() internal {
+        doMelt();
+        uint256 mid = rToken.totalMelted();
+        doMelt();
+        assert(mid == rToken.totalMelted());
     }
 }

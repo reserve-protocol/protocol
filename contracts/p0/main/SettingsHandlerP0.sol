@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/interfaces/IAsset.sol";
@@ -17,7 +18,8 @@ import "contracts/p0/main/Mixin.sol";
 
 /// Settings mixin for Main
 // solhint-disable max-states-count
-contract SettingsHandlerP0 is Ownable, /*Mixin,*/ AssetRegistryP0, ISettingsHandler {
+contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using Oracle for Oracle.Info;
     using FixLib for Fix;
 
@@ -39,14 +41,14 @@ contract SettingsHandlerP0 is Ownable, /*Mixin,*/ AssetRegistryP0, ISettingsHand
     Fix private _defaultThreshold;
 
     IStRSR private _stRSR;
-    IFurnace private _furnace;
+    IFurnace private _revenueFurnace;
 
     IAsset private _rTokenAsset;
     IAsset private _rsrAsset;
     IAsset private _compAsset;
     IAsset private _aaveAsset;
 
-    function init(ConstructorArgs calldata args) public virtual override {
+    function init(ConstructorArgs calldata args) public virtual override(Mixin, AssetRegistryP0) {
         super.init(args);
         _oracle = args.oracle;
         _market = args.market;
@@ -87,12 +89,13 @@ contract SettingsHandlerP0 is Ownable, /*Mixin,*/ AssetRegistryP0, ISettingsHand
         return _stRSR;
     }
 
-    function setFurnace(IFurnace furnace_) external override onlyOwner {
-        _furnace = furnace_;
+    function setRevenueFurnace(IFurnace revenueFurnace_) external override onlyOwner {
+        require(revenueFurnace_.batchDuration() == _rewardPeriod, "does not match rewardPeriod");
+        _revenueFurnace = revenueFurnace_;
     }
 
-    function furnace() public view override returns (IFurnace) {
-        return _furnace;
+    function revenueFurnace() public view override returns (IFurnace) {
+        return _revenueFurnace;
     }
 
     function setRTokenAsset(IAsset rTokenAsset_) external override onlyOwner {
@@ -141,6 +144,7 @@ contract SettingsHandlerP0 is Ownable, /*Mixin,*/ AssetRegistryP0, ISettingsHand
 
     function setRewardPeriod(uint256 rewardPeriod_) external override onlyOwner {
         _rewardPeriod = rewardPeriod_;
+        _revenueFurnace.setBatchDuration(rewardPeriod_);
     }
 
     function rewardPeriod() public view override returns (uint256) {

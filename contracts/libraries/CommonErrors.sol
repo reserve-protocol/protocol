@@ -50,4 +50,7 @@ library CommonErrors {
     // Oracle
     error PriceIsZero(string);
     error UnsupportedProtocol();
+
+    // Auctioneer
+    error UnimplementedFate();
 }

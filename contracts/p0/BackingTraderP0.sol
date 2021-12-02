@@ -1,17 +1,24 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/libraries/Auction.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/Trader.sol";
+import "contracts/p0/TraderP0.sol";
+import "contracts/p0/main/VaultHandlerP0.sol";
+import "contracts/libraries/Fixed.sol";
 
-contract BackingTrader is Trader {
+contract BackingTraderP0 is TraderP0 {
+    using SafeERC20 for IERC20;
+    using FixLib for Fix;
+
     uint256 public targetBUs;
 
-    constructor(IVaultHandler main_) Trader(main_) {}
+    constructor(VaultHandlerP0 main_) TraderP0(main_) {}
 
     /// @return trading Whether an auction is live
     function poke() public override returns (bool trading) {
@@ -29,11 +36,10 @@ contract BackingTrader is Trader {
 
     /// Launch auctions to reach BUTarget using RSR as needed
     /// @return Whether an auction was launched
-    function _startNextAuction() internal returns (bool) {
+    function _startNextAuction() private returns (bool) {
         if (targetBUs == 0) {
             return false;
         }
-
         // Is there a collateral surplus?
         //     Yes: Try to trade surpluses for deficits
         //     No: Seize RSR and trade for deficit
@@ -50,21 +56,14 @@ contract BackingTrader is Trader {
         Auction.Info memory auction;
         if (_isTrustedPrice(surplus)) {
             (trade, auction) = _prepareAuctionToCoverDeficit(
-                main.minRecapitalizationAuctionSize(),
                 surplus,
                 deficit,
                 surplusAmount,
                 deficitAmount,
-                Fate.Stay
+                Fate.STAY
             );
         } else {
-            (trade, auction) = _prepareAuctionSell(
-                main.minRecapitalizationAuctionSize(),
-                surplus,
-                deficit,
-                surplusAmount,
-                Fate.Stay
-            );
+            (trade, auction) = _prepareAuctionSell(surplus, deficit, surplusAmount, Fate.STAY);
             auction.minBuyAmount = 0;
         }
         if (trade) {
@@ -102,7 +101,7 @@ contract BackingTrader is Trader {
             Fix bal = toFix(IERC20(assets[i].erc20()).balanceOf(address(this))); // {qTok}
 
             // {qTok} = {BU} * {qTok/BU}
-            Fix target = toFix(targetBUs).mulu(main.vault.quantity(assets[i]));
+            Fix target = toFix(targetBUs).mulu(main.vault().quantity(assets[i]));
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
                 surpluses[i] = bal.minus(target).mul(assets[i].priceUSD(main.oracle()));
@@ -141,15 +140,6 @@ contract BackingTrader is Trader {
         );
     }
 
-    function _isTrustedPrice(IAsset asset) private returns (bool) {
-        return
-            main.isApproved(asset) ||
-            asset == main.rTokenAsset() ||
-            asset == main.rsrAsset() ||
-            asset == main.compAsset() ||
-            asset == main.aaveAsset();
-    }
-
     function _tryCreateBUs() private {
         // Create new BUs
         uint256 issuable = main.vault().maxIssuable(address(this));
@@ -161,5 +151,14 @@ contract BackingTrader is Trader {
             main.vault().issue(address(main), issuable);
             targetBUs -= Math.min(issuable, targetBUs);
         }
+    }
+
+    function _isTrustedPrice(IAsset asset) private returns (bool) {
+        return
+            main.isApproved(asset) ||
+            asset == main.rTokenAsset() ||
+            asset == main.rsrAsset() ||
+            asset == main.compAsset() ||
+            asset == main.aaveAsset();
     }
 }

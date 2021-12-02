@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IFurnace.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IMain.sol";
+import "contracts/libraries/CommonErrors.sol";
 import "contracts/libraries/Fixed.sol";
 
 /// @dev This can probably be removed at some point, it's relationship with AssetManager is too close
@@ -15,9 +16,9 @@ library Auction {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
-    enum State {
-        NOT_STARTED,
-        IN_PROGRESS,
+    enum Status {
+        NOT_YET_OPEN,
+        OPEN,
         DONE
     }
 
@@ -32,7 +33,7 @@ library Auction {
         uint256 clearingBuyAmount;
         uint256 externalAuctionId;
         Fate fate;
-        State state;
+        Status status;
     }
 
     /// Creates an auction in an external batch auction protocol
@@ -56,7 +57,7 @@ library Auction {
             address(0),
             new bytes(0)
         );
-        self.state = State.IN_PROGRESS;
+        self.status = Status.OPEN;
     }
 
     /// Closes out the auction and sends bought token to its fate
@@ -67,7 +68,7 @@ library Auction {
         uint256 rewardPeriod,
         IMarket market
     ) internal {
-        require(self.state == Auction.State.IN_PROGRESS, "can only close in-progress auctions");
+        require(self.status == Auction.Status.OPEN, "can only close in-progress auctions");
         require(self.endTime <= block.timestamp, "auction not over");
         bytes32 encodedOrder = market.settleAuction(self.externalAuctionId);
         (self.clearingSellAmount, self.clearingBuyAmount) = _decodeOrder(encodedOrder);
@@ -76,24 +77,23 @@ library Auction {
 
         // solhint-disable no-empty-blocks
         if (bal > 0) {
-            if (self.fate == Fate.Burn) {
-                self.buy.erc20().safeTransfer(address(0), bal);
-            } else if (self.fate == Fate.Melt) {
+            if (self.fate == Fate.BURN) {
+                IRToken(address(self.buy.erc20())).burn(address(this), bal);
+            } else if (self.fate == Fate.MELT) {
                 self.buy.erc20().safeApprove(address(furnace), bal);
                 furnace.receiveERC20(self.buy.erc20(), bal);
-            } else if (self.fate == Fate.Stake) {
+            } else if (self.fate == Fate.STAKE) {
+                self.buy.erc20().safeApprove(address(stRSR), bal);
                 stRSR.receiveERC20(self.buy.erc20(), bal);
-                // Restore allowance
-                self.buy.erc20().safeIncreaseAllowance(address(stRSR), bal);
-            } else if (self.fate == Fate.Stay) {
-                // Do nothing; token is already in the right place
+            } else if (self.fate == Fate.STAY) {
+                // NO ACTION
             } else {
-                assert(false);
+                revert CommonErrors.UnimplementedFate();
             }
         }
         // solhint-enable no-empty-blocks
 
-        self.state = State.DONE;
+        self.status = Status.DONE;
     }
 
     /// Decodes the output of the EasyAuction

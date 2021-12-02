@@ -52,10 +52,10 @@ interface IVault {
     /// @param amtBUs {qBU} The quantity of BUs to redeem
     function redeem(address to, uint256 amtBUs) external;
 
-    /// Moves all balance of `token` to main
-    function withdrawToMain(address token) external;
+    /// Sweeps all balance of a non-backing token to main
+    function sweepNonBackingTokenToMain(IERC20 erc20) external;
 
-    /// Approves main to claim AAVE rewards
+    /// Sets Main as the claimer of AAVE rewards earned by the vault
     function setMainAsAaveClaimer(IAaveIncentivesController incentiveController) external;
 
     /// Main Setter

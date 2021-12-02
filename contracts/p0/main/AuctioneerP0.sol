@@ -13,8 +13,8 @@ import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/main/VaultHandlerP0.sol";
 import "contracts/p0/main/Mixin.sol";
-import "contracts/p0/BackingTrader.sol";
-import "contracts/p0/RevenueTrader.sol";
+import "contracts/p0/BackingTraderP0.sol";
+import "contracts/p0/RevenueTraderP0.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./AssetRegistryP0.sol";
@@ -42,9 +42,9 @@ contract AuctioneerP0 is
 
     Auction.Info[] public auctions;
 
-    BackingTrader public override backingTrader;
-    RevenueTrader public rsrTrader;
-    RevenueTrader public rTokenTrader;
+    BackingTraderP0 public backingTrader;
+    RevenueTraderP0 public rsrStakingTrader;
+    RevenueTraderP0 public rTokenMeltingTrader;
 
     function init(ConstructorArgs calldata args)
         public
@@ -52,13 +52,15 @@ contract AuctioneerP0 is
         override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
     {
         super.init(args);
-        backingTrader = new BackingTrader(this);
-        rsrTrader = new RevenueTrader(this, Fate.STAKE);
-        rTokenTrader = new RevenueTrader(this, Fate.MELT);
+        backingTrader = new BackingTraderP0(this);
+        rsrStakingTrader = new RevenueTraderP0(this, Fate.STAKE);
+        rTokenMeltingTrader = new RevenueTraderP0(this, Fate.MELT);
     }
 
     function poke() public virtual override notPaused {
         super.poke();
+
+        // Backing Trader
         bool trading = backingTrader.poke();
         if (!trading && !fullyCapitalized()) {
             uint256 maxBUs = toBUs(migrationChunk().mulu(rToken().totalSupply()).toUint());
@@ -76,7 +78,15 @@ contract AuctioneerP0 is
             // What should we do with them?
         }
 
-        // TODO: REVENUE TRADERS
+        // RSR Trader
+        rsrStakingTrader.poke();
+
+        // RToken Trader
+        rTokenMeltingTrader.poke();
+    }
+
+    function getBackingTrader() external view override returns (address) {
+        return address(backingTrader);
     }
 
     function _rTokenHaircut() private {

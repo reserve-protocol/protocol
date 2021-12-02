@@ -10,16 +10,6 @@ import "contracts/p0/interfaces/IMain.sol";
 contract MoodyP0 is IMoody {
     Mood internal _mood;
 
-    modifier calm() {
-        require(_mood == Mood.CALM, "not calm");
-        _;
-    }
-
-    modifier notInDoubt() {
-        require(_mood != Mood.DOUBT, "in doubt");
-        _;
-    }
-
     /// @return The current mood
     function mood() public view override returns (Mood) {
         return _mood;

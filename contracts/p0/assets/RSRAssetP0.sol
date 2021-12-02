@@ -34,4 +34,9 @@ contract RSRAssetP0 is IAsset {
     function decimals() public view override returns (uint8) {
         return IERC20Metadata(_erc20).decimals();
     }
+
+    /// @return Whether `_erc20` is an AToken (StaticAToken, actually)
+    function isAToken() public pure virtual override returns (bool) {
+        return false;
+    }
 }

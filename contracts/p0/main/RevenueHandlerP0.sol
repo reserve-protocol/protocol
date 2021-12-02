@@ -3,15 +3,19 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/p0/main/SettingsHandlerP0.sol";
 import "contracts/p0/main/VaultHandlerP0.sol";
 import "contracts/p0/main/MoodyP0.sol";
 import "contracts/p0/main/Mixin.sol";
+import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
+import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
+import "./AuctioneerP0.sol";
 import "./MoodyP0.sol";
 import "./SettingsHandlerP0.sol";
 import "./VaultHandlerP0.sol";
@@ -26,9 +30,12 @@ contract RevenueHandlerP0 is
     MoodyP0,
     SettingsHandlerP0,
     VaultHandlerP0,
+    AuctioneerP0,
     IRevenueHandler
 {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
+    using FixLib for Fix;
 
     // timestamp -> whether rewards have been claimed.
     mapping(uint256 => bool) private _rewardsClaimed;
@@ -36,17 +43,19 @@ contract RevenueHandlerP0 is
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, SettingsHandlerP0, VaultHandlerP0)
+        override(Mixin, SettingsHandlerP0, VaultHandlerP0, AuctioneerP0)
     {
         super.init(args);
     }
 
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
-    function poke() public virtual override notPaused calm {
+    function poke() public virtual override(Mixin, AuctioneerP0) notPaused {
         super.poke();
         (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
-        if (!_rewardsClaimed[prevRewards]) {
-            _doRewards();
+        if (!_rewardsClaimed[prevRewards] && fullyCapitalized()) {
+            _handleComp();
+            _handleAave();
+            _expandSupplyToRTokenTrader();
             _rewardsClaimed[prevRewards] = true;
         }
     }
@@ -57,49 +66,54 @@ contract RevenueHandlerP0 is
         return next;
     }
 
-    /// Claims COMP + AAVE for self and vault and expands the RToken supply
-    function _doRewards() private {
-        // Comp
-        {
-            oracle().compound.claimComp(address(this));
-            oracle().compound.claimComp(address(vault));
-            vault.withdrawToMain(address(compAsset().erc20()));
+    /// Claims COMP from all possible sources and splits earnings across revenue traders
+    function _handleComp() internal {
+        // Self
+        oracle().compound.claimComp(address(this));
+
+        // Current vault
+        oracle().compound.claimComp(address(vault));
+        vault.sweepNonBackingTokenToMain(compAsset().erc20());
+
+        // Past vaults
+        for (uint256 i = 0; i < pastVaults.length; i++) {
+            uint256 bal = compAsset().erc20().balanceOf(address(pastVaults[i]));
+            if (bal > 0) {
+                oracle().compound.claimComp(address(pastVaults[i]));
+                pastVaults[i].sweepNonBackingTokenToMain(compAsset().erc20());
+            }
         }
 
-        // Aave
-        {
-            // Gather up all aTokens in the basket
-            IStaticAToken[] memory aTokens = new IStaticAToken[](vault.size());
-            uint256 count;
-            for (uint256 i = 0; i < vault.size(); i++) {
-                if (vault.collateralAt(i).isAToken()) {
-                    aTokens[count] = IStaticAToken(address(vault.collateralAt(i).erc20()));
-                    count++;
+        _splitRewardsToTraders(compAsset());
+    }
+
+    /// Claims AAVE from all possible sources and splits earnings across revenue traders
+    function _handleAave() internal {
+        for (uint256 i = 0; i < _allAssets.length(); i++) {
+            if (IAsset(_allAssets.at(i)).isAToken()) {
+                IStaticAToken aToken = IStaticAToken(address(IAsset(_allAssets.at(i)).erc20()));
+                IAaveIncentivesController aic = aToken.INCENTIVES_CONTROLLER();
+                address[] memory underlyings = new address[](1);
+                underlyings[0] = aToken.ATOKEN().UNDERLYING_ASSET_ADDRESS();
+
+                // Self
+                uint256 bal = aic.getRewardsBalance(underlyings, address(this));
+                aic.claimRewardsOnBehalf(underlyings, bal, address(this), address(this));
+
+                // Current vault
+                bal = aic.getRewardsBalance(underlyings, address(vault));
+                if (bal > 0) {
+                    vault.setMainAsAaveClaimer(aic);
+                    aic.claimRewardsOnBehalf(underlyings, bal, address(vault), address(this));
                 }
-            }
-            address[] memory addresses = new address[](count);
-            for (uint256 i = 0; i < count; i++) {
-                addresses[i] = aTokens[i].ATOKEN().UNDERLYING_ASSET_ADDRESS();
-            }
 
-            if (addresses.length > 0) {
-                // Claim for self
-                IAaveIncentivesController aic = aTokens[count - 1].INCENTIVES_CONTROLLER();
-                uint256 bal = aic.getRewardsBalance(addresses, address(this));
-                aic.claimRewardsOnBehalf(addresses, bal, address(this), address(this));
-
-                // Claim for current vault
-                bal = aic.getRewardsBalance(addresses, address(vault));
-                vault.setMainAsAaveClaimer(aic);
-                aic.claimRewardsOnBehalf(addresses, bal, address(vault), address(this));
-
-                // Claim for past vaults (in future prototypes we won't be able to do this)
+                // Past vaults
                 for (uint256 i = 0; i < pastVaults.length; i++) {
-                    bal = aic.getRewardsBalance(addresses, address(pastVaults[i]));
+                    bal = aic.getRewardsBalance(underlyings, address(pastVaults[i]));
                     if (bal > 0) {
                         pastVaults[i].setMainAsAaveClaimer(aic);
                         aic.claimRewardsOnBehalf(
-                            addresses,
+                            underlyings,
                             bal,
                             address(pastVaults[i]),
                             address(this)
@@ -109,12 +123,24 @@ contract RevenueHandlerP0 is
             }
         }
 
+        _splitRewardsToTraders(aaveAsset());
+    }
+
+    function _expandSupplyToRTokenTrader() internal {
         // Expand the RToken supply to self
         uint256 possible = fromBUs(vault.basketUnits(address(this)));
         uint256 totalSupply = rToken().totalSupply();
         if (fullyCapitalized() && possible > totalSupply) {
-            rToken().mint(address(this), possible - totalSupply);
+            rToken().mint(address(rTokenMeltingTrader), possible - totalSupply);
         }
+    }
+
+    /// Splits `asset` into `cut` and `1-cut` proportions, and sends to revenue traders
+    function _splitRewardsToTraders(IAsset asset) private {
+        uint256 bal = asset.erc20().balanceOf(address(this));
+        uint256 amtToRSR = cut().mulu(bal).toUint();
+        asset.erc20().safeTransfer(address(rsrStakingTrader), amtToRSR); // cut
+        asset.erc20().safeTransfer(address(rTokenMeltingTrader), bal - amtToRSR); // 1 - cut
     }
 
     // Returns the rewards boundaries on either side of *time*.

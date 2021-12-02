@@ -331,7 +331,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
   const rToken: RTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', await main.rToken())
   const furnace: FurnaceP0 = <FurnaceP0>(
-    await ethers.getContractAt('FurnaceP0', await main.furnace())
+    await ethers.getContractAt('FurnaceP0', await main.revenueFurnace())
   )
   const stRSR: StRSRP0 = <StRSRP0>await ethers.getContractAt('StRSRP0', await main.stRSR())
   const assetManager: AssetManagerP0 = <AssetManagerP0>(

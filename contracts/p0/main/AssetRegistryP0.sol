@@ -67,7 +67,7 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         }
     }
 
-    function isApproved(ICollateral collateral) external view override returns (bool) {
-        return _approvedCollateral.contains(address(collateral));
+    function isApproved(IAsset asset) external view override returns (bool) {
+        return _approvedCollateral.contains(address(asset));
     }
 }

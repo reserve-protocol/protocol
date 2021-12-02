@@ -54,7 +54,7 @@ contract RTokenIssuerP0 is
 
     /// This modifier runs before every function including redemption, so it should be very safe.
     modifier always() {
-        furnace().doBurn();
+        revenueFurnace().doMelt();
         ICollateral[] memory hardDefaulting = _checkForHardDefault();
         if (hardDefaulting.length > 0) {
             for (uint256 i = 0; i < hardDefaulting.length; i++) {
@@ -63,7 +63,7 @@ contract RTokenIssuerP0 is
 
             _switchVault(_selectNextVault());
             _setMood(Mood.TRADING);
-        } else if (!paused) {
+        } else if (!paused && mood() != Mood.DOUBT) {
             _processSlowIssuance();
         }
         _;
@@ -78,14 +78,15 @@ contract RTokenIssuerP0 is
     }
 
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
-    function poke() public virtual override(Mixin, DefaultHandlerP0) notPaused notInDoubt always {
+    function poke() public virtual override(Mixin, DefaultHandlerP0) notPaused always {
         super.poke();
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
-    function issue(uint256 amount) public override notPaused notInDoubt always {
+    function issue(uint256 amount) public override notPaused always {
         require(amount > 0, "Cannot issue zero");
+        require(mood() != Mood.DOUBT, "in doubt, cannot issue");
 
         uint256 amtBUs = toBUs(amount);
 
@@ -131,6 +132,11 @@ contract RTokenIssuerP0 is
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) public view override returns (uint256[] memory) {
         return vault.tokenAmounts(toBUs(amount));
+    }
+
+    /// @return How many RToken `account` can issue given current holdings
+    function maxIssuable(address account) external view override returns (uint256) {
+        return fromBUs(vault.maxIssuable(account));
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
