@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "contracts/p0/interfaces/IERC20Receiver.sol";
 
 /*
  * @title IStRSR
  * @notice A rebasing token that represents claims on staked RSR and entitles the AssetManager to seize RSR.
  * @dev The p0-specific IStRSR
  */
-interface IStRSR is IERC20 {
+interface IStRSR is IERC20, IERC20Receiver {
     /// Emitted when RSR is staked
     /// @param staker The address of the staker
     /// @param amount {qRSR} The quantity of RSR staked
@@ -48,9 +49,6 @@ interface IStRSR is IERC20 {
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param amount {qRSR}
     function unstake(uint256 amount) external;
-
-    /// @param amount {qRSR}
-    function addRSR(uint256 amount) external;
 
     /// AssetManager only
     /// @param amount {qRSR}

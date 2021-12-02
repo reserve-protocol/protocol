@@ -11,7 +11,7 @@ import "contracts/libraries/Fixed.sol";
 /// @param size The number of collateral in the basket
 struct Basket {
     mapping(uint256 => ICollateral) collateral; // index -> asset
-    mapping(ICollateral => uint256) quantities; // {qTok/BU}
+    mapping(IAsset => uint256) quantities; // {qTok/BU}
     uint256 size;
 }
 
@@ -80,7 +80,7 @@ interface IVault {
     function basketUnits(address account) external view returns (uint256);
 
     /// @return {qTok/BU} The quantity of tokens of `asset` required per whole BU
-    function quantity(ICollateral asset) external view returns (uint256);
+    function quantity(IAsset asset) external view returns (uint256);
 
     /// @return A list of eligible backup vaults
     function getBackups() external view returns (IVault[] memory);

@@ -60,40 +60,51 @@ contract RevenueHandlerP0 is
     /// Claims COMP + AAVE for self and vault and expands the RToken supply
     function _doRewards() private {
         // Comp
-        oracle().compound.claimComp(address(this));
-        oracle().compound.claimComp(address(vault));
-        vault.withdrawToMain(address(compAsset().erc20()));
+        {
+            oracle().compound.claimComp(address(this));
+            oracle().compound.claimComp(address(vault));
+            vault.withdrawToMain(address(compAsset().erc20()));
+        }
 
         // Aave
-        IStaticAToken[] memory aTokens = new IStaticAToken[](vault.size());
-        uint256 count;
-        for (uint256 i = 0; i < vault.size(); i++) {
-            if (vault.collateralAt(i).isAToken()) {
-                aTokens[count] = IStaticAToken(address(vault.collateralAt(i).erc20()));
-                count++;
+        {
+            // Gather up all aTokens in the basket
+            IStaticAToken[] memory aTokens = new IStaticAToken[](vault.size());
+            uint256 count;
+            for (uint256 i = 0; i < vault.size(); i++) {
+                if (vault.collateralAt(i).isAToken()) {
+                    aTokens[count] = IStaticAToken(address(vault.collateralAt(i).erc20()));
+                    count++;
+                }
             }
-        }
-        address[] memory addresses = new address[](count);
-        for (uint256 i = 0; i < count; i++) {
-            addresses[i] = aTokens[i].ATOKEN().UNDERLYING_ASSET_ADDRESS();
-        }
-        if (addresses.length > 0) {
-            // Claim for self
-            IAaveIncentivesController aic = aTokens[count - 1].INCENTIVES_CONTROLLER();
-            uint256 bal = aic.getRewardsBalance(addresses, address(this));
-            aic.claimRewardsOnBehalf(addresses, bal, address(this), address(this));
+            address[] memory addresses = new address[](count);
+            for (uint256 i = 0; i < count; i++) {
+                addresses[i] = aTokens[i].ATOKEN().UNDERLYING_ASSET_ADDRESS();
+            }
 
-            // Claim for current vault
-            bal = aic.getRewardsBalance(addresses, address(vault));
-            vault.setMainAsAaveClaimer(aic);
-            aic.claimRewardsOnBehalf(addresses, bal, address(vault), address(this));
+            if (addresses.length > 0) {
+                // Claim for self
+                IAaveIncentivesController aic = aTokens[count - 1].INCENTIVES_CONTROLLER();
+                uint256 bal = aic.getRewardsBalance(addresses, address(this));
+                aic.claimRewardsOnBehalf(addresses, bal, address(this), address(this));
 
-            // Claim for past vaults (in future prototypes we won't be able to do this)
-            for (uint256 i = 0; i < pastVaults.length; i++) {
-                bal = aic.getRewardsBalance(addresses, address(pastVaults[i]));
-                if (bal > 0) {
-                    pastVaults[i].setMainAsAaveClaimer(aic);
-                    aic.claimRewardsOnBehalf(addresses, bal, address(pastVaults[i]), address(this));
+                // Claim for current vault
+                bal = aic.getRewardsBalance(addresses, address(vault));
+                vault.setMainAsAaveClaimer(aic);
+                aic.claimRewardsOnBehalf(addresses, bal, address(vault), address(this));
+
+                // Claim for past vaults (in future prototypes we won't be able to do this)
+                for (uint256 i = 0; i < pastVaults.length; i++) {
+                    bal = aic.getRewardsBalance(addresses, address(pastVaults[i]));
+                    if (bal > 0) {
+                        pastVaults[i].setMainAsAaveClaimer(aic);
+                        aic.claimRewardsOnBehalf(
+                            addresses,
+                            bal,
+                            address(pastVaults[i]),
+                            address(this)
+                        );
+                    }
                 }
             }
         }

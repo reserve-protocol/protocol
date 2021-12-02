@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
@@ -120,7 +121,8 @@ contract StRSRP0 is IStRSR, Context {
     }
 
     /// @param amount {qRSR}
-    function addRSR(uint256 amount) external override {
+    function receiveERC20(IERC20 erc20, uint256 amount) external override {
+        require(erc20 == main.rsr(), "RSR dividends only");
         require(amount > 0, "Amount cannot be zero");
 
         // Process pending withdrawals
@@ -144,10 +146,10 @@ contract StRSRP0 is IStRSR, Context {
         emit RSRAdded(_msgSender(), amount);
     }
 
-    /// auth: AssetManager only
+    /// auth: BackingTrader only
     /// @param amount {qRSR}
     function seizeRSR(uint256 amount) external override {
-        require(_msgSender() == address(main), "Caller is not Main");
+        require(_msgSender() == address(main.backingTrader()), "Caller is not Main");
         require(amount > 0, "Amount cannot be zero");
 
         // Process pending withdrawals
@@ -174,8 +176,8 @@ contract StRSRP0 is IStRSR, Context {
                 withdrawals[index].amount -= amtToRemove.toUint();
             }
         }
-        // Transfer RSR to Main
-        main.rsr().safeTransfer(address(main), amount);
+        // Transfer RSR to caller
+        main.rsr().safeTransfer(_msgSender(), amount);
         emit RSRSeized(_msgSender(), amount);
     }
 
@@ -194,6 +196,10 @@ contract StRSRP0 is IStRSR, Context {
 
     function totalSupply() external view override returns (uint256) {
         return _totalStaked + _amountBeingWithdrawn();
+    }
+
+    function erc20Wanted() external view override returns (IERC20) {
+        return main.rsr();
     }
 
     function transfer(address recipient, uint256 amount) external override returns (bool) {

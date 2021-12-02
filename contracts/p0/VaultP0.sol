@@ -52,7 +52,7 @@ contract VaultP0 is IVault, Ownable {
     }
 
     /// Transfers collateral in and issues a quantity of BUs to the caller
-    /// @param to The account to transfer collateral to
+    /// @param to The account to credit with BUs
     /// @param amtBUs {qBU} The quantity of BUs to issue
     function issue(address to, uint256 amtBUs) external override {
         require(amtBUs > 0, "Cannot issue zero");
@@ -111,9 +111,9 @@ contract VaultP0 is IVault, Ownable {
         }
     }
 
-    /// @return {qTok/BU} The quantity of tokens of `collateral` required per whole BU
-    function quantity(ICollateral collateral) external view override returns (uint256) {
-        return _basket.quantities[collateral];
+    /// @return {qTok/BU} The quantity of tokens of `asset` required per whole BU
+    function quantity(IAsset asset) external view override returns (uint256) {
+        return _basket.quantities[asset];
     }
 
     /// @return sum {attoUSD/BU} The attoUSD value of 1 BU if all fiatcoins hold peg

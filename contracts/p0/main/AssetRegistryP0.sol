@@ -10,7 +10,7 @@ import "contracts/p0/main/Mixin.sol";
 contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    EnumerableSet.AddressSet internal _alltimeCollateral;
+    EnumerableSet.AddressSet internal _allAssets;
     EnumerableSet.AddressSet internal _approvedCollateral;
 
     function init(ConstructorArgs calldata args) public virtual override {
@@ -18,6 +18,10 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         for (uint256 i = 0; i < args.approvedCollateral.length; i++) {
             _approveCollateral(args.approvedCollateral[i]);
         }
+        _allAssets.add(address(args.rTokenAsset));
+        _allAssets.add(address(args.rsrAsset));
+        _allAssets.add(address(args.compAsset));
+        _allAssets.add(address(args.aaveAsset));
     }
 
     /// @return fiatcoins An array of approved fiatcoin collateral to be used for oracle USD determination
@@ -49,10 +53,21 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
 
     function _approveCollateral(ICollateral collateral) internal {
         _approvedCollateral.add(address(collateral));
-        _alltimeCollateral.add(address(collateral));
+        _allAssets.add(address(collateral));
     }
 
     function _unapproveCollateral(ICollateral collateral) internal {
         _approvedCollateral.remove(address(collateral));
+    }
+
+    function allAssets() external view override returns (IAsset[] memory assets) {
+        assets = new IAsset[](_allAssets.length());
+        for (uint256 i = 0; i < _allAssets.length(); i++) {
+            assets[i] = IAsset(_allAssets.at(i));
+        }
+    }
+
+    function isApproved(ICollateral collateral) external view override returns (bool) {
+        return _approvedCollateral.contains(address(collateral));
     }
 }

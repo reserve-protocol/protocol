@@ -8,6 +8,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IFurnace.sol";
 import "contracts/p0/interfaces/IMain.sol";
+import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IVault.sol";
@@ -15,11 +16,12 @@ import "contracts/p0/main/Mixin.sol";
 
 /// Settings mixin for Main
 // solhint-disable max-states-count
-contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
+contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistry, ISettingsHandler {
     using Oracle for Oracle.Info;
     using FixLib for Fix;
 
     Oracle.Info private _oracle;
+    IMarket private _market;
 
     uint256 private _rewardStart;
     uint256 private _rewardPeriod;
@@ -46,6 +48,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     function init(ConstructorArgs calldata args) public virtual override {
         super.init(args);
         _oracle = args.oracle;
+        _market = args.market;
 
         _rewardStart = args.config.rewardStart;
         _rewardPeriod = args.config.rewardPeriod;
@@ -93,6 +96,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     function setRTokenAsset(IAsset rTokenAsset_) external override onlyOwner {
         _rTokenAsset = rTokenAsset_;
+        _allAssets.add(address(_rTokenAsset));
     }
 
     function rTokenAsset() public view override returns (IAsset) {
@@ -101,6 +105,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     function setRSRAsset(IAsset rsrAsset_) external override onlyOwner {
         _rsrAsset = rsrAsset_;
+        _allAssets.add(address(_rsrAsset));
     }
 
     function rsrAsset() public view override returns (IAsset) {
@@ -109,6 +114,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     function setCompAsset(IAsset compAsset_) external override onlyOwner {
         _compAsset = compAsset_;
+        _allAssets.add(address(_compAsset));
     }
 
     function compAsset() public view override returns (IAsset) {
@@ -117,6 +123,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     function setAaveAsset(IAsset aaveAsset_) external override onlyOwner {
         _aaveAsset = aaveAsset_;
+        _allAssets.add(address(_aaveAsset));
     }
 
     function aaveAsset() public view override returns (IAsset) {
@@ -221,6 +228,14 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     function defaultThreshold() public view override returns (Fix) {
         return _defaultThreshold;
+    }
+
+    function setMarket(IMarket market_) external override onlyOwner {
+        _market = market_;
+    }
+
+    function market() external override returns (IMarket) {
+        return _market;
     }
 
     // Useful view functions for reading portions of the state

@@ -126,16 +126,23 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
         return totalSupply.plus(totalBurnt).div(totalSupply);
     }
 
-    /// Returns the oldest vault that contains nonzero BUs.
-    /// Note that this will pass over vaults with uneven holdings, it does not necessarily mean the vault
-    /// contains no collateral._oldestVault()
-    function _oldestVault() internal view returns (IVault) {
-        for (uint256 i = 0; i < pastVaults.length; i++) {
-            if (pastVaults[i].basketUnits(address(this)) > 0) {
-                return pastVaults[i];
+    /// Cracks up to `amtBUs` basket units from all past vaults.
+    /// @return How many were actually cracked
+    function _crackOldVaults(address recipient, uint256 maxBUs)
+        internal
+        view
+        returns (uint256 crackedBUs)
+    {
+        for (uint256 i = 0; i < pastVaults.length && crackedBUs < maxBUs; i++) {
+            uint256 toCrack = Math.min(
+                pastVaults[i].basketUnits(address(this)),
+                maxBUs - crackedBUs
+            );
+            if (toCrack > 0) {
+                pastVaults[i].redeem(recipient, toCrack);
+                crackedBUs += toCrack;
             }
         }
-        return vault;
     }
 
     /// Accumulates current metrics into historical metrics

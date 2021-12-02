@@ -2,9 +2,11 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/Context.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IFurnace.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 
@@ -12,7 +14,7 @@ import "contracts/p0/interfaces/IRToken.sol";
  * @title FurnaceP0
  * @notice A helper to burn RTokens slowly and permisionlessly.
  */
-contract FurnaceP0 is Context, IFurnace {
+contract FurnaceP0 is Ownable, IFurnace {
     using SafeERC20 for IRToken;
     using FixLib for Fix;
 
@@ -28,24 +30,27 @@ contract FurnaceP0 is Context, IFurnace {
     Batch[] public batches;
 
     uint256 public override totalBurnt;
+    uint256 public override batchDuration;
 
-    constructor(address rToken_) {
-        require(rToken_ != address(0), "rToken is zero address");
+    /// @param batchDuration_ {sec} The number of seconds to spread the burn over
+    constructor(IRToken rToken_, uint256 batchDuration_) {
+        require(address(rToken_) != address(0), "rToken is zero address");
 
-        rToken = IRToken(rToken_);
+        rToken = rToken_;
+        batchDuration = batchDuration_;
     }
 
     /// Sets aside `amount` of RToken to be burnt over `timePeriod` seconds.
     /// @param amount {qTok} The amount of RToken to be burnt
-    /// @param timePeriod {sec} The number of seconds to spread the burn over
-    function burnOverPeriod(uint256 amount, uint256 timePeriod) external override {
+    function receiveERC20(IERC20 erc20, uint256 amount) external override {
+        require(address(erc20) == address(rToken), "RToken melting only");
         require(amount > 0, "Cannot burn a batch of zero");
 
         rToken.safeTransferFrom(_msgSender(), address(this), amount);
 
         // Register handout
-        batches.push(Batch(amount, block.timestamp, timePeriod, 0));
-        emit DistributionCreated(amount, timePeriod, _msgSender());
+        batches.push(Batch(amount, block.timestamp, batchDuration, 0));
+        emit DistributionCreated(amount, batchDuration, _msgSender());
     }
 
     /// Performs any burning that has vested since last call. Idempotent
@@ -57,6 +62,14 @@ contract FurnaceP0 is Context, IFurnace {
             totalBurnt += amount;
             emit Burned(amount);
         }
+    }
+
+    function setBatchDuration(uint256 batchDuration_) external override onlyOwner {
+        batchDuration = batchDuration_;
+    }
+
+    function erc20Wanted() external view override returns (IERC20) {
+        return rToken;
     }
 
     function _burnable(uint256 timestamp) internal returns (uint256) {

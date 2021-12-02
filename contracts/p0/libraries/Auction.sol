@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IFurnace.sol";
+import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -13,6 +14,12 @@ import "contracts/libraries/Fixed.sol";
 library Auction {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
+
+    enum State {
+        NOT_STARTED,
+        IN_PROGRESS,
+        DONE
+    }
 
     struct Info {
         IAsset sell;
@@ -25,7 +32,7 @@ library Auction {
         uint256 clearingBuyAmount;
         uint256 externalAuctionId;
         Fate fate;
-        bool isOpen;
+        State state;
     }
 
     /// Creates an auction in an external batch auction protocol

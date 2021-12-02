@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/BackingTrader.sol";
 import "./IAsset.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
@@ -105,6 +106,10 @@ interface IAssetRegistry {
     function approveCollateral(ICollateral collateral) external;
 
     function unapproveCollateral(ICollateral collateral) external;
+
+    function allAssets() external view returns (IAsset[] memory);
+
+    function isApproved(ICollateral collateral) external view returns (bool);
 }
 
 interface ISettingsHandler {
@@ -146,6 +151,10 @@ interface ISettingsHandler {
 
     function setAaveAsset(IAsset aaveAsset) external;
 
+    function setMarket(IMarket market) external;
+
+    //
+
     function rewardStart() external view returns (uint256);
 
     function rewardPeriod() external view returns (uint256);
@@ -183,6 +192,8 @@ interface ISettingsHandler {
     function aaveAsset() external view returns (IAsset);
 
     function oracle() external view returns (Oracle.Info memory);
+
+    function market() external view returns (IMarket);
 
     /// @return The RToken deployment
     function rToken() external view returns (IRToken);
@@ -249,6 +260,8 @@ interface IAuctioneer {
         uint256 buyAmount,
         Fate fate
     );
+
+    function backingTrader() external view returns (BackingTrader);
 }
 
 interface IRevenueHandler {

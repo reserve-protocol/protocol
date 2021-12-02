@@ -2,12 +2,13 @@
 pragma solidity 0.8.9;
 
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/interfaces/IERC20Receiver.sol";
 
 /**
  * @title IFurnace
  * @notice A helper contract to burn RTokens slowly and permisionlessly.
  */
-interface IFurnace {
+interface IFurnace is IERC20Receiver {
     /// Emitted whenever RToken is burned
     /// @param amount {RTok} The amount burnt
     event Burned(uint256 indexed amount);
@@ -19,13 +20,12 @@ interface IFurnace {
 
     //
 
-    /// Sets aside `amount` of RToken to be burnt over `timePeriod` seconds.
-    /// @param amount {RTok} The amount of RToken to be burnt
-    /// @param timePeriod {sec} The number of seconds to spread the burn over
-    function burnOverPeriod(uint256 amount, uint256 timePeriod) external;
-
     /// Performs any burning that has vested since last call. Idempotent
     function doBurn() external;
+
+    function setBatchDuration(uint256 batchDuration) external;
+
+    function batchDuration() external view returns (uint256);
 
     /// @return {RTok} The total amount of RToken that been burnt
     function totalBurnt() external view returns (uint256);
