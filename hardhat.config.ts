@@ -11,16 +11,13 @@ import { HardhatUserConfig } from 'hardhat/types'
 // import '@openzeppelin/hardhat-upgrades'
 dotenv.config()
 
-const PATHS: { [x: string]: string } = {
-  p0: './contracts/p0',
-  default: './contracts',
-}
-
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || process.env.ALCHEMY_MAINNET_RPC_URL || ''
 const ROPSTEN_RPC_URL = process.env.ROPSTEN_RPC_URL || ''
 const MNEMONIC = process.env.MNEMONIC || ''
 
+const src_dir = process.env.PROTO ? './contracts/' + process.env.PROTO : './contracts'
 const settings = process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 2000 } }
+
 export default <HardhatUserConfig>{
   defaultNetwork: 'hardhat',
   networks: {
@@ -61,7 +58,7 @@ export default <HardhatUserConfig>{
     },
   },
   paths: {
-    sources: process.env.NODE_ENV_PROTO ? PATHS[process.env.NODE_ENV_PROTO] : PATHS.default,
+    sources: src_dir,
   },
   mocha: {
     timeout: 50000,
