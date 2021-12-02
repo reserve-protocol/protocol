@@ -124,7 +124,7 @@ contract RTokenIssuerP0 is
         require(amount > 0, "Cannot redeem zero");
 
         rToken().burn(_msgSender(), amount);
-        _oldestVault().redeem(_msgSender(), toBUs(amount));
+        _crackOldVaults(_msgSender(), toBUs(amount));
         emit Redemption(_msgSender(), amount);
     }
 

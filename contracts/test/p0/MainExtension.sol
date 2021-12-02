@@ -72,7 +72,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && address(aaveAsset()) != address(0);
         ok = ok && _historicalBasketDilution.gt(FIX_ZERO);
         ok = ok && _approvedCollateral.length() > 0;
-        ok = ok && _alltimeCollateral.length() > 0;
+        ok = ok && _allAssets.length() > 0;
         ok = ok && address(vault) != address(0);
         if (!ok) {
             console.log("_INVARIANT_stateDefined violated");
@@ -244,7 +244,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     function _INVARIANT_auctionsPartitionCleanly() internal view returns (bool ok) {
         bool foundOpen = false;
         for (uint256 i = 0; i < auctions.length; i++) {
-            if (auctions[i].isOpen) {
+            if (auctions[i].state == Auction.State.IN_PROGRESS) {
                 foundOpen = true;
             } else if (foundOpen) {
                 return false;
@@ -255,7 +255,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_auctionsClosedInThePast() internal view returns (bool ok) {
         for (uint256 i = 0; i < auctions.length; i++) {
-            ok = ok && (auctions[i].isOpen || auctions[i].endTime < block.timestamp);
+            ok = ok && (auctions[i].state != Auction.State.DONE || auctions[i].endTime < block.timestamp);
         }
         if (!ok) {
             console.log("_INVARIANT_auctionsClosedInThePast violated");

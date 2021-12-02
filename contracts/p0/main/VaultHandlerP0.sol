@@ -127,7 +127,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
     }
 
     /// Cracks up to `amtBUs` basket units from all past vaults.
-    /// @return How many were actually cracked
+    /// @return crackedBUs How many BUs were actually cracked
     function _crackOldVaults(address recipient, uint256 maxBUs)
         internal
         view

@@ -5,7 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/interfaces/IMarket.sol";
+import "contracts/p0/libraries/Auction.sol";
 import "contracts/libraries/Fixed.sol";
+
 
 interface ITrading {
     /// @param auctionId An internal auction id, not the one from AssetManager
@@ -78,7 +80,7 @@ contract MarketMock is IMarket, ITrading {
     function settleAuction(uint256 auctionId) external override returns (bytes32 encodedOrder) {
         MockAuction storage auction = auctions[auctionId];
         require(msg.sender == auction.origin, "only origin can claim");
-        require(auction.isOpen, "auction already closed");
+        require(auction.state = Auction.State.IN_PROGRESS, "auction already closed");
         require(auction.endTime <= block.timestamp, "too early to close auction");
 
         uint256 clearingSellAmount;
@@ -100,7 +102,7 @@ contract MarketMock is IMarket, ITrading {
         auction.sell.safeTransfer(auction.origin, auction.sellAmount - clearingSellAmount);
         auction.buy.safeTransfer(bid.bidder, bid.buyAmount - clearingBuyAmount);
         auction.buy.safeTransfer(auction.origin, clearingBuyAmount);
-        auction.isOpen = false;
+        auction.state = Auction.State.DONE;
         return _encodeOrder(0, uint96(clearingBuyAmount), uint96(clearingSellAmount));
     }
 

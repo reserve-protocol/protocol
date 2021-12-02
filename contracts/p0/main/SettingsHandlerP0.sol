@@ -12,11 +12,12 @@ import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IVault.sol";
+import "contracts/p0/main/AssetRegistryP0.sol";
 import "contracts/p0/main/Mixin.sol";
 
 /// Settings mixin for Main
 // solhint-disable max-states-count
-contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistry, ISettingsHandler {
+contract SettingsHandlerP0 is Ownable, /*Mixin,*/ AssetRegistryP0, ISettingsHandler {
     using Oracle for Oracle.Info;
     using FixLib for Fix;
 
@@ -234,7 +235,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistry, ISettingsHandler {
         _market = market_;
     }
 
-    function market() external override returns (IMarket) {
+    function market() external view override returns (IMarket) {
         return _market;
     }
 

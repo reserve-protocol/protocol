@@ -56,7 +56,7 @@ library Auction {
             address(0),
             new bytes(0)
         );
-        self.isOpen = true;
+        self.state = State.IN_PROGRESS;
     }
 
     /// Closes out the auction and sends bought token to its fate
@@ -67,7 +67,7 @@ library Auction {
         uint256 rewardPeriod,
         IMarket market
     ) internal {
-        require(self.isOpen, "already closed out");
+        require(self.state == Auction.State.IN_PROGRESS, "can only close in-progress auctions");
         require(self.endTime <= block.timestamp, "auction not over");
         bytes32 encodedOrder = market.settleAuction(self.externalAuctionId);
         (self.clearingSellAmount, self.clearingBuyAmount) = _decodeOrder(encodedOrder);
@@ -80,10 +80,9 @@ library Auction {
                 self.buy.erc20().safeTransfer(address(0), bal);
             } else if (self.fate == Fate.Melt) {
                 self.buy.erc20().safeApprove(address(furnace), bal);
-                furnace.burnOverPeriod(bal, rewardPeriod);
+                furnace.receiveERC20(self.buy.erc20(), bal);
             } else if (self.fate == Fate.Stake) {
-                stRSR.addRSR(bal);
-
+                stRSR.receiveERC20(self.buy.erc20(), bal);
                 // Restore allowance
                 self.buy.erc20().safeIncreaseAllowance(address(stRSR), bal);
             } else if (self.fate == Fate.Stay) {
@@ -94,7 +93,7 @@ library Auction {
         }
         // solhint-enable no-empty-blocks
 
-        self.isOpen = false;
+        self.state = State.DONE;
     }
 
     /// Decodes the output of the EasyAuction

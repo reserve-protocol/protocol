@@ -11,8 +11,10 @@ import "contracts/p0/Trader.sol";
 contract BackingTrader is Trader {
     uint256 public targetBUs;
 
-    /// @return Whether an auction is live
-    function poke() external override returns (bool trading) {
+    constructor(IVaultHandler main_) Trader(main_) {}
+
+    /// @return trading Whether an auction is live
+    function poke() public override returns (bool trading) {
         trading = super.poke();
         if (!trading) {
             _tryCreateBUs();
@@ -47,7 +49,7 @@ contract BackingTrader is Trader {
         bool trade;
         Auction.Info memory auction;
         if (_isTrustedPrice(surplus)) {
-            (trade, auction) = _prepareAuctionBuy(
+            (trade, auction) = _prepareAuctionToCoverDeficit(
                 main.minRecapitalizationAuctionSize(),
                 surplus,
                 deficit,
@@ -78,17 +80,17 @@ contract BackingTrader is Trader {
     /// Algorithm:
     ///    1. Target a particular number of basket units based on total fiatcoins held across all collateral.
     ///    2. Choose the most in-surplus and most in-deficit assets for trading.
-    /// @return Surplus asset
-    /// @return Deficit asset
-    /// @return {qSellTok} Surplus amount
-    /// @return {qBuyTok} Deficit amount
+    /// @return surplus Surplus asset
+    /// @return deficit Deficit asset
+    /// @return surplusAmount {qSellTok} Surplus amount
+    /// @return deficitAmount {qBuyTok} Deficit amount
     function _largestSurplusAndDeficit()
         private
         returns (
             IAsset surplus,
             IAsset deficit,
             uint256 surplusAmount,
-            uint256 dificitAmount
+            uint256 deficitAmount
         )
     {
         IAsset[] memory assets = main.allAssets();
@@ -100,13 +102,13 @@ contract BackingTrader is Trader {
             Fix bal = toFix(IERC20(assets[i].erc20()).balanceOf(address(this))); // {qTok}
 
             // {qTok} = {BU} * {qTok/BU}
-            Fix target = toFix(targetBUs).mulu(vault.quantity(assets[i]));
+            Fix target = toFix(targetBUs).mulu(main.vault.quantity(assets[i]));
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                surpluses[i] = bal.minus(target).mul(assets[i].priceUSD(oracle()));
+                surpluses[i] = bal.minus(target).mul(assets[i].priceUSD(main.oracle()));
             } else if (bal.lt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                deficits[i] = target.minus(bal).mul(assets[i].priceUSD(oracle()));
+                deficits[i] = target.minus(bal).mul(assets[i].priceUSD(main.oracle()));
             }
         }
 
@@ -127,10 +129,10 @@ contract BackingTrader is Trader {
         }
 
         // {qSellTok} = {attoUSD} / {attoUSD/qSellTok}
-        Fix sellAmount = surplusMax.div(assets[surplusIndex].priceUSD(oracle()));
+        Fix sellAmount = surplusMax.div(assets[surplusIndex].priceUSD(main.oracle()));
 
         // {qBuyTok} = {attoUSD} / {attoUSD/qBuyTok}
-        Fix buyAmount = deficitMax.div(assets[deficitIndex].priceUSD(oracle()));
+        Fix buyAmount = deficitMax.div(assets[deficitIndex].priceUSD(main.oracle()));
         return (
             assets[surplusIndex],
             assets[deficitIndex],
@@ -156,7 +158,7 @@ contract BackingTrader is Trader {
             for (uint256 i = 0; i < amounts.length; i++) {
                 main.vault().collateralAt(i).erc20().safeApprove(address(main.vault()), amounts[i]);
             }
-            vault.issue(address(main), issuable);
+            main.vault().issue(address(main), issuable);
             targetBUs -= Math.min(issuable, targetBUs);
         }
     }

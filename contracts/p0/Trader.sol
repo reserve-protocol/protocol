@@ -8,11 +8,12 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 
 contract Trader is Ownable {
+    using Auction for Auction.Info;
     Auction.Info[] public auctions;
 
-    IVaultHandler public main;
+    IMain public main;
 
-    constructor(IVaultHandler main_) {
+    constructor(IMain main_) {
         main = main_;
     }
 
@@ -39,14 +40,15 @@ contract Trader is Ownable {
         return false;
     }
 
-    function setMain(IVaultHandler main_) external onlyOwner {
+    function setMain(IMain main_) external onlyOwner {
         main = main_;
     }
 
     /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price
     /// @param minAuctionSize {none}
     /// @param sellAmount {qSellTok}
-    /// @return (notDust, auction) An auction and whether it is large enough to be worth trading
+    /// @return notDust Whether the prepared auction is large enough to be worth trading
+    /// @return auction The prepared auction
     function _prepareAuctionSell(
         Fix minAuctionSize, // TODO: currently unused
         IAsset sell,
@@ -91,7 +93,8 @@ contract Trader is Ownable {
     /// cover as much of our deficit as possible, given expected trade slippage.
     /// @param maxSellAmount {qSellTok}
     /// @param deficitAmount {qBuyTok}
-    /// @return (notDust, auction) An auction and whether it is large enough to be worth trading
+    /// @return notDust Whether the prepared auction is large enough to be worth trading
+    /// @return auction The prepared auction
     function _prepareAuctionToCoverDeficit(
         Fix minAuctionSize,
         IAsset sell,
