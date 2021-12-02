@@ -32,6 +32,11 @@ contract ExplorerP0 is IExplorer {
         quantities = new uint256[](tokens.length);
 
         // Add Vault contents
+        for (uint256 j = 0; j < tokens.length; j++) {
+            quantities[j] += IERC20(tokens[j]).balanceOf(address(manager.vault()));
+        }
+
+        // Add past vault contents
         for (uint256 i = 0; i < manager.numPastVaults(); i++) {
             IVault vault = manager.pastVaults(i);
             for (uint256 j = 0; j < tokens.length; j++) {
