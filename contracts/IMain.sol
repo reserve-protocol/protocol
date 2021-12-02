@@ -107,9 +107,6 @@ interface IMainCommon {
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) external view returns (uint256[] memory);
 
-    /// @return How many RToken `account` can issue given current holdings
-    function maxIssuable(address account) external view returns (uint256);
-
     /// @return Whether the system is paused
     function paused() external view returns (bool);
 

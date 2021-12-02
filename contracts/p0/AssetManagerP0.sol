@@ -181,6 +181,16 @@ contract AssetManagerP0 is IAssetManager, Ownable {
         _switchVault(vault_);
     }
 
+    function numPastVaults() external view returns (uint256) {
+        return pastVaults.length;
+    }
+
+    function allAssetERC20s() external view returns (address[] memory tokens) {
+        for (uint256 i = 0; i < _alltimeCollateral.length(); i++) {
+            tokens[i] = _alltimeCollateral.at(i);
+        }
+    }
+
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() public view override returns (bool) {
         return fromBUs(vault.basketUnits(address(this))) >= main.rToken().totalSupply();
