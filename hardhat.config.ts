@@ -1,3 +1,5 @@
+// TODO: import ./tasks selectively based on env var
+import './tasks'
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
@@ -8,7 +10,6 @@ import dotenv from 'dotenv'
 import { HardhatUserConfig } from 'hardhat/types'
 
 // import '@openzeppelin/hardhat-upgrades'
-// import './tasks'
 dotenv.config()
 
 const PATHS: { [x: string]: string } = {

@@ -17,8 +17,8 @@ import "contracts/IExplorer.sol";
 contract ExplorerP0 is IExplorer {
     MainP0 public main;
 
-    constructor(MainP0 main_) {
-        main = main_;
+    constructor(address main_) {
+        main = MainP0(main_);
     }
 
     /// @return How many RToken `account` can issue given current holdings
