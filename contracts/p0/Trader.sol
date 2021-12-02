@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/libraries/Auction.sol";
 import "contracts/p0/interfaces/IMain.sol";
@@ -47,7 +48,7 @@ contract Trader is Ownable {
     /// @param sellAmount {qSellTok}
     /// @return (notDust, auction) An auction and whether it is large enough to be worth trading
     function _prepareAuctionSell(
-        Fix minAuctionSize,
+        Fix minAuctionSize, // TODO: currently unused
         IAsset sell,
         IAsset buy,
         uint256 sellAmount,
@@ -79,7 +80,7 @@ contract Trader is Ownable {
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,
                 startTime: block.timestamp,
-                endTime: block.timestamp + auctionPeriod(),
+                endTime: block.timestamp + main.auctionPeriod(),
                 fate: fate,
                 isOpen: false
             })
@@ -127,19 +128,19 @@ contract Trader is Ownable {
     /// @return {qSellTok} The least amount of tokens worth trying to sell
     function _dustThreshold(IAsset asset) private view returns (uint256) {
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
-        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(oracle).mulu(
+        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(main.oracle()).mulu(
             main.rToken().totalSupply()
         );
-        Fix minSellUSD = rTokenMarketCapUSD.mul(minAuctionSize); // {attoUSD}
+        Fix minSellUSD = rTokenMarketCapUSD.mul(main.minAuctionSize()); // {attoUSD}
 
         // {attoUSD} / {attoUSD/qSellTok}
-        return minSellUSD.div(asset.priceUSD(oracle)).toUint();
+        return minSellUSD.div(asset.priceUSD(main.oracle())).toUint();
     }
 
     /// Opens an `auction`
     function _launchAuction(Auction.Info memory auction) internal {
         auctions.push(auction);
-        auctions[auctions.length - 1].open(main.auctionPeriod(), market);
+        auctions[auctions.length - 1].open(main.auctionPeriod(), main.market());
         emit IAuctioneer.AuctionStarted(
             auctions.length - 1,
             address(auctions[auctions.length - 1].sell),

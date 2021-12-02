@@ -63,15 +63,17 @@ contract AuctioneerP0 is
         if (!trading && !fullyCapitalized()) {
             uint256 maxBUs = toBUs(migrationChunk().mulu(rToken().totalSupply()).toUint());
             uint256 crackedBUs = _crackOldVaults(address(backingTrader), maxBUs);
+            uint256 buShortfall = toBUs(rToken().totalSupply()) - vault.basketUnits(address(this));
             if (crackedBUs > 0) {
-                // TODO: There may be excess BUs between rounds, and after all rounds
-                backingTrader.addToBUTarget(crackedBUs);
+                backingTrader.increaseBUTarget(crackedBUs, buShortfall);
                 trading = backingTrader.poke();
             }
 
             if (!trading && !fullyCapitalized()) {
                 _rTokenHaircut();
             }
+            // TODO: There may be excess surplus and BUs after all rounds of trading.
+            // What should we do with them?
         }
 
         // TODO: REVENUE TRADERS

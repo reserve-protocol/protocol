@@ -20,9 +20,9 @@ contract BackingTrader is Trader {
         }
     }
 
-    function addToBUTarget(uint256 amtBUs) external {
+    function increaseBUTarget(uint256 amtBUs, uint256 maxTarget) external {
         require(_msgSender() == address(main), "main only");
-        targetBUs += amtBUs;
+        targetBUs = Math.max(targetBUs + amtBUs, maxTarget);
     }
 
     /// Launch auctions to reach BUTarget using RSR as needed
@@ -42,7 +42,7 @@ contract BackingTrader is Trader {
             IAsset deficit,
             uint256 surplusAmount,
             uint256 deficitAmount
-        ) = _largestSurplusAndDeficitAuction();
+        ) = _largestSurplusAndDeficit();
 
         bool trade;
         Auction.Info memory auction;
@@ -82,13 +82,13 @@ contract BackingTrader is Trader {
     /// @return Deficit asset
     /// @return {qSellTok} Surplus amount
     /// @return {qBuyTok} Deficit amount
-    function _largestSurplusAndDeficitAuction()
+    function _largestSurplusAndDeficit()
         private
         returns (
-            IAsset,
-            IAsset,
-            uint256,
-            uint256
+            IAsset surplus,
+            IAsset deficit,
+            uint256 surplusAmount,
+            uint256 dificitAmount
         )
     {
         IAsset[] memory assets = main.allAssets();
