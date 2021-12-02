@@ -1939,5 +1939,251 @@ describe('AssetManagerP0 contract', () => {
         expect(await rTokenAsset.priceUSD(main.address)).to.equal(fp('1'))
       })
     })
+
+    context('With more complex Basket - Multiple stablecoins', async function () {
+      let issueAmount: BigNumber
+      let backupVault: VaultP0
+      let defVault: VaultP0
+      let rTokenAsset: RTokenAssetP0
+
+      beforeEach(async function () {
+        // A bit more complex vault with two tokens - And backup
+        backupVault = <VaultP0>await VaultFactory.deploy([collateral[1]], [bn('1e18')], [])
+        defVault = <VaultP0>(
+          await VaultFactory.deploy([collateral[0], collateral[1]], [qtyHalf, qtyHalf], [backupVault.address])
+        )
+
+        // Setup Main
+        await defVault.connect(owner).setMain(main.address)
+
+        // Switch Vault
+        await assetManager.connect(owner).switchVault(defVault.address)
+
+        // Issue some RTokens to user
+        issueAmount = bn('100e18')
+        // Provide approvals
+        await token0.connect(addr1).approve(main.address, initialBal)
+        await token1.connect(addr1).approve(main.address, initialBal)
+
+        // Issue rTokens
+        await main.connect(addr1).issue(issueAmount)
+
+        // Process the issuance
+        await main.poke()
+
+        // Get RToken Asset
+        rTokenAsset = <RTokenAssetP0>await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+      })
+
+      it('Should recapitalize correctly in case of default - Using RSR for remainder', async () => {
+        // Save current RToken Supply
+        const startingTotalSupply: BigNumber = await rToken.totalSupply()
+
+        // Mint some RSR
+        await rsr.connect(owner).mint(addr1.address, initialBal)
+
+        // Perform stake
+        const stkAmount: BigNumber = bn('100e18')
+        await rsr.connect(addr1).approve(stRSR.address, stkAmount)
+        await stRSR.connect(addr1).stake(stkAmount)
+
+        // Check stakes
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount)
+        expect(await stRSR.balanceOf(addr1.address)).to.equal(stkAmount)
+
+        // Check RToken supply
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Check Rtoken price is stable
+        expect(await rTokenAsset.priceUSD(main.address)).to.equal(fp('1'))
+
+        // Set Max auction to 80% and migration chunk to 100% (so everything is redeemd at once)
+        const newConfig: IManagerConfig = {
+          rewardStart: config.rewardStart,
+          rewardPeriod: config.rewardPeriod,
+          auctionPeriod: config.auctionPeriod,
+          stRSRWithdrawalDelay: config.stRSRWithdrawalDelay,
+          defaultDelay: config.defaultDelay,
+          maxTradeSlippage: config.maxTradeSlippage,
+          maxAuctionSize: fp('0.8'), // 25%
+          minRecapitalizationAuctionSize: config.minRecapitalizationAuctionSize,
+          minRevenueAuctionSize: config.minRevenueAuctionSize,
+          migrationChunk: fp('1'), // 100% - Migrate all together
+          issuanceRate: config.issuanceRate,
+          defaultThreshold: config.defaultThreshold,
+          f: config.f,
+        }
+
+        // Update config
+        await main.connect(owner).setConfig(newConfig)
+
+        // Set Token0 to default - 50% price reduction
+        await aaveOracle.setPrice(token0.address, bn('1.25e14'))
+
+        // Check initial state
+        expect(await main.state()).to.equal(State.CALM)
+
+        // Notice default
+        await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.CALM, State.DOUBT)
+
+        // Check state
+        expect(await main.state()).to.equal(State.DOUBT)
+        expect(await assetManager.vault()).to.equal(defVault.address)
+        expect(await assetManager.fullyCapitalized()).to.equal(true)
+
+        // Advance time post defaultDelay
+        await advanceTime(config.defaultDelay.toString())
+
+        await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.DOUBT, State.TRADING)
+
+        // Check state
+        expect(await main.state()).to.equal(State.TRADING)
+        expect(await assetManager.vault()).to.equal(backupVault.address)
+        expect(await assetManager.fullyCapitalized()).to.equal(false)
+        expect(await token0.balanceOf(defVault.address)).to.equal(issueAmount.div(2))
+        expect(await token1.balanceOf(defVault.address)).to.equal(issueAmount.div(2))
+        expect(await defVault.basketUnits(assetManager.address)).to.equal(issueAmount)
+        // New vault
+        expect(await token0.balanceOf(backupVault.address)).to.equal(0)
+        expect(await token1.balanceOf(backupVault.address)).to.equal(0)
+        expect(await backupVault.basketUnits(assetManager.address)).to.equal(0)
+
+        // Set expected auction amount - Can auction the full amount
+        let sellAmt: BigNumber = await token0.balanceOf(defVault.address)
+
+        // Run recapitalization auction
+        // Buy amount = 0 when token is defaulted
+        await expect(main.poke())
+          .to.emit(assetManager, 'AuctionStarted')
+          .withArgs(0, collateral0.address, collateral1.address, sellAmt, bn('0'), Fate.Stay)
+
+        // Check new auction created
+        expectAuctionInfo(0, {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: sellAmt,
+          minBuyAmount: bn('0'),
+          startTime: await getLatestBlockTimestamp(),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          clearingSellAmount: bn('0'),
+          clearingBuyAmount: bn('0'),
+          fate: Fate.Stay,
+          isOpen: true,
+        })
+
+        // Check state
+        expect(await main.state()).to.equal(State.TRADING)
+        expect(await assetManager.vault()).to.equal(backupVault.address)
+        expect(await assetManager.fullyCapitalized()).to.equal(false)
+        expect(await token0.balanceOf(defVault.address)).to.equal(0) // Everything was sent to auction
+        expect(await token1.balanceOf(defVault.address)).to.equal(0) // Everything redeemed from vault
+        expect(await token1.balanceOf(assetManager.address)).to.equal(issueAmount.div(2)) // Balance now in AssetManager
+        expect(await defVault.basketUnits(assetManager.address)).to.equal(0) // All was redeemed
+        // New vault
+        expect(await token0.balanceOf(backupVault.address)).to.equal(0) // Nothing obtained from auction yet
+        expect(await token1.balanceOf(backupVault.address)).to.equal(0)
+        expect(await backupVault.basketUnits(assetManager.address)).to.equal(0)
+
+        // Check RToken supply - Unchanged
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Perform Mock Bids (addr1 has balance)
+        // Assume fair price, get 90% of the tokens required
+        let buyAmtBid: BigNumber = sellAmt.mul(90).div(100)
+        await token1.connect(addr1).approve(trading.address, buyAmtBid)
+        await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: buyAmtBid })
+
+        // Advance time till auction ended
+        await advanceTime(newConfig.auctionPeriod.add(100).toString())
+
+        // Call poke to end current auction, should start a new one for RSR to seize
+        // Note:  Sets Buy amount as independent value
+        let buyAmtBidRSRFinal: BigNumber = sellAmt.sub(buyAmtBid)
+        let sellAmtRSRFinal: BigNumber = buyAmtBidRSRFinal.add(buyAmtBidRSRFinal.div(100)) // Due to trade slippage 1%
+
+        await expect(main.poke())
+          .to.emit(assetManager, 'AuctionEnded')
+          .withArgs(0, collateral0.address, collateral1.address, sellAmt, buyAmtBid, Fate.Stay)
+          .and.to.emit(assetManager, 'AuctionStarted')
+          .withArgs(1, rsrAsset.address, rTokenAsset.address, sellAmtRSRFinal, buyAmtBidRSRFinal, Fate.Burn)
+
+        // Check new auction
+        expectAuctionInfo(1, {
+          sell: rsrAsset.address,
+          buy: rTokenAsset.address,
+          sellAmount: sellAmtRSRFinal,
+          minBuyAmount: buyAmtBidRSRFinal,
+          startTime: await getLatestBlockTimestamp(),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          clearingSellAmount: bn('0'),
+          clearingBuyAmount: bn('0'),
+          fate: Fate.Burn,
+          isOpen: true,
+        })
+
+        // Check previous auctions are closed
+        expectAuctionOpen(0, false)
+
+        // Should have seized RSR
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount.sub(sellAmtRSRFinal)) // Sent to market (auction)
+        expect(await stRSR.balanceOf(addr1.address)).to.equal(stkAmount.sub(sellAmtRSRFinal)) // Seized from user
+
+        // Check state
+        expect(await main.state()).to.equal(State.TRADING)
+        expect(await assetManager.vault()).to.equal(backupVault.address)
+        expect(await assetManager.fullyCapitalized()).to.equal(false)
+        expect(await token0.balanceOf(defVault.address)).to.equal(0) // Everything was sent to auction
+        expect(await token1.balanceOf(defVault.address)).to.equal(0)
+        expect(await token1.balanceOf(assetManager.address)).to.equal(0) // Balance now in new vault
+        expect(await defVault.basketUnits(assetManager.address)).to.equal(0) // All was redeemed
+        // New vault
+        expect(await token0.balanceOf(backupVault.address)).to.equal(0) // Nothing obtained from auction yet
+        expect(await token1.balanceOf(backupVault.address)).to.equal(issueAmount.div(2).add(buyAmtBid)) // Moved from asset manager + bid
+        expect(await backupVault.basketUnits(assetManager.address)).to.equal(issueAmount.div(2).add(buyAmtBid))
+
+        // Perform Mock Bids for RSR (addr1 has balance)
+        // Assume fair price RSR = 1 to 1 - Get all of them
+        await rToken.connect(addr1).approve(trading.address, buyAmtBidRSRFinal)
+        await trading.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: buyAmtBidRSRFinal,
+          buyAmount: buyAmtBidRSRFinal,
+        })
+
+        //  Advance time till auction ended
+        await advanceTime(newConfig.auctionPeriod.add(100).toString())
+
+        //  Call auction to be processed
+        await expect(main.poke())
+          .to.emit(assetManager, 'AuctionEnded')
+          .withArgs(1, rsrAsset.address, rTokenAsset.address, buyAmtBidRSRFinal, buyAmtBidRSRFinal, Fate.Burn)
+          .and.not.to.emit(assetManager, 'AuctionStarted')
+
+        //  Check previous auctions are closed
+        expectAuctionOpen(0, false)
+        expectAuctionOpen(1, false)
+
+        // Check state - All traded OK
+        expect(await main.state()).to.equal(State.CALM)
+        expect(await assetManager.vault()).to.equal(backupVault.address)
+        expect(await assetManager.fullyCapitalized()).to.equal(true)
+        expect(await token0.balanceOf(defVault.address)).to.equal(0)
+        expect(await token1.balanceOf(defVault.address)).to.equal(0)
+        expect(await token1.balanceOf(assetManager.address)).to.equal(0)
+        expect(await defVault.basketUnits(assetManager.address)).to.equal(0)
+        // New vault
+        expect(await token0.balanceOf(backupVault.address)).to.equal(0)
+        expect(await token1.balanceOf(backupVault.address)).to.equal(issueAmount.div(2).add(buyAmtBid)) // Moved from asset manager + bid
+        expect(await backupVault.basketUnits(assetManager.address)).to.equal(issueAmount.div(2).add(buyAmtBid))
+
+        // Check RToken supply - Should have burnt the obtained amount from auctions
+        // It should at the end be 95% of the original supply (50% already in Token 1 plus 45% coming from auction)
+        expect(await rToken.totalSupply()).to.equal(issueAmount.sub(buyAmtBidRSRFinal))
+        expect(await rToken.totalSupply()).to.equal(startingTotalSupply.mul(95).div(100))
+
+        // Check Rtoken price is stable
+        expect(await rTokenAsset.priceUSD(main.address)).to.equal(fp('1'))
+      })
+    })
   })
 })
