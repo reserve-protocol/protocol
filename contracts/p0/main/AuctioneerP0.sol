@@ -52,9 +52,9 @@ contract AuctioneerP0 is
         override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
     {
         super.init(args);
-        backingTrader = new BackingTraderP0(this);
-        rsrStakingTrader = new RevenueTraderP0(this, rsr());
-        rTokenMeltingTrader = new RevenueTraderP0(this, rtoken());
+        backingTrader = new BackingTraderP0(IMain(address(this)));
+        rsrStakingTrader = new RevenueTraderP0(IMain(address(this)), rsrAsset());
+        rTokenMeltingTrader = new RevenueTraderP0(IMain(address(this)), rTokenAsset());
     }
 
     function poke() public virtual override notPaused {

@@ -19,7 +19,7 @@ contract BackingTraderP0 is TraderP0 {
     uint256 public targetBUs;
 
     // solhint-disable-next-line no-empty-blocks
-    constructor(VaultHandlerP0 main_) TraderP0(main_) {}
+    constructor(IMain main_) TraderP0(main_) {}
 
     /// @return trading Whether an auction is live
     function poke() public override returns (bool trading) {
@@ -63,7 +63,7 @@ contract BackingTraderP0 is TraderP0 {
                 deficitAmount
             );
         } else {
-            (trade, auction) = _prepareAuctionSell(surplus, deficit, surplusAmount, Fate.STAY);
+            (trade, auction) = _prepareAuctionSell(surplus, deficit, surplusAmount);
             auction.minBuyAmount = 0;
         }
         if (trade) {

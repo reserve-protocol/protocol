@@ -16,7 +16,7 @@ contract RevenueTraderP0 is TraderP0 {
 
     IAsset private assetToBuy;
 
-    constructor(VaultHandlerP0 main_, IAsset assetToBuy_) TraderP0(main_) {
+    constructor(IMain main_, IAsset assetToBuy_) TraderP0(main_) {
         assetToBuy = assetToBuy_;
     }
 
@@ -33,7 +33,7 @@ contract RevenueTraderP0 is TraderP0 {
             IERC20 erc20 = assets[i].erc20();
             uint256 bal = erc20.balanceOf(address(this));
 
-            if (assets[i] == assetToBuy) {
+            if (assets[i] == assetToBuy && bal > 0) {
                 erc20.safeApprove(address(main), bal);
                 main.distribute(erc20, address(this), bal);
             } else {
@@ -41,7 +41,7 @@ contract RevenueTraderP0 is TraderP0 {
                 bool launch;
                 Auction.Info memory auction;
 
-                (launch, auction) = _prepareAuctionSell(assets[i], assetToBuy, bal, fate);
+                (launch, auction) = _prepareAuctionSell(assets[i], assetToBuy, bal);
                 if (launch) {
                     trading = true;
                     _launchAuction(auction);

@@ -17,14 +17,6 @@ enum Mood {
     TRADING // auctions in progress, no unstaking
 }
 
-/// What should happen to auction tokens after the auctinon clears
-enum Fate {
-    MELT, // RToken melting in the furnace
-    STAKE, // RSR dividend to stRSR
-    BURN, // RToken burning
-    STAY // No action
-}
-
 /// Configuration of the system
 struct Config {
     // Time (seconds)
@@ -255,14 +247,12 @@ interface IAuctioneerEvents {
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
-    /// @param fate The fate of the soon-to-be-purchased tokens
     event AuctionStarted(
         uint256 indexed auctionId,
         address indexed sell,
         address indexed buy,
         uint256 sellAmount, // {qSellTok}
-        uint256 minBuyAmount, // {qBuyTok}
-        Fate fate
+        uint256 minBuyAmount // {qBuyTok}
     );
 
     /// Emitted after an auction ends
@@ -274,8 +264,7 @@ interface IAuctioneerEvents {
         address indexed sell,
         address indexed buy,
         uint256 sellAmount,
-        uint256 buyAmount,
-        Fate fate
+        uint256 buyAmount
     );
 }
 
@@ -335,6 +324,7 @@ interface IMain is
     IMoody,
     IAssetRegistry,
     ISettingsHandler,
+    IRevenueTable,
     IVaultHandler,
     IDefaultHandler,
     IAuctioneer,

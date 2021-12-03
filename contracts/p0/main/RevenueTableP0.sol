@@ -44,7 +44,7 @@ contract RevenueTableP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueTable {
         IERC20 erc20,
         address from,
         uint256 amount
-    ) external override {
+    ) public override {
         require(erc20 == rsr() || erc20 == rToken(), "RSR or RToken");
         (Fix rTokenTotal, Fix rsrTotal) = _totals();
         Fix total = erc20 == rsr() ? rsrTotal : rTokenTotal;
