@@ -53,8 +53,8 @@ contract AuctioneerP0 is
     {
         super.init(args);
         backingTrader = new BackingTraderP0(this);
-        rsrStakingTrader = new RevenueTraderP0(this, Fate.STAKE);
-        rTokenMeltingTrader = new RevenueTraderP0(this, Fate.MELT);
+        rsrStakingTrader = new RevenueTraderP0(this, rsr());
+        rTokenMeltingTrader = new RevenueTraderP0(this, rtoken());
     }
 
     function poke() public virtual override notPaused {
