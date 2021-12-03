@@ -60,9 +60,10 @@ contract DefaultHandlerP0 is
         _depegged = softDefaulting;
 
         Mood mood = Mood.DOUBT;
-        if (softDefaulting.length == 0) {
+        bool vaultIsGood = _vaultIsOnlyApprovedCollateral(vault);
+        if (vaultIsGood && softDefaulting.length == 0) {
             mood = fullyCapitalized() ? Mood.CALM : Mood.TRADING;
-        } else if (!_vaultIsOnlyApprovedCollateral(vault)) {
+        } else if (!vaultIsGood) {
             IVault nextVault = _selectNextVault();
             if (address(nextVault) != address(0)) {
                 _switchVault(nextVault);
