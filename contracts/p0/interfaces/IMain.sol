@@ -111,6 +111,10 @@ interface IAssetRegistry {
     function isApproved(IAsset asset) external view returns (bool);
 }
 
+interface IRevenueTable {
+
+}
+
 interface ISettingsHandler {
     function setRewardStart(uint256 rewardStart) external;
 
@@ -266,6 +270,7 @@ interface IAuctioneer is IAuctioneerEvents {
 }
 
 interface IRevenueHandler {
+
     function nextRewards() external view returns (uint256);
 }
 

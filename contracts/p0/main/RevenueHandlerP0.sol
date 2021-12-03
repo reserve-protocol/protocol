@@ -1,5 +1,5 @@
-pragma solidity 0.8.9;
 // SPDX-License-Identifier: BlueOak-1.0.0
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -37,7 +37,7 @@ contract RevenueHandlerP0 is
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
-    // timestamp -> whether rewards have been claimed.
+    // TODO: make this uint256 _whenLastRewardClaimed
     mapping(uint256 => bool) private _rewardsClaimed;
 
     function init(ConstructorArgs calldata args)
@@ -108,14 +108,14 @@ contract RevenueHandlerP0 is
                 }
 
                 // Past vaults
-                for (uint256 i = 0; i < pastVaults.length; i++) {
-                    bal = aic.getRewardsBalance(underlyings, address(pastVaults[i]));
+                for (uint256 j = 0; j < pastVaults.length; j++) {
+                    bal = aic.getRewardsBalance(underlyings, address(pastVaults[j]));
                     if (bal > 0) {
-                        pastVaults[i].setMainAsAaveClaimer(aic);
+                        pastVaults[j].setMainAsAaveClaimer(aic);
                         aic.claimRewardsOnBehalf(
                             underlyings,
                             bal,
-                            address(pastVaults[i]),
+                            address(pastVaults[j]),
                             address(this)
                         );
                     }
