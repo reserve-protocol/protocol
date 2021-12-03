@@ -9,6 +9,4 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  */
 interface IERC20Receiver {
     function receiveERC20(IERC20 erc20, uint256 amount) external;
-
-    function erc20Wanted() external view returns (IERC20);
 }

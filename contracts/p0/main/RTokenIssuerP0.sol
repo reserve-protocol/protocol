@@ -55,6 +55,8 @@ contract RTokenIssuerP0 is
     /// This modifier runs before every function including redemption, so it should be very safe.
     modifier always() {
         revenueFurnace().doMelt();
+
+        // TODO: Move into DefaultHandler
         ICollateral[] memory hardDefaulting = _checkForHardDefault();
         if (hardDefaulting.length > 0) {
             for (uint256 i = 0; i < hardDefaulting.length; i++) {

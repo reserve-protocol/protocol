@@ -66,10 +66,6 @@ contract FurnaceP0 is Ownable, IFurnace {
         batchDuration = batchDuration_;
     }
 
-    function erc20Wanted() external view override returns (IERC20) {
-        return rToken;
-    }
-
     function _burnable(uint256 timestamp) internal returns (uint256) {
         uint256 releasable = 0;
         for (

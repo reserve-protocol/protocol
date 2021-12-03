@@ -198,10 +198,6 @@ contract StRSRP0 is IStRSR, Context {
         return _totalStaked + _amountBeingWithdrawn();
     }
 
-    function erc20Wanted() external view override returns (IERC20) {
-        return main.rsr();
-    }
-
     function transfer(address recipient, uint256 amount) external override returns (bool) {
         _transfer(_msgSender(), recipient, amount);
         return true;

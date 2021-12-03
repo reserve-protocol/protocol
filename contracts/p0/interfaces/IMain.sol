@@ -112,7 +112,21 @@ interface IAssetRegistry {
 }
 
 interface IRevenueTable {
+    function setDistribution(
+        address dest,
+        Fix rTokenFraction,
+        Fix rsrFraction
+    ) external;
 
+    function distribute(
+        IERC20 erc20,
+        address from,
+        uint256 amount
+    ) external;
+
+    function rsrCut() external view returns (Fix);
+
+    function rTokenCut() external view returns (Fix);
 }
 
 interface ISettingsHandler {
@@ -270,7 +284,6 @@ interface IAuctioneer is IAuctioneerEvents {
 }
 
 interface IRevenueHandler {
-
     function nextRewards() external view returns (uint256);
 }
 
