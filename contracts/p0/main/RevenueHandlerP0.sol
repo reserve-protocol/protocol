@@ -138,7 +138,7 @@ contract RevenueHandlerP0 is
     /// Splits `asset` into `cut` and `1-cut` proportions, and sends to revenue traders
     function _splitRewardsToTraders(IAsset asset) private {
         uint256 bal = asset.erc20().balanceOf(address(this));
-        uint256 amtToRSR = cut().mulu(bal).toUint();
+        uint256 amtToRSR = rsrCut().mulu(bal).toUint();
         asset.erc20().safeTransfer(address(rsrStakingTrader), amtToRSR); // cut
         asset.erc20().safeTransfer(address(rTokenMeltingTrader), bal - amtToRSR); // 1 - cut
     }
