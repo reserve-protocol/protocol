@@ -59,14 +59,17 @@ contract DefaultHandlerP0 is
         }
         _depegged = softDefaulting;
 
+        Mood mood = Mood.DOUBT;
         if (softDefaulting.length == 0) {
-            _setMood(fullyCapitalized() ? Mood.CALM : Mood.TRADING);
+            mood = fullyCapitalized() ? Mood.CALM : Mood.TRADING;
         } else if (!_vaultIsOnlyApprovedCollateral(vault)) {
-            _switchVault(_selectNextVault());
-            _setMood(Mood.TRADING);
-        } else {
-            _setMood(Mood.DOUBT);
+            IVault nextVault = _selectNextVault();
+            if (address(nextVault) != address(0)) {
+                _switchVault(nextVault);
+                mood = Mood.TRADING;
+            }
         }
+        _setMood(mood);
     }
 
     /// Checks for hard default by inspecting the redemption rates of all collateral tokens

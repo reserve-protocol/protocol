@@ -78,10 +78,10 @@ contract BackingTraderP0 is TraderP0 {
             deficit,
             main.rsr().balanceOf(address(main.stRSR())), // max(RSR that can be seized)
             deficitAmount
-            );
+        );
         if (trade) {
             uint256 balance = main.rsr().balanceOf(address(this));
-            if(auction.sellAmount > balance) {
+            if (auction.sellAmount > balance) {
                 main.stRSR().seizeRSR(auction.sellAmount - balance);
             }
             _launchAuction(auction);
