@@ -39,17 +39,23 @@ contract FurnaceP0 is Ownable, IFurnace {
         batchDuration = batchDuration_;
     }
 
-    /// Sets aside `amount` of RToken to be melted over `timePeriod` seconds.
-    /// @param amount {qTok} The amount of RToken to be melted
-    function receiveERC20(IERC20 erc20, uint256 amount) external override {
+    /// Sets aside newly-deposited RTokens to be melted over `timePeriod` seconds.
+    function respondToDeposit(IERC20 erc20) external override {
         require(address(erc20) == address(rToken), "RToken melting only");
-        require(amount > 0, "Cannot melt a batch of zero");
-
-        rToken.safeTransferFrom(_msgSender(), address(this), amount);
 
         // Register handout
-        batches.push(Batch(amount, block.timestamp, batchDuration, 0));
-        emit DistributionCreated(amount, batchDuration, _msgSender());
+        uint256 balance = erc20.balanceOf(address(this));
+        uint256 batchTotal;
+        for (uint256 i = 0; i < batches.length; i++) {
+            Batch storage batch = batches[i];
+            batchTotal += batch.amount - batch.melted;
+        }
+
+        uint256 amount = balance - batchTotal;
+        if (amount > 0) {
+            batches.push(Batch(amount, block.timestamp, batchDuration, 0));
+            emit DistributionCreated(amount, batchDuration, _msgSender());
+        }
     }
 
     /// Performs any burning that has vested since last call. Idempotent

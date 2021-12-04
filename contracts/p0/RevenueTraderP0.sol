@@ -21,12 +21,17 @@ contract RevenueTraderP0 is TraderP0 {
     }
 
     function poke() public override returns (bool) {
-        return TraderP0.poke() || _startRevenueAuctions();
+        bool openAuctions = TraderP0.poke();
+        bool launchedNewAuction = _manageFunds();
+        return openAuctions || launchedNewAuction;
     }
 
-    /// Start auctions selling all asset types to purchase RSR or RToken
+    /// Iterate through all asset types, and perform the appropriate action with each:
+    /// - If we have any of `assetToBuy` (RSR or RToken), distribute it.
+    /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
     /// @return trading Whether an auction was launched
-    function _startRevenueAuctions() private returns (bool trading) {
+
+    function _manageFunds() private returns (bool trading) {
         IAsset[] memory assets = main.allAssets(); // includes RToken/RSR/COMP/AAVE
         trading = false;
         for (uint256 i = 0; i < assets.length; i++) {

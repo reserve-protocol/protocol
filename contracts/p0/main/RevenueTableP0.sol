@@ -50,8 +50,16 @@ contract RevenueTableP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueTable {
         Fix total = erc20 == rsr() ? rsrTotal : rTokenTotal;
         uint256 index = erc20 == rsr() ? 1 : 0;
         for (uint256 i = 0; i < _addrs.length(); i++) {
-            Fix slice = _distribution[_addrs.at(i)][index].mulu(amount).div(total);
-            erc20.safeTransferFrom(from, _addrs.at(i), slice.toUint());
+            uint256 slice = _distribution[_addrs.at(i)][index].mulu(amount).div(total).toUint();
+            address addr_to = _addrs.at(i);
+            if (addr_to == FURNACE) {
+                erc20.safeTransferFrom(from, address(revenueFurnace()), slice);
+                revenueFurnace().respondToDeposit(erc20);
+            } else if (addr_to  == ST_RSR) {
+                erc20.safeTransferFrom(from, address(stRSR()), slice);
+                stRSR().respondToDeposit(erc20);
+            }
+            erc20.safeTransferFrom(from, _addrs.at(i), slice);
         }
     }
 

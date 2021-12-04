@@ -120,30 +120,23 @@ contract StRSRP0 is IStRSR, Context {
         }
     }
 
-    /// @param amount {qRSR}
-    function receiveERC20(IERC20 erc20, uint256 amount) external override {
+    function respondToDeposit(IERC20 erc20) external override {
         require(erc20 == main.rsr(), "RSR dividends only");
-        require(amount > 0, "Amount cannot be zero");
 
-        // Process pending withdrawals
-        processWithdrawals();
+        uint256 balance = main.rsr().balanceOf(address(this));
+        uint256 overage = balance - _totalStaked - _amountBeingWithdrawn();
 
-        main.rsr().safeTransferFrom(_msgSender(), address(this), amount);
-
-        uint256 snapshotTotalStaked = _totalStaked;
-        _totalStaked += amount;
-
-        // Redistribute RSR to stakers, but not to withdrawers
-        if (snapshotTotalStaked > 0) {
+        if (overage > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
                 // amtToAdd = amount * _balances[_accounts.at(index)] / snapshotTotalStaked;
-                Fix amtToAdd = toFix(_balances[_accounts.at(index)]).mulu(amount).divu(
-                    snapshotTotalStaked
+                Fix amtToAdd = toFix(_balances[_accounts.at(index)]).mulu(overage).divu(
+                    _totalStaked
                 );
                 _balances[_accounts.at(index)] += amtToAdd.toUint();
             }
+            _totalStaked += overage;
+            emit RSRAdded(_msgSender(), overage);
         }
-        emit RSRAdded(_msgSender(), amount);
     }
 
     /// auth: BackingTrader only
