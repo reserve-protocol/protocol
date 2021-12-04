@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
 import "contracts/p0/libraries/Oracle.sol";
-import "contracts/p0/main/RevenueTableP0.sol";
+import "contracts/p0/main/RevenueDistributorP0.sol";
 import "contracts/p0/main/SettingsHandlerP0.sol";
 import "contracts/p0/main/VaultHandlerP0.sol";
 import "contracts/p0/main/MoodyP0.sol";
@@ -30,7 +30,7 @@ contract RevenueHandlerP0 is
     Mixin,
     MoodyP0,
     SettingsHandlerP0,
-    RevenueTableP0,
+    RevenueDistributorP0,
     VaultHandlerP0,
     AuctioneerP0,
     IRevenueHandler
@@ -45,7 +45,7 @@ contract RevenueHandlerP0 is
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, SettingsHandlerP0, RevenueTableP0, VaultHandlerP0, AuctioneerP0)
+        override(Mixin, SettingsHandlerP0, RevenueDistributorP0, VaultHandlerP0, AuctioneerP0)
     {
         super.init(args);
     }

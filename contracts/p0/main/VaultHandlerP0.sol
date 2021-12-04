@@ -10,6 +10,7 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/main/Mixin.sol";
+import "contracts/p0/main/RevenueDistributorP0.sol";
 import "contracts/libraries/Fixed.sol";
 import "./SettingsHandlerP0.sol";
 
@@ -18,7 +19,7 @@ import "./SettingsHandlerP0.sol";
  * @notice Handles the use of vaults and their associated basket units (BUs), including the tracking
  *    of the base rate, the exchange rate between RToken and BUs.
  */
-contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
+contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributorP0, IVaultHandler {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
@@ -32,30 +33,18 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
     Fix internal _historicalBasketDilution; // the product of all historical basket dilutions
     Fix internal _prevBasketRate; // redemption value of the basket in fiatcoins last update
 
-    Fix private _cut; // Revenue Cut: the fraction of revenue that goes to stakers
-
     IVault public override vault;
     IVault[] public pastVaults;
 
-    function init(ConstructorArgs calldata args) public virtual override(Mixin, SettingsHandlerP0) {
+    function init(ConstructorArgs calldata args) public virtual override(Mixin, SettingsHandlerP0, RevenueDistributorP0) {
         super.init(args);
         vault = args.vault;
-        _cut = args.config.cut;
         _prevBasketRate = args.vault.basketRate();
         _historicalBasketDilution = FIX_ONE;
     }
 
     function switchVault(IVault vault_) external override onlyOwner {
         _switchVault(vault_);
-    }
-
-    function cut() public view returns (Fix) {
-        return _cut;
-    }
-
-    function setCut(Fix newCut) external override onlyOwner {
-        emit CutSet(_cut, newCut);
-        _cut = newCut;
     }
 
     /// @return Whether the vault is fully capitalized
@@ -107,8 +96,10 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
         // Assumption: Defi redemption rates are monotonically increasing
         Fix delta = currentRate.minus(_prevBasketRate);
 
-        // r = p2 / (p1 + (p2-p1) * (1-cut))
-        Fix r = currentRate.div(_prevBasketRate.plus(delta.mul(FIX_ONE.minus(_cut))));
+        // TODO: _accumulate needs to be a poke-like cooperative event handler
+        // here, in order to deal with changes to the rTokenCut coming from RevenueDistributor.
+        // r = p2 / (p1 + (p2-p1) * (rTokenCut))
+        Fix r = currentRate.div(_prevBasketRate.plus(delta.mul(rTokenCut())));
         Fix dilutionFactor = _historicalBasketDilution.mul(r);
         require(dilutionFactor.gt(FIX_ZERO), "dilutionFactor cannot be zero");
         return dilutionFactor;
@@ -148,13 +139,13 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, IVaultHandler {
 
     /// @return How many BUs were cracked
     function _crackFrom(
-        IVault vault,
+        IVault vault_,
         address recipient,
         uint256 maxToCrack
     ) private returns (uint256) {
-        uint256 toCrack = Math.min(vault.basketUnits(address(this)), maxToCrack);
+        uint256 toCrack = Math.min(vault_.basketUnits(address(this)), maxToCrack);
         if (toCrack > 0) {
-            vault.redeem(recipient, toCrack);
+            vault_.redeem(recipient, toCrack);
         }
         return toCrack;
     }

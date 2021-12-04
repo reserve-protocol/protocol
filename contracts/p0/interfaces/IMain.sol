@@ -33,8 +33,6 @@ struct Config {
     Fix migrationChunk; // how much backing to migrate at a time, as a fraction of RToken supply
     Fix issuanceRate; // the number of RToken to issue per block, as a fraction of RToken supply
     Fix defaultThreshold; // the percent deviation required before a token is marked as in-default
-    Fix cut; // The Revenue Factor: the fraction of revenue that goes to stakers
-    // TODO: Revenue Distribution Map
 
     // Sample values
     //
@@ -52,13 +50,18 @@ struct Config {
     // migrationChunk = 0.2 (20%)
     // issuanceRate = 0.00025 (0.025% per block, or ~0.1% per minute)
     // defaultThreshold = 0.05 (5% deviation)
-    // cut = 0.6 (60% to stakers)
+}
+
+struct RevenueShare {
+    Fix rTokenDist;
+    Fix rsrDist;
 }
 
 struct ConstructorArgs {
     ICollateral[] approvedCollateral;
     Oracle.Info oracle;
     Config config;
+    RevenueShare dist;
     IAsset rTokenAsset;
     IAsset rsrAsset;
     IAsset compAsset;
@@ -103,11 +106,10 @@ interface IAssetRegistry {
     function isApproved(IAsset asset) external view returns (bool);
 }
 
-interface IRevenueTable {
+interface IRevenueDistributor {
     function setDistribution(
         address dest,
-        Fix rTokenFraction,
-        Fix rsrFraction
+        RevenueShare memory share
     ) external;
 
     function distribute(
@@ -212,19 +214,12 @@ interface ISettingsHandler {
 }
 
 interface IVaultHandler {
-    /// Emitted when parameter `cut` (proportion of revenue to stakers) is changed
-    /// @param oldCut The old value of `cut`, as a Fix
-    /// @param newCut The new value of `cut`, as a Fix
-    event CutSet(Fix oldCut, Fix newCut);
-
     /// Emitted when the current vault is changed
     /// @param oldVault The address of the old vault
     /// @param newVault The address of the new vault
     event NewVaultSet(address indexed oldVault, address indexed newVault);
 
     function switchVault(IVault vault) external;
-
-    function setCut(Fix newCut) external;
 
     function toBUs(uint256 amount) external view returns (uint256);
 
@@ -324,7 +319,7 @@ interface IMain is
     IMoody,
     IAssetRegistry,
     ISettingsHandler,
-    IRevenueTable,
+    IRevenueDistributor,
     IVaultHandler,
     IDefaultHandler,
     IAuctioneer,

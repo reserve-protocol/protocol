@@ -41,6 +41,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     function assertInvariants() external view override {
         assert(_INVARIANT_stateDefined());
         assert(_INVARIANT_configurationValid());
+        assert(_INVARIANT_distributionValid());
         assert(_INVARIANT_fullyCapitalizedOrNotCalm());
         assert(_INVARIANT_nextRewardsInFutureOrNow());
         assert(_INVARIANT_quoteMonotonic());
@@ -96,9 +97,21 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && migrationChunk().gte(FIX_ZERO) && migrationChunk().lte(FIX_ONE);
         ok = ok && issuanceRate().gte(FIX_ZERO) && issuanceRate().lte(FIX_ONE);
         ok = ok && defaultThreshold().gte(FIX_ZERO) && defaultThreshold().lte(FIX_ONE);
-        ok = ok && cut().gte(FIX_ZERO) && cut().lte(FIX_ONE);
         if (!ok) {
             console.log("_INVARIANT_configurationValid violated");
+        }
+    }
+
+    function _INVARIANT_distributionValid() internal view returns (bool somethingIsPositive) {
+        for (uint256 i = 0; i < _destinations.length(); i++) {
+            Fix rsrDist = _distribution[_destinations.at(i)].rsrDist;
+            Fix rTokenDist = _distribution[_destinations.at(i)].rTokenDist;
+            if (rsrDist.gt(FIX_ZERO) || rTokenDist.gt(FIX_ZERO)) {
+                somethingIsPositive = true;
+            }
+            if (rsrDist.lt(FIX_ZERO) || rTokenDist.lt(FIX_ZERO)) {
+                return false;
+            }
         }
     }
 

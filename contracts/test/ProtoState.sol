@@ -38,6 +38,14 @@ enum Asset {
     AAVE // 13
 }
 
+
+/// How revenue is to be distributed
+struct RevenueDestination {
+    address dest;
+    Fix rTokenDist;
+    Fix rsrDist;
+}
+
 /// Basket Unit, ie 1e18{qBU}
 struct BU {
     Asset[] assets;
@@ -49,6 +57,7 @@ struct OraclePrice {
     uint256 inETH; // {qETH/tok}
     uint256 inUSD; // {microUSD/tok}
 }
+
 
 struct TokenState {
     string name;
@@ -65,6 +74,7 @@ struct ProtoState {
     // System-internal state
     Mood mood;
     Config config;
+    RevenueDestination[] distribution;
     BU rTokenDefinition;
     TokenState rToken;
     TokenState rsr;

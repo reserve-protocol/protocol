@@ -55,14 +55,15 @@ contract DeployerP0 is IDeployer {
     /// @param collateral The collateral assets in the system
     /// @return The address of the newly deployed Main instance.
     function deploy(
-        string memory name,
-        string memory symbol,
+        string calldata name,
+        string calldata symbol,
         address owner,
         IVault vault,
-        Config memory config,
+        Config calldata config,
+        RevenueShare calldata dist,
         IComptroller compound,
         IAaveLendingPool aave,
-        ICollateral[] memory collateral
+        ICollateral[] calldata collateral
     ) external override returns (address) {
         Oracle.Info memory oracle = Oracle.Info(compound, aave);
 
@@ -77,6 +78,7 @@ contract DeployerP0 is IDeployer {
                     collateral,
                     oracle,
                     config,
+                    dist,
                     rTokenAsset,
                     rsrAsset,
                     compAsset,

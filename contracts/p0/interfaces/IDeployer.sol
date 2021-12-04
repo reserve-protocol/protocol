@@ -27,18 +27,20 @@ interface IDeployer {
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param vault The initial vault that backs the RToken
     /// @param config Governance param
+    /// @param dist Shares of revenue initially to RSR pool and RToken melting
     /// @param compound The deployment of the Comptroller on this chain
     /// @param aave The deployment of the AaveLendingPool on this chain
     /// @param collateral The collateral assets in the system
     /// @return The address of the newly deployed Main instance.
     function deploy(
-        string memory name,
-        string memory symbol,
+        string calldata name,
+        string calldata symbol,
         address owner,
         IVault vault,
-        Config memory config,
+        Config calldata config,
+        RevenueShare calldata dist,
         IComptroller compound,
         IAaveLendingPool aave,
-        ICollateral[] memory collateral
+        ICollateral[] calldata collateral
     ) external returns (address);
 }

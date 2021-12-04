@@ -10,13 +10,13 @@ import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/main/SettingsHandlerP0.sol";
 import "contracts/libraries/Fixed.sol";
 
-contract RevenueTableP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueTable {
+contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDistributor {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    EnumerableSet.AddressSet private _addrs;
-    mapping(address => Fix[2]) private _distribution;
+    EnumerableSet.AddressSet internal _destinations;
+    mapping(address => RevenueShare) internal _distribution;
     // Values: [RToken fraction, RSR fraction]
     // invariant: distribution values are all nonnegative, and at least one is nonzero.
 
@@ -25,18 +25,16 @@ contract RevenueTableP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueTable {
 
     function init(ConstructorArgs calldata args) public virtual override(Mixin, SettingsHandlerP0) {
         super.init(args);
-        // TODO: pull `cut` out of `config` in ConstructorArgs?
-        setDistribution(FURNACE, FIX_ONE.minus(args.config.cut), FIX_ZERO);
-        setDistribution(ST_RSR, FIX_ZERO, args.config.cut);
+        setDistribution(FURNACE, RevenueShare(args.dist.rTokenDist, FIX_ZERO));
+        setDistribution(ST_RSR, RevenueShare(FIX_ZERO, args.dist.rsrDist));
     }
 
     function setDistribution(
         address dest,
-        Fix rTokenFraction,
-        Fix rsrFraction
+        RevenueShare memory share
     ) public override onlyOwner {
-        _addrs.add(dest);
-        _distribution[dest] = [rTokenFraction, rsrFraction];
+        _destinations.add(dest);
+        _distribution[dest] = share;
     }
 
     /// Requires an allowance
@@ -48,10 +46,13 @@ contract RevenueTableP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueTable {
         require(erc20 == rsr() || erc20 == rToken(), "RSR or RToken");
         (Fix rTokenTotal, Fix rsrTotal) = _totals();
         Fix total = erc20 == rsr() ? rsrTotal : rTokenTotal;
-        uint256 index = erc20 == rsr() ? 1 : 0;
-        for (uint256 i = 0; i < _addrs.length(); i++) {
-            uint256 slice = _distribution[_addrs.at(i)][index].mulu(amount).div(total).toUint();
-            address addr_to = _addrs.at(i);
+        for (uint256 i = 0; i < _destinations.length(); i++) {
+            Fix subshare = erc20 == rsr() ?
+                _distribution[_destinations.at(i)].rsrDist :
+                _distribution[_destinations.at(i)].rTokenDist;
+            uint256 slice = subshare.mulu(amount).div(total).toUint();
+
+            address addr_to = _destinations.at(i);
             if (addr_to == FURNACE) {
                 erc20.safeTransferFrom(from, address(revenueFurnace()), slice);
                 revenueFurnace().respondToDeposit(erc20);
@@ -59,7 +60,7 @@ contract RevenueTableP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueTable {
                 erc20.safeTransferFrom(from, address(stRSR()), slice);
                 stRSR().respondToDeposit(erc20);
             }
-            erc20.safeTransferFrom(from, _addrs.at(i), slice);
+            erc20.safeTransferFrom(from, _destinations.at(i), slice);
         }
     }
 
@@ -76,11 +77,10 @@ contract RevenueTableP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueTable {
 
     /// Returns the rsr + rToken totals
     function _totals() private view returns (Fix rTokenTotal, Fix rsrTotal) {
-        for (uint256 i = 0; i < _addrs.length(); i++) {
-            Fix rTokenFraction = _distribution[_addrs.at(i)][0];
-            Fix rsrFraction = _distribution[_addrs.at(i)][1];
-            rTokenTotal = rTokenTotal.plus(rTokenFraction);
-            rsrTotal = rsrTotal.plus(rsrFraction);
+        for (uint256 i = 0; i < _destinations.length(); i++) {
+            RevenueShare storage share = _distribution[_destinations.at(i)];
+            rTokenTotal = rTokenTotal.plus(share.rTokenDist);
+            rsrTotal = rsrTotal.plus(share.rsrDist);
         }
     }
 }
