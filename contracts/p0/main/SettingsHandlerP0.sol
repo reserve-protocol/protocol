@@ -73,8 +73,8 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         _aaveAsset = args.aaveAsset;
     }
 
-    function notify() public virtual override(Mixin, AssetRegistryP0) {
-        super.notify();
+    function beforeUpdate() public virtual override(Mixin, AssetRegistryP0) {
+        super.beforeUpdate();
     }
 
     function setOracle(Oracle.Info memory oracle_) external override onlyOwner {

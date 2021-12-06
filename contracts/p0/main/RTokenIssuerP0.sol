@@ -84,12 +84,12 @@ contract RTokenIssuerP0 is
         super.poke();
     }
 
-    function notify()
+    function beforeUpdate()
         public
         virtual
         override(Mixin, SettingsHandlerP0, VaultHandlerP0, DefaultHandlerP0)
     {
-        super.notify();
+        super.beforeUpdate();
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral

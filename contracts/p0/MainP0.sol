@@ -37,6 +37,7 @@ contract MainP0 is
     using FixLib for Fix;
 
     /// Constructor-as-function
+    /// Idempotent
     function init(ConstructorArgs calldata args)
         public
         virtual
@@ -67,7 +68,7 @@ contract MainP0 is
 
     /// An idempotent mutator for updating accounting metrics
     /// Unlike `poke`, no external side-effects
-    function notify()
+    function beforeUpdate()
         public
         virtual
         override(
@@ -83,6 +84,6 @@ contract MainP0 is
             RTokenIssuerP0
         )
     {
-        super.notify();
+        super.beforeUpdate();
     }
 }

@@ -24,8 +24,8 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         _allAssets.add(address(args.aaveAsset));
     }
 
-    function notify() public virtual override {
-        super.notify();
+    function beforeUpdate() public virtual override {
+        super.beforeUpdate();
     }
 
     /// @return fiatcoins An array of approved fiatcoin collateral to be used for oracle USD determination

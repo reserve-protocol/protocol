@@ -16,7 +16,7 @@ contract Mixin {
         require(_initialized, "not initialized");
     }
 
-    function notify() public virtual {
+    function beforeUpdate() public virtual {
         require(_initialized, "not initialized");
     }
 }

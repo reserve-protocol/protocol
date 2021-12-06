@@ -48,8 +48,12 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
     }
 
     /// Folds current metrics into historical metrics
-    function notify() public virtual override(Mixin, SettingsHandlerP0, RevenueDistributorP0) {
-        super.notify();
+    function beforeUpdate()
+        public
+        virtual
+        override(Mixin, SettingsHandlerP0, RevenueDistributorP0)
+    {
+        super.beforeUpdate();
         _historicalBasketDilution = _basketDilutionFactor();
         _prevBasketRate = vault.basketRate();
     }
@@ -97,7 +101,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         vault = vault_;
 
         // Accumulate the basket dilution factor to enable correct forward accounting
-        notify();
+        beforeUpdate();
     }
 
     /// @return {none) Denominator of the base factor

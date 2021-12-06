@@ -62,12 +62,12 @@ contract RevenueHandlerP0 is
         }
     }
 
-    function notify()
+    function beforeUpdate()
         public
         virtual
         override(Mixin, SettingsHandlerP0, RevenueDistributorP0, VaultHandlerP0, AuctioneerP0)
     {
-        super.notify();
+        super.beforeUpdate();
     }
 
     /// @return The timestamp of the next rewards event

@@ -85,12 +85,12 @@ contract AuctioneerP0 is
         rTokenMeltingTrader.poke();
     }
 
-    function notify()
+    function beforeUpdate()
         public
         virtual
         override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
     {
-        super.notify();
+        super.beforeUpdate();
     }
 
     function getBackingTrader() external view override returns (address) {
@@ -99,7 +99,7 @@ contract AuctioneerP0 is
 
     function _rTokenHaircut() private {
         // The ultimate endgame: a haircut for RToken holders.
-        notify();
+        beforeUpdate();
         _historicalBasketDilution = _meltingFactor().mulu(rToken().totalSupply()).divu(
             vault.basketUnits(address(this))
         );

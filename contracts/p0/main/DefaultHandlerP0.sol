@@ -69,12 +69,12 @@ contract DefaultHandlerP0 is
         }
     }
 
-    function notify()
+    function beforeUpdate()
         public
         virtual
         override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
     {
-        super.notify();
+        super.beforeUpdate();
     }
 
     /// Checks for hard default by inspecting the redemption rates of all collateral tokens

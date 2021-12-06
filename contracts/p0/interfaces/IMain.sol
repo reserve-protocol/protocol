@@ -76,7 +76,7 @@ interface IMixin {
 
     function poke() external;
 
-    function notify() external;
+    function beforeUpdate() external;
 }
 
 interface IPausable {
