@@ -102,10 +102,10 @@ contract RTokenIssuerP0 is
 
         // During SlowIssuance, RTokens are minted and held by Main until vesting completes
         SlowIssuance memory iss = SlowIssuance({
-            vault: vault,
+            vault: vault(),
             amount: amount,
             amtBUs: amtBUs,
-            deposits: vault.tokenAmounts(amtBUs),
+            deposits: vault().tokenAmounts(amtBUs),
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
@@ -141,19 +141,19 @@ contract RTokenIssuerP0 is
 
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) public view override returns (uint256[] memory) {
-        return vault.tokenAmounts(toBUs(amount));
+        return vault().tokenAmounts(toBUs(amount));
     }
 
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
-        return fromBUs(vault.maxIssuable(account));
+        return fromBUs(vault().maxIssuable(account));
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
     function backingTokens() public view override returns (address[] memory erc20s) {
-        erc20s = new address[](vault.size());
-        for (uint256 i = 0; i < vault.size(); i++) {
-            erc20s[i] = address(vault.collateralAt(i).erc20());
+        erc20s = new address[](vault().size());
+        for (uint256 i = 0; i < vault().size(); i++) {
+            erc20s[i] = address(vault().collateralAt(i).erc20());
         }
     }
 
@@ -172,7 +172,7 @@ contract RTokenIssuerP0 is
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowIssuance() internal {
         for (uint256 i = 0; i < issuances.length; i++) {
-            if (!issuances[i].processed && issuances[i].vault != vault) {
+            if (!issuances[i].processed && issuances[i].vault != vault()) {
                 rToken().burn(address(rToken()), issuances[i].amount);
                 issuances[i].vault.redeem(issuances[i].issuer, issuances[i].amtBUs);
                 issuances[i].processed = true;

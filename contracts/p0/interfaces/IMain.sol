@@ -227,6 +227,10 @@ interface IVaultHandler {
     function fullyCapitalized() external view returns (bool);
 
     function vault() external view returns (IVault);
+
+    function vaults(uint256 index) external view returns (IVault);
+
+    function numVaults() external view returns (uint256);
 }
 
 // solhint-disable-next-line no-empty-blocks

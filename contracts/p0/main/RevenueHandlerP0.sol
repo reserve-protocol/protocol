@@ -81,16 +81,12 @@ contract RevenueHandlerP0 is
         // Self
         oracle().compound.claimComp(address(this));
 
-        // Current vault
-        oracle().compound.claimComp(address(vault));
-        vault.sweepNonBackingTokenToMain(compAsset().erc20());
-
-        // Past vaults
-        for (uint256 i = 0; i < pastVaults.length; i++) {
-            uint256 bal = compAsset().erc20().balanceOf(address(pastVaults[i]));
+        // Vaults
+        for (uint256 i = 0; i < vaults.length; i++) {
+            uint256 bal = compAsset().erc20().balanceOf(address(vaults[i]));
             if (bal > 0) {
-                oracle().compound.claimComp(address(pastVaults[i]));
-                pastVaults[i].sweepNonBackingTokenToMain(compAsset().erc20());
+                oracle().compound.claimComp(address(vaults[i]));
+                vaults[i].sweepNonBackingTokenToMain(compAsset().erc20());
             }
         }
 
@@ -110,22 +106,15 @@ contract RevenueHandlerP0 is
                 uint256 bal = aic.getRewardsBalance(underlyings, address(this));
                 aic.claimRewardsOnBehalf(underlyings, bal, address(this), address(this));
 
-                // Current vault
-                bal = aic.getRewardsBalance(underlyings, address(vault));
-                if (bal > 0) {
-                    vault.setMainAsAaveClaimer(aic);
-                    aic.claimRewardsOnBehalf(underlyings, bal, address(vault), address(this));
-                }
-
-                // Past vaults
-                for (uint256 j = 0; j < pastVaults.length; j++) {
-                    bal = aic.getRewardsBalance(underlyings, address(pastVaults[j]));
+                // Vaults
+                for (uint256 j = 0; j < vaults.length; j++) {
+                    bal = aic.getRewardsBalance(underlyings, address(vaults[j]));
                     if (bal > 0) {
-                        pastVaults[j].setMainAsAaveClaimer(aic);
+                        vaults[j].setMainAsAaveClaimer(aic);
                         aic.claimRewardsOnBehalf(
                             underlyings,
                             bal,
-                            address(pastVaults[j]),
+                            address(vaults[j]),
                             address(this)
                         );
                     }
@@ -138,7 +127,7 @@ contract RevenueHandlerP0 is
 
     function _expandSupplyToRTokenTrader() internal {
         // Expand the RToken supply to self
-        uint256 possible = fromBUs(vault.basketUnits(address(this)));
+        uint256 possible = fromBUs(vault().basketUnits(address(this)));
         uint256 totalSupply = rToken().totalSupply();
         if (fullyCapitalized() && possible > totalSupply) {
             rToken().mint(address(rTokenMeltingTrader), possible - totalSupply);

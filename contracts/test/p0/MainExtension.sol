@@ -71,7 +71,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         assert(_INVARIANT_hasCollateralConfiguration());
         assert(_INVARIANT_toBUInverseFromBU());
         assert(_INVARIANT_fromBUInverseToBU());
-        assert(_INVARIANT_vaultNotInPastVaults());
         assert(_INVARIANT_auctionsPartitionCleanly());
         assert(_INVARIANT_auctionsClosedInThePast());
     }
@@ -89,7 +88,8 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && _historicalBasketDilution.gt(FIX_ZERO);
         ok = ok && _approvedCollateral.length() > 0;
         ok = ok && _allAssets.length() > 0;
-        ok = ok && address(vault) != address(0);
+        ok = ok && address(vault()) != address(0);
+        ok = ok && vaults.length > 0;
         if (!ok) {
             console.log("_INVARIANT_stateDefined violated");
         }
@@ -186,8 +186,8 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     function _INVARIANT_pricesDefined() internal view returns (bool ok) {
         ok = true;
         Oracle.Info memory oracle_ = oracle();
-        for (uint256 i = 0; i < vault.size(); i++) {
-            ICollateral c = vault.collateralAt(i);
+        for (uint256 i = 0; i < vault().size(); i++) {
+            ICollateral c = vault().collateralAt(i);
             if (c.isFiatcoin()) {
                 ok = ok && oracle_.consult(Oracle.Source.AAVE, address(c.erc20())).gt(FIX_ZERO);
             }
@@ -246,7 +246,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     }
 
     function _INVARIANT_fromBUInverseToBU() internal view returns (bool ok) {
-        uint256 bu_s = vault.basketUnits(address(this));
+        uint256 bu_s = vault().basketUnits(address(this));
         bytes memory result = address(this).functionStaticCall(
             abi.encodeWithSignature("fromBUs(uint256)", bu_s)
         );
@@ -256,16 +256,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = bu_s == abi.decode(result2, (uint256));
         if (!ok) {
             console.log("_INVARIANT_fromBUInverseToBU violated");
-        }
-    }
-
-    function _INVARIANT_vaultNotInPastVaults() internal view returns (bool ok) {
-        ok = true;
-        for (uint256 i = 0; i < pastVaults.length; i++) {
-            ok = ok && vault != pastVaults[i];
-        }
-        if (!ok) {
-            console.log("_INVARIANT_vaultNotInPastVaults violated");
         }
     }
 

@@ -65,7 +65,8 @@ contract AuctioneerP0 is
         if (!trading && !fullyCapitalized()) {
             uint256 maxBUs = toBUs(migrationChunk().mulu(rToken().totalSupply()).toUint());
             uint256 crackedBUs = _crackOldVaults(address(backingTrader), maxBUs);
-            uint256 buShortfall = toBUs(rToken().totalSupply()) - vault.basketUnits(address(this));
+            uint256 buShortfall = toBUs(rToken().totalSupply()) -
+                vault().basketUnits(address(this));
             if (crackedBUs > 0) {
                 backingTrader.increaseBUTarget(crackedBUs, buShortfall);
                 trading = backingTrader.poke();
@@ -101,7 +102,7 @@ contract AuctioneerP0 is
         // The ultimate endgame: a haircut for RToken holders.
         beforeUpdate();
         _historicalBasketDilution = _meltingFactor().mulu(rToken().totalSupply()).divu(
-            vault.basketUnits(address(this))
+            vault().basketUnits(address(this))
         );
         _setMood(Mood.CALM);
     }
