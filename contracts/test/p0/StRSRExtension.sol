@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "contracts/test/Mixins.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
-import "contracts/p0/StRSRP0.sol";
+import "contracts/p0/StRSR.sol";
 
 /// Enables generic testing harness to set _msgSender() for StRSR.
 contract StRSRExtension is ContextMixin, StRSRP0, IExtension {

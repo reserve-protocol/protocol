@@ -6,7 +6,7 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/MainP0.sol";
+import "contracts/p0/Main.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/IExplorer.sol";
 

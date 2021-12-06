@@ -9,13 +9,13 @@ import "../interfaces/IVault.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/mocks/ERC20Mock.sol";
-import "contracts/p0/assets/COMPAssetP0.sol";
-import "contracts/p0/assets/AAVEAssetP0.sol";
-import "./CompoundOracleMockP0.sol";
-import "./ComptrollerMockP0.sol";
-import "./AaveOracleMockP0.sol";
-import "./AaveLendingAddrProviderMockP0.sol";
-import "./AaveLendingPoolMockP0.sol";
+import "contracts/p0/assets/COMPAsset.sol";
+import "contracts/p0/assets/AAVEAsset.sol";
+import "./CompoundOracleMock.sol";
+import "./ComptrollerMock.sol";
+import "./AaveOracleMock.sol";
+import "./AaveLendingAddrProviderMock.sol";
+import "./AaveLendingPoolMock.sol";
 
 contract ManagerInternalMockP0 {
     bool public fullyCapitalized;

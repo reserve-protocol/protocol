@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
+import "contracts/p0/assets/collateral/ATokenCollateral.sol";
 import "contracts/libraries/Fixed.sol";
 import "./ERC20Mock.sol";
 
@@ -28,8 +28,6 @@ contract ATokenMock is ERC20Mock {
 contract StaticATokenMock is ERC20Mock {
     using FixLib for Fix;
 
-    IAaveIncentivesController private _incentivesController;
-
     ATokenMock internal immutable aToken;
 
     uint256 internal _exchangeRate;
@@ -42,11 +40,9 @@ contract StaticATokenMock is ERC20Mock {
     constructor(
         string memory name,
         string memory symbol,
-        address underlyingAsset,
-        IAaveIncentivesController incentivesController
+        address underlyingAsset
     ) ERC20Mock(name, symbol) {
         aToken = new ATokenMock(name, symbol, underlyingAsset);
-        _incentivesController = incentivesController;
 
         // In Aave all rates are in {RAYs/tok}, and they are independent of the underlying's decimals
         _exchangeRate = _toExchangeRate(FIX_ONE);
@@ -73,26 +69,20 @@ contract StaticATokenMock is ERC20Mock {
         return aToken;
     }
 
-    //solhint-disable-next-line func-name-mixedcase
-    function INCENTIVES_CONTROLLER() external view returns (IAaveIncentivesController) {
-        return _incentivesController;
-    }
-
     function setRewards(address recipient, uint256 amount) external {
         aaveBalances[recipient] = amount;
     }
 
-    function claimRewardsOnBehalf(
-        address onBehalfOf,
-        address receiver,
-        bool
-    ) external {
+    function claimRewardsToSelf(bool) external {
         // Mint amount and update internal balances
-        if (address(aaveToken) != address(0)) {
-            uint256 amount = aaveBalances[onBehalfOf];
-            aaveBalances[onBehalfOf] = 0;
-            aaveToken.mint(receiver, amount);
+        if (address(aaveToken) != address(0) && aaveBalances[msg.sender] > 0) {
+            aaveToken.mint(msg.sender, aaveBalances[msg.sender]);
+            aaveBalances[msg.sender] = 0;
         }
+    }
+
+    function getClaimableRewards(address user) external view returns (uint256) {
+        aaveBalances[user];
     }
 
     function _toExchangeRate(Fix fiatcoinRedemptionRate) internal pure returns (uint256) {

@@ -10,9 +10,9 @@ import "contracts/mocks/CTokenMock.sol";
 import "contracts/mocks/ERC20Mock.sol";
 import "contracts/mocks/MarketMock.sol";
 import "contracts/mocks/USDCMock.sol";
-import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
-import "contracts/p0/assets/collateral/CollateralP0.sol";
-import "contracts/p0/assets/collateral/CTokenCollateralP0.sol";
+import "contracts/p0/assets/collateral/ATokenCollateral.sol";
+import "contracts/p0/assets/collateral/Collateral.sol";
+import "contracts/p0/assets/collateral/CTokenCollateral.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IDeployer.sol";
 import "contracts/p0/interfaces/IMain.sol";
@@ -20,14 +20,13 @@ import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/libraries/Oracle.sol";
-import "contracts/p0/mocks/AaveLendingPoolMockP0.sol";
-import "contracts/p0/mocks/AaveLendingAddrProviderMockP0.sol";
-import "contracts/p0/mocks/AaveIncentivesControllerMockP0.sol";
-import "contracts/p0/mocks/AaveOracleMockP0.sol";
-import "contracts/p0/mocks/CompoundOracleMockP0.sol";
-import "contracts/p0/mocks/ComptrollerMockP0.sol";
-import "contracts/p0/mocks/RTokenMockP0.sol";
-import "contracts/p0/VaultP0.sol";
+import "contracts/p0/mocks/AaveLendingPoolMock.sol";
+import "contracts/p0/mocks/AaveLendingAddrProviderMock.sol";
+import "contracts/p0/mocks/AaveOracleMock.sol";
+import "contracts/p0/mocks/CompoundOracleMock.sol";
+import "contracts/p0/mocks/ComptrollerMock.sol";
+import "contracts/p0/mocks/RTokenMock.sol";
+import "contracts/p0/Vault.sol";
 import "contracts/test/Lib.sol";
 import "contracts/test/ProtosDriver.sol";
 import "contracts/test/ProtoState.sol";
@@ -75,7 +74,6 @@ contract AdapterP0 is ProtoAdapter {
         // Deploy assets + deployer
         ICollateral[] memory collateral = new ICollateral[](NUM_COLLATERAL);
         {
-            IAaveIncentivesController iac = new AaveIncentivesControllerMockP0();
             ERC20Mock dai = new ERC20Mock(s.collateral[0].name, s.collateral[0].symbol);
             USDCMock usdc = new USDCMock(s.collateral[1].name, s.collateral[1].symbol);
             ERC20Mock usdt = new ERC20Mock(s.collateral[2].name, s.collateral[2].symbol);
@@ -98,26 +96,22 @@ contract AdapterP0 is ProtoAdapter {
             StaticATokenMock aDAI = new StaticATokenMock(
                 s.collateral[7].name,
                 s.collateral[7].symbol,
-                address(dai),
-                iac
+                address(dai)
             );
             StaticATokenMock aUSDC = new StaticATokenMock(
                 s.collateral[8].name,
                 s.collateral[8].symbol,
-                address(usdc),
-                iac
+                address(usdc)
             );
             StaticATokenMock aUSDT = new StaticATokenMock(
                 s.collateral[9].name,
                 s.collateral[9].symbol,
-                address(usdt),
-                iac
+                address(usdt)
             );
             StaticATokenMock aBUSD = new StaticATokenMock(
                 s.collateral[10].name,
                 s.collateral[10].symbol,
-                address(busd),
-                iac
+                address(busd)
             );
             _rsr = new ERC20Mock(s.rsr.name, s.rsr.symbol);
             _comp = new ERC20Mock(s.comp.name, s.comp.symbol);
@@ -224,7 +218,7 @@ contract AdapterP0 is ProtoAdapter {
             }
 
             for (uint256 i = 0; i < vaults.length; i++) {
-                vaults[i].setMain(address(_main));
+                vaults[i].setMain(_main);
             }
         }
 

@@ -8,7 +8,7 @@ import "contracts/test/Mixins.sol";
 import "contracts/mocks/ERC20Mock.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
-import "contracts/p0/FurnaceP0.sol";
+import "contracts/p0/Furnace.sol";
 import "./RTokenExtension.sol";
 
 /// Enables generic testing harness to set _msgSender() for AssetManager.

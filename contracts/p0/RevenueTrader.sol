@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IERC20Receiver.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Auction.sol";
-import "contracts/p0/TraderP0.sol";
-import "contracts/p0/main/VaultHandlerP0.sol";
+import "contracts/p0/Trader.sol";
+import "contracts/p0/main/VaultHandler.sol";
 
 /// The RevenueTrader converts all asset balances at its address to a single target asset,
 /// and transfers this to either the Furnace or StRSR.

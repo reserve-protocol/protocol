@@ -14,5 +14,8 @@ interface IExplorer {
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external view returns (uint256);
 
-    function currentBacking() external view returns (address[] memory tokens, uint256[] memory quantities);
+    function currentBacking()
+        external
+        view
+        returns (address[] memory tokens, uint256[] memory quantities);
 }

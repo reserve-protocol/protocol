@@ -4,22 +4,22 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
+import "contracts/p0/assets/collateral/ATokenCollateral.sol";
 import "contracts/p0/libraries/Oracle.sol";
-import "contracts/p0/main/RevenueDistributorP0.sol";
-import "contracts/p0/main/SettingsHandlerP0.sol";
-import "contracts/p0/main/VaultHandlerP0.sol";
-import "contracts/p0/main/MoodyP0.sol";
+import "contracts/p0/main/RevenueDistributor.sol";
+import "contracts/p0/main/SettingsHandler.sol";
+import "contracts/p0/main/VaultHandler.sol";
+import "contracts/p0/main/Moody.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
-import "./AuctioneerP0.sol";
-import "./MoodyP0.sol";
-import "./SettingsHandlerP0.sol";
-import "./VaultHandlerP0.sol";
+import "./Auctioneer.sol";
+import "./Moody.sol";
+import "./SettingsHandler.sol";
+import "./VaultHandler.sol";
 
 /**
  * @title RevenueHandler
@@ -54,11 +54,19 @@ contract RevenueHandlerP0 is
         super.poke();
         (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
         if (prevRewards > _rewardsLastClaimed && fullyCapitalized()) {
-            _handleComp();
-            _handleAave();
-            _expandSupplyToRTokenTrader();
+            // Sweep COMP/AAVE from vaults + traders into Main
+            backingTrader.claimAndSweepRewards();
+            rsrStakingTrader.claimAndSweepRewards();
+            rTokenMeltingTrader.claimAndSweepRewards();
+            for (uint256 i = 0; i < vaults.length; i++) {
+                vaults[i].claimAndSweepRewards();
+            }
+
             _rewardsLastClaimed = prevRewards;
         }
+
+        _splitRewardsToTraders(compAsset());
+        _splitRewardsToTraders(aaveAsset());
     }
 
     function beforeUpdate()
@@ -75,55 +83,6 @@ contract RevenueHandlerP0 is
         return next;
     }
 
-    /// Claims COMP from all possible sources and splits earnings across revenue traders
-    function _handleComp() internal {
-        // Self
-        oracle().compound.claimComp(address(this));
-
-        // Vaults
-        for (uint256 i = 0; i < vaults.length; i++) {
-            uint256 bal = compAsset().erc20().balanceOf(address(vaults[i]));
-            if (bal > 0) {
-                oracle().compound.claimComp(address(vaults[i]));
-                vaults[i].sweepNonBackingTokenToMain(compAsset().erc20());
-            }
-        }
-
-        _splitRewardsToTraders(compAsset());
-    }
-
-    /// Claims AAVE from all possible sources and splits earnings across revenue traders
-    function _handleAave() internal {
-        for (uint256 i = 0; i < _allAssets.length(); i++) {
-            if (IAsset(_allAssets.at(i)).isAToken()) {
-                IStaticAToken aToken = IStaticAToken(address(IAsset(_allAssets.at(i)).erc20()));
-                IAaveIncentivesController aic = aToken.INCENTIVES_CONTROLLER();
-                address[] memory underlyings = new address[](1);
-                underlyings[0] = aToken.ATOKEN().UNDERLYING_ASSET_ADDRESS();
-
-                // Self
-                uint256 bal = aic.getRewardsBalance(underlyings, address(this));
-                aic.claimRewardsOnBehalf(underlyings, bal, address(this), address(this));
-
-                // Vaults
-                for (uint256 j = 0; j < vaults.length; j++) {
-                    bal = aic.getRewardsBalance(underlyings, address(vaults[j]));
-                    if (bal > 0) {
-                        vaults[j].setMainAsAaveClaimer(aic);
-                        aic.claimRewardsOnBehalf(
-                            underlyings,
-                            bal,
-                            address(vaults[j]),
-                            address(this)
-                        );
-                    }
-                }
-            }
-        }
-
-        _splitRewardsToTraders(aaveAsset());
-    }
-
     function _expandSupplyToRTokenTrader() internal {
         // Expand the RToken supply to self
         uint256 possible = fromBUs(vault().basketUnits(address(this)));
@@ -136,9 +95,11 @@ contract RevenueHandlerP0 is
     /// Splits `asset` into `cut` and `1-cut` proportions, and sends to revenue traders
     function _splitRewardsToTraders(IAsset asset) private {
         uint256 bal = asset.erc20().balanceOf(address(this));
-        uint256 amtToRSR = rsrCut().mulu(bal).toUint();
-        asset.erc20().safeTransfer(address(rsrStakingTrader), amtToRSR); // cut
-        asset.erc20().safeTransfer(address(rTokenMeltingTrader), bal - amtToRSR); // 1 - cut
+        if (bal > 0) {
+            uint256 amtToRSR = rsrCut().mulu(bal).toUint();
+            asset.erc20().safeTransfer(address(rsrStakingTrader), amtToRSR); // cut
+            asset.erc20().safeTransfer(address(rTokenMeltingTrader), bal - amtToRSR); // 1 - cut
+        }
     }
 
     // Returns the rewards boundaries on either side of *time*.

@@ -4,34 +4,19 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "./CollateralP0.sol";
-
-interface IAaveIncentivesController {
-    function setClaimer(address user, address claimer) external;
-
-    function claimRewardsOnBehalf(
-        address[] calldata assets,
-        uint256 amount,
-        address user,
-        address to
-    ) external returns (uint256);
-
-    function getRewardsBalance(address[] calldata assets, address user)
-        external
-        view
-        returns (uint256);
-}
+import "./Collateral.sol";
 
 // Interfaces to contracts from: https://git.io/JX7iJ
 interface IStaticAToken is IERC20 {
+    function claimRewardsToSelf(bool forceUpdate) external;
+
     // @return RAY{fiatTok/tok}
     function rate() external view returns (uint256);
 
     // solhint-disable-next-line func-name-mixedcase
     function ATOKEN() external view returns (AToken);
 
-    // solhint-disable-next-line func-name-mixedcase
-    function INCENTIVES_CONTROLLER() external view returns (IAaveIncentivesController);
+    function getClaimableRewards(address user) external view returns (uint256);
 }
 
 interface AToken {

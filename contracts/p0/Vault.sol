@@ -6,10 +6,11 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
+import "contracts/p0/assets/collateral/ATokenCollateral.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
+import "contracts/p0/libraries/Rewards.sol";
 import "contracts/libraries/Fixed.sol";
 
 /*
@@ -31,7 +32,7 @@ contract VaultP0 is IVault, Ownable {
 
     IVault[] public backups;
 
-    address public main;
+    IMain public main;
 
     /// @param quantities {qTok/BU}
     constructor(
@@ -88,17 +89,9 @@ contract VaultP0 is IVault, Ownable {
         emit BUsRedeemed(to, _msgSender(), amtBUs);
     }
 
-    /// Sweeps all balance of a non-backing token to main
-    function sweepNonBackingTokenToMain(IERC20 erc20) external override {
-        for (uint256 i = 0; i < _basket.size; i++) {
-            require(_basket.collateral[i].erc20() != erc20, "can't sweep a backing token");
-        }
-        erc20.safeTransfer(address(main), erc20.balanceOf(address(this)));
-    }
-
-    /// Approves main to claim AAVE rewards
-    function setMainAsAaveClaimer(IAaveIncentivesController incentiveController) external override {
-        incentiveController.setClaimer(address(this), main);
+    /// Claims and sweeps all COMP/AAVE rewards
+    function claimAndSweepRewards() external override {
+        RewardsLib.claimAndSweepRewards(main);
     }
 
     /// @param amtBUs {qBU}
@@ -163,7 +156,7 @@ contract VaultP0 is IVault, Ownable {
         backups = backupVaults;
     }
 
-    function setMain(address main_) external override onlyOwner {
+    function setMain(IMain main_) external override onlyOwner {
         main = main_;
     }
 }

@@ -3,10 +3,10 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./assets/RTokenAssetP0.sol";
-import "./assets/RSRAssetP0.sol";
-import "./assets/COMPAssetP0.sol";
-import "./assets/AAVEAssetP0.sol";
+import "./assets/RTokenAsset.sol";
+import "./assets/RSRAsset.sol";
+import "./assets/COMPAsset.sol";
+import "./assets/AAVEAsset.sol";
 import "../libraries/CommonErrors.sol";
 import "./libraries/Oracle.sol";
 import "./interfaces/IAsset.sol";
@@ -15,13 +15,13 @@ import "./interfaces/IFurnace.sol";
 import "./interfaces/IMain.sol";
 import "./interfaces/IMarket.sol";
 import "./interfaces/IVault.sol";
-import "./assets/RTokenAssetP0.sol";
+import "./assets/RTokenAsset.sol";
 import "contracts/IExplorer.sol";
-import "./ExplorerP0.sol";
-import "./FurnaceP0.sol";
-import "./MainP0.sol";
-import "./RTokenP0.sol";
-import "./StRSRP0.sol";
+import "./Explorer.sol";
+import "./Furnace.sol";
+import "./Main.sol";
+import "./RToken.sol";
+import "./StRSR.sol";
 
 /**
  * @title DeployerP0

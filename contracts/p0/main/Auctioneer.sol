@@ -11,16 +11,16 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/main/VaultHandlerP0.sol";
+import "contracts/p0/main/VaultHandler.sol";
 import "contracts/p0/main/Mixin.sol";
-import "contracts/p0/BackingTraderP0.sol";
-import "contracts/p0/RevenueTraderP0.sol";
+import "contracts/p0/BackingTrader.sol";
+import "contracts/p0/RevenueTrader.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
-import "./AssetRegistryP0.sol";
-import "./MoodyP0.sol";
-import "./SettingsHandlerP0.sol";
-import "./VaultHandlerP0.sol";
+import "./AssetRegistry.sol";
+import "./Moody.sol";
+import "./SettingsHandler.sol";
+import "./VaultHandler.sol";
 
 /**
  * @title Auctioneer

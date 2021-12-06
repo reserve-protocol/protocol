@@ -4,12 +4,14 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/libraries/Auction.sol";
+import "contracts/p0/libraries/Rewards.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
+import "contracts/p0/interfaces/IRewardsClaimer.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/main/VaultHandlerP0.sol";
+import "contracts/p0/main/VaultHandler.sol";
 
-contract TraderP0 is Ownable, IAuctioneerEvents {
+abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     using FixLib for Fix;
     using Auction for Auction.Info;
     Auction.Info[] public auctions;
@@ -44,6 +46,11 @@ contract TraderP0 is Ownable, IAuctioneerEvents {
 
     function setMain(IMain main_) external onlyOwner {
         main = main_;
+    }
+
+    /// Claims and sweeps all COMP/AAVE rewards
+    function claimAndSweepRewards() external override {
+        RewardsLib.claimAndSweepRewards(main);
     }
 
     /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price

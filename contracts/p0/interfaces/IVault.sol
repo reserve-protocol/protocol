@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
+import "contracts/p0/assets/collateral/ATokenCollateral.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
+import "contracts/p0/interfaces/IRewardsClaimer.sol";
 import "contracts/libraries/Fixed.sol";
 
 /// @param collateral Mapping from an incremental index to asset
@@ -19,7 +20,7 @@ struct Basket {
  * @title IVault
  * @notice An issuer of an internal bookkeeping unit called a BU or basket unit.
  */
-interface IVault {
+interface IVault is IRewardsClaimer {
     /// Emitted whenever new BUs are issued
     /// @param to The account that earned the BUs
     /// @param by The account that paid for the BUs
@@ -52,14 +53,8 @@ interface IVault {
     /// @param amtBUs {qBU} The quantity of BUs to redeem
     function redeem(address to, uint256 amtBUs) external;
 
-    /// Sweeps all balance of a non-backing token to main
-    function sweepNonBackingTokenToMain(IERC20 erc20) external;
-
-    /// Sets Main as the claimer of AAVE rewards earned by the vault
-    function setMainAsAaveClaimer(IAaveIncentivesController incentiveController) external;
-
     /// Main Setter
-    function setMain(address main) external;
+    function setMain(IMain main) external;
 
     /// @return {USD/qBU} The USD value of 1 BU if all fiatcoins hold peg
     function basketRate() external view returns (Fix);

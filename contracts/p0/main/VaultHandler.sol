@@ -10,9 +10,9 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/main/Mixin.sol";
-import "contracts/p0/main/RevenueDistributorP0.sol";
+import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/libraries/Fixed.sol";
-import "./SettingsHandlerP0.sol";
+import "./SettingsHandler.sol";
 
 /**
  * @title VaultHandler

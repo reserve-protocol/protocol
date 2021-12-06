@@ -8,8 +8,8 @@ import "contracts/p0/libraries/Auction.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/TraderP0.sol";
-import "contracts/p0/main/VaultHandlerP0.sol";
+import "contracts/p0/Trader.sol";
+import "contracts/p0/main/VaultHandler.sol";
 import "contracts/libraries/Fixed.sol";
 
 contract BackingTraderP0 is TraderP0 {

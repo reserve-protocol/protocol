@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "contracts/p0/interfaces/IMain.sol";
 
 /// Base class for all Main mixins
-contract Mixin {
+abstract contract Mixin {
     bool private _initialized;
 
     function init(ConstructorArgs calldata) public virtual {

@@ -3,16 +3,16 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/p0/main/SettingsHandlerP0.sol";
-import "contracts/p0/main/MoodyP0.sol";
-import "contracts/p0/main/VaultHandlerP0.sol";
+import "contracts/p0/main/SettingsHandler.sol";
+import "contracts/p0/main/Moody.sol";
+import "contracts/p0/main/VaultHandler.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/Pausable.sol";
-import "./MoodyP0.sol";
-import "./SettingsHandlerP0.sol";
-import "./VaultHandlerP0.sol";
-import "./DefaultHandlerP0.sol";
+import "./Moody.sol";
+import "./SettingsHandler.sol";
+import "./VaultHandler.sol";
+import "./DefaultHandler.sol";
 
 /**
  * @title RTokenIssuer
@@ -58,22 +58,14 @@ contract RTokenIssuerP0 is
 
         // TODO: Move into DefaultHandler
         ICollateral[] memory hardDefaulting = _checkForHardDefault();
-        for (uint256 i = 0; i < hardDefaulting.length; i++) {
-            _unapproveCollateral(hardDefaulting[i]);
-        }
-
-        Mood mood = mood();
-        if (!_vaultIsOnlyApprovedCollateral(vault)) {
-            mood = Mood.DOUBT;
-            IVault nextVault = _selectNextVault();
-            if (address(nextVault) != address(0)) {
-                _switchVault(nextVault);
-                mood = Mood.TRADING;
+        if (hardDefaulting.length > 0) {
+            for (uint256 i = 0; i < hardDefaulting.length; i++) {
+                _unapproveCollateral(hardDefaulting[i]);
             }
-        }
-        _setMood(mood);
 
-        if (!paused) {
+            _switchVault(_selectNextVault());
+            _setMood(Mood.TRADING);
+        } else if (!paused && mood() != Mood.DOUBT) {
             _processSlowIssuance();
         }
         _;
@@ -180,7 +172,7 @@ contract RTokenIssuerP0 is
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowIssuance() internal {
         for (uint256 i = 0; i < issuances.length; i++) {
-            if (!issuances[i].processed && (issuances[i].vault != vault || mood() == Mood.DOUBT)) {
+            if (!issuances[i].processed && issuances[i].vault != vault()) {
                 rToken().burn(address(rToken()), issuances[i].amount);
                 issuances[i].vault.redeem(issuances[i].issuer, issuances[i].amtBUs);
                 issuances[i].processed = true;

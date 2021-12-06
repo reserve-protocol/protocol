@@ -610,7 +610,9 @@ describe('MainP0 contract', () => {
       expect(sm_proc).to.equal(true)
       expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssuanceAmt))
-      expect(await vault.basketUnits(assetManager.address)).to.equal(issueAmount.add(newIssuanceAmt))
+      expect(await vault.basketUnits(assetManager.address)).to.equal(
+        issueAmount.add(newIssuanceAmt)
+      )
     })
 
     it('Should process multiple issuances in the correct order', async function () {
@@ -642,13 +644,17 @@ describe('MainP0 contract', () => {
       await main.poke()
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
-      expect(await vault.basketUnits(assetManager.address)).to.equal(issueAmount.add(newIssueAmount))
+      expect(await vault.basketUnits(assetManager.address)).to.equal(
+        issueAmount.add(newIssueAmount)
+      )
 
       // Process another block to get the 3rd issuance processed
       await main.poke()
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
-      expect(await vault.basketUnits(assetManager.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
+      expect(await vault.basketUnits(assetManager.address)).to.equal(
+        issueAmount.add(newIssueAmount.mul(2))
+      )
     })
 
     it('Should rollback mintings if Vault changes (2 blocks)', async function () {

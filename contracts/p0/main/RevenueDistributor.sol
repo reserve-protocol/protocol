@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/main/Mixin.sol";
-import "contracts/p0/main/SettingsHandlerP0.sol";
+import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/libraries/Fixed.sol";
 
 contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDistributor {

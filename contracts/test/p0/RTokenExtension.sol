@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "contracts/test/Mixins.sol";
 import "contracts/p0/interfaces/IRToken.sol";
-import "contracts/p0/RTokenP0.sol";
+import "contracts/p0/RToken.sol";
 
 /// Enables generic testing harness to set _msgSender() for RToken.
 contract RTokenExtension is ContextMixin, RTokenP0, IExtension {

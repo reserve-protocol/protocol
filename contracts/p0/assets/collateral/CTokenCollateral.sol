@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/assets/collateral/CollateralP0.sol";
+import "contracts/p0/assets/collateral/Collateral.sol";
 import "contracts/libraries/Fixed.sol";
 
 // cToken initial exchange rate is 0.02

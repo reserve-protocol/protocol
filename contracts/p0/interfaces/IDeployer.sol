@@ -2,9 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/p0/assets/RSRAssetP0.sol";
-import "contracts/p0/assets/COMPAssetP0.sol";
-import "contracts/p0/assets/AAVEAssetP0.sol";
+import "contracts/p0/assets/RSRAsset.sol";
+import "contracts/p0/assets/COMPAsset.sol";
+import "contracts/p0/assets/AAVEAsset.sol";
 
 import "./IAsset.sol";
 import "./IVault.sol";
@@ -17,7 +17,12 @@ interface IDeployer {
     /// Emitted when a new RToken and accompanying system is deployed
     /// @param main The address of `Main`
     /// @param owner The owner of the newly deployed system
-    event RTokenCreated(address indexed main, address indexed rToken, address explorer, address indexed owner);
+    event RTokenCreated(
+        address indexed main,
+        address indexed rToken,
+        address explorer,
+        address indexed owner
+    );
 
     //
 

@@ -5,17 +5,17 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/main/AssetRegistryP0.sol";
-import "contracts/p0/main/MoodyP0.sol";
-import "contracts/p0/main/SettingsHandlerP0.sol";
+import "contracts/p0/main/AssetRegistry.sol";
+import "contracts/p0/main/Moody.sol";
+import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/p0/main/Mixin.sol";
-import "contracts/p0/main/VaultHandlerP0.sol";
+import "contracts/p0/main/VaultHandler.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
-import "./AssetRegistryP0.sol";
-import "./MoodyP0.sol";
-import "./SettingsHandlerP0.sol";
-import "./VaultHandlerP0.sol";
+import "./AssetRegistry.sol";
+import "./Moody.sol";
+import "./SettingsHandler.sol";
+import "./VaultHandler.sol";
 
 /**
  * @title DefaultHandler
@@ -67,7 +67,6 @@ contract DefaultHandlerP0 is
         } else {
             _setMood(Mood.DOUBT);
         }
-        _setMood(mood);
     }
 
     function beforeUpdate()
