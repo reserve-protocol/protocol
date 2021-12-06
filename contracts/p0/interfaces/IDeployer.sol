@@ -17,7 +17,7 @@ interface IDeployer {
     /// Emitted when a new RToken and accompanying system is deployed
     /// @param main The address of `Main`
     /// @param owner The owner of the newly deployed system
-    event RTokenCreated(address indexed main, address indexed rToken, address indexed owner);
+    event RTokenCreated(address indexed main, address indexed rToken, address explorer, address indexed owner);
 
     //
 

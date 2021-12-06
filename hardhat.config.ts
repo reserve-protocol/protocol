@@ -1,4 +1,5 @@
-// import './tasks'
+// TODO: import ./tasks selectively based on env var
+import './tasks'
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
@@ -17,7 +18,6 @@ const MNEMONIC = process.env.MNEMONIC || ''
 
 const src_dir = process.env.PROTO ? './contracts/' + process.env.PROTO : './contracts'
 const settings = process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 2000 } }
-
 export default <HardhatUserConfig>{
   defaultNetwork: 'hardhat',
   networks: {
