@@ -58,14 +58,22 @@ contract RTokenIssuerP0 is
 
         // TODO: Move into DefaultHandler
         ICollateral[] memory hardDefaulting = _checkForHardDefault();
-        if (hardDefaulting.length > 0) {
-            for (uint256 i = 0; i < hardDefaulting.length; i++) {
-                _unapproveCollateral(hardDefaulting[i]);
-            }
+        for (uint256 i = 0; i < hardDefaulting.length; i++) {
+            _unapproveCollateral(hardDefaulting[i]);
+        }
 
-            _switchVault(_selectNextVault());
-            _setMood(Mood.TRADING);
-        } else if (!paused && mood() != Mood.DOUBT) {
+        Mood mood = mood();
+        if (!_vaultIsOnlyApprovedCollateral(vault)) {
+            mood = Mood.DOUBT;
+            IVault nextVault = _selectNextVault();
+            if (address(nextVault) != address(0)) {
+                _switchVault(nextVault);
+                mood = Mood.TRADING;
+            }
+        }
+        _setMood(mood);
+
+        if (!paused) {
             _processSlowIssuance();
         }
         _;
@@ -172,7 +180,7 @@ contract RTokenIssuerP0 is
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowIssuance() internal {
         for (uint256 i = 0; i < issuances.length; i++) {
-            if (!issuances[i].processed && issuances[i].vault != vault()) {
+            if (!issuances[i].processed && (issuances[i].vault != vault || mood() == Mood.DOUBT)) {
                 rToken().burn(address(rToken()), issuances[i].amount);
                 issuances[i].vault.redeem(issuances[i].issuer, issuances[i].amtBUs);
                 issuances[i].processed = true;

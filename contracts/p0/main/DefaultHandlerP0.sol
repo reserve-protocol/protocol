@@ -67,6 +67,7 @@ contract DefaultHandlerP0 is
         } else {
             _setMood(Mood.DOUBT);
         }
+        _setMood(mood);
     }
 
     function beforeUpdate()
