@@ -39,8 +39,7 @@ contract RevenueHandlerP0 is
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
-    // TODO: make this uint256 _whenLastRewardClaimed
-    mapping(uint256 => bool) private _rewardsClaimed;
+    uint256 private _rewardsLastClaimed;
 
     function init(ConstructorArgs calldata args)
         public
@@ -54,11 +53,11 @@ contract RevenueHandlerP0 is
     function poke() public virtual override(Mixin, AuctioneerP0) notPaused {
         super.poke();
         (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
-        if (!_rewardsClaimed[prevRewards] && fullyCapitalized()) {
+        if (prevRewards > _rewardsLastClaimed && fullyCapitalized()) {
             _handleComp();
             _handleAave();
             _expandSupplyToRTokenTrader();
-            _rewardsClaimed[prevRewards] = true;
+            _rewardsLastClaimed = prevRewards;
         }
     }
 
