@@ -75,6 +75,8 @@ interface IMixin {
     function init(ConstructorArgs calldata args) external;
 
     function poke() external;
+
+    function notify() external;
 }
 
 interface IPausable {
@@ -107,10 +109,7 @@ interface IAssetRegistry {
 }
 
 interface IRevenueDistributor {
-    function setDistribution(
-        address dest,
-        RevenueShare memory share
-    ) external;
+    function setDistribution(address dest, RevenueShare memory share) external;
 
     function distribute(
         IERC20 erc20,

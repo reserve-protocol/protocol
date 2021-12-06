@@ -20,8 +20,8 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
     // Values: [RToken fraction, RSR fraction]
     // invariant: distribution values are all nonnegative, and at least one is nonzero.
 
-    address constant FURNACE = address(1);
-    address constant ST_RSR = address(2);
+    address public constant FURNACE = address(1);
+    address public constant ST_RSR = address(2);
 
     function init(ConstructorArgs calldata args) public virtual override(Mixin, SettingsHandlerP0) {
         super.init(args);
@@ -29,10 +29,12 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
         setDistribution(ST_RSR, RevenueShare(FIX_ZERO, args.dist.rsrDist));
     }
 
-    function setDistribution(
-        address dest,
-        RevenueShare memory share
-    ) public override onlyOwner {
+    function notify() public virtual override(Mixin, SettingsHandlerP0) {
+        super.notify();
+    }
+
+    function setDistribution(address dest, RevenueShare memory share) public override onlyOwner {
+        notify();
         _destinations.add(dest);
         _distribution[dest] = share;
     }
@@ -47,16 +49,16 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
         (Fix rTokenTotal, Fix rsrTotal) = _totals();
         Fix total = erc20 == rsr() ? rsrTotal : rTokenTotal;
         for (uint256 i = 0; i < _destinations.length(); i++) {
-            Fix subshare = erc20 == rsr() ?
-                _distribution[_destinations.at(i)].rsrDist :
-                _distribution[_destinations.at(i)].rTokenDist;
+            Fix subshare = erc20 == rsr()
+                ? _distribution[_destinations.at(i)].rsrDist
+                : _distribution[_destinations.at(i)].rTokenDist;
             uint256 slice = subshare.mulu(amount).div(total).toUint();
 
             address addr_to = _destinations.at(i);
             if (addr_to == FURNACE) {
                 erc20.safeTransferFrom(from, address(revenueFurnace()), slice);
                 revenueFurnace().respondToDeposit(erc20);
-            } else if (addr_to  == ST_RSR) {
+            } else if (addr_to == ST_RSR) {
                 erc20.safeTransferFrom(from, address(stRSR()), slice);
                 stRSR().respondToDeposit(erc20);
             }

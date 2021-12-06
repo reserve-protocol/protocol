@@ -84,6 +84,14 @@ contract RTokenIssuerP0 is
         super.poke();
     }
 
+    function notify()
+        public
+        virtual
+        override(Mixin, SettingsHandlerP0, VaultHandlerP0, DefaultHandlerP0)
+    {
+        super.notify();
+    }
+
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     function issue(uint256 amount) public override notPaused always {

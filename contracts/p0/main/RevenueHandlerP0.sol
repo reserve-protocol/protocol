@@ -62,6 +62,14 @@ contract RevenueHandlerP0 is
         }
     }
 
+    function notify()
+        public
+        virtual
+        override(Mixin, SettingsHandlerP0, RevenueDistributorP0, VaultHandlerP0, AuctioneerP0)
+    {
+        super.notify();
+    }
+
     /// @return The timestamp of the next rewards event
     function nextRewards() public view override returns (uint256) {
         (, uint256 next) = _rewardsAdjacent(block.timestamp);

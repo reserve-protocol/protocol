@@ -148,6 +148,5 @@ contract TraderP0 is Ownable, IAuctioneerEvents {
             auctions[auctions.length - 1].sellAmount,
             auctions[auctions.length - 1].minBuyAmount
         );
-        // _setMood(Mood.TRADING); TODO
     }
 }

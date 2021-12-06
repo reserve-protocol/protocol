@@ -176,7 +176,6 @@ contract AdapterP0 is ProtoAdapter {
             _compoundOracle = new CompoundOracleMockP0();
             _compoundOracle.setPrice(ETH, s.ethPrice.inUSD);
 
-
             IComptroller comptroller = new ComptrollerMockP0(address(_compoundOracle));
             _aaveOracle = new AaveOracleMockP0(address(new ERC20Mock("Wrapped ETH", "WETH")));
             _aaveOracle.setPrice(_aaveOracle.WETH(), s.ethPrice.inETH);
@@ -186,10 +185,11 @@ contract AdapterP0 is ProtoAdapter {
 
             // compute initial share from ProtoState
             RevenueShare memory initialShare;
+            RevenueDistributorP0 throwawayDistributor = new RevenueDistributorP0(); // just for reading out constants
             for (uint256 i = 0; i < s.distribution.length; i++) {
-                if(s.distribution[i].dest == RevenueDistributorP0.FURNACE) {
+                if (s.distribution[i].dest == throwawayDistributor.FURNACE()) {
                     initialShare.rTokenDist = s.distribution[i].rTokenDist;
-                } else if (s.distribution[i].dest == RevenueDistributorP0.ST_RSR) {
+                } else if (s.distribution[i].dest == throwawayDistributor.ST_RSR()) {
                     initialShare.rsrDist = s.distribution[i].rsrDist;
                 }
             }
@@ -212,8 +212,14 @@ contract AdapterP0 is ProtoAdapter {
 
             // add remaining distribution from ProtoState
             for (uint256 i = 0; i < s.distribution.length; i++) {
-                if(s.distribution[i].dest != RevenueDistributorP0.FURNACE && s.distribution[i].dest == RevenueDistributorP0.ST_RSR) {
-                    _main.setDistribution(s.distribution[i].dest, RevenueShare(s.distribution[i].rTokenDist, s.distribution[i].rsrDist));
+                if (
+                    s.distribution[i].dest != throwawayDistributor.FURNACE() &&
+                    s.distribution[i].dest == throwawayDistributor.ST_RSR()
+                ) {
+                    _main.setDistribution(
+                        s.distribution[i].dest,
+                        RevenueShare(s.distribution[i].rTokenDist, s.distribution[i].rsrDist)
+                    );
                 }
             }
 
@@ -274,7 +280,7 @@ contract AdapterP0 is ProtoAdapter {
             _main.minRevenueAuctionSize(),
             _main.migrationChunk(),
             _main.issuanceRate(),
-            _main.defaultThreshold(),
+            _main.defaultThreshold()
         );
         address[] memory backingTokens = _main.backingTokens();
         Asset[] memory backingCollateral = new Asset[](backingTokens.length);

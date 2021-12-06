@@ -69,6 +69,14 @@ contract DefaultHandlerP0 is
         }
     }
 
+    function notify()
+        public
+        virtual
+        override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
+    {
+        super.notify();
+    }
+
     /// Checks for hard default by inspecting the redemption rates of all collateral tokens
     /// Forces updates in the underlying defi protocols
     /// @return defaulting All hard-defaulting tokens

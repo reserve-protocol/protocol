@@ -36,11 +36,22 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
     IVault public override vault;
     IVault[] public pastVaults;
 
-    function init(ConstructorArgs calldata args) public virtual override(Mixin, SettingsHandlerP0, RevenueDistributorP0) {
+    function init(ConstructorArgs calldata args)
+        public
+        virtual
+        override(Mixin, SettingsHandlerP0, RevenueDistributorP0)
+    {
         super.init(args);
         vault = args.vault;
         _prevBasketRate = args.vault.basketRate();
         _historicalBasketDilution = FIX_ONE;
+    }
+
+    /// Folds current metrics into historical metrics
+    function notify() public virtual override(Mixin, SettingsHandlerP0, RevenueDistributorP0) {
+        super.notify();
+        _historicalBasketDilution = _basketDilutionFactor();
+        _prevBasketRate = vault.basketRate();
     }
 
     function switchVault(IVault vault_) external override onlyOwner {
@@ -86,7 +97,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         vault = vault_;
 
         // Accumulate the basket dilution factor to enable correct forward accounting
-        _accumulate();
+        notify();
     }
 
     /// @return {none) Denominator of the base factor
@@ -96,7 +107,6 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         // Assumption: Defi redemption rates are monotonically increasing
         Fix delta = currentRate.minus(_prevBasketRate);
 
-        // TODO: _accumulate needs to be a poke-like cooperative event handler
         // here, in order to deal with changes to the rTokenCut coming from RevenueDistributor.
         // r = p2 / (p1 + (p2-p1) * (rTokenCut))
         Fix r = currentRate.div(_prevBasketRate.plus(delta.mul(rTokenCut())));
@@ -129,12 +139,6 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         if (crackedBUs < maxBUs) {
             crackedBUs += _crackFrom(vault, recipient, maxBUs - crackedBUs);
         }
-    }
-
-    /// Accumulates current metrics into historical metrics
-    function _accumulate() internal {
-        _historicalBasketDilution = _basketDilutionFactor();
-        _prevBasketRate = vault.basketRate();
     }
 
     /// @return How many BUs were cracked
