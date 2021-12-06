@@ -1,5 +1,5 @@
 // TODO: import ./tasks selectively based on env var
-import './tasks'
+// import './tasks'
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
