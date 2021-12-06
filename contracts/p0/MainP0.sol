@@ -26,6 +26,8 @@ contract MainP0 is
     Mixin,
     AssetRegistryP0,
     SettingsHandlerP0,
+    RevenueDistributorP0,
+    VaultHandlerP0,
     DefaultHandlerP0,
     AuctioneerP0,
     RevenueHandlerP0,
@@ -34,6 +36,8 @@ contract MainP0 is
 {
     using FixLib for Fix;
 
+    /// Constructor-as-function
+    /// Idempotent
     function init(ConstructorArgs calldata args)
         public
         virtual
@@ -42,6 +46,8 @@ contract MainP0 is
             Mixin,
             AssetRegistryP0,
             SettingsHandlerP0,
+            RevenueDistributorP0,
+            VaultHandlerP0,
             DefaultHandlerP0,
             AuctioneerP0,
             RevenueHandlerP0,
@@ -51,11 +57,33 @@ contract MainP0 is
         super.init(args);
     }
 
+    /// A central mutator that causes all mixins to act
     function poke()
         public
         virtual
         override(IMixin, Mixin, DefaultHandlerP0, AuctioneerP0, RevenueHandlerP0, RTokenIssuerP0)
     {
         super.poke();
+    }
+
+    /// An idempotent mutator for updating accounting metrics
+    /// Unlike `poke`, no external side-effects
+    function beforeUpdate()
+        public
+        virtual
+        override(
+            IMixin,
+            Mixin,
+            AssetRegistryP0,
+            SettingsHandlerP0,
+            RevenueDistributorP0,
+            VaultHandlerP0,
+            DefaultHandlerP0,
+            AuctioneerP0,
+            RevenueHandlerP0,
+            RTokenIssuerP0
+        )
+    {
+        super.beforeUpdate();
     }
 }

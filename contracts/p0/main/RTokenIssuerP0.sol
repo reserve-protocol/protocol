@@ -55,6 +55,8 @@ contract RTokenIssuerP0 is
     /// This modifier runs before every function including redemption, so it should be very safe.
     modifier always() {
         revenueFurnace().doMelt();
+
+        // TODO: Move into DefaultHandler
         ICollateral[] memory hardDefaulting = _checkForHardDefault();
         for (uint256 i = 0; i < hardDefaulting.length; i++) {
             _unapproveCollateral(hardDefaulting[i]);
@@ -90,6 +92,14 @@ contract RTokenIssuerP0 is
         super.poke();
     }
 
+    function beforeUpdate()
+        public
+        virtual
+        override(Mixin, SettingsHandlerP0, VaultHandlerP0, DefaultHandlerP0)
+    {
+        super.beforeUpdate();
+    }
+
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     function issue(uint256 amount) public override notPaused always {
@@ -100,10 +110,10 @@ contract RTokenIssuerP0 is
 
         // During SlowIssuance, RTokens are minted and held by Main until vesting completes
         SlowIssuance memory iss = SlowIssuance({
-            vault: vault,
+            vault: vault(),
             amount: amount,
             amtBUs: amtBUs,
-            deposits: vault.tokenAmounts(amtBUs),
+            deposits: vault().tokenAmounts(amtBUs),
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
@@ -139,19 +149,19 @@ contract RTokenIssuerP0 is
 
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) public view override returns (uint256[] memory) {
-        return vault.tokenAmounts(toBUs(amount));
+        return vault().tokenAmounts(toBUs(amount));
     }
 
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
-        return fromBUs(vault.maxIssuable(account));
+        return fromBUs(vault().maxIssuable(account));
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
     function backingTokens() public view override returns (address[] memory erc20s) {
-        erc20s = new address[](vault.size());
-        for (uint256 i = 0; i < vault.size(); i++) {
-            erc20s[i] = address(vault.collateralAt(i).erc20());
+        erc20s = new address[](vault().size());
+        for (uint256 i = 0; i < vault().size(); i++) {
+            erc20s[i] = address(vault().collateralAt(i).erc20());
         }
     }
 

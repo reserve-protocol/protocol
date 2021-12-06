@@ -17,14 +17,6 @@ enum Mood {
     TRADING // auctions in progress, no unstaking
 }
 
-/// What should happen to auction tokens after the auctinon clears
-enum Fate {
-    MELT, // RToken melting in the furnace
-    STAKE, // RSR dividend to stRSR
-    BURN, // RToken burning
-    STAY // No action
-}
-
 /// Configuration of the system
 struct Config {
     // Time (seconds)
@@ -41,8 +33,6 @@ struct Config {
     Fix migrationChunk; // how much backing to migrate at a time, as a fraction of RToken supply
     Fix issuanceRate; // the number of RToken to issue per block, as a fraction of RToken supply
     Fix defaultThreshold; // the percent deviation required before a token is marked as in-default
-    Fix cut; // The Revenue Factor: the fraction of revenue that goes to stakers
-    // TODO: Revenue Distribution Map
 
     // Sample values
     //
@@ -60,13 +50,18 @@ struct Config {
     // migrationChunk = 0.2 (20%)
     // issuanceRate = 0.00025 (0.025% per block, or ~0.1% per minute)
     // defaultThreshold = 0.05 (5% deviation)
-    // cut = 0.6 (60% to stakers)
+}
+
+struct RevenueShare {
+    Fix rTokenDist;
+    Fix rsrDist;
 }
 
 struct ConstructorArgs {
     ICollateral[] approvedCollateral;
     Oracle.Info oracle;
     Config config;
+    RevenueShare dist;
     IAsset rTokenAsset;
     IAsset rsrAsset;
     IAsset compAsset;
@@ -80,6 +75,8 @@ interface IMixin {
     function init(ConstructorArgs calldata args) external;
 
     function poke() external;
+
+    function beforeUpdate() external;
 }
 
 interface IPausable {
@@ -109,6 +106,20 @@ interface IAssetRegistry {
     function allAssets() external view returns (IAsset[] memory);
 
     function isApproved(IAsset asset) external view returns (bool);
+}
+
+interface IRevenueDistributor {
+    function setDistribution(address dest, RevenueShare memory share) external;
+
+    function distribute(
+        IERC20 erc20,
+        address from,
+        uint256 amount
+    ) external;
+
+    function rsrCut() external view returns (Fix);
+
+    function rTokenCut() external view returns (Fix);
 }
 
 interface ISettingsHandler {
@@ -202,19 +213,12 @@ interface ISettingsHandler {
 }
 
 interface IVaultHandler {
-    /// Emitted when parameter `cut` (proportion of revenue to stakers) is changed
-    /// @param oldCut The old value of `cut`, as a Fix
-    /// @param newCut The new value of `cut`, as a Fix
-    event CutSet(Fix oldCut, Fix newCut);
-
     /// Emitted when the current vault is changed
     /// @param oldVault The address of the old vault
     /// @param newVault The address of the new vault
     event NewVaultSet(address indexed oldVault, address indexed newVault);
 
     function switchVault(IVault vault) external;
-
-    function setCut(Fix newCut) external;
 
     function toBUs(uint256 amount) external view returns (uint256);
 
@@ -223,6 +227,10 @@ interface IVaultHandler {
     function fullyCapitalized() external view returns (bool);
 
     function vault() external view returns (IVault);
+
+    function vaults(uint256 index) external view returns (IVault);
+
+    function numVaults() external view returns (uint256);
 }
 
 // solhint-disable-next-line no-empty-blocks
@@ -237,14 +245,12 @@ interface IAuctioneerEvents {
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
-    /// @param fate The fate of the soon-to-be-purchased tokens
     event AuctionStarted(
         uint256 indexed auctionId,
         address indexed sell,
         address indexed buy,
         uint256 sellAmount, // {qSellTok}
-        uint256 minBuyAmount, // {qBuyTok}
-        Fate fate
+        uint256 minBuyAmount // {qBuyTok}
     );
 
     /// Emitted after an auction ends
@@ -256,8 +262,7 @@ interface IAuctioneerEvents {
         address indexed sell,
         address indexed buy,
         uint256 sellAmount,
-        uint256 buyAmount,
-        Fate fate
+        uint256 buyAmount
     );
 }
 
@@ -317,6 +322,7 @@ interface IMain is
     IMoody,
     IAssetRegistry,
     ISettingsHandler,
+    IRevenueDistributor,
     IVaultHandler,
     IDefaultHandler,
     IAuctioneer,

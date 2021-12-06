@@ -52,9 +52,9 @@ contract AuctioneerP0 is
         override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
     {
         super.init(args);
-        backingTrader = new BackingTraderP0(this);
-        rsrStakingTrader = new RevenueTraderP0(this, Fate.STAKE);
-        rTokenMeltingTrader = new RevenueTraderP0(this, Fate.MELT);
+        backingTrader = new BackingTraderP0(IMain(address(this)));
+        rsrStakingTrader = new RevenueTraderP0(IMain(address(this)), rsrAsset());
+        rTokenMeltingTrader = new RevenueTraderP0(IMain(address(this)), rTokenAsset());
     }
 
     function poke() public virtual override notPaused {
@@ -65,7 +65,8 @@ contract AuctioneerP0 is
         if (!trading && !fullyCapitalized()) {
             uint256 maxBUs = toBUs(migrationChunk().mulu(rToken().totalSupply()).toUint());
             uint256 crackedBUs = _crackOldVaults(address(backingTrader), maxBUs);
-            uint256 buShortfall = toBUs(rToken().totalSupply()) - vault.basketUnits(address(this));
+            uint256 buShortfall = toBUs(rToken().totalSupply()) -
+                vault().basketUnits(address(this));
             if (crackedBUs > 0) {
                 backingTrader.increaseBUTarget(crackedBUs, buShortfall);
                 trading = backingTrader.poke();
@@ -74,8 +75,10 @@ contract AuctioneerP0 is
             if (!trading && !fullyCapitalized()) {
                 _rTokenHaircut();
             }
-            // TODO: There may be excess surplus and BUs after all rounds of trading.
-            // What should we do with them?
+            // TODO: There may be excess surplus and BUs after all rounds of trading. What should we do with them?
+            // Tentative answer: They should be turned into BUs and subsequently, RToken supply expansion.
+            // The concern would be this is an avenue for RSR holders to profit from making the RToken basket worth less, but
+            // this is already a failure mode we have been keeping in mind and are building governance to be resilient against.
         }
 
         // RSR Trader
@@ -85,15 +88,23 @@ contract AuctioneerP0 is
         rTokenMeltingTrader.poke();
     }
 
+    function beforeUpdate()
+        public
+        virtual
+        override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
+    {
+        super.beforeUpdate();
+    }
+
     function getBackingTrader() external view override returns (address) {
         return address(backingTrader);
     }
 
     function _rTokenHaircut() private {
         // The ultimate endgame: a haircut for RToken holders.
-        _accumulate();
+        beforeUpdate();
         _historicalBasketDilution = _meltingFactor().mulu(rToken().totalSupply()).divu(
-            vault.basketUnits(address(this))
+            vault().basketUnits(address(this))
         );
         _setMood(Mood.CALM);
     }

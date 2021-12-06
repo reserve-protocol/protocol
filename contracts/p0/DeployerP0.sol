@@ -16,6 +16,8 @@ import "./interfaces/IMain.sol";
 import "./interfaces/IMarket.sol";
 import "./interfaces/IVault.sol";
 import "./assets/RTokenAssetP0.sol";
+import "contracts/IExplorer.sol";
+import "./ExplorerP0.sol";
 import "./FurnaceP0.sol";
 import "./MainP0.sol";
 import "./RTokenP0.sol";
@@ -60,6 +62,7 @@ contract DeployerP0 is IDeployer {
         address owner,
         IVault vault,
         Config memory config,
+        RevenueShare memory dist,
         IComptroller compound,
         IAaveLendingPool aave,
         ICollateral[] memory collateral
@@ -77,6 +80,7 @@ contract DeployerP0 is IDeployer {
                     collateral,
                     oracle,
                     config,
+                    dist,
                     rTokenAsset,
                     rsrAsset,
                     compAsset,
@@ -102,7 +106,8 @@ contract DeployerP0 is IDeployer {
         main.setPauser(owner);
         Ownable(address(main)).transferOwnership(owner);
 
-        emit RTokenCreated(address(main), address(main.rToken()), owner);
+        IExplorer explorer = new ExplorerP0(address(main));
+        emit RTokenCreated(address(main), address(main.rToken()), address(explorer), owner);
         return (address(main));
     }
 

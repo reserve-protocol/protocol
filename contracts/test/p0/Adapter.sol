@@ -175,12 +175,24 @@ contract AdapterP0 is ProtoAdapter {
         {
             _compoundOracle = new CompoundOracleMockP0();
             _compoundOracle.setPrice(ETH, s.ethPrice.inUSD);
+
             IComptroller comptroller = new ComptrollerMockP0(address(_compoundOracle));
             _aaveOracle = new AaveOracleMockP0(address(new ERC20Mock("Wrapped ETH", "WETH")));
             _aaveOracle.setPrice(_aaveOracle.WETH(), s.ethPrice.inETH);
             IAaveLendingPool aaveLendingPool = new AaveLendingPoolMockP0(
                 address(new AaveLendingAddrProviderMockP0(address(_aaveOracle)))
             );
+
+            // compute initial share from ProtoState
+            RevenueShare memory initialShare;
+            RevenueDistributorP0 throwawayDistributor = new RevenueDistributorP0(); // just for reading out constants
+            for (uint256 i = 0; i < s.distribution.length; i++) {
+                if (s.distribution[i].dest == throwawayDistributor.FURNACE()) {
+                    initialShare.rTokenDist = s.distribution[i].rTokenDist;
+                } else if (s.distribution[i].dest == throwawayDistributor.ST_RSR()) {
+                    initialShare.rsrDist = s.distribution[i].rsrDist;
+                }
+            }
 
             _main = MainExtension(
                 _deployer.deploy(
@@ -189,6 +201,7 @@ contract AdapterP0 is ProtoAdapter {
                     address(this),
                     vaults[0],
                     s.config,
+                    initialShare,
                     comptroller,
                     aaveLendingPool,
                     collateral
@@ -196,6 +209,19 @@ contract AdapterP0 is ProtoAdapter {
             );
             _stRSR = StRSRExtension(address(_main.stRSR()));
             _rToken = RTokenExtension(address(_main.rToken()));
+
+            // add remaining distribution from ProtoState
+            for (uint256 i = 0; i < s.distribution.length; i++) {
+                if (
+                    s.distribution[i].dest != throwawayDistributor.FURNACE() &&
+                    s.distribution[i].dest == throwawayDistributor.ST_RSR()
+                ) {
+                    _main.setDistribution(
+                        s.distribution[i].dest,
+                        RevenueShare(s.distribution[i].rTokenDist, s.distribution[i].rsrDist)
+                    );
+                }
+            }
 
             for (uint256 i = 0; i < vaults.length; i++) {
                 vaults[i].setMain(address(_main));
@@ -254,14 +280,14 @@ contract AdapterP0 is ProtoAdapter {
             _main.minRevenueAuctionSize(),
             _main.migrationChunk(),
             _main.issuanceRate(),
-            _main.defaultThreshold(),
-            _main.cut()
+            _main.defaultThreshold()
         );
         address[] memory backingTokens = _main.backingTokens();
         Asset[] memory backingCollateral = new Asset[](backingTokens.length);
         for (uint256 i = 0; i < backingTokens.length; i++) {
             backingCollateral[i] = _reverseAssets[ERC20Mock(backingTokens[i])];
         }
+        s.distribution = _main.STATE_revenueDistribution();
         s.rTokenDefinition = BU(backingCollateral, _main.quote(10**_main.rToken().decimals()));
         s.rToken = _dumpERC20(_main.rToken());
         s.rsr = _dumpERC20(_main.rsr());

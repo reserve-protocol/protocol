@@ -32,7 +32,6 @@ library Auction {
         uint256 clearingSellAmount;
         uint256 clearingBuyAmount;
         uint256 externalAuctionId;
-        Fate fate;
         Status status;
     }
 
@@ -60,38 +59,14 @@ library Auction {
         self.status = Status.OPEN;
     }
 
-    /// Closes out the auction and sends bought token to its fate
-    function close(
-        Auction.Info storage self,
-        IFurnace furnace,
-        IStRSR stRSR,
-        IMarket market
-    ) internal {
+    /// Closes out the auction
+    function close(Auction.Info storage self, IMarket market) internal {
         require(self.status == Auction.Status.OPEN, "can only close in-progress auctions");
         require(self.endTime <= block.timestamp, "auction not over");
         bytes32 encodedOrder = market.settleAuction(self.externalAuctionId);
         (self.clearingSellAmount, self.clearingBuyAmount) = _decodeOrder(encodedOrder);
 
         uint256 bal = self.buy.erc20().balanceOf(address(this)); // {qBuyTok}
-
-        // solhint-disable no-empty-blocks
-        if (bal > 0) {
-            if (self.fate == Fate.BURN) {
-                IRToken(address(self.buy.erc20())).burn(address(this), bal);
-            } else if (self.fate == Fate.MELT) {
-                self.buy.erc20().safeApprove(address(furnace), bal);
-                furnace.receiveERC20(self.buy.erc20(), bal);
-            } else if (self.fate == Fate.STAKE) {
-                self.buy.erc20().safeApprove(address(stRSR), bal);
-                stRSR.receiveERC20(self.buy.erc20(), bal);
-            } else if (self.fate == Fate.STAY) {
-                // NO ACTION
-            } else {
-                revert CommonErrors.UnimplementedFate();
-            }
-        }
-        // solhint-enable no-empty-blocks
-
         self.status = Status.DONE;
     }
 

@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/test/Mixins.sol";
+import "contracts/test/ProtoState.sol";
 import "contracts/mocks/ERC20Mock.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMarket.sol";
@@ -38,9 +39,28 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         require(rTokenAsset().erc20().balanceOf(account) - start == amount, "issue failure");
     }
 
+    function STATE_revenueDistribution()
+        external
+        view
+        returns (RevenueDestination[] memory distribution)
+    {
+        distribution = new RevenueDestination[](_destinations.length());
+        for (uint256 i = 0; i < _destinations.length(); i++) {
+            RevenueShare storage rs = _distribution[_destinations.at(i)];
+            distribution[i] = RevenueDestination(_destinations.at(i), rs.rTokenDist, rs.rsrDist);
+        }
+    }
+
+    function _msgSender() internal view override returns (address) {
+        return _mixinMsgSender();
+    }
+
+    // ==== Invariants ====
+
     function assertInvariants() external view override {
         assert(_INVARIANT_stateDefined());
         assert(_INVARIANT_configurationValid());
+        assert(_INVARIANT_distributionValid());
         assert(_INVARIANT_fullyCapitalizedOrNotCalm());
         assert(_INVARIANT_nextRewardsInFutureOrNow());
         assert(_INVARIANT_quoteMonotonic());
@@ -51,13 +71,8 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         assert(_INVARIANT_hasCollateralConfiguration());
         assert(_INVARIANT_toBUInverseFromBU());
         assert(_INVARIANT_fromBUInverseToBU());
-        assert(_INVARIANT_vaultNotInPastVaults());
         assert(_INVARIANT_auctionsPartitionCleanly());
         assert(_INVARIANT_auctionsClosedInThePast());
-    }
-
-    function _msgSender() internal view override returns (address) {
-        return _mixinMsgSender();
     }
 
     function _INVARIANT_stateDefined() internal view returns (bool ok) {
@@ -73,7 +88,8 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && _historicalBasketDilution.gt(FIX_ZERO);
         ok = ok && _approvedCollateral.length() > 0;
         ok = ok && _allAssets.length() > 0;
-        ok = ok && address(vault) != address(0);
+        ok = ok && address(vault()) != address(0);
+        ok = ok && vaults.length > 0;
         if (!ok) {
             console.log("_INVARIANT_stateDefined violated");
         }
@@ -96,9 +112,21 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && migrationChunk().gte(FIX_ZERO) && migrationChunk().lte(FIX_ONE);
         ok = ok && issuanceRate().gte(FIX_ZERO) && issuanceRate().lte(FIX_ONE);
         ok = ok && defaultThreshold().gte(FIX_ZERO) && defaultThreshold().lte(FIX_ONE);
-        ok = ok && cut().gte(FIX_ZERO) && cut().lte(FIX_ONE);
         if (!ok) {
             console.log("_INVARIANT_configurationValid violated");
+        }
+    }
+
+    function _INVARIANT_distributionValid() internal view returns (bool somethingIsPositive) {
+        for (uint256 i = 0; i < _destinations.length(); i++) {
+            Fix rsrDist = _distribution[_destinations.at(i)].rsrDist;
+            Fix rTokenDist = _distribution[_destinations.at(i)].rTokenDist;
+            if (rsrDist.gt(FIX_ZERO) || rTokenDist.gt(FIX_ZERO)) {
+                somethingIsPositive = true;
+            }
+            if (rsrDist.lt(FIX_ZERO) || rTokenDist.lt(FIX_ZERO)) {
+                return false;
+            }
         }
     }
 
@@ -158,8 +186,8 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     function _INVARIANT_pricesDefined() internal view returns (bool ok) {
         ok = true;
         Oracle.Info memory oracle_ = oracle();
-        for (uint256 i = 0; i < vault.size(); i++) {
-            ICollateral c = vault.collateralAt(i);
+        for (uint256 i = 0; i < vault().size(); i++) {
+            ICollateral c = vault().collateralAt(i);
             if (c.isFiatcoin()) {
                 ok = ok && oracle_.consult(Oracle.Source.AAVE, address(c.erc20())).gt(FIX_ZERO);
             }
@@ -218,7 +246,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     }
 
     function _INVARIANT_fromBUInverseToBU() internal view returns (bool ok) {
-        uint256 bu_s = vault.basketUnits(address(this));
+        uint256 bu_s = vault().basketUnits(address(this));
         bytes memory result = address(this).functionStaticCall(
             abi.encodeWithSignature("fromBUs(uint256)", bu_s)
         );
@@ -228,16 +256,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = bu_s == abi.decode(result2, (uint256));
         if (!ok) {
             console.log("_INVARIANT_fromBUInverseToBU violated");
-        }
-    }
-
-    function _INVARIANT_vaultNotInPastVaults() internal view returns (bool ok) {
-        ok = true;
-        for (uint256 i = 0; i < pastVaults.length; i++) {
-            ok = ok && vault != pastVaults[i];
-        }
-        if (!ok) {
-            console.log("_INVARIANT_vaultNotInPastVaults violated");
         }
     }
 

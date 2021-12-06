@@ -14,38 +14,39 @@ import "contracts/p0/main/VaultHandlerP0.sol";
 contract RevenueTraderP0 is TraderP0 {
     using SafeERC20 for IERC20;
 
-    Fate public fate; // MELT or STAKE
+    IAsset private assetToBuy;
 
-    constructor(VaultHandlerP0 main_, Fate fate_) TraderP0(main_) {
-        require(fate_ == Fate.STAKE || fate_ == Fate.MELT, "only melting or staking");
-        fate = fate_;
+    constructor(IMain main_, IAsset assetToBuy_) TraderP0(main_) {
+        assetToBuy = assetToBuy_;
     }
 
     function poke() public override returns (bool) {
-        return TraderP0.poke() || _startRevenueAuctions();
+        bool openAuctions = TraderP0.poke();
+        bool launchedNewAuction = _manageFunds();
+        return openAuctions || launchedNewAuction;
     }
 
-    /// Start auctions selling all asset types to purchase RSR or RToken
+    /// Iterate through all asset types, and perform the appropriate action with each:
+    /// - If we have any of `assetToBuy` (RSR or RToken), distribute it.
+    /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
     /// @return trading Whether an auction was launched
-    function _startRevenueAuctions() private returns (bool trading) {
+
+    function _manageFunds() private returns (bool trading) {
         IAsset[] memory assets = main.allAssets(); // includes RToken/RSR/COMP/AAVE
-        IAsset buyAsset = fate == Fate.STAKE ? main.rsrAsset() : main.rTokenAsset();
-
-        bool launch;
-        Auction.Info memory auction;
+        trading = false;
         for (uint256 i = 0; i < assets.length; i++) {
-            uint256 bal = assets[i].erc20().balanceOf(address(this));
+            IERC20 erc20 = assets[i].erc20();
+            uint256 bal = erc20.balanceOf(address(this));
 
-            if (assets[i] == buyAsset) {
-                // Skip auction because it's already in the target asset
-                address to = fate == Fate.STAKE
-                    ? address(main.stRSR())
-                    : address(main.revenueFurnace());
-                buyAsset.erc20().safeApprove(to, bal);
-                IERC20Receiver(to).receiveERC20(buyAsset.erc20(), bal);
+            if (assets[i] == assetToBuy && bal > 0) {
+                erc20.safeApprove(address(main), bal);
+                main.distribute(erc20, address(this), bal);
             } else {
                 // If not dust, trade the non-target asset for the target asset
-                (launch, auction) = _prepareAuctionSell(assets[i], buyAsset, bal, fate);
+                bool launch;
+                Auction.Info memory auction;
+
+                (launch, auction) = _prepareAuctionSell(assets[i], assetToBuy, bal);
                 if (launch) {
                     trading = true;
                     _launchAuction(auction);

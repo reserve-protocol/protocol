@@ -59,18 +59,23 @@ contract DefaultHandlerP0 is
         }
         _depegged = softDefaulting;
 
-        Mood mood = Mood.DOUBT;
-        bool vaultIsGood = _vaultIsOnlyApprovedCollateral(vault);
-        if (vaultIsGood && softDefaulting.length == 0) {
-            mood = fullyCapitalized() ? Mood.CALM : Mood.TRADING;
-        } else if (!vaultIsGood) {
-            IVault nextVault = _selectNextVault();
-            if (address(nextVault) != address(0)) {
-                _switchVault(nextVault);
-                mood = Mood.TRADING;
-            }
+        if (softDefaulting.length == 0) {
+            _setMood(fullyCapitalized() ? Mood.CALM : Mood.TRADING);
+        } else if (!_vaultIsOnlyApprovedCollateral(vault())) {
+            _switchVault(_selectNextVault());
+            _setMood(Mood.TRADING);
+        } else {
+            _setMood(Mood.DOUBT);
         }
         _setMood(mood);
+    }
+
+    function beforeUpdate()
+        public
+        virtual
+        override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
+    {
+        super.beforeUpdate();
     }
 
     /// Checks for hard default by inspecting the redemption rates of all collateral tokens
@@ -117,7 +122,7 @@ contract DefaultHandlerP0 is
     function _selectNextVault() internal view returns (IVault) {
         Fix maxRate;
         uint256 indexMax = 0;
-        IVault[] memory backups = vault.getBackups();
+        IVault[] memory backups = vault().getBackups();
 
         // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
@@ -139,11 +144,11 @@ contract DefaultHandlerP0 is
     }
 
     /// @return Whether a vault consists only of approved collateral
-    function _vaultIsOnlyApprovedCollateral(IVault vault) internal view returns (bool) {
-        for (uint256 i = 0; i < vault.size(); i++) {
+    function _vaultIsOnlyApprovedCollateral(IVault vault_) private view returns (bool) {
+        for (uint256 i = 0; i < vault_.size(); i++) {
             bool found = false;
             for (uint256 j = 0; j < _approvedCollateral.length(); j++) {
-                if (address(vault.collateralAt(i)) == _approvedCollateral.at(j)) {
+                if (address(vault_.collateralAt(i)) == _approvedCollateral.at(j)) {
                     found = true;
                 }
             }

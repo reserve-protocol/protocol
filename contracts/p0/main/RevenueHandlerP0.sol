@@ -1,11 +1,12 @@
-pragma solidity 0.8.9;
 // SPDX-License-Identifier: BlueOak-1.0.0
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/assets/collateral/ATokenCollateralP0.sol";
 import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/main/RevenueDistributorP0.sol";
 import "contracts/p0/main/SettingsHandlerP0.sol";
 import "contracts/p0/main/VaultHandlerP0.sol";
 import "contracts/p0/main/MoodyP0.sol";
@@ -29,6 +30,7 @@ contract RevenueHandlerP0 is
     Mixin,
     MoodyP0,
     SettingsHandlerP0,
+    RevenueDistributorP0,
     VaultHandlerP0,
     AuctioneerP0,
     IRevenueHandler
@@ -37,13 +39,12 @@ contract RevenueHandlerP0 is
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
-    // timestamp -> whether rewards have been claimed.
-    mapping(uint256 => bool) private _rewardsClaimed;
+    uint256 private _rewardsLastClaimed;
 
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, SettingsHandlerP0, VaultHandlerP0, AuctioneerP0)
+        override(Mixin, SettingsHandlerP0, RevenueDistributorP0, VaultHandlerP0, AuctioneerP0)
     {
         super.init(args);
     }
@@ -52,12 +53,20 @@ contract RevenueHandlerP0 is
     function poke() public virtual override(Mixin, AuctioneerP0) notPaused {
         super.poke();
         (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
-        if (!_rewardsClaimed[prevRewards] && fullyCapitalized()) {
+        if (prevRewards > _rewardsLastClaimed && fullyCapitalized()) {
             _handleComp();
             _handleAave();
             _expandSupplyToRTokenTrader();
-            _rewardsClaimed[prevRewards] = true;
+            _rewardsLastClaimed = prevRewards;
         }
+    }
+
+    function beforeUpdate()
+        public
+        virtual
+        override(Mixin, SettingsHandlerP0, RevenueDistributorP0, VaultHandlerP0, AuctioneerP0)
+    {
+        super.beforeUpdate();
     }
 
     /// @return The timestamp of the next rewards event
@@ -71,16 +80,12 @@ contract RevenueHandlerP0 is
         // Self
         oracle().compound.claimComp(address(this));
 
-        // Current vault
-        oracle().compound.claimComp(address(vault));
-        vault.sweepNonBackingTokenToMain(compAsset().erc20());
-
-        // Past vaults
-        for (uint256 i = 0; i < pastVaults.length; i++) {
-            uint256 bal = compAsset().erc20().balanceOf(address(pastVaults[i]));
+        // Vaults
+        for (uint256 i = 0; i < vaults.length; i++) {
+            uint256 bal = compAsset().erc20().balanceOf(address(vaults[i]));
             if (bal > 0) {
-                oracle().compound.claimComp(address(pastVaults[i]));
-                pastVaults[i].sweepNonBackingTokenToMain(compAsset().erc20());
+                oracle().compound.claimComp(address(vaults[i]));
+                vaults[i].sweepNonBackingTokenToMain(compAsset().erc20());
             }
         }
 
@@ -100,22 +105,15 @@ contract RevenueHandlerP0 is
                 uint256 bal = aic.getRewardsBalance(underlyings, address(this));
                 aic.claimRewardsOnBehalf(underlyings, bal, address(this), address(this));
 
-                // Current vault
-                bal = aic.getRewardsBalance(underlyings, address(vault));
-                if (bal > 0) {
-                    vault.setMainAsAaveClaimer(aic);
-                    aic.claimRewardsOnBehalf(underlyings, bal, address(vault), address(this));
-                }
-
-                // Past vaults
-                for (uint256 i = 0; i < pastVaults.length; i++) {
-                    bal = aic.getRewardsBalance(underlyings, address(pastVaults[i]));
+                // Vaults
+                for (uint256 j = 0; j < vaults.length; j++) {
+                    bal = aic.getRewardsBalance(underlyings, address(vaults[j]));
                     if (bal > 0) {
-                        pastVaults[i].setMainAsAaveClaimer(aic);
+                        vaults[j].setMainAsAaveClaimer(aic);
                         aic.claimRewardsOnBehalf(
                             underlyings,
                             bal,
-                            address(pastVaults[i]),
+                            address(vaults[j]),
                             address(this)
                         );
                     }
@@ -128,7 +126,7 @@ contract RevenueHandlerP0 is
 
     function _expandSupplyToRTokenTrader() internal {
         // Expand the RToken supply to self
-        uint256 possible = fromBUs(vault.basketUnits(address(this)));
+        uint256 possible = fromBUs(vault().basketUnits(address(this)));
         uint256 totalSupply = rToken().totalSupply();
         if (fullyCapitalized() && possible > totalSupply) {
             rToken().mint(address(rTokenMeltingTrader), possible - totalSupply);
@@ -138,7 +136,7 @@ contract RevenueHandlerP0 is
     /// Splits `asset` into `cut` and `1-cut` proportions, and sends to revenue traders
     function _splitRewardsToTraders(IAsset asset) private {
         uint256 bal = asset.erc20().balanceOf(address(this));
-        uint256 amtToRSR = cut().mulu(bal).toUint();
+        uint256 amtToRSR = rsrCut().mulu(bal).toUint();
         asset.erc20().safeTransfer(address(rsrStakingTrader), amtToRSR); // cut
         asset.erc20().safeTransfer(address(rTokenMeltingTrader), bal - amtToRSR); // 1 - cut
     }

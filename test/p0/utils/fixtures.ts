@@ -31,13 +31,6 @@ export enum State {
   TRADING = 2,
 }
 
-export enum Fate {
-  Melt = 0,
-  Stake = 1,
-  Burn = 2,
-  Stay = 3,
-}
-
 export interface IManagerConfig {
   rewardStart: BigNumber
   rewardPeriod: BigNumber

@@ -14,9 +14,9 @@ contract TraderP0 is Ownable, IAuctioneerEvents {
     using Auction for Auction.Info;
     Auction.Info[] public auctions;
 
-    VaultHandlerP0 public main;
+    IMain public main;
 
-    constructor(VaultHandlerP0 main_) {
+    constructor(IMain main_) {
         main = main_;
     }
 
@@ -29,22 +29,20 @@ contract TraderP0 is Ownable, IAuctioneerEvents {
                 if (block.timestamp <= auction.endTime) {
                     return true;
                 }
-                auction.close(main.revenueFurnace(), main.stRSR(), main.market());
+                auction.close(main.market());
                 emit AuctionEnded(
                     i,
                     address(auction.sell),
                     address(auction.buy),
                     auction.clearingSellAmount,
-                    auction.clearingBuyAmount,
-                    auction.fate
+                    auction.clearingBuyAmount
                 );
             }
         }
         return false;
     }
 
-    function setMain(VaultHandlerP0 main_) external onlyOwner {
-        // TODO: Should Main be able to set itself?
+    function setMain(IMain main_) external onlyOwner {
         main = main_;
     }
 
@@ -55,8 +53,7 @@ contract TraderP0 is Ownable, IAuctioneerEvents {
     function _prepareAuctionSell(
         IAsset sell,
         IAsset buy,
-        uint256 sellAmount,
-        Fate fate
+        uint256 sellAmount
     ) internal returns (bool notDust, Auction.Info memory auction) {
         Oracle.Info memory oracle = main.oracle();
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
@@ -85,7 +82,6 @@ contract TraderP0 is Ownable, IAuctioneerEvents {
                 externalAuctionId: 0,
                 startTime: block.timestamp,
                 endTime: block.timestamp + main.auctionPeriod(),
-                fate: fate,
                 status: Auction.Status.NOT_YET_OPEN
             })
         );
@@ -125,7 +121,7 @@ contract TraderP0 is Ownable, IAuctioneerEvents {
         .toUint();
 
         uint256 sellAmount = Math.min(idealSellAmount, maxSellAmount);
-        return _prepareAuctionSell(sell, buy, sellAmount, Fate.STAY);
+        return _prepareAuctionSell(sell, buy, sellAmount);
     }
 
     /// @return {qSellTok} The least amount of tokens worth trying to sell
@@ -149,9 +145,7 @@ contract TraderP0 is Ownable, IAuctioneerEvents {
             address(auctions[auctions.length - 1].sell),
             address(auctions[auctions.length - 1].buy),
             auctions[auctions.length - 1].sellAmount,
-            auctions[auctions.length - 1].minBuyAmount,
-            auctions[auctions.length - 1].fate
+            auctions[auctions.length - 1].minBuyAmount
         );
-        // _setMood(Mood.TRADING); TODO
     }
 }

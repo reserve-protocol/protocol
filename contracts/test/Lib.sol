@@ -37,11 +37,26 @@ library Lib {
         return true;
     }
 
+    /// Fix version
+    /// @param str A human-readable prefix to accompany the error message
+    /// @return Whether the Fixes match or not
+    function assertEq(
+        Fix a,
+        Fix b,
+        string memory str
+    ) internal view returns (bool) {
+        if (!FixLib.eq(a, b)) {
+            revert(string(abi.encodePacked(str, " | ", a, " != ", b)));
+        }
+        return true;
+    }
+
     /// ProtoState version
     /// Compares ProtoStates for equality
     function assertEq(ProtoState memory a, ProtoState memory b) internal view returns (bool ok) {
         ok =
             _assertConfigEq(a.config, b.config) &&
+            _assertDistEq(a.distribution, b.distribution) &&
             _assertBUEq(a.rTokenDefinition, b.rTokenDefinition) &&
             _assertTokenStateEq(a.rToken, b.rToken, "RToken") &&
             _assertTokenStateEq(a.rsr, b.rsr, "RSR") &&
@@ -103,8 +118,45 @@ library Lib {
                 _rawFix(a.defaultThreshold),
                 _rawFix(b.defaultThreshold),
                 "Config.defaultThreshold"
-            ) &&
-            assertEq(_rawFix(a.cut), _rawFix(b.cut), "Config.f");
+            );
+    }
+
+    function _assertDistEq(RevenueDestination[] memory a, RevenueDestination[] memory b)
+        internal
+        view
+        returns (bool)
+    {
+        if (!assertEq(a.length, b.length, "Revenue Dest length")) {
+            return false;
+        }
+        _assertNoRepeatedKeys(a);
+        _assertNoRepeatedKeys(b);
+        for (uint256 i = 0; i < a.length; i++) {
+            bool keyFound = false;
+            for (uint256 j = 0; j < b.length; j++) {
+                if (b[j].dest == a[i].dest) {
+                    keyFound = true;
+                    assertEq(a[i].rTokenDist, b[j].rTokenDist, "RToken distributions");
+                    assertEq(a[i].rsrDist, b[j].rsrDist, "RSR distributions");
+                    break;
+                }
+            }
+            if (!keyFound) {
+                revert(string(abi.encodePacked("No key in b matching ", a[i].dest)));
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function _assertNoRepeatedKeys(RevenueDestination[] memory a) internal view {
+        for (uint256 i = 0; i < a.length - 1; i++) {
+            for (uint256 j = i + 1; j < a.length; j++) {
+                if (a[i].dest == a[j].dest) {
+                    revert(string(abi.encodePacked("Equal keys ", a[i].dest)));
+                }
+            }
+        }
     }
 
     /// @return ok Whether two TokenStates are equal, including checking balances for known accounts.
