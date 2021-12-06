@@ -55,19 +55,8 @@ contract RTokenIssuerP0 is
     /// This modifier runs before every function including redemption, so it should be very safe.
     modifier always() {
         revenueFurnace().doMelt();
-
-        // TODO: Move into DefaultHandler
-        ICollateral[] memory hardDefaulting = _checkForHardDefault();
-        if (hardDefaulting.length > 0) {
-            for (uint256 i = 0; i < hardDefaulting.length; i++) {
-                _unapproveCollateral(hardDefaulting[i]);
-            }
-
-            _switchVault(_selectNextVault());
-            _setMood(Mood.TRADING);
-        } else if (!paused && mood() != Mood.DOUBT) {
-            _processSlowIssuance();
-        }
+        _noticeHardDefaultAndAct();
+        _processSlowIssuance();
         _;
     }
 
@@ -171,16 +160,20 @@ contract RTokenIssuerP0 is
 
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowIssuance() internal {
-        for (uint256 i = 0; i < issuances.length; i++) {
-            if (!issuances[i].processed && issuances[i].vault != vault()) {
-                rToken().burn(address(rToken()), issuances[i].amount);
-                issuances[i].vault.redeem(issuances[i].issuer, issuances[i].amtBUs);
-                issuances[i].processed = true;
-                emit IssuanceCanceled(i);
-            } else if (!issuances[i].processed && issuances[i].blockAvailableAt <= block.number) {
-                rToken().withdrawTo(issuances[i].issuer, issuances[i].amount);
-                issuances[i].processed = true;
-                emit IssuanceCompleted(i);
+        if (mood() != Mood.DOUBT) {
+            for (uint256 i = 0; i < issuances.length; i++) {
+                if (!issuances[i].processed && issuances[i].vault != vault()) {
+                    rToken().burn(address(rToken()), issuances[i].amount);
+                    issuances[i].vault.redeem(issuances[i].issuer, issuances[i].amtBUs);
+                    issuances[i].processed = true;
+                    emit IssuanceCanceled(i);
+                } else if (
+                    !issuances[i].processed && issuances[i].blockAvailableAt <= block.number
+                ) {
+                    rToken().withdrawTo(issuances[i].issuer, issuances[i].amount);
+                    issuances[i].processed = true;
+                    emit IssuanceCompleted(i);
+                }
             }
         }
     }

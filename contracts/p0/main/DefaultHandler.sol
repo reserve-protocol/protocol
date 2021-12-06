@@ -47,26 +47,8 @@ contract DefaultHandlerP0 is
     /// @dev This should handle parallel collateral defaults independently
     function poke() public virtual override notPaused {
         super.poke();
-
-        ICollateral[] memory softDefaulting = _checkForSoftDefault();
-        for (uint256 i = 0; i < softDefaulting.length; i++) {
-            bool alreadyDepegged = _in(softDefaulting[i], _depegged);
-            if (!alreadyDepegged) {
-                _timestampOfDepegging[softDefaulting[i]] = block.timestamp;
-            } else if (block.timestamp >= defaultDelay() + _timestampOfDepegging[_depegged[i]]) {
-                _unapproveCollateral(_depegged[i]);
-            }
-        }
-        _depegged = softDefaulting;
-
-        if (softDefaulting.length == 0) {
-            _setMood(fullyCapitalized() ? Mood.CALM : Mood.TRADING);
-        } else if (!_vaultIsOnlyApprovedCollateral(vault())) {
-            _switchVault(_selectNextVault());
-            _setMood(Mood.TRADING);
-        } else {
-            _setMood(Mood.DOUBT);
-        }
+        _noticeHardDefaultAndAct();
+        _noticeSoftDefaultAndAct();
     }
 
     function beforeUpdate()
@@ -79,53 +61,67 @@ contract DefaultHandlerP0 is
 
     /// Checks for hard default by inspecting the redemption rates of all collateral tokens
     /// Forces updates in the underlying defi protocols
-    /// @return defaulting All hard-defaulting tokens
-    function _checkForHardDefault() internal returns (ICollateral[] memory defaulting) {
-        ICollateral[] memory collateral = new ICollateral[](_approvedCollateral.length());
+    function _noticeHardDefaultAndAct() internal {
         uint256 count;
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            bool ok = ICollateral(_approvedCollateral.at(i)).poke();
+            ICollateral c = ICollateral(_approvedCollateral.at(i));
+            bool ok = c.poke();
             if (!ok) {
-                collateral[count] = ICollateral(_approvedCollateral.at(i));
+                _unapproveCollateral(c);
                 count++;
             }
         }
-        defaulting = new ICollateral[](count);
-        for (uint256 i = 0; i < count; i++) {
-            defaulting[i] = collateral[i];
+
+        if (count > 0 && !_vaultIsOnlyApprovedCollateral(vault())) {
+            _switchVault(_selectNextVault());
+            _setMood(Mood.TRADING);
         }
     }
 
-    /// Checks for soft default in a vault by checking oracle values for all fiatcoins in the vault
-    /// @return defaulting All soft-defaulting tokens
-    function _checkForSoftDefault() internal view returns (ICollateral[] memory defaulting) {
+    /// Checks for soft default by checking oracle values for all fiatcoins in the vault
+    function _noticeSoftDefaultAndAct() internal {
         Fix defaultThreshold = _defaultThreshold();
-        ICollateral[] memory collateral = new ICollateral[](_approvedCollateral.length());
+        ICollateral[] memory defaulting = new ICollateral[](_approvedCollateral.length());
         uint256 count;
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
             ICollateral c = ICollateral(_approvedCollateral.at(i));
 
             Fix price = c.fiatcoinPriceUSD(oracle()).shiftLeft(int8(c.fiatcoinDecimals()));
             if (price.lt(defaultThreshold)) {
-                collateral[count] = c;
+                defaulting[count] = c;
                 count++;
             }
         }
-        defaulting = new ICollateral[](count);
+
         for (uint256 i = 0; i < count; i++) {
-            defaulting[i] = collateral[i];
+            bool alreadyDepegged = _in(defaulting[i], _depegged);
+            if (!alreadyDepegged) {
+                _timestampOfDepegging[defaulting[i]] = block.timestamp;
+            } else if (block.timestamp >= defaultDelay() + _timestampOfDepegging[_depegged[i]]) {
+                _unapproveCollateral(_depegged[i]);
+            }
+        }
+        _depegged = defaulting;
+
+        if (defaulting.length == 0) {
+            _setMood(fullyCapitalized() ? Mood.CALM : Mood.TRADING);
+        } else if (!_vaultIsOnlyApprovedCollateral(vault())) {
+            _switchVault(_selectNextVault());
+            _setMood(Mood.TRADING);
+        } else {
+            _setMood(Mood.DOUBT);
         }
     }
 
     /// @return A vault from the list of backup vaults that is not defaulting, or the zero address
-    function _selectNextVault() internal view returns (IVault) {
+    function _selectNextVault() private view returns (IVault) {
         Fix maxRate;
         uint256 indexMax = 0;
         IVault[] memory backups = vault().getBackups();
 
         // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
-            if (_checkForSoftDefault().length == 0 && _vaultIsOnlyApprovedCollateral(backups[i])) {
+            if (_vaultIsOnlyApprovedCollateral(backups[i])) {
                 Fix rate = backups[i].basketRate(); // {USD}
 
                 // See if it has the highest basket rate
