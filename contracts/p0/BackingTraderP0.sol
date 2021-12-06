@@ -27,6 +27,13 @@ contract BackingTraderP0 is TraderP0 {
         if (!trading) {
             _tryCreateBUs();
             trading = _startNextAuction();
+
+            /// Clear out any RSR if we are done trading
+            uint256 rsrBal = main.rsr().balanceOf(address(this));
+            if (!trading && rsrBal > 0) {
+                main.rsr().safeTransfer(address(main.stRSR()), rsrBal);
+                main.stRSR().respondToDeposit(main.rsr());
+            }
         }
     }
 
