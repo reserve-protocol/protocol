@@ -75,8 +75,10 @@ contract AuctioneerP0 is
             if (!trading && !fullyCapitalized()) {
                 _rTokenHaircut();
             }
-            // TODO: There may be excess surplus and BUs after all rounds of trading.
-            // What should we do with them?
+            // TODO: There may be excess surplus and BUs after all rounds of trading. What should we do with them?
+            // Tentative answer: They should be turned into BUs and subsequently, RToken supply expansion.
+            // The concern would be this is an avenue for RSR holders to profit from making the RToken basket worth less, but
+            // this is already a failure mode we have been keeping in mind and are building governance to be resilient against.
         }
 
         // RSR Trader

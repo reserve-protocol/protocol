@@ -40,7 +40,7 @@ contract FurnaceP0 is Ownable, IFurnace {
     }
 
     /// Sets aside newly-deposited RTokens to be melted over `timePeriod` seconds.
-    function respondToDeposit(IERC20 erc20) external override {
+    function notifyOfDeposit(IERC20 erc20) external override {
         require(address(erc20) == address(rToken), "RToken melting only");
 
         // Register handout

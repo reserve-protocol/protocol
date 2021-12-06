@@ -120,7 +120,7 @@ contract StRSRP0 is IStRSR, Context {
         }
     }
 
-    function respondToDeposit(IERC20 erc20) external override {
+    function notifyOfDeposit(IERC20 erc20) external override {
         require(erc20 == main.rsr(), "RSR dividends only");
 
         uint256 balance = main.rsr().balanceOf(address(this));

@@ -43,7 +43,6 @@ contract TraderP0 is Ownable, IAuctioneerEvents {
     }
 
     function setMain(IMain main_) external onlyOwner {
-        // TODO: Should Main be able to set itself?
         main = main_;
     }
 

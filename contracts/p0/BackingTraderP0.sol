@@ -32,7 +32,7 @@ contract BackingTraderP0 is TraderP0 {
             uint256 rsrBal = main.rsr().balanceOf(address(this));
             if (!trading && rsrBal > 0) {
                 main.rsr().safeTransfer(address(main.stRSR()), rsrBal);
-                main.stRSR().respondToDeposit(main.rsr());
+                main.stRSR().notifyOfDeposit(main.rsr());
             }
         }
     }

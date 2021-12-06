@@ -57,10 +57,10 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
             address addr_to = _destinations.at(i);
             if (addr_to == FURNACE) {
                 erc20.safeTransferFrom(from, address(revenueFurnace()), slice);
-                revenueFurnace().respondToDeposit(erc20);
+                revenueFurnace().notifyOfDeposit(erc20);
             } else if (addr_to == ST_RSR) {
                 erc20.safeTransferFrom(from, address(stRSR()), slice);
-                stRSR().respondToDeposit(erc20);
+                stRSR().notifyOfDeposit(erc20);
             }
             erc20.safeTransferFrom(from, _destinations.at(i), slice);
         }
