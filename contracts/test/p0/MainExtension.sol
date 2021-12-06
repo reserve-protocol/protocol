@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/test/Mixins.sol";
+import "contracts/test/ProtoState.sol";
 import "contracts/mocks/ERC20Mock.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMarket.sol";
@@ -38,6 +39,24 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         require(rTokenAsset().erc20().balanceOf(account) - start == amount, "issue failure");
     }
 
+    function STATE_revenueDistribution()
+        external
+        view
+        returns (RevenueDestination[] memory distribution)
+    {
+        distribution = new RevenueDestination[](_destinations.length());
+        for (uint256 i = 0; i < _destinations.length(); i++) {
+            RevenueShare storage rs = _distribution[_destinations.at(i)];
+            distribution[i] = RevenueDestination(_destinations.at(i), rs.rTokenDist, rs.rsrDist);
+        }
+    }
+
+    function _msgSender() internal view override returns (address) {
+        return _mixinMsgSender();
+    }
+
+    // ==== Invariants ====
+
     function assertInvariants() external view override {
         assert(_INVARIANT_stateDefined());
         assert(_INVARIANT_configurationValid());
@@ -55,10 +74,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         assert(_INVARIANT_vaultNotInPastVaults());
         assert(_INVARIANT_auctionsPartitionCleanly());
         assert(_INVARIANT_auctionsClosedInThePast());
-    }
-
-    function _msgSender() internal view override returns (address) {
-        return _mixinMsgSender();
     }
 
     function _INVARIANT_stateDefined() internal view returns (bool ok) {

@@ -287,11 +287,7 @@ contract AdapterP0 is ProtoAdapter {
         for (uint256 i = 0; i < backingTokens.length; i++) {
             backingCollateral[i] = _reverseAssets[ERC20Mock(backingTokens[i])];
         }
-        for (uint256 i = 0; i < _main._destinations.length(); i++) {
-            address dest = _main._destinations.at(i);
-            //TODO: gotta get _destinations and _distribution out of _main but you don't have it it's internal also _destinations is an addressset so good luck with that.
-        }
-
+        s.distribution = _main.STATE_revenueDistribution();
         s.rTokenDefinition = BU(backingCollateral, _main.quote(10**_main.rToken().decimals()));
         s.rToken = _dumpERC20(_main.rToken());
         s.rsr = _dumpERC20(_main.rsr());

@@ -56,6 +56,7 @@ library Lib {
     function assertEq(ProtoState memory a, ProtoState memory b) internal view returns (bool ok) {
         ok =
             _assertConfigEq(a.config, b.config) &&
+            _assertDistEq(a.distribution, b.distribution) &&
             _assertBUEq(a.rTokenDefinition, b.rTokenDefinition) &&
             _assertTokenStateEq(a.rToken, b.rToken, "RToken") &&
             _assertTokenStateEq(a.rsr, b.rsr, "RSR") &&

@@ -38,7 +38,6 @@ enum Asset {
     AAVE // 13
 }
 
-
 /// How revenue is to be distributed
 struct RevenueDestination {
     address dest;
@@ -57,7 +56,6 @@ struct OraclePrice {
     uint256 inETH; // {qETH/tok}
     uint256 inUSD; // {microUSD/tok}
 }
-
 
 struct TokenState {
     string name;
