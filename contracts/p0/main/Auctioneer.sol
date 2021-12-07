@@ -59,18 +59,19 @@ contract AuctioneerP0 is
         super.poke();
 
         // Backing Trader
-        bool trading = backingTrader.poke();
-        if (!trading && !fullyCapitalized()) {
+        backingTrader.poke();
+        if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
             uint256 maxBUs = toBUs(migrationChunk().mulu(rToken().totalSupply()).toUint());
             uint256 crackedBUs = _crackOldVaults(address(backingTrader), maxBUs);
             uint256 buShortfall = toBUs(rToken().totalSupply()) -
                 vault().basketUnits(address(this));
+
             if (crackedBUs > 0) {
                 backingTrader.increaseBUTarget(crackedBUs, buShortfall);
-                trading = backingTrader.poke();
+                backingTrader.poke();
             }
 
-            if (!trading && !fullyCapitalized()) {
+            if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
                 _rTokenHaircut();
             }
             // TODO: There may be excess surplus and BUs after all rounds of trading. What should we do with them?

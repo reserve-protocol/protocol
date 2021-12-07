@@ -20,21 +20,24 @@ contract BackingTraderP0 is TraderP0 {
     // solhint-disable-next-line no-empty-blocks
     constructor(IMain main_) TraderP0(main_) {}
 
-    function poke() public override returns (bool openAuctions) {
-        // Close Due Auctions. If there are any, don't start anything else.
-        openAuctions = closeDueAuctions();
-        if (openAuctions) { return openAuctions; }
+    function poke() public override {
+        // First, try to close open auctions.
+        closeDueAuctions();
 
-        // Try creating BUs.
-        _tryCreateBUs();
-        openAuctions = _startNextAuction();
-        if (openAuctions) { return openAuctions; }
+        // If no auctions are open, try creating BUs.
+        if (!hasOpenAuctions()) {
+            _tryCreateBUs();
+            _startNextAuction();
+        }
 
-        // Clear out any RSR if we are done trading.
-        uint256 rsrBal = main.rsr().balanceOf(address(this));
-        if (rsrBal > 0) {
-            main.rsr().safeTransfer(address(main.stRSR()), rsrBal);
-            main.stRSR().notifyOfDeposit(main.rsr());
+        // If we're here, we're done trading. Clear out any remaining RSR to the staking pool.
+        if (!hasOpenAuctions()) {
+            IERC20 rsr = main.rsr();
+            uint256 rsrBal = rsr.balanceOf(address(this));
+            if (rsrBal > 0) {
+                rsr.safeApprove(address(main), rsrBal);
+                main.distribute(rsr, address(this), rsrBal);
+            }
         }
     }
 
@@ -43,11 +46,10 @@ contract BackingTraderP0 is TraderP0 {
         targetBUs = Math.max(targetBUs + amtBUs, maxTarget);
     }
 
-    /// Launch auctions to reach BUTarget using RSR as needed
-    /// @return Whether an auction was launched
-    function _startNextAuction() private returns (bool) {
+    /// Launch auctions to reach BUTarget. Use RSR if needed.
+    function _startNextAuction() private {
         if (targetBUs == 0) {
-            return false;
+            return;
         }
         // Is there a collateral surplus?
         //     Yes: Try to trade surpluses for deficits
@@ -76,7 +78,6 @@ contract BackingTraderP0 is TraderP0 {
         }
         if (trade) {
             _launchAuction(auction);
-            return true;
         }
 
         // If we're here, all the surplus is dust and we're still recapitalizing
@@ -93,11 +94,7 @@ contract BackingTraderP0 is TraderP0 {
                 main.stRSR().seizeRSR(auction.sellAmount - balance);
             }
             _launchAuction(auction);
-            return true;
         }
-
-        // We did our best, we're out of (non-dust) funds. ;_;
-        return false;
     }
 
     /// Determines what the largest collateral-for-collateral trade is.

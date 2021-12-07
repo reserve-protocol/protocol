@@ -19,21 +19,17 @@ contract RevenueTraderP0 is TraderP0 {
         assetToBuy = assetToBuy_;
     }
 
-    function poke() public override returns (bool) {
+    function poke() public override {
         // Always process auctions *and* do funds management; don't short-circuit here.
-        bool openAuctions = TraderP0.closeDueAuctions();
-        bool launchedNewAuction = _manageFunds();
-        return openAuctions || launchedNewAuction;
+        closeDueAuctions();
+        _manageFunds();
     }
 
     /// Iterate through all asset types, and perform the appropriate action with each:
     /// - If we have any of `assetToBuy` (RSR or RToken), distribute it.
     /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
-    /// @return trading Whether an auction was launched
-
-    function _manageFunds() private returns (bool trading) {
+    function _manageFunds() private {
         IAsset[] memory assets = main.allAssets(); // includes RToken/RSR/COMP/AAVE
-        trading = false;
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20 erc20 = assets[i].erc20();
             uint256 bal = erc20.balanceOf(address(this));
@@ -48,7 +44,6 @@ contract RevenueTraderP0 is TraderP0 {
 
                 (launch, auction) = _prepareAuctionSell(assets[i], assetToBuy, bal);
                 if (launch) {
-                    trading = true;
                     _launchAuction(auction);
                 }
             }

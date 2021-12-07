@@ -16,34 +16,35 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     using SafeERC20 for IERC20;
     Auction[] public auctions;
 
+    uint256 private countOpenAuctions;
+
     IMain public main;
 
     constructor(IMain main_) {
         main = main_;
     }
 
-    /// The "driver" of this trader.
-    /// Implementations should call closeDueAuctions(), decide what to do with auctioned funds, and decide what auctions to run
-    /// (Though not necessarily in that order!)
-    /// @return Whether this trader has any open auctions
-    function poke() external virtual returns (bool);
-
-    // TODO: poke() should return nothing, and we should add a hasOpenAuctions view to this class.
+    /// The driver of each concrete trader. Implementations should call closeDueAuctions(), decide
+    /// what to do with auctioned funds, and decide what auctions to run, though not necessarily in
+    /// that order.
+    function poke() external virtual;
 
     /// Settle any auctions that are due (past their end time)
-    /// @return Whether the trader has open auctions
-    function closeDueAuctions() public virtual returns (bool) {
+    function closeDueAuctions() public {
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctions.length; i++) {
             Auction storage auction = auctions[i];
             if (auction.status == AuctionStatus.OPEN) {
-                if (block.timestamp <= auction.endTime) {
-                    return true;
+                if (block.timestamp >= auction.endTime) {
+                    _closeAuction(auction, i);
                 }
-                _closeAuction(auction, i);
             }
         }
-        return false;
+    }
+
+    /// @return true iff this trader now has open auctions.
+    function hasOpenAuctions() public view returns (bool) {
+        return countOpenAuctions > 0;
     }
 
     function setMain(IMain main_) external onlyOwner {
@@ -54,7 +55,6 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     function claimAndSweepRewards() external override {
         RewardsLib.claimAndSweepRewards(main);
     }
-
 
     /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price
     /// @param sellAmount {qSellTok}
@@ -171,6 +171,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
             new bytes(0)
         );
         auction.status = AuctionStatus.OPEN;
+        countOpenAuctions += 1;
 
         emit AuctionStarted(
             auctions.length - 1,
@@ -191,6 +192,8 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         uint256 bal = auction.buy.erc20().balanceOf(address(this)); // {qBuyTok}
         auction.status = AuctionStatus.DONE;
 
+        countOpenAuctions -= 1;
+
         emit AuctionEnded(
             i,
             address(auction.sell),
@@ -202,7 +205,8 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
 
     /// Decode EasyAuction output into its components.
     function _decodeOrder(bytes32 encodedOrder)
-        private pure
+        private
+        pure
         returns (uint256 amountSold, uint256 amountBought)
     {
         // Note: explicitly converting to a uintN truncates those bits that don't fit
