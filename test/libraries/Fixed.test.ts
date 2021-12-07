@@ -264,6 +264,9 @@ describe('In FixLib,', async () => {
       ]
       for (let [input, result] of table) {
         expect(await caller.round(fp(input)), `fp(${input})`).to.equal(result)
+        if (input > 0) {
+          expect(await caller.toRoundUint(fp(input)), `fp(${input})`).to.equal(result)
+        }
       }
     })
   })
