@@ -52,6 +52,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         super.init(args);
         _oracle = args.oracle;
         _market = args.market;
+        _revenueFurnace = args.furnace;
 
         _rewardStart = args.config.rewardStart;
         _rewardPeriod = args.config.rewardPeriod;

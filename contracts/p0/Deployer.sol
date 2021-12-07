@@ -52,6 +52,7 @@ contract DeployerP0 is IDeployer {
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param vault The initial vault that backs the RToken
     /// @param config Governance params
+    /// @param dist The revenue shares distribution
     /// @param compound The deployment of the Comptroller on this chain
     /// @param aave The deployment of the AaveLendingPool on this chain
     /// @param collateral The collateral assets in the system

@@ -25,8 +25,8 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
 
     function init(ConstructorArgs calldata args) public virtual override(Mixin, SettingsHandlerP0) {
         super.init(args);
-        setDistribution(FURNACE, RevenueShare(args.dist.rTokenDist, FIX_ZERO));
-        setDistribution(ST_RSR, RevenueShare(FIX_ZERO, args.dist.rsrDist));
+        _setDistribution(FURNACE, RevenueShare(args.dist.rTokenDist, FIX_ZERO));
+        _setDistribution(ST_RSR, RevenueShare(FIX_ZERO, args.dist.rsrDist));
     }
 
     function beforeUpdate() public virtual override(Mixin, SettingsHandlerP0) {
@@ -35,8 +35,7 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
 
     function setDistribution(address dest, RevenueShare memory share) public override onlyOwner {
         beforeUpdate();
-        _destinations.add(dest);
-        _distribution[dest] = share;
+        _setDistribution(dest, share);
     }
 
     /// Requires an allowance
@@ -84,5 +83,11 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
             rTokenTotal = rTokenTotal.plus(share.rTokenDist);
             rsrTotal = rsrTotal.plus(share.rsrDist);
         }
+    }
+
+    /// Sets the distribution values - Internals
+    function _setDistribution(address dest, RevenueShare memory share) internal {
+        _destinations.add(dest);
+        _distribution[dest] = share;
     }
 }

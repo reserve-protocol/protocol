@@ -42,6 +42,12 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
     {
         super.init(args);
         vaults.push(args.vault);
+
+        // Check if vault has unapproved collateral
+        if (!vault().containsOnly(args.approvedCollateral)) {
+            revert CommonErrors.UnapprovedCollateral();
+        }
+
         _prevBasketRate = args.vault.basketRate();
         _historicalBasketDilution = FIX_ONE;
     }

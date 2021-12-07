@@ -62,6 +62,9 @@ interface IVault is IRewardsClaimer {
     /// @return {qTok} A list of token quantities required in order to issue `amtBUs`, in the order of the basket.
     function tokenAmounts(uint256 amtBUs) external view returns (uint256[] memory);
 
+    /// @return Whether the vault is made up only of collateral in `collateral`
+    function containsOnly(ICollateral[] memory collateral) external view returns (bool);
+
     /// @return {qBU} The maximum number of BUs the caller can issue
     function maxIssuable(address issuer) external view returns (uint256);
 
