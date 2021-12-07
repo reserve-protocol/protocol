@@ -20,6 +20,8 @@ contract FurnaceP0 is Ownable, IFurnace {
 
     IRToken public immutable rToken;
 
+    uint256 public override batchDuration;
+
     struct Batch {
         uint256 amount; // {qTok}
         uint256 start; // {timestamp}
@@ -29,8 +31,6 @@ contract FurnaceP0 is Ownable, IFurnace {
 
     Batch[] public batches;
 
-    uint256 public override batchDuration;
-
     /// @param batchDuration_ {sec} The number of seconds to spread the melt over
     constructor(IRToken rToken_, uint256 batchDuration_) {
         require(address(rToken_) != address(0), "rToken is zero address");
@@ -39,7 +39,7 @@ contract FurnaceP0 is Ownable, IFurnace {
         batchDuration = batchDuration_;
     }
 
-    /// Sets aside newly-deposited RTokens to be melted over `timePeriod` seconds.
+    /// Causes the Furnace to re-examine its holdings and create new batches.
     function notifyOfDeposit(IERC20 erc20) external override {
         require(address(erc20) == address(rToken), "RToken melting only");
 
@@ -72,14 +72,10 @@ contract FurnaceP0 is Ownable, IFurnace {
         batchDuration = batchDuration_;
     }
 
-    function _burnable(uint256 timestamp) internal returns (uint256) {
+    function _burnable(uint256 timestamp) private returns (uint256) {
         uint256 releasable = 0;
-        for (
-            uint256 index = 0; /*handoutIndex*/
-            index < batches.length;
-            index++
-        ) {
-            Batch storage batch = batches[index];
+        for (uint256 i = 0; i < batches.length; i++) {
+            Batch storage batch = batches[i];
 
             // Check if there are still funds to be melted
             if (batch.melted < batch.amount) {
@@ -100,7 +96,7 @@ contract FurnaceP0 is Ownable, IFurnace {
         return releasable;
     }
 
-    function _vestedAmount(Batch storage batch, uint256 timestamp) internal view returns (uint256) {
+    function _vestedAmount(Batch storage batch, uint256 timestamp) private view returns (uint256) {
         if (timestamp <= batch.start) {
             return 0;
         } else if (timestamp > batch.start + batch.duration) {
