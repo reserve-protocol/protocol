@@ -180,7 +180,7 @@ library Lib {
         uint256[] memory b,
         string memory symbol
     ) internal view returns (bool ok) {
-        ok = assertEq(a.length, b.length, "Balances length mismatch")
+        ok = assertEq(a.length, b.length, "Balances length mismatch");
         for (uint256 i = 0; i < a.length; i++) {
             ok =
                 ok &&

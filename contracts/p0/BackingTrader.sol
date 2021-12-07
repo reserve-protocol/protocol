@@ -106,7 +106,8 @@ contract BackingTraderP0 is TraderP0 {
     /// @return surplusAmount {qSellTok} Surplus amount
     /// @return deficitAmount {qBuyTok} Deficit amount
     function _largestSurplusAndDeficit()
-        private view
+        private
+        view
         returns (
             IAsset surplus,
             IAsset deficit,

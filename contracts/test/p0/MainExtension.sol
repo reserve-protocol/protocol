@@ -275,8 +275,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         for (uint256 i = 0; i < auctions.length; i++) {
             ok =
                 ok &&
-                (auctions[i].status != AuctionStatus.DONE ||
-                    auctions[i].endTime < block.timestamp);
+                (auctions[i].status != AuctionStatus.DONE || auctions[i].endTime < block.timestamp);
         }
         if (!ok) {
             console.log("_INVARIANT_auctionsClosedInThePast violated");
