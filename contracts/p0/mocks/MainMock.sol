@@ -39,7 +39,7 @@ contract ManagerInternalMockP0 {
         vault = vault_;
     }
 
-    function baseFactor() external returns (Fix) {
+    function baseFactor() external pure returns (Fix) {
         return FIX_ONE;
     }
 }

@@ -54,11 +54,11 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
                 : _distribution[_destinations.at(i)].rTokenDist;
             uint256 slice = subshare.mulu(amount).div(total).toUint();
 
-            address addr_to = _destinations.at(i);
-            if (addr_to == FURNACE) {
+            address addrTo = _destinations.at(i);
+            if (addrTo == FURNACE) {
                 erc20.safeTransferFrom(from, address(revenueFurnace()), slice);
                 revenueFurnace().notifyOfDeposit(erc20);
-            } else if (addr_to == ST_RSR) {
+            } else if (addrTo == ST_RSR) {
                 erc20.safeTransferFrom(from, address(stRSR()), slice);
                 stRSR().notifyOfDeposit(erc20);
             }
