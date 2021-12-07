@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IERC20Receiver.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/libraries/Auction.sol";
 import "contracts/p0/Trader.sol";
 import "contracts/p0/main/VaultHandler.sol";
 
@@ -21,7 +20,8 @@ contract RevenueTraderP0 is TraderP0 {
     }
 
     function poke() public override returns (bool) {
-        bool openAuctions = TraderP0.poke();
+        // Always process auctions *and* do funds management; don't short-circuit here.
+        bool openAuctions = TraderP0.closeDueAuctions();
         bool launchedNewAuction = _manageFunds();
         return openAuctions || launchedNewAuction;
     }
@@ -44,7 +44,7 @@ contract RevenueTraderP0 is TraderP0 {
             } else {
                 // If not dust, trade the non-target asset for the target asset
                 bool launch;
-                Auction.Info memory auction;
+                Auction memory auction;
 
                 (launch, auction) = _prepareAuctionSell(assets[i], assetToBuy, bal);
                 if (launch) {

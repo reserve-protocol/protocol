@@ -71,6 +71,26 @@ struct ConstructorArgs {
     IMarket market;
 }
 
+enum AuctionStatus {
+    NOT_YET_OPEN,
+    OPEN,
+    DONE
+}
+
+struct Auction {
+    IAsset sell;
+    IAsset buy;
+    uint256 sellAmount; // {qSellTok}
+    uint256 minBuyAmount; // {qBuyTok}
+    uint256 startTime; // {sec}
+    uint256 endTime; // {sec}
+    uint256 clearingSellAmount; // only defined if status == DONE
+    uint256 clearingBuyAmount;  // only defined if status == DONE
+    uint256 externalAuctionId;  // only defined if status > NOT_YET_OPEN
+    AuctionStatus status;
+}
+
+
 interface IMixin {
     function init(ConstructorArgs calldata args) external;
 

@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/p0/libraries/Auction.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
@@ -21,19 +20,21 @@ contract BackingTraderP0 is TraderP0 {
     // solhint-disable-next-line no-empty-blocks
     constructor(IMain main_) TraderP0(main_) {}
 
-    /// @return trading Whether an auction is live
-    function poke() public override returns (bool trading) {
-        trading = super.poke();
-        if (!trading) {
-            _tryCreateBUs();
-            trading = _startNextAuction();
+    function poke() public override returns (bool openAuctions) {
+        // Close Due Auctions. If there are any, don't start anything else.
+        openAuctions = closeDueAuctions();
+        if (openAuctions) { return openAuctions; }
 
-            /// Clear out any RSR if we are done trading
-            uint256 rsrBal = main.rsr().balanceOf(address(this));
-            if (!trading && rsrBal > 0) {
-                main.rsr().safeTransfer(address(main.stRSR()), rsrBal);
-                main.stRSR().notifyOfDeposit(main.rsr());
-            }
+        // Try creating BUs.
+        _tryCreateBUs();
+        openAuctions = _startNextAuction();
+        if (openAuctions) { return openAuctions; }
+
+        // Clear out any RSR if we are done trading.
+        uint256 rsrBal = main.rsr().balanceOf(address(this));
+        if (rsrBal > 0) {
+            main.rsr().safeTransfer(address(main.stRSR()), rsrBal);
+            main.stRSR().notifyOfDeposit(main.rsr());
         }
     }
 
@@ -61,7 +62,7 @@ contract BackingTraderP0 is TraderP0 {
         ) = _largestSurplusAndDeficit();
 
         bool trade;
-        Auction.Info memory auction;
+        Auction memory auction;
         if (_isTrustedPrice(surplus)) {
             (trade, auction) = _prepareAuctionToCoverDeficit(
                 surplus,

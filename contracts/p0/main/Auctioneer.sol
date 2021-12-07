@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/p0/libraries/Auction.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
@@ -35,12 +34,11 @@ contract AuctioneerP0 is
     VaultHandlerP0,
     IAuctioneer
 {
-    using Auction for Auction.Info;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20;
 
-    Auction.Info[] public auctions;
+    Auction[] public auctions;
 
     BackingTraderP0 public backingTrader;
     RevenueTraderP0 public rsrStakingTrader;
