@@ -46,6 +46,6 @@ contract CTokenMock is ERC20Mock {
         /// From Compound Docs: The current exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
         Fix start = toFixWithShift(2, -2); // 0.02
         int8 leftShift = 18 - int8(decimals()) + int8(IERC20Metadata(_underlyingAsset).decimals());
-        return fiatcoinRedemptionRate.shiftLeft(leftShift).mul(start).toUint();
+        return fiatcoinRedemptionRate.shiftLeft(leftShift).mul(start).toRoundUint();
     }
 }

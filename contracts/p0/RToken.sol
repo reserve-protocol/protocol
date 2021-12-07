@@ -33,7 +33,7 @@ contract RTokenP0 is Ownable, ERC20, IRToken {
     /// @param amount {qTok} The amount to be burned
     /// @return true
     function burn(address from, uint256 amount) external virtual override returns (bool) {
-        require(_msgSender() == from, "only self");
+        require(_msgSender() == from || _msgSender() == address(main), "only self or main");
         _burn(from, amount);
         return true;
     }

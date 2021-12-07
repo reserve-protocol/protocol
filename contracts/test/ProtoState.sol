@@ -60,7 +60,6 @@ struct OraclePrice {
 struct TokenState {
     string name;
     string symbol;
-    uint256[][] allowances; // allowances[Account owner][Account spender] = uint256
     uint256[] balances; // balances[Account] = uint256
     uint256 totalSupply;
     //

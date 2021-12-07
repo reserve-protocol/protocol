@@ -38,6 +38,10 @@ contract FixedCallerMock {
         return FixLib.toUint(x);
     }
 
+    function toRoundUint(Fix x) public pure returns (uint192) {
+        return FixLib.toRoundUint(x);
+    }
+
     function shiftLeft(Fix x, int8 shiftLeft_) public pure returns (Fix) {
         return FixLib.shiftLeft(x, shiftLeft_);
     }

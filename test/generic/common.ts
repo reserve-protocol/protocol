@@ -1,8 +1,9 @@
 import { BigNumber } from 'ethers'
+import { ethers } from 'hardhat'
 
+import { Mood } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { IManagerConfig } from '../p0/utils/fixtures'
-import { Mood } from '../../common/constants'
 
 // @dev Must match `ProtoState.Asset`
 export enum Asset {
@@ -56,6 +57,7 @@ const check = (b: boolean, s: string) => {
   }
 }
 
+// Not currently used
 // Helper to prepare two-dimensional allowance arrays
 export const prepareAllowances = (...allowance: Allowance[]): BigNumber[][] => {
   const toReturn: BigNumber[][] = [] // 2d
@@ -128,6 +130,7 @@ export const sum = (arr: Array<BigNumber>) => {
 // Creates a state where Alice has standing balances of all the "input" tokens (collateral + RSR + COMP + AAVE)
 // and the caller provides the target balances for RToken/stRSR.
 export const prepareState = (
+  rsrCut: BigNumber, // frac between fp(0) and fp(1)
   config: IManagerConfig,
   ethPrice: Price,
   rTokenBalances: Balance[],
@@ -140,7 +143,6 @@ export const prepareState = (
   const prepareToken = (
     symbol: string,
     balances: Array<[Account, BigNumber]>,
-    allowances: Array<[Account, Account, BigNumber]>,
     microUSD: BigNumber, // ie bn('1e6')
     defiRedemptionRate?: BigNumber // ie fp(1) or bn('1e18'), but only for cToken/aToken
   ) => {
@@ -149,7 +151,6 @@ export const prepareState = (
       name: symbol + ' Token',
       symbol: symbol,
       balances: bals,
-      allowances: prepareAllowances(...allowances),
       totalSupply: sum(bals),
       price: defiRedemptionRate ? toPrice(bn(0)) : toPrice(microUSD), // cTokens/aTokens should have zero price
     }
@@ -158,23 +159,35 @@ export const prepareState = (
   for (let i = 0; i < COLLATERAL_TOKEN_LEN; i++) {
     if (i >= FIATCOIN_TOKEN_LEN && i < COLLATERAL_TOKEN_LEN) {
       collateral.push(
-        prepareToken(Asset[i], [[Account.ALICE, bn('1e36')]], [], bn('1e6'), defiCollateralRates[i])
+        prepareToken(Asset[i], [[Account.ALICE, bn('1e36')]], bn('1e6'), defiCollateralRates[i])
       )
     } else {
-      collateral.push(prepareToken(Asset[i], [[Account.ALICE, bn('1e36')]], [], bn('1e6')))
+      collateral.push(prepareToken(Asset[i], [[Account.ALICE, bn('1e36')]], bn('1e6')))
     }
   }
 
+  // FURNACE = 0x1
+  // STRSR = 0x2
+  const distribution = [
+    {
+      dest: '0x0000000000000000000000000000000000000001',
+      rTokenDist: fp(1).sub(rsrCut),
+      rsrDist: bn(0),
+    },
+    { dest: '0x0000000000000000000000000000000000000002', rTokenDist: bn(0), rsrDist: rsrCut },
+  ]
+
   return {
     mood: Mood.CALM,
-    bu_s: baskets,
     config: config,
+    distribution: distribution,
     rTokenDefinition: baskets[0],
-    rToken: prepareToken('RTKN', rTokenBalances, [], bn('1e6')),
-    rsr: prepareToken('RSR', [[Account.ALICE, bn('1e36')]], [], bn('1e6')),
-    stRSR: prepareToken('stRTKNRSR', stRSRBalances, [], bn('1e6')),
-    comp: prepareToken('COMP', [[Account.ALICE, bn('1e36')]], [], bn('1e6')),
-    aave: prepareToken('AAVE', [[Account.ALICE, bn('1e36')]], [], bn('1e6')),
+    rToken: prepareToken('RTKN', rTokenBalances, bn('1e6')),
+    rsr: prepareToken('RSR', [[Account.ALICE, bn('1e36')]], bn('1e6')),
+    stRSR: prepareToken('stRTKNRSR', stRSRBalances, bn('1e6')),
+    bu_s: baskets,
+    comp: prepareToken('COMP', [[Account.ALICE, bn('1e36')]], bn('1e6')),
+    aave: prepareToken('AAVE', [[Account.ALICE, bn('1e36')]], bn('1e6')),
     collateral: collateral,
     defiCollateralRates: defiCollateralRates,
     ethPrice: ethPrice,

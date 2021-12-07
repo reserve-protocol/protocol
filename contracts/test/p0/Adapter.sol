@@ -205,6 +205,7 @@ contract AdapterP0 is ProtoAdapter {
             _rToken = RTokenExtension(address(_main.rToken()));
 
             // add remaining distribution from ProtoState
+            _main.connect(address(this));
             for (uint256 i = 0; i < s.distribution.length; i++) {
                 if (
                     s.distribution[i].dest != throwawayDistributor.FURNACE() &&
@@ -431,13 +432,8 @@ contract AdapterP0 is ProtoAdapter {
         tokenState.name = erc20.name();
         tokenState.symbol = erc20.symbol();
         tokenState.balances = new uint256[](uint256(type(Account).max) + 1);
-        tokenState.allowances = new uint256[][](uint256(type(Account).max) + 1);
         for (uint256 i = 0; i < uint256(type(Account).max) + 1; i++) {
             tokenState.balances[i] = erc20.balanceOf(_address(i));
-            tokenState.allowances[i] = new uint256[](uint256(type(Account).max) + 1);
-            for (uint256 j = 0; j < uint256(type(Account).max) + 1; j++) {
-                tokenState.allowances[i][j] = erc20.allowance(_address(i), _address(j));
-            }
         }
         tokenState.totalSupply = erc20.totalSupply();
         tokenState.price = OraclePrice(
@@ -446,7 +442,7 @@ contract AdapterP0 is ProtoAdapter {
         );
     }
 
-    /// Deploys Collateral contracts and sets up initial balances / allowances
+    /// Deploys Collateral contracts and sets up initial balances
     function _deployCollateral(ERC20Mock erc20, Asset collateralAsset)
         internal
         returns (ICollateral)
@@ -464,7 +460,7 @@ contract AdapterP0 is ProtoAdapter {
         return ICollateral(address(_assets[collateralAsset]));
     }
 
-    /// Populates balances + allowances + oracle prices
+    /// Populates balances + oracle prices
     function _initERC20(ERC20Mock erc20, TokenState memory tokenState) internal {
         assert(keccak256(bytes(erc20.symbol())) == keccak256(bytes(tokenState.symbol)));
         // Balances
@@ -474,15 +470,6 @@ contract AdapterP0 is ProtoAdapter {
             }
         }
         assert(erc20.totalSupply() == tokenState.totalSupply);
-
-        // Allowances
-        for (uint256 i = 0; i < tokenState.allowances.length; i++) {
-            for (uint256 j = 0; j < tokenState.allowances[i].length; j++) {
-                if (tokenState.allowances[i][j] > 0) {
-                    erc20.adminApprove(_address(i), _address(j), tokenState.allowances[i][j]);
-                }
-            }
-        }
 
         // Oracle price information
         Asset asset = _reverseAssets[erc20];
@@ -512,7 +499,7 @@ contract AdapterP0 is ProtoAdapter {
                 newBid.buyAmount = toFix(sellAmount)
                 .mul(buyAsset.priceUSD(_main.oracle()))
                 .div(sellAsset.priceUSD(_main.oracle()))
-                .toUint();
+                .toRoundUint();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(
                     newBid.bidder,

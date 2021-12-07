@@ -2,8 +2,8 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 
-import { bn, fp } from '../../common/numbers'
 import { Mood } from '../../common/constants'
+import { bn, fp } from '../../common/numbers'
 import { ProtoAdapter } from '../../typechain/ProtoAdapter'
 import { ProtosDriver } from '../../typechain/ProtosDriver'
 import { IManagerConfig } from '../p0/utils/fixtures'
@@ -60,7 +60,6 @@ describe('Unit tests (Generic)', () => {
         migrationChunk: fp('0.2'), // 20%
         issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
         defaultThreshold: fp('0.05'), // 5% deviation
-        f: fp('0.60'), // 60% to stakers
       }
       const b1 = { assets: [Asset.cDAI, Asset.USDC], quantities: [bn('5e7'), bn('5e5')] }
       const b2 = { assets: [Asset.USDC], quantities: [bn('1e6')] }
@@ -74,8 +73,9 @@ describe('Unit tests (Generic)', () => {
       const rTokenBal: Balance[] = [[Account.EVE, bn('1e20')]]
       const stRSRBal: Balance[] = [[Account.EVE, bn('1e20')]]
       const defiRates: DefiRate[] = []
+      const rsrCut = fp('0.6')
 
-      initialState = prepareState(config, ethPrice, rTokenBal, stRSRBal, defiRates, baskets)
+      initialState = prepareState(rsrCut, config, ethPrice, rTokenBal, stRSRBal, defiRates, baskets)
       // console.log(initialState)
 
       const Driver = await ethers.getContractFactory('ProtosDriver')

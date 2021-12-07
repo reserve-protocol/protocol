@@ -175,6 +175,15 @@ library FixLib {
         return uint192(n) / FIX_SCALE_U;
     }
 
+        /// Convert this Fix to a uint with rounding.
+    function toRoundUint(Fix x) internal pure returns (uint192) {
+        int192 n = Fix.unwrap(x);
+        if (n < 0) {
+            revert IntOutOfBounds(n);
+        }
+        return uint192(round(x));
+    }
+
     /// Return the Fix shifted to the left by `decimal` digits
     /// Similar to a bitshift but in base 10
     /// Equivalent to multiplying `x` by `10**decimal`
@@ -182,7 +191,7 @@ library FixLib {
         int256 coeff = decimals >= 0 ? int256(10**uint8(decimals)) : int256(10**uint8(-decimals));
         return _safe_wrap(decimals >= 0 ? Fix.unwrap(x) * coeff : Fix.unwrap(x) / coeff);
     }
-
+ 
     /// Round this Fix to the nearest int. If equidistant to both
     /// adjacent ints, round up, away from zero.
     function round(Fix x) internal pure returns (int192) {

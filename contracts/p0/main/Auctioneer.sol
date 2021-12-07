@@ -61,7 +61,7 @@ contract AuctioneerP0 is
         // Backing Trader
         backingTrader.poke();
         if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
-            uint256 maxBUs = toBUs(migrationChunk().mulu(rToken().totalSupply()).toUint());
+            uint256 maxBUs = toBUs(migrationChunk().mulu(rToken().totalSupply()).toRoundUint());
             uint256 crackedBUs = _crackOldVaults(address(backingTrader), maxBUs);
             uint256 buShortfall = toBUs(rToken().totalSupply()) -
                 vault().basketUnits(address(this));
