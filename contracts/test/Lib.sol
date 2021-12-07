@@ -170,7 +170,6 @@ library Lib {
             assertEq(a.symbol, symbol, "Symbol unexpected") &&
             assertEq(a.totalSupply, b.totalSupply, "TotalSupply mismatch") &&
             _assertBalancesEq(a.balances, b.balances, a.symbol) &&
-            _assertAllowancesEq(a.allowances, b.allowances, a.symbol) &&
             _assertOraclePriceEq(a.price, b.price, a.symbol);
     }
 
@@ -188,25 +187,26 @@ library Lib {
         }
     }
 
-    /// @return ok Whether two 2d allowance mappings are equivalent
-    function _assertAllowancesEq(
-        uint256[][] memory a,
-        uint256[][] memory b,
-        string memory /* symbol */
-    ) internal view returns (bool ok) {
-        string memory message;
-        ok = assertEq(a.length, b.length, "Allowances length mismatch");
-        for (uint256 i = 0; i < a.length; i++) {
-            message = string(abi.encodeWithSignature("Allowances array ", i, " length mismatch"));
-            ok = ok && assertEq(a[i].length, b[i].length, message);
-            for (uint256 j = 0; j < a[i].length; j++) {
-                message = string(
-                    abi.encodeWithSignature("Account ", i, ", spender ", j, " allowance mismatch")
-                );
-                ok = ok && assertEq(a[i][j], b[i][j], message);
-            }
-        }
-    }
+    /// // @return ok Whether two 2d allowance mappings are equivalent
+    // Not currently used
+    // function _assertAllowancesEq(
+    //     uint256[][] memory a,
+    //     uint256[][] memory b,
+    //     string memory /* symbol */
+    // ) internal view returns (bool ok) {
+    //     string memory message;
+    //     ok = assertEq(a.length, b.length, "Allowances length mismatch");
+    //     for (uint256 i = 0; i < a.length; i++) {
+    //         message = string(abi.encodeWithSignature("Allowances array ", i, " length mismatch"));
+    //         ok = ok && assertEq(a[i].length, b[i].length, message);
+    //         for (uint256 j = 0; j < a[i].length; j++) {
+    //             message = string(
+    //                 abi.encodeWithSignature("Account ", i, ", spender ", j, " allowance mismatch")
+    //             );
+    //             ok = ok && assertEq(a[i][j], b[i][j], message);
+    //         }
+    //     }
+    // }
 
     /// @return ok Whether two BU sets are equal
     function _assertBUEq(BU memory a, BU memory b) internal view returns (bool ok) {

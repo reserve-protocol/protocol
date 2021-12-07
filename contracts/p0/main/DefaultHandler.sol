@@ -103,7 +103,7 @@ contract DefaultHandlerP0 is
         }
         _depegged = defaulting;
 
-        if (defaulting.length == 0) {
+        if (count == 0) {
             _setMood(fullyCapitalized() ? Mood.CALM : Mood.TRADING);
         } else if (!_vaultIsOnlyApprovedCollateral(vault())) {
             _switchVault(_selectNextVault());

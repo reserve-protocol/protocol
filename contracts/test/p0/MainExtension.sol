@@ -71,8 +71,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         assert(_INVARIANT_hasCollateralConfiguration());
         assert(_INVARIANT_toBUInverseFromBU());
         assert(_INVARIANT_fromBUInverseToBU());
-        assert(_INVARIANT_auctionsPartitionCleanly());
-        assert(_INVARIANT_auctionsClosedInThePast());
+        assert(_INVARIANT_auctionsValid());
     }
 
     function _INVARIANT_stateDefined() internal view returns (bool ok) {
@@ -148,18 +147,9 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_quoteMonotonic() internal view returns (bool ok) {
         ok = true;
-        bytes memory result = address(this).functionStaticCall(
-            abi.encodeWithSignature("quote(uint256)", 1e18)
-        );
-        uint256[] memory one = abi.decode(result, (uint256[]));
-        bytes memory result2 = address(this).functionStaticCall(
-            abi.encodeWithSignature("quote(uint256)", 1e18 + 1)
-        );
-        uint256[] memory two = abi.decode(result2, (uint256[]));
-        bytes memory result3 = address(this).functionStaticCall(
-            abi.encodeWithSignature("quote(uint256)", 2e18)
-        );
-        uint256[] memory three = abi.decode(result3, (uint256[]));
+        uint256[] memory one = quote(1e18);
+        uint256[] memory two = quote(1e18 + 1);
+        uint256[] memory three = quote(2e18);
         ok = ok && one.length == two.length;
         ok = ok && two.length == three.length;
         for (uint256 i = 0; i < one.length; i++) {
@@ -173,10 +163,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_tokensAndQuantitiesSameLength() internal view returns (bool ok) {
         ok = true;
-        bytes memory result = address(this).functionStaticCall(
-            abi.encodeWithSignature("quote(uint256)", 1e18)
-        );
-        uint256[] memory quantities = abi.decode(result, (uint256[]));
+        uint256[] memory quantities = quote(1e18);
         ok = ok && backingTokens().length == quantities.length;
         if (!ok) {
             console.log("_INVARIANT_tokensAndQuantitiesSameLength violated");
@@ -217,10 +204,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     // Ex-asset manager
 
     function _INVARIANT_baseFactorDefined() internal view returns (bool ok) {
-        bytes memory result = address(this).functionStaticCall(
-            abi.encodeWithSignature("baseFactor()")
-        );
-        Fix b = abi.decode(result, (Fix));
+        Fix b = _baseFactor();
         ok = b.gt(FIX_ZERO);
         if (!ok) {
             console.log("_INVARIANT_baseFactorDefined violated");
@@ -232,53 +216,35 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     }
 
     function _INVARIANT_toBUInverseFromBU() internal view returns (bool ok) {
-        uint256 supply = rToken().totalSupply();
-        bytes memory result = address(this).functionStaticCall(
-            abi.encodeWithSignature("toBUs(uint256)", supply)
-        );
-        bytes memory result2 = address(this).functionStaticCall(
-            abi.encodeWithSignature("fromBUs(uint256)", abi.decode(result, (uint256)))
-        );
-        ok = supply == abi.decode(result2, (uint256));
+        ok = true;
+        uint256 converted = fromBUs(toBUs(rToken().totalSupply()));
+        ok = ok && converted == rToken().totalSupply();
         if (!ok) {
-            console.log("_INVARIANT_toBUInverseFromBU violated");
+            console.log("_INVARIANT_toBUInverseFromBU violated", converted, rToken().totalSupply());
         }
     }
 
     function _INVARIANT_fromBUInverseToBU() internal view returns (bool ok) {
+        ok = true;
         uint256 bu_s = vault().basketUnits(address(this));
-        bytes memory result = address(this).functionStaticCall(
-            abi.encodeWithSignature("fromBUs(uint256)", bu_s)
-        );
-        bytes memory result2 = address(this).functionStaticCall(
-            abi.encodeWithSignature("toBUs(uint256)", abi.decode(result, (uint256)))
-        );
-        ok = bu_s == abi.decode(result2, (uint256));
+        ok = ok && toBUs(fromBUs(bu_s)) == bu_s;
         if (!ok) {
-            console.log("_INVARIANT_fromBUInverseToBU violated");
+            console.log("_INVARIANT_fromBUInverseToBU violated", toBUs(fromBUs(bu_s)), bu_s);
         }
     }
 
-    function _INVARIANT_auctionsPartitionCleanly() internal view returns (bool ok) {
+    function _INVARIANT_auctionsValid() internal view returns (bool ok) {
         bool foundOpen = false;
         for (uint256 i = 0; i < auctions.length; i++) {
             if (auctions[i].status == AuctionStatus.OPEN) {
                 foundOpen = true;
-            } else if (foundOpen) {
+            } else if (
+                foundOpen ||
+                (auctions[i].status == AuctionStatus.DONE && auctions[i].endTime < block.timestamp)
+            ) {
                 return false;
             }
         }
         return true;
-    }
-
-    function _INVARIANT_auctionsClosedInThePast() internal view returns (bool ok) {
-        for (uint256 i = 0; i < auctions.length; i++) {
-            ok =
-                ok &&
-                (auctions[i].status != AuctionStatus.DONE || auctions[i].endTime < block.timestamp);
-        }
-        if (!ok) {
-            console.log("_INVARIANT_auctionsClosedInThePast violated");
-        }
     }
 }

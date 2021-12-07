@@ -87,7 +87,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         }
 
         // (_meltingFactor() / _basketDilutionFactor()) * amtBUs
-        return _baseFactor().mulu(amount).toUint();
+        return _baseFactor().mulu(amount).toRoundUint();
     }
 
     /// {qBU} -> {qRTok}
@@ -98,7 +98,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         }
 
         // (_basketDilutionFactor() / _meltingFactor()) * amount
-        return toFix(amtBUs).div(_baseFactor()).toUint();
+        return toFix(amtBUs).div(_baseFactor()).toRoundUint();
     }
 
     // ==== Internal ====

@@ -66,6 +66,10 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         uint256 sellAmount
     ) internal view returns (bool notDust, Auction memory auction) {
         Oracle.Info memory oracle = main.oracle();
+        if (sell.priceUSD(main.oracle()).eq(FIX_ZERO) || buy.priceUSD(main.oracle()).eq(FIX_ZERO)) {
+            return (false, auction);
+        }
+
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
         Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(oracle).mulu(
             main.rToken().totalSupply()
@@ -76,7 +80,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
             return (false, auction);
         }
 
-        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(oracle)).toUint()); // {qSellTok}
+        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(oracle)).toRoundUint()); // {qSellTok}
         Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(oracle)).div(buy.priceUSD(oracle)); // {qBuyTok}
         Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.maxTradeSlippage())); // {qBuyTok}
 
@@ -86,7 +90,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
                 sell: sell,
                 buy: buy,
                 sellAmount: sellAmount,
-                minBuyAmount: minBuyAmount.toUint(),
+                minBuyAmount: minBuyAmount.toRoundUint(),
                 clearingSellAmount: 0,
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,
@@ -128,7 +132,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         // idealSellAmount = Amount needed to sell to buy `deficitAmount`
         uint256 idealSellAmount = exactSellAmount
         .div(FIX_ONE.minus(main.maxTradeSlippage()))
-        .toUint();
+        .toRoundUint();
 
         uint256 sellAmount = Math.min(idealSellAmount, maxSellAmount);
         return _prepareAuctionSell(sell, buy, sellAmount);
@@ -143,7 +147,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize()); // {attoUSD}
 
         // {attoUSD} / {attoUSD/qSellTok}
-        return minSellUSD.div(asset.priceUSD(main.oracle())).toUint();
+        return minSellUSD.div(asset.priceUSD(main.oracle())).toRoundUint();
     }
 
     /// Launch an auction:
