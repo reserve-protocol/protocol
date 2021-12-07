@@ -127,7 +127,7 @@ contract VaultP0 is IVault, Ownable {
         for (uint256 i = 0; i < _basket.size; i++) {
             bool found = false;
             for (uint256 j = 0; j < collateral.length; j++) {
-                if (address(_basket.collateral[i]) == address(collateral[j])) {
+                if (_basket.collateral[i] == collateral[j]) {
                     found = true;
                 }
             }
