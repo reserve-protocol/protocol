@@ -262,7 +262,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     function _INVARIANT_auctionsPartitionCleanly() internal view returns (bool ok) {
         bool foundOpen = false;
         for (uint256 i = 0; i < auctions.length; i++) {
-            if (auctions[i].status == Auction.Status.OPEN) {
+            if (auctions[i].status == AuctionStatus.OPEN) {
                 foundOpen = true;
             } else if (foundOpen) {
                 return false;
@@ -275,7 +275,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         for (uint256 i = 0; i < auctions.length; i++) {
             ok =
                 ok &&
-                (auctions[i].status != Auction.Status.DONE ||
+                (auctions[i].status != AuctionStatus.DONE ||
                     auctions[i].endTime < block.timestamp);
         }
         if (!ok) {

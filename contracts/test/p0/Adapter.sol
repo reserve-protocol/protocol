@@ -500,10 +500,10 @@ contract AdapterP0 is ProtoAdapter {
     function _fillAuctions() internal {
         uint256 numAuctions = _market.numAuctions();
         for (uint256 i = 0; i < numAuctions; i++) {
-            (, IERC20 sell, IERC20 buy, uint256 sellAmount, , , , Auction.Status state_) = _market
+            (, IERC20 sell, IERC20 buy, uint256 sellAmount, , , , AuctionStatus state_) = _market
             .auctions(i);
             (address bidder, , uint256 buyAmount) = _market.bids(i);
-            if (state_ == Auction.Status.OPEN && bidder == address(0)) {
+            if (state_ == AuctionStatus.OPEN && bidder == address(0)) {
                 Bid memory newBid;
                 newBid.bidder = _address(uint256(Account.TRADER));
                 newBid.sellAmount = sellAmount;
