@@ -1,19 +1,19 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
-
 import { expectInReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
 import { AAVEAssetP0 } from '../../../typechain/AAVEAssetP0'
 import { AaveLendingAddrProviderMockP0 } from '../../../typechain/AaveLendingAddrProviderMockP0'
 import { AaveLendingPoolMockP0 } from '../../../typechain/AaveLendingPoolMockP0'
 import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
-import { AssetManagerP0 } from '../../../typechain/AssetManagerP0'
+import { ATokenCollateralP0 } from '../../../typechain/ATokenCollateralP0'
 import { CollateralP0 } from '../../../typechain/CollateralP0'
 import { COMPAssetP0 } from '../../../typechain/COMPAssetP0'
 import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
 import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
-import { DefaultMonitorP0 } from '../../../typechain/DefaultMonitorP0'
+import { CTokenCollateralP0 } from '../../../typechain/CTokenCollateralP0'
+import { CTokenMock } from '../../../typechain/CTokenMock'
 import { DeployerP0 } from '../../../typechain/DeployerP0'
 import { ERC20Mock } from '../../../typechain/ERC20Mock'
 import { FurnaceP0 } from '../../../typechain/FurnaceP0'
@@ -21,7 +21,9 @@ import { MainP0 } from '../../../typechain/MainP0'
 import { MarketMock } from '../../../typechain/MarketMock'
 import { RSRAssetP0 } from '../../../typechain/RSRAssetP0'
 import { RTokenP0 } from '../../../typechain/RTokenP0'
+import { StaticATokenMock } from '../../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../../typechain/StRSRP0'
+import { USDCMock } from '../../../typechain/USDCMock'
 import { VaultP0 } from '../../../typechain/VaultP0'
 import { getLatestBlockTimestamp } from '../../utils/time'
 
@@ -44,7 +46,11 @@ export interface IManagerConfig {
   migrationChunk: BigNumber
   issuanceRate: BigNumber
   defaultThreshold: BigNumber
-  cut: BigNumber
+}
+
+export interface IRevenueShare {
+  rTokenDist: BigNumber
+  rsrDist: BigNumber
 }
 
 interface RSRFixture {
@@ -148,44 +154,53 @@ async function marketFixture(): Promise<MarketFixture> {
 
 interface VaultFixture {
   token0: ERC20Mock
-  token1: ERC20Mock
-  token2: ERC20Mock
-  token3: ERC20Mock
+  token1: USDCMock
+  token2: StaticATokenMock
+  token3: CTokenMock
   collateral0: CollateralP0
   collateral1: CollateralP0
-  collateral2: CollateralP0
-  collateral3: CollateralP0
+  collateral2: ATokenCollateralP0
+  collateral3: CTokenCollateralP0
   collateral: string[]
   vault: VaultP0
 }
 
 async function vaultFixture(): Promise<VaultFixture> {
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
+  const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
+  const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
+  const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
 
   // Deploy Main Vault
-  const token0: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token 0', 'TKN0')
-  const token1: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token 1', 'TKN1')
-  const token2: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token 2', 'TKN2')
-  const token3: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token 3', 'TKN2')
+  const token0: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token', 'TKN')
+  const token1: USDCMock = <USDCMock>await USDC.deploy('USDC Token', 'USDCTKN')
+  const token2: StaticATokenMock = <StaticATokenMock>(
+    await ATokenMockFactory.deploy('AToken', 'ATKN', token0.address)
+  )
+  const token3: CTokenMock = <CTokenMock>(
+    await CTokenMockFactory.deploy('CToken', 'CTKN', token0.address)
+  )
 
   // Set initial amounts and set quantities
-  const qtyHalf: BigNumber = bn('1e18').div(2)
-  const qtyThird: BigNumber = bn('1e18').div(3)
-  const qtyDouble: BigNumber = bn('1e18').mul(2)
+  const qtyOne: BigNumber = bn('1e18')
+  const qtyHalf: BigNumber = qtyOne.div(2)
 
   // Set Collateral Assets and Quantities
   const AssetFactory: ContractFactory = await ethers.getContractFactory('CollateralP0')
+  const ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
+  const CTokenAssetFactory = await ethers.getContractFactory('CTokenCollateralP0')
+
   const collateral0: CollateralP0 = <CollateralP0>(
     await AssetFactory.deploy(token0.address, token0.decimals())
   )
   const collateral1: CollateralP0 = <CollateralP0>(
     await AssetFactory.deploy(token1.address, token1.decimals())
   )
-  const collateral2: CollateralP0 = <CollateralP0>(
-    await AssetFactory.deploy(token2.address, token2.decimals())
+  const collateral2: ATokenCollateralP0 = <ATokenCollateralP0>(
+    await ATokenAssetFactory.deploy(token2.address)
   )
-  const collateral3: CollateralP0 = <CollateralP0>(
-    await AssetFactory.deploy(token3.address, token3.decimals())
+  const collateral3: CTokenCollateralP0 = <CTokenCollateralP0>(
+    await CTokenAssetFactory.deploy(token3.address)
   )
 
   const collateral: string[] = [
@@ -194,7 +209,7 @@ async function vaultFixture(): Promise<VaultFixture> {
     collateral2.address,
     collateral3.address,
   ]
-  const quantities: BigNumber[] = [qtyHalf, qtyHalf, qtyThird, qtyDouble]
+  const quantities: BigNumber[] = [qtyHalf, qtyHalf, qtyOne, qtyOne]
 
   const VaultFactory: ContractFactory = await ethers.getContractFactory('VaultP0')
   const vault: VaultP0 = <VaultP0>await VaultFactory.deploy(collateral, quantities, [])
@@ -220,13 +235,12 @@ type RSRAndCompAaveAndVaultAndMarketFixture = RSRFixture &
 
 interface DefaultFixture extends RSRAndCompAaveAndVaultAndMarketFixture {
   config: IManagerConfig
+  dist: IRevenueShare
   deployer: DeployerP0
   main: MainP0
   rToken: RTokenP0
   furnace: FurnaceP0
   stRSR: StRSRP0
-  assetManager: AssetManagerP0
-  defaultMonitor: DefaultMonitorP0
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -259,17 +273,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const { trading } = await marketFixture()
 
   // Set Default Oracle Prices
-  await compoundOracle.setPrice('TKN0', bn('1e6'))
-  await compoundOracle.setPrice('TKN1', bn('1e6'))
-  await compoundOracle.setPrice('TKN2', bn('1e6'))
-  await compoundOracle.setPrice('TKN3', bn('1e6'))
+  await compoundOracle.setPrice('TKN', bn('1e6'))
+  await compoundOracle.setPrice('USDCTKN', bn('1e6'))
   await compoundOracle.setPrice('ETH', bn('4000e6'))
   await compoundOracle.setPrice('COMP', bn('1e6'))
 
   await aaveOracle.setPrice(token0.address, bn('2.5e14'))
   await aaveOracle.setPrice(token1.address, bn('2.5e14'))
-  await aaveOracle.setPrice(token2.address, bn('2.5e14'))
-  await aaveOracle.setPrice(token3.address, bn('2.5e14'))
   await aaveOracle.setPrice(weth.address, bn('1e18'))
   await aaveOracle.setPrice(aaveToken.address, bn('2.5e14'))
   await aaveOracle.setPrice(compToken.address, bn('2.5e14'))
@@ -290,7 +300,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     migrationChunk: fp('0.2'), // 20%
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
     defaultThreshold: fp('0.05'), // 5% deviation
-    cut: fp('0.60'), // 60% to stakers
+  }
+
+  const dist: IRevenueShare = {
+    rTokenDist: fp('0.4'), // 40% RToken
+    rsrDist: fp('0.6'), // 60% RSR
   }
 
   // Create Deployer
@@ -312,6 +326,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       owner.address,
       vault.address,
       config,
+      dist,
       compoundMock.address,
       aaveMock.address,
       collateral
@@ -327,12 +342,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await ethers.getContractAt('FurnaceP0', await main.revenueFurnace())
   )
   const stRSR: StRSRP0 = <StRSRP0>await ethers.getContractAt('StRSRP0', await main.stRSR())
-  const assetManager: AssetManagerP0 = <AssetManagerP0>(
-    await ethers.getContractAt('AssetManagerP0', await main.manager())
-  )
-  const defaultMonitor: DefaultMonitorP0 = <DefaultMonitorP0>(
-    await ethers.getContractAt('DefaultMonitorP0', await main.monitor())
-  )
 
   return {
     rsr,
@@ -357,13 +366,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     collateral,
     vault,
     config,
+    dist,
     deployer,
     main,
     rToken,
     furnace,
     stRSR,
-    assetManager,
-    defaultMonitor,
     trading,
   }
 }
