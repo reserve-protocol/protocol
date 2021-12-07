@@ -143,7 +143,6 @@ library Lib {
             }
             if (!keyFound) {
                 revert(string(abi.encodePacked("No key in b matching ", a[i].dest)));
-                return false;
             }
         }
         return true;
@@ -168,6 +167,7 @@ library Lib {
         ok =
             assertEq(a.name, b.name, "Name mismatch") &&
             assertEq(a.symbol, b.symbol, "Symbol mismatch") &&
+            assertEq(a.symbol, symbol, "Symbol unexpected") &&
             assertEq(a.totalSupply, b.totalSupply, "TotalSupply mismatch") &&
             _assertBalancesEq(a.balances, b.balances, a.symbol) &&
             _assertAllowancesEq(a.allowances, b.allowances, a.symbol) &&
@@ -180,8 +180,7 @@ library Lib {
         uint256[] memory b,
         string memory symbol
     ) internal view returns (bool ok) {
-        string memory message;
-        ok = assertEq(a.length, b.length, "Balances length mismatch");
+        ok = assertEq(a.length, b.length, "Balances length mismatch")
         for (uint256 i = 0; i < a.length; i++) {
             ok =
                 ok &&
@@ -193,7 +192,7 @@ library Lib {
     function _assertAllowancesEq(
         uint256[][] memory a,
         uint256[][] memory b,
-        string memory symbol
+        string memory /* symbol */
     ) internal view returns (bool ok) {
         string memory message;
         ok = assertEq(a.length, b.length, "Allowances length mismatch");

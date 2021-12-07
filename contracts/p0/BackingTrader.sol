@@ -106,7 +106,7 @@ contract BackingTraderP0 is TraderP0 {
     /// @return surplusAmount {qSellTok} Surplus amount
     /// @return deficitAmount {qBuyTok} Deficit amount
     function _largestSurplusAndDeficit()
-        private
+        private view
         returns (
             IAsset surplus,
             IAsset deficit,
@@ -175,7 +175,7 @@ contract BackingTraderP0 is TraderP0 {
         }
     }
 
-    function _isTrustedPrice(IAsset asset) private returns (bool) {
+    function _isTrustedPrice(IAsset asset) private view returns (bool) {
         return
             main.isApproved(asset) ||
             asset == main.rTokenAsset() ||

@@ -64,7 +64,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         IAsset sell,
         IAsset buy,
         uint256 sellAmount
-    ) internal returns (bool notDust, Auction memory auction) {
+    ) internal view returns (bool notDust, Auction memory auction) {
         Oracle.Info memory oracle = main.oracle();
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
         Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(oracle).mulu(
@@ -108,7 +108,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         IAsset buy,
         uint256 maxSellAmount,
         uint256 deficitAmount
-    ) internal returns (bool notDust, Auction memory auction) {
+    ) internal view returns (bool notDust, Auction memory auction) {
         Oracle.Info memory oracle = main.oracle();
         uint256 sellThreshold = _dustThreshold(sell);
         if (maxSellAmount < sellThreshold) {
@@ -189,7 +189,8 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         bytes32 encodedOrder = main.market().settleAuction(auction.externalAuctionId);
         (auction.clearingSellAmount, auction.clearingBuyAmount) = _decodeOrder(encodedOrder);
 
-        uint256 bal = auction.buy.erc20().balanceOf(address(this)); // {qBuyTok}
+        // TODO: what was `bal` ever for, here?
+        // uint256 bal = auction.buy.erc20().balanceOf(address(this)); // {qBuyTok}
         auction.status = AuctionStatus.DONE;
 
         countOpenAuctions -= 1;

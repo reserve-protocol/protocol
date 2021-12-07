@@ -82,7 +82,7 @@ contract StaticATokenMock is ERC20Mock {
     }
 
     function getClaimableRewards(address user) external view returns (uint256) {
-        aaveBalances[user];
+        return aaveBalances[user];
     }
 
     function _toExchangeRate(Fix fiatcoinRedemptionRate) internal pure returns (uint256) {

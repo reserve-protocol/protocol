@@ -228,7 +228,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     }
 
     function _INVARIANT_hasCollateralConfiguration() internal view returns (bool ok) {
-        assert(approvedFiatcoins().length > 0);
+        return approvedFiatcoins().length > 0;
     }
 
     function _INVARIANT_toBUInverseFromBU() internal view returns (bool ok) {
