@@ -52,14 +52,6 @@ contract RTokenIssuerP0 is
     // Slow Issuance
     SlowIssuance[] public issuances;
 
-    /// This modifier runs before every function including redemption, so it should be very safe.
-    modifier always() {
-        revenueFurnace().doMelt();
-        _noticeHardDefaultAndAct();
-        _processSlowIssuance();
-        _;
-    }
-
     function init(ConstructorArgs calldata args)
         public
         virtual
@@ -69,8 +61,10 @@ contract RTokenIssuerP0 is
     }
 
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
-    function poke() public virtual override(Mixin, DefaultHandlerP0) notPaused always {
+    function poke() public virtual override(Mixin, DefaultHandlerP0) notPaused {
         super.poke();
+        revenueFurnace().doMelt();
+        _processSlowIssuance();
     }
 
     function beforeUpdate()
@@ -83,9 +77,11 @@ contract RTokenIssuerP0 is
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
-    function issue(uint256 amount) public override notPaused always {
+    function issue(uint256 amount) public override notPaused {
         require(amount > 0, "Cannot issue zero");
         require(mood() != Mood.DOUBT, "in doubt, cannot issue");
+        revenueFurnace().doMelt();
+        _noticeHardDefaultAndAct();
 
         uint256 amtBUs = toBUs(amount);
 
@@ -120,8 +116,9 @@ contract RTokenIssuerP0 is
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    function redeem(uint256 amount) public override always {
+    function redeem(uint256 amount) public override {
         require(amount > 0, "Cannot redeem zero");
+        revenueFurnace().doMelt();
 
         rToken().burn(_msgSender(), amount);
         _crackOldVaults(_msgSender(), toBUs(amount));
