@@ -141,13 +141,7 @@ contract DefaultHandlerP0 is
     /// @return Whether a vault consists only of approved collateral
     function _isOnlyApprovedCollateral(IVault vault_) private view returns (bool) {
         for (uint256 i = 0; i < vault_.size(); i++) {
-            bool found = false;
-            for (uint256 j = 0; j < _approvedCollateral.length(); j++) {
-                if (address(vault_.collateralAt(i)) == _approvedCollateral.at(j)) {
-                    found = true;
-                }
-            }
-            if (!found) {
+            if (!_approvedCollateral.contains(address(vault_.collateralAt(i)))) {
                 return false;
             }
         }
