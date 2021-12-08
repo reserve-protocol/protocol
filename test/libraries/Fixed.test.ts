@@ -264,9 +264,48 @@ describe('In FixLib,', async () => {
       ]
       for (let [input, result] of table) {
         expect(await caller.round(fp(input)), `fp(${input})`).to.equal(result)
-        if (input > 0) {
-          expect(await caller.toRoundUint(fp(input)), `fp(${input})`).to.equal(result)
-        }
+      }
+    })
+  })
+  describe('toRoundUint', async () => {
+    it('correctly rounds to nearest int', async () => {
+      // prettier-ignore
+      const table = [
+        [1.1, 1], [1.9, 2], [1, 1], [0.1, 0],
+        [705811305.5207, 705811306], [705811305.207, 705811305],
+        [3.4999, 3], [3.50001, 4], 
+        [MAX_FIX_INT, MAX_FIX_INT],
+        [9.99999, 10], 
+        [6.5, 7], [5.5, 6],
+        [0, 0], [0.5, 1], 
+      ]
+      for (let [input, result] of table) {
+        expect(await caller.toRoundUint(fp(input)), `fp(${input})`).to.equal(result)
+      }
+    })
+  })
+
+  describe('toUintCeil', async () => {
+    it('correctly rounds up', async () => {
+      // prettier-ignore
+      const table = [
+        [1.1, 2],
+        [1.9, 2],
+        [1, 1],
+        [0.1, 1],
+        [705811305.5207, 705811306],
+        [705811305.207, 705811306],
+        [3.4999, 4],
+        [3.50001, 4],
+        [MAX_FIX_INT, MAX_FIX_INT],
+        [9.99999, 10],
+        [6.5, 7],
+        [5.5, 6],
+        [0, 0],
+        [0.5, 1],
+      ]
+      for (let [input, result] of table) {
+        expect(await caller.toUintCeil(fp(input)), `fp(${input})`).to.equal(result)
       }
     })
   })
