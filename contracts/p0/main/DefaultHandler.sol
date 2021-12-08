@@ -72,7 +72,7 @@ contract DefaultHandlerP0 is
             }
         }
 
-        if (count > 0 && !_vaultIsOnlyApprovedCollateral(vault())) {
+        if (count > 0 && !_isOnlyApprovedCollateral(vault())) {
             _switchVault(_selectNextVault());
             _setMood(Mood.TRADING);
         }
@@ -105,7 +105,7 @@ contract DefaultHandlerP0 is
 
         if (count == 0) {
             _setMood(fullyCapitalized() ? Mood.CALM : Mood.TRADING);
-        } else if (!_vaultIsOnlyApprovedCollateral(vault())) {
+        } else if (!_isOnlyApprovedCollateral(vault())) {
             _switchVault(_selectNextVault());
             _setMood(Mood.TRADING);
         } else {
@@ -121,7 +121,7 @@ contract DefaultHandlerP0 is
 
         // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
-            if (_vaultIsOnlyApprovedCollateral(backups[i])) {
+            if (_isOnlyApprovedCollateral(backups[i])) {
                 Fix rate = backups[i].basketRate(); // {USD}
 
                 // See if it has the highest basket rate
@@ -139,7 +139,7 @@ contract DefaultHandlerP0 is
     }
 
     /// @return Whether a vault consists only of approved collateral
-    function _vaultIsOnlyApprovedCollateral(IVault vault_) private view returns (bool) {
+    function _isOnlyApprovedCollateral(IVault vault_) private view returns (bool) {
         for (uint256 i = 0; i < vault_.size(); i++) {
             bool found = false;
             for (uint256 j = 0; j < _approvedCollateral.length(); j++) {
@@ -156,11 +156,18 @@ contract DefaultHandlerP0 is
 
     /// @return {attoUSD/fiatTok} The USD price at which a fiatcoin can be said to be defaulting
     function _defaultThreshold() private view returns (Fix) {
-        ICollateral[] memory fiatcoins = _approvedFiatcoins();
+        uint256 numFiatcoins;
+        ICollateral[] memory fiatcoins = new ICollateral[](_approvedCollateral.length());
+        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
+            if (ICollateral(_approvedCollateral.at(i)).isFiatcoin()) {
+                fiatcoins[numFiatcoins] = ICollateral(_approvedCollateral.at(i));
+                numFiatcoins++;
+            }
+        }
 
         // Collect prices
-        Fix[] memory prices = new Fix[](fiatcoins.length);
-        for (uint256 i = 0; i < fiatcoins.length; i++) {
+        Fix[] memory prices = new Fix[](numFiatcoins);
+        for (uint256 i = 0; i < numFiatcoins; i++) {
             int8 decimals = int8(fiatcoins[i].fiatcoinDecimals());
 
             // {attoUSD/fiatTok} = {attoUSD/qFiatTok} * {qFiatTok/fiatTok}
@@ -192,24 +199,6 @@ contract DefaultHandlerP0 is
 
         // median - (median * defaultThreshold)
         return median.minus(median.mul(defaultThreshold()));
-    }
-
-    /// @return fiatcoins The subset of `collateral` that is fiatcoin
-    function _approvedFiatcoins() private view returns (ICollateral[] memory fiatcoins) {
-        uint256 size;
-        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            if (ICollateral(_approvedCollateral.at(i)).isFiatcoin()) {
-                size++;
-            }
-        }
-        fiatcoins = new ICollateral[](size);
-        size = 0;
-        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            if (ICollateral(_approvedCollateral.at(i)).isFiatcoin()) {
-                fiatcoins[size] = ICollateral(_approvedCollateral.at(i));
-                size++;
-            }
-        }
     }
 
     /// @return Whether `c` is in `arr`
