@@ -175,13 +175,20 @@ library FixLib {
         return uint192(n) / FIX_SCALE_U;
     }
 
-        /// Convert this Fix to a uint with rounding.
+    /// Convert this Fix to a uint with standard rounding to the nearest integer.
     function toRoundUint(Fix x) internal pure returns (uint192) {
         int192 n = Fix.unwrap(x);
         if (n < 0) {
             revert IntOutOfBounds(n);
         }
         return uint192(round(x));
+    }
+
+    /// Convert this Fix to a uint. Round the fractional part towards one.
+    function toUintCeil(Fix x) internal pure returns (uint192) {
+        uint192 u = toUint(x);
+        if (uint192(Fix.unwrap(x)) == u * FIX_SCALE_U) { return u;}
+        return u+1;
     }
 
     /// Return the Fix shifted to the left by `decimal` digits
