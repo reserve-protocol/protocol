@@ -210,7 +210,8 @@ async function vaultFixture(): Promise<VaultFixture> {
     collateral2.address,
     collateral3.address,
   ]
-  const quantities: BigNumber[] = [qtyHalf, qtyHalf, qtyOne, qtyOne]
+  // USDC has 6 decimals, and CToken has 8 decimals.
+  const quantities: BigNumber[] = [qtyHalf, qtyHalf.div(1e12), qtyOne, qtyOne.div(1e10)]
 
   const VaultFactory: ContractFactory = await ethers.getContractFactory('VaultP0')
   const vault: VaultP0 = <VaultP0>await VaultFactory.deploy(collateral, quantities, [])
