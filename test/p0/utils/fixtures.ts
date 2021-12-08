@@ -1,6 +1,7 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
+
 import { expectInReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
 import { AAVEAssetP0 } from '../../../typechain/AAVEAssetP0'
@@ -143,13 +144,13 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
 }
 
 interface MarketFixture {
-  trading: MarketMock
+  market: MarketMock
 }
 
 async function marketFixture(): Promise<MarketFixture> {
   const MarketMockFactory: ContractFactory = await ethers.getContractFactory('MarketMock')
-  const tradingMock: MarketMock = <MarketMock>await MarketMockFactory.deploy()
-  return { trading: tradingMock }
+  const marketMock: MarketMock = <MarketMock>await MarketMockFactory.deploy()
+  return { market: marketMock }
 }
 
 interface VaultFixture {
@@ -270,7 +271,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     aaveOracle,
     aaveMock,
   } = await compAaveFixture()
-  const { trading } = await marketFixture()
+  const { market } = await marketFixture()
 
   // Set Default Oracle Prices
   await compoundOracle.setPrice('TKN', bn('1e6'))
@@ -314,7 +315,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       rsrAsset.address,
       compAsset.address,
       aaveAsset.address,
-      trading.address
+      market.address
     )
   )
 
@@ -372,6 +373,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rToken,
     furnace,
     stRSR,
-    trading,
+    market,
   }
 }

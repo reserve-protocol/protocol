@@ -103,7 +103,7 @@ contract VaultP0 is IVault, Ownable {
             amounts[i] = toFix(amtBUs)
             .divu(1e18)
             .mulu(_basket.quantities[_basket.collateral[i]])
-            .toRoundUint();
+            .toUintCeil();
         }
     }
 
@@ -150,7 +150,7 @@ contract VaultP0 is IVault, Ownable {
                 min = amtBUs;
             }
         }
-        return min.shiftLeft(int8(BU_DECIMALS)).toRoundUint();
+        return min.shiftLeft(int8(BU_DECIMALS)).toUint();
     }
 
     /// @return The collateral asset at `index`

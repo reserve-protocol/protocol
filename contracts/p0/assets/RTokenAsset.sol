@@ -33,7 +33,7 @@ contract RTokenAssetP0 is IAsset {
         }
 
         // {attoUSD/qBU} = {attoUSD/BU} / {qBU/BU}
-        uint256 perQBU = sum.divu(10**v.BU_DECIMALS()).toRoundUint();
+        uint256 perQBU = sum.divu(10**v.BU_DECIMALS()).toUint();
 
         // {attoUSD/qRTok} = {attoUSD/qBU} * {qBU/qRTok}
         return toFix(main.fromBUs(perQBU));

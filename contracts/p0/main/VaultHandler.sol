@@ -87,7 +87,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         }
 
         // (_meltingFactor() / _basketDilutionFactor()) * amtBUs
-        return _baseFactor().mulu(amount).toRoundUint();
+        return _baseFactor().mulu(amount).toUint();
     }
 
     /// {qBU} -> {qRTok}
@@ -98,7 +98,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         }
 
         // (_basketDilutionFactor() / _meltingFactor()) * amount
-        return toFix(amtBUs).div(_baseFactor()).toRoundUint();
+        return toFix(amtBUs).div(_baseFactor()).toUint();
     }
 
     // ==== Internal ====
@@ -112,7 +112,9 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         beforeUpdate();
         emit NewVaultSet(address(vault()), address(vault_));
         vaults.push(vault_);
-        beforeUpdate();
+
+        // TODO: maybe we need this?
+        // beforeUpdate();
     }
 
     /// @return {none) Denominator of the base factor

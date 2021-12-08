@@ -51,7 +51,7 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
             Fix subshare = erc20 == rsr()
                 ? _distribution[_destinations.at(i)].rsrDist
                 : _distribution[_destinations.at(i)].rTokenDist;
-            uint256 slice = subshare.mulu(amount).div(total).toRoundUint();
+            uint256 slice = subshare.mulu(amount).div(total).toUint();
 
             address addrTo = _destinations.at(i);
             if (addrTo == FURNACE) {
