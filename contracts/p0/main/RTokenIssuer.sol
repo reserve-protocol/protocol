@@ -121,7 +121,7 @@ contract RTokenIssuerP0 is
         revenueFurnace().doMelt();
 
         rToken().burn(_msgSender(), amount);
-        _crackOldVaults(_msgSender(), toBUs(amount));
+        _redeemFromOldVaults(_msgSender(), toBUs(amount));
         emit Redemption(_msgSender(), amount);
     }
 

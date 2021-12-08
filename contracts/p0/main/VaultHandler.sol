@@ -142,27 +142,18 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         return totalSupply.plus(totalBurnt).div(totalSupply);
     }
 
-    /// Cracks up to `amtBUs` basket units from all past vaults.
+    /// Redeems up to `amtBUs` basket units from all past vaults.
     /// @return crackedBUs How many BUs were actually cracked
-    function _crackOldVaults(address recipient, uint256 maxBUs)
+    function _redeemFromOldVaults(address recipient, uint256 maxBUs)
         internal
         returns (uint256 crackedBUs)
     {
         for (uint256 i = 0; i + 1 < vaults.length && crackedBUs < maxBUs; i++) {
-            crackedBUs += _crackFrom(vaults[i], recipient, maxBUs - crackedBUs);
+            uint256 toCrack = Math.min(vaults[i].basketUnits(address(this)), maxBUs - crackedBUs);
+            if (toCrack > 0) {
+                vaults[i].redeem(recipient, toCrack);
+                crackedBUs += toCrack;
+            }
         }
-    }
-
-    /// @return How many BUs were cracked
-    function _crackFrom(
-        IVault vault_,
-        address recipient,
-        uint256 maxToCrack
-    ) private returns (uint256) {
-        uint256 toCrack = Math.min(vault_.basketUnits(address(this)), maxToCrack);
-        if (toCrack > 0) {
-            vault_.redeem(recipient, toCrack);
-        }
-        return toCrack;
     }
 }
