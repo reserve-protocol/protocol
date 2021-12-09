@@ -73,6 +73,7 @@ contract RTokenIssuerP0 is
         override(Mixin, SettingsHandlerP0, VaultHandlerP0, DefaultHandlerP0)
     {
         super.beforeUpdate();
+        _processSlowIssuance();
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -81,7 +82,8 @@ contract RTokenIssuerP0 is
         require(amount > 0, "Cannot issue zero");
         require(mood() != Mood.DOUBT, "in doubt, cannot issue");
         revenueFurnace().doMelt();
-        _noticeHardDefaultAndAct();
+        _noticeHardDefault();
+        _tryEnsureValidVault();
 
         uint256 amtBUs = toBUs(amount);
 
@@ -121,7 +123,12 @@ contract RTokenIssuerP0 is
         revenueFurnace().doMelt();
 
         rToken().burn(_msgSender(), amount);
-        _crackOldVaults(_msgSender(), toBUs(amount));
+        uint256 amtBUs = toBUs(amount);
+        uint256 amtCracked = _crackOldVaults(_msgSender(), amtBUs);
+        if (amtCracked < amtBUs) {
+            uint256 delta = amtBUs - amtCracked;
+            assert(delta <= _crackFrom(vault(), _msgSender(), delta));
+        }
         emit Redemption(_msgSender(), amount);
     }
 

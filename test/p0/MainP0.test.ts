@@ -25,7 +25,7 @@ import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { VaultP0 } from '../../typechain/VaultP0'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
-import { defaultFixture, IManagerConfig, State } from './utils/fixtures'
+import { Collateral, defaultFixture, IManagerConfig, State } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -39,9 +39,9 @@ describe('MainP0 contract', () => {
   let deployer: DeployerP0
 
   // Vault and Assets
+  let collateral: Collateral[]
   let VaultFactory: ContractFactory
   let vault: VaultP0
-  let collateral: string[]
 
   // Non-backing assets
   let rsr: ERC20Mock
@@ -62,16 +62,10 @@ describe('MainP0 contract', () => {
   let token1: ERC20Mock
   let token2: ERC20Mock
   let token3: ERC20Mock
-  let collateral0: CollateralP0
-  let collateral1: CollateralP0
-  let collateral2: CollateralP0
-  let collateral3: CollateralP0
-  let ATokenMockFactory: ContractFactory
-  let ATokenAssetFactory: ContractFactory
-  let aToken0: StaticATokenMock
-  let aToken1: StaticATokenMock
-  let assetAToken0: ATokenCollateralP0
-  let assetAToken1: ATokenCollateralP0
+  let collateral0: Collateral
+  let collateral1: Collateral
+  let collateral2: Collateral
+  let collateral3: Collateral
 
   // Config values
   let config: IManagerConfig
@@ -92,8 +86,9 @@ describe('MainP0 contract', () => {
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
-
-    // Deploy fixture
+    let erc20s: ERC20Mock[]
+    let basket: Collateral[]
+      // Deploy fixture
     ;({
       rsr,
       rsrAsset,
@@ -103,15 +98,9 @@ describe('MainP0 contract', () => {
       aaveOracle,
       compoundMock,
       aaveMock,
-      token0,
-      token1,
-      token2,
-      token3,
-      collateral0,
-      collateral1,
-      collateral2,
-      collateral3,
+      erc20s,
       collateral,
+      basket,
       vault,
       config,
       deployer,
@@ -121,6 +110,14 @@ describe('MainP0 contract', () => {
       stRSR,
       market,
     } = await loadFixture(defaultFixture))
+    token0 = erc20s[collateral.indexOf(basket[0])]
+    token1 = erc20s[collateral.indexOf(basket[1])]
+    token2 = erc20s[collateral.indexOf(basket[2])]
+    token3 = erc20s[collateral.indexOf(basket[3])]
+    collateral0 = basket[0]
+    collateral1 = basket[1]
+    collateral2 = basket[2]
+    collateral3 = basket[3]
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -338,7 +335,9 @@ describe('MainP0 contract', () => {
     it('Should issue RTokens with single basket token', async function () {
       const issueAmount: BigNumber = bn('10e18')
       const qty: BigNumber = bn('1e18')
-      const newVault: VaultP0 = <VaultP0>await VaultFactory.deploy([collateral[0]], [qty], [])
+      const newVault: VaultP0 = <VaultP0>(
+        await VaultFactory.deploy([collateral[0].address], [qty], [])
+      )
 
       // Update Vault
       await main.connect(owner).switchVault(newVault.address)
@@ -641,13 +640,13 @@ describe('MainP0 contract', () => {
 
       // Check first slow minting is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-      expect(await vault.basketUnits(main.address)).to.equal(issueAmount)
+      expect(await vault.basketUnits(main.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
 
       // Process another block to get the 2nd issuance processed
       await main.poke()
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
-      expect(await vault.basketUnits(main.address)).to.equal(issueAmount.add(newIssueAmount))
+      expect(await vault.basketUnits(main.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
 
       // Process another block to get the 3rd issuance processed
       await main.poke()
@@ -710,12 +709,11 @@ describe('MainP0 contract', () => {
 
       // Change Vault
       const newVault: VaultP0 = <VaultP0>(
-        await VaultFactory.deploy([collateral[1]], [bn('1e18')], [])
+        await VaultFactory.deploy([collateral[1].address], [bn('1e18')], [])
       )
-      await main.connect(owner).switchVault(newVault.address)
-
-      // Process slow mintings again
-      await expect(main.poke()).to.emit(main, 'IssuanceCanceled').withArgs(0)
+      expect(await main.connect(owner).switchVault(newVault.address))
+        .to.emit(main, 'IssuanceCanceled')
+        .withArgs(0)
 
       // Check Balances after - Funds returned to minter
       expect(await token0.balanceOf(vault.address)).to.equal(0)
@@ -893,7 +891,11 @@ describe('MainP0 contract', () => {
     it('Should switch vaults and start Trading if in "doubt" more than defaultDelay', async () => {
       // Set backup vault
       const backupVault: VaultP0 = <VaultP0>(
-        await VaultFactory.deploy([collateral[1], collateral[2]], [bn('1e18'), bn('1e18')], [])
+        await VaultFactory.deploy(
+          [collateral[1].address, collateral[2].address],
+          [bn('1e6'), bn('1e18')],
+          []
+        )
       )
       await vault.setBackups([backupVault.address])
 
@@ -950,20 +952,16 @@ describe('MainP0 contract', () => {
 
     it('Should detect hard default and switch state and vault', async () => {
       // Define AToken
-      ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
-      aToken0 = <StaticATokenMock>(
+      const ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
+      const aToken0 = <StaticATokenMock>(
         await ATokenMockFactory.deploy('AToken 0', 'ATKN0', token0.address)
       )
-      aToken1 = <StaticATokenMock>(
+      const aToken1 = <StaticATokenMock>(
         await ATokenMockFactory.deploy('AToken 1', 'ATKN1', token1.address)
       )
-      ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
-      assetAToken0 = <ATokenCollateralP0>(
-        await ATokenAssetFactory.deploy(aToken0.address, aToken0.decimals())
-      )
-      assetAToken1 = <ATokenCollateralP0>(
-        await ATokenAssetFactory.deploy(aToken1.address, aToken1.decimals())
-      )
+      const ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
+      const assetAToken0 = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aToken0.address)
+      const assetAToken1 = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aToken1.address)
 
       // Check state
       expect(await main.mood()).to.equal(State.CALM)
@@ -999,7 +997,7 @@ describe('MainP0 contract', () => {
       expect(await main.fullyCapitalized()).to.equal(false)
 
       // Set default rate
-      await aToken0.setExchangeRate(bn('0.98'))
+      await aToken0.setExchangeRate(fp('0.98'))
 
       // Call to detect vault switch and state change
       await main.poke()

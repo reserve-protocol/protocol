@@ -33,8 +33,8 @@ contract DefaultHandlerP0 is
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
-    ICollateral[] private _depegged;
-    mapping(ICollateral => uint256) private _timestampOfDepegging;
+    EnumerableSet.AddressSet private _defaulting;
+    mapping(ICollateral => uint256) private _defaultingTimestamp;
 
     function init(ConstructorArgs calldata args)
         public
@@ -47,8 +47,9 @@ contract DefaultHandlerP0 is
     /// @dev This should handle parallel collateral defaults independently
     function poke() public virtual override notPaused {
         super.poke();
-        _noticeHardDefaultAndAct();
-        _noticeSoftDefaultAndAct();
+        _noticeHardDefault();
+        _noticeSoftDefault();
+        _tryEnsureValidVault();
     }
 
     function beforeUpdate()
@@ -61,7 +62,7 @@ contract DefaultHandlerP0 is
 
     /// Checks for hard default by inspecting the redemption rates of all collateral tokens
     /// Forces updates in the underlying defi protocols
-    function _noticeHardDefaultAndAct() internal {
+    function _noticeHardDefault() internal {
         uint256 count;
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
             ICollateral c = ICollateral(_approvedCollateral.at(i));
@@ -71,57 +72,80 @@ contract DefaultHandlerP0 is
                 count++;
             }
         }
-
-        if (count > 0 && !_isOnlyApprovedCollateral(vault())) {
-            _switchVault(_selectNextVault());
-            _setMood(Mood.TRADING);
-        }
     }
 
     /// Checks for soft default by checking oracle values for all fiatcoins in the vault
-    function _noticeSoftDefaultAndAct() internal {
+    function _noticeSoftDefault() internal {
+        // Compute the list of defaulting collateral
         Fix defaultThreshold = _defaultThreshold();
-        ICollateral[] memory defaulting = new ICollateral[](_approvedCollateral.length());
+        address[] memory defaulting = new address[](_approvedCollateral.length());
         uint256 count;
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
             ICollateral c = ICollateral(_approvedCollateral.at(i));
 
             Fix price = c.fiatcoinPriceUSD(oracle()).shiftLeft(int8(c.fiatcoinDecimals()));
-            if (price.lt(defaultThreshold)) {
-                defaulting[count] = c;
+            if (price.lte(defaultThreshold)) {
+                defaulting[count] = address(c);
                 count++;
             }
         }
 
-        for (uint256 i = 0; i < count; i++) {
-            bool alreadyDepegged = _in(defaulting[i], _depegged);
-            if (!alreadyDepegged) {
-                _timestampOfDepegging[defaulting[i]] = block.timestamp;
-            } else if (block.timestamp >= defaultDelay() + _timestampOfDepegging[_depegged[i]]) {
-                _unapproveCollateral(_depegged[i]);
+        // De-list recovered collateral
+        address[] memory prev = _defaulting.values();
+        for (uint256 i = 0; i < prev.length; i++) {
+            bool found;
+            for (uint256 j = 0; j < count; j++) {
+                if (address(defaulting[j]) == prev[i]) {
+                    found = true;
+                }
+            }
+            if (!found) {
+                _defaulting.remove(prev[i]);
             }
         }
-        _depegged = defaulting;
 
-        if (count == 0) {
-            _setMood(fullyCapitalized() ? Mood.CALM : Mood.TRADING);
-        } else if (!_isOnlyApprovedCollateral(vault())) {
-            _switchVault(_selectNextVault());
-            _setMood(Mood.TRADING);
-        } else {
-            _setMood(Mood.DOUBT);
+        // Unapprove any collateral that has been defaulting for > `defaultDelay`
+        for (uint256 i = 0; i < count; i++) {
+            if (!_defaulting.contains(defaulting[i])) {
+                _defaulting.add(defaulting[i]);
+                _defaultingTimestamp[ICollateral(defaulting[i])] = block.timestamp;
+            } else if (
+                block.timestamp >= defaultDelay() + _defaultingTimestamp[ICollateral(defaulting[i])]
+            ) {
+                _unapproveCollateral(ICollateral(defaulting[i]));
+                _defaulting.remove(defaulting[i]);
+            }
         }
     }
 
-    /// @return A vault from the list of backup vaults that is not defaulting, or the zero address
-    function _selectNextVault() private view returns (IVault) {
+    /// Ensure the vault only consists of approved collateral by changing it, or entering DOUBT
+    /// A viable vault has no defaulting nor defaulted tokens.
+    function _tryEnsureValidVault() internal {
+        if (_isValid(vault())) {
+            _setMood(fullyCapitalized() ? Mood.CALM : Mood.TRADING);
+            return;
+        }
+
+        if (!_vaultIsDefaulting(vault())) {
+            (bool hasNext, IVault nextVault) = _selectNextVault();
+            if (hasNext) {
+                _switchVault(nextVault);
+                _setMood(Mood.TRADING);
+                return;
+            }
+        }
+        _setMood(Mood.DOUBT);
+    }
+
+    /// @return A vault from the list of backup vaults that is not defaulting
+    function _selectNextVault() private view returns (bool, IVault) {
         Fix maxRate;
         uint256 indexMax = 0;
         IVault[] memory backups = vault().getBackups();
 
         // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
-            if (_isOnlyApprovedCollateral(backups[i])) {
+            if (_isValid(backups[i])) {
                 Fix rate = backups[i].basketRate(); // {USD}
 
                 // See if it has the highest basket rate
@@ -133,16 +157,33 @@ contract DefaultHandlerP0 is
         }
 
         if (maxRate.eq(FIX_ZERO)) {
-            return IVault(address(0));
+            return (false, IVault(address(0)));
         }
-        return backups[indexMax];
+        return (true, backups[indexMax]);
     }
 
-    /// @return Whether a vault consists only of approved collateral
-    function _isOnlyApprovedCollateral(IVault vault_) private view returns (bool) {
+    /// @return Whether a vault contains collateral that is currently defaulting
+    function _vaultIsDefaulting(IVault vault_) private view returns (bool) {
+        for (uint256 i = 0; i < vault_.size(); i++) {
+            for (uint256 j = 0; j < _defaulting.length(); j++) {
+                if (_defaulting.at(j) == address(vault_.collateralAt(i))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /// A valid vault is a vault that contains only approved collateral and no defaulting collateral.
+    function _isValid(IVault vault_) private view returns (bool) {
         for (uint256 i = 0; i < vault_.size(); i++) {
             if (!_approvedCollateral.contains(address(vault_.collateralAt(i)))) {
                 return false;
+            }
+            for (uint256 j = 0; j < _defaulting.length(); j++) {
+                if (_defaulting.at(j) == address(vault_.collateralAt(i))) {
+                    return false;
+                }
             }
         }
         return true;
@@ -193,15 +234,5 @@ contract DefaultHandlerP0 is
 
         // median - (median * defaultThreshold)
         return median.minus(median.mul(defaultThreshold()));
-    }
-
-    /// @return Whether `c` is in `arr`
-    function _in(ICollateral c, ICollateral[] storage arr) private view returns (bool) {
-        for (uint256 i = 0; i < arr.length; i++) {
-            if (c == arr[i]) {
-                return true;
-            }
-        }
-        return false;
     }
 }

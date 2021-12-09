@@ -113,8 +113,8 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         emit NewVaultSet(address(vault()), address(vault_));
         vaults.push(vault_);
 
-        // TODO: maybe we need this?
-        // beforeUpdate();
+        // TODO: Hmm I don't love this, but we need to cause _processSlowMintings in RTokenIssuer
+        beforeUpdate();
     }
 
     /// @return {none) Denominator of the base factor
@@ -160,7 +160,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         IVault vault_,
         address recipient,
         uint256 maxToCrack
-    ) private returns (uint256) {
+    ) internal returns (uint256) {
         uint256 toCrack = Math.min(vault_.basketUnits(address(this)), maxToCrack);
         if (toCrack > 0) {
             vault_.redeem(recipient, toCrack);
