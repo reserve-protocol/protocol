@@ -60,8 +60,9 @@ contract DefaultHandlerP0 is
         super.beforeUpdate();
     }
 
-    /// Checks for hard default by inspecting the redemption rates of all collateral tokens
-    /// Forces updates in the underlying defi protocols
+    /// Checks for hard default.
+    /// Effectively, asks each Collateral if the exogenous capital still satisfies its invariants,
+    /// and "unapproves" in Main each token that does not.
     function _noticeHardDefault() internal {
         uint256 count;
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
@@ -74,7 +75,9 @@ contract DefaultHandlerP0 is
         }
     }
 
-    /// Checks for soft default by checking oracle values for all fiatcoins in the vault
+    /// Checks for soft default.
+    /// A token triggers "soft" (delayed) default when its redemption
+    /// by checking oracle values for all fiatcoins in the vault
     function _noticeSoftDefault() internal {
         // Compute the list of defaulting collateral
         Fix defaultThreshold = _defaultThreshold();
@@ -90,7 +93,9 @@ contract DefaultHandlerP0 is
             }
         }
 
-        // De-list recovered collateral
+        // defaulting is now an array of all collateral tokens redeemable for a defaulting fiatcoin
+
+        // Remove from _defaulting any collateral that has recovered
         address[] memory prev = _defaulting.values();
         for (uint256 i = 0; i < prev.length; i++) {
             bool found;
