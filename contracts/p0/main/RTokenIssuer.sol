@@ -124,10 +124,10 @@ contract RTokenIssuerP0 is
 
         rToken().burn(_msgSender(), amount);
         uint256 amtBUs = toBUs(amount);
-        uint256 amtCracked = _crackOldVaults(_msgSender(), amtBUs);
+        uint256 amtCracked = _redeemFromOldVaults(_msgSender(), amtBUs);
         if (amtCracked < amtBUs) {
             uint256 delta = amtBUs - amtCracked;
-            assert(delta <= _crackFrom(vault(), _msgSender(), delta));
+            assert(delta <= _redeemFrom(vault(), _msgSender(), delta));
         }
         emit Redemption(_msgSender(), amount);
     }

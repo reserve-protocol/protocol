@@ -17,7 +17,6 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
 
     EnumerableSet.AddressSet internal _destinations;
     mapping(address => RevenueShare) internal _distribution;
-    // Values: [RToken fraction, RSR fraction]
     // invariant: distribution values are all nonnegative, and at least one is nonzero.
 
     address public constant FURNACE = address(1);
@@ -33,12 +32,16 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
         super.beforeUpdate();
     }
 
+    /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
+    /// main.revenueFurnace() and main.stRSR().
     function setDistribution(address dest, RevenueShare memory share) public override onlyOwner {
         beforeUpdate();
         _setDistribution(dest, share);
     }
 
-    /// Requires an allowance
+    /// Distribute revenue, in rsr or rtoken, per the _distribution table.
+    /// Requires that this contract has an allowance of at least
+    /// `amount` tokens, from `from`, of the token at `erc20`.
     function distribute(
         IERC20 erc20,
         address from,
