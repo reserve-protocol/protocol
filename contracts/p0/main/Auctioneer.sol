@@ -39,8 +39,8 @@ contract AuctioneerP0 is
     using SafeERC20 for IERC20;
 
     BackingTraderP0 public backingTrader;
-    RevenueTraderP0 public rsrStakingTrader;
-    RevenueTraderP0 public rTokenMeltingTrader;
+    RevenueTraderP0 public rsrTrader;
+    RevenueTraderP0 public rTokenTrader;
 
     function init(ConstructorArgs calldata args)
         public
@@ -49,8 +49,8 @@ contract AuctioneerP0 is
     {
         super.init(args);
         backingTrader = new BackingTraderP0(IMain(address(this)));
-        rsrStakingTrader = new RevenueTraderP0(IMain(address(this)), rsrAsset());
-        rTokenMeltingTrader = new RevenueTraderP0(IMain(address(this)), rTokenAsset());
+        rsrTrader = new RevenueTraderP0(IMain(address(this)), rsrAsset());
+        rTokenTrader = new RevenueTraderP0(IMain(address(this)), rTokenAsset());
     }
 
     function poke() public virtual override notPaused {
@@ -82,10 +82,10 @@ contract AuctioneerP0 is
         }
 
         // RSR Trader
-        rsrStakingTrader.poke();
+        rsrTrader.poke();
 
         // RToken Trader
-        rTokenMeltingTrader.poke();
+        rTokenTrader.poke();
     }
 
     function beforeUpdate()

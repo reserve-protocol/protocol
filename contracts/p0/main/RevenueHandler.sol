@@ -58,8 +58,8 @@ contract RevenueHandlerP0 is
         if (prevRewards > _rewardsLastClaimed && fullyCapitalized()) {
             // Sweep COMP/AAVE from vaults + traders into Main
             backingTrader.claimAndSweepRewards();
-            rsrStakingTrader.claimAndSweepRewards();
-            rTokenMeltingTrader.claimAndSweepRewards();
+            rsrTrader.claimAndSweepRewards();
+            rTokenTrader.claimAndSweepRewards();
             for (uint256 i = 0; i < vaults.length; i++) {
                 vaults[i].claimAndSweepRewards();
             }
@@ -94,7 +94,7 @@ contract RevenueHandlerP0 is
         uint256 possible = fromBUs(vault().basketUnits(address(this)));
         uint256 totalSupply = rToken().totalSupply();
         if (fullyCapitalized() && possible > totalSupply) {
-            rToken().mint(address(rTokenMeltingTrader), possible - totalSupply);
+            rToken().mint(address(rTokenTrader), possible - totalSupply);
         }
     }
 
@@ -103,8 +103,8 @@ contract RevenueHandlerP0 is
         uint256 bal = asset.erc20().balanceOf(address(this));
         if (bal > 0) {
             uint256 amtToRSR = rsrCut().mulu(bal).round();
-            asset.erc20().safeTransfer(address(rsrStakingTrader), amtToRSR); // cut
-            asset.erc20().safeTransfer(address(rTokenMeltingTrader), bal - amtToRSR); // 1 - cut
+            asset.erc20().safeTransfer(address(rsrTrader), amtToRSR); // cut
+            asset.erc20().safeTransfer(address(rTokenTrader), bal - amtToRSR); // 1 - cut
         }
     }
 
