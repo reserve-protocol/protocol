@@ -3,13 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
-import {
-  BN_SCALE_FACTOR,
-  FURNACE_DEST,
-  Mood,
-  STRSR_DEST,
-  ZERO_ADDRESS,
-} from '../../common/constants'
+import { BN_SCALE_FACTOR, FURNACE_DEST, Mood, STRSR_DEST, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
@@ -1212,7 +1206,7 @@ describe('MainP0 contract', () => {
   })
 
   describe('Revenues', () => {
-    it('Should handle minting of new RTokens for rounding (in Melting)', async () => {
+    it.skip('Should handle minting of new RTokens for rounding (in Melting)', async () => {
       // Issue some RTokens to user
       const issueAmount: BigNumber = bn('100e18')
       // Provide approvals
@@ -1305,7 +1299,7 @@ describe('MainP0 contract', () => {
         await rsr.connect(owner).mint(addr1.address, initialBal)
       })
 
-      it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
+      it.skip('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -1423,7 +1417,7 @@ describe('MainP0 contract', () => {
         expect(await main.mood()).to.equal(Mood.CALM)
       })
 
-      it('Should claimm AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
+      it.skip('Should claimm AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -1515,7 +1509,7 @@ describe('MainP0 contract', () => {
         expect(await main.mood()).to.equal(Mood.CALM)
       })
 
-      it('Should handle large auctions for using maxAuctionSize with f=1 (RSR only)', async () => {
+      it.skip('Should handle large auctions for using maxAuctionSize with f=1 (RSR only)', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -1642,7 +1636,7 @@ describe('MainP0 contract', () => {
         expect(await main.mood()).to.equal(Mood.CALM)
       })
 
-      it('Should handle large auctions for using maxAuctionSize with f=0 (RToken only)', async () => {
+      it.skip('Should handle large auctions for using maxAuctionSize with f=0 (RToken only)', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -1773,7 +1767,7 @@ describe('MainP0 contract', () => {
         expect(await main.mood()).to.equal(Mood.CALM)
       })
 
-      it('Should handle large auctions using maxAuctionSize with revenue split RSR/RToken', async () => {
+      it.skip('Should handle large auctions using maxAuctionSize with revenue split RSR/RToken', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -2001,7 +1995,7 @@ describe('MainP0 contract', () => {
         expect(await main.mood()).to.equal(Mood.CALM)
       })
 
-      it('Should mint RTokens when collateral appreciates and handle revenue auction correctly', async () => {
+      it.skip('Should mint RTokens when collateral appreciates and handle revenue auction correctly', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
