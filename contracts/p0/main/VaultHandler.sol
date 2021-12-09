@@ -82,12 +82,12 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
 
     /// {qRTok} -> {qBU}
     function toBUs(uint256 amount) public view override returns (uint256) {
-        return _baseFactor().mulu(amount).toUintFloor();
+        return _baseFactor().mulu(amount).toUint();
     }
 
     /// {qBU} -> {qRTok}
     function fromBUs(uint256 amtBUs) public view override returns (uint256) {
-        return divFix(amtBUs, _baseFactor()).toUintFloor();
+        return divFix(amtBUs, _baseFactor()).toUint();
     }
 
     // ==== Internal ====

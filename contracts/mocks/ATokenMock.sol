@@ -86,6 +86,6 @@ contract StaticATokenMock is ERC20Mock {
     }
 
     function _toExchangeRate(Fix fiatcoinRedemptionRate) internal pure returns (uint256) {
-        return fiatcoinRedemptionRate.mulu(1e27).toUintNearest();
+        return fiatcoinRedemptionRate.mulu(1e27).toUint(Direction.NEAR);
     }
 }

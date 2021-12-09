@@ -132,7 +132,7 @@ contract StRSRP0 is IStRSR, Context {
                 Fix amtToAdd = toFix(_balances[_accounts.at(index)]).mulu(overage).divu(
                     _totalStaked
                 );
-                _balances[_accounts.at(index)] += amtToAdd.toUintFloor();
+                _balances[_accounts.at(index)] += amtToAdd.toUint();
             }
             _totalStaked += overage;
             emit RSRAdded(_msgSender(), overage);
@@ -151,10 +151,7 @@ contract StRSRP0 is IStRSR, Context {
         uint256 snapshotTotalStakedPlus = _totalStaked + _amountBeingWithdrawn();
 
         // _totalStaked -= (amount * _totalStaked) / snapshotTotalStakedPlus;
-        _totalStaked -= toFix(amount)
-        .mulu(_totalStaked)
-        .divu(snapshotTotalStakedPlus)
-        .toUintFloor();
+        _totalStaked -= toFix(amount).mulu(_totalStaked).divu(snapshotTotalStakedPlus).toUint();
 
         // Remove RSR for stakers and from withdrawals too
         if (snapshotTotalStakedPlus > 0) {
@@ -162,14 +159,14 @@ contract StRSRP0 is IStRSR, Context {
                 Fix amtToRemove = toFix(_balances[_accounts.at(index)]).mulu(amount).divu(
                     snapshotTotalStakedPlus
                 );
-                _balances[_accounts.at(index)] -= amtToRemove.toUintFloor();
+                _balances[_accounts.at(index)] -= amtToRemove.toUint();
             }
 
             for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
                 Fix amtToRemove = toFix(withdrawals[index].amount).mulu(amount).divu(
                     snapshotTotalStakedPlus
                 );
-                withdrawals[index].amount -= amtToRemove.toUintFloor();
+                withdrawals[index].amount -= amtToRemove.toUint();
             }
         }
         // Transfer RSR to caller

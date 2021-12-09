@@ -3,6 +3,8 @@ import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+
+import { Direction } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { CollateralP0 } from '../../typechain/CollateralP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'

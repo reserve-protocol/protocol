@@ -17,3 +17,9 @@ export enum Mood {
   DOUBT,
   TRADING,
 }
+
+export enum Direction {
+  FLOOR,
+  NEAR,
+  CEIL,
+}

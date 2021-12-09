@@ -4,15 +4,9 @@ import { ContractFactory } from 'ethers'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers } from 'hardhat'
 
-import { BN_SCALE_FACTOR } from '../../common/constants'
+import { BN_SCALE_FACTOR, Direction } from '../../common/constants'
 import { bn, fp, pow10 } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
-
-enum Direction {
-  FLOOR,
-  NEAR,
-  CEIL,
-}
 
 describe('In FixLib,', async () => {
   let owner: SignerWithAddress
@@ -222,6 +216,7 @@ describe('In FixLib,', async () => {
       ]
       for (let [input, result] of table) {
         expect(await caller.toUintFloor(fp(input)), `fp(${input})`).to.equal(result)
+        expect(await caller.toUint(fp(input)), `fp(${input})`).to.equal(result)
       }
     })
   })
@@ -276,7 +271,7 @@ describe('In FixLib,', async () => {
       ]
       for (let [input, result] of table) {
         expect(await caller.toUintFloor(fp(input)), `fp(${input})`).to.equal(result)
-        expect(await caller.toUint(fp(input), Direction.FLOOR), `fp(${input})`).to.equal(result)
+        expect(await caller.toUint(fp(input)), `fp(${input})`).to.equal(result)
       }
     })
   })
@@ -313,7 +308,6 @@ describe('In FixLib,', async () => {
       ]
       for (let [input, result] of table) {
         expect(await caller.toUintNearest(fp(input)), `fp(${input})`).to.equal(result)
-        expect(await caller.toUint(fp(input), Direction.NEAR), `fp(${input})`).to.equal(result)
       }
     })
   })
@@ -339,7 +333,6 @@ describe('In FixLib,', async () => {
       ]
       for (let [input, result] of table) {
         expect(await caller.toUintCeil(fp(input)), `fp(${input})`).to.equal(result)
-        expect(await caller.toUint(fp(input), Direction.CEIL), `fp(${input})`).to.equal(result)
       }
     })
   })

@@ -173,40 +173,25 @@ library FixLib {
         return Fix.unwrap(x) / FIX_SCALE;
     }
 
-    /// Convert this Fix to a uint. Fail if x is negative. Round the fractional part towards zero.
-    function toUintFloor(Fix x) internal pure returns (uint192) {
-        int192 n = Fix.unwrap(x);
-        if (n < 0) {
-            revert IntOutOfBounds(n);
-        }
-        return uint192(n) / FIX_SCALE_U;
-    }
-
-    /// Convert this Fix to a uint with standard rounding to the nearest integer.
-    function toUintNearest(Fix x) internal pure returns (uint192) {
-        int192 n = Fix.unwrap(x);
-        if (n < 0) {
-            revert IntOutOfBounds(n);
-        }
-        return uint192(round(x));
-    }
-
-    /// Convert this Fix to a uint. Round the fractional part towards one.
-    function toUintCeil(Fix x) internal pure returns (uint192) {
-        uint192 u = toUintFloor(x);
-        if (uint192(Fix.unwrap(x)) == u * FIX_SCALE_U) { return u;}
-        return u+1;
-    }
-
-/// Convert this Fix to a uint, rounding based on the provided method
+    /// Convert this Fix to a uint, rounding based on the provided method
     function toUint(Fix x, Direction direction) internal pure returns (uint192) {
-        if (direction == Direction.FLOOR) {
-            return toUintFloor(x);
-        } 
-        if (direction == Direction.CEIL) {
-        return toUintCeil(x);
+        int192 n = Fix.unwrap(x);
+        if (n < 0) {
+            revert IntOutOfBounds(n);
         }
-            return toUintNearest(x);
+        if (direction == Direction.NEAR) {
+            return uint192(round(x));
+        }
+        uint192 floor = uint192(n) / FIX_SCALE_U;
+        if (direction == Direction.FLOOR || floor * FIX_SCALE_U == uint192(Fix.unwrap(x))) {
+            return floor;
+        } 
+        return floor + 1;
+    }
+
+    /// Conver this Fix to a uint, rounding down the fractional part
+    function toUint(Fix x) internal pure returns (uint192) {
+        return toUint(x, Direction.FLOOR);
     }
 
     /// Return the Fix shifted to the left by `decimal` digits

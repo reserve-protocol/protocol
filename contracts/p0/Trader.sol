@@ -80,7 +80,10 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
             return (false, auction);
         }
 
-        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(oracle)).toUintCeil()); // {qSellTok}
+        sellAmount = Math.min(
+            sellAmount,
+            maxSellUSD.div(sell.priceUSD(oracle)).toUint(Direction.CEIL)
+        ); // {qSellTok}
         Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(oracle)).div(buy.priceUSD(oracle)); // {qBuyTok}
         Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.maxTradeSlippage())); // {qBuyTok}
 
@@ -90,7 +93,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
                 sell: sell,
                 buy: buy,
                 sellAmount: sellAmount,
-                minBuyAmount: minBuyAmount.toUintNearest(),
+                minBuyAmount: minBuyAmount.toUint(Direction.CEIL),
                 clearingSellAmount: 0,
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,
@@ -132,7 +135,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         // idealSellAmount = Amount needed to sell to buy `deficitAmount`
         uint256 idealSellAmount = exactSellAmount
         .div(FIX_ONE.minus(main.maxTradeSlippage()))
-        .toUintCeil();
+        .toUint(Direction.CEIL);
 
         uint256 sellAmount = Math.min(idealSellAmount, maxSellAmount);
         return _prepareAuctionSell(sell, buy, sellAmount);
@@ -147,7 +150,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize()); // {attoUSD}
 
         // {attoUSD} / {attoUSD/qSellTok}
-        return minSellUSD.div(asset.priceUSD(main.oracle())).toUintCeil();
+        return minSellUSD.div(asset.priceUSD(main.oracle())).toUint(Direction.CEIL);
     }
 
     /// Launch an auction:
