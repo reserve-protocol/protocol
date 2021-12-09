@@ -8,6 +8,12 @@ import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp, pow10 } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
 
+enum Direction {
+  FLOOR,
+  NEAR,
+  CEIL,
+}
+
 describe('In FixLib,', async () => {
   let owner: SignerWithAddress
   let FixedCaller: ContractFactory
@@ -249,6 +255,32 @@ describe('In FixLib,', async () => {
     })
   })
 
+  describe('toUintFloor', async () => {
+    it('correctly rounds down', async () => {
+      // prettier-ignore
+      const table = [
+        [1.1, 1],
+        [1.9, 1],
+        [1, 1],
+        [0.1, 0],
+        [705811305.5207, 705811305],
+        [705811305.207, 705811305],
+        [3.4999, 3],
+        [3.50001, 3],
+        [MAX_FIX_INT, MAX_FIX_INT],
+        [9.99999, 9],
+        [6.5, 6],
+        [5.5, 5],
+        [0, 0],
+        [0.5, 0],
+      ]
+      for (let [input, result] of table) {
+        expect(await caller.toUintFloor(fp(input)), `fp(${input})`).to.equal(result)
+        expect(await caller.toUint(fp(input), Direction.FLOOR), `fp(${input})`).to.equal(result)
+      }
+    })
+  })
+
   describe('round', async () => {
     it('correctly rounds to nearest int', async () => {
       // prettier-ignore
@@ -267,7 +299,7 @@ describe('In FixLib,', async () => {
       }
     })
   })
-  describe('toUintRound', async () => {
+  describe('toUintNearest', async () => {
     it('correctly rounds to nearest int', async () => {
       // prettier-ignore
       const table = [
@@ -280,7 +312,8 @@ describe('In FixLib,', async () => {
         [0, 0], [0.5, 1], 
       ]
       for (let [input, result] of table) {
-        expect(await caller.toUintRound(fp(input)), `fp(${input})`).to.equal(result)
+        expect(await caller.toUintNearest(fp(input)), `fp(${input})`).to.equal(result)
+        expect(await caller.toUint(fp(input), Direction.NEAR), `fp(${input})`).to.equal(result)
       }
     })
   })
@@ -306,6 +339,7 @@ describe('In FixLib,', async () => {
       ]
       for (let [input, result] of table) {
         expect(await caller.toUintCeil(fp(input)), `fp(${input})`).to.equal(result)
+        expect(await caller.toUint(fp(input), Direction.CEIL), `fp(${input})`).to.equal(result)
       }
     })
   })

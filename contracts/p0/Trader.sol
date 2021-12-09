@@ -90,7 +90,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
                 sell: sell,
                 buy: buy,
                 sellAmount: sellAmount,
-                minBuyAmount: minBuyAmount.toUintRound(),
+                minBuyAmount: minBuyAmount.toUintNearest(),
                 clearingSellAmount: 0,
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,

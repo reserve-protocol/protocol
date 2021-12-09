@@ -261,18 +261,18 @@ describe('VaultP0 contract', () => {
       expect(await vault.basketUnits(addr1.address)).to.equal(bn('0'))
     })
 
-    it('Should return basketRate and tokenAmounts for fiatcoins', async function () {
+    it('Should return basketRate and backingAmounts for fiatcoins', async function () {
       // For simple vault with one token (1 to 1)
       let newVault: VaultP0 = <VaultP0>(
         await VaultFactory.deploy([collateral0.address], [bn('1e18')], [])
       )
       expect(await newVault.basketRate()).to.equal(fp('1e18'))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e18')])
+      expect(await newVault.backingAmounts(ONE)).to.eql([bn('1e18')])
 
       // For a vault with one token half the value
       newVault = <VaultP0>await VaultFactory.deploy([collateral0.address], [qtyHalf], [])
       expect(await newVault.basketRate()).to.equal(fp(qtyHalf))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf])
+      expect(await newVault.backingAmounts(ONE)).to.eql([qtyHalf])
 
       // For a vault with two token half each, one with six decimals
       newVault = <VaultP0>(
@@ -283,24 +283,29 @@ describe('VaultP0 contract', () => {
         )
       )
       expect(await newVault.basketRate()).to.equal(fp('1e18'))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalfSixDecimals])
+      expect(await newVault.backingAmounts(ONE)).to.eql([qtyHalf, qtyHalf])
 
       // For the vault used by default in these tests (four fiatcoin tokens) - Redemption = 1e18
-      expect(await vault.basketRate()).to.equal(fp('1e18'))
-      expect(await vault.tokenAmounts(ONE)).to.eql(quantities)
-      expect(await vault.tokenAmounts(TWO)).to.eql(quantities.map((amt) => amt.mul(2)))
+      expect(await vault.basketRate()).to.equal(fp(qtyHalf.mul(2).add(qtyThird.add(qtyDouble))))
+      expect(await vault.backingAmounts(ONE)).to.eql([qtyHalf, qtyHalf, qtyThird, qtyDouble])
+      expect(await vault.backingAmounts(TWO)).to.eql([
+        qtyHalf.mul(2),
+        qtyHalf.mul(2),
+        qtyThird.mul(2),
+        qtyDouble.mul(2),
+      ])
     })
 
-    it('Should adjust basketRate and tokenAmounts for decimals (USDC)', async function () {
+    it('Should adjust basketRate and backingAmounts for decimals (USDC)', async function () {
       // New Vault with USDC tokens
       let newVault: VaultP0 = <VaultP0>(
         await VaultFactory.deploy([collateral1.address], [bn('1e6')], [])
       )
       expect(await newVault.basketRate()).to.equal(fp('1e18'))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e6')])
+      expect(await newVault.backingAmounts(ONE)).to.eql([bn('1e6')])
     })
 
-    it('Should adjust basketRate and tokenAmounts for ATokens and CTokens', async function () {
+    it('Should adjust basketRate and backingAmounts for ATokens and CTokens', async function () {
       // Set new Vault with Atokens and CTokens
       const qtyHalfCToken: BigNumber = bn('1e8').div(2)
 
@@ -312,23 +317,23 @@ describe('VaultP0 contract', () => {
         )
       )
       expect(await newVault.basketRate()).to.equal(fp('1e18'))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
+      expect(await newVault.backingAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
 
       // Change redemption rate for AToken to double (rate increases by an additional half) - In Rays
       await token2.setExchangeRate(fp('2'))
       expect(await newVault.basketRate()).to.equal(fp(bn('1e18').add(qtyHalf)))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
+      expect(await newVault.backingAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
 
       // Change also redemption rate for CToken to double (rate doubles)
       await token3.setExchangeRate(fp('2'))
       expect(await newVault.basketRate()).to.equal(fp(bn('1e18').mul(2)))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
+      expect(await newVault.backingAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
 
       // Set new Vault with sinlge AToken - reduce redemption rate to a half  - In Rays
       await token2.setExchangeRate(fp('0.5'))
       newVault = <VaultP0>await VaultFactory.deploy([collateral2.address], [bn('1e18')], [])
       expect(await newVault.basketRate()).to.equal(fp(qtyHalf))
-      expect(await newVault.tokenAmounts(ONE)).to.eql([bn('1e18')])
+      expect(await newVault.backingAmounts(ONE)).to.eql([bn('1e18')])
     })
 
     it('Should return max Issuable for user', async function () {

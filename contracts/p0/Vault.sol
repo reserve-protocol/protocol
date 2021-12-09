@@ -62,7 +62,7 @@ contract VaultP0 is IVault, Ownable {
         require(amtBUs > 0, "Cannot issue zero");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory amounts = tokenAmounts(amtBUs);
+        uint256[] memory amounts = backingAmounts(amtBUs);
 
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.collateral[i].erc20().safeTransferFrom(_msgSender(), address(this), amounts[i]);
@@ -81,7 +81,7 @@ contract VaultP0 is IVault, Ownable {
         require(amtBUs <= basketUnits[_msgSender()], "Not enough units");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory amounts = tokenAmounts(amtBUs);
+        uint256[] memory amounts = backingAmounts(amtBUs);
 
         basketUnits[_msgSender()] -= amtBUs;
         totalUnits -= amtBUs;
@@ -99,7 +99,12 @@ contract VaultP0 is IVault, Ownable {
 
     /// @param amtBUs {qBU}
     /// @return amounts {qTok} A list of token quantities required in order to issue `amtBUs`
-    function tokenAmounts(uint256 amtBUs) public view override returns (uint256[] memory amounts) {
+    function backingAmounts(uint256 amtBUs)
+        public
+        view
+        override
+        returns (uint256[] memory amounts)
+    {
         amounts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
             // {qTok} = {qBU} *  {qTok/BU} / {qBU/BU}

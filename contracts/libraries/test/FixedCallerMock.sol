@@ -38,12 +38,16 @@ contract FixedCallerMock {
         return FixLib.toUintFloor(x);
     }
 
-    function toUintRound(Fix x) public pure returns (uint192) {
-        return FixLib.toUintRound(x);
+    function toUintNearest(Fix x) public pure returns (uint192) {
+        return FixLib.toUintNearest(x);
     }
 
     function toUintCeil(Fix x) public pure returns (uint192) {
         return FixLib.toUintCeil(x);
+    }
+
+    function toUint(Fix x, FixGlobals.Direction direction) public pure returns (uint192) {
+        return FixLib.toUint(x, direction);
     }
 
     function shiftLeft(Fix x, int8 shiftLeft_) public pure returns (Fix) {

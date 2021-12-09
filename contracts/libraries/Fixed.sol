@@ -45,6 +45,13 @@ Fix constant FIX_ONE = Fix.wrap(FIX_SCALE); // The Fix representation of one.
 Fix constant FIX_MAX = Fix.wrap(type(int192).max); // The largest Fix. (Not an integer!)
 Fix constant FIX_MIN = Fix.wrap(type(int192).min); // The smallest Fix.
 
+// Modes of Uint rounding
+enum Direction {
+    FLOOR,
+    NEAR,
+    CEIL
+}
+
 /* @dev To understand the tedious-looking double conversions (e.g, uint256(uint192(foo))) herein:
    Solidity 0.8.x only allows you to type-convert _one_ of type or size per conversion.
    See: https://docs.soliditylang.org/en/v0.8.9/080-breaking-changes.html#new-restrictions
@@ -176,7 +183,7 @@ library FixLib {
     }
 
     /// Convert this Fix to a uint with standard rounding to the nearest integer.
-    function toUintRound(Fix x) internal pure returns (uint192) {
+    function toUintNearest(Fix x) internal pure returns (uint192) {
         int192 n = Fix.unwrap(x);
         if (n < 0) {
             revert IntOutOfBounds(n);
@@ -189,6 +196,17 @@ library FixLib {
         uint192 u = toUintFloor(x);
         if (uint192(Fix.unwrap(x)) == u * FIX_SCALE_U) { return u;}
         return u+1;
+    }
+
+/// Convert this Fix to a uint, rounding based on the provided method
+    function toUint(Fix x, Direction direction) internal pure returns (uint192) {
+        if (direction == Direction.FLOOR) {
+            return toUintFloor(x);
+        } 
+        if (direction == Direction.CEIL) {
+        return toUintCeil(x);
+        }
+            return toUintNearest(x);
     }
 
     /// Return the Fix shifted to the left by `decimal` digits
