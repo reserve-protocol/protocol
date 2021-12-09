@@ -499,7 +499,7 @@ contract AdapterP0 is ProtoAdapter {
                 newBid.buyAmount = toFix(sellAmount)
                 .mul(buyAsset.priceUSD(_main.oracle()))
                 .div(sellAsset.priceUSD(_main.oracle()))
-                .toRoundUint();
+                .toUintCeil();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(
                     newBid.bidder,

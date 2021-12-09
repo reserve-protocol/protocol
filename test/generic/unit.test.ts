@@ -174,7 +174,7 @@ describe('Unit tests (Generic)', () => {
       expect(state.stRSR.balances[Account.ALICE]).to.equal(bn(0))
     })
 
-    it('Should detect hard default + immediately migrate to backup vault', async () => {
+    it('Should detect hard default + immediately migrate to 2nd vault', async () => {
       await driver.setDefiCollateralRates(
         [Asset.cDAI],
         [initialState.defiCollateralRates[Asset.cDAI].sub(bn(1))]
@@ -184,10 +184,9 @@ describe('Unit tests (Generic)', () => {
       expect(state.mood).to.equal(Mood.TRADING)
       expect(state.bu_s.length).to.equal(2)
       expect(state.rTokenDefinition.assets.toString()).to.equal([Asset.USDC].toString())
-      expect(state.rTokenDefinition.quantities.toString()).to.equal([bn('1e6')].toString())
     })
 
-    it('Should detect soft default + migrate to backup vault after 24h', async () => {
+    it('Should detect soft default + migrate to 3rd vault after 24h', async () => {
       await driver.setBaseAssetPrices([Asset.USDC], [toPrice(bn('0.9e6'))])
       await driver.CMD_poke()
       advanceTime(initialState.config.defaultDelay)
@@ -196,7 +195,6 @@ describe('Unit tests (Generic)', () => {
       expect(state.mood).to.equal(Mood.TRADING)
       expect(state.bu_s.length).to.equal(1)
       expect(state.rTokenDefinition.assets.toString()).to.equal([Asset.cDAI].toString())
-      expect(state.rTokenDefinition.quantities.toString()).to.equal([bn('1e8')].toString())
     })
   })
 })

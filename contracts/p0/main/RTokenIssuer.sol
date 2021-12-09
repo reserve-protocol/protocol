@@ -73,6 +73,7 @@ contract RTokenIssuerP0 is
         override(Mixin, SettingsHandlerP0, VaultHandlerP0, DefaultHandlerP0)
     {
         super.beforeUpdate();
+        _processSlowIssuance();
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -81,7 +82,8 @@ contract RTokenIssuerP0 is
         require(amount > 0, "Cannot issue zero");
         require(mood() != Mood.DOUBT, "in doubt, cannot issue");
         revenueFurnace().doMelt();
-        _noticeHardDefaultAndAct();
+        _noticeHardDefault();
+        _tryEnsureValidVault();
 
         uint256 amtBUs = toBUs(amount);
 
@@ -121,7 +123,12 @@ contract RTokenIssuerP0 is
         revenueFurnace().doMelt();
 
         rToken().burn(_msgSender(), amount);
-        _redeemFromOldVaults(_msgSender(), toBUs(amount));
+        uint256 amtBUs = toBUs(amount);
+        uint256 amtCracked = _redeemFromOldVaults(_msgSender(), amtBUs);
+        if (amtCracked < amtBUs) {
+            uint256 delta = amtBUs - amtCracked;
+            assert(delta <= _redeemFrom(vault(), _msgSender(), delta));
+        }
         emit Redemption(_msgSender(), amount);
     }
 
@@ -146,8 +153,8 @@ contract RTokenIssuerP0 is
     // Returns the future block number at which an issuance for *amount* now can complete
     function _nextIssuanceBlockAvailable(uint256 amount) private view returns (uint256) {
         uint256 perBlock = Math.max(
-            10_000 * 10**rTokenAsset().decimals(), // lower-bound: 10k whole RToken per block
-            toFix(rTokenAsset().erc20().totalSupply()).mul(issuanceRate()).toRoundUint()
+            10_000 * 10**rToken().decimals(), // lower-bound: 10k whole RToken per block
+            toFix(rToken().totalSupply()).mul(issuanceRate()).toRoundUint()
         ); // {RToken/block}
         uint256 blockStart = issuances.length == 0
             ? block.number

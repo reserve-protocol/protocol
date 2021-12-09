@@ -15,7 +15,7 @@ contract BackingTraderP0 is TraderP0 {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
-    uint256 public targetBUs;
+    uint256 public targetBUs; // {qBU}
 
     // solhint-disable-next-line no-empty-blocks
     constructor(IMain main_) TraderP0(main_) {}
@@ -123,8 +123,10 @@ contract BackingTraderP0 is TraderP0 {
         for (uint256 i = 0; i < assets.length; i++) {
             Fix bal = toFix(IERC20(assets[i].erc20()).balanceOf(address(this))); // {qTok}
 
-            // {qTok} = {BU} * {qTok/BU}
-            Fix target = toFix(targetBUs).mulu(main.vault().quantity(assets[i]));
+            // {qTok} = {qBU} / {qBU/BU} * {qTok/BU}
+            Fix target = toFix(targetBUs).shiftLeft(-int8(main.vault().BU_DECIMALS())).mulu(
+                main.vault().quantity(assets[i])
+            );
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
                 surpluses[i] = bal.minus(target).mul(assets[i].priceUSD(main.oracle()));
@@ -158,8 +160,8 @@ contract BackingTraderP0 is TraderP0 {
         return (
             assets[surplusIndex],
             assets[deficitIndex],
-            sellAmount.toRoundUint(),
-            buyAmount.toRoundUint()
+            sellAmount.toUint(),
+            buyAmount.toUint()
         );
     }
 

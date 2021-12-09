@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -12,6 +13,8 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/libraries/Fixed.sol";
+
+// import "hardhat/console.sol";
 
 /*
  * @title VaultP0
@@ -99,11 +102,11 @@ contract VaultP0 is IVault, Ownable {
     function tokenAmounts(uint256 amtBUs) public view override returns (uint256[] memory amounts) {
         amounts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
-            // {qTok} = {qTok/BU} * {qBU} / {qBU/BU}
+            // {qTok} = {qBU} *  {qTok/BU} / {qBU/BU}
             amounts[i] = toFix(amtBUs)
-            .divu(1e18)
+            .shiftLeft(-int8(BU_DECIMALS))
             .mulu(_basket.quantities[_basket.collateral[i]])
-            .toRoundUint();
+            .toUintCeil();
         }
     }
 
@@ -150,7 +153,7 @@ contract VaultP0 is IVault, Ownable {
                 min = amtBUs;
             }
         }
-        return min.shiftLeft(int8(BU_DECIMALS)).toRoundUint();
+        return min.shiftLeft(int8(BU_DECIMALS)).toUint();
     }
 
     /// @return The collateral asset at `index`

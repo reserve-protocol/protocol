@@ -1,6 +1,7 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
+
 import { expectInReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
 import { AAVEAssetP0 } from '../../../typechain/AAVEAssetP0'
@@ -26,6 +27,8 @@ import { StRSRP0 } from '../../../typechain/StRSRP0'
 import { USDCMock } from '../../../typechain/USDCMock'
 import { VaultP0 } from '../../../typechain/VaultP0'
 import { getLatestBlockTimestamp } from '../../utils/time'
+
+export type Collateral = CollateralP0 | CTokenCollateralP0 | ATokenCollateralP0
 
 export enum State {
   CALM = 0,
@@ -143,25 +146,19 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
 }
 
 interface MarketFixture {
-  trading: MarketMock
+  market: MarketMock
 }
 
 async function marketFixture(): Promise<MarketFixture> {
   const MarketMockFactory: ContractFactory = await ethers.getContractFactory('MarketMock')
-  const tradingMock: MarketMock = <MarketMock>await MarketMockFactory.deploy()
-  return { trading: tradingMock }
+  const marketMock: MarketMock = <MarketMock>await MarketMockFactory.deploy()
+  return { market: marketMock }
 }
 
 interface VaultFixture {
-  token0: ERC20Mock
-  token1: USDCMock
-  token2: StaticATokenMock
-  token3: CTokenMock
-  collateral0: CollateralP0
-  collateral1: CollateralP0
-  collateral2: ATokenCollateralP0
-  collateral3: CTokenCollateralP0
-  collateral: string[]
+  erc20s: ERC20Mock[] // all erc20 addresses
+  collateral: Collateral[] // all collateral
+  basket: Collateral[] // only the collateral actively backing the RToken
   vault: VaultP0
 }
 
@@ -170,60 +167,84 @@ async function vaultFixture(): Promise<VaultFixture> {
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
   const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+  const CollateralFactory: ContractFactory = await ethers.getContractFactory('CollateralP0')
+  const ATokenCollateralFactory = await ethers.getContractFactory('ATokenCollateralP0')
+  const CTokenCollateralFactory = await ethers.getContractFactory('CTokenCollateralP0')
 
-  // Deploy Main Vault
-  const token0: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token', 'TKN')
-  const token1: USDCMock = <USDCMock>await USDC.deploy('USDC Token', 'USDCTKN')
-  const token2: StaticATokenMock = <StaticATokenMock>(
-    await ATokenMockFactory.deploy('AToken', 'ATKN', token0.address)
-  )
-  const token3: CTokenMock = <CTokenMock>(
-    await CTokenMockFactory.deploy('CToken', 'CTKN', token0.address)
-  )
+  // Deploy all potential collateral assets
+  const makeVanilla = async (symbol: string): Promise<[ERC20Mock, CollateralP0]> => {
+    const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(symbol + ' Token', symbol)
+    return [erc20, <CollateralP0>await CollateralFactory.deploy(erc20.address)]
+  }
+  const makeSixDecimal = async (symbol: string): Promise<[ERC20Mock, CollateralP0]> => {
+    const erc20: USDCMock = <USDCMock>await USDC.deploy(symbol + ' Token', symbol)
+    return [erc20, <CollateralP0>await CollateralFactory.deploy(erc20.address)]
+  }
+  const makeCToken = async (
+    symbol: string,
+    underlyingAddress: string
+  ): Promise<[ERC20Mock, CTokenCollateralP0]> => {
+    const erc20: CTokenMock = <CTokenMock>(
+      await CTokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
+    )
+    return [erc20, <CTokenCollateralP0>await CTokenCollateralFactory.deploy(erc20.address)]
+  }
+  const makeAToken = async (
+    symbol: string,
+    underlyingAddress: string
+  ): Promise<[ERC20Mock, ATokenCollateralP0]> => {
+    const erc20: StaticATokenMock = <StaticATokenMock>(
+      await ATokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
+    )
+    return [erc20, <ATokenCollateralP0>await ATokenCollateralFactory.deploy(erc20.address)]
+  }
 
-  // Set initial amounts and set quantities
-  const qtyOne: BigNumber = bn('1e18')
-  const qtyHalf: BigNumber = qtyOne.div(2)
-
-  // Set Collateral Assets and Quantities
-  const AssetFactory: ContractFactory = await ethers.getContractFactory('CollateralP0')
-  const ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
-  const CTokenAssetFactory = await ethers.getContractFactory('CTokenCollateralP0')
-
-  const collateral0: CollateralP0 = <CollateralP0>(
-    await AssetFactory.deploy(token0.address, token0.decimals())
-  )
-  const collateral1: CollateralP0 = <CollateralP0>(
-    await AssetFactory.deploy(token1.address, token1.decimals())
-  )
-  const collateral2: ATokenCollateralP0 = <ATokenCollateralP0>(
-    await ATokenAssetFactory.deploy(token2.address)
-  )
-  const collateral3: CTokenCollateralP0 = <CTokenCollateralP0>(
-    await CTokenAssetFactory.deploy(token3.address)
-  )
-
-  const collateral: string[] = [
-    collateral0.address,
-    collateral1.address,
-    collateral2.address,
-    collateral3.address,
+  // Create all possible collateral
+  const dai = await makeVanilla('DAI')
+  const usdc = await makeSixDecimal('USDC')
+  const usdt = await makeVanilla('USDT')
+  const busd = await makeVanilla('BUSD')
+  const cdai = await makeCToken('cDAI', dai[0].address)
+  const cusdc = await makeCToken('cUSDC', usdc[0].address)
+  const cusdt = await makeCToken('cUSDT', usdt[0].address)
+  const adai = await makeAToken('aDAI', dai[0].address)
+  const ausdc = await makeAToken('aUSDC', usdc[0].address)
+  const ausdt = await makeAToken('aUSDT', usdt[0].address)
+  const abusd = await makeAToken('aBUSD', busd[0].address)
+  const collateral = [
+    dai[1],
+    usdc[1],
+    usdt[1],
+    busd[1],
+    cdai[1],
+    cusdc[1],
+    cusdt[1],
+    adai[1],
+    ausdc[1],
+    ausdt[1],
+    abusd[1],
   ]
-  const quantities: BigNumber[] = [qtyHalf, qtyHalf, qtyOne, qtyOne]
+
+  const erc20MockFact = await ethers.getContractFactory('ERC20Mock')
+  const erc20s = await Promise.all(
+    collateral.map(async (c) => <ERC20Mock>await ethers.getContractAt('ERC20Mock', await c.erc20()))
+  )
+
+  // Create the initial basket
+  const basket = [dai[1], usdc[1], adai[1], cdai[1]]
+  const quantities = [bn('2.5e17'), bn('2.5e5'), bn('2.5e17'), bn('2.5e7')]
 
   const VaultFactory: ContractFactory = await ethers.getContractFactory('VaultP0')
-  const vault: VaultP0 = <VaultP0>await VaultFactory.deploy(collateral, quantities, [])
+  const vault: VaultP0 = <VaultP0>await VaultFactory.deploy(
+    basket.map((b) => b.address),
+    quantities,
+    []
+  )
 
   return {
-    token0,
-    token1,
-    token2,
-    token3,
-    collateral0,
-    collateral1,
-    collateral2,
-    collateral3,
+    erc20s,
     collateral,
+    basket,
     vault,
   }
 }
@@ -247,18 +268,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   owner,
 ]): Promise<DefaultFixture> {
   const { rsr, rsrAsset } = await rsrFixture()
-  const {
-    token0,
-    token1,
-    token2,
-    token3,
-    collateral0,
-    collateral1,
-    collateral2,
-    collateral3,
-    collateral,
-    vault,
-  } = await vaultFixture()
+  const { erc20s, collateral, basket, vault } = await vaultFixture()
   const {
     weth,
     compToken,
@@ -270,20 +280,20 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     aaveOracle,
     aaveMock,
   } = await compAaveFixture()
-  const { trading } = await marketFixture()
+  const { market } = await marketFixture()
 
   // Set Default Oracle Prices
-  await compoundOracle.setPrice('TKN', bn('1e6'))
-  await compoundOracle.setPrice('USDCTKN', bn('1e6'))
   await compoundOracle.setPrice('ETH', bn('4000e6'))
   await compoundOracle.setPrice('COMP', bn('1e6'))
-
-  await aaveOracle.setPrice(token0.address, bn('2.5e14'))
-  await aaveOracle.setPrice(token1.address, bn('2.5e14'))
   await aaveOracle.setPrice(weth.address, bn('1e18'))
   await aaveOracle.setPrice(aaveToken.address, bn('2.5e14'))
   await aaveOracle.setPrice(compToken.address, bn('2.5e14'))
   await aaveOracle.setPrice(rsr.address, bn('2.5e14'))
+  for (let i = 0; i < collateral.length; i++) {
+    const erc20 = await ethers.getContractAt('ERC20Mock', await collateral[i].erc20())
+    await compoundOracle.setPrice(await erc20.symbol(), bn('1e6'))
+    await aaveOracle.setPrice(erc20.address, bn('2.5e14'))
+  }
 
   // Setup Config
   const rewardStart: BigNumber = bn(await getLatestBlockTimestamp())
@@ -314,7 +324,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       rsrAsset.address,
       compAsset.address,
       aaveAsset.address,
-      trading.address
+      market.address
     )
   )
 
@@ -329,7 +339,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       dist,
       compoundMock.address,
       aaveMock.address,
-      collateral
+      collateral.map((c) => c.address)
     )
   ).wait()
 
@@ -355,15 +365,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     aaveAsset,
     aaveOracle,
     aaveMock,
-    token0,
-    token1,
-    token2,
-    token3,
-    collateral0,
-    collateral1,
-    collateral2,
-    collateral3,
+    erc20s,
     collateral,
+    basket,
     vault,
     config,
     dist,
@@ -372,6 +376,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rToken,
     furnace,
     stRSR,
-    trading,
+    market,
   }
 }

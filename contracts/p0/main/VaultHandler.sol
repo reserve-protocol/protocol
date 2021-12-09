@@ -82,12 +82,12 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
 
     /// {qRTok} -> {qBU}
     function toBUs(uint256 amount) public view override returns (uint256) {
-        return _baseFactor().mulu(amount).toRoundUint();
+        return _baseFactor().mulu(amount).toUint();
     }
 
     /// {qBU} -> {qRTok}
     function fromBUs(uint256 amtBUs) public view override returns (uint256) {
-        return divFix(amtBUs,_baseFactor()).toRoundUint();
+        return divFix(amtBUs, _baseFactor()).toUint();
     }
 
     // ==== Internal ====
@@ -96,6 +96,8 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         beforeUpdate();
         emit NewVaultSet(address(vault()), address(vault_));
         vaults.push(vault_);
+
+        // TODO: Hmm I don't love this, but we need to cause _processSlowMintings in RTokenIssuer
         beforeUpdate();
     }
 
@@ -103,15 +105,15 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
     /// 1.0 if the total rtoken supply is 0
     /// Else, (melting factor) / (basket dilution factor)
     function _baseFactor() internal view returns (Fix) {
-        return rToken().totalSupply() == 0 ? FIX_ONE : _meltingFactor().div(_basketDilutionFactor());
+        return
+            rToken().totalSupply() == 0 ? FIX_ONE : _meltingFactor().div(_basketDilutionFactor());
     }
-
-    /// @return {qBU/qRTok) the basket dilution factor
 
     /* As the basketRate increases, the basketDilutionFactor increases at a proportional rate.
      * for two times t0 < t1 when the rTokenCut() doesn't change, we have:
      * (basketDiluationFactor at t1) - (basketDilutionFactor at t0) = rTokenCut() * ((basketRate at t1) - (basketRate at t0))
      */
+    /// @return {qBU/qRTok) the basket dilution factor
     function _basketDilutionFactor() internal view returns (Fix) {
         // {USD/qBU}
         Fix currentRate = vault().basketRate();
@@ -123,7 +125,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         // r = p2 / (p1 + (p2-p1) * (rTokenCut))
         Fix r = currentRate.div(_prevBasketRate.plus(delta.mul(rTokenCut())));
         Fix dilutionFactor = _historicalBasketDilution.mul(r);
-        require(dilutionFactor.gt(FIX_ZERO), "dilutionFactor cannot be zero");
+        assert(dilutionFactor.neq(FIX_ZERO));
         return dilutionFactor;
     }
 
@@ -135,17 +137,25 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
     }
 
     /// Redeems up to `amtBUs` basket units from all past vaults.
-    /// @return crackedBUs How many BUs were actually cracked
+    /// @return redeemedBUs How many BUs were actually redeemed
     function _redeemFromOldVaults(address recipient, uint256 maxBUs)
         internal
-        returns (uint256 crackedBUs)
+        returns (uint256 redeemedBUs)
     {
-        for (uint256 i = 0; i + 1 < vaults.length && crackedBUs < maxBUs; i++) {
-            uint256 toCrack = Math.min(vaults[i].basketUnits(address(this)), maxBUs - crackedBUs);
-            if (toCrack > 0) {
-                vaults[i].redeem(recipient, toCrack);
-                crackedBUs += toCrack;
-            }
+        for (uint256 i = 0; i + 1 < vaults.length && redeemedBUs < maxBUs; i++) {
+            redeemedBUs += _redeemFrom(vaults[i], recipient, maxBUs - redeemedBUs);
+        }
+    }
+
+    /// @return toRedeem How many BUs were redeemed
+    function _redeemFrom(
+        IVault vault_,
+        address recipient,
+        uint256 maxToRedeem
+    ) internal returns (uint256 toRedeem) {
+        toRedeem = Math.min(vault_.basketUnits(address(this)), maxToRedeem);
+        if (toRedeem > 0) {
+            vault_.redeem(recipient, toRedeem);
         }
     }
 }

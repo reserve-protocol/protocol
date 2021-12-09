@@ -37,7 +37,7 @@ contract RevenueTraderP0 is TraderP0 {
             if (assets[i] == assetToBuy && bal > 0) {
                 erc20.safeApprove(address(main), bal);
                 main.distribute(erc20, address(this), bal);
-            } else {
+            } else if (bal > 0) {
                 // If not dust, trade the non-target asset for the target asset
                 bool launch;
                 Auction memory auction;
