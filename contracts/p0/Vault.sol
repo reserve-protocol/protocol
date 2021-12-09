@@ -153,7 +153,7 @@ contract VaultP0 is IVault, Ownable {
                 min = amtBUs;
             }
         }
-        return min.shiftLeft(int8(BU_DECIMALS)).toUint();
+        return min.shiftLeft(int8(BU_DECIMALS)).toUintFloor();
     }
 
     /// @return The collateral asset at `index`

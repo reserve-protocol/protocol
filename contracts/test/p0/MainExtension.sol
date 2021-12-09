@@ -222,7 +222,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         if (!ok) {
             console.log(
                 "_INVARIANT_toBUInverseFromBU violated",
-                converted.toUint(),
+                converted.toUintFloor(),
                 rToken().totalSupply()
             );
         }

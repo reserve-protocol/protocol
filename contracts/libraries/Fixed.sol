@@ -167,7 +167,7 @@ library FixLib {
     }
 
     /// Convert this Fix to a uint. Fail if x is negative. Round the fractional part towards zero.
-    function toUint(Fix x) internal pure returns (uint192) {
+    function toUintFloor(Fix x) internal pure returns (uint192) {
         int192 n = Fix.unwrap(x);
         if (n < 0) {
             revert IntOutOfBounds(n);
@@ -176,7 +176,7 @@ library FixLib {
     }
 
     /// Convert this Fix to a uint with standard rounding to the nearest integer.
-    function toRoundUint(Fix x) internal pure returns (uint192) {
+    function toUintRound(Fix x) internal pure returns (uint192) {
         int192 n = Fix.unwrap(x);
         if (n < 0) {
             revert IntOutOfBounds(n);
@@ -186,7 +186,7 @@ library FixLib {
 
     /// Convert this Fix to a uint. Round the fractional part towards one.
     function toUintCeil(Fix x) internal pure returns (uint192) {
-        uint192 u = toUint(x);
+        uint192 u = toUintFloor(x);
         if (uint192(Fix.unwrap(x)) == u * FIX_SCALE_U) { return u;}
         return u+1;
     }

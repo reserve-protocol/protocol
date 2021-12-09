@@ -160,8 +160,8 @@ contract BackingTraderP0 is TraderP0 {
         return (
             assets[surplusIndex],
             assets[deficitIndex],
-            sellAmount.toUint(),
-            buyAmount.toUint()
+            sellAmount.toUintFloor(),
+            buyAmount.toUintFloor()
         );
     }
 

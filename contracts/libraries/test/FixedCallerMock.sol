@@ -34,12 +34,12 @@ contract FixedCallerMock {
         return FixLib.toInt(x);
     }
 
-    function toUint(Fix x) public pure returns (uint192) {
-        return FixLib.toUint(x);
+    function toUintFloor(Fix x) public pure returns (uint192) {
+        return FixLib.toUintFloor(x);
     }
 
-    function toRoundUint(Fix x) public pure returns (uint192) {
-        return FixLib.toRoundUint(x);
+    function toUintRound(Fix x) public pure returns (uint192) {
+        return FixLib.toUintRound(x);
     }
 
     function toUintCeil(Fix x) public pure returns (uint192) {

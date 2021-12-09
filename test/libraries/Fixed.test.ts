@@ -195,14 +195,14 @@ describe('In FixLib,', async () => {
     it('correctly converts positive Fixes to uint192', async () => {
       for (let result of fixable_ints) {
         if (result.gte(0)) {
-          expect(await caller.toUint(fp(result)), `fp(${result})`).to.equal(bn(result))
+          expect(await caller.toUintFloor(fp(result)), `fp(${result})`).to.equal(bn(result))
         }
       }
     })
     it('fails on negative Fixes', async () => {
       const table = [-1, fp(MIN_FIX_INT), MIN_INT192, fp(-986349)]
       for (let val of table) {
-        await expect(caller.toUint(val), `${val}`).to.be.revertedWith('IntOutOfBounds')
+        await expect(caller.toUintFloor(val), `${val}`).to.be.revertedWith('IntOutOfBounds')
       }
     })
     it('rounds towards zero', async () => {
@@ -215,7 +215,7 @@ describe('In FixLib,', async () => {
         [9.99999, 9],
       ]
       for (let [input, result] of table) {
-        expect(await caller.toUint(fp(input)), `fp(${input})`).to.equal(result)
+        expect(await caller.toUintFloor(fp(input)), `fp(${input})`).to.equal(result)
       }
     })
   })
@@ -267,7 +267,7 @@ describe('In FixLib,', async () => {
       }
     })
   })
-  describe('toRoundUint', async () => {
+  describe('toUintRound', async () => {
     it('correctly rounds to nearest int', async () => {
       // prettier-ignore
       const table = [
@@ -280,7 +280,7 @@ describe('In FixLib,', async () => {
         [0, 0], [0.5, 1], 
       ]
       for (let [input, result] of table) {
-        expect(await caller.toRoundUint(fp(input)), `fp(${input})`).to.equal(result)
+        expect(await caller.toUintRound(fp(input)), `fp(${input})`).to.equal(result)
       }
     })
   })
