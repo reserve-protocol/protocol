@@ -17,7 +17,7 @@ import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { VaultP0 } from '../../typechain/VaultP0'
-import { defaultFixture, IManagerConfig, IRevenueShare } from './utils/fixtures'
+import { Collateral, defaultFixture, IManagerConfig, IRevenueShare } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -29,7 +29,7 @@ describe('DeployerP0 contract', () => {
 
   // Vault and Collateral
   let vault: VaultP0
-  let collateral: string[]
+  let collateral: Collateral[]
 
   // RSR
   let rsr: ERC20Mock
@@ -121,7 +121,7 @@ describe('DeployerP0 contract', () => {
     })
 
     it('Should revert if Vault has unapproved collateral', async () => {
-      const approvedCollateral = [collateral[0]]
+      const approvedCollateral: string[] = [collateral[0].address]
 
       await expect(
         deployer.deploy(
