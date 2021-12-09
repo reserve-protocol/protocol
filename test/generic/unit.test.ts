@@ -184,7 +184,6 @@ describe('Unit tests (Generic)', () => {
       expect(state.mood).to.equal(Mood.TRADING)
       expect(state.bu_s.length).to.equal(2)
       expect(state.rTokenDefinition.assets.toString()).to.equal([Asset.USDC].toString())
-      expect(state.rTokenDefinition.quantities.toString()).to.equal([bn('1e6')].toString())
     })
 
     it('Should detect soft default + migrate to 3rd vault after 24h', async () => {
@@ -196,7 +195,6 @@ describe('Unit tests (Generic)', () => {
       expect(state.mood).to.equal(Mood.TRADING)
       expect(state.bu_s.length).to.equal(1)
       expect(state.rTokenDefinition.assets.toString()).to.equal([Asset.cDAI].toString())
-      expect(state.rTokenDefinition.quantities.toString()).to.equal([bn('1e8')].toString())
     })
   })
 })

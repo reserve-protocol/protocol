@@ -87,7 +87,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
 
     /// {qBU} -> {qRTok}
     function fromBUs(uint256 amtBUs) public view override returns (uint256) {
-        return divFix(amtBUs,_baseFactor()).toUint();
+        return divFix(amtBUs, _baseFactor()).toUint();
     }
 
     // ==== Internal ====
@@ -105,15 +105,15 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
     /// 1.0 if the total rtoken supply is 0
     /// Else, (melting factor) / (basket dilution factor)
     function _baseFactor() internal view returns (Fix) {
-        return rToken().totalSupply() == 0 ? FIX_ONE : _meltingFactor().div(_basketDilutionFactor());
+        return
+            rToken().totalSupply() == 0 ? FIX_ONE : _meltingFactor().div(_basketDilutionFactor());
     }
-
-    /// @return {qBU/qRTok) the basket dilution factor
 
     /* As the basketRate increases, the basketDilutionFactor increases at a proportional rate.
      * for two times t0 < t1 when the rTokenCut() doesn't change, we have:
      * (basketDiluationFactor at t1) - (basketDilutionFactor at t0) = rTokenCut() * ((basketRate at t1) - (basketRate at t0))
      */
+    /// @return {qBU/qRTok) the basket dilution factor
     function _basketDilutionFactor() internal view returns (Fix) {
         // {USD/qBU}
         Fix currentRate = vault().basketRate();
@@ -125,7 +125,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         // r = p2 / (p1 + (p2-p1) * (rTokenCut))
         Fix r = currentRate.div(_prevBasketRate.plus(delta.mul(rTokenCut())));
         Fix dilutionFactor = _historicalBasketDilution.mul(r);
-        require(dilutionFactor.gt(FIX_ZERO), "dilutionFactor cannot be zero");
+        assert(dilutionFactor.neq(FIX_ZERO));
         return dilutionFactor;
     }
 
