@@ -4,7 +4,6 @@ import { Wallet } from 'ethers'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
-import { Direction } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { CollateralP0 } from '../../typechain/CollateralP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
@@ -268,12 +267,12 @@ describe('VaultP0 contract', () => {
         await VaultFactory.deploy([collateral0.address], [bn('1e18')], [])
       )
       expect(await newVault.basketRate()).to.equal(fp('1e18'))
-      expect(await newVault.backingAmounts(ONE, Direction.NEAR)).to.eql([bn('1e18')])
+      expect(await newVault.backingAmounts(ONE)).to.eql([bn('1e18')])
 
       // For a vault with one token half the value
       newVault = <VaultP0>await VaultFactory.deploy([collateral0.address], [qtyHalf], [])
       expect(await newVault.basketRate()).to.equal(fp(qtyHalf))
-      expect(await newVault.backingAmounts(ONE, Direction.NEAR)).to.eql([qtyHalf])
+      expect(await newVault.backingAmounts(ONE)).to.eql([qtyHalf])
 
       // For a vault with two token half each, one with six decimals
       newVault = <VaultP0>(
@@ -284,17 +283,12 @@ describe('VaultP0 contract', () => {
         )
       )
       expect(await newVault.basketRate()).to.equal(fp('1e18'))
-      expect(await newVault.backingAmounts(ONE, Direction.NEAR)).to.eql([
-        qtyHalf,
-        qtyHalfSixDecimals,
-      ])
+      expect(await newVault.backingAmounts(ONE)).to.eql([qtyHalf, qtyHalfSixDecimals])
 
       // For the vault used by default in these tests (four fiatcoin tokens) - Redemption = 1e18
       expect(await vault.basketRate()).to.equal(fp('1e18'))
-      expect(await vault.backingAmounts(ONE, Direction.NEAR)).to.eql(quantities)
-      expect(await vault.backingAmounts(TWO, Direction.NEAR)).to.eql(
-        quantities.map((amt) => amt.mul(2))
-      )
+      expect(await vault.backingAmounts(ONE)).to.eql(quantities)
+      expect(await vault.backingAmounts(TWO)).to.eql(quantities.map((amt) => amt.mul(2)))
     })
 
     it('Should adjust basketRate and backingAmounts for decimals (USDC)', async function () {
@@ -303,7 +297,7 @@ describe('VaultP0 contract', () => {
         await VaultFactory.deploy([collateral1.address], [bn('1e6')], [])
       )
       expect(await newVault.basketRate()).to.equal(fp('1e18'))
-      expect(await newVault.backingAmounts(ONE, Direction.NEAR)).to.eql([bn('1e6')])
+      expect(await newVault.backingAmounts(ONE)).to.eql([bn('1e6')])
     })
 
     it('Should adjust basketRate and backingAmounts for ATokens and CTokens', async function () {
@@ -318,23 +312,23 @@ describe('VaultP0 contract', () => {
         )
       )
       expect(await newVault.basketRate()).to.equal(fp('1e18'))
-      expect(await newVault.backingAmounts(ONE, Direction.NEAR)).to.eql([qtyHalf, qtyHalfCToken])
+      expect(await newVault.backingAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
 
       // Change redemption rate for AToken to double (rate increases by an additional half) - In Rays
       await token2.setExchangeRate(fp('2'))
       expect(await newVault.basketRate()).to.equal(fp(bn('1e18').add(qtyHalf)))
-      expect(await newVault.backingAmounts(ONE, Direction.NEAR)).to.eql([qtyHalf, qtyHalfCToken])
+      expect(await newVault.backingAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
 
       // Change also redemption rate for CToken to double (rate doubles)
       await token3.setExchangeRate(fp('2'))
       expect(await newVault.basketRate()).to.equal(fp(bn('1e18').mul(2)))
-      expect(await newVault.backingAmounts(ONE, Direction.NEAR)).to.eql([qtyHalf, qtyHalfCToken])
+      expect(await newVault.backingAmounts(ONE)).to.eql([qtyHalf, qtyHalfCToken])
 
       // Set new Vault with sinlge AToken - reduce redemption rate to a half  - In Rays
       await token2.setExchangeRate(fp('0.5'))
       newVault = <VaultP0>await VaultFactory.deploy([collateral2.address], [bn('1e18')], [])
       expect(await newVault.basketRate()).to.equal(fp(qtyHalf))
-      expect(await newVault.backingAmounts(ONE, Direction.NEAR)).to.eql([bn('1e18')])
+      expect(await newVault.backingAmounts(ONE)).to.eql([bn('1e18')])
     })
 
     it('Should return max Issuable for user', async function () {

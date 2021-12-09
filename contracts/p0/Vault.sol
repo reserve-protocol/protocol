@@ -62,7 +62,7 @@ contract VaultP0 is IVault, Ownable {
         require(amtBUs > 0, "Cannot issue zero");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory amounts = backingAmounts(amtBUs, Direction.CEIL);
+        uint256[] memory amounts = backingAmounts(amtBUs);
 
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.collateral[i].erc20().safeTransferFrom(_msgSender(), address(this), amounts[i]);
@@ -81,7 +81,7 @@ contract VaultP0 is IVault, Ownable {
         require(amtBUs <= basketUnits[_msgSender()], "Not enough units");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory amounts = backingAmounts(amtBUs, Direction.FLOOR);
+        uint256[] memory amounts = backingAmounts(amtBUs);
 
         basketUnits[_msgSender()] -= amtBUs;
         totalUnits -= amtBUs;
@@ -98,9 +98,8 @@ contract VaultP0 is IVault, Ownable {
     }
 
     /// @param amtBUs {qBU}
-    /// @param roundingDirection FLOOR/NEAR/CEIL
     /// @return amounts {qTok} A list of token quantities required in order to issue `amtBUs`
-    function backingAmounts(uint256 amtBUs, Direction roundingDirection)
+    function backingAmounts(uint256 amtBUs)
         public
         view
         override
@@ -112,7 +111,7 @@ contract VaultP0 is IVault, Ownable {
             amounts[i] = toFix(amtBUs)
             .shiftLeft(-int8(BU_DECIMALS))
             .mulu(_basket.quantities[_basket.collateral[i]])
-            .toUint(roundingDirection);
+            .ceil();
         }
     }
 
@@ -159,7 +158,7 @@ contract VaultP0 is IVault, Ownable {
                 min = amtBUs;
             }
         }
-        return min.shiftLeft(int8(BU_DECIMALS)).toUint();
+        return min.shiftLeft(int8(BU_DECIMALS)).floor();
     }
 
     /// @return The collateral asset at `index`

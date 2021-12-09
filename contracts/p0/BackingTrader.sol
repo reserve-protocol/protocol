@@ -157,19 +157,14 @@ contract BackingTraderP0 is TraderP0 {
 
         // {qBuyTok} = {attoUSD} / {attoUSD/qBuyTok}
         Fix buyAmount = deficitMax.div(assets[deficitIndex].priceUSD(main.oracle()));
-        return (
-            assets[surplusIndex],
-            assets[deficitIndex],
-            sellAmount.toUint(),
-            buyAmount.toUint()
-        );
+        return (assets[surplusIndex], assets[deficitIndex], sellAmount.floor(), buyAmount.floor());
     }
 
     function _tryCreateBUs() private {
         // Create new BUs
         uint256 issuable = main.vault().maxIssuable(address(this));
         if (issuable > 0) {
-            uint256[] memory amounts = main.vault().backingAmounts(issuable, Direction.CEIL);
+            uint256[] memory amounts = main.vault().backingAmounts(issuable);
             for (uint256 i = 0; i < amounts.length; i++) {
                 main.vault().collateralAt(i).erc20().safeApprove(address(main.vault()), amounts[i]);
             }

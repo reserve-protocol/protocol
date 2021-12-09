@@ -56,10 +56,7 @@ interface IVault is IRewardsClaimer {
     function basketRate() external view returns (Fix);
 
     /// @return {qTok} A list of token quantities required in order to issue `amtBUs`, in the order of the basket.
-    function backingAmounts(uint256 amtBUs, Direction roundingDirection)
-        external
-        view
-        returns (uint256[] memory);
+    function backingAmounts(uint256 amtBUs) external view returns (uint256[] memory);
 
     /// @return Whether the vault is made up only of collateral in `collateral`
     function containsOnly(ICollateral[] memory collateral) external view returns (bool);

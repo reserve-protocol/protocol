@@ -95,7 +95,7 @@ contract MarketMock is IMarket, ITrading {
             // The bid is at an acceptable price
             if (a.lte(b)) {
                 clearingSellAmount = Math.min(bid.sellAmount, auction.sellAmount);
-                clearingBuyAmount = b.mulu(clearingSellAmount).toUint(Direction.NEAR);
+                clearingBuyAmount = b.mulu(clearingSellAmount).round();
             }
         }
 

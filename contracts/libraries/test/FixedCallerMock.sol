@@ -34,28 +34,24 @@ contract FixedCallerMock {
         return FixLib.toInt(x);
     }
 
-    function toUint(Fix x) public pure returns (uint192) {
-        return FixLib.toUint(x);
+    function floor(Fix x) public pure returns (uint192) {
+        return FixLib.floor(x);
     }
 
-    function toUintFloor(Fix x) public pure returns (uint192) {
-        return FixLib.toUint(x, FixGlobals.Direction.FLOOR);
+    function round(Fix x) public pure returns (uint192) {
+        return FixLib.round(x);
     }
 
-    function toUintNearest(Fix x) public pure returns (uint192) {
-        return FixLib.toUint(x, FixGlobals.Direction.NEAR);
-    }
-
-    function toUintCeil(Fix x) public pure returns (uint192) {
-        return FixLib.toUint(x, FixGlobals.Direction.CEIL);
+    function ceil(Fix x) public pure returns (uint192) {
+        return FixLib.ceil(x);
     }
 
     function shiftLeft(Fix x, int8 shiftLeft_) public pure returns (Fix) {
         return FixLib.shiftLeft(x, shiftLeft_);
     }
 
-    function round(Fix x) public pure returns (int192) {
-        return FixLib.round(x);
+    function intRound(Fix x) public pure returns (int192) {
+        return FixLib.intRound(x);
     }
 
     function plus(Fix x, Fix y) public pure returns (Fix) {

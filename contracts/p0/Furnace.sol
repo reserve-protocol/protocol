@@ -103,7 +103,7 @@ contract FurnaceP0 is Ownable, IFurnace {
             return batch.amount;
         } else {
             // batch.amount{RTok} * (timestamp - batch.start) / batch.duration
-            return toFix(timestamp - batch.start).divu(batch.duration).mulu(batch.amount).toUint();
+            return toFix(timestamp - batch.start).divu(batch.duration).mulu(batch.amount).floor();
         }
     }
 }

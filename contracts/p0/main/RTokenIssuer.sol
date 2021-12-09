@@ -92,7 +92,7 @@ contract RTokenIssuerP0 is
             vault: vault(),
             amount: amount,
             amtBUs: amtBUs,
-            deposits: vault().backingAmounts(amtBUs, Direction.CEIL),
+            deposits: vault().backingAmounts(amtBUs),
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
@@ -134,7 +134,7 @@ contract RTokenIssuerP0 is
 
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) public view override returns (uint256[] memory) {
-        return vault().backingAmounts(toBUs(amount), Direction.CEIL);
+        return vault().backingAmounts(toBUs(amount));
     }
 
     /// @return How many RToken `account` can issue given current holdings
@@ -154,7 +154,7 @@ contract RTokenIssuerP0 is
     function _nextIssuanceBlockAvailable(uint256 amount) private view returns (uint256) {
         uint256 perBlock = Math.max(
             10_000 * 10**rToken().decimals(), // lower-bound: 10k whole RToken per block
-            toFix(rToken().totalSupply()).mul(issuanceRate()).toUint(Direction.NEAR)
+            toFix(rToken().totalSupply()).mul(issuanceRate()).round()
         ); // {RToken/block}
         uint256 blockStart = issuances.length == 0
             ? block.number
