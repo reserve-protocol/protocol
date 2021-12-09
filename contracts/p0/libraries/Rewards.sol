@@ -12,7 +12,7 @@ library RewardsLib {
     using SafeERC20 for IERC20;
 
     /// Claims all COMP/AAVE and sends it to Main
-    function claimAndSweepRewards(IMain main) internal {
+    function claimAndSweepRewards(IMain main) internal returns (uint256 compAmt, uint256 aaveAmt) {
         Oracle.Info memory oracle = main.oracle();
         oracle.compound.claimComp(address(this));
         IAsset[] memory assets = main.allAssets();
@@ -26,13 +26,13 @@ library RewardsLib {
             }
         }
 
-        uint256 compBal = main.compAsset().erc20().balanceOf(address(this));
-        if (compBal > 0) {
-            main.compAsset().erc20().safeTransfer(address(main), compBal);
+        compAmt = main.compAsset().erc20().balanceOf(address(this));
+        if (compAmt > 0) {
+            main.compAsset().erc20().safeTransfer(address(main), compAmt);
         }
-        uint256 aaveBal = main.aaveAsset().erc20().balanceOf(address(this));
-        if (aaveBal > 0) {
-            main.aaveAsset().erc20().safeTransfer(address(main), aaveBal);
+        aaveAmt = main.aaveAsset().erc20().balanceOf(address(this));
+        if (aaveAmt > 0) {
+            main.aaveAsset().erc20().safeTransfer(address(main), aaveAmt);
         }
     }
 }

@@ -6,7 +6,7 @@ import { Mood } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { ProtoAdapter } from '../../typechain/ProtoAdapter'
 import { ProtosDriver } from '../../typechain/ProtosDriver'
-import { IManagerConfig } from '../p0/utils/fixtures'
+import { IConfig } from '../p0/utils/fixtures'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import {
   Account,
@@ -47,7 +47,7 @@ describe('Unit tests (Generic)', () => {
 
     beforeEach(async () => {
       // Config
-      const config: IManagerConfig = {
+      const config: IConfig = {
         rewardStart: bn(await getLatestBlockTimestamp()),
         rewardPeriod: bn('604800'), // 1 week
         auctionPeriod: bn('1800'), // 30 minutes

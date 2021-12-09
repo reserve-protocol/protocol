@@ -285,11 +285,16 @@ interface IAuctioneerEvents {
     );
 }
 
-interface IAuctioneer is IAuctioneerEvents {
+interface IAuctioneer {
     function getBackingTrader() external view returns (address);
 }
 
 interface IRevenueHandler {
+    /// Emitted whenever rewards are claimed
+    /// @param compAmount {qCOMP} The amount of COMP claimed
+    /// @param aaveAmount {qAAVE} The amount of COMP claimed
+    event RewardsClaimed(uint256 indexed compAmount, uint256 indexed aaveAmount);
+
     function nextRewards() external view returns (uint256);
 }
 

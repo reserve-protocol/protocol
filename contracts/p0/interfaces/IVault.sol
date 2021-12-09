@@ -36,10 +36,6 @@ interface IVault is IRewardsClaimer {
     /// @param to The account that received for the BUs
     /// @param amtBUs {qBU} The quantity of BUs transferred
     event BUsTransferred(address indexed from, address indexed to, uint256 indexed amtBUs);
-    /// Emitted whenever rewards are claimed
-    /// @param compAmount {qCOMP} The amount of COMP claimed
-    /// @param aaveAmount {qAAVE} The amount of COMP claimed
-    event RewardsClaimed(uint256 indexed compAmount, uint256 indexed aaveAmount);
 
     //
 

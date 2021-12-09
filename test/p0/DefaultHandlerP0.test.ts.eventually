@@ -20,8 +20,8 @@ import { RTokenMockP0 } from '../../typechain/RTokenMockP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { USDCMock } from '../../typechain/USDCMock'
 import { VaultP0 } from '../../typechain/VaultP0'
-import { getLatestBlockTimestamp } from './../utils/time'
-import { IManagerConfig } from './utils/fixtures'
+import { getLatestBlockTimestamp } from '../utils/time'
+import { IConfig } from './utils/fixtures'
 
 describe('DefaultHandlerP0 contract', () => {
   let owner: SignerWithAddress
@@ -223,7 +223,7 @@ describe('DefaultHandlerP0 contract', () => {
 
     // Setup Config
     const rewardStart: BigNumber = bn(await getLatestBlockTimestamp())
-    const config: IManagerConfig = {
+    const config: IConfig = {
       rewardStart: rewardStart,
       rewardPeriod: bn('604800'), // 1 week
       auctionPeriod: bn('1800'), // 30 minutes

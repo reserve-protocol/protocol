@@ -6,7 +6,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types'
 
 import { expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
-import { IManagerConfig } from '../../test/p0/utils/fixtures'
+import { IConfig } from '../../test/p0/utils/fixtures'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { AaveLendingAddrProviderMockP0 } from '../../typechain/AaveLendingAddrProviderMockP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
@@ -204,7 +204,7 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
     // Setup Config
     const latestBlock = await hre.ethers.provider.getBlock('latest')
     const rewardStart: BigNumber = bn(await latestBlock.timestamp)
-    const config: IManagerConfig = {
+    const config: IConfig = {
       rewardStart: rewardStart,
       rewardPeriod: bn('604800'), // 1 week
       auctionPeriod: bn('1800'), // 30 minutes

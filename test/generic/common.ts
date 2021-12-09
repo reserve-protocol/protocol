@@ -1,9 +1,9 @@
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 
-import { Mood } from '../../common/constants'
+import { FURNACE_DEST, Mood, STRSR_DEST } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
-import { IManagerConfig } from '../p0/utils/fixtures'
+import { IConfig } from '../p0/utils/fixtures'
 
 // @dev Must match `ProtoState.Asset`
 export enum Asset {
@@ -131,7 +131,7 @@ export const sum = (arr: Array<BigNumber>) => {
 // and the caller provides the target balances for RToken/stRSR.
 export const prepareState = (
   rsrCut: BigNumber, // frac between fp(0) and fp(1)
-  config: IManagerConfig,
+  config: IConfig,
   ethPrice: Price,
   rTokenBalances: Balance[],
   stRSRBalances: Balance[],
@@ -170,11 +170,11 @@ export const prepareState = (
   // STRSR = 0x2
   const distribution = [
     {
-      dest: '0x0000000000000000000000000000000000000001',
+      dest: FURNACE_DEST,
       rTokenDist: fp(1).sub(rsrCut),
       rsrDist: bn(0),
     },
-    { dest: '0x0000000000000000000000000000000000000002', rTokenDist: bn(0), rsrDist: rsrCut },
+    { dest: STRSR_DEST, rTokenDist: bn(0), rsrDist: rsrCut },
   ]
 
   return {

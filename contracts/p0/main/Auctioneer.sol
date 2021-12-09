@@ -38,8 +38,6 @@ contract AuctioneerP0 is
     using FixLib for Fix;
     using SafeERC20 for IERC20;
 
-    Auction[] public auctions;
-
     BackingTraderP0 public backingTrader;
     RevenueTraderP0 public rsrStakingTrader;
     RevenueTraderP0 public rTokenMeltingTrader;

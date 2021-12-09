@@ -71,7 +71,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         assert(_INVARIANT_hasCollateralConfiguration());
         assert(_INVARIANT_toBUInverseFromBU());
         assert(_INVARIANT_fromBUInverseToBU());
-        assert(_INVARIANT_auctionsValid());
     }
 
     function _INVARIANT_stateDefined() internal view returns (bool ok) {
@@ -237,18 +236,19 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         }
     }
 
-    function _INVARIANT_auctionsValid() internal view returns (bool ok) {
-        bool foundOpen = false;
-        for (uint256 i = 0; i < auctions.length; i++) {
-            if (auctions[i].status == AuctionStatus.OPEN) {
-                foundOpen = true;
-            } else if (
-                foundOpen ||
-                (auctions[i].status == AuctionStatus.DONE && auctions[i].endTime < block.timestamp)
-            ) {
-                return false;
-            }
-        }
-        return true;
-    }
+    // TODO: Farm the work out to TraderExtensions
+    // function _INVARIANT_auctionsValid() internal view returns (bool ok) {
+    //     bool foundOpen = false;
+    //     for (uint256 i = 0; i < auctions.length; i++) {
+    //         if (auctions[i].status == AuctionStatus.OPEN) {
+    //             foundOpen = true;
+    //         } else if (
+    //             foundOpen ||
+    //             (auctions[i].status == AuctionStatus.DONE && auctions[i].endTime < block.timestamp)
+    //         ) {
+    //             return false;
+    //         }
+    //     }
+    //     return true;
+    // }
 }

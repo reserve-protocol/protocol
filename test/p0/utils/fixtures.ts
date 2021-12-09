@@ -2,6 +2,7 @@ import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 
+import { Mood } from '../../../common/constants'
 import { expectInReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
 import { AAVEAssetP0 } from '../../../typechain/AAVEAssetP0'
@@ -30,13 +31,7 @@ import { getLatestBlockTimestamp } from '../../utils/time'
 
 export type Collateral = CollateralP0 | CTokenCollateralP0 | ATokenCollateralP0
 
-export enum State {
-  CALM = 0,
-  DOUBT = 1,
-  TRADING = 2,
-}
-
-export interface IManagerConfig {
+export interface IConfig {
   rewardStart: BigNumber
   rewardPeriod: BigNumber
   auctionPeriod: BigNumber
@@ -176,14 +171,14 @@ async function vaultFixture(): Promise<VaultFixture> {
     const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(symbol + ' Token', symbol)
     return [erc20, <CollateralP0>await CollateralFactory.deploy(erc20.address)]
   }
-  const makeSixDecimal = async (symbol: string): Promise<[ERC20Mock, CollateralP0]> => {
+  const makeSixDecimal = async (symbol: string): Promise<[USDCMock, CollateralP0]> => {
     const erc20: USDCMock = <USDCMock>await USDC.deploy(symbol + ' Token', symbol)
     return [erc20, <CollateralP0>await CollateralFactory.deploy(erc20.address)]
   }
   const makeCToken = async (
     symbol: string,
     underlyingAddress: string
-  ): Promise<[ERC20Mock, CTokenCollateralP0]> => {
+  ): Promise<[CTokenMock, CTokenCollateralP0]> => {
     const erc20: CTokenMock = <CTokenMock>(
       await CTokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
     )
@@ -192,7 +187,7 @@ async function vaultFixture(): Promise<VaultFixture> {
   const makeAToken = async (
     symbol: string,
     underlyingAddress: string
-  ): Promise<[ERC20Mock, ATokenCollateralP0]> => {
+  ): Promise<[StaticATokenMock, ATokenCollateralP0]> => {
     const erc20: StaticATokenMock = <StaticATokenMock>(
       await ATokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
     )
@@ -211,6 +206,19 @@ async function vaultFixture(): Promise<VaultFixture> {
   const ausdc = await makeAToken('aUSDC', usdc[0].address)
   const ausdt = await makeAToken('aUSDT', usdt[0].address)
   const abusd = await makeAToken('aBUSD', busd[0].address)
+  const erc20s = [
+    dai[0],
+    usdc[0],
+    usdt[0],
+    busd[0],
+    cdai[0],
+    cusdc[0],
+    cusdt[0],
+    adai[0],
+    ausdc[0],
+    ausdt[0],
+    abusd[0],
+  ]
   const collateral = [
     dai[1],
     usdc[1],
@@ -224,11 +232,6 @@ async function vaultFixture(): Promise<VaultFixture> {
     ausdt[1],
     abusd[1],
   ]
-
-  const erc20MockFact = await ethers.getContractFactory('ERC20Mock')
-  const erc20s = await Promise.all(
-    collateral.map(async (c) => <ERC20Mock>await ethers.getContractAt('ERC20Mock', await c.erc20()))
-  )
 
   // Create the initial basket
   const basket = [dai[1], usdc[1], adai[1], cdai[1]]
@@ -255,7 +258,7 @@ type RSRAndCompAaveAndVaultAndMarketFixture = RSRFixture &
   MarketFixture
 
 interface DefaultFixture extends RSRAndCompAaveAndVaultAndMarketFixture {
-  config: IManagerConfig
+  config: IConfig
   dist: IRevenueShare
   deployer: DeployerP0
   main: MainP0
@@ -297,7 +300,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Setup Config
   const rewardStart: BigNumber = bn(await getLatestBlockTimestamp())
-  const config: IManagerConfig = {
+  const config: IConfig = {
     rewardStart: rewardStart,
     rewardPeriod: bn('604800'), // 1 week
     auctionPeriod: bn('1800'), // 30 minutes

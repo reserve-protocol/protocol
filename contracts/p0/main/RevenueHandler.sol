@@ -52,6 +52,8 @@ contract RevenueHandlerP0 is
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
     function poke() public virtual override(Mixin, AuctioneerP0) notPaused {
         super.poke();
+        uint256 compBalStart = compAsset().erc20().balanceOf(address(this));
+        uint256 aaveBalStart = aaveAsset().erc20().balanceOf(address(this));
         (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
         if (prevRewards > _rewardsLastClaimed && fullyCapitalized()) {
             // Sweep COMP/AAVE from vaults + traders into Main
@@ -65,6 +67,10 @@ contract RevenueHandlerP0 is
             _rewardsLastClaimed = prevRewards;
         }
 
+        emit RewardsClaimed(
+            compAsset().erc20().balanceOf(address(this)) - compBalStart,
+            aaveAsset().erc20().balanceOf(address(this)) - aaveBalStart
+        );
         _splitRewardsToTraders(compAsset());
         _splitRewardsToTraders(aaveAsset());
     }

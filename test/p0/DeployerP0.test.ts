@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn } from '../../common/numbers'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
@@ -17,7 +18,7 @@ import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { VaultP0 } from '../../typechain/VaultP0'
-import { Collateral, defaultFixture, IManagerConfig, IRevenueShare } from './utils/fixtures'
+import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -42,7 +43,7 @@ describe('DeployerP0 contract', () => {
   let aaveMock: AaveLendingPoolMockP0
 
   // Config values
-  let config: IManagerConfig
+  let config: IConfig
   let dist: IRevenueShare
 
   // Contracts to retrieve after deploy
