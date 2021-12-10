@@ -67,12 +67,12 @@ contract RevenueHandlerP0 is
             _rewardsLastClaimed = prevRewards;
         }
 
-        emit RewardsClaimed(
-            compAsset().erc20().balanceOf(address(this)) - compBalStart,
-            aaveAsset().erc20().balanceOf(address(this)) - aaveBalStart
-        );
-        _splitRewardsToTraders(compAsset());
-        _splitRewardsToTraders(aaveAsset());
+        uint256 compDelta = compAsset().erc20().balanceOf(address(this)) - compBalStart;
+        uint256 aaveDelta = aaveAsset().erc20().balanceOf(address(this)) - aaveBalStart;
+        if (compDelta > 0 || aaveDelta > 0) { emit RewardsClaimed(compDelta, aaveDelta); }
+
+        _splitToTraders(compAsset());
+        _splitToTraders(aaveAsset());
     }
 
     function beforeUpdate()
@@ -99,7 +99,7 @@ contract RevenueHandlerP0 is
     }
 
     /// Splits `asset` into `cut` and `1-cut` proportions, and sends to revenue traders
-    function _splitRewardsToTraders(IAsset asset) private {
+    function _splitToTraders(IAsset asset) private {
         uint256 bal = asset.erc20().balanceOf(address(this));
         if (bal > 0) {
             uint256 amtToRSR = rsrCut().mulu(bal).round();
