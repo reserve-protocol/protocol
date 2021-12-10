@@ -118,11 +118,9 @@ contract RTokenIssuerP0 is
 
         rToken().burn(_msgSender(), amount);
         uint256 amtBUs = toBUs(amount);
-        uint256 amtCracked = _redeemFromOldVaults(_msgSender(), amtBUs);
-        if (amtCracked < amtBUs) {
-            uint256 delta = amtBUs - amtCracked;
-            assert(delta <= _redeemFrom(vault(), _msgSender(), delta));
-        }
+        uint256 amtRedeemed = _redeemFromOldVaults(_msgSender(), amtBUs, true);
+        require(amtRedeemed >= amtBUs, "Too few available basket units!");
+
         emit Redemption(_msgSender(), amount);
     }
 

@@ -72,7 +72,7 @@ contract AuctioneerP0 is
             */
 
             uint256 maxBUs = toBUs(migrationChunk().mulu(rToken().totalSupply()).round());
-            uint256 redeemedBUs = _redeemFromOldVaults(address(backingTrader), maxBUs);
+            uint256 redeemedBUs = _redeemFromOldVaults(address(backingTrader), maxBUs, false);
             uint256 buShortfall = toBUs(rToken().totalSupply()) -
                 vault().basketUnits(address(this));
 

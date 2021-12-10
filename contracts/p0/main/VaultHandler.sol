@@ -136,23 +136,27 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         return supply.eq(FIX_ZERO) ? FIX_ONE : supply.plus(melted).div(supply);
     }
 
-    /// Redeems up to `amtBUs` basket units from all past vaults.
+    /// Redeems up to `maxBUs` basket units, redeeming from the oldest vault first.
+    /// @param allowCurrentVault Whether to allow redemption from the current vault in addition to old vaults.
     /// @return redeemedBUs How many BUs were actually redeemed
-    function _redeemFromOldVaults(address recipient, uint256 maxBUs)
-        internal
-        returns (uint256 redeemedBUs)
-    {
-        for (uint256 i = 0; i + 1 < vaults.length && redeemedBUs < maxBUs; i++) {
+    function _redeemFromOldVaults(
+        address recipient,
+        uint256 maxBUs,
+        bool allowCurrentVault
+    ) internal returns (uint256 redeemedBUs) {
+        uint256 endIndex = allowCurrentVault ? vaults.length : vaults.length - 1;
+        for (uint256 i = 0; i < endIndex && redeemedBUs < maxBUs; i++) {
             redeemedBUs += _redeemFrom(vaults[i], recipient, maxBUs - redeemedBUs);
         }
     }
 
+    /// @dev You should probably never call this. Consider using _redeemFromOldVaults instead.
     /// @return toRedeem How many BUs were redeemed
     function _redeemFrom(
         IVault vault_,
         address recipient,
         uint256 maxToRedeem
-    ) internal returns (uint256 toRedeem) {
+    ) private returns (uint256 toRedeem) {
         toRedeem = Math.min(vault_.basketUnits(address(this)), maxToRedeem);
         if (toRedeem > 0) {
             vault_.redeem(recipient, toRedeem);
