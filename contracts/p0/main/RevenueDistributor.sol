@@ -48,18 +48,20 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
         uint256 amount
     ) public override {
         require(erc20 == rsr() || erc20 == rToken(), "RSR or RToken");
+        bool isRSR = erc20 == rsr(); // if false: isRToken
         (Fix rTokenTotal, Fix rsrTotal) = _totals();
-        Fix total = erc20 == rsr() ? rsrTotal : rTokenTotal;
+        Fix total = isRSR ? rsrTotal : rTokenTotal;
+
+        uint256 sliceSum;
         for (uint256 i = 0; i < _destinations.length(); i++) {
-            Fix subshare = erc20 == rsr()
-                ? _distribution[_destinations.at(i)].rsrDist
-                : _distribution[_destinations.at(i)].rTokenDist;
+            address addrTo = _destinations.at(i);
+            Fix subshare = isRSR ? _distribution[addrTo].rsrDist : _distribution[addrTo].rTokenDist;
             uint256 slice = subshare.mulu(amount).div(total).floor();
-            if (slice == 0) {
+            if (slice == 0 || (!isRSR && addrTo == FURNACE) || (isRSR && addrTo == ST_RSR)) {
                 continue;
             }
+            sliceSum += slice;
 
-            address addrTo = _destinations.at(i);
             if (addrTo == FURNACE) {
                 erc20.safeTransferFrom(from, address(revenueFurnace()), slice);
                 revenueFurnace().notifyOfDeposit(erc20);
@@ -67,8 +69,15 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
                 erc20.safeTransferFrom(from, address(stRSR()), slice);
                 stRSR().notifyOfDeposit(erc20);
             } else {
-                erc20.safeTransferFrom(from, _destinations.at(i), slice);
+                erc20.safeTransferFrom(from, addrTo, slice);
             }
+        }
+
+        uint256 delta = amount - sliceSum;
+        if (delta > 0) {
+            address sinkAddr = isRSR ? address(stRSR()) : address(revenueFurnace());
+            erc20.safeTransferFrom(from, sinkAddr, delta);
+            IERC20Receiver(sinkAddr).notifyOfDeposit(erc20);
         }
     }
 
