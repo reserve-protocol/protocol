@@ -55,6 +55,9 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
                 ? _distribution[_destinations.at(i)].rsrDist
                 : _distribution[_destinations.at(i)].rTokenDist;
             uint256 slice = subshare.mulu(amount).div(total).floor();
+            if (slice == 0) {
+                continue;
+            }
 
             address addrTo = _destinations.at(i);
             if (addrTo == FURNACE) {
@@ -63,8 +66,9 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
             } else if (addrTo == ST_RSR) {
                 erc20.safeTransferFrom(from, address(stRSR()), slice);
                 stRSR().notifyOfDeposit(erc20);
+            } else {
+                erc20.safeTransferFrom(from, _destinations.at(i), slice);
             }
-            erc20.safeTransferFrom(from, _destinations.at(i), slice);
         }
     }
 
