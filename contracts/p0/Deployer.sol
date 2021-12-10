@@ -94,6 +94,7 @@ contract DeployerP0 is IDeployer {
             );
             deployments.push(main);
             rToken.setMain(address(main));
+            Ownable(address(rToken)).transferOwnership(owner);
         }
 
         {
