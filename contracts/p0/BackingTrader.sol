@@ -15,6 +15,7 @@ contract BackingTraderP0 is TraderP0 {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
+    // How many more BUs this trader has the duty to construct.
     uint256 public targetBUs; // {qBU}
 
     // solhint-disable-next-line no-empty-blocks
