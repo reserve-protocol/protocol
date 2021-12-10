@@ -60,13 +60,13 @@ contract RTokenIssuerP0 is
         super.init(args);
     }
 
-    /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
+    /// Process pending issuances on poke
     function poke() public virtual override(Mixin, DefaultHandlerP0) notPaused {
         super.poke();
-        revenueFurnace().doMelt();
         _processSlowIssuance();
     }
 
+    /// Process pending issuances before parameter update.
     function beforeUpdate()
         public
         virtual
@@ -100,15 +100,9 @@ contract RTokenIssuerP0 is
         issuances.push(iss);
 
         for (uint256 i = 0; i < iss.vault.size(); i++) {
-            IERC20(iss.vault.collateralAt(i).erc20()).safeTransferFrom(
-                iss.issuer,
-                address(this),
-                iss.deposits[i]
-            );
-            IERC20(iss.vault.collateralAt(i).erc20()).safeApprove(
-                address(iss.vault),
-                iss.deposits[i]
-            );
+            IERC20 coll = IERC20(iss.vault.collateralAt(i).erc20());
+            coll.safeTransferFrom(iss.issuer, address(this), iss.deposits[i]);
+            coll.safeApprove(address(iss.vault), iss.deposits[i]);
         }
 
         iss.vault.issue(address(this), iss.amtBUs);
@@ -137,7 +131,7 @@ contract RTokenIssuerP0 is
         return vault().backingAmounts(toBUs(amount));
     }
 
-    /// @return How many RToken `account` can issue given current holdings
+    /// @return How much RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
         return fromBUs(vault().maxIssuable(account));
     }
@@ -166,16 +160,20 @@ contract RTokenIssuerP0 is
     function _processSlowIssuance() internal {
         if (mood() != Mood.DOUBT) {
             for (uint256 i = 0; i < issuances.length; i++) {
-                if (!issuances[i].processed && issuances[i].vault != vault()) {
-                    rToken().burn(address(rToken()), issuances[i].amount);
-                    issuances[i].vault.redeem(issuances[i].issuer, issuances[i].amtBUs);
-                    issuances[i].processed = true;
+                SlowIssuance memory iss = issuances[i];
+                if (iss.processed) {
+                    // Ignore processed issuance
+                    continue;
+                } else if (iss.vault != vault()) {
+                    // Rollback issuance i
+                    rToken().burn(address(rToken()), iss.amount);
+                    iss.vault.redeem(iss.issuer, iss.amtBUs);
+                    iss.processed = true;
                     emit IssuanceCanceled(i);
-                } else if (
-                    !issuances[i].processed && issuances[i].blockAvailableAt <= block.number
-                ) {
-                    rToken().withdrawTo(issuances[i].issuer, issuances[i].amount);
-                    issuances[i].processed = true;
+                } else if (iss.blockAvailableAt <= block.number) {
+                    // Complete issuance i
+                    rToken().withdrawTo(iss.issuer, iss.amount);
+                    iss.processed = true;
                     emit IssuanceCompleted(i);
                 }
             }

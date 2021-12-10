@@ -73,6 +73,8 @@ contract RevenueHandlerP0 is
 
         _splitToTraders(compAsset());
         _splitToTraders(aaveAsset());
+
+        revenueFurnace().doMelt();
     }
 
     function beforeUpdate()
