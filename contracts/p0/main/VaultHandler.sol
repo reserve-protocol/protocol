@@ -111,7 +111,8 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
 
     /* As the basketRate increases, the basketDilutionFactor increases at a proportional rate.
      * for two times t0 < t1 when the rTokenCut() doesn't change, we have:
-     * (basketDiluationFactor at t1) - (basketDilutionFactor at t0) = rTokenCut() * ((basketRate at t1) - (basketRate at t0))
+     * (basketDiluationFactor at t1) - (basketDilutionFactor at t0)
+     * = rTokenCut() * ((basketRate at t1) - (basketRate at t0))
      */
     /// @return {qBU/qRTok) the basket dilution factor
     function _basketDilutionFactor() internal view returns (Fix) {
