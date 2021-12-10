@@ -75,6 +75,7 @@ contract DeployerP0 is IDeployer {
             IRToken rToken = _deployRToken(name, symbol);
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken));
             IFurnace revenueFurnace = _deployRevenueFurnace(rToken, config.rewardPeriod);
+            Ownable(address(revenueFurnace)).transferOwnership(owner);
 
             main = _deployMain(
                 ConstructorArgs(
