@@ -63,6 +63,7 @@ contract RTokenIssuerP0 is
     /// Process pending issuances on poke
     function poke() public virtual override(Mixin, DefaultHandlerP0) notPaused {
         super.poke();
+        revenueFurnace().doMelt();
         _processSlowIssuance();
     }
 
@@ -92,7 +93,7 @@ contract RTokenIssuerP0 is
             vault: vault(),
             amount: amount,
             amtBUs: amtBUs,
-            deposits: vault().backingAmounts(amtBUs),
+            deposits: vault().quote(amtBUs),
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
@@ -126,7 +127,7 @@ contract RTokenIssuerP0 is
 
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) public view override returns (uint256[] memory) {
-        return vault().backingAmounts(toBUs(amount));
+        return vault().quote(toBUs(amount));
     }
 
     /// @return How much RToken `account` can issue given current holdings

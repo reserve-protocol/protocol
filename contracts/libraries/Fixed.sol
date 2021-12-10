@@ -185,6 +185,7 @@ library FixLib {
         if (uint192(Fix.unwrap(x)) == u * FIX_SCALE_U) { return u;}
         return u+1;
     }
+    
     /// Convert this Fix to an int. Round the fractional part towards zero.
     function toInt(Fix x) internal pure returns (int192) {
         return Fix.unwrap(x) / FIX_SCALE;

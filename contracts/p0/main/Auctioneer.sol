@@ -58,6 +58,8 @@ contract AuctioneerP0 is
 
         // Backing Trader
         backingTrader.poke();
+
+        // TODO: Move a lot of this logic into BackingTrader by making BackingTrader able to access Main's BUs
         if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
             /* If we're here, then we need to run more auctions to capitalize the current vault. The
                BackingTrader will run those auctions, but it needs to be given BUs from old vaults,
@@ -86,13 +88,6 @@ contract AuctioneerP0 is
                  * including staked RSR. There's only one option left to us... */
                 _rTokenHaircut();
             }
-            // TODO: There may be excess surplus and BUs after all rounds of trading. What should we
-            // do with them?
-
-            // Tentative answer: They should be turned into BUs and subsequently, RToken supply
-            // expansion.  The concern would be this is an avenue for RSR holders to profit from
-            // making the RToken basket worth less, but this is already a failure mode we have been
-            // keeping in mind and are building governance to be resilient against.
         }
 
         // RSR Trader
@@ -110,8 +105,16 @@ contract AuctioneerP0 is
         super.beforeUpdate();
     }
 
-    function getBackingTrader() external view override returns (address) {
+    function backingTraderAddr() external view override returns (address) {
         return address(backingTrader);
+    }
+
+    function rsrTraderAddr() external view override returns (address) {
+        return address(rsrTrader);
+    }
+
+    function rTokenTraderAddr() external view override returns (address) {
+        return address(rTokenTrader);
     }
 
     function _rTokenHaircut() private {

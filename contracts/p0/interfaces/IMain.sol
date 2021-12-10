@@ -286,7 +286,11 @@ interface IAuctioneerEvents {
 }
 
 interface IAuctioneer {
-    function getBackingTrader() external view returns (address);
+    function rsrTraderAddr() external view returns (address);
+
+    function rTokenTraderAddr() external view returns (address);
+
+    function backingTraderAddr() external view returns (address);
 }
 
 interface IRevenueHandler {

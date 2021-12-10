@@ -26,18 +26,27 @@ contract BackingTraderP0 is TraderP0 {
         closeDueAuctions();
 
         // If no auctions are open, try creating BUs.
-        if (!hasOpenAuctions()) {
+        if (!hasOpenAuctions() && targetBUs > 0) {
             _tryCreateBUs();
             _startNextAuction();
         }
 
         // If we're here, we're done trading. Clear out any remaining RSR to the staking pool.
-        if (!hasOpenAuctions()) {
-            IERC20 rsr = main.rsr();
-            uint256 rsrBal = rsr.balanceOf(address(this));
-            if (rsrBal > 0) {
-                rsr.safeApprove(address(main), rsrBal);
-                main.distribute(rsr, address(this), rsrBal);
+        if (!hasOpenAuctions() && main.fullyCapitalized()) {
+            IAsset[] memory assets = main.allAssets();
+            for (uint256 i = 0; i < assets.length; i++) {
+                IERC20 tok = assets[i].erc20();
+                uint256 bal = tok.balanceOf(address(this));
+                if (bal == 0) {
+                    continue;
+                }
+
+                if (tok == main.rsr()) {
+                    tok.safeApprove(address(main), bal);
+                    main.distribute(tok, address(this), bal);
+                } else {
+                    tok.safeTransfer(main.rTokenTraderAddr(), bal);
+                }
             }
         }
     }
@@ -165,7 +174,7 @@ contract BackingTraderP0 is TraderP0 {
         // Create new BUs
         uint256 issuable = main.vault().maxIssuable(address(this));
         if (issuable > 0) {
-            uint256[] memory amounts = main.vault().backingAmounts(issuable);
+            uint256[] memory amounts = main.vault().quote(issuable);
             for (uint256 i = 0; i < amounts.length; i++) {
                 main.vault().collateralAt(i).erc20().safeApprove(address(main.vault()), amounts[i]);
             }

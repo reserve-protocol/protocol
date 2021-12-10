@@ -29,7 +29,7 @@ contract VaultP0 is IVault, Ownable {
 
     Basket internal _basket;
 
-    mapping(address => mapping(address => uint256)) internal _allowances; // {qBU}
+    // mapping(address => mapping(address => uint256)) internal _allowances; // {qBU}
     mapping(address => uint256) public override basketUnits; // {qBU}
     uint256 public totalUnits; // {qBU}
 
@@ -62,7 +62,7 @@ contract VaultP0 is IVault, Ownable {
         require(amtBUs > 0, "Cannot issue zero");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory amounts = backingAmounts(amtBUs);
+        uint256[] memory amounts = quote(amtBUs);
 
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.collateral[i].erc20().safeTransferFrom(_msgSender(), address(this), amounts[i]);
@@ -81,7 +81,7 @@ contract VaultP0 is IVault, Ownable {
         require(amtBUs <= basketUnits[_msgSender()], "Not enough units");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory amounts = backingAmounts(amtBUs);
+        uint256[] memory amounts = quote(amtBUs);
 
         basketUnits[_msgSender()] -= amtBUs;
         totalUnits -= amtBUs;
@@ -99,12 +99,7 @@ contract VaultP0 is IVault, Ownable {
 
     /// @param amtBUs {qBU}
     /// @return amounts {qTok} A list of token quantities required in order to issue `amtBUs`
-    function backingAmounts(uint256 amtBUs)
-        public
-        view
-        override
-        returns (uint256[] memory amounts)
-    {
+    function quote(uint256 amtBUs) public view override returns (uint256[] memory amounts) {
         amounts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
             // {qTok} = {qBU} *  {qTok/BU} / {qBU/BU}

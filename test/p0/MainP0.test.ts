@@ -3,7 +3,13 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
-import { BN_SCALE_FACTOR, FURNACE_DEST, Mood, STRSR_DEST, ZERO_ADDRESS } from '../../common/constants'
+import {
+  BN_SCALE_FACTOR,
+  FURNACE_DEST,
+  Mood,
+  STRSR_DEST,
+  ZERO_ADDRESS,
+} from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
@@ -254,7 +260,7 @@ describe('MainP0 contract', () => {
       expect(await main.fullyCapitalized()).to.equal(true)
       expect(await main.vault()).to.equal(vault.address)
       expect(await main.numVaults()).to.equal(1)
-      expect(await main.getBackingTrader()).to.not.equal(ZERO_ADDRESS)
+      expect(await main.backingTraderAddr()).to.not.equal(ZERO_ADDRESS)
       expect((await main.backingTokens()).length).to.equal(4)
     })
   })

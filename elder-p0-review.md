@@ -1,3 +1,17 @@
+# TODOs
+- [ ] Move as much as possible into assets (no more unapproving collateral; rename `poke`)
+- [ ] Move BU ownership to RToken + change vesting locations
+- [ ] Get rid of Mood, check that all assets in current vault are SOUND
+- [ ] notice -> checkFor
+- [ ] EmptyVault impl?
+- [ ] DefaultHandler overhaul, move vault checks into the vault class
+- [ ] _nextIssuanceBlockAvailable() - add fractional "how far into the block" metric 
+- [ ] (beforeUpdate() calls not actually going through the entire set of mixins)
+- [ ] Add `toUint` with enum rounding forwarding the call to floor/ceil/round
+
+# DO LATER (or think harder about)
+- [ ] Rehaul how we express the backup DAG / do backups
+
 
 # AssetRegistry
 - [ ] At least for p0, it seems better to track the approved/defaulted status on the *asset*, rather than as a list in Main. This change would:
@@ -6,14 +20,18 @@
     - Add an approvedCollateral() accessor (returns an array) to AssetRegistry
     - Replace current set accessses with that accessor
 
-# RevenueDistributor
-- [ ] Is there any way to move the RevenueShare type closer to RevenueDistributor?
+After discussion: No main on priceUSD call, asset is permissioned, Main updates it for asset registration and defaulting status (SOUND, IFFY, DEFAULTED)
+8/10
 
-- [ ] RevenueDistributor.distribute() will hit failures due to rounding -- if rounding brings the total below amount, it'll leave dust; if rounding brings the total above amount, it'll revert.
+# RevenueDistributor
+- [x] Is there any way to move the RevenueShare type closer to RevenueDistributor?
+
+- [x] RevenueDistributor.distribute() will hit failures due to rounding -- if rounding brings the total below amount, it'll leave dust; if rounding brings the total above amount, it'll revert.
     - Solution: The final transfer in the series should go to the "protocol" (rtoken or stRSR), and should sweep whatever is left after a running total.
 
 # VaultHandler
-- [ ] _switchVault: why do we call beforeUpdate() a second time? If we need to call a more-subclass beforeUpdate, we need to call this.beforeUpdate(); just calling beforeUpdate() won't work.
+- [ ] _switchVault: why do we call beforeUpdate() a second time? If we need to call a more-subclass beforeUpdate, we need to call this.beforeUpdate(); just calling beforeUpdate() won't work. #BUs-to-RToken
+
 
 # DefaultHandler:
 - [ ] We've still got setMood in places. Turn that into some sort of semantic set of calls on Moody; I bet we catch at least one big bug that way.
@@ -61,29 +79,30 @@ Once you do all that, _vaultIsDefaulting and _isValid functions can be collapsed
 
 # Auctioneer
 
-- [ ] Main currently owns the basket units that the RToken redeems with. Why doesn't the RToken own them instead?
+- [ ] Main currently owns the basket units that the RToken redeems with. Why doesn't the RToken own them instead? #BUs-to-RToken
 
 # RTokenIssuer
 - [ ] The start of issue() calls a bunch of things - furnace.melt, notieHardDefault, and ensureValidVault. Should these be on a beforeIssue() hook? Probably not, but then how do you model why we're calling these functions here, and how do we know it's complete?
-- [ ] During slow issuance -- between issue() and that issuance getting completed -- Main holds the vault BUs, and the RToken holds the minted RTokens. Probably these should be in a single place for sensible accounting purposes?
+- [ ] During slow issuance -- between issue() and that issuance getting completed -- Main holds the vault BUs, and the RToken holds the minted RTokens. Probably these should be in a single place for sensible accounting purposes? #BUs-to-RToken
 - [ ] The way _nextIssuanceBlockAvailable is set up, we'll only be able to do one issuance per block even if the issuances are pretty small. To fixup, we should also save how far "into" its block that last issuance will end.
 
 # Trader
-- [ ] I'm uncomfortable with the way we reuse Auction structs to be reinterpreted in so many different ways. It feels like a plausible source of latent errors, but I don't really see a better way to do it. Revisit...
+- [x] I'm uncomfortable with the way we reuse Auction structs to be reinterpreted in so many different ways. It feels like a plausible source of latent errors, but I don't really see a better way to do it. Revisit...
 
 # BackingTrader
-- [ ] In poke, should _tryCreateBUs and _startNextAuction() also be under the condition targetBUs > 0?
+- [x] In poke, should _tryCreateBUs and _startNextAuction() also be under the condition targetBUs > 0?
 
 # Vault
 - [ ] Think hard about how we represent backups... (Maybe a list of Baskets instead?)
-- [ ] claimAndSweepRewards -- are we sure we can't just have that be an automatic member of this class? (Maybe we subclass RewardsLib instead of library-include it?)
-- [ ] Vault.backingAmounts is very analogous to Main.quote; should we also call it Vault.quote?
+- [x] claimAndSweepRewards -- are we sure we can't just have that be an automatic member of this class? (Maybe we subclass RewardsLib instead of library-include it?)
+- [x] Vault.backingAmounts is very analogous to Main.quote; should we also call it Vault.quote?
 - [ ] issue and redeem compute their amounts using the same rounding mode, so rounding errors might creep in. (Possible solution: backingAmounts supports 
 
 # StRSR
-- [ ] processWithdrawals() enforces that the withdrawals occur in the order they're added to the `withdrawals` array, which might not be the order of increasing `avaiableAt` values. (e.g, if a governance error causes the withdrawal delay to be year, a withdrawal occurs, and then the delays is reduced again, withdrawal is still locked for a year.) Probably the simplest fix is to save `startedAt` instead of `availableAt`, and use main.stRSRWithdrawalDelay() when checking which withdrawals are available.
+- [x] processWithdrawals() enforces that the withdrawals occur in the order they're added to the `withdrawals` array, which might not be the order of increasing `avaiableAt` values. (e.g, if a governance error causes the withdrawal delay to be year, a withdrawal occurs, and then the delays is reduced again, withdrawal is still locked for a year.) Probably the simplest fix is to save `startedAt` instead of `availableAt`, and use main.stRSRWithdrawalDelay() when checking which withdrawals are available.
     
       Alternately, we can keep using `availableAt`, and maintain `withdrawals` as a priority queue. O(lg(N)) for adds and removes, instead of possibly O(N) to add to a fully-sorted list.
 
-# TODOs
+# Meta
+- [x] Groom TODOs
 - [ ] Before passing review, the code should be clear of TODOs, or we've at least decided that each one is, for some special reason, right to leave in for now.

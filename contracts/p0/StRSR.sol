@@ -48,7 +48,6 @@ contract StRSRP0 is IStRSR, Context {
     }
 
     Withdrawal[] public withdrawals;
-    uint256 public withdrawalIndex;
 
     constructor(
         IMain main_,
@@ -103,18 +102,12 @@ contract StRSRP0 is IStRSR, Context {
             return;
         }
         // Process all pending withdrawals
-        while (
-            withdrawalIndex < withdrawals.length &&
-            block.timestamp < withdrawals[withdrawalIndex].availableAt
-        ) {
-            Withdrawal storage withdrawal = withdrawals[withdrawalIndex];
-            if (withdrawal.amount > 0) {
-                main.rsr().safeTransfer(withdrawal.account, withdrawal.amount);
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            if (block.timestamp >= withdrawals[i].availableAt && withdrawals[i].amount > 0) {
+                main.rsr().safeTransfer(withdrawals[i].account, withdrawals[i].amount);
+                emit UnstakingCompleted(i, withdrawals[i].account, withdrawals[i].amount);
+                withdrawals[i].amount = 0;
             }
-            emit UnstakingCompleted(withdrawalIndex, withdrawal.account, withdrawal.amount);
-
-            delete withdrawals[withdrawalIndex];
-            withdrawalIndex += 1;
         }
     }
 
@@ -140,7 +133,7 @@ contract StRSRP0 is IStRSR, Context {
     /// auth: BackingTrader only
     /// @param amount {qRSR}
     function seizeRSR(uint256 amount) external override {
-        require(_msgSender() == address(main.getBackingTrader()), "Caller is not backing trader");
+        require(_msgSender() == main.backingTraderAddr(), "Caller is not backing trader");
         require(amount > 0, "Amount cannot be zero");
 
         // Process pending withdrawals
@@ -160,7 +153,7 @@ contract StRSRP0 is IStRSR, Context {
                 _balances[_accounts.at(index)] -= amtToRemove.floor();
             }
 
-            for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
+            for (uint256 index = 0; index < withdrawals.length; index++) {
                 Fix amtToRemove = toFix(withdrawals[index].amount).mulu(amount).divu(
                     snapshotTotalStakedPlus
                 );
@@ -246,7 +239,7 @@ contract StRSRP0 is IStRSR, Context {
 
     /// @return total {stRSR} Total amount of stRSR being withdrawn
     function _amountBeingWithdrawn() internal view returns (uint256 total) {
-        for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
+        for (uint256 index = 0; index < withdrawals.length; index++) {
             total += withdrawals[index].amount;
         }
     }

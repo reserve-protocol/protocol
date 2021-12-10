@@ -188,8 +188,6 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         bytes32 encodedOrder = main.market().settleAuction(auction.externalAuctionId);
         (auction.clearingSellAmount, auction.clearingBuyAmount) = _decodeOrder(encodedOrder);
 
-        // TODO: what was `bal` ever for, here?
-        // uint256 bal = auction.buy.erc20().balanceOf(address(this)); // {qBuyTok}
         auction.status = AuctionStatus.DONE;
 
         countOpenAuctions -= 1;

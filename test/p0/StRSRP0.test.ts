@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+
 import { bn, fp } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
@@ -9,8 +10,8 @@ import { MainP0 } from '../../typechain/MainP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { VaultP0 } from '../../typechain/VaultP0'
-import { Collateral, defaultFixture } from './utils/fixtures'
 import { advanceTime } from '../utils/time'
+import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -288,7 +289,6 @@ describe('StRSRP0 contract', () => {
         await stRSR.processWithdrawals()
 
         // Nothing processed so far
-        expect(await stRSR.withdrawalIndex()).to.equal(0)
         expect(await stRSR.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
@@ -300,7 +300,6 @@ describe('StRSRP0 contract', () => {
         await stRSR.processWithdrawals()
 
         // Withdrawal was processed
-        expect(await stRSR.withdrawalIndex()).to.equal(1)
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
         expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
@@ -346,7 +345,6 @@ describe('StRSRP0 contract', () => {
         await stRSR.processWithdrawals()
 
         // Nothing processed so far
-        expect(await stRSR.withdrawalIndex()).to.equal(0)
         expect(await stRSR.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
@@ -359,7 +357,6 @@ describe('StRSRP0 contract', () => {
         await stRSR.processWithdrawals()
 
         // Withdrawal was processed
-        expect(await stRSR.withdrawalIndex()).to.equal(1)
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
         expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
@@ -372,7 +369,6 @@ describe('StRSRP0 contract', () => {
         await stRSR.processWithdrawals()
 
         // Nothing processed so far
-        expect(await stRSR.withdrawalIndex()).to.equal(0)
         expect(await stRSR.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
@@ -383,7 +379,6 @@ describe('StRSRP0 contract', () => {
         await stRSR.processWithdrawals()
 
         // Nothing processed still
-        expect(await stRSR.withdrawalIndex()).to.equal(0)
         expect(await stRSR.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
         expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
@@ -401,7 +396,6 @@ describe('StRSRP0 contract', () => {
         await stRSR.processWithdrawals()
 
         // Withdrawal was processed
-        expect(await stRSR.withdrawalIndex()).to.equal(1)
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
         expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
@@ -424,7 +418,6 @@ describe('StRSRP0 contract', () => {
         await stRSR.processWithdrawals()
 
         // Withdrawals were processed
-        expect(await stRSR.withdrawalIndex()).to.equal(2)
         expect(await stRSR.totalSupply()).to.equal(amount3)
         expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
@@ -442,7 +435,6 @@ describe('StRSRP0 contract', () => {
         await stRSR.processWithdrawals()
 
         // Withdrawals processed
-        expect(await stRSR.withdrawalIndex()).to.equal(3)
         expect(await stRSR.totalSupply()).to.equal(0)
         expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
