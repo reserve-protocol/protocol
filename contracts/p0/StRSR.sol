@@ -103,20 +103,18 @@ contract StRSRP0 is IStRSR, Context {
             return;
         }
         // Process all pending withdrawals
-        for (uint256 index = withdrawalIndex; index < withdrawals.length; index++) {
-            if (block.timestamp > withdrawals[withdrawalIndex].availableAt) {
-                Withdrawal storage withdrawal = withdrawals[withdrawalIndex];
-
-                if (withdrawal.amount > 0) {
-                    main.rsr().safeTransfer(withdrawal.account, withdrawal.amount);
-                }
-
-                delete withdrawals[withdrawalIndex];
-                withdrawalIndex += 1;
-                emit UnstakingCompleted(index, withdrawal.account, withdrawal.amount);
-            } else {
-                break;
+        while (
+            withdrawalIndex < withdrawals.length &&
+            block.timestamp < withdrawals[withdrawalIndex].availableAt
+        ) {
+            Withdrawal storage withdrawal = withdrawals[withdrawalIndex];
+            if (withdrawal.amount > 0) {
+                main.rsr().safeTransfer(withdrawal.account, withdrawal.amount);
             }
+            emit UnstakingCompleted(withdrawalIndex, withdrawal.account, withdrawal.amount);
+
+            delete withdrawals[withdrawalIndex];
+            withdrawalIndex += 1;
         }
     }
 
