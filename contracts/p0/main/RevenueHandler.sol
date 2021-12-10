@@ -71,12 +71,11 @@ contract RevenueHandlerP0 is
 
             _expandSupplyToRTokenTrader();
             _rewardsLastClaimed = prevRewards;
-
-            uint256 compDelta = compAsset().erc20().balanceOf(address(this)) - compBalStart;
-            uint256 aaveDelta = aaveAsset().erc20().balanceOf(address(this)) - aaveBalStart;
-            if (compDelta > 0 || aaveDelta > 0) {
-                emit RewardsClaimed(compDelta, aaveDelta);
-            }
+        }
+        uint256 compDelta = compAsset().erc20().balanceOf(address(this)) - compBalStart;
+        uint256 aaveDelta = aaveAsset().erc20().balanceOf(address(this)) - aaveBalStart;
+        if (compDelta > 0 || aaveDelta > 0) {
+            emit RewardsClaimed(compDelta, aaveDelta);
         }
 
         _splitToTraders(compAsset());
