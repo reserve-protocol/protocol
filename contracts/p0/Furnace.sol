@@ -19,22 +19,20 @@ contract FurnaceP0 is Ownable, IFurnace {
     using FixLib for Fix;
 
     IRToken public immutable rToken;
-
     uint256 public override batchDuration;
 
     struct Batch {
         uint256 amount; // {qTok}
         uint256 start; // {timestamp}
-        uint256 duration; // {sec}
         uint256 melted; // {qTok}
     }
 
     Batch[] public batches;
+    uint firstBatch; // Invariant: if i < firstBatch, then batches[i] is fully melted.
 
     /// @param batchDuration_ {sec} The number of seconds to spread the melt over
     constructor(IRToken rToken_, uint256 batchDuration_) {
         require(address(rToken_) != address(0), "rToken is zero address");
-
         rToken = rToken_;
         batchDuration = batchDuration_;
     }
@@ -43,28 +41,43 @@ contract FurnaceP0 is Ownable, IFurnace {
     function notifyOfDeposit(IERC20 erc20) external override {
         require(address(erc20) == address(rToken), "RToken melting only");
 
-        // Register handout
+        // Compute the previously-unregistered amount as `amount`
         uint256 balance = erc20.balanceOf(address(this));
         uint256 batchTotal;
         for (uint256 i = 0; i < batches.length; i++) {
             Batch storage batch = batches[i];
             batchTotal += batch.amount - batch.melted;
         }
-
         uint256 amount = balance - batchTotal;
+
         if (amount > 0) {
-            batches.push(Batch(amount, block.timestamp, batchDuration, 0));
+            batches.push(Batch(amount, block.timestamp, 0));
             emit DistributionCreated(amount, batchDuration, _msgSender());
         }
     }
 
     /// Performs any burning that has vested since last call. Idempotent
     function doMelt() public override {
-        uint256 amount = _burnable(block.timestamp);
-        if (amount > 0) {
-            bool success = rToken.melt(address(this), amount);
+        // Compute the current total to melt across the batches,
+        // and pull that total out of the batches that are here.
+
+        uint256 toMelt = 0;
+        for (uint256 i = firstBatch; i < batches.length; i++) {
+            Batch storage batch = batches[i];
+            if (batch.melted < batch.amount) {
+                // Pull the meltable amount out of batch and register it melted.
+                uint256 vestedAmount = _vestedAmount(batch, block.timestamp);
+                toMelt += vestedAmount - batch.melted;
+                batch.melted = vestedAmount;
+            }
+
+            if (i == firstBatch && batch.melted == batch.amount) { firstBatch++; }
+        }
+
+        if (toMelt > 0) {
+            bool success = rToken.melt(address(this), toMelt);
             require(success, "should melt from self successfully");
-            emit Melted(amount);
+            emit Melted(toMelt);
         }
     }
 
@@ -72,38 +85,15 @@ contract FurnaceP0 is Ownable, IFurnace {
         batchDuration = batchDuration_;
     }
 
-    function _burnable(uint256 timestamp) private returns (uint256) {
-        uint256 releasable = 0;
-        for (uint256 i = 0; i < batches.length; i++) {
-            Batch storage batch = batches[i];
-
-            // Check if there are still funds to be melted
-            if (batch.melted < batch.amount) {
-                uint256 vestedAmount = _vestedAmount(batch, timestamp);
-
-                // Release amount
-                releasable += vestedAmount - batch.melted;
-
-                // Update melted
-                batch.melted = vestedAmount;
-
-                // Note: Potential optimization by cleaning up Batch once all consumed
-            }
-
-            // Note:  Potential optimization by increasing handoutIndex
-        }
-
-        return releasable;
-    }
-
+    // @return The cumulative amount of tokens from batch that have vested at `timestamp`
     function _vestedAmount(Batch storage batch, uint256 timestamp) private view returns (uint256) {
         if (timestamp <= batch.start) {
             return 0;
-        } else if (timestamp > batch.start + batch.duration) {
+        } else if (batch.start + batchDuration <= timestamp) {
             return batch.amount;
         } else {
-            // batch.amount{RTok} * (timestamp - batch.start) / batch.duration
-            return toFix(timestamp - batch.start).divu(batch.duration).mulu(batch.amount).floor();
+            // (timestamp - batch.start){s} / batch.duration{s} * batch.amount{RTok}
+            return toFix(timestamp - batch.start).divu(batchDuration).mulu(batch.amount).floor();
         }
     }
 }
