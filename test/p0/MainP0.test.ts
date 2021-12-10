@@ -3,13 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
-import {
-  BN_SCALE_FACTOR,
-  FURNACE_DEST,
-  Mood,
-  STRSR_DEST,
-  ZERO_ADDRESS,
-} from '../../common/constants'
+import { BN_SCALE_FACTOR, FURNACE_DEST, Mood, STRSR_DEST, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
@@ -87,8 +81,8 @@ describe('MainP0 contract', () => {
 
   // Trading
   let market: MarketMock
-  let rsrStakingTrader: RevenueTraderP0
-  let rTokenMeltingTrader: RevenueTraderP0
+  let rsrTrader: RevenueTraderP0
+  let rTokenTrader: RevenueTraderP0
   let backingTrader: BackingTraderP0
 
   // Tokens and Assets
@@ -193,13 +187,13 @@ describe('MainP0 contract', () => {
     collateral2 = <ATokenCollateralP0>basket[2]
     collateral3 = <CTokenCollateralP0>basket[3]
 
-    rsrStakingTrader = <RevenueTraderP0>(
-      await ethers.getContractAt('RevenueTraderP0', await main.rsrStakingTrader())
+    rsrTrader = <RevenueTraderP0>(
+      await ethers.getContractAt('RevenueTraderP0', await main.rsrTrader())
     )
-    rTokenMeltingTrader = <RevenueTraderP0>(
-      await ethers.getContractAt('RevenueTraderP0', await main.rTokenMeltingTrader())
+    rTokenTrader = <RevenueTraderP0>(
+      await ethers.getContractAt('RevenueTraderP0', await main.rTokenTrader())
     )
-    rTokenMeltingTrader = <BackingTraderP0>(
+    rTokenTrader = <BackingTraderP0>(
       await ethers.getContractAt('BackingTraderP0', await main.backingTrader())
     )
 
@@ -1212,7 +1206,7 @@ describe('MainP0 contract', () => {
   })
 
   describe('Revenues', () => {
-    it.skip('Should handle minting of new RTokens for rounding (in Melting)', async () => {
+    it.only('Should handle minting of new RTokens for rounding (in Melting)', async () => {
       // Issue some RTokens to user
       const issueAmount: BigNumber = bn('100e18')
       // Provide approvals
@@ -1254,16 +1248,16 @@ describe('MainP0 contract', () => {
 
       // Call collect revenue
       await main.poke()
+      await main.poke()
+      await main.poke()
 
       // Some RTokens were minted to handle rounding
       const bUnits: BigNumber = await vault.basketUnits(main.address)
 
+      expect(await rToken.totalSupply()).to.equal(await main.fromBUs(bUnits))
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(hndAmt).sub(hndAmt2))
-      expect(await rToken.balanceOf(main.address)).to.equal(
-        await main.fromBUs(bUnits)
-        // fp(bUnits)
-        //   .div(await main.baseFactor())
-        //   .sub(await rToken.balanceOf(addr1.address))
+      expect(await rToken.balanceOf(rToken.address)).to.equal(
+        (await main.fromBUs(bUnits)).sub(await rToken.balanceOf(addr1.address))
       )
     })
 
@@ -1305,7 +1299,7 @@ describe('MainP0 contract', () => {
         await rsr.connect(owner).mint(addr1.address, initialBal)
       })
 
-      it.skip('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
+      it.only('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -1332,16 +1326,16 @@ describe('MainP0 contract', () => {
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         await expect(main.poke())
-          .to.emit(rsrStakingTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenMeltingTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
         // COMP -> RSR Auction
-        expectAuctionInfo(rsrStakingTrader, 0, {
+        expectAuctionInfo(rsrTrader, 0, {
           sell: compAsset.address,
           buy: rsrAsset.address,
           sellAmount: sellAmt,
@@ -1354,7 +1348,7 @@ describe('MainP0 contract', () => {
         })
 
         // COMP -> RToken Auction
-        expectAuctionInfo(rTokenMeltingTrader, 0, {
+        expectAuctionInfo(rTokenTrader, 0, {
           sell: compAsset.address,
           buy: rTokenAsset.address,
           sellAmount: sellAmtRToken,
@@ -1385,16 +1379,16 @@ describe('MainP0 contract', () => {
 
         // Close auctions
         await expect(main.poke())
-          .to.emit(rsrStakingTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenMeltingTrader, 'AuctionEnded')
+          .and.to.emit(rTokenTrader, 'AuctionEnded')
           .withArgs(0, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.not.emit(rsrStakingTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenMeltingTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'AuctionStarted')
+          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
         // Check previous auctions closed
         // COMP -> RSR Auction
-        expectAuctionInfo(rsrStakingTrader, 0, {
+        expectAuctionInfo(rsrTrader, 0, {
           sell: compAsset.address,
           buy: rsrAsset.address,
           sellAmount: sellAmt,
@@ -1407,7 +1401,7 @@ describe('MainP0 contract', () => {
         })
 
         // COMP -> RToken Auction
-        expectAuctionInfo(rTokenMeltingTrader, 0, {
+        expectAuctionInfo(rTokenTrader, 0, {
           sell: compAsset.address,
           buy: rTokenAsset.address,
           sellAmount: sellAmtRToken,
@@ -1423,7 +1417,7 @@ describe('MainP0 contract', () => {
         expect(await main.mood()).to.equal(Mood.CALM)
       })
 
-      it.skip('Should claimm AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
+      it.only('Should claimm AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -1449,14 +1443,14 @@ describe('MainP0 contract', () => {
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         await expect(main.poke())
-          .to.emit(rsrStakingTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, aaveAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenMeltingTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check auctions registered
         // AAVE -> RSR Auction
-        expectAuctionInfo(rsrStakingTrader, 0, {
+        expectAuctionInfo(rsrTrader, 0, {
           sell: aaveAsset.address,
           buy: rsrAsset.address,
           sellAmount: sellAmt,
@@ -1469,7 +1463,7 @@ describe('MainP0 contract', () => {
         })
 
         // AAVE -> RToken Auction
-        expectAuctionInfo(rTokenMeltingTrader, 0, {
+        expectAuctionInfo(rTokenTrader, 0, {
           sell: aaveAsset.address,
           buy: rTokenAsset.address,
           sellAmount: sellAmtRToken,
@@ -1501,21 +1495,21 @@ describe('MainP0 contract', () => {
 
         // Close auctions
         await expect(main.poke())
-          .to.emit(rsrStakingTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, aaveAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenMeltingTrader, 'AuctionEnded')
+          .and.to.emit(rTokenTrader, 'AuctionEnded')
           .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.not.emit(rsrStakingTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenMeltingTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'AuctionStarted')
+          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
-        expectAuctionStatus(rsrStakingTrader, 0, AuctionStatus.DONE)
-        expectAuctionStatus(rTokenMeltingTrader, 0, AuctionStatus.DONE)
+        expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
+        expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
 
         // Mood back to CALM
         expect(await main.mood()).to.equal(Mood.CALM)
       })
 
-      it.skip('Should handle large auctions for using maxAuctionSize with f=1 (RSR only)', async () => {
+      it.only('Should handle large auctions for using maxAuctionSize with f=1 (RSR only)', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -1546,7 +1540,7 @@ describe('MainP0 contract', () => {
         const auctionTimestamp: number = await getLatestBlockTimestamp()
         // Check auction registered
         // COMP -> RSR Auction
-        expectAuctionInfo(rsrStakingTrader, 0, {
+        expectAuctionInfo(rsrTrader, 0, {
           sell: compAsset.address,
           buy: rsrAsset.address,
           sellAmount: sellAmt,
@@ -1564,7 +1558,7 @@ describe('MainP0 contract', () => {
         expect(await main.mood()).to.equal(Mood.TRADING)
 
         // Check existing auctions still open
-        expectAuctionStatus(rsrStakingTrader, 0, AuctionStatus.OPEN)
+        expectAuctionStatus(rsrTrader, 0, AuctionStatus.OPEN)
 
         // Advance time till auction ended
         await advanceTime(config.auctionPeriod.add(100).toString())
@@ -1585,7 +1579,7 @@ describe('MainP0 contract', () => {
 
         // Check previous auctions closed
         // COMP -> RSR Auction
-        expectAuctionInfo(rsrStakingTrader, 0, {
+        expectAuctionInfo(rsrTrader, 0, {
           sell: compAsset.address,
           buy: rsrAsset.address,
           sellAmount: sellAmt,
@@ -1602,7 +1596,7 @@ describe('MainP0 contract', () => {
         expect(await main.mood()).to.equal(Mood.TRADING)
 
         // COMP -> RSR Auction
-        expectAuctionInfo(rTokenMeltingTrader, 0, {
+        expectAuctionInfo(rTokenTrader, 0, {
           sell: compAsset.address,
           buy: rsrAsset.address,
           sellAmount: sellAmt,
@@ -1635,14 +1629,14 @@ describe('MainP0 contract', () => {
           .and.to.not.emit(main, 'AuctionStarted')
 
         // Check existing auctions are closed
-        expectAuctionStatus(rsrStakingTrader, 0, AuctionStatus.DONE)
-        expectAuctionStatus(rTokenMeltingTrader, 0, AuctionStatus.DONE)
+        expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
+        expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
 
         // Mood moved to CALM
         expect(await main.mood()).to.equal(Mood.CALM)
       })
 
-      it.skip('Should handle large auctions for using maxAuctionSize with f=0 (RToken only)', async () => {
+      it.only('Should handle large auctions for using maxAuctionSize with f=0 (RToken only)', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -1676,7 +1670,7 @@ describe('MainP0 contract', () => {
         const auctionTimestamp: number = await getLatestBlockTimestamp()
         // Check auction registered
         // AAVE -> RToken Auction
-        expectAuctionInfo(rsrStakingTrader, 0, {
+        expectAuctionInfo(rsrTrader, 0, {
           sell: aaveAsset.address,
           buy: rTokenAsset.address,
           sellAmount: sellAmt,
@@ -1693,7 +1687,7 @@ describe('MainP0 contract', () => {
         expect(await main.mood()).to.equal(Mood.TRADING)
 
         // Check existing auctions still open
-        expectAuctionStatus(rsrStakingTrader, 0, AuctionStatus.OPEN)
+        expectAuctionStatus(rsrTrader, 0, AuctionStatus.OPEN)
 
         // Advance time till auction ended
         await advanceTime(config.auctionPeriod.add(100).toString())
@@ -1712,14 +1706,14 @@ describe('MainP0 contract', () => {
 
         // Close auctions
         await expect(main.poke())
-          .to.emit(rsrStakingTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmt, minBuyAmt)
-          .to.emit(rTokenMeltingTrader, 'AuctionEnded')
+          .to.emit(rTokenTrader, 'AuctionEnded')
           .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmtRemainder, minBuyAmtRemainder)
 
         // Check previous auctions closed
         // AAVE -> RToken Auction
-        expectAuctionInfo(rsrStakingTrader, 0, {
+        expectAuctionInfo(rsrTrader, 0, {
           sell: aaveAsset.address,
           buy: rTokenAsset.address,
           sellAmount: sellAmt,
@@ -1734,7 +1728,7 @@ describe('MainP0 contract', () => {
         expect(await main.mood()).to.equal(Mood.TRADING)
 
         // AAVE -> RToken Auction
-        expectAuctionInfo(rTokenMeltingTrader, 0, {
+        expectAuctionInfo(rTokenTrader, 0, {
           sell: aaveAsset.address,
           buy: rTokenAsset.address,
           sellAmount: sellAmtRemainder,
@@ -1766,14 +1760,14 @@ describe('MainP0 contract', () => {
           .and.to.not.emit(main, 'AuctionStarted')
 
         //  Check existing auctions are closed
-        expectAuctionStatus(rsrStakingTrader, 0, AuctionStatus.DONE)
-        expectAuctionStatus(rTokenMeltingTrader, 0, AuctionStatus.DONE)
+        expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
+        expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
 
         // Mood moved to CALM
         expect(await main.mood()).to.equal(Mood.CALM)
       })
 
-      it.skip('Should handle large auctions using maxAuctionSize with revenue split RSR/RToken', async () => {
+      it.only('Should handle large auctions using maxAuctionSize with revenue split RSR/RToken', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -1808,15 +1802,15 @@ describe('MainP0 contract', () => {
         await expect(main.poke())
           .to.emit(main, 'RewardsClaimed')
           .withArgs(rewardAmountCOMP, 0)
-          .and.to.emit(rsrStakingTrader, 'AuctionStarted')
+          .and.to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenMeltingTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
         // Check auctions registered
         // COMP -> RSR Auction
-        expectAuctionInfo(rsrStakingTrader, 0, {
+        expectAuctionInfo(rsrTrader, 0, {
           sell: compAsset.address,
           buy: rsrAsset.address,
           sellAmount: sellAmt,
@@ -1829,7 +1823,7 @@ describe('MainP0 contract', () => {
         })
 
         // COMP -> RToken Auction
-        expectAuctionInfo(rTokenMeltingTrader, 0, {
+        expectAuctionInfo(rTokenTrader, 0, {
           sell: compAsset.address,
           buy: rTokenAsset.address,
           sellAmount: sellAmtRToken,
@@ -1846,8 +1840,8 @@ describe('MainP0 contract', () => {
         expect(await main.mood()).to.equal(Mood.TRADING)
 
         // Check existing auctions still open
-        expectAuctionStatus(rsrStakingTrader, 0, AuctionStatus.OPEN)
-        expectAuctionStatus(rTokenMeltingTrader, 0, AuctionStatus.OPEN)
+        expectAuctionStatus(rsrTrader, 0, AuctionStatus.OPEN)
+        expectAuctionStatus(rTokenTrader, 0, AuctionStatus.OPEN)
 
         // Advance time till auction ended
         await advanceTime(config.auctionPeriod.add(100).toString())
@@ -1882,13 +1876,13 @@ describe('MainP0 contract', () => {
         ) // due to trade slippage 1%
 
         await expect(main.poke())
-          .to.emit(rsrStakingTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenMeltingTrader, 'AuctionEnded')
+          .and.to.emit(rTokenTrader, 'AuctionEnded')
           .withArgs(0, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.emit(rsrStakingTrader, 'AuctionStarted')
+          .and.to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(1, compAsset.address, rsrAsset.address, sellAmtRemainder, minBuyAmtRemainder)
-          .and.to.emit(rTokenMeltingTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(
             1,
             compAsset.address,
@@ -1899,7 +1893,7 @@ describe('MainP0 contract', () => {
 
         // Check previous auctions closed
         // COMP -> RSR Auction
-        expectAuctionInfo(rsrStakingTrader, 0, {
+        expectAuctionInfo(rsrTrader, 0, {
           sell: compAsset.address,
           buy: rsrAsset.address,
           sellAmount: sellAmt,
@@ -1912,7 +1906,7 @@ describe('MainP0 contract', () => {
         })
 
         // COMP -> RToken Auction
-        expectAuctionInfo(rTokenMeltingTrader, 0, {
+        expectAuctionInfo(rTokenTrader, 0, {
           sell: compAsset.address,
           buy: rTokenAsset.address,
           sellAmount: sellAmtRToken,
@@ -1927,7 +1921,7 @@ describe('MainP0 contract', () => {
         // Mood remains in TRADING
         expect(await main.mood()).to.equal(Mood.TRADING)
 
-        expectAuctionInfo(rsrStakingTrader, 1, {
+        expectAuctionInfo(rsrTrader, 1, {
           sell: compAsset.address,
           buy: rsrAsset.address,
           sellAmount: sellAmtRemainder,
@@ -1939,7 +1933,7 @@ describe('MainP0 contract', () => {
           status: AuctionStatus.OPEN,
         })
 
-        expectAuctionInfo(rTokenMeltingTrader, 1, {
+        expectAuctionInfo(rTokenTrader, 1, {
           sell: compAsset.address,
           buy: rTokenAsset.address,
           sellAmount: sellAmtRTokenRemainder,
@@ -1952,10 +1946,10 @@ describe('MainP0 contract', () => {
         })
 
         // Check auctions open/closed
-        expectAuctionStatus(rsrStakingTrader, 0, AuctionStatus.DONE)
-        expectAuctionStatus(rTokenMeltingTrader, 0, AuctionStatus.DONE)
-        expectAuctionStatus(rsrStakingTrader, 1, AuctionStatus.OPEN)
-        expectAuctionStatus(rTokenMeltingTrader, 1, AuctionStatus.OPEN)
+        expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
+        expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
+        expectAuctionStatus(rsrTrader, 1, AuctionStatus.OPEN)
+        expectAuctionStatus(rTokenTrader, 1, AuctionStatus.OPEN)
 
         // Mood remains in TRADING
         expect(await main.mood()).to.equal(Mood.TRADING)
@@ -1992,16 +1986,16 @@ describe('MainP0 contract', () => {
           .and.to.not.emit(main, 'AuctionStarted')
 
         // Check all auctions are closed
-        expectAuctionStatus(rsrStakingTrader, 0, AuctionStatus.DONE)
-        expectAuctionStatus(rTokenMeltingTrader, 0, AuctionStatus.DONE)
-        expectAuctionStatus(rsrStakingTrader, 1, AuctionStatus.DONE)
-        expectAuctionStatus(rTokenMeltingTrader, 1, AuctionStatus.DONE)
+        expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
+        expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
+        expectAuctionStatus(rsrTrader, 1, AuctionStatus.DONE)
+        expectAuctionStatus(rTokenTrader, 1, AuctionStatus.DONE)
 
         // Mood is now CALM
         expect(await main.mood()).to.equal(Mood.CALM)
       })
 
-      it.skip('Should mint RTokens when collateral appreciates and handle revenue auction correctly', async () => {
+      it.only('Should mint RTokens when collateral appreciates and handle revenue auction correctly', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -2045,7 +2039,7 @@ describe('MainP0 contract', () => {
 
         // Check auctions registered
         // RToken -> RSR Auction
-        expectAuctionInfo(rsrStakingTrader, 0, {
+        expectAuctionInfo(rsrTrader, 0, {
           sell: rTokenAsset.address,
           buy: rsrAsset.address,
           sellAmount: sellAmt,
@@ -2080,7 +2074,7 @@ describe('MainP0 contract', () => {
           .withArgs(1, rTokenAsset.address, rsrAsset.address, sellAmt, minBuyAmtRSR)
 
         // Check new auction
-        expectAuctionInfo(rTokenMeltingTrader, 0, {
+        expectAuctionInfo(rTokenTrader, 0, {
           sell: rTokenAsset.address,
           buy: rsrAsset.address,
           sellAmount: sellAmt,
