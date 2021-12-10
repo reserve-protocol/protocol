@@ -65,23 +65,21 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         IAsset buy,
         uint256 sellAmount
     ) internal view returns (bool notDust, Auction memory auction) {
-        Oracle.Info memory oracle = main.oracle();
-        if (sell.priceUSD(main.oracle()).eq(FIX_ZERO) || buy.priceUSD(main.oracle()).eq(FIX_ZERO)) {
+        Oracle.Info memory o = main.oracle();
+        if (sell.priceUSD(o).eq(FIX_ZERO) || buy.priceUSD(o).eq(FIX_ZERO)) {
             return (false, auction);
         }
 
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
-        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(oracle).mulu(
-            main.rToken().totalSupply()
-        );
+        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(o).mulu(main.rToken().totalSupply());
         Fix maxSellUSD = rTokenMarketCapUSD.mul(main.maxAuctionSize()); // {attoUSD}
 
         if (sellAmount < _dustThreshold(sell)) {
             return (false, auction);
         }
 
-        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(oracle)).ceil()); // {qSellTok}
-        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(oracle)).div(buy.priceUSD(oracle)); // {qBuyTok}
+        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(o)).ceil()); // {qSellTok}
+        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(o)).div(buy.priceUSD(o)); // {qBuyTok}
         Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.maxTradeSlippage())); // {qBuyTok}
 
         return (
@@ -113,23 +111,20 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         uint256 maxSellAmount,
         uint256 deficitAmount
     ) internal view returns (bool notDust, Auction memory auction) {
-        Oracle.Info memory oracle = main.oracle();
-        uint256 sellThreshold = _dustThreshold(sell);
-        if (maxSellAmount < sellThreshold) {
+        // Don't sell dust.
+        if (maxSellAmount < _dustThreshold(sell)) {
             return (false, auction);
         }
+        // Don't buy dust.
+        deficitAmount = Math.max(deficitAmount, _dustThreshold(buy));
 
-        uint256 buyThreshold = _dustThreshold(buy);
-        if (deficitAmount < buyThreshold) {
-            deficitAmount = buyThreshold;
-        }
+        Oracle.Info memory o = main.oracle();
 
+        // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
         // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
-        Fix exactSellAmount = toFix(deficitAmount).mul(buy.priceUSD(oracle)).div(
-            sell.priceUSD(oracle)
-        );
+        Fix exactSellAmount = toFix(deficitAmount).mul(buy.priceUSD(o)).div(sell.priceUSD(o));
 
-        // idealSellAmount = Amount needed to sell to buy `deficitAmount`
+        // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
         uint256 idealSellAmount = exactSellAmount
         .div(FIX_ONE.minus(main.maxTradeSlippage()))
         .ceil();
