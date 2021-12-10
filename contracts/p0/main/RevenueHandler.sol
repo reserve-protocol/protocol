@@ -64,12 +64,14 @@ contract RevenueHandlerP0 is
                 vaults[i].claimAndSweepRewards();
             }
 
+            _expandSupplyToRSRTrader();
             _rewardsLastClaimed = prevRewards;
         }
-
         uint256 compDelta = compAsset().erc20().balanceOf(address(this)) - compBalStart;
         uint256 aaveDelta = aaveAsset().erc20().balanceOf(address(this)) - aaveBalStart;
-        if (compDelta > 0 || aaveDelta > 0) { emit RewardsClaimed(compDelta, aaveDelta); }
+        if (compDelta > 0 || aaveDelta > 0) {
+            emit RewardsClaimed(compDelta, aaveDelta);
+        }
 
         _splitToTraders(compAsset());
         _splitToTraders(aaveAsset());
@@ -91,12 +93,11 @@ contract RevenueHandlerP0 is
         return next;
     }
 
-    function _expandSupplyToRTokenTrader() internal {
-        // Expand the RToken supply to self
+    function _expandSupplyToRSRTrader() internal {
         uint256 possible = fromBUs(vault().basketUnits(address(this)));
         uint256 totalSupply = rToken().totalSupply();
         if (fullyCapitalized() && possible > totalSupply) {
-            rToken().mint(address(rTokenTrader), possible - totalSupply);
+            rToken().mint(address(rsrTrader), possible - totalSupply);
         }
     }
 
