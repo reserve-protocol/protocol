@@ -59,6 +59,18 @@ contract AuctioneerP0 is
         // Backing Trader
         backingTrader.poke();
         if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
+            /* If we're here, then we need to run more auctions to capitalize the current vault. The
+               BackingTrader will run those auctions, but it needs to be given BUs from old vaults,
+               and told how many BUs for the current vault to raise. Given a BU amount, it'll try to
+               raise that number of BUs, and it will redeem away staked RSR if necessary in order to
+               do those raises.
+
+               If the current vault is well under-capitalized, then we don't want to run all of those
+               auctions at once, because if tie up all the collateral in auction, then RToken holders
+               won't be able to redeem from the protocol. So, we raise at most
+               (migrationChunk * rToken supply) BUs at a time
+            */
+
             uint256 maxBUs = toBUs(migrationChunk().mulu(rToken().totalSupply()).round());
             uint256 redeemedBUs = _redeemFromOldVaults(address(backingTrader), maxBUs);
             uint256 buShortfall = toBUs(rToken().totalSupply()) -
@@ -70,6 +82,8 @@ contract AuctioneerP0 is
             }
 
             if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
+                /* If we're *here*, then we're out of capital we can trade for RToken backing,
+                 * including staked RSR. There's only one option left to us... */
                 _rTokenHaircut();
             }
             // TODO: There may be excess surplus and BUs after all rounds of trading. What should we
