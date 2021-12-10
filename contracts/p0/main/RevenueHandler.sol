@@ -21,8 +21,6 @@ import "./Moody.sol";
 import "./SettingsHandler.sol";
 import "./VaultHandler.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title RevenueHandler
  * Brings revenue into the system, including RToken supply expansion and rewards from other protocols.
@@ -53,14 +51,11 @@ contract RevenueHandlerP0 is
 
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
     function poke() public virtual override(Mixin, AuctioneerP0) notPaused {
-        console.log("poke1");
         super.poke();
-        console.log("poke2");
         uint256 compBalStart = compAsset().erc20().balanceOf(address(this));
         uint256 aaveBalStart = aaveAsset().erc20().balanceOf(address(this));
         (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
         if (prevRewards > _rewardsLastClaimed && fullyCapitalized()) {
-            console.log("hit");
             // Sweep COMP/AAVE from vaults + traders into Main
             backingTrader.claimAndSweepRewards();
             rsrTrader.claimAndSweepRewards();
@@ -69,7 +64,7 @@ contract RevenueHandlerP0 is
                 vaults[i].claimAndSweepRewards();
             }
 
-            _expandSupplyToRTokenTrader();
+            _expandSupplyToRSRTrader();
             _rewardsLastClaimed = prevRewards;
         }
         uint256 compDelta = compAsset().erc20().balanceOf(address(this)) - compBalStart;
@@ -96,13 +91,11 @@ contract RevenueHandlerP0 is
         return next;
     }
 
-    function _expandSupplyToRTokenTrader() internal {
-        // Expand the RToken supply to self
+    function _expandSupplyToRSRTrader() internal {
         uint256 possible = fromBUs(vault().basketUnits(address(this)));
         uint256 totalSupply = rToken().totalSupply();
-        console.log("_expandSupplyToRTokenTrader", possible, totalSupply, fullyCapitalized());
         if (fullyCapitalized() && possible > totalSupply) {
-            rToken().mint(address(rTokenTrader), possible - totalSupply);
+            rToken().mint(address(rsrTrader), possible - totalSupply);
         }
     }
 
