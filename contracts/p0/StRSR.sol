@@ -10,7 +10,7 @@ import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
-/*
+/**
  * @title StRSRP0
  * @notice The StRSR is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken.
@@ -102,10 +102,11 @@ contract StRSRP0 is IStRSR, Context {
         if (main.paused() || !main.fullyCapitalized()) {
             return;
         }
+
         // Process all pending withdrawals
         while (
             withdrawalIndex < withdrawals.length &&
-            block.timestamp < withdrawals[withdrawalIndex].availableAt
+            block.timestamp >= withdrawals[withdrawalIndex].availableAt
         ) {
             Withdrawal storage withdrawal = withdrawals[withdrawalIndex];
             if (withdrawal.amount > 0) {
