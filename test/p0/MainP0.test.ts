@@ -1296,7 +1296,7 @@ describe('MainP0 contract', () => {
         await rsr.connect(owner).mint(addr1.address, initialBal)
       })
 
-      it.only('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
+      it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -1535,7 +1535,8 @@ describe('MainP0 contract', () => {
         await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(rewardAmountCOMP, 0)
 
         await expect(main.poke())
-          .and.to.emit(rsrTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'AuctionStarted')
+          .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -1554,52 +1555,14 @@ describe('MainP0 contract', () => {
           status: AuctionStatus.OPEN,
         })
 
-        // Another call should not create any new auctions if still ongoing
+        // Another call will create a new auction
         await expect(main.poke())
-          .to.not.emit(rsrTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
-
-        // Check existing auctions still open
-        expectAuctionStatus(rsrTrader, 0, AuctionStatus.OPEN)
-
-        // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
-        // Perform Mock Bids for RSR and RToken (addr1 has balance)
-        await rsr.connect(addr1).approve(market.address, minBuyAmt)
-        await market.placeBid(0, {
-          bidder: addr1.address,
-          sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
-        })
-
-        // // Close auctions
-        await expect(main.poke())
-          .to.emit(rsrTrader, 'AuctionEnded')
-          .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rsrTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(1, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
-        // Check previous auctions closed
         // COMP -> RSR Auction
-        expectAuctionInfo(rsrTrader, 0, {
-          sell: compAsset.address,
-          buy: rsrAsset.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
-          clearingSellAmount: sellAmt,
-          clearingBuyAmount: minBuyAmt,
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.DONE,
-        })
-
-        // Mood remains in TRADING
-        expect(await main.mood()).to.equal(Mood.TRADING)
-
-        // COMP -> RSR Auction
-        expectAuctionInfo(rTokenTrader, 0, {
+        expectAuctionInfo(rsrTrader, 1, {
           sell: compAsset.address,
           buy: rsrAsset.address,
           sellAmount: sellAmt,
@@ -1611,13 +1574,18 @@ describe('MainP0 contract', () => {
           externalAuctionId: bn('0'),
           status: AuctionStatus.OPEN,
         })
-        // Mood remains in TRADING
-        expect(await main.mood()).to.equal(Mood.TRADING)
 
-        // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        // Check existing auctions still open
+        expectAuctionStatus(rsrTrader, 0, AuctionStatus.OPEN)
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
+        await rsr.connect(addr1).approve(market.address, minBuyAmt)
+        await market.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
+
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
         await market.placeBid(1, {
           bidder: addr1.address,
@@ -1625,15 +1593,20 @@ describe('MainP0 contract', () => {
           buyAmount: minBuyAmt,
         })
 
-        // Close auction
+        // Advance time till auction ended
+        await advanceTime(config.auctionPeriod.add(100).toString())
+
+        // Close auctions
         await expect(main.poke())
-          .to.emit(main, 'AuctionEnded')
+          .to.emit(rsrTrader, 'AuctionEnded')
+          .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
+          .and.to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(1, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.not.emit(main, 'AuctionStarted')
+          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
         // Check existing auctions are closed
         expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
-        expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
+        expectAuctionStatus(rsrTrader, 1, AuctionStatus.DONE)
 
         // Mood moved to CALM
         expect(await main.mood()).to.equal(Mood.CALM)
