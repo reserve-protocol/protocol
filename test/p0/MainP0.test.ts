@@ -1532,15 +1532,11 @@ describe('MainP0 contract', () => {
         let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        console.log('claim rweards')
         await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(rewardAmountCOMP, 0)
 
-        console.log('start auction')
         await expect(main.poke())
           .and.to.emit(rsrTrader, 'AuctionStarted')
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
-
-        console.log('gets here')
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
         // Check auction registered
@@ -1576,7 +1572,6 @@ describe('MainP0 contract', () => {
           buyAmount: minBuyAmt,
         })
 
-        console.log('llega 2')
         // // Close auctions
         await expect(main.poke())
           .to.emit(rsrTrader, 'AuctionEnded')
@@ -1630,7 +1625,6 @@ describe('MainP0 contract', () => {
           buyAmount: minBuyAmt,
         })
 
-        console.log('llega al final')
         // Close auction
         await expect(main.poke())
           .to.emit(main, 'AuctionEnded')
