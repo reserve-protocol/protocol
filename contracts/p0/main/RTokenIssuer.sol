@@ -83,7 +83,7 @@ contract RTokenIssuerP0 is
         require(amount > 0, "Cannot issue zero");
         require(mood() != Mood.DOUBT, "in doubt, cannot issue");
         revenueFurnace().doMelt();
-        _noticeHardDefault();
+        _checkForHardDefault();
         _tryEnsureValidVault();
 
         uint256 amtBUs = toBUs(amount);

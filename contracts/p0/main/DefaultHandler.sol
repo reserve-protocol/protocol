@@ -47,8 +47,8 @@ contract DefaultHandlerP0 is
     /// @dev This should handle parallel collateral defaults independently
     function poke() public virtual override notPaused {
         super.poke();
-        _noticeHardDefault();
-        _noticeSoftDefault();
+        _checkForHardDefault();
+        _checkForSoftDefault();
         _tryEnsureValidVault();
     }
 
@@ -63,7 +63,7 @@ contract DefaultHandlerP0 is
     /// Checks for hard default.
     /// Effectively, asks each Collateral if the exogenous capital still satisfies its invariants,
     /// and "unapproves" in Main each token that does not.
-    function _noticeHardDefault() internal {
+    function _checkForHardDefault() internal {
         uint256 count;
         for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
             ICollateral c = ICollateral(_approvedCollateral.at(i));
@@ -78,7 +78,7 @@ contract DefaultHandlerP0 is
     /// Checks for soft default.
     /// A token triggers "soft" (delayed) default when its redemption
     /// by checking oracle values for all fiatcoins in the vault
-    function _noticeSoftDefault() internal {
+    function _checkForSoftDefault() internal {
         // Compute the list of defaulting collateral
         Fix defaultThreshold = _defaultThreshold();
         address[] memory defaulting = new address[](_approvedCollateral.length());
