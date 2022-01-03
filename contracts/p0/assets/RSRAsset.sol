@@ -6,7 +6,7 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Oracle.sol";
 
 // Immutable data contract, extended to implement cToken and aToken wrappers.
-contract RSRAssetP0 is Asset {
+contract RSRAssetP0 is AssetP0 {
     // solhint-disable-next-list no-empty-blocks
-    constructor(address erc20_, IMain main_) Asset(erc20_, main_, Oracle.Source.AAVE) {}
+    constructor(address erc20_, IMain main_) AssetP0(erc20_, main_, Oracle.Source.AAVE) {}
 }

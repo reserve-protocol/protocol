@@ -252,9 +252,8 @@ interface IVaultHandler {
     function numVaults() external view returns (uint256);
 }
 
-// solhint-disable-next-line no-empty-blocks
 interface IDefaultHandler {
-
+    function defaultingFiatcoinPrice() external view returns (Fix);
 }
 
 interface IAuctioneerEvents {

@@ -8,7 +8,7 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
-abstract contract Asset is IAsset {
+abstract contract AssetP0 is IAsset {
     using FixLib for Fix;
     using Oracle for Oracle.Info;
 

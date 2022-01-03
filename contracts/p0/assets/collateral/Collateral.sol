@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "contracts/p0/assets/Asset.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Oracle.sol";
@@ -13,12 +14,9 @@ import "contracts/libraries/Fixed.sol";
  * @title CollateralP0
  * @notice A vanilla asset such as a fiatcoin, to be extended by more complex assets such as cTokens.
  */
-contract CollateralP0 is ICollateral {
+contract CollateralP0 is ICollateral, AssetP0 {
     using FixLib for Fix;
     using Oracle for Oracle.Info;
-
-    address internal immutable _erc20;
-    IMain internal immutable _main;
 
     // Default Status:
     // whenDefault == NEVER: no risk of default
@@ -30,13 +28,11 @@ contract CollateralP0 is ICollateral {
     uint256 internal prevBlock;  // Last block when updateDefaultStatus() was called
     Fix internal prevRate;       // Last rate when updateDefaultStatus() was called
 
-    constructor(address erc20_, IMain main_) {
-        _erc20 = erc20_;
-        _main = main_;
-    }
+    // solhint-disable-next-list no-empty-blocks
+    constructor(address erc20_, IMain main_) AssetP0(erc20_, main_, Oracle.Source.AAVE) {}
 
     /// Forces an update in any underlying Defi protocol
-    function poke() external virtual override {
+    function poke() public virtual override(IAsset, AssetP0) {
         updateDefaultStatus();
     }
 
@@ -56,7 +52,7 @@ contract CollateralP0 is ICollateral {
         // If the underlying fiatcoin price is below the default-threshold price, default eventually
         if (whenDefault > block.timestamp) {
             Fix fiatcoinPrice = fiatcoinPriceUSD().shiftLeft(int8(fiatcoinDecimals()));
-            bool fiatcoinIsDefaulting = fiatcoinPrice.lte(_main().defaultingFiatcoinPrice());
+            bool fiatcoinIsDefaulting = fiatcoinPrice.lte(_main.defaultingFiatcoinPrice());
             whenDefault = fiatcoinIsDefaulting ? Math.min(whenDefault, block.timestamp + _main.defaultDelay()) : NEVER;
         }
 
@@ -76,8 +72,6 @@ contract CollateralP0 is ICollateral {
         }
     }
 
-    function isCollateral() public view override returns (bool) { return true; }
-
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
     function rateFiatcoin() public view virtual override returns (Fix) {
         // {qFiatTok/qTok} = {qFiatTok/fiatTok} / {qTok/tok}
@@ -91,23 +85,13 @@ contract CollateralP0 is ICollateral {
     }
 
     /// @return {attoUSD/qTok} The price in attoUSD of the asset's smallest unit
-    function priceUSD() public view virtual override returns (Fix) {
+    function priceUSD() public view virtual override(IAsset, AssetP0) returns (Fix) {
         if (isFiatcoin()) {
             return _main.oracle().consult(Oracle.Source.AAVE, _erc20);
         } else {
             // {attoUSD/qTok} = {attoUSD/qFiatTok} * {qFiatTok/qTok}
-            return fiatcoinPriceUSD(_main.oracle()).mul(rateFiatcoin());
+            return fiatcoinPriceUSD().mul(rateFiatcoin());
         }
-    }
-
-    /// @return The ERC20 contract of the central token
-    function erc20() public view virtual override returns (IERC20) {
-        return IERC20(_erc20);
-    }
-
-    /// @return The number of decimals in the central token
-    function decimals() public view override returns (uint8) {
-        return IERC20Metadata(_erc20).decimals();
     }
 
     /// @return The number of decimals in the nested fiatcoin contract (or for the erc20 itself if it is a fiatcoin)
@@ -137,7 +121,9 @@ contract CollateralP0 is ICollateral {
     }
 
     /// @return Whether `_erc20` is an AToken (StaticAToken, actually)
-    function isAToken() public pure virtual override returns (bool) {
+    function isAToken() public pure virtual override(IAsset, AssetP0) returns (bool) {
         return false;
     }
+
+    function isCollateral() public pure override(IAsset, AssetP0) returns (bool) { return true; }
 }

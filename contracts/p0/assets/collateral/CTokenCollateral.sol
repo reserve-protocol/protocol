@@ -23,12 +23,11 @@ interface ICToken {
 
 contract CTokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
+    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     Fix public immutable initialExchangeRate; // 0.02, their hardcoded starting rate
 
-    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
-    // solhint-disable-next-line no-empty-blocks
-    constructor(address erc20_) CollateralP0(erc20_) {
+    constructor(address erc20_, IMain main_) CollateralP0(erc20_, main_) {
         initialExchangeRate = toFixWithShift(2, -2);
     }
 

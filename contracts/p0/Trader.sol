@@ -66,20 +66,20 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         uint256 sellAmount
     ) internal view returns (bool notDust, Auction memory auction) {
         Oracle.Info memory o = main.oracle();
-        if (sell.priceUSD(o).eq(FIX_ZERO) || buy.priceUSD(o).eq(FIX_ZERO)) {
+        if (sell.priceUSD().eq(FIX_ZERO) || buy.priceUSD().eq(FIX_ZERO)) {
             return (false, auction);
         }
 
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
-        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(o).mulu(main.rToken().totalSupply());
+        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD().mulu(main.rToken().totalSupply());
         Fix maxSellUSD = rTokenMarketCapUSD.mul(main.maxAuctionSize()); // {attoUSD}
 
         if (sellAmount < _dustThreshold(sell)) {
             return (false, auction);
         }
 
-        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(o)).ceil()); // {qSellTok}
-        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(o)).div(buy.priceUSD(o)); // {qBuyTok}
+        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD()).ceil()); // {qSellTok}
+        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD()).div(buy.priceUSD()); // {qBuyTok}
         Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.maxTradeSlippage())); // {qBuyTok}
 
         return (
@@ -122,7 +122,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
 
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
         // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
-        Fix exactSellAmount = toFix(deficitAmount).mul(buy.priceUSD(o)).div(sell.priceUSD(o));
+        Fix exactSellAmount = toFix(deficitAmount).mul(buy.priceUSD()).div(sell.priceUSD());
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
         uint256 idealSellAmount = exactSellAmount
@@ -136,13 +136,13 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     /// @return {qSellTok} The least amount of tokens worth trying to sell
     function _dustThreshold(IAsset asset) private view returns (uint256) {
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
-        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(main.oracle()).mulu(
+        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD().mulu(
             main.rToken().totalSupply()
         );
         Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize()); // {attoUSD}
 
         // {attoUSD} / {attoUSD/qSellTok}
-        return minSellUSD.div(asset.priceUSD(main.oracle())).ceil();
+        return minSellUSD.div(asset.priceUSD()).ceil();
     }
 
     /// Launch an auction:

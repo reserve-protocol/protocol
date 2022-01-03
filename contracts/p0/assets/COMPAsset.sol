@@ -5,7 +5,7 @@ import "contracts/p0/assets/Asset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Oracle.sol";
 
-contract COMPAssetP0 is Asset {
+contract COMPAssetP0 is AssetP0 {
     // solhint-disable-next-line no-empty-blocks
-    constructor(address erc20_, IMain main_) Asset(erc20_, main_, Oracle.Source.COMPOUND) {}
+    constructor(address erc20_, IMain main_) AssetP0(erc20_, main_, Oracle.Source.COMPOUND) {}
 }

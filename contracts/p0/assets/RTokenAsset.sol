@@ -10,12 +10,12 @@ import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
 
-contract RTokenAssetP0 is Asset {
+contract RTokenAssetP0 is AssetP0 {
     using FixLib for Fix;
 
     // oracleSource will be ignored.
     // solhint-disable-next-list no-empty-blocks
-    constructor(address erc20_, IMain main_) Asset(erc20_, main_, Oracle.Source.AAVE) {}
+    constructor(address erc20_, IMain main_) AssetP0(erc20_, main_, Oracle.Source.AAVE) {}
 
     /// @return {attoUSD/qRTok}
     function priceUSD() public view override returns (Fix) {

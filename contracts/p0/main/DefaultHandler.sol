@@ -61,11 +61,12 @@ contract DefaultHandlerP0 is
 
     function _ensureDefaultStatusIsSet() internal {
         for (uint256 i = 0; i < _allAssets.length(); i++) {
-            _allAssets.at(i).poke();
+            IAsset(_allAssets.at(i)).poke();
         }
     }
 
     function _ensureVaultIsValid() internal {
+        /// TODO
     }
 
     /// @return {attoUSD/fiatTok} The USD price at which a fiatcoin can be said to be defaulting
@@ -85,7 +86,7 @@ contract DefaultHandlerP0 is
             int8 decimals = int8(fiatcoins[i].fiatcoinDecimals());
 
             // {attoUSD/fiatTok} = {attoUSD/qFiatTok} * {qFiatTok/fiatTok}
-            prices[i] = fiatcoins[i].fiatcoinPriceUSD(oracle()).shiftLeft(decimals); // {attoUSD/fiatTok}
+            prices[i] = fiatcoins[i].fiatcoinPriceUSD().shiftLeft(decimals); // {attoUSD/fiatTok}
         }
 
         // Sort

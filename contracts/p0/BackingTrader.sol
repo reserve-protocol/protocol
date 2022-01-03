@@ -139,10 +139,10 @@ contract BackingTraderP0 is TraderP0 {
             );
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                surpluses[i] = bal.minus(target).mul(assets[i].priceUSD(main.oracle()));
+                surpluses[i] = bal.minus(target).mul(assets[i].priceUSD());
             } else if (bal.lt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                deficits[i] = target.minus(bal).mul(assets[i].priceUSD(main.oracle()));
+                deficits[i] = target.minus(bal).mul(assets[i].priceUSD());
             }
         }
 
@@ -163,10 +163,10 @@ contract BackingTraderP0 is TraderP0 {
         }
 
         // {qSellTok} = {attoUSD} / {attoUSD/qSellTok}
-        Fix sellAmount = surplusMax.div(assets[surplusIndex].priceUSD(main.oracle()));
+        Fix sellAmount = surplusMax.div(assets[surplusIndex].priceUSD());
 
         // {qBuyTok} = {attoUSD} / {attoUSD/qBuyTok}
-        Fix buyAmount = deficitMax.div(assets[deficitIndex].priceUSD(main.oracle()));
+        Fix buyAmount = deficitMax.div(assets[deficitIndex].priceUSD());
         return (assets[surplusIndex], assets[deficitIndex], sellAmount.floor(), buyAmount.floor());
     }
 
