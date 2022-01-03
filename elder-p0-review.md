@@ -7,7 +7,7 @@
 - [ ] DefaultHandler overhaul, move vault checks into the vault class
 - [ ] _nextIssuanceBlockAvailable() - add fractional "how far into the block" metric 
 - [ ] (beforeUpdate() calls not actually going through the entire set of mixins)
-- [ ] Add `toUint` with enum rounding forwarding the call to floor/ceil/round
+- [x] Add `toUint` with enum rounding forwarding the call to floor/ceil/round
 
 # DO LATER (or think harder about)
 - [ ] Rehaul how we express the backup DAG / do backups

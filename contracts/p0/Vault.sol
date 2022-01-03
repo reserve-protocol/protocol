@@ -62,7 +62,7 @@ contract VaultP0 is IVault, Ownable {
         require(amtBUs > 0, "Cannot issue zero");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory amounts = quote(amtBUs);
+        uint256[] memory amounts = quote(amtBUs, RoundingApproach.CEIL);
 
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.collateral[i].erc20().safeTransferFrom(_msgSender(), address(this), amounts[i]);
@@ -81,7 +81,7 @@ contract VaultP0 is IVault, Ownable {
         require(amtBUs <= basketUnits[_msgSender()], "Not enough units");
         require(_basket.size > 0, "Empty basket");
 
-        uint256[] memory amounts = quote(amtBUs);
+        uint256[] memory amounts = quote(amtBUs, RoundingApproach.FLOOR);
 
         basketUnits[_msgSender()] -= amtBUs;
         totalUnits -= amtBUs;
@@ -109,14 +109,19 @@ contract VaultP0 is IVault, Ownable {
 
     /// @param amtBUs {qBU}
     /// @return amounts {qTok} A list of token quantities required in order to issue `amtBUs`
-    function quote(uint256 amtBUs) public view override returns (uint256[] memory amounts) {
+    function quote(uint256 amtBUs, RoundingApproach rounding)
+        public
+        view
+        override
+        returns (uint256[] memory amounts)
+    {
         amounts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
             // {qTok} = {qBU} *  {qTok/BU} / {qBU/BU}
             amounts[i] = toFix(amtBUs)
             .shiftLeft(-int8(BU_DECIMALS))
             .mulu(_basket.quantities[_basket.collateral[i]])
-            .ceil();
+            .toUint(rounding);
         }
     }
 

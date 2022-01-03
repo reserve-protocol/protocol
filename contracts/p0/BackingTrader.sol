@@ -174,7 +174,7 @@ contract BackingTraderP0 is TraderP0 {
         // Create new BUs
         uint256 issuable = main.vault().maxIssuable(address(this));
         if (issuable > 0) {
-            uint256[] memory amounts = main.vault().quote(issuable);
+            uint256[] memory amounts = main.vault().quote(issuable, RoundingApproach.CEIL);
             for (uint256 i = 0; i < amounts.length; i++) {
                 main.vault().collateralAt(i).erc20().safeApprove(address(main.vault()), amounts[i]);
             }

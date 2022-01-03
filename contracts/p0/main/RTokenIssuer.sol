@@ -93,7 +93,7 @@ contract RTokenIssuerP0 is
             vault: vault(),
             amount: amount,
             amtBUs: amtBUs,
-            deposits: vault().quote(amtBUs),
+            deposits: vault().quote(amtBUs, RoundingApproach.CEIL),
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
@@ -127,7 +127,7 @@ contract RTokenIssuerP0 is
 
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) public view override returns (uint256[] memory) {
-        return vault().quote(toBUs(amount));
+        return vault().quote(toBUs(amount), RoundingApproach.CEIL);
     }
 
     /// @return How much RToken `account` can issue given current holdings

@@ -526,7 +526,7 @@ contract AdapterP0 is ProtoAdapter {
             for (uint256 i = 0; i < v.size(); i++) {
                 collateral[i] = _reverseAssets[ERC20Mock(address(v.collateralAt(i).erc20()))];
             }
-            next[bu_s.length] = BU(collateral, v.quote(10**v.BU_DECIMALS()));
+            next[bu_s.length] = BU(collateral, v.quote(10**v.BU_DECIMALS(), RoundingApproach.CEIL));
             bu_s = next;
             if (backups.length > 0) {
                 v = backups[0]; // walk the DAG
