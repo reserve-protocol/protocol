@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 
 import "../Fixed.sol" as FixGlobals;
-import { Fix, FixLib } from "../Fixed.sol";
+import { Fix, FixLib, RoundingApproach } from "../Fixed.sol";
 
 // Simple mock for Fixed library.
 contract FixedCallerMock {
@@ -32,6 +32,10 @@ contract FixedCallerMock {
 
     function toInt(Fix x) public pure returns (int192) {
         return FixLib.toInt(x);
+    }
+
+    function toUint(Fix x, RoundingApproach rounding) public pure returns (uint192) {
+        return FixLib.toUint(x, rounding);
     }
 
     function floor(Fix x) public pure returns (uint192) {

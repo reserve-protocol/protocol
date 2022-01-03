@@ -8,6 +8,12 @@ import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp, pow10 } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
 
+enum RoundingApproach {
+  FLOOR,
+  ROUND,
+  CEIL,
+}
+
 describe('In FixLib,', async () => {
   let owner: SignerWithAddress
   let FixedCaller: ContractFactory
@@ -244,6 +250,9 @@ describe('In FixLib,', async () => {
       for (let result of fixable_ints) {
         if (result.gte(0)) {
           expect(await caller.floor(fp(result)), `fp(${result})`).to.equal(bn(result))
+          expect(await caller.toUint(fp(result), RoundingApproach.FLOOR), `fp(${result})`).to.equal(
+            bn(result)
+          )
         }
       }
     })
@@ -251,6 +260,9 @@ describe('In FixLib,', async () => {
       const table = [-1, fp(MIN_FIX_INT), MIN_INT192, fp(-986349)]
       for (let val of table) {
         await expect(caller.floor(val), `${val}`).to.be.revertedWith('IntOutOfBounds')
+        await expect(caller.toUint(val, RoundingApproach.FLOOR), `${val}`).to.be.revertedWith(
+          'IntOutOfBounds'
+        )
       }
     })
     it('correctly rounds down', async () => {
@@ -273,6 +285,9 @@ describe('In FixLib,', async () => {
       ]
       for (let [input, result] of table) {
         expect(await caller.floor(fp(input)), `fp(${input})`).to.equal(result)
+        expect(await caller.toUint(fp(input), RoundingApproach.FLOOR), `fp(${input})`).to.equal(
+          result
+        )
       }
     })
   })
@@ -291,6 +306,9 @@ describe('In FixLib,', async () => {
       ]
       for (let [input, result] of table) {
         expect(await caller.round(fp(input)), `fp(${input})`).to.equal(result)
+        expect(await caller.toUint(fp(input), RoundingApproach.ROUND), `fp(${input})`).to.equal(
+          result
+        )
       }
     })
   })
@@ -316,6 +334,9 @@ describe('In FixLib,', async () => {
       ]
       for (let [input, result] of table) {
         expect(await caller.ceil(fp(input)), `fp(${input})`).to.equal(result)
+        expect(await caller.toUint(fp(input), RoundingApproach.CEIL), `fp(${input})`).to.equal(
+          result
+        )
       }
     })
   })
