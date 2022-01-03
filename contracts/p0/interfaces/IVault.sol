@@ -49,6 +49,10 @@ interface IVault is IRewardsClaimer {
     /// @param amtBUs {qBU} The quantity of BUs to redeem
     function redeem(address to, uint256 amtBUs) external;
 
+    /// Transfers a quantity of BUs to an address from msg.sender's account, like in ERC20
+    /// @param to The account to send BUs to
+    function transfer(address to, uint256 amtBUs) external;
+
     /// Main Setter
     function setMain(IMain main) external;
 

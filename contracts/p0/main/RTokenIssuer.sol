@@ -107,7 +107,7 @@ contract RTokenIssuerP0 is
         }
 
         iss.vault.issue(address(this), iss.amtBUs);
-        rToken().mint(address(rToken()), amount);
+        rToken().mint(address(this), amount);
         emit IssuanceStarted(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
     }
 
@@ -165,13 +165,14 @@ contract RTokenIssuerP0 is
                     continue;
                 } else if (iss.vault != vault()) {
                     // Rollback issuance i
-                    rToken().burn(address(rToken()), iss.amount);
+                    rToken().burn(address(this), iss.amount);
                     iss.vault.redeem(iss.issuer, iss.amtBUs);
                     iss.processed = true;
                     emit IssuanceCanceled(i);
                 } else if (iss.blockAvailableAt <= block.number) {
                     // Complete issuance i
-                    rToken().withdrawTo(iss.issuer, iss.amount);
+                    iss.vault.transfer(address(rToken()), iss.amtBUs);
+                    rToken().transfer(iss.issuer, iss.amount);
                     iss.processed = true;
                     emit IssuanceCompleted(i);
                 }

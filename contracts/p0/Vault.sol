@@ -92,6 +92,16 @@ contract VaultP0 is IVault, Ownable {
         emit BUsRedeemed(to, _msgSender(), amtBUs);
     }
 
+    /// Transfers a quantity of BUs to an address from msg.sender's account, like in ERC20
+    /// @param to The account to send BUs to
+    function transfer(address to, uint256 amtBUs) external override {
+        require(amtBUs > 0, "Cannot redeem zero");
+        require(amtBUs <= basketUnits[_msgSender()], "Not enough units");
+        basketUnits[_msgSender()] -= amtBUs;
+        basketUnits[to] += amtBUs;
+        emit BUsTransferred(_msgSender(), to, amtBUs);
+    }
+
     /// Claims and sweeps all COMP/AAVE rewards
     function claimAndSweepRewards() external override {
         RewardsLib.claimAndSweepRewards(main);

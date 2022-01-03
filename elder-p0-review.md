@@ -1,6 +1,6 @@
 # TODOs
 - [ ] Move as much as possible into assets (no more unapproving collateral; rename `poke`)
-- [ ] Move BU ownership to RToken + change vesting locations
+- [x] Move BU ownership to RToken + change vesting locations
 - [ ] Get rid of Mood, check that all assets in current vault are SOUND
 - [ ] notice -> checkFor
 - [ ] EmptyVault impl?
