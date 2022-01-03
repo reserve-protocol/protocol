@@ -159,7 +159,7 @@ contract RTokenIssuerP0 is
     function _processSlowIssuance() internal {
         if (mood() != Mood.DOUBT) {
             for (uint256 i = 0; i < issuances.length; i++) {
-                SlowIssuance memory iss = issuances[i];
+                SlowIssuance storage iss = issuances[i];
                 if (iss.processed) {
                     // Ignore processed issuance
                     continue;
