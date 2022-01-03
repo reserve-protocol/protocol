@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
@@ -29,26 +30,8 @@ interface AToken {
 contract ATokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
 
-    bool public sound = true;
-    uint256 private prevBlock;
-    uint256 private prevRate;
-
     // solhint-disable-next-line no-empty-blocks
-    constructor(address erc20_) CollateralP0(erc20_) {}
-
-    /// Forces an update in any underlying Defi protocol
-    /// Idempotent
-    /// @return Whether the collateral meets its invariants or not
-    function poke() external override returns (bool) {
-        if (block.number != prevBlock) {
-            uint256 newRate = IStaticAToken(_erc20).rate();
-            sound = sound && newRate >= prevRate;
-            prevRate = newRate;
-            prevBlock = block.number;
-        }
-
-        return sound;
-    }
+    constructor(address erc20_, IMain main_) CollateralP0(erc20_, main_) {}
 
     /// @return {qFiatTok/qTok}
     function rateFiatcoin() public view override returns (Fix) {
@@ -90,4 +73,5 @@ contract ATokenCollateralP0 is CollateralP0 {
     function isAToken() public pure override returns (bool) {
         return true;
     }
+
 }

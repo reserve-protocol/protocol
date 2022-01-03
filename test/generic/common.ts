@@ -5,8 +5,8 @@ import { FURNACE_DEST, Mood, STRSR_DEST } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { IConfig } from '../p0/utils/fixtures'
 
-// @dev Must match `ProtoState.Asset`
-export enum Asset {
+// @dev Must match `ProtoState.AssetName`
+export enum AssetName {
   DAI,
   USDC,
   USDT,
@@ -44,9 +44,9 @@ export const ACCOUNTS_LEN = 9
 
 export type Balance = [Account, BigNumber]
 export type Allowance = [Account, Account, BigNumber]
-export type DefiRate = [Asset, BigNumber]
+export type DefiRate = [AssetName, BigNumber]
 //
-export type Basket = { assets: Asset[]; quantities: BigNumber[] }
+export type Basket = { assets: AssetName[]; quantities: BigNumber[] }
 
 // inETH: {qETH/tok}, inUSD: {microUSD/tok}
 export type Price = { inETH: BigNumber; inUSD: BigNumber }
@@ -135,7 +135,7 @@ export const prepareState = (
   ethPrice: Price,
   rTokenBalances: Balance[],
   stRSRBalances: Balance[],
-  defiRates: DefiRate[], // only for the cTokens and aTokens (Asset.cDAI-Asset.aBUSD)
+  defiRates: DefiRate[], // only for the cTokens and aTokens (AssetName.cDAI-AssetName.aBUSD)
   baskets: Basket[] // 0th basket is taken to be current RToken definition
 ) => {
   const toPrice = prepareToPrice(ethPrice)
@@ -159,10 +159,10 @@ export const prepareState = (
   for (let i = 0; i < COLLATERAL_TOKEN_LEN; i++) {
     if (i >= FIATCOIN_TOKEN_LEN && i < COLLATERAL_TOKEN_LEN) {
       collateral.push(
-        prepareToken(Asset[i], [[Account.ALICE, bn('1e36')]], bn('1e6'), defiCollateralRates[i])
+        prepareToken(AssetName[i], [[Account.ALICE, bn('1e36')]], bn('1e6'), defiCollateralRates[i])
       )
     } else {
-      collateral.push(prepareToken(Asset[i], [[Account.ALICE, bn('1e36')]], bn('1e6')))
+      collateral.push(prepareToken(AssetName[i], [[Account.ALICE, bn('1e36')]], bn('1e6')))
     }
   }
 

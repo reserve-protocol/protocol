@@ -11,6 +11,8 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet internal _allAssets;
+
+    // TODO: eliminate
     EnumerableSet.AddressSet internal _approvedCollateral;
 
     function init(ConstructorArgs calldata args) public virtual override {
@@ -47,10 +49,12 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         }
     }
 
+    // todo: remove
     function approveCollateral(ICollateral collateral) external onlyOwner {
         _approveCollateral(collateral);
     }
 
+    // TODO: remove
     function unapproveCollateral(ICollateral collateral) external onlyOwner {
         _unapproveCollateral(collateral);
     }

@@ -10,7 +10,7 @@ import { IConfig } from '../p0/utils/fixtures'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import {
   Account,
-  Asset,
+  AssetName,
   ASSET_TOKEN_LEN,
   Balance,
   COLLATERAL_TOKEN_LEN,
@@ -61,9 +61,9 @@ describe('Unit tests (Generic)', () => {
         issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
         defaultThreshold: fp('0.05'), // 5% deviation
       }
-      const b1 = { assets: [Asset.cDAI, Asset.USDC], quantities: [bn('5e7'), bn('5e5')] }
-      const b2 = { assets: [Asset.USDC], quantities: [bn('1e6')] }
-      const b3 = { assets: [Asset.cDAI], quantities: [bn('1e8')] }
+      const b1 = { assets: [AssetName.cDAI, AssetName.USDC], quantities: [bn('5e7'), bn('5e5')] }
+      const b2 = { assets: [AssetName.USDC], quantities: [bn('1e6')] }
+      const b3 = { assets: [AssetName.cDAI], quantities: [bn('1e8')] }
       const baskets = [b1, b2, b3]
 
       const ethPrice = { inUSD: bn('4000e6'), inETH: bn('1e18') }
@@ -111,15 +111,15 @@ describe('Unit tests (Generic)', () => {
     it('Prices can be set', async () => {
       let state = await driver.state()
       expectPricesEqual(state.comp.price, toPrice(bn('1e6')))
-      expectPricesEqual(state.collateral[Asset.USDC].price, toPrice(bn('1e6')))
+      expectPricesEqual(state.collateral[AssetName.USDC].price, toPrice(bn('1e6')))
       const compPrice = toPrice(bn('2e6'))
       const collatPrice = toPrice(bn('0.5e6'))
-      await driver.setBaseAssetPrices([Asset.COMP, Asset.USDC], [compPrice, collatPrice])
+      await driver.setBaseAssetPrices([AssetName.COMP, AssetName.USDC], [compPrice, collatPrice])
       state = await driver.state()
       expectPricesEqual(state.comp.price, compPrice)
-      expectPricesEqual(state.collateral[Asset.USDC].price, collatPrice)
-      expectPricesEqual(state.collateral[Asset.cUSDC].price, toPrice(bn(0)))
-      expectPricesEqual(state.collateral[Asset.aUSDC].price, toPrice(bn(0)))
+      expectPricesEqual(state.collateral[AssetName.USDC].price, collatPrice)
+      expectPricesEqual(state.collateral[AssetName.cUSDC].price, toPrice(bn(0)))
+      expectPricesEqual(state.collateral[AssetName.aUSDC].price, toPrice(bn(0)))
     })
 
     it('Defi rates can be set', async () => {
@@ -129,10 +129,10 @@ describe('Unit tests (Generic)', () => {
       expect(state.defiCollateralRates[lastCollateral]).to.equal(fp('1'))
       const cDaiRate = fp('0.9')
       const aBUSDRate = fp('1.1')
-      await driver.setDefiCollateralRates([Asset.cDAI, Asset.aBUSD], [cDaiRate, aBUSDRate])
+      await driver.setDefiCollateralRates([AssetName.cDAI, AssetName.aBUSD], [cDaiRate, aBUSDRate])
       state = await driver.state()
-      expect(state.defiCollateralRates[Asset.cDAI]).to.equal(cDaiRate)
-      expect(state.defiCollateralRates[Asset.aBUSD]).to.equal(aBUSDRate)
+      expect(state.defiCollateralRates[AssetName.cDAI]).to.equal(cDaiRate)
+      expect(state.defiCollateralRates[AssetName.aBUSD]).to.equal(aBUSDRate)
     })
 
     it('Should issue, slowly', async () => {
@@ -176,25 +176,25 @@ describe('Unit tests (Generic)', () => {
 
     it('Should detect hard default + immediately migrate to 2nd vault', async () => {
       await driver.setDefiCollateralRates(
-        [Asset.cDAI],
-        [initialState.defiCollateralRates[Asset.cDAI].sub(bn(1))]
+        [AssetName.cDAI],
+        [initialState.defiCollateralRates[AssetName.cDAI].sub(bn(1))]
       )
       await driver.CMD_poke()
       let state = await driver.state()
       expect(state.mood).to.equal(Mood.TRADING)
       expect(state.bu_s.length).to.equal(2)
-      expect(state.rTokenDefinition.assets.toString()).to.equal([Asset.USDC].toString())
+      expect(state.rTokenDefinition.assets.toString()).to.equal([AssetName.USDC].toString())
     })
 
     it('Should detect soft default + migrate to 3rd vault after 24h', async () => {
-      await driver.setBaseAssetPrices([Asset.USDC], [toPrice(bn('0.9e6'))])
+      await driver.setBaseAssetPrices([AssetName.USDC], [toPrice(bn('0.9e6'))])
       await driver.CMD_poke()
       advanceTime(initialState.config.defaultDelay)
       await driver.CMD_poke()
       let state = await driver.state()
       expect(state.mood).to.equal(Mood.TRADING)
       expect(state.bu_s.length).to.equal(1)
-      expect(state.rTokenDefinition.assets.toString()).to.equal([Asset.cDAI].toString())
+      expect(state.rTokenDefinition.assets.toString()).to.equal([AssetName.cDAI].toString())
     })
   })
 })

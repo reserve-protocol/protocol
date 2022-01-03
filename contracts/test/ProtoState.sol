@@ -20,7 +20,7 @@ enum Account {
 
 /// All assets in the system
 /// Only the first 11 are collateral-eligible
-enum Asset {
+enum AssetName {
     DAI, // 0
     USDC,
     USDT,
@@ -47,7 +47,7 @@ struct RevenueDestination {
 
 /// Basket Unit, ie 1e18{qBU}
 struct BU {
-    Asset[] assets;
+    AssetName[] assets;
     uint256[] quantities; // {qTok/RToken}
 }
 
@@ -80,7 +80,7 @@ struct ProtoState {
     // System-external state
     TokenState comp;
     TokenState aave;
-    TokenState[] collateral; // Asset.DAI - Asset.aBUSD
-    Fix[] defiCollateralRates; // Asset.DAI - Asset.aBUSD, fiatcoins are ignored
+    TokenState[] collateral; // AssetName.DAI - AssetName.aBUSD
+    Fix[] defiCollateralRates; // AssetName.DAI - AssetName.aBUSD, fiatcoins are ignored
     OraclePrice ethPrice;
 }

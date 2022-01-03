@@ -47,8 +47,7 @@ contract DefaultHandlerP0 is
     /// @dev This should handle parallel collateral defaults independently
     function poke() public virtual override notPaused {
         super.poke();
-        _noticeHardDefault();
-        _noticeSoftDefault();
+        _ensureDefaultStatusIsSet();
         _tryEnsureValidVault();
     }
 
@@ -60,67 +59,60 @@ contract DefaultHandlerP0 is
         super.beforeUpdate();
     }
 
-    /// Checks for hard default.
-    /// Effectively, asks each Collateral if the exogenous capital still satisfies its invariants,
-    /// and "unapproves" in Main each token that does not.
-    function _noticeHardDefault() internal {
-        uint256 count;
-        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            ICollateral c = ICollateral(_approvedCollateral.at(i));
-            bool ok = c.poke();
-            if (!ok) {
-                _unapproveCollateral(c);
-                count++;
-            }
+    function _ensureDefaultStatusIsSet() internal {
+        for (uint256 i = 0; i < _allAssets.length(); i++) {
+            _allAssets.at(i).poke();
         }
     }
 
-    /// Checks for soft default.
-    /// A token triggers "soft" (delayed) default when its redemption
-    /// by checking oracle values for all fiatcoins in the vault
-    function _noticeSoftDefault() internal {
-        // Compute the list of defaulting collateral
-        Fix defaultThreshold = _defaultThreshold();
-        address[] memory defaulting = new address[](_approvedCollateral.length());
-        uint256 count;
-        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            ICollateral c = ICollateral(_approvedCollateral.at(i));
+    function _ensureVaultIsValid() internal {
+    }
 
-            Fix price = c.fiatcoinPriceUSD(oracle()).shiftLeft(int8(c.fiatcoinDecimals()));
-            if (price.lte(defaultThreshold)) {
-                defaulting[count] = address(c);
-                count++;
+    /// @return {attoUSD/fiatTok} The USD price at which a fiatcoin can be said to be defaulting
+    function defaultingFiatcoinPrice() public view returns (Fix) {
+        uint256 numFiatcoins;
+        ICollateral[] memory fiatcoins = new ICollateral[](_approvedCollateral.length());
+        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
+            if (ICollateral(_approvedCollateral.at(i)).isFiatcoin()) {
+                fiatcoins[numFiatcoins] = ICollateral(_approvedCollateral.at(i));
+                numFiatcoins++;
             }
         }
 
-        // defaulting is now an array of all collateral tokens redeemable for a defaulting fiatcoin
+        // Collect prices
+        Fix[] memory prices = new Fix[](numFiatcoins);
+        for (uint256 i = 0; i < numFiatcoins; i++) {
+            int8 decimals = int8(fiatcoins[i].fiatcoinDecimals());
 
-        // Remove from _defaulting any collateral that has recovered
-        address[] memory prev = _defaulting.values();
-        for (uint256 i = 0; i < prev.length; i++) {
-            bool found;
-            for (uint256 j = 0; j < count; j++) {
-                if (address(defaulting[j]) == prev[i]) {
-                    found = true;
+            // {attoUSD/fiatTok} = {attoUSD/qFiatTok} * {qFiatTok/fiatTok}
+            prices[i] = fiatcoins[i].fiatcoinPriceUSD(oracle()).shiftLeft(decimals); // {attoUSD/fiatTok}
+        }
+
+        // Sort
+        for (uint256 i = 0; i < prices.length - 1; i++) {
+            uint256 min = i;
+            for (uint256 j = i; j < prices.length; j++) {
+                if (prices[j].lt(prices[min])) {
+                    min = j;
                 }
             }
-            if (!found) {
-                _defaulting.remove(prev[i]);
+            if (min != i) {
+                Fix tmp = prices[i];
+                prices[i] = prices[min];
+                prices[min] = tmp;
             }
         }
 
-        // Unapprove any collateral that has been defaulting for > `defaultDelay`
-        for (uint256 i = 0; i < count; i++) {
-            if (!_defaulting.contains(defaulting[i])) {
-                _defaulting.add(defaulting[i]);
-                _defaultingTimestamp[ICollateral(defaulting[i])] = block.timestamp;
-            } else if (
-                block.timestamp >= defaultDelay() + _defaultingTimestamp[ICollateral(defaulting[i])]
-            ) {
-                _unapproveCollateral(ICollateral(defaulting[i]));
-                _defaulting.remove(defaulting[i]);
-            }
+        // Take the median
+        Fix median;
+        if (prices.length % 2 == 0) {
+            median = prices[prices.length / 2 - 1].plus(prices[prices.length / 2]).divu(2);
+        } else {
+            median = prices[prices.length / 2];
         }
+
+        // median - (median * defaultThreshold)
+        return median.minus(median.mul(defaultThreshold()));
     }
 
     /// Ensure the vault only consists of approved collateral by changing it, or entering DOUBT
@@ -194,50 +186,4 @@ contract DefaultHandlerP0 is
         return true;
     }
 
-    /// @return {attoUSD/fiatTok} The USD price at which a fiatcoin can be said to be defaulting
-    function _defaultThreshold() private view returns (Fix) {
-        uint256 numFiatcoins;
-        ICollateral[] memory fiatcoins = new ICollateral[](_approvedCollateral.length());
-        for (uint256 i = 0; i < _approvedCollateral.length(); i++) {
-            if (ICollateral(_approvedCollateral.at(i)).isFiatcoin()) {
-                fiatcoins[numFiatcoins] = ICollateral(_approvedCollateral.at(i));
-                numFiatcoins++;
-            }
-        }
-
-        // Collect prices
-        Fix[] memory prices = new Fix[](numFiatcoins);
-        for (uint256 i = 0; i < numFiatcoins; i++) {
-            int8 decimals = int8(fiatcoins[i].fiatcoinDecimals());
-
-            // {attoUSD/fiatTok} = {attoUSD/qFiatTok} * {qFiatTok/fiatTok}
-            prices[i] = fiatcoins[i].fiatcoinPriceUSD(oracle()).shiftLeft(decimals); // {attoUSD/fiatTok}
-        }
-
-        // Sort
-        for (uint256 i = 0; i < prices.length - 1; i++) {
-            uint256 min = i;
-            for (uint256 j = i; j < prices.length; j++) {
-                if (prices[j].lt(prices[min])) {
-                    min = j;
-                }
-            }
-            if (min != i) {
-                Fix tmp = prices[i];
-                prices[i] = prices[min];
-                prices[min] = tmp;
-            }
-        }
-
-        // Take the median
-        Fix median;
-        if (prices.length % 2 == 0) {
-            median = prices[prices.length / 2 - 1].plus(prices[prices.length / 2]).divu(2);
-        } else {
-            median = prices[prices.length / 2];
-        }
-
-        // median - (median * defaultThreshold)
-        return median.minus(median.mul(defaultThreshold()));
-    }
 }

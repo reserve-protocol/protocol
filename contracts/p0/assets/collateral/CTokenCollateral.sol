@@ -26,28 +26,10 @@ contract CTokenCollateralP0 is CollateralP0 {
 
     Fix public immutable initialExchangeRate; // 0.02, their hardcoded starting rate
 
-    bool public sound = true;
-    uint256 private prevBlock;
-    uint256 private prevRate;
-
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
     // solhint-disable-next-line no-empty-blocks
     constructor(address erc20_) CollateralP0(erc20_) {
         initialExchangeRate = toFixWithShift(2, -2);
-    }
-
-    /// Forces an update in any underlying Defi protocol
-    /// Idempotent
-    /// @return Whether the collateral meets its invariants or not
-    function poke() external override returns (bool) {
-        if (block.number != prevBlock) {
-            uint256 newRate = ICToken(_erc20).exchangeRateCurrent();
-            sound = sound && newRate >= prevRate;
-            prevRate = newRate;
-            prevBlock = block.number;
-        }
-
-        return sound;
     }
 
     /// @return {qFiatTok/qTok}
