@@ -3,7 +3,13 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
-import { BN_SCALE_FACTOR, FURNACE_DEST, Mood, STRSR_DEST, ZERO_ADDRESS } from '../../common/constants'
+import {
+  BN_SCALE_FACTOR,
+  FURNACE_DEST,
+  Mood,
+  STRSR_DEST,
+  ZERO_ADDRESS,
+} from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'

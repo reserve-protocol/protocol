@@ -307,11 +307,12 @@ interface IRTokenIssuer {
     /// @param issuanceId The index off the issuance, a globally unique identifier
     /// @param issuer The account performing the issuance
     /// @param amount The quantity of RToken being issued
+    /// @param blockAvailableAt The (continuous) block at which the issuance vests
     event IssuanceStarted(
         uint256 indexed issuanceId,
         address indexed issuer,
         uint256 indexed amount,
-        uint256 blockAvailableAt
+        Fix blockAvailableAt
     );
 
     /// Emitted when an RToken issuance is canceled, such as during a default

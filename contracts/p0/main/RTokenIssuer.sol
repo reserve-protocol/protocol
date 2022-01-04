@@ -31,13 +31,13 @@ contract RTokenIssuerP0 is
     using SafeERC20 for IRToken;
     using FixLib for Fix;
 
-    /// Tracks data for an issuance
+    /// Tracks data for a SlowIssuance
     /// @param vault The vault the issuance is against
     /// @param amount {qTok} The quantity of RToken the issuance is for
     /// @param amtBUs {qBU} The number of BUs that corresponded to `amount` at time of issuance
     /// @param deposits {qTok} The collateral token quantities that were used to pay for the issuance
     /// @param issuer The account issuing RToken
-    /// @param blockAvailableAt {blockNumber} The block number at which the issuance can complete
+    /// @param blockAvailableAt {blockNumber} A continuous block number at which the issuance completes
     /// @param processed false when the issuance is still vesting
     struct SlowIssuance {
         IVault vault;
@@ -45,7 +45,7 @@ contract RTokenIssuerP0 is
         uint256 amtBUs; // {qBU}
         uint256[] deposits; // {qTok}, same index as vault basket assets
         address issuer;
-        uint256 blockAvailableAt; // {blockNumber}
+        Fix blockAvailableAt; // {blockNumber} fractional
         bool processed;
     }
 
@@ -144,15 +144,18 @@ contract RTokenIssuerP0 is
     }
 
     // Returns the future block number at which an issuance for *amount* now can complete
-    function _nextIssuanceBlockAvailable(uint256 amount) private view returns (uint256) {
-        uint256 perBlock = Math.max(
-            10_000 * 10**rToken().decimals(), // lower-bound: 10k whole RToken per block
-            toFix(rToken().totalSupply()).mul(issuanceRate()).round()
+    function _nextIssuanceBlockAvailable(uint256 amount) private view returns (Fix) {
+        Fix perBlock = fixMax(
+            toFixWithShift(1e4, int8(rToken().decimals())), // lower-bound: 10k whole RToken per block
+            issuanceRate().mulu(rToken().totalSupply())
         ); // {RToken/block}
-        uint256 blockStart = issuances.length == 0
-            ? block.number
-            : issuances[issuances.length - 1].blockAvailableAt;
-        return Math.max(blockStart, block.number) + Math.ceilDiv(amount, perBlock);
+        Fix blockStart = toFix(block.number);
+        if (
+            issuances.length > 0 && issuances[issuances.length - 1].blockAvailableAt.gt(blockStart)
+        ) {
+            blockStart = issuances[issuances.length - 1].blockAvailableAt;
+        }
+        return blockStart.plus(divFix(amount, perBlock));
     }
 
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
@@ -169,7 +172,7 @@ contract RTokenIssuerP0 is
                     iss.vault.redeem(iss.issuer, iss.amtBUs);
                     iss.processed = true;
                     emit IssuanceCanceled(i);
-                } else if (iss.blockAvailableAt <= block.number) {
+                } else if (iss.blockAvailableAt.ceil() <= block.number) {
                     // Complete issuance i
                     iss.vault.transfer(address(rToken()), iss.amtBUs);
                     rToken().transfer(iss.issuer, iss.amount);

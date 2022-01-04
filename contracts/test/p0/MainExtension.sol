@@ -34,7 +34,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         uint256 start = rTokenAsset().erc20().balanceOf(account);
         connect(account);
         issue(amount);
-        issuances[issuances.length - 1].blockAvailableAt = block.number;
+        issuances[issuances.length - 1].blockAvailableAt = toFix(block.number);
         _processSlowIssuance();
         require(rTokenAsset().erc20().balanceOf(account) - start == amount, "issue failure");
     }
@@ -191,7 +191,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     function _INVARIANT_issuancesAreValid() internal view returns (bool ok) {
         ok = true;
         for (uint256 i = 0; i < issuances.length; i++) {
-            if (issuances[i].processed && issuances[i].blockAvailableAt > block.number) {
+            if (issuances[i].processed && issuances[i].blockAvailableAt.lt(toFix(block.number))) {
                 ok = false;
             }
         }

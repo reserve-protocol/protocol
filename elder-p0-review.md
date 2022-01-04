@@ -5,7 +5,7 @@
 - [x] notice -> checkFor
 - [ ] EmptyVault impl?
 - [ ] DefaultHandler overhaul, move vault checks into the vault class
-- [ ] _nextIssuanceBlockAvailable() - add fractional "how far into the block" metric 
+- [x] _nextIssuanceBlockAvailable() - add fractional "how far into the block" metric 
 - [ ] (beforeUpdate() calls not actually going through the entire set of mixins)
 - [x] Add `toUint` with enum rounding forwarding the call to floor/ceil/round
 
