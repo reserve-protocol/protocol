@@ -31,13 +31,13 @@ contract RTokenIssuerP0 is
     using SafeERC20 for IRToken;
     using FixLib for Fix;
 
-    /// Tracks data for an issuance
+    /// Tracks data for a SlowIssuance
     /// @param vault The vault the issuance is against
     /// @param amount {qTok} The quantity of RToken the issuance is for
     /// @param amtBUs {qBU} The number of BUs that corresponded to `amount` at time of issuance
     /// @param deposits {qTok} The collateral token quantities that were used to pay for the issuance
     /// @param issuer The account issuing RToken
-    /// @param blockAvailableAt {blockNumber} The block number at which the issuance can complete
+    /// @param blockAvailableAt {blockNumber} A continuous block number at which the issuance completes
     /// @param processed false when the issuance is still vesting
     struct SlowIssuance {
         IVault vault;
@@ -45,7 +45,7 @@ contract RTokenIssuerP0 is
         uint256 amtBUs; // {qBU}
         uint256[] deposits; // {qTok}, same index as vault basket assets
         address issuer;
-        uint256 blockAvailableAt; // {blockNumber}
+        Fix blockAvailableAt; // {blockNumber} fractional
         bool processed;
     }
 
@@ -93,7 +93,7 @@ contract RTokenIssuerP0 is
             vault: vault(),
             amount: amount,
             amtBUs: amtBUs,
-            deposits: vault().quote(amtBUs),
+            deposits: vault().quote(amtBUs, RoundingApproach.CEIL),
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
@@ -107,7 +107,7 @@ contract RTokenIssuerP0 is
         }
 
         iss.vault.issue(address(this), iss.amtBUs);
-        rToken().mint(address(rToken()), amount);
+        rToken().mint(address(this), amount);
         emit IssuanceStarted(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
     }
 
@@ -127,7 +127,7 @@ contract RTokenIssuerP0 is
 
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) public view override returns (uint256[] memory) {
-        return vault().quote(toBUs(amount));
+        return vault().quote(toBUs(amount), RoundingApproach.CEIL);
     }
 
     /// @return How much RToken `account` can issue given current holdings
@@ -144,34 +144,38 @@ contract RTokenIssuerP0 is
     }
 
     // Returns the future block number at which an issuance for *amount* now can complete
-    function _nextIssuanceBlockAvailable(uint256 amount) private view returns (uint256) {
-        uint256 perBlock = Math.max(
-            10_000 * 10**rToken().decimals(), // lower-bound: 10k whole RToken per block
-            toFix(rToken().totalSupply()).mul(issuanceRate()).round()
+    function _nextIssuanceBlockAvailable(uint256 amount) private view returns (Fix) {
+        Fix perBlock = fixMax(
+            toFixWithShift(1e4, int8(rToken().decimals())), // lower-bound: 10k whole RToken per block
+            issuanceRate().mulu(rToken().totalSupply())
         ); // {RToken/block}
-        uint256 blockStart = issuances.length == 0
-            ? block.number
-            : issuances[issuances.length - 1].blockAvailableAt;
-        return Math.max(blockStart, block.number) + Math.ceilDiv(amount, perBlock);
+        Fix blockStart = toFix(block.number);
+        if (
+            issuances.length > 0 && issuances[issuances.length - 1].blockAvailableAt.gt(blockStart)
+        ) {
+            blockStart = issuances[issuances.length - 1].blockAvailableAt;
+        }
+        return blockStart.plus(divFix(amount, perBlock));
     }
 
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowIssuance() internal {
         if (mood() != Mood.DOUBT) {
             for (uint256 i = 0; i < issuances.length; i++) {
-                SlowIssuance memory iss = issuances[i];
+                SlowIssuance storage iss = issuances[i];
                 if (iss.processed) {
                     // Ignore processed issuance
                     continue;
                 } else if (iss.vault != vault()) {
                     // Rollback issuance i
-                    rToken().burn(address(rToken()), iss.amount);
+                    rToken().burn(address(this), iss.amount);
                     iss.vault.redeem(iss.issuer, iss.amtBUs);
                     iss.processed = true;
                     emit IssuanceCanceled(i);
-                } else if (iss.blockAvailableAt <= block.number) {
+                } else if (iss.blockAvailableAt.ceil() <= block.number) {
                     // Complete issuance i
-                    rToken().withdrawTo(iss.issuer, iss.amount);
+                    iss.vault.transfer(address(rToken()), iss.amtBUs);
+                    rToken().transfer(iss.issuer, iss.amount);
                     iss.processed = true;
                     emit IssuanceCompleted(i);
                 }

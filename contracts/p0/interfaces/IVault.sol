@@ -49,6 +49,10 @@ interface IVault is IRewardsClaimer {
     /// @param amtBUs {qBU} The quantity of BUs to redeem
     function redeem(address to, uint256 amtBUs) external;
 
+    /// Transfers a quantity of BUs to an address from msg.sender's account, like in ERC20
+    /// @param to The account to send BUs to
+    function transfer(address to, uint256 amtBUs) external;
+
     /// Main Setter
     function setMain(IMain main) external;
 
@@ -56,7 +60,10 @@ interface IVault is IRewardsClaimer {
     function basketRate() external view returns (Fix);
 
     /// @return {qTok} A list of token quantities required in order to issue `amtBUs`, in the order of the basket.
-    function quote(uint256 amtBUs) external view returns (uint256[] memory);
+    function quote(uint256 amtBUs, RoundingApproach rounding)
+        external
+        view
+        returns (uint256[] memory);
 
     /// @return Whether the vault is made up only of collateral in `collateral`
     function containsOnly(ICollateral[] memory collateral) external view returns (bool);

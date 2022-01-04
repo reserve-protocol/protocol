@@ -49,12 +49,6 @@ contract RTokenP0 is Ownable, ERC20, IRToken {
         return true;
     }
 
-    /// Main uses this to move tokens held directly by the RToken
-    function withdrawTo(address to, uint256 amount) external virtual override {
-        require(_msgSender() == main, "only main");
-        _transfer(address(this), to, amount);
-    }
-
     function setMain(address main_) external virtual override onlyOwner {
         main = main_;
     }

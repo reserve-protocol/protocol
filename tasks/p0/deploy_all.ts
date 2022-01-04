@@ -11,14 +11,11 @@ import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { AaveLendingAddrProviderMockP0 } from '../../typechain/AaveLendingAddrProviderMockP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
-import { AssetManagerP0 } from '../../typechain/AssetManagerP0'
 import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
 import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
 import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
@@ -26,6 +23,10 @@ import { StRSRP0 } from '../../typechain/StRSRP0'
 import { VaultP0 } from '../../typechain/VaultP0'
 
 const qtyThird: BigNumber = bn('1e18').div(3)
+export interface IRevenueShare {
+  rTokenDist: BigNumber
+  rsrDist: BigNumber
+}
 
 function waitDeployment(contracts: any[]) {
   return Promise.all(contracts.map((contract) => contract.deployed()))
@@ -141,6 +142,10 @@ const deployDependencies = async (hre: HardhatRuntimeEnvironment, deployer: Sign
   )
   await aaveMock.deployed()
 
+  // Market
+  const MarketMockFactory: ContractFactory = await hre.ethers.getContractFactory('MarketMock')
+  const marketMock: MarketMock = <MarketMock>await MarketMockFactory.deploy()
+
   return {
     weth,
     compToken,
@@ -151,6 +156,7 @@ const deployDependencies = async (hre: HardhatRuntimeEnvironment, deployer: Sign
     aaveAsset,
     aaveOracle,
     aaveMock,
+    market: marketMock
   }
 }
 
@@ -181,6 +187,7 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
       aaveAsset,
       aaveOracle,
       aaveMock,
+      market,
     } = await deployDependencies(hre, deployer)
 
     console.log('Setting prices...')
@@ -205,7 +212,7 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
     const latestBlock = await hre.ethers.provider.getBlock('latest')
     const rewardStart: BigNumber = bn(await latestBlock.timestamp)
     const config: IConfig = {
-      rewardStart: rewardStart,
+      rewardStart,
       rewardPeriod: bn('604800'), // 1 week
       auctionPeriod: bn('1800'), // 30 minutes
       stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
@@ -217,10 +224,13 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
       migrationChunk: fp('0.2'), // 20%
       issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
       defaultThreshold: fp('0.05'), // 5% deviation
-      f: fp('0.60'), // 60% to stakers
     }
 
-    console.log('Deploy RToken...')
+    const dist: IRevenueShare = {
+      rTokenDist: fp('0.4'), // 40% RToken
+      rsrDist: fp('0.6'), // 60% RSR
+    }
+
     // Create Deployer
     const DeployerFactory: ContractFactory = await hre.ethers.getContractFactory('DeployerP0')
     const rtokenDeployer: DeployerP0 = <DeployerP0>(
@@ -228,7 +238,7 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
         rsrAsset.address,
         compAsset.address,
         aaveAsset.address,
-        tradingMock.address
+        market.address
       )
     )
     await rtokenDeployer.deployed()
@@ -236,11 +246,12 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
     // Deploy actual contracts
     const receipt = await (
       await rtokenDeployer.deploy(
-        'RToken',
-        'RTKN',
+        'Reserve Dollar Plus',
+        'RSDP',
         deployer.address,
         vault.address,
         config,
+        dist,
         compoundMock.address,
         aaveMock.address,
         collaterals.map((c) => c.address)
@@ -254,40 +265,18 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
     const rToken: RTokenP0 = <RTokenP0>(
       await hre.ethers.getContractAt('RTokenP0', await main.rToken())
     )
-    const furnace: FurnaceP0 = <FurnaceP0>(
-      await hre.ethers.getContractAt('FurnaceP0', await main.revenueFurnace())
-    )
     const stRSR: StRSRP0 = <StRSRP0>await hre.ethers.getContractAt('StRSRP0', await main.stRSR())
-    const assetManager: AssetManagerP0 = <AssetManagerP0>(
-      await hre.ethers.getContractAt('AssetManagerP0', await main.manager())
-    )
-    const defaultMonitor: DefaultMonitorP0 = <DefaultMonitorP0>(
-      await hre.ethers.getContractAt('DefaultMonitorP0', await main.monitor())
-    )
 
     console.log(`
     -------------------------
     Reserve Proto0 - Deployed
     -------------------------
     RSR             - ${rsr.address}
-    RSR_ASSET       - ${rsrAsset.address}
-    WETH            - ${weth.address}
-    COMP            - ${compToken.address}
-    COMP_ASSET      - ${compAsset.address}
-    COMP_ORACLE     - ${compoundOracle.address}
-    COMP_MOCK       - ${compoundMock.address}
-    AAVE_TOKEN      - ${aaveToken.address}
-    AAVE_ASSET      - ${aaveAsset.address}
-    AAVE_ORACLE     - ${aaveOracle.address}
-    AAVE_MOCK       - ${aaveMock.address}
-    VAULT           - ${vault.address}
     RTOKEN_DEPLOYER - ${rtokenDeployer.address}
+    VAULT           - ${vault.address}
     MAIN            - ${main.address}
     RTOKEN          - ${rToken.address}
-    FURNACE         - ${furnace.address}
     stRSR           - ${stRSR.address}
-    ASSET_MANAGER   - ${assetManager.address}
-    DEFAULT_MONITOR - ${defaultMonitor.address}
     TRADING_MOCK    - ${tradingMock.address}
     -------------------------
   `)
@@ -311,12 +300,8 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
       rtokenDeployer,
       main,
       rToken,
-      furnace,
+      market,
       stRSR,
-      assetManager,
-      defaultMonitor,
     }
   }
 )
-
-module.exports = {}

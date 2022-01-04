@@ -1,5 +1,3 @@
-// TODO: import ./tasks selectively based on env var
-// import './tasks'
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
@@ -9,8 +7,11 @@ import 'solidity-coverage'
 import dotenv from 'dotenv'
 import { HardhatUserConfig } from 'hardhat/types'
 
-// import '@openzeppelin/hardhat-upgrades'
 dotenv.config()
+
+if (process.env.TASKS === 'true') {
+  require('./tasks')
+}
 
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || process.env.ALCHEMY_MAINNET_RPC_URL || ''
 const ROPSTEN_RPC_URL = process.env.ROPSTEN_RPC_URL || ''

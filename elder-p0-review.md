@@ -1,13 +1,13 @@
 # TODOs
 - [ ] Move as much as possible into assets (no more unapproving collateral; rename `poke`)
-- [ ] Move BU ownership to RToken + change vesting locations
+- [x] Move BU ownership to RToken + change vesting locations
 - [ ] Get rid of Mood, check that all assets in current vault are SOUND
-- [ ] notice -> checkFor
+- [x] notice -> checkFor
 - [ ] EmptyVault impl?
 - [ ] DefaultHandler overhaul, move vault checks into the vault class
-- [ ] _nextIssuanceBlockAvailable() - add fractional "how far into the block" metric 
+- [x] _nextIssuanceBlockAvailable() - add fractional "how far into the block" metric 
 - [ ] (beforeUpdate() calls not actually going through the entire set of mixins)
-- [ ] Add `toUint` with enum rounding forwarding the call to floor/ceil/round
+- [x] Add `toUint` with enum rounding forwarding the call to floor/ceil/round
 
 # DO LATER (or think harder about)
 - [ ] Rehaul how we express the backup DAG / do backups

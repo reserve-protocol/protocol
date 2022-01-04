@@ -27,9 +27,6 @@ interface IRToken is IERC20Metadata {
     /// @return true
     function melt(address from, uint256 amount) external returns (bool);
 
-    /// Main leverages the RToken to hold vesting issuance
-    function withdrawTo(address to, uint256 amount) external;
-
     function setMain(address main) external;
 
     function main() external view returns (address);
