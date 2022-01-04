@@ -29,20 +29,20 @@ import "./StRSR.sol";
  */
 contract DeployerP0 is IDeployer {
     IMarket internal market;
-    IAsset internal rsrAsset;
-    IAsset internal compAsset;
-    IAsset internal aaveAsset;
+    address internal rsrAddr;
+    address internal compAddr;
+    address internal aaveAddr;
     IMain[] public deployments;
 
     constructor(
-        IAsset rsrAsset_,
-        IAsset compAsset_,
-        IAsset aaveAsset_,
+        address rsrAddr_,
+        address compAddr_,
+        address aaveAddr_,
         IMarket market_
     ) {
-        rsrAsset = rsrAsset_;
-        compAsset = compAsset_;
-        aaveAsset = aaveAsset_;
+        rsrAddr = rsrAddr_;
+        compAddr = compAddr_;
+        aaveAddr = aaveAddr_;
         market = market_;
     }
 
@@ -73,7 +73,6 @@ contract DeployerP0 is IDeployer {
         IMain main;
         {
             IRToken rToken = _deployRToken(name, symbol);
-            RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken), main);
             IFurnace revenueFurnace = _deployRevenueFurnace(rToken, config.rewardPeriod);
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
@@ -83,18 +82,28 @@ contract DeployerP0 is IDeployer {
                     oracle,
                     config,
                     dist,
-                    rTokenAsset,
-                    rsrAsset,
-                    compAsset,
-                    aaveAsset,
                     vault,
                     revenueFurnace,
                     market
                 )
             );
             deployments.push(main);
+
+            RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken), main);
+            main.setRTokenAsset(rTokenAsset);
+
             rToken.setMain(address(main));
             Ownable(address(rToken)).transferOwnership(owner);
+        }
+
+        {
+            RSRAssetP0 rsrAsset = new RSRAssetP0(rsrAddr, main);
+            COMPAssetP0 compAsset = new COMPAssetP0(compAddr, main);
+            AAVEAssetP0 aaveAsset = new AAVEAssetP0(aaveAddr, main);
+
+            main.setRSRAsset(rsrAsset);
+            main.setCompAsset(compAsset);
+            main.setAaveAsset(aaveAsset);
         }
 
         {

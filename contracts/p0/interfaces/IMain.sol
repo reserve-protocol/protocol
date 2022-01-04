@@ -62,10 +62,6 @@ struct ConstructorArgs {
     Oracle.Info oracle;
     Config config;
     RevenueShare dist;
-    IAsset rTokenAsset;
-    IAsset rsrAsset;
-    IAsset compAsset;
-    IAsset aaveAsset;
     IVault vault;
     IFurnace furnace;
     IMarket market;

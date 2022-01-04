@@ -20,10 +20,6 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         for (uint256 i = 0; i < args.approvedCollateral.length; i++) {
             _approveCollateral(args.approvedCollateral[i]);
         }
-        _allAssets.add(address(args.rTokenAsset));
-        _allAssets.add(address(args.rsrAsset));
-        _allAssets.add(address(args.compAsset));
-        _allAssets.add(address(args.aaveAsset));
     }
 
     function beforeUpdate() public virtual override {
