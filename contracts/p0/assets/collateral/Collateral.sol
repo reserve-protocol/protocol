@@ -19,12 +19,12 @@ contract CollateralP0 is ICollateral, AssetP0 {
     using Oracle for Oracle.Info;
 
     // Default Status:
-    // whenDefault == NEVER: no risk of default
+    // whenDefault == NEVER: no risk of default (initial value)
     // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
     //                In this case, the asset may recover, reachiving whenDefault == NEVER.
     // whenDefault <= block.timestamp: default has already happened (permanently)
     uint256 internal constant NEVER = type(uint256).max;
-    uint256 internal whenDefault;
+    uint256 internal whenDefault = NEVER;
     uint256 internal prevBlock; // Last block when updateDefaultStatus() was called
     Fix internal prevRate; // Last rate when updateDefaultStatus() was called
 
@@ -36,6 +36,7 @@ contract CollateralP0 is ICollateral, AssetP0 {
         updateDefaultStatus();
     }
 
+    /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
     function updateDefaultStatus() internal {
         if (whenDefault <= block.timestamp || block.number <= prevBlock) {
             // Nothing will change if either we're already fully defaulted
@@ -45,7 +46,7 @@ contract CollateralP0 is ICollateral, AssetP0 {
 
         // If the redemption rate has fallen, default immediately
         Fix newRate = rateFiatcoin();
-        if (newRate.gte(prevRate)) {
+        if (newRate.lt(prevRate)) {
             whenDefault = block.timestamp;
         }
 
@@ -63,7 +64,7 @@ contract CollateralP0 is ICollateral, AssetP0 {
         prevBlock = block.number;
     }
 
-    // Returns this asset's default status
+    /// @return The asset's default status
     function status() public view returns (AssetStatus) {
         if (whenDefault == 0) {
             return AssetStatus.SOUND;
