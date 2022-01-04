@@ -8,6 +8,7 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
+/// Abstract, immutable, base asset contract for specific token assets to extend
 abstract contract AssetP0 is IAsset {
     using FixLib for Fix;
     using Oracle for Oracle.Info;
@@ -16,14 +17,18 @@ abstract contract AssetP0 is IAsset {
     IMain internal immutable _main;
     Oracle.Source internal immutable _oracleSource;
 
-    constructor(address erc20_, IMain main_, Oracle.Source oracleSource_) {
+    constructor(
+        address erc20_,
+        IMain main_,
+        Oracle.Source oracleSource_
+    ) {
         _erc20 = erc20_;
         _main = main_;
         _oracleSource = oracleSource_;
     }
 
     // solhint-disable-next-list no-empty-blocks
-    function poke() public virtual override { }
+    function poke() public virtual override {}
 
     /// @return {attoUSD/qRSR}
     function priceUSD() public view virtual override returns (Fix) {

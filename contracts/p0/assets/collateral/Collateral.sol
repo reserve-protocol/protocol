@@ -12,7 +12,7 @@ import "contracts/libraries/Fixed.sol";
 
 /**
  * @title CollateralP0
- * @notice A vanilla asset such as a fiatcoin, to be extended by more complex assets such as cTokens.
+ * @notice A vanilla asset such as a fiatcoin, to be extended by more complex collateral assets such as cTokens.
  */
 contract CollateralP0 is ICollateral, AssetP0 {
     using FixLib for Fix;
@@ -25,8 +25,8 @@ contract CollateralP0 is ICollateral, AssetP0 {
     // whenDefault <= block.timestamp: default has already happened (permanently)
     uint256 internal constant NEVER = type(uint256).max;
     uint256 internal whenDefault;
-    uint256 internal prevBlock;  // Last block when updateDefaultStatus() was called
-    Fix internal prevRate;       // Last rate when updateDefaultStatus() was called
+    uint256 internal prevBlock; // Last block when updateDefaultStatus() was called
+    Fix internal prevRate; // Last rate when updateDefaultStatus() was called
 
     // solhint-disable-next-list no-empty-blocks
     constructor(address erc20_, IMain main_) AssetP0(erc20_, main_, Oracle.Source.AAVE) {}
@@ -53,7 +53,9 @@ contract CollateralP0 is ICollateral, AssetP0 {
         if (whenDefault > block.timestamp) {
             Fix fiatcoinPrice = fiatcoinPriceUSD().shiftLeft(int8(fiatcoinDecimals()));
             bool fiatcoinIsDefaulting = fiatcoinPrice.lte(_main.defaultingFiatcoinPrice());
-            whenDefault = fiatcoinIsDefaulting ? Math.min(whenDefault, block.timestamp + _main.defaultDelay()) : NEVER;
+            whenDefault = fiatcoinIsDefaulting
+                ? Math.min(whenDefault, block.timestamp + _main.defaultDelay())
+                : NEVER;
         }
 
         // Cache any lesser updates
@@ -105,13 +107,7 @@ contract CollateralP0 is ICollateral, AssetP0 {
     }
 
     /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
-    function fiatcoinPriceUSD()
-        public
-        view
-        virtual
-        override
-        returns (Fix)
-    {
+    function fiatcoinPriceUSD() public view virtual override returns (Fix) {
         return _main.oracle().consult(Oracle.Source.AAVE, address(fiatcoin()));
     }
 
@@ -125,5 +121,7 @@ contract CollateralP0 is ICollateral, AssetP0 {
         return false;
     }
 
-    function isCollateral() public pure override(IAsset, AssetP0) returns (bool) { return true; }
+    function isCollateral() public pure override(IAsset, AssetP0) returns (bool) {
+        return true;
+    }
 }
