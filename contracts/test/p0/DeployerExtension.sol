@@ -19,11 +19,11 @@ contract DeployerExtension is DeployerP0, IExtension {
     IMain internal _main;
 
     constructor(
-        IAsset rsr_,
-        IAsset comp_,
-        IAsset aave_,
+        address rsrAddr_,
+        address compAddr_,
+        address aaveAddr_,
         IMarket market_
-    ) DeployerP0(rsr_, comp_, aave_, market_) {
+    ) DeployerP0(rsrAddr_, compAddr_, aaveAddr_, market_) {
         _admin = msg.sender;
     }
 

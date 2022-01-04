@@ -92,8 +92,8 @@ contract MainMockP0 {
 
         _oracle = Oracle.Info(comptroller, aaveLendingPool);
 
-        compAsset = new COMPAssetP0(address(compToken));
-        aaveAsset = new AAVEAssetP0(address(aaveToken));
+        compAsset = new COMPAssetP0(address(compToken), IMain(address(this)));
+        aaveAsset = new AAVEAssetP0(address(aaveToken), IMain(address(this)));
     }
 
     function setStRSR(IStRSR stRSR_) external {

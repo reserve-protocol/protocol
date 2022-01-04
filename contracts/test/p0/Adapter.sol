@@ -113,9 +113,6 @@ contract AdapterP0 is ProtoAdapter {
                 s.collateral[10].symbol,
                 address(busd)
             );
-            _rsr = new ERC20Mock(s.rsr.name, s.rsr.symbol);
-            _comp = new ERC20Mock(s.comp.name, s.comp.symbol);
-            _aave = new ERC20Mock(s.aave.name, s.aave.symbol);
 
             collateral[0] = _deployCollateral(ERC20Mock(address(dai)), AssetName.DAI);
             collateral[1] = _deployCollateral(ERC20Mock(address(usdc)), AssetName.USDC);
@@ -129,18 +126,15 @@ contract AdapterP0 is ProtoAdapter {
             collateral[9] = _deployCollateral(ERC20Mock(address(aUSDT)), AssetName.aUSDT);
             collateral[10] = _deployCollateral(ERC20Mock(address(aBUSD)), AssetName.aBUSD);
 
-            _assets[AssetName.RSR] = new RSRAssetP0(address(_rsr));
-            _assets[AssetName.COMP] = new COMPAssetP0(address(_comp));
-            _assets[AssetName.AAVE] = new AAVEAssetP0(address(_aave));
-            _reverseAssets[_rsr] = AssetName.RSR;
-            _reverseAssets[_comp] = AssetName.COMP;
-            _reverseAssets[_aave] = AssetName.AAVE;
+            _rsr = new ERC20Mock(s.rsr.name, s.rsr.symbol);
+            _comp = new ERC20Mock(s.comp.name, s.comp.symbol);
+            _aave = new ERC20Mock(s.aave.name, s.aave.symbol);
 
             _market = new MarketMock();
             _deployer = new DeployerExtension(
-                _assets[AssetName.RSR],
-                _assets[AssetName.COMP],
-                _assets[AssetName.AAVE],
+                address(_rsr),
+                address(_comp),
+                address(_aave),
                 _market
             );
             _setDefiCollateralRates(s.defiCollateralRates);
@@ -221,6 +215,17 @@ contract AdapterP0 is ProtoAdapter {
             for (uint256 i = 0; i < vaults.length; i++) {
                 vaults[i].setMain(_main);
             }
+        }
+
+        // Initialize common assets
+        {
+            _assets[AssetName.RSR] = new RSRAssetP0(address(_rsr), _main);
+            _assets[AssetName.COMP] = new COMPAssetP0(address(_comp), _main);
+            _assets[AssetName.AAVE] = new AAVEAssetP0(address(_aave), _main);
+            _reverseAssets[_rsr] = AssetName.RSR;
+            _reverseAssets[_comp] = AssetName.COMP;
+            _reverseAssets[_aave] = AssetName.AAVE;
+
         }
 
         // Populate token ledgers + oracle prices
@@ -497,9 +502,9 @@ contract AdapterP0 is ProtoAdapter {
                 IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
                 IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
                 newBid.buyAmount = toFix(sellAmount)
-                .mul(buyAsset.priceUSD(_main.oracle()))
-                .div(sellAsset.priceUSD(_main.oracle()))
-                .ceil();
+                    .mul(buyAsset.priceUSD())
+                    .div(sellAsset.priceUSD())
+                    .ceil();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(
                     newBid.bidder,
