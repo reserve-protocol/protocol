@@ -225,7 +225,6 @@ contract AdapterP0 is ProtoAdapter {
             _reverseAssets[_rsr] = AssetName.RSR;
             _reverseAssets[_comp] = AssetName.COMP;
             _reverseAssets[_aave] = AssetName.AAVE;
-
         }
 
         // Populate token ledgers + oracle prices
@@ -455,11 +454,11 @@ contract AdapterP0 is ProtoAdapter {
         string memory c = "c";
         string memory a = "a";
         if (erc20.symbol().toSlice().startsWith(c.toSlice())) {
-            _assets[collateralAsset] = new CTokenCollateralP0(address(erc20));
+            _assets[collateralAsset] = new CTokenCollateralP0(address(erc20), _main);
         } else if (erc20.symbol().toSlice().startsWith(a.toSlice())) {
-            _assets[collateralAsset] = new ATokenCollateralP0(address(erc20));
+            _assets[collateralAsset] = new ATokenCollateralP0(address(erc20), _main);
         } else {
-            _assets[collateralAsset] = new CollateralP0(address(erc20));
+            _assets[collateralAsset] = new CollateralP0(address(erc20), _main);
         }
         _reverseAssets[ERC20Mock(address(_assets[collateralAsset].erc20()))] = collateralAsset;
         return ICollateral(address(_assets[collateralAsset]));
@@ -502,9 +501,9 @@ contract AdapterP0 is ProtoAdapter {
                 IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
                 IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
                 newBid.buyAmount = toFix(sellAmount)
-                    .mul(buyAsset.priceUSD())
-                    .div(sellAsset.priceUSD())
-                    .ceil();
+                .mul(buyAsset.priceUSD())
+                .div(sellAsset.priceUSD())
+                .ceil();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(
                     newBid.bidder,
