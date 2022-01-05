@@ -24,8 +24,8 @@ interface AToken {
     function UNDERLYING_ASSET_ADDRESS() external view returns (address);
 }
 
-/// @dev In Aave the number of decimals of the staticAToken is always 18, but the underlying rebasing
-/// AToken will have the same number of decimals as its fiatcoin.
+/// @dev In Aave the number of decimals of the staticAToken is always 18, but the
+/// underlying rebasing AToken will have the same number of decimals as its fiatcoin.
 contract ATokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
 

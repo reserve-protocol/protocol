@@ -229,7 +229,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_fromBUInverseToBU() internal view returns (bool ok) {
         ok = true;
-        uint256 bu_s = vault().basketUnits(address(this));
+        uint256 bu_s = vault().basketUnits(address(rToken()));
         ok = ok && toFix(toBUs(fromBUs(bu_s))).near(toFix(bu_s), toFix(2)); // < 2 away
         if (!ok) {
             console.log("_INVARIANT_fromBUInverseToBU violated", toBUs(fromBUs(bu_s)), bu_s);

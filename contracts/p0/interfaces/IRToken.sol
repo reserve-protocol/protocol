@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "contracts/p0/interfaces/IMain.sol";
 
 /**
  * @title IRToken
@@ -27,9 +28,11 @@ interface IRToken is IERC20Metadata {
     /// @return true
     function melt(address from, uint256 amount) external returns (bool);
 
-    function setMain(address main) external;
+    function withdrawBUs(address to, uint256 amount) external;
 
-    function main() external view returns (address);
+    function setMain(IMain main) external;
+
+    function main() external view returns (IMain);
 
     function totalMelted() external view returns (uint256);
 }

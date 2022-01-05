@@ -76,7 +76,7 @@ contract AuctioneerP0 is
             uint256 maxBUs = toBUs(migrationChunk().mulu(rToken().totalSupply()).round());
             uint256 redeemedBUs = _redeemFromOldVaults(address(backingTrader), maxBUs, false);
             uint256 buShortfall = toBUs(rToken().totalSupply()) -
-                vault().basketUnits(address(this));
+                vault().basketUnits(address(rToken()));
 
             if (redeemedBUs > 0) {
                 backingTrader.increaseBUTarget(redeemedBUs, buShortfall);
@@ -121,7 +121,7 @@ contract AuctioneerP0 is
         // The ultimate endgame: a haircut for RToken holders.
         beforeUpdate();
         _historicalBasketDilution = _meltingFactor().mulu(rToken().totalSupply()).divu(
-            vault().basketUnits(address(this))
+            vault().basketUnits(address(rToken()))
         );
         _setMood(Mood.CALM);
     }

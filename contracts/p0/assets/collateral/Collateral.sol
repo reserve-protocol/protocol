@@ -10,7 +10,7 @@ import "contracts/libraries/Fixed.sol";
 
 /**
  * @title CollateralP0
- * @notice A vanilla asset such as a fiatcoin, to be extended by more complex assets such as cTokens.
+ * @notice A vanilla asset such as a fiatcoin, to be extended by more complex assets.
  */
 contract CollateralP0 is ICollateral {
     using FixLib for Fix;
@@ -28,13 +28,13 @@ contract CollateralP0 is ICollateral {
         return true;
     }
 
-    /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
+    /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin.
     function rateFiatcoin() public view virtual override returns (Fix) {
         // {qFiatTok/qTok} = {qFiatTok/fiatTok} / {qTok/tok}
         return toFixWithShift(1, int8(fiatcoinDecimals()) - int8(decimals()));
     }
 
-    /// @return {attoUSD/qTok} Without using oracles, returns the expected attoUSD value of one qTok.
+    /// @return {attoUSD/qTok} Without oracles, returns the expected attoUSD value per qTok.
     function rateUSD() public view virtual override returns (Fix) {
         // {attoUSD/qTok} = {attoUSD/tok} / {qTok/tok}
         return toFixWithShift(1, 18 - int8(decimals()));
@@ -60,7 +60,7 @@ contract CollateralP0 is ICollateral {
         return IERC20Metadata(_erc20).decimals();
     }
 
-    /// @return The number of decimals in the nested fiatcoin contract (or for the erc20 itself if it is a fiatcoin)
+    /// @return The number of decimals in the underlying fiatcoin contract
     function fiatcoinDecimals() public view override returns (uint8) {
         return IERC20Metadata(address(fiatcoin())).decimals();
     }
