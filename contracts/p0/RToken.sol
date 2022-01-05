@@ -11,7 +11,7 @@ import "contracts/p0/interfaces/IRToken.sol";
  * @notice An ERC20 with an elastic supply.
  */
 contract RTokenP0 is Ownable, ERC20, IRToken {
-    address public override main;
+    IMain public override main;
 
     uint256 public override totalMelted;
 
@@ -23,7 +23,7 @@ contract RTokenP0 is Ownable, ERC20, IRToken {
     /// @param amount {qTok} The amount to be minted
     /// @return true
     function mint(address recipient, uint256 amount) external virtual override returns (bool) {
-        require(_msgSender() == main, "only main");
+        require(_msgSender() == address(main), "only main");
         _mint(recipient, amount);
         return true;
     }
@@ -49,7 +49,12 @@ contract RTokenP0 is Ownable, ERC20, IRToken {
         return true;
     }
 
-    function setMain(address main_) external virtual override onlyOwner {
+    function withdrawBUs(address to, uint256 amount) external virtual override {
+        require(_msgSender() == address(main), "only main");
+        main.vault().transfer(address(main), amount);
+    }
+
+    function setMain(IMain main_) external virtual override onlyOwner {
         main = main_;
     }
 }

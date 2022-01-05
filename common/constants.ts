@@ -18,5 +18,12 @@ export enum Mood {
   TRADING,
 }
 
+// @dev Must match `Fixed.RoundingApproach`.
+export enum RoundingApproach{
+  FLOOR,
+  ROUND,
+  CEIL,
+}
+
 export const FURNACE_DEST = '0x0000000000000000000000000000000000000001'
 export const STRSR_DEST = '0x0000000000000000000000000000000000000002'

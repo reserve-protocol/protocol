@@ -92,7 +92,7 @@ contract DeployerP0 is IDeployer {
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken), main);
             main.setRTokenAsset(rTokenAsset);
 
-            rToken.setMain(address(main));
+            rToken.setMain(main);
             Ownable(address(rToken)).transferOwnership(owner);
         }
 

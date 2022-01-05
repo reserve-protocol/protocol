@@ -94,7 +94,7 @@ contract RevenueHandlerP0 is
     }
 
     function _expandSupplyToRSRTrader() internal {
-        uint256 possible = fromBUs(vault().basketUnits(address(this)));
+        uint256 possible = fromBUs(vault().basketUnits(address(rToken())));
         uint256 totalSupply = rToken().totalSupply();
         if (fullyCapitalized() && possible > totalSupply) {
             rToken().mint(address(rsrTrader), possible - totalSupply);

@@ -77,7 +77,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() public view override returns (bool) {
-        return fromBUs(vault().basketUnits(address(this))) >= rToken().totalSupply();
+        return fromBUs(vault().basketUnits(address(rToken()))) >= rToken().totalSupply();
     }
 
     /// {qRTok} -> {qBU}
@@ -158,8 +158,9 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         address recipient,
         uint256 maxToRedeem
     ) private returns (uint256 toRedeem) {
-        toRedeem = Math.min(vault_.basketUnits(address(this)), maxToRedeem);
+        toRedeem = Math.min(vault_.basketUnits(address(rToken())), maxToRedeem);
         if (toRedeem > 0) {
+            rToken().withdrawBUs(address(this), toRedeem);
             vault_.redeem(recipient, toRedeem);
         }
     }
