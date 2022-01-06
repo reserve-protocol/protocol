@@ -19,7 +19,7 @@ export enum Mood {
 }
 
 // @dev Must match `Fixed.RoundingApproach`.
-export enum RoundingApproach{
+export enum RoundingApproach {
   FLOOR,
   ROUND,
   CEIL,
