@@ -243,6 +243,8 @@ interface IVaultHandler {
 
     function fromBUs(uint256 amtBUs) external view returns (uint256);
 
+    function baseFactor() external view returns (Fix);
+
     function fullyCapitalized() external view returns (bool);
 
     function vault() external view returns (IVault);

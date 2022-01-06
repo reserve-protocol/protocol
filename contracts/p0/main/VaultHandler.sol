@@ -82,12 +82,20 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
 
     /// {qRTok} -> {qBU}
     function toBUs(uint256 amount) public view override returns (uint256) {
-        return _baseFactor().mulu(amount).floor();
+        return baseFactor().mulu(amount).floor();
     }
 
     /// {qBU} -> {qRTok}
     function fromBUs(uint256 amtBUs) public view override returns (uint256) {
-        return divFix(amtBUs, _baseFactor()).floor();
+        return divFix(amtBUs, baseFactor()).floor();
+    }
+
+    /// @return {qRTok/qBU} The conversion rate from BUs to RTokens,
+    /// 1.0 if the total rtoken supply is 0
+    /// Else, (melting factor) / (basket dilution factor)
+    function baseFactor() public view returns (Fix) {
+        return
+            rToken().totalSupply() == 0 ? FIX_ONE : _meltingFactor().div(_basketDilutionFactor());
     }
 
     // ==== Internal ====
@@ -99,14 +107,6 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
 
         // TODO: Hmm I don't love this, but we need to cause _processSlowMintings in RTokenIssuer
         beforeUpdate();
-    }
-
-    /// @return {qRTok/qBU} The conversion rate from BUs to RTokens,
-    /// 1.0 if the total rtoken supply is 0
-    /// Else, (melting factor) / (basket dilution factor)
-    function _baseFactor() internal view returns (Fix) {
-        return
-            rToken().totalSupply() == 0 ? FIX_ONE : _meltingFactor().div(_basketDilutionFactor());
     }
 
     /* As the basketRate increases, the basketDilutionFactor increases at a proportional rate.
