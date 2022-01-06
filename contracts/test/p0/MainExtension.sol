@@ -203,7 +203,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     // Ex-asset manager
 
     function _INVARIANT_baseFactorDefined() internal view returns (bool ok) {
-        Fix b = _baseFactor();
+        Fix b = baseFactor();
         ok = b.gt(FIX_ZERO);
         if (!ok) {
             console.log("_INVARIANT_baseFactorDefined violated");

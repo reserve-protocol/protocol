@@ -30,9 +30,9 @@ contract RTokenAssetP0 is AssetP0 {
         }
 
         // {attoUSD/qBU} = {attoUSD/BU} / {qBU/BU}
-        uint256 perQBU = sum.divu(10**v.BU_DECIMALS()).floor();
+        Fix perQBU = sum.divu(10**v.BU_DECIMALS());
 
         // {attoUSD/qRTok} = {attoUSD/qBU} * {qBU/qRTok}
-        return toFix(main.fromBUs(perQBU));
+        return perQBU.mul(main.baseFactor());
     }
 }
