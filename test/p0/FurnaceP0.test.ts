@@ -163,7 +163,7 @@ describe('FurnaceP0 contract', () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
       // Check burn registered
-      expectBatchInfo(0, {
+      await expectBatchInfo(0, {
         amount: hndAmt,
         start: await getLatestBlockTimestamp(),
         melted: bn('0'),
@@ -182,7 +182,7 @@ describe('FurnaceP0 contract', () => {
       await furnace.connect(addr1).notifyOfDeposit(rToken.address)
 
       // Check burn registered
-      expectBatchInfo(0, {
+      await expectBatchInfo(0, {
         amount: hndAmt1.add(hndAmt2),
         start: await getLatestBlockTimestamp(),
         melted: bn('0'),
@@ -197,7 +197,7 @@ describe('FurnaceP0 contract', () => {
       await furnace.connect(addr1).notifyOfDeposit(rToken.address)
 
       // Check burn registered
-      expectBatchInfo(1, {
+      await expectBatchInfo(1, {
         amount: hndAmt1,
         start: await getLatestBlockTimestamp(),
         melted: bn('0'),
@@ -248,7 +248,7 @@ describe('FurnaceP0 contract', () => {
       await furnace.connect(addr1).doMelt()
 
       // Check burn registered
-      expectBatchInfo(0, {
+      await expectBatchInfo(0, {
         amount: hndAmt,
         start: hndTimestamp,
         melted: hndAmt,
@@ -283,7 +283,7 @@ describe('FurnaceP0 contract', () => {
       await furnace.connect(addr1).doMelt()
 
       // Check burn registered
-      expectBatchInfo(0, {
+      await expectBatchInfo(0, {
         amount: hndAmt,
         start: hndTimestamp,
         melted: hndAmt,
@@ -321,7 +321,7 @@ describe('FurnaceP0 contract', () => {
       await furnace.connect(addr1).doMelt()
 
       // Check burn not modified
-      expectBatchInfo(0, {
+      await expectBatchInfo(0, {
         amount: hndAmt,
         start: hndTimestamp,
         melted: hndAmt,
@@ -358,7 +358,7 @@ describe('FurnaceP0 contract', () => {
       await furnace.connect(addr1).doMelt()
 
       // Check burn registered
-      expectBatchInfo(0, {
+      await expectBatchInfo(0, {
         amount: hndAmt,
         start: hndTimestamp,
         melted: hndAmt.div(2),
@@ -375,7 +375,7 @@ describe('FurnaceP0 contract', () => {
       await furnace.connect(addr2).doMelt()
 
       // Check burn registered
-      expectBatchInfo(0, {
+      await expectBatchInfo(0, {
         amount: hndAmt,
         start: hndTimestamp,
         melted: hndAmt,
@@ -421,14 +421,14 @@ describe('FurnaceP0 contract', () => {
       await furnace.connect(addr2).doMelt()
 
       // Check burn registered in both batches
-      expectBatchInfo(0, {
+      await expectBatchInfo(0, {
         amount: hndAmt,
         start: hndTimestamp,
         melted: hndAmt,
       })
 
       // Batch burn 2
-      expectBatchInfo(1, {
+      await expectBatchInfo(1, {
         amount: hndAmt2,
         start: hndTimestamp1,
         melted: hndAmt2,
@@ -460,7 +460,7 @@ describe('FurnaceP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
-      expectBatchInfo(0, {
+      await expectBatchInfo(0, {
         amount: hndAmt,
         start: await getLatestBlockTimestamp(),
         melted: bn('0'),
