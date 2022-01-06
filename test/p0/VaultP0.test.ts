@@ -60,7 +60,6 @@ describe('VaultP0 contract', () => {
   let quantities: BigNumber[]
   let initialBal: BigNumber
 
-
   const createFixtureLoader = waffle.createFixtureLoader
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -291,7 +290,9 @@ describe('VaultP0 contract', () => {
       // For the vault used by default in these tests (four fiatcoin tokens) - Redemption = 1e18
       expect(await vault.basketRate()).to.equal(fp('1e18'))
       expect(await vault.quote(ONE, RoundingApproach.CEIL)).to.eql(quantities)
-      expect(await vault.quote(TWO, RoundingApproach.CEIL)).to.eql(quantities.map((amt) => amt.mul(2)))
+      expect(await vault.quote(TWO, RoundingApproach.CEIL)).to.eql(
+        quantities.map((amt) => amt.mul(2))
+      )
     })
 
     it('Should adjust basketRate and quote for decimals (USDC)', async function () {
