@@ -765,7 +765,7 @@ describe('MainP0 contract', () => {
       )
     })
 
-    it.skip('Should rollback mintings if Vault changes (2 blocks)', async function () {
+    it('Should rollback mintings if Vault changes (2 blocks)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
       const expectedTkn0: BigNumber = issueAmount
@@ -803,7 +803,7 @@ describe('MainP0 contract', () => {
       expect(await token3.balanceOf(vault.address)).to.equal(expectedTkn3)
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
 
-      expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await rToken.balanceOf(main.address)).to.equal(issueAmount)
       expect(await vault.basketUnits(main.address)).to.equal(issueAmount)
 
       // Process slow issuances
