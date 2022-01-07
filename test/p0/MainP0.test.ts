@@ -574,7 +574,7 @@ describe('MainP0 contract', () => {
       expect(sm_proc).to.equal(false)
     })
 
-    it.skip('Should process issuances in multiple attempts (using minimum issuance)', async function () {
+    it('Should process issuances in multiple attempts (using minimum issuance)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
       const expectedTkn0: BigNumber = issueAmount
@@ -612,7 +612,7 @@ describe('MainP0 contract', () => {
       expect(await token3.balanceOf(vault.address)).to.equal(expectedTkn3)
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
 
-      expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await rToken.balanceOf(main.address)).to.equal(issueAmount)
       expect(await vault.basketUnits(main.address)).to.equal(issueAmount)
 
       // Check if minting was registered
@@ -622,7 +622,7 @@ describe('MainP0 contract', () => {
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_bu).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
-      expect(sm_at).to.equal(currentBlockNumber + 5)
+      expect(sm_at).to.equal(fp(currentBlockNumber + 5))
       expect(sm_proc).to.equal(false)
 
       // Process slow issuances
@@ -643,10 +643,11 @@ describe('MainP0 contract', () => {
       ;[, , , , , sm_proc] = await main.issuances(0)
       expect(sm_proc).to.equal(true)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-      expect(await vault.basketUnits(main.address)).to.equal(issueAmount)
+      expect(await vault.basketUnits(main.address)).to.equal(0)
+      expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount)
     })
 
-    it.skip('Should process issuances in multiple attempts (using issuanceRate)', async function () {
+    it('Should process issuances in multiple attempts (using issuanceRate)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
       // Provide approvals
@@ -668,7 +669,8 @@ describe('MainP0 contract', () => {
       // Check issuance was confirmed
       expect(await rToken.totalSupply()).to.equal(issueAmount)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-      expect(await vault.basketUnits(main.address)).to.equal(issueAmount)
+      expect(await vault.basketUnits(main.address)).to.equal(0)
+      expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount)
 
       // Set issuance rate to 50% per block
       // Set Max auction to 100%  and migration chunk to 100% to do it in one single redemption and auction
@@ -678,6 +680,7 @@ describe('MainP0 contract', () => {
 
       // Try new issuance. Should be based on issuance rate = 50% per block should take two blocks
       // Based on current supply its gonna be 25000e18 tokens per block
+      const ISSUANCE_PER_BLOCK = bn('25000e18')
       const newIssuanceAmt: BigNumber = bn('30000e18')
 
       // Issue rTokens
@@ -686,12 +689,14 @@ describe('MainP0 contract', () => {
       // Check if minting was registered
       let currentBlockNumber = await ethers.provider.getBlockNumber()
       let [sm_vault, sm_amt, sm_bu, sm_minter, sm_at, sm_proc] = await main.issuances(1)
+
+      const blockAddPct: BigNumber = newIssuanceAmt.mul(BN_SCALE_FACTOR).div(ISSUANCE_PER_BLOCK)
       expect(sm_vault).to.equal(vault.address)
       expect(sm_amt).to.equal(newIssuanceAmt)
       expect(sm_bu).to.equal(newIssuanceAmt)
       expect(sm_minter).to.equal(addr1.address)
       // Using issuance rate of 50% = 2 blocks
-      expect(sm_at).to.equal(currentBlockNumber + 2)
+      expect(sm_at).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
 
       // Process slow issuances
@@ -701,7 +706,8 @@ describe('MainP0 contract', () => {
       ;[, , , , , sm_proc] = await main.issuances(1)
       expect(sm_proc).to.equal(false)
       expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
-      expect(await vault.basketUnits(main.address)).to.equal(issueAmount.add(newIssuanceAmt))
+      expect(await vault.basketUnits(main.address)).to.equal(newIssuanceAmt)
+      expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Process slow mintings one more time
@@ -712,10 +718,11 @@ describe('MainP0 contract', () => {
       expect(sm_proc).to.equal(true)
       expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssuanceAmt))
-      expect(await vault.basketUnits(main.address)).to.equal(issueAmount.add(newIssuanceAmt))
+      expect(await vault.basketUnits(main.address)).to.equal(0)
+      expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount.add(newIssuanceAmt))
     })
 
-    it.skip('Should process multiple issuances in the correct order', async function () {
+    it('Should process multiple issuances in the correct order', async function () {
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)
       await token1.connect(addr1).approve(main.address, initialBal)
@@ -738,19 +745,24 @@ describe('MainP0 contract', () => {
 
       // Check first slow minting is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-      expect(await vault.basketUnits(main.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
+      expect(await vault.basketUnits(main.address)).to.equal(newIssueAmount.mul(2))
+      expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount)
 
       // Process another block to get the 2nd issuance processed
       await main.poke()
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
-      expect(await vault.basketUnits(main.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
+      expect(await vault.basketUnits(main.address)).to.equal(newIssueAmount)
+      expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount.add(newIssueAmount))
 
       // Process another block to get the 3rd issuance processed
       await main.poke()
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
-      expect(await vault.basketUnits(main.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
+      expect(await vault.basketUnits(main.address)).to.equal(0)
+      expect(await vault.basketUnits(rToken.address)).to.equal(
+        issueAmount.add(newIssueAmount.mul(2))
+      )
     })
 
     it.skip('Should rollback mintings if Vault changes (2 blocks)', async function () {
