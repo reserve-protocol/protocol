@@ -8,11 +8,11 @@ import "contracts/p0/interfaces/IRewardsClaimer.sol";
 import "contracts/libraries/Fixed.sol";
 
 /// @param collateral Mapping from an incremental index to asset
-/// @param quantities {qTok/BU}
+/// @param quantities {tok/BU}
 /// @param size The number of collateral in the basket
 struct Basket {
     mapping(uint256 => ICollateral) collateral; // index -> asset
-    mapping(IAsset => uint256) quantities; // {qTok/BU}
+    mapping(IAsset => Fix) quantities; // {tok/BU}
     uint256 size;
 }
 
@@ -56,8 +56,8 @@ interface IVault is IRewardsClaimer {
     /// Main Setter
     function setMain(IMain main) external;
 
-    /// @return {USD/qBU} The USD value of 1 BU if all fiatcoins hold peg
-    function basketRate() external view returns (Fix);
+    /// @return {Price/BU} The Price of 1 whole BU
+    function basketPrice() external view returns (Price memory);
 
     /// @return {qTok} A list of token quantities required in order to issue `amtBUs`, in the order of the basket.
     function quote(uint256 amtBUs, RoundingApproach rounding)
@@ -80,8 +80,8 @@ interface IVault is IRewardsClaimer {
     /// @return The number of basket units `account` has
     function basketUnits(address account) external view returns (uint256);
 
-    /// @return {qTok/BU} The quantity of tokens of `asset` required per whole BU
-    function quantity(IAsset asset) external view returns (uint256);
+    /// @return {tok/BU} The quantity of whole tokens of `asset` required per whole BU
+    function quantity(IAsset asset) external view returns (Fix);
 
     /// @return A list of eligible backup vaults
     function getBackups() external view returns (IVault[] memory);

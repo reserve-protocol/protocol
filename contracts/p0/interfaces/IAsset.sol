@@ -1,59 +1,58 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/p0/libraries/Oracle.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
+
+/// Unit of Account
+enum UoA {
+    USD,
+    EUR
+}
+
+struct Price {
+    Fix attoUSD;
+    Fix attoEUR;
+}
 
 /**
  * @title IAsset
- * @notice The top-level Asset interface. Any token that our system handles must be wrapped in an asset.
+ * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,
+ * whether it is used as RToken backing, or not.
  */
 interface IAsset {
-    /// Forces an update in any underlying Defi protocol. Block-idempotent.
-    function poke() external;
+    /// Unit of Account
+    /// @return The primary Unit of Account for the asset
+    function uoa() external view returns (UoA);
 
-    /// @return {attoUSD/qTok} The price in USD of the asset as a function of DeFi redemption rates + oracle data
-    function priceUSD() external view returns (Fix);
+    /// @return {Price/tok} The price of 1 whole token
+    function price() external view returns (Price memory);
 
-    /// @return The ERC20 contract of the central token
-    function erc20() external view returns (IERC20);
-
-    /// @return The number of decimals in the central token
-    function decimals() external view returns (uint8);
-
-    /// @return Whether the asset is an AToken
-    function isAToken() external pure returns (bool);
-
-    /// @return Whether the asset can be safely interpreted as an ICollateral.
-    function isCollateral() external pure returns (bool);
+    /// @return The ERC20 contract of the token with decimals() available
+    function erc20() external view returns (IERC20Metadata);
 }
 
-enum AssetStatus { SOUND, IFFY, DEFAULTED }
+enum CollateralStatus {
+    SOUND,
+    IFFY,
+    DEFAULTED
+}
 
 /**
  * @title ICollateral
  * @notice A subtype of Asset that consists of the tokens eligible to back the RToken.
+ * There are two types of collateral, derivative and non-derivative.
+ *   - Derivative collateral has underlying collateral (like a non-leaf node in a linked list)
+ *   - Non-derivative collateral is itself a direct representation of a UoA (Unit of Account)
+ * Note: This structure can be used to capture N-levels-nested asset structures.
  */
 interface ICollateral is IAsset {
-    /// @return The status of this asset. (Is it defaulting? Might it soon?)
-    function status() external view returns (AssetStatus);
+    /// Forces any updates, such as updating the default status. Block-idempotent.
+    function forceUpdates() external;
 
-    /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
-    function rateFiatcoin() external view returns (Fix);
+    /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
+    function defaultStatus() external view returns (CollateralStatus);
 
-    /// @return {attoUSD/qTok} Without using oracles, returns the expected attoUSD value of one qTok.
-    function rateUSD() external view returns (Fix);
-
-    /// @return The number of decimals in the nested fiatcoin contract (or for the erc20 itself if it is a fiatcoin)
-    function fiatcoinDecimals() external view returns (uint8);
-
-    /// @return The fiatcoin underlying the ERC20, or the erc20 itself if it is a fiatcoin
-    function fiatcoin() external view returns (IERC20);
-
-    /// @return {attoUSD/qTok} The price in USD of the fiatcoin underlying the ERC20 (or the price of the ERC20 itself)
-    function fiatcoinPriceUSD() external view returns (Fix);
-
-    /// @return Whether the asset is (directly) a fiatcoin
-    function isFiatcoin() external view returns (bool);
+    /// @return The address of the underlying collateral asset, or the 0 address if there isn't one
+    function underlying() external view returns (ICollateral);
 }

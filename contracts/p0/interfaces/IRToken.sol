@@ -32,7 +32,5 @@ interface IRToken is IERC20Metadata {
 
     function setMain(IMain main) external;
 
-    function main() external view returns (IMain);
-
     function totalMelted() external view returns (uint256);
 }

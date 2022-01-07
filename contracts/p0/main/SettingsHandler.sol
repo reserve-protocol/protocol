@@ -23,7 +23,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     using Oracle for Oracle.Info;
     using FixLib for Fix;
 
-    Oracle.Info private _oracle;
+    mapping(UoA => Oracle.Info) private _oracles;
     IMarket private _market;
 
     uint256 private _rewardStart;
@@ -73,12 +73,12 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         super.beforeUpdate();
     }
 
-    function setOracle(Oracle.Info memory oracle_) external override onlyOwner {
-        _oracle = oracle_;
+    function setOracle(UoA uoa, Oracle.Info memory oracle_) external override onlyOwner {
+        _oracles[uoa] = oracle_;
     }
 
-    function oracle() public view override returns (Oracle.Info memory) {
-        return _oracle;
+    function oracle(UoA uoa) public view override returns (Oracle.Info memory) {
+        return _oracles[uoa];
     }
 
     function setStRSR(IStRSR stRSR_) external override onlyOwner {

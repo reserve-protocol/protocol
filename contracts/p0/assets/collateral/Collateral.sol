@@ -25,19 +25,19 @@ contract CollateralP0 is ICollateral, AssetP0 {
     // whenDefault <= block.timestamp: default has already happened (permanently)
     uint256 internal constant NEVER = type(uint256).max;
     uint256 internal whenDefault = NEVER;
-    uint256 internal prevBlock; // Last block when updateDefaultStatus() was called
-    Fix internal prevRate; // Last rate when updateDefaultStatus() was called
+    uint256 internal prevBlock; // Last block when _updateDefaultStatus() was called
+    Fix internal prevRate; // Last rate when _updateDefaultStatus() was called
 
     // solhint-disable-next-list no-empty-blocks
     constructor(address erc20_, IMain main_) AssetP0(erc20_, main_, Oracle.Source.AAVE) {}
 
     /// Forces an update in any underlying Defi protocol
     function poke() public virtual override(IAsset, AssetP0) {
-        updateDefaultStatus();
+        _updateDefaultStatus();
     }
 
     /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
-    function updateDefaultStatus() internal {
+    function _updateDefaultStatus() internal {
         if (whenDefault <= block.timestamp || block.number <= prevBlock) {
             // Nothing will change if either we're already fully defaulted
             // or if we've already updated default status this block.
@@ -65,15 +65,18 @@ contract CollateralP0 is ICollateral, AssetP0 {
     }
 
     /// @return The asset's default status
-    function status() public view returns (AssetStatus) {
+    function status() public view returns (CollateralStatus) {
         if (whenDefault == 0) {
-            return AssetStatus.SOUND;
+            return CollateralStatus.SOUND;
         } else if (block.timestamp < whenDefault) {
-            return AssetStatus.IFFY;
+            return CollateralStatus.IFFY;
         } else {
-            return AssetStatus.DEFAULTED;
+            return CollateralStatus.DEFAULTED;
         }
     }
+
+    // solhint-disable-next-list no-empty-blocks
+    function forceDefiUpdates() public virtual override {}
 
     /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin.
     function rateFiatcoin() public view virtual override returns (Fix) {

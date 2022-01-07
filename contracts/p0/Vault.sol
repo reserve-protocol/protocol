@@ -29,7 +29,6 @@ contract VaultP0 is IVault, Ownable {
 
     Basket internal _basket;
 
-    // mapping(address => mapping(address => uint256)) internal _allowances; // {qBU}
     mapping(address => uint256) public override basketUnits; // {qBU}
     uint256 public totalUnits; // {qBU}
 
@@ -37,10 +36,10 @@ contract VaultP0 is IVault, Ownable {
 
     IMain public main;
 
-    /// @param quantities {qTok/BU}
+    /// @param quantities {tok/BU}
     constructor(
         ICollateral[] memory collateral,
-        uint256[] memory quantities,
+        Fix[] memory quantities,
         IVault[] memory backupVaults
     ) {
         require(collateral.length == quantities.length, "arrays must match in length");
@@ -117,27 +116,29 @@ contract VaultP0 is IVault, Ownable {
     {
         amounts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
-            // {qTok} = {qBU} *  {qTok/BU} / {qBU/BU}
+            // {qTok} = {qBU} * {qTok/tok} * {tok/BU} / {qBU/BU}
             amounts[i] = toFix(amtBUs)
-            .shiftLeft(-int8(BU_DECIMALS))
+            .shiftLeft(int8(_basket.collateral[i].erc20().decimals()) - int8(BU_DECIMALS))
             .mulu(_basket.quantities[_basket.collateral[i]])
             .toUint(rounding);
         }
     }
 
-    /// @return {qTok/BU} The quantity of tokens of `asset` required per whole BU
+    /// @return {tok/BU} The quantity of whole tokens of `asset` required per whole BU
     function quantity(IAsset asset) external view override returns (uint256) {
         return _basket.quantities[asset];
     }
 
-    /// @return sum {attoUSD/BU} The attoUSD value of 1 BU if all fiatcoins hold peg
-    function basketRate() external view override returns (Fix sum) {
+    /// @return price {Price/BU} The Price of 1 whole BU
+    function basketPrice() external view override returns (Price memory price) {
+        Fix attoUSD = FIX_ZERO;
         for (uint256 i = 0; i < _basket.size; i++) {
             ICollateral a = _basket.collateral[i];
 
-            // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
-            sum = sum.plus(a.rateUSD().mulu(_basket.quantities[a]));
+            // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/tok} * {tok/BU}
+            attoUSD = attoUSD.plus(a.price().attoUSD.mulu(_basket.quantities[a]));
         }
+        price = Price(attoUSD, 0);
     }
 
     /// @return Whether the vault is made up only of collateral in `collateral`

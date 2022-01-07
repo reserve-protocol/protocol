@@ -162,7 +162,7 @@ interface ISettingsHandler {
 
     function setDefaultThreshold(Fix defaultThreshold) external;
 
-    function setOracle(Oracle.Info memory oracle) external;
+    function setOracle(UoA uoa, Oracle.Info memory oracle) external;
 
     function setStRSR(IStRSR stRSR) external;
 
@@ -216,7 +216,7 @@ interface ISettingsHandler {
 
     function aaveAsset() external view returns (IAsset);
 
-    function oracle() external view returns (Oracle.Info memory);
+    function oracle(UoA uoa) external view returns (Oracle.Info memory);
 
     function market() external view returns (IMarket);
 

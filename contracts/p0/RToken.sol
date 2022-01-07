@@ -11,7 +11,7 @@ import "contracts/p0/interfaces/IRToken.sol";
  * @notice An ERC20 with an elastic supply.
  */
 contract RTokenP0 is Ownable, ERC20, IRToken {
-    IMain public override main;
+    IMain public main;
 
     uint256 public override totalMelted;
 
