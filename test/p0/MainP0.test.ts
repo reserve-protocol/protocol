@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, FixedNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
 import {
@@ -375,7 +375,9 @@ describe('MainP0 contract', () => {
     })
   })
 
-  describe.skip('Issuance and Slow Minting', function () {
+  describe('Issuance and Slow Minting', function () {
+    const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+
     it('Should not issue RTokens if paused', async function () {
       const issueAmount: BigNumber = bn('10e18')
 
@@ -421,8 +423,8 @@ describe('MainP0 contract', () => {
       expect(await vault.basketUnits(main.address)).to.equal(0)
     })
 
-    it.skip('Should issue RTokens with single basket token', async function () {
-      const issueAmount: BigNumber = bn('10e18')
+    it('Should issue RTokens with single basket token', async function () {
+      const issueAmount: BigNumber = bn('1000e18')
       const qty: BigNumber = bn('1e18')
       const newVault: VaultP0 = <VaultP0>(
         await VaultFactory.deploy([collateral[0].address], [qty], [])
@@ -454,16 +456,17 @@ describe('MainP0 contract', () => {
       // Check if minting was registered
       const currentBlockNumber = await ethers.provider.getBlockNumber()
       const [sm_vault, sm_amt, sm_bu, sm_minter, sm_at, sm_proc] = await main.issuances(0)
+      const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
       expect(sm_vault).to.equal(newVault.address)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_bu).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
-      expect(sm_at).to.equal(currentBlockNumber + 1)
+      expect(sm_at).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
     })
 
-    it.skip('Should issue RTokens correctly for more complex basket multiple users', async function () {
-      const issueAmount: BigNumber = bn('10e18')
+    it('Should issue RTokens correctly for more complex basket multiple users', async function () {
+      const issueAmount: BigNumber = bn('1000e18')
 
       const expectedTkn0: BigNumber = issueAmount
         .mul(await vault.quantity(collateral0.address))
@@ -524,11 +527,12 @@ describe('MainP0 contract', () => {
       // Check if minting was registered
       let currentBlockNumber = await ethers.provider.getBlockNumber()
       let [sm_vault, sm_amt, sm_bu, sm_minter, sm_at, sm_proc] = await main.issuances(0)
+      const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
       expect(sm_vault).to.equal(vault.address)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_bu).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
-      expect(sm_at).to.equal(currentBlockNumber + 1)
+      expect(sm_at).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
 
       // Issue new RTokens with different user
@@ -544,7 +548,8 @@ describe('MainP0 contract', () => {
       ;[, , , , , sm_proc] = await main.issuances(0)
       expect(sm_proc).to.equal(true)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-      expect(await vault.basketUnits(main.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount)
 
       // Issue rTokens
       await main.connect(addr2).issue(issueAmount)
@@ -554,21 +559,22 @@ describe('MainP0 contract', () => {
       expect(await token1.balanceOf(vault.address)).to.equal(expectedTkn1.mul(2))
       expect(await token2.balanceOf(vault.address)).to.equal(expectedTkn2.mul(2))
       expect(await token3.balanceOf(vault.address)).to.equal(expectedTkn3.mul(2))
-      expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await rToken.balanceOf(main.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(addr2.address)).to.equal(0)
 
       // Check new issuances was processed
+      currentBlockNumber = await ethers.provider.getBlockNumber()
       ;[sm_vault, sm_amt, sm_bu, sm_minter, sm_at, sm_proc] = await main.issuances(1)
       expect(sm_vault).to.equal(vault.address)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_bu).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr2.address)
-      //expect(sm_at).to.equal()
+      expect(sm_at).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
     })
 
-    it('Should process issuances in multiple attempts (using minimum issuance)', async function () {
+    it.skip('Should process issuances in multiple attempts (using minimum issuance)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
       const expectedTkn0: BigNumber = issueAmount
@@ -640,7 +646,7 @@ describe('MainP0 contract', () => {
       expect(await vault.basketUnits(main.address)).to.equal(issueAmount)
     })
 
-    it('Should process issuances in multiple attempts (using issuanceRate)', async function () {
+    it.skip('Should process issuances in multiple attempts (using issuanceRate)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
       // Provide approvals
@@ -709,7 +715,7 @@ describe('MainP0 contract', () => {
       expect(await vault.basketUnits(main.address)).to.equal(issueAmount.add(newIssuanceAmt))
     })
 
-    it('Should process multiple issuances in the correct order', async function () {
+    it.skip('Should process multiple issuances in the correct order', async function () {
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)
       await token1.connect(addr1).approve(main.address, initialBal)
@@ -747,7 +753,7 @@ describe('MainP0 contract', () => {
       expect(await vault.basketUnits(main.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
     })
 
-    it('Should rollback mintings if Vault changes (2 blocks)', async function () {
+    it.skip('Should rollback mintings if Vault changes (2 blocks)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
       const expectedTkn0: BigNumber = issueAmount
