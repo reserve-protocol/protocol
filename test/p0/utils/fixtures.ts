@@ -10,7 +10,6 @@ import { AaveLendingAddrProviderMockP0 } from '../../../typechain/AaveLendingAdd
 import { AaveLendingPoolMockP0 } from '../../../typechain/AaveLendingPoolMockP0'
 import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
 import { ATokenCollateralP0 } from '../../../typechain/ATokenCollateralP0'
-import { CollateralP0 } from '../../../typechain/CollateralP0'
 import { COMPAssetP0 } from '../../../typechain/COMPAssetP0'
 import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
 import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
@@ -27,6 +26,7 @@ import { StaticATokenMock } from '../../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../../typechain/StRSRP0'
 import { USDCMock } from '../../../typechain/USDCMock'
 import { VaultP0 } from '../../../typechain/VaultP0'
+import { CollateralP0 } from '../../../typechainFiatcoinCollateralP0'
 import { getLatestBlockTimestamp } from '../../utils/time'
 
 export type Collateral = CollateralP0 | CTokenCollateralP0 | ATokenCollateralP0

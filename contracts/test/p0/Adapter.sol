@@ -219,9 +219,9 @@ contract AdapterP0 is ProtoAdapter {
 
         // Initialize common assets
         {
-            _assets[AssetName.RSR] = new RSRAssetP0(address(_rsr), _main);
-            _assets[AssetName.COMP] = new COMPAssetP0(address(_comp), _main);
-            _assets[AssetName.AAVE] = new AAVEAssetP0(address(_aave), _main);
+            _assets[AssetName.RSR] = _main.rsrAsset();
+            _assets[AssetName.COMP] = _main.compAsset();
+            _assets[AssetName.AAVE] = _main.aaveAsset();
             _reverseAssets[_rsr] = AssetName.RSR;
             _reverseAssets[_comp] = AssetName.COMP;
             _reverseAssets[_aave] = AssetName.AAVE;

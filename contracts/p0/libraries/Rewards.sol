@@ -13,7 +13,7 @@ library RewardsLib {
 
     /// Claims all COMP/AAVE and sends it to Main
     function claimAndSweepRewards(IMain main) internal returns (uint256 compAmt, uint256 aaveAmt) {
-        Oracle.Info memory oracle = main.oracle();
+        Oracle.Info memory oracle = main.oracle(UoA.USD);
         oracle.compound.claimComp(address(this));
         IAsset[] memory assets = main.allAssets();
 

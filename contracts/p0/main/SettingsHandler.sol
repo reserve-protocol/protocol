@@ -50,7 +50,8 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function init(ConstructorArgs calldata args) public virtual override(Mixin, AssetRegistryP0) {
         super.init(args);
-        _oracle = args.oracle;
+        _oracles[UoA.USD] = args.usdOracle;
+        _oracles[UoA.EUR] = args.eurOracle;
         _market = args.market;
         _revenueFurnace = args.furnace;
 

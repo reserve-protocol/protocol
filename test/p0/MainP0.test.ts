@@ -3,13 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
-import {
-  BN_SCALE_FACTOR,
-  FURNACE_DEST,
-  Mood,
-  STRSR_DEST,
-  ZERO_ADDRESS,
-} from '../../common/constants'
+import { BN_SCALE_FACTOR, FURNACE_DEST, Mood, STRSR_DEST, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
@@ -17,7 +11,6 @@ import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
 import { AToken } from '../../typechain/AToken'
 import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
 import { BackingTraderP0 } from '../../typechain/BackingTraderP0'
-import { CollateralP0 } from '../../typechain/CollateralP0'
 import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
 import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
@@ -37,6 +30,7 @@ import { StRSRP0 } from '../../typechain/StRSRP0'
 import { TraderP0 } from '../../typechain/TraderP0'
 import { USDCMock } from '../../typechain/USDCMock'
 import { VaultP0 } from '../../typechain/VaultP0'
+import { CollateralP0 } from '../../typechainFiatcoinCollateralP0'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 

@@ -125,7 +125,7 @@ contract VaultP0 is IVault, Ownable {
     }
 
     /// @return {tok/BU} The quantity of whole tokens of `asset` required per whole BU
-    function quantity(IAsset asset) external view override returns (uint256) {
+    function quantity(IAsset asset) external view override returns (Fix) {
         return _basket.quantities[asset];
     }
 

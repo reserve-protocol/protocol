@@ -4,9 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./assets/RTokenAsset.sol";
-import "./assets/RSRAsset.sol";
-import "./assets/COMPAsset.sol";
-import "./assets/AAVEAsset.sol";
 import "../libraries/CommonErrors.sol";
 import "./libraries/Oracle.sol";
 import "./interfaces/IAsset.sol";
@@ -77,15 +74,7 @@ contract DeployerP0 is IDeployer {
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
             main = _deployMain(
-                ConstructorArgs(
-                    collateral,
-                    oracle,
-                    config,
-                    dist,
-                    vault,
-                    revenueFurnace,
-                    market
-                )
+                ConstructorArgs(collateral, oracle, config, dist, vault, revenueFurnace, market)
             );
             deployments.push(main);
 
@@ -97,9 +86,9 @@ contract DeployerP0 is IDeployer {
         }
 
         {
-            RSRAssetP0 rsrAsset = new RSRAssetP0(rsrAddr, main);
-            COMPAssetP0 compAsset = new COMPAssetP0(compAddr, main);
-            AAVEAssetP0 aaveAsset = new AAVEAssetP0(aaveAddr, main);
+            AssetP0 rsrAsset = new AssetP0(UoA.USD, rsrAddr, main, Oracle.Source.AAVE);
+            AssetP0 compAsset = new AssetP0(UoA.USD, compAddr, main, Oracle.Source.COMPOUND);
+            AssetP0 aaveAsset = new AssetP0(UoA.USD, aaveAddr, main, Oracle.Source.AAVE);
 
             main.setRSRAsset(rsrAsset);
             main.setCompAsset(compAsset);

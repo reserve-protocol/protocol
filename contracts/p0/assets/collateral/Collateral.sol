@@ -12,9 +12,9 @@ import "contracts/libraries/Fixed.sol";
 
 /**
  * @title CollateralP0
- * @notice A vanilla asset such as a fiatcoin, to be extended by derivatives assets.
+ * @notice A vanilla asset such as a fiatcoin, to be extended by derivative assets.
  */
-contract CollateralP0 is ICollateral, AbstractAssetP0 {
+contract CollateralP0 is ICollateral, AssetP0 {
     using FixLib for Fix;
     using Oracle for Oracle.Info;
 
@@ -37,15 +37,14 @@ contract CollateralP0 is ICollateral, AbstractAssetP0 {
         UoA uoa_,
         IERC20Metadata erc20_,
         IMain main_,
-        Oracle.Info memory oracle_
-    ) AbstractAssetP0(uoa_, erc20_, main_, oracle_) {}
+        Oracle.Source oracleSource_
+    ) AssetP0(uoa_, erc20_, main_, oracleSource_) {}
 
-    /// Update the default status
+    /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
     function forceUpdates() public virtual override {
         _updateDefaultStatus();
     }
 
-    /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
     function _updateDefaultStatus() internal {
         if (whenDefault <= block.timestamp || block.number <= prevBlock) {
             // Nothing will change if either we're already fully defaulted
@@ -61,8 +60,8 @@ contract CollateralP0 is ICollateral, AbstractAssetP0 {
 
         // If the underlying fiatcoin price is below the default-threshold price, default eventually
         if (whenDefault > block.timestamp) {
-            Fix fiatcoinPrice = fiatcoinPriceUSD().shiftLeft(int8(fiatcoinDecimals()));
-            bool fiatcoinIsDefaulting = fiatcoinPrice.lte(main.defaultingFiatcoinPrice());
+            Price memory p = fiatcoinPrice(); // {Price/fiatTok}
+            bool fiatcoinIsDefaulting = p.attoUSD.lte(main.defaultingFiatcoinPrice());
             whenDefault = fiatcoinIsDefaulting
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
@@ -84,10 +83,10 @@ contract CollateralP0 is ICollateral, AbstractAssetP0 {
         }
     }
 
-    /// @return price {Price/tok} The Price per whole token
-    function price() public view virtual override returns (Price memory p) {
+    /// @return p {Price/tok} The Price per whole token
+    function price() public view virtual override(AssetP0, IAsset) returns (Price memory p) {
         if (address(underlying) == address(0)) {
-            return main.oracle().consult(oracleSource, erc20);
+            return main.oracle(uoa).consult(oracleSource, erc20);
         }
 
         p = underlying.price();
@@ -95,6 +94,24 @@ contract CollateralP0 is ICollateral, AbstractAssetP0 {
         p.attoUSD = p.attoUSD.mul(_rateToUnderlying());
         // {attoEUR/tok} = {attoEUR/underlyingTok} * {underlyingTok/tok}
         p.attoEUR = p.attoEUR.mul(_rateToUnderlying());
+    }
+
+    /// @return {Price/tok} The price of 1 whole token of the fiatcoin
+    function fiatcoinPrice() public view virtual returns (Price memory) {
+        if (address(underlying) == address(0)) {
+            return main.oracle(uoa).consult(oracleSource, erc20);
+        }
+
+        return underlying.fiatcoinPrice();
+    }
+
+    /// @return The ERC20 contract of the (maybe underlying) fiatcoin
+    function fiatcoinERC20() public view override returns (IERC20Metadata) {
+        if (address(underlying) == address(0)) {
+            return erc20;
+        }
+
+        return underlying.fiatcoinERC20();
     }
 
     /// @return {underlyingTok/tok} Conversion rate between token and its underlying.

@@ -52,8 +52,11 @@ interface ICollateral is IAsset {
     function forceUpdates() external;
 
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
-    function defaultStatus() external view returns (CollateralStatus);
+    function status() external view returns (CollateralStatus);
 
-    /// @return The address of the underlying collateral asset, or the 0 address if there isn't one
-    function underlying() external view returns (ICollateral);
+    /// @return {Price/tok} The price of 1 whole token of the fiatcoin
+    function fiatcoinPrice() external view returns (Price memory);
+
+    /// @return The ERC20 contract of the (maybe underlying) fiatcoin
+    function fiatcoinERC20() external view returns (IERC20Metadata);
 }

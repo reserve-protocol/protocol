@@ -7,28 +7,14 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
-/// Abstract, immutable, base asset contract for all other assets and collateral to extend
-abstract contract AbstractAssetP0 is IAsset {
-    UoA public immutable override uoa; // Unit of Account
-    IERC20Metadata public immutable override erc20;
-    IMain public immutable main;
-
-    constructor(
-        UoA uoa_,
-        IERC20Metadata erc20_,
-        IMain main_
-    ) {
-        uoa = uoa_;
-        erc20 = erc20_;
-        main = main_;
-    }
-}
-
 /// Immutable base asset contract to be used directly for most assets
-contract AssetP0 is AssetP0 {
+contract AssetP0 is IAsset {
     using FixLib for Fix;
     using Oracle for Oracle.Info;
 
+    UoA public immutable override uoa; // Unit of Account
+    IERC20Metadata public immutable override erc20;
+    IMain public immutable main;
     Oracle.Source public immutable oracleSource;
 
     constructor(
@@ -36,7 +22,10 @@ contract AssetP0 is AssetP0 {
         IERC20Metadata erc20_,
         IMain main_,
         Oracle.Source oracleSource_
-    ) AssetP0(uoa_, erc20_, main_) {
+    ) {
+        uoa = uoa_;
+        erc20 = erc20_;
+        main = main_;
         oracleSource = oracleSource_;
     }
 

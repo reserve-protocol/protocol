@@ -9,8 +9,6 @@ import "../interfaces/IVault.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/mocks/ERC20Mock.sol";
-import "contracts/p0/assets/COMPAsset.sol";
-import "contracts/p0/assets/AAVEAsset.sol";
 import "./CompoundOracleMock.sol";
 import "./ComptrollerMock.sol";
 import "./AaveOracleMock.sol";
@@ -92,8 +90,8 @@ contract MainMockP0 {
 
         _oracle = Oracle.Info(comptroller, aaveLendingPool);
 
-        compAsset = new COMPAssetP0(address(compToken), IMain(address(this)));
-        aaveAsset = new AAVEAssetP0(address(aaveToken), IMain(address(this)));
+        compAsset = new AssetP0(address(compToken), IMain(address(this)));
+        aaveAsset = new AssetP0(address(aaveToken), IMain(address(this)));
     }
 
     function setStRSR(IStRSR stRSR_) external {

@@ -30,18 +30,18 @@ interface AToken {
 contract ATokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
 
-    // solhint-disable-next-line no-empty-blocks
-    constructor(address erc20_, IMain main_) CollateralP0(erc20_, main_) {}
-
     constructor(
         UoA uoa_,
         IERC20Metadata erc20_,
-        IMain main_
-    ) CollateralP0(uoa_, erc20_, main_, Oracle.Source.AAVE) {}
+        IMain main_,
+        ICollateral underlying_
+    ) CollateralP0(uoa_, erc20_, main_, Oracle.Source.AAVE) {
+        underlying = underlying_;
+    }
 
     /// @return {underlyingTok/tok} Conversion rate between token and its underlying.
     function _rateToUnderlying() internal view override returns (Fix) {
-        uint256 rateInRAYs = IStaticAToken(_erc20).rate(); // {ray underlyingTok/tok}
+        uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray underlyingTok/tok}
         return toFixWithShift(rateInRAYs, -27);
     }
 }

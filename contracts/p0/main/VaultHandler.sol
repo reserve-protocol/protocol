@@ -48,7 +48,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
             revert CommonErrors.UnapprovedCollateral();
         }
 
-        _prevBasketRate = args.vault.basketRate();
+        _prevBasketRate = args.vault.basketPrice();
         _historicalBasketDilution = FIX_ONE;
     }
 
@@ -60,7 +60,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
     {
         super.beforeUpdate();
         _historicalBasketDilution = _basketDilutionFactor();
-        _prevBasketRate = vault().basketRate();
+        _prevBasketRate = vault().basketPrice();
     }
 
     function switchVault(IVault vault_) external override onlyOwner {
@@ -109,15 +109,15 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         beforeUpdate();
     }
 
-    /* As the basketRate increases, the basketDilutionFactor increases at a proportional rate.
+    /* As the basketPrice increases, the basketDilutionFactor increases at a proportional rate.
      * for two times t0 < t1 when the rTokenCut() doesn't change, we have:
      * (basketDiluationFactor at t1) - (basketDilutionFactor at t0)
-     * = rTokenCut() * ((basketRate at t1) - (basketRate at t0))
+     * = rTokenCut() * ((basketPrice at t1) - (basketPrice at t0))
      */
     /// @return {qBU/qRTok) the basket dilution factor
     function _basketDilutionFactor() internal view returns (Fix) {
         // {USD/qBU}
-        Fix currentRate = vault().basketRate();
+        Fix currentRate = vault().basketPrice();
 
         // Assumption: Defi redemption rates are monotonically increasing
         // {USD/qBU}

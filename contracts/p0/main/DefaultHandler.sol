@@ -144,7 +144,7 @@ contract DefaultHandlerP0 is
         // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
             if (_isValid(backups[i])) {
-                Fix rate = backups[i].basketRate(); // {USD}
+                Fix rate = backups[i].basketPrice(); // {USD}
 
                 // See if it has the highest basket rate
                 if (rate.gt(maxRate)) {
@@ -186,5 +186,4 @@ contract DefaultHandlerP0 is
         }
         return true;
     }
-
 }

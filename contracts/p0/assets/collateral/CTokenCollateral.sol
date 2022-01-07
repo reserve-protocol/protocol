@@ -3,8 +3,8 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/assets/collateral/Collateral.sol";
 import "contracts/libraries/Fixed.sol";
+import "./Collateral.sol";
 
 // cToken initial exchange rate is 0.02
 
@@ -29,8 +29,10 @@ contract CTokenCollateralP0 is CollateralP0 {
     constructor(
         UoA uoa_,
         IERC20Metadata erc20_,
-        IMain main_
+        IMain main_,
+        ICollateral underlying_
     ) CollateralP0(uoa_, erc20_, main_, Oracle.Source.COMPOUND) {
+        underlying = underlying_;
         initialExchangeRate = toFixWithShift(2, -2);
     }
 
@@ -42,8 +44,8 @@ contract CTokenCollateralP0 is CollateralP0 {
 
     /// @return {underlyingTok/tok} Conversion rate between token and its underlying.
     function _rateToUnderlying() internal view override returns (Fix) {
-        uint256 rate = ICToken(_erc20).exchangeRateStored();
-        int8 shiftLeft = int8(decimals()) - int8(fiatcoinDecimals()) - 18;
+        uint256 rate = ICToken(erc20).exchangeRateStored();
+        int8 shiftLeft = 8 - int8(fiatcoinERC20().decimals()) - 18;
         Fix rateNow = toFixWithShift(rate, shiftLeft);
         return rateNow.div(initialExchangeRate);
     }

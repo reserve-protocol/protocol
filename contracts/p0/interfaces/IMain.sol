@@ -59,7 +59,8 @@ struct RevenueShare {
 
 struct ConstructorArgs {
     ICollateral[] approvedCollateral;
-    Oracle.Info oracle;
+    Oracle.Info usdOracle;
+    Oracle.Info eurOracle;
     Config config;
     RevenueShare dist;
     IVault vault;
