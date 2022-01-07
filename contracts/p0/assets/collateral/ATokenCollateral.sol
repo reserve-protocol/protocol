@@ -33,45 +33,15 @@ contract ATokenCollateralP0 is CollateralP0 {
     // solhint-disable-next-line no-empty-blocks
     constructor(address erc20_, IMain main_) CollateralP0(erc20_, main_) {}
 
-    /// @return {qFiatTok/qTok}
-    function rateFiatcoin() public view override returns (Fix) {
-        uint256 rateInRAYs = IStaticAToken(_erc20).rate(); // {ray fiatTok/tok}
+    constructor(
+        UoA uoa_,
+        IERC20Metadata erc20_,
+        IMain main_
+    ) CollateralP0(uoa_, erc20_, main_, Oracle.Source.AAVE) {}
 
-        // Unit conversions:
-        //   1{fiatTok} = 10**fiatcoinDecimals(){qFiatTok}
-        //   1{tok} = 10**decimals(){qTok}
-        //   1 = 1e27 {ray}
-
-        // {qFiatTok/qTok} = {ray fiatTok/tok} / {ray} * {qFiatTok/fiatTok} / {qTok/tok}
-        // result = rateInRAYs / 1e27 * 10**fiatcoinDecimals() / 10**decimals();
-
-        int8 shiftLeft = -27 + int8(fiatcoinDecimals()) - int8(decimals());
-        return toFixWithShift(rateInRAYs, shiftLeft);
+    /// @return {underlyingTok/tok} Conversion rate between token and its underlying.
+    function _rateToUnderlying() internal view override returns (Fix) {
+        uint256 rateInRAYs = IStaticAToken(_erc20).rate(); // {ray underlyingTok/tok}
+        return toFixWithShift(rateInRAYs, -27);
     }
-
-    // @return {attoUSD/qTok}
-    function rateUSD() public view override returns (Fix) {
-        uint256 rateInRAYs = IStaticAToken(_erc20).rate(); // {ray fiatTok/tok}
-
-        // {attoUSD/qTok} = {ray fiatTok/tok} / {ray} * {attoUSD/fiatTok} / {qTok/tok}
-        // result = rateInRAYs / 1e27 * 1e18 / 10**decimals();
-        int8 shiftLeft = -9 - int8(decimals());
-
-        // {attoUSD/qTok}
-        return toFixWithShift(rateInRAYs, shiftLeft);
-    }
-
-    function fiatcoin() public view override returns (IERC20) {
-        return IERC20(IStaticAToken(_erc20).ATOKEN().UNDERLYING_ASSET_ADDRESS());
-    }
-
-    function isFiatcoin() public pure override returns (bool) {
-        return false;
-    }
-
-    /// @return Whether `_erc20` is an AToken (StaticAToken, actually)
-    function isAToken() public pure override returns (bool) {
-        return true;
-    }
-
 }

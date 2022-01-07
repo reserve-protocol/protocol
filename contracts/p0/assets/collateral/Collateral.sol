@@ -12,11 +12,15 @@ import "contracts/libraries/Fixed.sol";
 
 /**
  * @title CollateralP0
- * @notice A vanilla asset such as a fiatcoin, to be extended by more complex collateral assets such as cTokens.
+ * @notice A vanilla asset such as a fiatcoin, to be extended by derivatives assets.
  */
-contract CollateralP0 is ICollateral, AssetP0 {
+contract CollateralP0 is ICollateral, AbstractAssetP0 {
     using FixLib for Fix;
     using Oracle for Oracle.Info;
+
+    // underlying == address(0): The collateral is leaf collateral; it has no underlying
+    // underlying != address(0): The collateral is derivative collateral; it has underlying collateral
+    ICollateral public immutable underlying;
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -29,10 +33,15 @@ contract CollateralP0 is ICollateral, AssetP0 {
     Fix internal prevRate; // Last rate when _updateDefaultStatus() was called
 
     // solhint-disable-next-list no-empty-blocks
-    constructor(address erc20_, IMain main_) AssetP0(erc20_, main_, Oracle.Source.AAVE) {}
+    constructor(
+        UoA uoa_,
+        IERC20Metadata erc20_,
+        IMain main_,
+        Oracle.Info memory oracle_
+    ) AbstractAssetP0(uoa_, erc20_, main_, oracle_) {}
 
-    /// Forces an update in any underlying Defi protocol
-    function poke() public virtual override(IAsset, AssetP0) {
+    /// Update the default status
+    function forceUpdates() public virtual override {
         _updateDefaultStatus();
     }
 
@@ -45,7 +54,7 @@ contract CollateralP0 is ICollateral, AssetP0 {
         }
 
         // If the redemption rate has fallen, default immediately
-        Fix newRate = rateFiatcoin();
+        Fix newRate = _rateToUnderlying();
         if (newRate.lt(prevRate)) {
             whenDefault = block.timestamp;
         }
@@ -53,9 +62,9 @@ contract CollateralP0 is ICollateral, AssetP0 {
         // If the underlying fiatcoin price is below the default-threshold price, default eventually
         if (whenDefault > block.timestamp) {
             Fix fiatcoinPrice = fiatcoinPriceUSD().shiftLeft(int8(fiatcoinDecimals()));
-            bool fiatcoinIsDefaulting = fiatcoinPrice.lte(_main.defaultingFiatcoinPrice());
+            bool fiatcoinIsDefaulting = fiatcoinPrice.lte(main.defaultingFiatcoinPrice());
             whenDefault = fiatcoinIsDefaulting
-                ? Math.min(whenDefault, block.timestamp + _main.defaultDelay())
+                ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
 
@@ -75,57 +84,21 @@ contract CollateralP0 is ICollateral, AssetP0 {
         }
     }
 
-    // solhint-disable-next-list no-empty-blocks
-    function forceDefiUpdates() public virtual override {}
-
-    /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin.
-    function rateFiatcoin() public view virtual override returns (Fix) {
-        // {qFiatTok/qTok} = {qFiatTok/fiatTok} / {qTok/tok}
-        return toFixWithShift(1, int8(fiatcoinDecimals()) - int8(decimals()));
-    }
-
-    /// @return {attoUSD/qTok} Without oracles, returns the expected attoUSD value per qTok.
-    function rateUSD() public view virtual override returns (Fix) {
-        // {attoUSD/qTok} = {attoUSD/tok} / {qTok/tok}
-        return toFixWithShift(1, 18 - int8(decimals()));
-    }
-
-    /// @return {attoUSD/qTok} The price in attoUSD of the asset's smallest unit
-    function priceUSD() public view virtual override(IAsset, AssetP0) returns (Fix) {
-        if (isFiatcoin()) {
-            return _main.oracle().consult(Oracle.Source.AAVE, _erc20);
-        } else {
-            // {attoUSD/qTok} = {attoUSD/qFiatTok} * {qFiatTok/qTok}
-            return fiatcoinPriceUSD().mul(rateFiatcoin());
+    /// @return price {Price/tok} The Price per whole token
+    function price() public view virtual override returns (Price memory p) {
+        if (address(underlying) == address(0)) {
+            return main.oracle().consult(oracleSource, erc20);
         }
+
+        p = underlying.price();
+        // {attoUSD/tok} = {attoUSD/underlyingTok} * {underlyingTok/tok}
+        p.attoUSD = p.attoUSD.mul(_rateToUnderlying());
+        // {attoEUR/tok} = {attoEUR/underlyingTok} * {underlyingTok/tok}
+        p.attoEUR = p.attoEUR.mul(_rateToUnderlying());
     }
 
-    /// @return The number of decimals in the underlying fiatcoin contract
-    function fiatcoinDecimals() public view override returns (uint8) {
-        return IERC20Metadata(address(fiatcoin())).decimals();
-    }
-
-    /// @return The fiatcoin underlying the ERC20, or the erc20 itself if it is a fiatcoin
-    function fiatcoin() public view virtual override returns (IERC20) {
-        return IERC20(_erc20);
-    }
-
-    /// @return {attoUSD/qFiatTok} The price in attoUSD of the fiatcoin's smallest unit
-    function fiatcoinPriceUSD() public view virtual override returns (Fix) {
-        return _main.oracle().consult(Oracle.Source.AAVE, address(fiatcoin()));
-    }
-
-    /// @return Whether `_erc20` is a fiatcoin
-    function isFiatcoin() public pure virtual override returns (bool) {
-        return true;
-    }
-
-    /// @return Whether `_erc20` is an AToken (StaticAToken, actually)
-    function isAToken() public pure virtual override(IAsset, AssetP0) returns (bool) {
-        return false;
-    }
-
-    function isCollateral() public pure override(IAsset, AssetP0) returns (bool) {
-        return true;
+    /// @return {underlyingTok/tok} Conversion rate between token and its underlying.
+    function _rateToUnderlying() internal view virtual returns (Fix) {
+        return FIX_ONE;
     }
 }

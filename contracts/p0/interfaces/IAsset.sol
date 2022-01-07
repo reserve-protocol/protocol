@@ -47,7 +47,8 @@ enum CollateralStatus {
  * Note: This structure can be used to capture N-levels-nested asset structures.
  */
 interface ICollateral is IAsset {
-    /// Forces any updates, such as updating the default status. Block-idempotent.
+    /// Force any updates, such as updating the default status or poking the defi protocol.
+    /// Block-idempotent.
     function forceUpdates() external;
 
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)

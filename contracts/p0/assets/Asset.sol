@@ -8,7 +8,7 @@ import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 
 /// Abstract, immutable, base asset contract for all other assets and collateral to extend
-abstract contract AssetP0 is IAsset {
+abstract contract AbstractAssetP0 is IAsset {
     UoA public immutable override uoa; // Unit of Account
     IERC20Metadata public immutable override erc20;
     IMain public immutable main;
@@ -25,7 +25,7 @@ abstract contract AssetP0 is IAsset {
 }
 
 /// Immutable base asset contract to be used directly for most assets
-contract USDAssetP0 is AssetP0 {
+contract AssetP0 is AssetP0 {
     using FixLib for Fix;
     using Oracle for Oracle.Info;
 

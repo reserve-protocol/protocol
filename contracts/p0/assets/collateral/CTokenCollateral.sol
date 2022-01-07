@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/assets/collateral/Collateral.sol";
 import "contracts/libraries/Fixed.sol";
@@ -27,38 +26,22 @@ contract CTokenCollateralP0 is CollateralP0 {
 
     Fix public immutable initialExchangeRate; // 0.02, their hardcoded starting rate
 
-    constructor(address erc20_, IMain main_) CollateralP0(erc20_, main_) {
+    constructor(
+        UoA uoa_,
+        IERC20Metadata erc20_,
+        IMain main_
+    ) CollateralP0(uoa_, erc20_, main_, Oracle.Source.COMPOUND) {
         initialExchangeRate = toFixWithShift(2, -2);
     }
 
-    /// @return {qFiatTok/qTok}
-    function rateFiatcoin() public view override returns (Fix) {
-        Fix rate = _exchangeRateRelativeToGenesis(); // {fiatTok/tok}
-
-        // {qFiatTok/qTok} = {fiatTok/tok} * {qFiatTok/fiatTok} / {qTok/tok}
-        int8 shiftLeft = int8(fiatcoinDecimals()) - int8(decimals());
-        return rate.shiftLeft(shiftLeft);
+    /// Update the Compound protocol + default status
+    function forceUpdates() public virtual override {
+        ICToken(address(erc20)).exchangeRateCurrent();
+        _updateDefaultStatus();
     }
 
-    /// @return {attoUSD/qTok} Without using oracles, returns the expected USD value of one qTok.
-    function rateUSD() public view override returns (Fix) {
-        Fix rate = _exchangeRateRelativeToGenesis(); // {fiatTok/tok}
-
-        // {attoUSD/qTok} = {fiatTok/tok} * {attoUSD/fiatTok} / {qTok/tok}
-        int8 shiftLeft = 18 - int8(decimals());
-        return rate.shiftLeft(shiftLeft);
-    }
-
-    function fiatcoin() public view override returns (IERC20) {
-        return IERC20(ICToken(_erc20).underlying());
-    }
-
-    function isFiatcoin() public pure override returns (bool) {
-        return false;
-    }
-
-    /// @return {fiatTok/tok}
-    function _exchangeRateRelativeToGenesis() internal view returns (Fix) {
+    /// @return {underlyingTok/tok} Conversion rate between token and its underlying.
+    function _rateToUnderlying() internal view override returns (Fix) {
         uint256 rate = ICToken(_erc20).exchangeRateStored();
         int8 shiftLeft = int8(decimals()) - int8(fiatcoinDecimals()) - 18;
         Fix rateNow = toFixWithShift(rate, shiftLeft);
