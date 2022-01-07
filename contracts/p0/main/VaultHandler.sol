@@ -14,8 +14,6 @@ import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/libraries/Fixed.sol";
 import "./SettingsHandler.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title VaultHandler
  * @notice Handles the use of vaults and their associated basket units (BUs), including the tracking
@@ -79,10 +77,6 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() public view override returns (bool) {
-        console.log("Enters fullyCapitalized");
-        console.log("From BUs: %s", fromBUs(vault().basketUnits(address(rToken()))));
-        console.log("Total Supply: %s", rToken().totalSupply());
-
         return
             fromBUs(vault().basketUnits(address(rToken())) + vault().basketUnits(address(this))) >=
             rToken().totalSupply();
