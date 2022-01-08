@@ -20,17 +20,17 @@ import "./SettingsHandler.sol";
 import "./VaultHandler.sol";
 
 /**
- * @title RevenueHandler
+ * @title RewardHandler
  * Brings revenue into the system, including RToken supply expansion and rewards from other protocols.
  */
-contract RevenueHandlerP0 is
+contract RewardHandlerP0 is
     Pausable,
     Mixin,
     SettingsHandlerP0,
     RevenueDistributorP0,
     VaultHandlerP0,
     AuctioneerP0,
-    IRevenueHandler
+    IRewardHandler
 {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20Metadata;

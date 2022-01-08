@@ -286,7 +286,7 @@ interface IAuctioneer {
     function backingTraderAddr() external view returns (address);
 }
 
-interface IRevenueHandler {
+interface IRewardHandler {
     /// Emitted whenever rewards are claimed
     /// @param compAmount {qCOMP} The amount of COMP claimed
     /// @param aaveAmount {qAAVE} The amount of COMP claimed
@@ -346,7 +346,7 @@ interface IMain is
     IRevenueDistributor,
     IVaultHandler,
     IAuctioneer,
-    IRevenueHandler,
+    IRewardHandler,
     IRTokenIssuer
 {
 

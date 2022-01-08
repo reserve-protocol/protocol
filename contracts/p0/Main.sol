@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/p0/main/Mixin.sol";
-import "contracts/p0/main/RevenueHandler.sol";
+import "contracts/p0/main/RewardHandler.sol";
 import "contracts/p0/main/RTokenIssuer.sol";
 import "contracts/p0/main/Auctioneer.sol";
 import "contracts/p0/main/AssetRegistry.sol";
@@ -27,7 +27,7 @@ contract MainP0 is
     RevenueDistributorP0,
     VaultHandlerP0,
     AuctioneerP0,
-    RevenueHandlerP0,
+    RewardHandlerP0,
     RTokenIssuerP0,
     IMain
 {
@@ -46,7 +46,7 @@ contract MainP0 is
             RevenueDistributorP0,
             VaultHandlerP0,
             AuctioneerP0,
-            RevenueHandlerP0,
+            RewardHandlerP0,
             RTokenIssuerP0
         )
     {
@@ -57,7 +57,7 @@ contract MainP0 is
     function poke()
         public
         virtual
-        override(IMixin, Mixin, VaultHandlerP0, AuctioneerP0, RevenueHandlerP0, RTokenIssuerP0)
+        override(IMixin, Mixin, VaultHandlerP0, AuctioneerP0, RewardHandlerP0, RTokenIssuerP0)
     {
         super.poke();
     }
@@ -67,7 +67,7 @@ contract MainP0 is
     function beforeUpdate()
         public
         virtual
-        override(IMixin, Mixin, VaultHandlerP0, AuctioneerP0, RevenueHandlerP0, RTokenIssuerP0)
+        override(IMixin, Mixin, VaultHandlerP0, AuctioneerP0, RewardHandlerP0, RTokenIssuerP0)
     {
         super.beforeUpdate();
     }

@@ -9,7 +9,7 @@
 - [x] (beforeUpdate() calls not actually going through the entire set of mixins)
 - [x] Add `toUint` with enum rounding forwarding the call to floor/ceil/round
 - [ ] Revenue basket dilution composition over time -- don't do until we know fractional exponentiation in the new design
-- [ ] RevenueHandler -> RewardHandler
+- [x] RevenueHandler -> RewardHandler
 
 # DO LATER (or think harder about)
 - [ ] Rehaul how we express the backup DAG / do backups
