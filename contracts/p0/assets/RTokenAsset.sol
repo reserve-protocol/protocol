@@ -30,7 +30,7 @@ contract RTokenAssetP0 is AssetP0 {
     }
 
     /// @return If the asset is an instance of ICollateral or not
-    function isCollateral() public view virtual override returns (bool) {
+    function isCollateral() public pure virtual override returns (bool) {
         return false;
     }
 }

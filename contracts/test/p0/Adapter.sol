@@ -312,7 +312,7 @@ contract AdapterP0 is ProtoAdapter {
         return state().assertEq(s);
     }
 
-    function assertInvariants() external override {
+    function assertInvariants() external view override {
         _deployer.assertInvariants();
         _main.assertInvariants();
         _rToken.assertInvariants();
@@ -393,16 +393,16 @@ contract AdapterP0 is ProtoAdapter {
 
     function CMD_transferRToken(
         Account from,
-        Account to,
-        uint256 amount
+        Account,
+        uint256
     ) external override {
         _rToken.connect(_address(uint256(from)));
     }
 
     function CMD_transferStRSR(
         Account from,
-        Account to,
-        uint256 amount
+        Account,
+        uint256
     ) external override {
         _stRSR.connect(_address(uint256(from)));
     }
@@ -500,7 +500,7 @@ contract AdapterP0 is ProtoAdapter {
         for (uint256 i = 0; i < numAuctions; i++) {
             (, IERC20 sell, IERC20 buy, uint256 sellAmount, , , , AuctionStatus state_) = _market
             .auctions(i);
-            (address bidder, , uint256 buyAmount) = _market.bids(i);
+            (address bidder, , ) = _market.bids(i);
             if (state_ == AuctionStatus.OPEN && bidder == address(0)) {
                 Bid memory newBid;
                 newBid.bidder = _address(uint256(Account.TRADER));

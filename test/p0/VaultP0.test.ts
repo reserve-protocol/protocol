@@ -6,13 +6,13 @@ import { ethers, waffle } from 'hardhat'
 
 import { RoundingApproach } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
+import { CollateralP0 } from '../../typechain/CollateralP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainP0 } from '../../typechain/MainP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { VaultP0 } from '../../typechain/VaultP0'
-import { CollateralP0 } from '../../typechainFiatcoinCollateralP0'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -209,6 +209,7 @@ describe('VaultP0 contract', () => {
       // If asset does not exist return 0
       expect(await vault.quantity(addr1.address)).to.equal(0)
     })
+  })
 
   describe('Issuance', () => {
     const ONE: BigNumber = bn('1e18')

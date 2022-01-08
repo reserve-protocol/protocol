@@ -24,15 +24,15 @@ library PricingLib {
 
     // View
 
-    function quantity(Price memory self, UoA uoa) internal view returns (Fix) {
+    function quantity(Price memory self, UoA uoa) internal pure returns (Fix) {
         return self.quantities[uint256(uoa)];
     }
 
-    function usd(Price memory self) internal view returns (Fix) {
+    function usd(Price memory self) internal pure returns (Fix) {
         return self.quantities[uint256(UoA.USD)];
     }
 
-    function eur(Price memory self) internal view returns (Fix) {
+    function eur(Price memory self) internal pure returns (Fix) {
         return self.quantities[uint256(UoA.EUR)];
     }
 }

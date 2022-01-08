@@ -51,17 +51,16 @@ library Oracle {
         IAaveLendingPool aave;
     }
 
-    /// @return {Price/tok} The Price of a whole token on oracle `source`
+    /// @return p {Price/tok} The Price of a whole token on oracle `source`
     function consult(
         Oracle.Info memory self,
         Source source,
         IERC20Metadata erc20
-    ) internal view returns (Price memory) {
-        Price memory price;
+    ) internal view returns (Price memory p) {
         if (source == Source.AAVE) {
-            price.setUSD(_consultAave(self, erc20));
+            p.setUSD(_consultAave(self, erc20));
         } else if (source == Source.COMPOUND) {
-            price.setUSD(_consultCompound(self, erc20));
+            p.setUSD(_consultCompound(self, erc20));
         } else {
             revert CommonErrors.UnsupportedProtocol();
         }

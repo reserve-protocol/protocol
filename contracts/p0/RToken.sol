@@ -51,7 +51,7 @@ contract RTokenP0 is Ownable, ERC20, IRToken {
 
     function withdrawBUs(address to, uint256 amount) external virtual override {
         require(_msgSender() == address(main), "only main");
-        main.vault().transfer(address(main), amount);
+        main.vault().transfer(to, amount);
     }
 
     function setMain(IMain main_) external virtual override onlyOwner {

@@ -130,7 +130,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
     }
 
     /// @return If the asset is an instance of ICollateral or not
-    function isCollateral() public view override(AssetP0, IAsset) returns (bool) {
+    function isCollateral() public pure override(AssetP0, IAsset) returns (bool) {
         return true;
     }
 

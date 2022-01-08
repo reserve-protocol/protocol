@@ -14,7 +14,7 @@ contract StRSRExtension is ContextMixin, StRSRP0, IExtension {
         string memory symbol_
     ) ContextMixin(admin) StRSRP0(main_, name_, symbol_) {}
 
-    function assertInvariants() external view override {
+    function assertInvariants() external pure override {
         assert(true);
     }
 

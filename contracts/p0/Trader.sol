@@ -126,8 +126,6 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         // Don't buy dust.
         deficitAmount = Math.max(deficitAmount, _dustThreshold(buy));
 
-        Oracle.Info memory o = main.oracle(UoA.USD);
-
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
         // {attoUSD/qBuyTok} = {attoUSD/buyTok} / {qBuyTok/buyTok}
         Fix buyPrice = buy.price().usd().shiftLeft(-int8(buy.erc20().decimals()));

@@ -28,7 +28,7 @@ contract DeployerExtension is DeployerP0, IExtension {
         _admin = msg.sender;
     }
 
-    function assertInvariants() external override {
+    function assertInvariants() external view override {
         INVARIANT_currentDeploymentRegistered();
     }
 
