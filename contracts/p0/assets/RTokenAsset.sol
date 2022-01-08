@@ -4,12 +4,14 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/libraries/Fixed.sol";
 import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/libraries/Pricing.sol";
+import "contracts/libraries/Fixed.sol";
 import "./Asset.sol";
 
 contract RTokenAssetP0 is AssetP0 {
     using FixLib for Fix;
+    using PricingLib for Price;
 
     // TODO UoA may not make sense here, re-examine later
     constructor(IERC20Metadata erc20_, IMain main_)
@@ -22,9 +24,9 @@ contract RTokenAssetP0 is AssetP0 {
         p = main.vault().basketPrice();
 
         // {attoUSD/rTok} = {attoUSD/BU} * {BU/rTok}
-        p.attoUSD = p.attoUSD.mul(main.baseFactor());
+        p.setUSD(p.usd().mul(main.baseFactor()));
         // {attoEUR/rTok} = {attoEUR/BU} * {BU/rTok}
-        p.attoEUR = p.attoEUR.mul(main.baseFactor());
+        p.setEUR(p.eur().mul(main.baseFactor()));
     }
 
     /// @return If the asset is an instance of ICollateral or not

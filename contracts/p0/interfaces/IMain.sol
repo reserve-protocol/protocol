@@ -51,14 +51,10 @@ enum UoA {
     EUR
 }
 
-/// Accounting in parallel Units of Account
+/// One balance to rule them all; a balance with distinct magnitudes for each unit of account
+/// e.g. Price.quantities[uint256(UoA.USD)]
 struct Price {
-    // Note that `attoUSD` and `attoEUR` are not views of the same data!
-    // They are fundamentally different units of account, and they describe
-    // different assets!
-    // TODO: Maybe this should be an array instead
-    Fix attoUSD;
-    Fix attoEUR;
+    Fix[] quantities; // {attoUoA}
 }
 
 struct RevenueShare {

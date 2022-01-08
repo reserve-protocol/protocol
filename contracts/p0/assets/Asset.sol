@@ -5,12 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/libraries/Pricing.sol";
 import "contracts/libraries/Fixed.sol";
 
 /// Immutable base asset contract to be used directly for most assets
 contract AssetP0 is IAsset {
     using FixLib for Fix;
     using Oracle for Oracle.Info;
+    using PricingLib for Price;
 
     UoA public immutable override uoa; // Unit of Account
     IERC20Metadata public immutable override erc20;
@@ -37,8 +39,8 @@ contract AssetP0 is IAsset {
     /// @return p {attoUSD/qTok} Like `price()` but per token quanta
     function priceQ() public view virtual override returns (Price memory p) {
         p = price();
-        p.attoUSD = p.attoUSD.shiftLeft(-int8(erc20.decimals()));
-        p.attoEUR = p.attoEUR.shiftLeft(-int8(erc20.decimals()));
+        p.setUSD(p.usd().shiftLeft(-int8(erc20.decimals())));
+        p.setEUR(p.eur().shiftLeft(-int8(erc20.decimals())));
     }
 
     /// @return If the asset is an instance of ICollateral or not

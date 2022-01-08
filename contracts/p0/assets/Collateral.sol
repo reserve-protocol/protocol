@@ -9,6 +9,7 @@ import "contracts/p0/assets/Asset.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/libraries/Pricing.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
@@ -18,6 +19,7 @@ import "contracts/libraries/Fixed.sol";
 contract CollateralP0 is ICollateral, AssetP0, Context {
     using FixLib for Fix;
     using Oracle for Oracle.Info;
+    using PricingLib for Price;
 
     // underlying == address(0): The collateral is leaf collateral; it has no underlying
     // underlying != address(0): The collateral is derivative collateral; it has underlying collateral
@@ -62,9 +64,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         // If the underlying fiatcoin price is below the default-threshold price, default eventually
         if (whenDefault > block.timestamp) {
             Price memory p = fiatcoinPrice(); // {Price/fiatTok}
-
-            Fix attoUoA = uoa == UoA.USD ? p.attoUSD : p.attoEUR;
-            whenDefault = attoUoA.lte(_defaultThreshold())
+            whenDefault = p.byUoA(uoa).lte(_defaultThreshold())
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -101,9 +101,9 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
 
         p = underlying.price();
         // {attoUSD/tok} = {attoUSD/underlyingTok} * {underlyingTok/tok}
-        p.attoUSD = p.attoUSD.mul(fiatcoinRate());
+        p.setUSD(p.usd().mul(fiatcoinRate()));
         // {attoEUR/tok} = {attoEUR/underlyingTok} * {underlyingTok/tok}
-        p.attoEUR = p.attoEUR.mul(fiatcoinRate());
+        p.setEUR(p.eur().mul(fiatcoinRate()));
     }
 
     /// @return {Price/tok} The price of 1 whole token of the fiatcoin
@@ -155,9 +155,9 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         Fix[] memory prices = new Fix[](numFiatcoins);
         for (uint256 i = 0; i < numFiatcoins; i++) {
             if (uoa == UoA.USD) {
-                prices[i] = collateral[i].price().attoUSD;
+                prices[i] = collateral[i].price().usd();
             } else if (uoa == UoA.EUR) {
-                prices[i] = collateral[i].price().attoEUR;
+                prices[i] = collateral[i].price().eur();
             }
         }
 

@@ -222,8 +222,8 @@ library Lib {
 
     /// @return Whether the oracle prices match or not
     function _assertOraclePriceEq(
-        OraclePrice memory a,
-        OraclePrice memory b,
+        ProtoPrice memory a,
+        ProtoPrice memory b,
         string memory str
     ) internal view returns (bool) {
         return

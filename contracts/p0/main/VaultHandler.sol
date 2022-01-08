@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/libraries/Pricing.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
@@ -24,6 +25,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
     using FixLib for Fix;
+    using PricingLib for Price;
 
     // ECONOMICS
     //
@@ -129,7 +131,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         vaults.push(vault_);
     }
 
-    /* As the basketPrice increases, the basketDilutionFactor increases at a proportional rate.
+    /* As the basketBalance increases, the basketDilutionFactor increases at a proportional rate.
      * for two times t0 < t1 when the rTokenCut() doesn't change, we have:
      * (basketDiluationFactor at t1) - (basketDilutionFactor at t0)
      * = rTokenCut() * ((basketPrice at t1) - (basketPrice at t0))
@@ -138,14 +140,15 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     function _basketDilutionFactor() internal view returns (Fix) {
         // {USD/qBU}
         Price memory currentPrice = vault().basketPrice();
+        Price memory prevPrice = _prevBasketPrice;
 
         // Assumption: Defi redemption rates are monotonically increasing
         // {USD/qBU}
-        Fix delta = currentPrice.attoUSD.minus(_prevBasketPrice.attoUSD);
+        Fix delta = currentPrice.usd().minus(prevPrice.usd());
         // TODO: this should go away after we choose to accept the full UoA agnostic refactor
 
         // r = p2 / (p1 + (p2-p1) * (rTokenCut))
-        Fix r = currentPrice.attoUSD.div(_prevBasketPrice.attoUSD.plus(delta.mul(rTokenCut())));
+        Fix r = currentPrice.usd().div(prevPrice.usd().plus(delta.mul(rTokenCut())));
         Fix dilutionFactor = _historicalBasketDilution.mul(r);
         assert(dilutionFactor.neq(FIX_ZERO));
         return dilutionFactor;
@@ -200,8 +203,8 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
                 Price memory price = backups[i].basketPrice(); // {Price/BU}
 
                 // See if it has the highest basket
-                if (price.attoUSD.gt(maxPrice)) {
-                    maxPrice = price.attoUSD;
+                if (price.usd().gt(maxPrice)) {
+                    maxPrice = price.usd();
                     indexMax = i;
                 }
             }

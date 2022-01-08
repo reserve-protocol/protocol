@@ -10,6 +10,7 @@ import "contracts/p0/assets/ATokenCollateral.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
+import "contracts/p0/libraries/Pricing.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -20,8 +21,9 @@ import "contracts/libraries/Fixed.sol";
  * @notice An issuer of an internal bookkeeping unit called a BU or basket unit.
  */
 contract VaultP0 is IVault, Ownable {
-    using SafeERC20 for IERC20Metadata;
     using FixLib for Fix;
+    using PricingLib for Price;
+    using SafeERC20 for IERC20Metadata;
 
     // {BU} = 1e18{qBU}
     uint8 public constant override BU_DECIMALS = 18;
@@ -135,9 +137,9 @@ contract VaultP0 is IVault, Ownable {
             ICollateral a = _basket.collateral[i];
 
             // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
-            attoUSD = attoUSD.plus(a.priceQ().attoUSD.mulu(_basket.quantities[a]));
+            attoUSD = attoUSD.plus(a.priceQ().usd().mulu(_basket.quantities[a]));
         }
-        price = Price(attoUSD, FIX_ZERO);
+        price.setUSD(attoUSD);
     }
 
     /// @return {qBU} The maximum number of basket units that `issuer` can issue

@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/libraries/Rewards.sol";
+import "contracts/p0/libraries/Pricing.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IRewardsClaimer.sol";
@@ -14,7 +15,9 @@ import "contracts/p0/main/VaultHandler.sol";
 
 abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     using FixLib for Fix;
+    using PricingLib for Price;
     using SafeERC20 for IERC20Metadata;
+
     Auction[] public auctions;
 
     uint256 private countOpenAuctions;
@@ -66,8 +69,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         IAsset buy,
         uint256 sellAmount
     ) internal view returns (bool notDust, Auction memory auction) {
-        Oracle.Info memory o = main.oracle(UoA.USD);
-        if (sell.price().attoUSD.eq(FIX_ZERO) || buy.price().attoUSD.eq(FIX_ZERO)) {
+        if (sell.price().usd().eq(FIX_ZERO) || buy.price().usd().eq(FIX_ZERO)) {
             return (false, auction);
         }
 
@@ -75,7 +77,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         Fix rTokenMarketCapUSD = main
         .rTokenAsset()
         .price()
-        .attoUSD
+        .usd()
         .mulu(main.rToken().totalSupply())
         .shiftLeft(-int8(main.rToken().decimals()));
         Fix maxSellUSD = rTokenMarketCapUSD.mul(main.maxAuctionSize()); // {attoUSD}
@@ -84,8 +86,8 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
             return (false, auction);
         }
 
-        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.price().attoUSD).ceil()); // {qSellTok}
-        Fix exactBuyAmount = toFix(sellAmount).mul(sell.price().attoUSD).div(buy.price().attoUSD); // {qBuyTok}
+        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.price().usd()).ceil()); // {qSellTok}
+        Fix exactBuyAmount = toFix(sellAmount).mul(sell.price().usd()).div(buy.price().usd()); // {qBuyTok}
         Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.maxTradeSlippage())); // {qBuyTok}
 
         return (
@@ -128,10 +130,10 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
 
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
         // {attoUSD/qBuyTok} = {attoUSD/buyTok} / {qBuyTok/buyTok}
-        Fix buyPrice = buy.price().attoUSD.shiftLeft(-int8(buy.erc20().decimals()));
+        Fix buyPrice = buy.price().usd().shiftLeft(-int8(buy.erc20().decimals()));
 
         // {attoUSD/qSellTok} = {attoUSD/sellTok} / {qSellTok/sellTok}
-        Fix sellPrice = sell.price().attoUSD.shiftLeft(-int8(sell.erc20().decimals()));
+        Fix sellPrice = sell.price().usd().shiftLeft(-int8(sell.erc20().decimals()));
 
         // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
         Fix exactSellAmount = toFix(deficitAmount).mul(buyPrice).div(sellPrice);
@@ -151,13 +153,13 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         Fix rTokenMarketCapUSD = main
         .rTokenAsset()
         .price()
-        .attoUSD
+        .usd()
         .mulu(main.rToken().totalSupply())
         .shiftLeft(-int8(main.rToken().decimals()));
         Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize()); // {attoUSD}
 
         // {attoUSD} / {attoUSD/qSellTok}
-        return minSellUSD.div(asset.price().attoUSD).ceil();
+        return minSellUSD.div(asset.price().usd()).ceil();
     }
 
     /// Launch an auction:

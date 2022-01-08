@@ -51,8 +51,7 @@ struct BU {
     uint256[] quantities; // {qTok/RToken}
 }
 
-/// Only one of these prices below
-struct OraclePrice {
+struct ProtoPrice {
     uint256 inETH; // {qETH/tok}
     uint256 inUSD; // {microUSD/tok}
 }
@@ -63,7 +62,7 @@ struct TokenState {
     uint256[] balances; // balances[Account] = uint256
     uint256 totalSupply;
     //
-    OraclePrice price;
+    ProtoPrice price;
 }
 
 /// Top-level state struct
@@ -81,5 +80,5 @@ struct ProtoState {
     TokenState aave;
     TokenState[] collateral; // AssetName.DAI - AssetName.aBUSD
     Fix[] defiCollateralRates; // AssetName.DAI - AssetName.aBUSD, fiatcoins are ignored
-    OraclePrice ethPrice;
+    ProtoPrice ethPrice;
 }
