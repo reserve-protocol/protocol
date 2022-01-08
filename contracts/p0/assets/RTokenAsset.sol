@@ -23,10 +23,10 @@ contract RTokenAssetP0 is AssetP0 {
         // {Price/BU}
         p = main.vault().basketPrice();
 
-        // {attoUSD/rTok} = {attoUSD/BU} * {BU/rTok}
-        p.setUSD(p.usd().mul(main.baseFactor()));
-        // {attoEUR/rTok} = {attoEUR/BU} * {BU/rTok}
-        p.setEUR(p.eur().mul(main.baseFactor()));
+        for (uint256 i = 0; i < uint256(type(UoA).max); i++) {
+            // {attoUoA/rTok} = {attoUoA/BU} * {BU/rTok}
+            p.set(UoA(i), p.quantity(UoA(i)).mul(main.baseFactor()));
+        }
     }
 
     /// @return If the asset is an instance of ICollateral or not

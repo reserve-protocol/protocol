@@ -1,12 +1,12 @@
 # TODOs
-- [ ] Move as much as possible into assets (no more unapproving collateral; rename `poke`)
+- [x] Move as much as possible into assets (no more unapproving collateral; rename `poke`)
 - [x] Move BU ownership to RToken + change vesting locations
 - [ ] Get rid of Mood, check that all assets in current vault are SOUND
 - [x] notice -> checkFor
 - [ ] EmptyVault impl?
-- [ ] DefaultHandler overhaul, move vault checks into the vault class
+- [x] DefaultHandler overhaul, move vault checks into the vault class
 - [x] _nextIssuanceBlockAvailable() - add fractional "how far into the block" metric 
-- [ ] (beforeUpdate() calls not actually going through the entire set of mixins)
+- [x] (beforeUpdate() calls not actually going through the entire set of mixins)
 - [x] Add `toUint` with enum rounding forwarding the call to floor/ceil/round
 - [ ] Revenue basket dilution composition over time -- don't do until we know fractional exponentiation in the new design
 - [ ] RevenueHandler -> RewardHandler

@@ -64,7 +64,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         // If the underlying fiatcoin price is below the default-threshold price, default eventually
         if (whenDefault > block.timestamp) {
             Price memory p = fiatcoinPrice(); // {Price/fiatTok}
-            whenDefault = p.byUoA(uoa).lte(_defaultThreshold())
+            whenDefault = p.quantity(uoa).lte(_defaultThreshold())
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -100,10 +100,10 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         }
 
         p = underlying.price();
-        // {attoUSD/tok} = {attoUSD/underlyingTok} * {underlyingTok/tok}
-        p.setUSD(p.usd().mul(fiatcoinRate()));
-        // {attoEUR/tok} = {attoEUR/underlyingTok} * {underlyingTok/tok}
-        p.setEUR(p.eur().mul(fiatcoinRate()));
+        for (uint256 i = 0; i < uint256(type(UoA).max); i++) {
+            // {attoUoA/tok} = {attoUoA/underlyingTok} * {underlyingTok/tok}
+            p.set(UoA(i), p.quantity(UoA(i)).mul(fiatcoinRate()));
+        }
     }
 
     /// @return {Price/tok} The price of 1 whole token of the fiatcoin
@@ -154,11 +154,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         // Collect prices
         Fix[] memory prices = new Fix[](numFiatcoins);
         for (uint256 i = 0; i < numFiatcoins; i++) {
-            if (uoa == UoA.USD) {
-                prices[i] = collateral[i].price().usd();
-            } else if (uoa == UoA.EUR) {
-                prices[i] = collateral[i].price().eur();
-            }
+            prices[i] = collateral[i].price().quantity(uoa);
         }
 
         // Sort

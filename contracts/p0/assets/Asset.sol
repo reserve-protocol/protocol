@@ -39,8 +39,9 @@ contract AssetP0 is IAsset {
     /// @return p {attoUSD/qTok} Like `price()` but per token quanta
     function priceQ() public view virtual override returns (Price memory p) {
         p = price();
-        p.setUSD(p.usd().shiftLeft(-int8(erc20.decimals())));
-        p.setEUR(p.eur().shiftLeft(-int8(erc20.decimals())));
+        for (uint256 i = 0; i < uint256(type(UoA).max); i++) {
+            p.set(UoA(i), p.quantity(UoA(i)).shiftLeft(-int8(erc20.decimals())));
+        }
     }
 
     /// @return If the asset is an instance of ICollateral or not
