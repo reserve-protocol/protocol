@@ -210,28 +210,6 @@ describe('VaultP0 contract', () => {
       expect(await vault.quantity(addr1.address)).to.equal(0)
     })
 
-    it('Should identify if vault containsOnly a list of collateral', async () => {
-      // Check if contains only from collaterals
-      expect(await vault.connect(owner).containsOnly(collateralAddresses)).to.equal(true)
-
-      expect(
-        await vault
-          .connect(owner)
-          .containsOnly([collateral0.address, collateral1.address, collateral2.address])
-      ).to.equal(false)
-
-      expect(await vault.connect(owner).containsOnly([collateral0.address])).to.equal(false)
-
-      // With a smaller vault
-      let newVault: VaultP0 = <VaultP0>(
-        await VaultFactory.deploy([collateral0.address], [bn('1e18')], [])
-      )
-      expect(await newVault.connect(owner).containsOnly(collateralAddresses)).to.equal(true)
-      expect(await newVault.connect(owner).containsOnly([collateral0.address])).to.equal(true)
-      expect(await newVault.connect(owner).containsOnly([collateral1.address])).to.equal(false)
-    })
-  })
-
   describe('Issuance', () => {
     const ONE: BigNumber = bn('1e18')
     const TWO: BigNumber = bn('2e18')

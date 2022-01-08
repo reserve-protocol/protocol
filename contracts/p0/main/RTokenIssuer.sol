@@ -69,7 +69,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
         revenueFurnace().doMelt();
         _updateCollateralStatuses();
         _tryEnsureValidVault();
-        require(vault().worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
+        require(vault().collateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
         uint256 amtBUs = toBUs(amount);
 
@@ -152,7 +152,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
                 continue;
             }
 
-            CollateralStatus cs = vault().worstCollateralStatus();
+            CollateralStatus cs = vault().collateralStatus();
             if (
                 (cs == CollateralStatus.SOUND || cs == CollateralStatus.DISABLED) &&
                 iss.vault != vault()

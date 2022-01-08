@@ -65,9 +65,6 @@ interface IVault is IRewardsClaimer {
         view
         returns (uint256[] memory);
 
-    /// @return Whether the vault is made up only of collateral in `collateral`
-    function containsOnly(ICollateral[] memory collateral) external view returns (bool);
-
     /// @return {qBU} The maximum number of BUs the caller can issue
     function maxIssuable(address issuer) external view returns (uint256);
 
@@ -87,7 +84,7 @@ interface IVault is IRewardsClaimer {
     function getBackups() external view returns (IVault[] memory);
 
     /// @return The maximum CollateralStatus among vault collateral
-    function worstCollateralStatus() external view returns (CollateralStatus);
+    function collateralStatus() external view returns (CollateralStatus);
 
     /// @return The number of decimals in a BU
     // solhint-disable-next-line func-name-mixedcase

@@ -45,9 +45,9 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         super.init(args);
         vaults.push(args.vault);
 
-        // Check if vault has unapproved collateral
-        if (!vault().containsOnly(args.approvedCollateral)) {
-            revert CommonErrors.UnapprovedCollateral();
+        // Check vault collateral
+        if (vault().collateralStatus() != CollateralStatus.SOUND) {
+            revert CommonErrors.UnsoundVault();
         }
 
         _prevBasketPrice = args.vault.basketPrice();
@@ -115,7 +115,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     }
 
     function _tryEnsureValidVault() internal {
-        if (vault().worstCollateralStatus() == CollateralStatus.DISABLED) {
+        if (vault().collateralStatus() == CollateralStatus.DISABLED) {
             (bool hasNext, IVault nextVault) = _selectNextVault();
             if (hasNext) {
                 _switchVault(nextVault);
@@ -196,7 +196,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
 
         // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
-            if (backups[i].worstCollateralStatus() == CollateralStatus.SOUND) {
+            if (backups[i].collateralStatus() == CollateralStatus.SOUND) {
                 Price memory price = backups[i].basketPrice(); // {Price/BU}
 
                 // See if it has the highest basket

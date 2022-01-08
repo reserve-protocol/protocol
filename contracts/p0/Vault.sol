@@ -140,22 +140,6 @@ contract VaultP0 is IVault, Ownable {
         price = Price(attoUSD, FIX_ZERO);
     }
 
-    /// @return Whether the vault is made up only of collateral in `collateral`
-    function containsOnly(ICollateral[] memory collateral) external view override returns (bool) {
-        for (uint256 i = 0; i < _basket.size; i++) {
-            bool found = false;
-            for (uint256 j = 0; j < collateral.length; j++) {
-                if (_basket.collateral[i] == collateral[j]) {
-                    found = true;
-                }
-            }
-            if (!found) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     /// @return {qBU} The maximum number of basket units that `issuer` can issue
     function maxIssuable(address issuer) external view override returns (uint256) {
         Fix min = FIX_MAX;
@@ -187,7 +171,7 @@ contract VaultP0 is IVault, Ownable {
     }
 
     /// @return status The maximum CollateralStatus among vault collateral
-    function worstCollateralStatus() external view returns (CollateralStatus status) {
+    function collateralStatus() external view returns (CollateralStatus status) {
         for (uint256 i = 0; i < _basket.size; i++) {
             if (!main.isRegistered(_basket.collateral[i])) {
                 return CollateralStatus.DISABLED;
