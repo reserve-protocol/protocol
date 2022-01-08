@@ -86,8 +86,9 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
             return (false, auction);
         }
 
-        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.price().usd()).ceil()); // {qSellTok}
-        Fix exactBuyAmount = toFix(sellAmount).mul(sell.price().usd()).div(buy.price().usd()); // {qBuyTok}
+        // TODO: Should this be floor?
+        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceQ().usd()).ceil()); // {qSellTok}
+        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceQ().usd()).div(buy.priceQ().usd()); // {qBuyTok}
         Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.maxTradeSlippage())); // {qBuyTok}
 
         return (
@@ -126,15 +127,9 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         // Don't buy dust.
         deficitAmount = Math.max(deficitAmount, _dustThreshold(buy));
 
-        // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
-        // {attoUSD/qBuyTok} = {attoUSD/buyTok} / {qBuyTok/buyTok}
-        Fix buyPrice = buy.price().usd().shiftLeft(-int8(buy.erc20().decimals()));
-
-        // {attoUSD/qSellTok} = {attoUSD/sellTok} / {qSellTok/sellTok}
-        Fix sellPrice = sell.price().usd().shiftLeft(-int8(sell.erc20().decimals()));
-
         // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
-        Fix exactSellAmount = toFix(deficitAmount).mul(buyPrice).div(sellPrice);
+        Fix exactSellAmount = toFix(deficitAmount).mul(buy.priceQ().usd()).div(sell.priceQ().usd());
+        // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
         uint256 idealSellAmount = exactSellAmount
@@ -148,16 +143,14 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     /// @return {qSellTok} The least amount of tokens worth trying to sell
     function _dustThreshold(IAsset asset) private view returns (uint256) {
         // {attoUSD} = {attoUSD/sellTok} * {qSellTok} / {qSellTok/sellTok}
-        Fix rTokenMarketCapUSD = main
-        .rTokenAsset()
-        .price()
-        .usd()
-        .mulu(main.rToken().totalSupply())
-        .shiftLeft(-int8(main.rToken().decimals()));
+        Fix rTokenMarketCapUSD = main.rTokenAsset().priceQ().usd().mulu(
+            main.rToken().totalSupply()
+        );
+
         Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize()); // {attoUSD}
 
         // {attoUSD} / {attoUSD/qSellTok}
-        return minSellUSD.div(asset.price().usd()).ceil();
+        return minSellUSD.div(asset.priceQ().usd()).ceil();
     }
 
     /// Launch an auction:
