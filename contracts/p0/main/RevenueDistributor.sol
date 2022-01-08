@@ -28,10 +28,6 @@ contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDist
         _setDistribution(ST_RSR, RevenueShare(FIX_ZERO, args.dist.rsrDist));
     }
 
-    function beforeUpdate() public virtual override(Mixin, SettingsHandlerP0) {
-        super.beforeUpdate();
-    }
-
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
     /// main.revenueFurnace() and main.stRSR().
     function setDistribution(address dest, RevenueShare memory share) public override onlyOwner {

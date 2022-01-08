@@ -17,7 +17,6 @@ import "contracts/p0/RevenueTrader.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./AssetRegistry.sol";
-import "./Moody.sol";
 import "./SettingsHandler.sol";
 import "./VaultHandler.sol";
 
@@ -28,7 +27,6 @@ import "./VaultHandler.sol";
 contract AuctioneerP0 is
     Pausable,
     Mixin,
-    MoodyP0,
     AssetRegistryP0,
     SettingsHandlerP0,
     VaultHandlerP0,
@@ -53,7 +51,7 @@ contract AuctioneerP0 is
         rTokenTrader = new RevenueTraderP0(IMain(address(this)), rTokenAsset());
     }
 
-    function poke() public virtual override notPaused {
+    function poke() public virtual override(Mixin, VaultHandlerP0) notPaused {
         super.poke();
 
         // Backing Trader
@@ -97,11 +95,7 @@ contract AuctioneerP0 is
         rTokenTrader.poke();
     }
 
-    function beforeUpdate()
-        public
-        virtual
-        override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
-    {
+    function beforeUpdate() public virtual override(Mixin, VaultHandlerP0) {
         super.beforeUpdate();
     }
 
@@ -123,6 +117,5 @@ contract AuctioneerP0 is
         _historicalBasketDilution = _meltingFactor().mulu(rToken().totalSupply()).divu(
             vault().basketUnits(address(rToken()))
         );
-        _setMood(Mood.CALM);
     }
 }

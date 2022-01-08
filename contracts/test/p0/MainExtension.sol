@@ -3,15 +3,16 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "contracts/libraries/Fixed.sol";
 import "contracts/p0/libraries/Oracle.sol";
-import "contracts/test/Mixins.sol";
-import "contracts/test/ProtoState.sol";
-import "contracts/mocks/ERC20Mock.sol";
+import "contracts/p0/libraries/Pricing.sol";
+import "contracts/libraries/Fixed.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Oracle.sol";
+import "contracts/test/Mixins.sol";
+import "contracts/test/ProtoState.sol";
+import "contracts/mocks/ERC20Mock.sol";
 import "contracts/p0/Main.sol";
 import "./RTokenExtension.sol";
 
@@ -22,6 +23,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
+    using PricingLib for Price;
     using Oracle for Oracle.Info;
 
     constructor(address admin) ContextMixin(admin) {}
@@ -61,22 +63,21 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         assert(_INVARIANT_stateDefined());
         assert(_INVARIANT_configurationValid());
         assert(_INVARIANT_distributionValid());
-        assert(_INVARIANT_fullyCapitalizedOrNotCalm());
+        assert(_INVARIANT_fullyCapitalized());
         assert(_INVARIANT_nextRewardsInFutureOrNow());
         assert(_INVARIANT_quoteMonotonic());
         assert(_INVARIANT_tokensAndQuantitiesSameLength());
         assert(_INVARIANT_pricesDefined());
         assert(_INVARIANT_issuancesAreValid());
         assert(_INVARIANT_baseFactorDefined());
-        assert(_INVARIANT_hasCollateralConfiguration());
         assert(_INVARIANT_toBUInverseFromBU());
         assert(_INVARIANT_fromBUInverseToBU());
     }
 
     function _INVARIANT_stateDefined() internal view returns (bool ok) {
         ok = true;
-        ok = ok && address(oracle().compound) != address(0);
-        ok = ok && address(oracle().aave) != address(0);
+        ok = ok && address(oracle(UoA.USD).compound) != address(0);
+        ok = ok && address(oracle(UoA.USD).aave) != address(0);
         ok = ok && address(revenueFurnace()) != address(0);
         ok = ok && address(stRSR()) != address(0);
         ok = ok && address(rTokenAsset()) != address(0);
@@ -84,8 +85,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && address(compAsset()) != address(0);
         ok = ok && address(aaveAsset()) != address(0);
         ok = ok && _historicalBasketDilution.gt(FIX_ZERO);
-        ok = ok && _approvedCollateral.length() > 0;
-        ok = ok && _allAssets.length() > 0;
+        ok = ok && _assets.length() > 0;
         ok = ok && address(vault()) != address(0);
         ok = ok && vaults.length > 0;
         if (!ok) {
@@ -128,11 +128,12 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         }
     }
 
-    function _INVARIANT_fullyCapitalizedOrNotCalm() internal view returns (bool ok) {
+    function _INVARIANT_fullyCapitalized() internal view returns (bool ok) {
         ok = true;
-        ok = ok && (fullyCapitalized() || _mood != Mood.CALM);
+        // TODO: Check that we really want to assert this
+        ok = ok && fullyCapitalized();
         if (!ok) {
-            console.log("_INVARIANT_fullyCapitalizedOrNotCalm violated");
+            console.log("_INVARIANT_fullyCapitalized violated");
         }
     }
 
@@ -171,18 +172,16 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_pricesDefined() internal view returns (bool ok) {
         ok = true;
-        Oracle.Info memory oracle_ = oracle();
+        Oracle.Info memory oracle_ = oracle(UoA.USD);
         for (uint256 i = 0; i < vault().size(); i++) {
             ICollateral c = vault().collateralAt(i);
-            if (c.isFiatcoin()) {
-                ok = ok && oracle_.consult(Oracle.Source.AAVE, address(c.erc20())).gt(FIX_ZERO);
+            if (c.underlyingERC20() == c.erc20()) {
+                ok = ok && oracle_.consult(Oracle.Source.AAVE, c.erc20()).usd().gt(FIX_ZERO);
             }
         }
-        ok =
-            ok &&
-            oracle_.consult(Oracle.Source.COMPOUND, address(compAsset().erc20())).gt(FIX_ZERO);
-        ok = ok && oracle_.consult(Oracle.Source.AAVE, address(rsrAsset().erc20())).gt(FIX_ZERO);
-        ok = ok && oracle_.consult(Oracle.Source.AAVE, address(aaveAsset().erc20())).gt(FIX_ZERO);
+        ok = ok && oracle_.consult(Oracle.Source.COMPOUND, compAsset().erc20()).usd().gt(FIX_ZERO);
+        ok = ok && oracle_.consult(Oracle.Source.AAVE, rsrAsset().erc20()).usd().gt(FIX_ZERO);
+        ok = ok && oracle_.consult(Oracle.Source.AAVE, aaveAsset().erc20()).usd().gt(FIX_ZERO);
         if (!ok) {
             console.log("_INVARIANT_pricesDefined violated");
         }
@@ -208,10 +207,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         if (!ok) {
             console.log("_INVARIANT_baseFactorDefined violated");
         }
-    }
-
-    function _INVARIANT_hasCollateralConfiguration() internal view returns (bool ok) {
-        return approvedFiatcoins().length > 0;
     }
 
     function _INVARIANT_toBUInverseFromBU() internal view returns (bool ok) {

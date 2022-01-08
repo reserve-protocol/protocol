@@ -10,13 +10,6 @@ import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./IVault.sol";
 
-/// The state of the system, as a personified mood
-enum Mood {
-    CALM, // 100% capitalized + no auctions
-    DOUBT, // in this state for 24h before default, no auctions or unstaking
-    TRADING // auctions in progress, no unstaking
-}
-
 /// Configuration of the system
 struct Config {
     // Time (seconds)
@@ -52,6 +45,18 @@ struct Config {
     // defaultThreshold = 0.05 (5% deviation)
 }
 
+/// Unit of Account
+enum UoA {
+    USD,
+    EUR
+}
+
+/// One balance to rule them all; a balance with distinct magnitudes for each unit of account
+/// e.g. Price.quantities[uint256(UoA.USD)]
+struct Price {
+    Fix[] quantities; // {attoUoA}
+}
+
 struct RevenueShare {
     Fix rTokenDist;
     Fix rsrDist;
@@ -59,13 +64,9 @@ struct RevenueShare {
 
 struct ConstructorArgs {
     ICollateral[] approvedCollateral;
-    Oracle.Info oracle;
+    Oracle.Info usdOracle;
     Config config;
     RevenueShare dist;
-    IAsset rTokenAsset;
-    IAsset rsrAsset;
-    IAsset compAsset;
-    IAsset aaveAsset;
     IVault vault;
     IFurnace furnace;
     IMarket market;
@@ -110,21 +111,16 @@ interface IPausable {
     function setPauser(address pauser_) external;
 }
 
-interface IMoody {
-    /// Emitted when there is a change in system state.
-    event MoodChanged(Mood indexed oldState, Mood indexed newState);
-
-    function mood() external returns (Mood);
-}
-
 interface IAssetRegistry {
-    function approveCollateral(ICollateral collateral) external;
+    function addAsset(IAsset asset) external;
 
-    function unapproveCollateral(ICollateral collateral) external;
+    function removeAsset(IAsset asset) external;
+
+    function disableCollateral(ICollateral collateral) external;
+
+    function isRegistered(IAsset asset) external view returns (bool);
 
     function allAssets() external view returns (IAsset[] memory);
-
-    function isApproved(IAsset asset) external view returns (bool);
 }
 
 interface IRevenueDistributor {
@@ -166,7 +162,7 @@ interface ISettingsHandler {
 
     function setDefaultThreshold(Fix defaultThreshold) external;
 
-    function setOracle(Oracle.Info memory oracle) external;
+    function setOracle(UoA uoa, Oracle.Info memory oracle) external;
 
     function setStRSR(IStRSR stRSR) external;
 
@@ -220,7 +216,7 @@ interface ISettingsHandler {
 
     function aaveAsset() external view returns (IAsset);
 
-    function oracle() external view returns (Oracle.Info memory);
+    function oracle(UoA uoa) external view returns (Oracle.Info memory);
 
     function market() external view returns (IMarket);
 
@@ -252,11 +248,6 @@ interface IVaultHandler {
     function vaults(uint256 index) external view returns (IVault);
 
     function numVaults() external view returns (uint256);
-}
-
-// solhint-disable-next-line no-empty-blocks
-interface IDefaultHandler {
-
 }
 
 interface IAuctioneerEvents {
@@ -295,7 +286,7 @@ interface IAuctioneer {
     function backingTraderAddr() external view returns (address);
 }
 
-interface IRevenueHandler {
+interface IRewardHandler {
     /// Emitted whenever rewards are claimed
     /// @param compAmount {qCOMP} The amount of COMP claimed
     /// @param aaveAmount {qAAVE} The amount of COMP claimed
@@ -350,14 +341,12 @@ interface IRTokenIssuer {
 interface IMain is
     IPausable,
     IMixin,
-    IMoody,
     IAssetRegistry,
     ISettingsHandler,
     IRevenueDistributor,
     IVaultHandler,
-    IDefaultHandler,
     IAuctioneer,
-    IRevenueHandler,
+    IRewardHandler,
     IRTokenIssuer
 {
 

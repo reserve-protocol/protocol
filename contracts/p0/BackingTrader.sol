@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/Trader.sol";
+import "contracts/p0/libraries/Pricing.sol";
 import "contracts/p0/main/VaultHandler.sol";
+import "contracts/p0/Trader.sol";
 import "contracts/libraries/Fixed.sol";
 
 contract BackingTraderP0 is TraderP0 {
-    using SafeERC20 for IERC20;
     using FixLib for Fix;
+    using PricingLib for Price;
+    using SafeERC20 for IERC20Metadata;
 
     // How many more BUs this trader has the duty to construct.
     uint256 public targetBUs; // {qBU}
@@ -35,7 +37,7 @@ contract BackingTraderP0 is TraderP0 {
         if (!hasOpenAuctions() && main.fullyCapitalized()) {
             IAsset[] memory assets = main.allAssets();
             for (uint256 i = 0; i < assets.length; i++) {
-                IERC20 tok = assets[i].erc20();
+                IERC20Metadata tok = assets[i].erc20();
                 uint256 bal = tok.balanceOf(address(this));
                 if (bal == 0) {
                     continue;
@@ -75,7 +77,10 @@ contract BackingTraderP0 is TraderP0 {
 
         bool trade;
         Auction memory auction;
-        if (_isTrustedPrice(surplus)) {
+        if (
+            surplus.isCollateral() &&
+            ICollateral(address(surplus)).status() == CollateralStatus.SOUND
+        ) {
             (trade, auction) = _prepareAuctionToCoverDeficit(
                 surplus,
                 deficit,
@@ -131,18 +136,19 @@ contract BackingTraderP0 is TraderP0 {
         Fix[] memory surpluses = new Fix[](assets.length);
         Fix[] memory deficits = new Fix[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {
-            Fix bal = toFix(IERC20(assets[i].erc20()).balanceOf(address(this))); // {qTok}
+            // {qTok}
+            Fix bal = toFix(IERC20(assets[i].erc20()).balanceOf(address(this)));
 
-            // {qTok} = {qBU} / {qBU/BU} * {qTok/BU}
-            Fix target = toFix(targetBUs).shiftLeft(-int8(main.vault().BU_DECIMALS())).mulu(
-                main.vault().quantity(assets[i])
+            // {qTok} = {qBU} * {qTok/BU} / {qBU/BU}
+            Fix target = toFix(targetBUs).mulu(main.vault().quantity(assets[i])).shiftLeft(
+                -int8(main.vault().BU_DECIMALS())
             );
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                surpluses[i] = bal.minus(target).mul(assets[i].priceUSD(main.oracle()));
+                surpluses[i] = bal.minus(target).mul(assets[i].priceQ().usd());
             } else if (bal.lt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                deficits[i] = target.minus(bal).mul(assets[i].priceUSD(main.oracle()));
+                deficits[i] = target.minus(bal).mul(assets[i].priceQ().usd());
             }
         }
 
@@ -163,10 +169,10 @@ contract BackingTraderP0 is TraderP0 {
         }
 
         // {qSellTok} = {attoUSD} / {attoUSD/qSellTok}
-        Fix sellAmount = surplusMax.div(assets[surplusIndex].priceUSD(main.oracle()));
+        Fix sellAmount = surplusMax.div(assets[surplusIndex].priceQ().usd());
 
         // {qBuyTok} = {attoUSD} / {attoUSD/qBuyTok}
-        Fix buyAmount = deficitMax.div(assets[deficitIndex].priceUSD(main.oracle()));
+        Fix buyAmount = deficitMax.div(assets[deficitIndex].priceQ().usd());
         return (assets[surplusIndex], assets[deficitIndex], sellAmount.floor(), buyAmount.floor());
     }
 
@@ -181,14 +187,5 @@ contract BackingTraderP0 is TraderP0 {
             main.vault().issue(address(main), issuable);
             targetBUs -= Math.min(issuable, targetBUs);
         }
-    }
-
-    function _isTrustedPrice(IAsset asset) private view returns (bool) {
-        return
-            main.isApproved(asset) ||
-            asset == main.rTokenAsset() ||
-            asset == main.rsrAsset() ||
-            asset == main.compAsset() ||
-            asset == main.aaveAsset();
     }
 }

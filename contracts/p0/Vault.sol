@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/p0/assets/collateral/ATokenCollateral.sol";
+import "contracts/p0/assets/ATokenCollateral.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
+import "contracts/p0/libraries/Pricing.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -21,15 +21,15 @@ import "contracts/libraries/Fixed.sol";
  * @notice An issuer of an internal bookkeeping unit called a BU or basket unit.
  */
 contract VaultP0 is IVault, Ownable {
-    using SafeERC20 for IERC20;
     using FixLib for Fix;
+    using PricingLib for Price;
+    using SafeERC20 for IERC20Metadata;
 
     // {BU} = 1e18{qBU}
     uint8 public constant override BU_DECIMALS = 18;
 
     Basket internal _basket;
 
-    // mapping(address => mapping(address => uint256)) internal _allowances; // {qBU}
     mapping(address => uint256) public override basketUnits; // {qBU}
     uint256 public totalUnits; // {qBU}
 
@@ -117,53 +117,39 @@ contract VaultP0 is IVault, Ownable {
     {
         amounts = new uint256[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
-            // {qTok} = {qBU} *  {qTok/BU} / {qBU/BU}
+            // {qTok} = {qBU} * {qTok/BU} / {qBU/BU}
             amounts[i] = toFix(amtBUs)
-            .shiftLeft(-int8(BU_DECIMALS))
             .mulu(_basket.quantities[_basket.collateral[i]])
+            .shiftLeft(-int8(BU_DECIMALS))
             .toUint(rounding);
         }
     }
 
-    /// @return {qTok/BU} The quantity of tokens of `asset` required per whole BU
+    /// @return {qTok/BU} The quantity of qTokens of `asset` required per whole BU
     function quantity(IAsset asset) external view override returns (uint256) {
         return _basket.quantities[asset];
     }
 
-    /// @return sum {attoUSD/BU} The attoUSD value of 1 BU if all fiatcoins hold peg
-    function basketRate() external view override returns (Fix sum) {
+    /// @return price {attoPrice/BU} The Price of 1 whole BU
+    function basketPrice() external view override returns (Price memory price) {
+        Fix attoUSD = FIX_ZERO;
         for (uint256 i = 0; i < _basket.size; i++) {
             ICollateral a = _basket.collateral[i];
 
             // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
-            sum = sum.plus(a.rateUSD().mulu(_basket.quantities[a]));
+            attoUSD = attoUSD.plus(a.priceQ().usd().mulu(_basket.quantities[a]));
         }
-    }
-
-    /// @return Whether the vault is made up only of collateral in `collateral`
-    function containsOnly(ICollateral[] memory collateral) external view override returns (bool) {
-        for (uint256 i = 0; i < _basket.size; i++) {
-            bool found = false;
-            for (uint256 j = 0; j < collateral.length; j++) {
-                if (_basket.collateral[i] == collateral[j]) {
-                    found = true;
-                }
-            }
-            if (!found) {
-                return false;
-            }
-        }
-        return true;
+        price.setUSD(attoUSD);
     }
 
     /// @return {qBU} The maximum number of basket units that `issuer` can issue
     function maxIssuable(address issuer) external view override returns (uint256) {
         Fix min = FIX_MAX;
         for (uint256 i = 0; i < _basket.size; i++) {
+            // {qTok}
+            Fix bal = toFix(_basket.collateral[i].erc20().balanceOf(issuer));
             // {BU} = {qTok} / {qTok/BU}
-            Fix amtBUs = toFix(_basket.collateral[i].erc20().balanceOf(issuer)).divu(
-                _basket.quantities[_basket.collateral[i]]
-            );
+            Fix amtBUs = bal.divu(_basket.quantities[_basket.collateral[i]]);
             if (amtBUs.lt(min)) {
                 min = amtBUs;
             }
@@ -184,6 +170,18 @@ contract VaultP0 is IVault, Ownable {
     /// @return A list of eligible backup vaults
     function getBackups() external view override returns (IVault[] memory) {
         return backups;
+    }
+
+    /// @return status The maximum CollateralStatus among vault collateral
+    function collateralStatus() external view returns (CollateralStatus status) {
+        for (uint256 i = 0; i < _basket.size; i++) {
+            if (!main.isRegistered(_basket.collateral[i])) {
+                return CollateralStatus.DISABLED;
+            }
+            if (uint256(_basket.collateral[i].status()) > uint256(status)) {
+                status = _basket.collateral[i].status();
+            }
+        }
     }
 
     function setBackups(IVault[] memory backupVaults) external onlyOwner {

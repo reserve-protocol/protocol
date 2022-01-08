@@ -5,10 +5,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/main/SettingsHandler.sol";
-import "contracts/p0/main/Moody.sol";
 import "contracts/p0/main/Mixin.sol";
-import "contracts/p0/main/DefaultHandler.sol";
-import "contracts/p0/main/RevenueHandler.sol";
+import "contracts/p0/main/RewardHandler.sol";
 import "contracts/p0/main/RTokenIssuer.sol";
 import "contracts/p0/main/Auctioneer.sol";
 import "contracts/p0/main/AssetRegistry.sol";
@@ -22,15 +20,14 @@ import "contracts/Pausable.sol";
  * @notice Collects all mixins.
  */
 contract MainP0 is
-    Ownable,
+    Pausable,
     Mixin,
     AssetRegistryP0,
     SettingsHandlerP0,
     RevenueDistributorP0,
     VaultHandlerP0,
-    DefaultHandlerP0,
     AuctioneerP0,
-    RevenueHandlerP0,
+    RewardHandlerP0,
     RTokenIssuerP0,
     IMain
 {
@@ -48,9 +45,8 @@ contract MainP0 is
             SettingsHandlerP0,
             RevenueDistributorP0,
             VaultHandlerP0,
-            DefaultHandlerP0,
             AuctioneerP0,
-            RevenueHandlerP0,
+            RewardHandlerP0,
             RTokenIssuerP0
         )
     {
@@ -61,7 +57,7 @@ contract MainP0 is
     function poke()
         public
         virtual
-        override(IMixin, Mixin, DefaultHandlerP0, AuctioneerP0, RevenueHandlerP0, RTokenIssuerP0)
+        override(IMixin, Mixin, VaultHandlerP0, AuctioneerP0, RewardHandlerP0, RTokenIssuerP0)
     {
         super.poke();
     }
@@ -71,18 +67,7 @@ contract MainP0 is
     function beforeUpdate()
         public
         virtual
-        override(
-            IMixin,
-            Mixin,
-            AssetRegistryP0,
-            SettingsHandlerP0,
-            RevenueDistributorP0,
-            VaultHandlerP0,
-            DefaultHandlerP0,
-            AuctioneerP0,
-            RevenueHandlerP0,
-            RTokenIssuerP0
-        )
+        override(IMixin, Mixin, VaultHandlerP0, AuctioneerP0, RewardHandlerP0, RTokenIssuerP0)
     {
         super.beforeUpdate();
     }

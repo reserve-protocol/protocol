@@ -2,9 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/p0/assets/RSRAsset.sol";
-import "contracts/p0/assets/COMPAsset.sol";
-import "contracts/p0/assets/AAVEAsset.sol";
 
 import "./IAsset.sol";
 import "./IVault.sol";

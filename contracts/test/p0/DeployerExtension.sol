@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/Deployer.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMarket.sol";
@@ -19,15 +20,15 @@ contract DeployerExtension is DeployerP0, IExtension {
     IMain internal _main;
 
     constructor(
-        IAsset rsr_,
-        IAsset comp_,
-        IAsset aave_,
+        IERC20Metadata rsr_,
+        IERC20Metadata comp_,
+        IERC20Metadata aave_,
         IMarket market_
     ) DeployerP0(rsr_, comp_, aave_, market_) {
         _admin = msg.sender;
     }
 
-    function assertInvariants() external override {
+    function assertInvariants() external view override {
         INVARIANT_currentDeploymentRegistered();
     }
 

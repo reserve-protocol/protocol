@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/libraries/Rewards.sol";
+import "contracts/p0/libraries/Pricing.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IRewardsClaimer.sol";
@@ -13,7 +15,9 @@ import "contracts/p0/main/VaultHandler.sol";
 
 abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     using FixLib for Fix;
-    using SafeERC20 for IERC20;
+    using PricingLib for Price;
+    using SafeERC20 for IERC20Metadata;
+
     Auction[] public auctions;
 
     uint256 private countOpenAuctions;
@@ -65,21 +69,23 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         IAsset buy,
         uint256 sellAmount
     ) internal view returns (bool notDust, Auction memory auction) {
-        Oracle.Info memory o = main.oracle();
-        if (sell.priceUSD(o).eq(FIX_ZERO) || buy.priceUSD(o).eq(FIX_ZERO)) {
+        if (sell.price().usd().eq(FIX_ZERO) || buy.price().usd().eq(FIX_ZERO)) {
             return (false, auction);
         }
 
-        // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
-        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(o).mulu(main.rToken().totalSupply());
+        // {attoUSD} = {attoUSD/qRTok} * {qRTok}
+        Fix rTokenMarketCapUSD = main.rTokenAsset().priceQ().usd().mulu(
+            main.rToken().totalSupply()
+        );
         Fix maxSellUSD = rTokenMarketCapUSD.mul(main.maxAuctionSize()); // {attoUSD}
 
         if (sellAmount < _dustThreshold(sell)) {
             return (false, auction);
         }
 
-        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD(o)).ceil()); // {qSellTok}
-        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD(o)).div(buy.priceUSD(o)); // {qBuyTok}
+        // TODO: Should this be floor?
+        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceQ().usd()).ceil()); // {qSellTok}
+        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceQ().usd()).div(buy.priceQ().usd()); // {qBuyTok}
         Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.maxTradeSlippage())); // {qBuyTok}
 
         return (
@@ -118,11 +124,9 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         // Don't buy dust.
         deficitAmount = Math.max(deficitAmount, _dustThreshold(buy));
 
-        Oracle.Info memory o = main.oracle();
-
-        // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
         // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
-        Fix exactSellAmount = toFix(deficitAmount).mul(buy.priceUSD(o)).div(sell.priceUSD(o));
+        Fix exactSellAmount = toFix(deficitAmount).mul(buy.priceQ().usd()).div(sell.priceQ().usd());
+        // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
         uint256 idealSellAmount = exactSellAmount
@@ -136,13 +140,15 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     /// @return {qSellTok} The least amount of tokens worth trying to sell
     function _dustThreshold(IAsset asset) private view returns (uint256) {
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
-        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD(main.oracle()).mulu(
+        Fix rTokenMarketCapUSD = main.rTokenAsset().priceQ().usd().mulu(
             main.rToken().totalSupply()
         );
-        Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize()); // {attoUSD}
+
+        // {attoUSD}
+        Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize());
 
         // {attoUSD} / {attoUSD/qSellTok}
-        return minSellUSD.div(asset.priceUSD(main.oracle())).ceil();
+        return minSellUSD.div(asset.priceQ().usd()).ceil();
     }
 
     /// Launch an auction:

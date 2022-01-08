@@ -16,7 +16,7 @@ library Lib {
         uint256 a,
         uint256 b,
         string memory str
-    ) internal view returns (bool) {
+    ) internal pure returns (bool) {
         if (a != b) {
             revert(string(abi.encodePacked(str, " | ", a, " != ", b)));
         }
@@ -30,7 +30,7 @@ library Lib {
         string memory a,
         string memory b,
         string memory str
-    ) internal view returns (bool) {
+    ) internal pure returns (bool) {
         if (keccak256(bytes(a)) != keccak256(bytes(b))) {
             revert(string(abi.encodePacked(str, " | ", a, " != ", b)));
         }
@@ -44,7 +44,7 @@ library Lib {
         Fix a,
         Fix b,
         string memory str
-    ) internal view returns (bool) {
+    ) internal pure returns (bool) {
         if (!FixLib.eq(a, b)) {
             revert(string(abi.encodePacked(str, " | ", a, " != ", b)));
         }
@@ -53,7 +53,7 @@ library Lib {
 
     /// ProtoState version
     /// Compares ProtoStates for equality
-    function assertEq(ProtoState memory a, ProtoState memory b) internal view returns (bool ok) {
+    function assertEq(ProtoState memory a, ProtoState memory b) internal pure returns (bool ok) {
         ok =
             _assertConfigEq(a.config, b.config) &&
             _assertDistEq(a.distribution, b.distribution) &&
@@ -81,7 +81,7 @@ library Lib {
     }
 
     /// @return Whether two Configs are equal
-    function _assertConfigEq(Config memory a, Config memory b) internal view returns (bool) {
+    function _assertConfigEq(Config memory a, Config memory b) internal pure returns (bool) {
         return
             assertEq(a.rewardStart, b.rewardStart, "Config.rewardStart") &&
             assertEq(a.rewardPeriod, b.rewardPeriod, "Config.rewardStart") &&
@@ -123,7 +123,7 @@ library Lib {
 
     function _assertDistEq(RevenueDestination[] memory a, RevenueDestination[] memory b)
         internal
-        view
+        pure
         returns (bool)
     {
         if (!assertEq(a.length, b.length, "Revenue Dest length")) {
@@ -148,7 +148,7 @@ library Lib {
         return true;
     }
 
-    function _assertNoRepeatedKeys(RevenueDestination[] memory a) internal view {
+    function _assertNoRepeatedKeys(RevenueDestination[] memory a) internal pure {
         for (uint256 i = 0; i < a.length - 1; i++) {
             for (uint256 j = i + 1; j < a.length; j++) {
                 if (a[i].dest == a[j].dest) {
@@ -163,22 +163,22 @@ library Lib {
         TokenState memory a,
         TokenState memory b,
         string memory symbol
-    ) internal view returns (bool ok) {
+    ) internal pure returns (bool ok) {
         ok =
             assertEq(a.name, b.name, "Name mismatch") &&
             assertEq(a.symbol, b.symbol, "Symbol mismatch") &&
             assertEq(a.symbol, symbol, "Symbol unexpected") &&
             assertEq(a.totalSupply, b.totalSupply, "TotalSupply mismatch") &&
-            _assertBalancesEq(a.balances, b.balances, a.symbol) &&
+            _assertBalancesEq(a.balances, b.balances) &&
             _assertOraclePriceEq(a.price, b.price, a.symbol);
     }
 
     /// @return ok Whether two balance arrays are equivalent
-    function _assertBalancesEq(
-        uint256[] memory a,
-        uint256[] memory b,
-        string memory symbol
-    ) internal view returns (bool ok) {
+    function _assertBalancesEq(uint256[] memory a, uint256[] memory b)
+        internal
+        pure
+        returns (bool ok)
+    {
         ok = assertEq(a.length, b.length, "Balances length mismatch");
         for (uint256 i = 0; i < a.length; i++) {
             ok =
@@ -193,7 +193,7 @@ library Lib {
     //     uint256[][] memory a,
     //     uint256[][] memory b,
     //     string memory /* symbol */
-    // ) internal view returns (bool ok) {
+    // ) internal pure returns (bool ok) {
     //     string memory message;
     //     ok = assertEq(a.length, b.length, "Allowances length mismatch");
     //     for (uint256 i = 0; i < a.length; i++) {
@@ -209,7 +209,7 @@ library Lib {
     // }
 
     /// @return ok Whether two BU sets are equal
-    function _assertBUEq(BU memory a, BU memory b) internal view returns (bool ok) {
+    function _assertBUEq(BU memory a, BU memory b) internal pure returns (bool ok) {
         ok =
             assertEq(a.assets.length, b.assets.length, "Tokens size mismatch") &&
             assertEq(a.quantities.length, b.quantities.length, "Quantities size mismatch") &&
@@ -222,10 +222,10 @@ library Lib {
 
     /// @return Whether the oracle prices match or not
     function _assertOraclePriceEq(
-        OraclePrice memory a,
-        OraclePrice memory b,
+        ProtoPrice memory a,
+        ProtoPrice memory b,
         string memory str
-    ) internal view returns (bool) {
+    ) internal pure returns (bool) {
         return
             assertEq(a.inETH, b.inETH, string(abi.encodePacked(str, ".price.inETH"))) &&
             assertEq(a.inUSD, b.inUSD, string(abi.encodePacked(str, ".price.inUSD")));

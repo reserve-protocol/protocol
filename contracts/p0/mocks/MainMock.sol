@@ -2,15 +2,12 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/IVault.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/mocks/ERC20Mock.sol";
-import "contracts/p0/assets/COMPAsset.sol";
-import "contracts/p0/assets/AAVEAsset.sol";
 import "./CompoundOracleMock.sol";
 import "./ComptrollerMock.sol";
 import "./AaveOracleMock.sol";
@@ -47,7 +44,7 @@ contract ManagerInternalMockP0 {
 contract MainMockP0 {
     using Oracle for Oracle.Info;
 
-    IERC20 public rsr;
+    IERC20Metadata public rsr;
     ManagerInternalMockP0 public manager;
     bool public paused;
 
@@ -69,10 +66,10 @@ contract MainMockP0 {
     IAsset public aaveAsset;
 
     constructor(
-        IERC20 rsr_,
-        IERC20 compToken,
-        IERC20 aaveToken,
-        IERC20 weth,
+        IERC20Metadata rsr_,
+        IERC20Metadata compToken,
+        IERC20Metadata aaveToken,
+        IERC20Metadata weth,
         uint256 stRSRWithdrawalDelay_,
         Fix defaultThreshold_
     ) {
@@ -92,8 +89,8 @@ contract MainMockP0 {
 
         _oracle = Oracle.Info(comptroller, aaveLendingPool);
 
-        compAsset = new COMPAssetP0(address(compToken));
-        aaveAsset = new AAVEAssetP0(address(aaveToken));
+        compAsset = new AssetP0(UoA.USD, compToken, IMain(address(this)), Oracle.Source.COMPOUND);
+        aaveAsset = new AssetP0(UoA.USD, aaveToken, IMain(address(this)), Oracle.Source.AAVE);
     }
 
     function setStRSR(IStRSR stRSR_) external {

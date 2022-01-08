@@ -2,55 +2,35 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IRToken.sol";
-import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/libraries/Pricing.sol";
 import "contracts/libraries/Fixed.sol";
+import "./Asset.sol";
 
-contract RTokenAssetP0 is IAsset {
+contract RTokenAssetP0 is AssetP0 {
     using FixLib for Fix;
-    using Oracle for Oracle.Info;
+    using PricingLib for Price;
 
-    address internal immutable _erc20;
+    // TODO UoA may not make sense here, re-examine later
+    constructor(IERC20Metadata erc20_, IMain main_)
+        AssetP0(UoA.USD, erc20_, main_, Oracle.Source.AAVE)
+    {}
 
-    constructor(address erc20_) {
-        _erc20 = erc20_;
-    }
+    /// @return p {attoPrice/rTok}
+    function price() public view override returns (Price memory p) {
+        // {attoPrice/BU}
+        p = main.vault().basketPrice();
 
-    /// @return {attoUSD/qRTok}
-    function priceUSD(Oracle.Info memory oracle) public view override returns (Fix) {
-        Fix sum; // {attoUSD/BU}
-        IMain main = IMain(IRToken(_erc20).main());
-        IVault v = main.vault();
-        for (uint256 i = 0; i < v.size(); i++) {
-            ICollateral c = v.collateralAt(i);
-
-            // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
-            sum = sum.plus(c.priceUSD(oracle).mulu(v.quantity(c)));
+        for (uint256 i = 0; i < uint256(type(UoA).max); i++) {
+            // {attoUoA/rTok} = {attoUoA/BU} * {BU/rTok}
+            p.set(UoA(i), p.quantity(UoA(i)).mul(main.baseFactor()));
         }
-
-        // {attoUSD/qBU} = {attoUSD/BU} / {qBU/BU}
-        Fix perQBU = sum.divu(10**v.BU_DECIMALS());
-
-        // {attoUSD/qRTok} = {attoUSD/qBU} * {qBU/qRTok}
-        return perQBU.mul(main.baseFactor());
     }
 
-    /// @return The ERC20 contract of the central token
-    function erc20() public view virtual override returns (IERC20) {
-        return IERC20(_erc20);
-    }
-
-    /// @return The number of decimals in the central token
-    function decimals() public view override returns (uint8) {
-        return IERC20Metadata(_erc20).decimals();
-    }
-
-    /// @return Whether `_erc20` is an AToken (StaticAToken, actually)
-    function isAToken() public pure virtual override returns (bool) {
+    /// @return If the asset is an instance of ICollateral or not
+    function isCollateral() public pure virtual override returns (bool) {
         return false;
     }
 }

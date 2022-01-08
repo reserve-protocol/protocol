@@ -24,8 +24,8 @@ contract CTokenMock is ERC20Mock {
         return 8;
     }
 
-    // Do not restrict to view
     function exchangeRateCurrent() external returns (uint256) {
+        _exchangeRate = _exchangeRate; // just to avoid sol warning
         return _exchangeRate;
     }
 
