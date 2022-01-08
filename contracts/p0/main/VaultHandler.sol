@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/p0/interfaces/IAsset.sol";
@@ -12,6 +12,7 @@ import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/Pausable.sol";
 import "./SettingsHandler.sol";
 
 /**
@@ -19,7 +20,8 @@ import "./SettingsHandler.sol";
  * @notice Handles the use of vaults and their associated basket units (BUs), including the tracking
  *    of the base rate, the exchange rate between RToken and BUs.
  */
-contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributorP0, IVaultHandler {
+contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributorP0, IVaultHandler {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
@@ -31,7 +33,7 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
     // Fully capitalized: #RTokens <= #BUs / b
 
     Fix internal _historicalBasketDilution; // the product of all historical basket dilutions
-    Fix internal _prevBasketRate; // {USD/qBU} redemption value of the basket in fiatcoins last update
+    Price internal _prevBasketPrice; // {USD/qBU} redemption value of the basket in fiatcoins last update
 
     IVault[] public override vaults;
 
@@ -48,19 +50,21 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
             revert CommonErrors.UnapprovedCollateral();
         }
 
-        _prevBasketRate = args.vault.basketPrice();
+        _prevBasketPrice = args.vault.basketPrice();
         _historicalBasketDilution = FIX_ONE;
     }
 
-    /// Folds current metrics into historical metrics
-    function beforeUpdate()
-        public
-        virtual
-        override(Mixin, SettingsHandlerP0, RevenueDistributorP0)
-    {
+    function poke() public virtual override notPaused {
+        super.poke();
+        _updateCollateralStatuses();
+        _tryEnsureValidVault();
+    }
+
+    /// Fold current metrics into historical metrics
+    function beforeUpdate() public virtual override {
         super.beforeUpdate();
         _historicalBasketDilution = _basketDilutionFactor();
-        _prevBasketRate = vault().basketPrice();
+        _prevBasketPrice = vault().basketPrice();
     }
 
     function switchVault(IVault vault_) external override onlyOwner {
@@ -77,7 +81,9 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
 
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() public view override returns (bool) {
-        return fromBUs(vault().basketUnits(address(rToken()))) >= rToken().totalSupply();
+        uint256 amtBUs = vault().basketUnits(address(rToken())) +
+            vault().basketUnits(address(this));
+        return fromBUs(amtBUs) >= rToken().totalSupply();
     }
 
     /// {qRTok} -> {qBU}
@@ -100,13 +106,27 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
 
     // ==== Internal ====
 
+    function _updateCollateralStatuses() internal {
+        for (uint256 i = 0; i < _assets.length(); i++) {
+            if (IAsset(_assets.at(i)).isCollateral()) {
+                ICollateral(_assets.at(i)).forceUpdates();
+            }
+        }
+    }
+
+    function _tryEnsureValidVault() internal {
+        if (vault().worstCollateralStatus() == CollateralStatus.DISABLED) {
+            (bool hasNext, IVault nextVault) = _selectNextVault();
+            if (hasNext) {
+                _switchVault(nextVault);
+            }
+        }
+    }
+
     function _switchVault(IVault vault_) internal {
         beforeUpdate();
         emit NewVaultSet(address(vault()), address(vault_));
         vaults.push(vault_);
-
-        // TODO: Hmm I don't love this, but we need to cause _processSlowMintings in RTokenIssuer
-        beforeUpdate();
     }
 
     /* As the basketPrice increases, the basketDilutionFactor increases at a proportional rate.
@@ -117,14 +137,15 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
     /// @return {qBU/qRTok) the basket dilution factor
     function _basketDilutionFactor() internal view returns (Fix) {
         // {USD/qBU}
-        Fix currentRate = vault().basketPrice();
+        Price memory currentPrice = vault().basketPrice();
 
         // Assumption: Defi redemption rates are monotonically increasing
         // {USD/qBU}
-        Fix delta = currentRate.minus(_prevBasketRate);
+        Fix delta = currentPrice.attoUSD.minus(_prevBasketPrice.attoUSD);
+        // TODO: this should go away after we choose to accept the full UoA agnostic refactor
 
         // r = p2 / (p1 + (p2-p1) * (rTokenCut))
-        Fix r = currentRate.div(_prevBasketRate.plus(delta.mul(rTokenCut())));
+        Fix r = currentPrice.attoUSD.div(_prevBasketPrice.attoUSD.plus(delta.mul(rTokenCut())));
         Fix dilutionFactor = _historicalBasketDilution.mul(r);
         assert(dilutionFactor.neq(FIX_ZERO));
         return dilutionFactor;
@@ -151,6 +172,8 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
         }
     }
 
+    // ==== Private ====
+
     /// @dev You should probably never call this. Consider using _redeemFromOldVaults instead.
     /// @return toRedeem How many BUs were redeemed
     function _redeemFrom(
@@ -163,5 +186,30 @@ contract VaultHandlerP0 is Ownable, Mixin, SettingsHandlerP0, RevenueDistributor
             rToken().withdrawBUs(address(this), toRedeem);
             vault_.redeem(recipient, toRedeem);
         }
+    }
+
+    /// @return A vault from the list of backup vaults that is not defaulting
+    function _selectNextVault() private view returns (bool, IVault) {
+        Fix maxPrice;
+        uint256 indexMax;
+        IVault[] memory backups = vault().getBackups();
+
+        // Loop through backups to find the highest value one that doesn't contain defaulting collateral
+        for (uint256 i = 0; i < backups.length; i++) {
+            if (backups[i].worstCollateralStatus() == CollateralStatus.SOUND) {
+                Price memory price = backups[i].basketPrice(); // {Price/BU}
+
+                // See if it has the highest basket
+                if (price.attoUSD.gt(maxPrice)) {
+                    maxPrice = price.attoUSD;
+                    indexMax = i;
+                }
+            }
+        }
+
+        if (maxPrice.eq(FIX_ZERO)) {
+            return (false, IVault(address(0)));
+        }
+        return (true, backups[indexMax]);
     }
 }

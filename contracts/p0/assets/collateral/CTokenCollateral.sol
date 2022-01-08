@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "./Collateral.sol";
@@ -43,9 +42,9 @@ contract CTokenCollateralP0 is CollateralP0 {
     }
 
     /// @return {underlyingTok/tok} Conversion rate between token and its underlying.
-    function _rateToUnderlying() internal view override returns (Fix) {
-        uint256 rate = ICToken(erc20).exchangeRateStored();
-        int8 shiftLeft = 8 - int8(fiatcoinERC20().decimals()) - 18;
+    function rateToUnderlying() public view override returns (Fix) {
+        uint256 rate = ICToken(address(erc20)).exchangeRateStored();
+        int8 shiftLeft = 8 - int8(underlyingERC20().decimals()) - 18;
         Fix rateNow = toFixWithShift(rate, shiftLeft);
         return rateNow.div(initialExchangeRate);
     }

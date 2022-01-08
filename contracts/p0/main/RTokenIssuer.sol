@@ -4,29 +4,18 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/main/SettingsHandler.sol";
-import "contracts/p0/main/Moody.sol";
 import "contracts/p0/main/VaultHandler.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/Pausable.sol";
-import "./Moody.sol";
 import "./SettingsHandler.sol";
 import "./VaultHandler.sol";
-import "./DefaultHandler.sol";
 
 /**
  * @title RTokenIssuer
  * @notice Handles issuance and redemption of RToken.
  */
-contract RTokenIssuerP0 is
-    Pausable,
-    Mixin,
-    MoodyP0,
-    SettingsHandlerP0,
-    VaultHandlerP0,
-    DefaultHandlerP0,
-    IRTokenIssuer
-{
+contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, IRTokenIssuer {
     using SafeERC20 for IERC20;
     using SafeERC20 for IRToken;
     using FixLib for Fix;
@@ -55,24 +44,20 @@ contract RTokenIssuerP0 is
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, SettingsHandlerP0, VaultHandlerP0, DefaultHandlerP0)
+        override(Mixin, SettingsHandlerP0, VaultHandlerP0)
     {
         super.init(args);
     }
 
     /// Process pending issuances on poke
-    function poke() public virtual override(Mixin, DefaultHandlerP0) notPaused {
+    function poke() public virtual override(Mixin, VaultHandlerP0) notPaused {
         super.poke();
         revenueFurnace().doMelt();
         _processSlowIssuance();
     }
 
     /// Process pending issuances before parameter update.
-    function beforeUpdate()
-        public
-        virtual
-        override(Mixin, SettingsHandlerP0, VaultHandlerP0, DefaultHandlerP0)
-    {
+    function beforeUpdate() public virtual override(Mixin, VaultHandlerP0) {
         super.beforeUpdate();
         _processSlowIssuance();
     }
@@ -81,10 +66,10 @@ contract RTokenIssuerP0 is
     /// @param amount {qTok} The quantity of RToken to issue
     function issue(uint256 amount) public override notPaused {
         require(amount > 0, "Cannot issue zero");
-        require(mood() != Mood.DOUBT, "in doubt, cannot issue");
         revenueFurnace().doMelt();
-        _ensureDefaultStatusIsSet();
+        _updateCollateralStatuses();
         _tryEnsureValidVault();
+        require(vault().worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
         uint256 amtBUs = toBUs(amount);
 
@@ -160,25 +145,31 @@ contract RTokenIssuerP0 is
 
     // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
     function _processSlowIssuance() internal {
-        if (mood() != Mood.DOUBT) {
-            for (uint256 i = 0; i < issuances.length; i++) {
-                SlowIssuance storage iss = issuances[i];
-                if (iss.processed) {
-                    // Ignore processed issuance
-                    continue;
-                } else if (iss.vault != vault()) {
-                    // Rollback issuance i
-                    rToken().burn(address(this), iss.amount);
-                    iss.vault.redeem(iss.issuer, iss.amtBUs);
-                    iss.processed = true;
-                    emit IssuanceCanceled(i);
-                } else if (iss.blockAvailableAt.ceil() <= block.number) {
-                    // Complete issuance i
-                    iss.vault.transfer(address(rToken()), iss.amtBUs);
-                    rToken().transfer(iss.issuer, iss.amount);
-                    iss.processed = true;
-                    emit IssuanceCompleted(i);
-                }
+        for (uint256 i = 0; i < issuances.length; i++) {
+            SlowIssuance storage iss = issuances[i];
+            if (iss.processed) {
+                // Ignore processed issuance
+                continue;
+            }
+
+            CollateralStatus cs = vault().worstCollateralStatus();
+            if (
+                (cs == CollateralStatus.SOUND || cs == CollateralStatus.DISABLED) &&
+                iss.vault != vault()
+            ) {
+                // Rollback issuance i
+                rToken().burn(address(this), iss.amount);
+                iss.vault.redeem(iss.issuer, iss.amtBUs);
+                iss.processed = true;
+                emit IssuanceCanceled(i);
+            } else if (
+                cs == CollateralStatus.SOUND && iss.blockAvailableAt.ceil() <= block.number
+            ) {
+                // Complete issuance i
+                iss.vault.transfer(address(rToken()), iss.amtBUs);
+                rToken().transfer(iss.issuer, iss.amount);
+                iss.processed = true;
+                emit IssuanceCompleted(i);
             }
         }
     }

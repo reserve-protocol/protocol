@@ -156,7 +156,7 @@ const deployDependencies = async (hre: HardhatRuntimeEnvironment, deployer: Sign
     aaveAsset,
     aaveOracle,
     aaveMock,
-    market: marketMock
+    market: marketMock,
   }
 }
 

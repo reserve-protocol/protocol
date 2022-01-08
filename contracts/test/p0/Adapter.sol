@@ -131,12 +131,7 @@ contract AdapterP0 is ProtoAdapter {
             _aave = new ERC20Mock(s.aave.name, s.aave.symbol);
 
             _market = new MarketMock();
-            _deployer = new DeployerExtension(
-                address(_rsr),
-                address(_comp),
-                address(_aave),
-                _market
-            );
+            _deployer = new DeployerExtension(_rsr, _comp, _aave, _market);
             _setDefiCollateralRates(s.defiCollateralRates);
         }
 
@@ -266,7 +261,6 @@ contract AdapterP0 is ProtoAdapter {
     }
 
     function state() public view override returns (ProtoState memory s) {
-        s.mood = _main.mood();
         s.config = Config(
             _main.rewardStart(),
             _main.rewardPeriod(),
@@ -425,9 +419,8 @@ contract AdapterP0 is ProtoAdapter {
 
     /// @return {fiatTok/tok}
     function _dumpDefiCollateralRate(ICollateral collateral) internal view returns (Fix) {
-        // {fiatTok/tok} = {qFiatTok/qTok} * {qTok/tok} / {qFiatTok/fiatTok}
-        int8 shiftLeft = int8(collateral.decimals()) - int8(collateral.fiatcoinDecimals());
-        return collateral.rateFiatcoin().shiftLeft(shiftLeft);
+        assert(collateral.underlyingERC20() != collateral.erc20());
+        return collateral.rateToUnderlying();
     }
 
     /// @param token The ERC20 token
@@ -454,11 +447,25 @@ contract AdapterP0 is ProtoAdapter {
         string memory c = "c";
         string memory a = "a";
         if (erc20.symbol().toSlice().startsWith(c.toSlice())) {
-            _assets[collateralAsset] = new CTokenCollateralP0(address(erc20), _main);
+            ICollateral underlying = ICollateral(
+                address(_assets[_reverseAssets[ERC20Mock(CTokenMock(address(erc20)).underlying())]])
+            );
+            _assets[collateralAsset] = new CTokenCollateralP0(UoA.USD, erc20, _main, underlying);
         } else if (erc20.symbol().toSlice().startsWith(a.toSlice())) {
-            _assets[collateralAsset] = new ATokenCollateralP0(address(erc20), _main);
+            ICollateral underlying = ICollateral(
+                address(
+                    _assets[
+                        _reverseAssets[
+                            ERC20Mock(
+                                StaticATokenMock(address(erc20)).ATOKEN().UNDERLYING_ASSET_ADDRESS()
+                            )
+                        ]
+                    ]
+                )
+            );
+            _assets[collateralAsset] = new ATokenCollateralP0(UoA.USD, erc20, _main, underlying);
         } else {
-            _assets[collateralAsset] = new CollateralP0(address(erc20), _main);
+            _assets[collateralAsset] = new CollateralP0(UoA.USD, erc20, _main, Oracle.Source.AAVE);
         }
         _reverseAssets[ERC20Mock(address(_assets[collateralAsset].erc20()))] = collateralAsset;
         return ICollateral(address(_assets[collateralAsset]));
@@ -481,8 +488,8 @@ contract AdapterP0 is ProtoAdapter {
             _aaveOracle.setPrice(address(erc20), tokenState.price.inETH); // {qETH/tok}
             _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUSD); // {microUSD/tok}
 
-            Fix found = _main.oracle().consult(Oracle.Source.AAVE, address(erc20)); // {attoUSD/qTok}
-            Fix expected = toFix(tokenState.price.inUSD).shiftLeft(12 - int8(erc20.decimals()));
+            Fix found = _main.oracle(UoA.USD).consult(Oracle.Source.AAVE, erc20).attoUSD; // {attoUSD/tok}
+            Fix expected = toFix(tokenState.price.inUSD);
             assert(found.eq(expected));
         }
     }
@@ -501,8 +508,8 @@ contract AdapterP0 is ProtoAdapter {
                 IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
                 IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
                 newBid.buyAmount = toFix(sellAmount)
-                .mul(buyAsset.priceUSD())
-                .div(sellAsset.priceUSD())
+                .mul(buyAsset.price().attoUSD)
+                .div(sellAsset.price().attoUSD)
                 .ceil();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(

@@ -75,8 +75,16 @@ describe('VaultP0 contract', () => {
     ;[owner, addr1, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ compToken, compoundMock, aaveToken, erc20s, collateral, basket, vault, main } =
-      await loadFixture(defaultFixture))
+    ;({
+      compToken,
+      compoundMock,
+      aaveToken,
+      erc20s,
+      collateral,
+      basket,
+      vault,
+      main,
+    } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
     collateral0 = basket[0]

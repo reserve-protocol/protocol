@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
 import "contracts/p0/assets/Asset.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
@@ -14,13 +15,13 @@ import "contracts/libraries/Fixed.sol";
  * @title CollateralP0
  * @notice A vanilla asset such as a fiatcoin, to be extended by derivative assets.
  */
-contract CollateralP0 is ICollateral, AssetP0 {
+contract CollateralP0 is ICollateral, AssetP0, Context {
     using FixLib for Fix;
     using Oracle for Oracle.Info;
 
     // underlying == address(0): The collateral is leaf collateral; it has no underlying
     // underlying != address(0): The collateral is derivative collateral; it has underlying collateral
-    ICollateral public immutable underlying;
+    ICollateral public underlying;
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -53,7 +54,7 @@ contract CollateralP0 is ICollateral, AssetP0 {
         }
 
         // If the redemption rate has fallen, default immediately
-        Fix newRate = _rateToUnderlying();
+        Fix newRate = rateToUnderlying();
         if (newRate.lt(prevRate)) {
             whenDefault = block.timestamp;
         }
@@ -61,8 +62,9 @@ contract CollateralP0 is ICollateral, AssetP0 {
         // If the underlying fiatcoin price is below the default-threshold price, default eventually
         if (whenDefault > block.timestamp) {
             Price memory p = fiatcoinPrice(); // {Price/fiatTok}
-            bool fiatcoinIsDefaulting = p.attoUSD.lte(main.defaultingFiatcoinPrice());
-            whenDefault = fiatcoinIsDefaulting
+
+            Fix attoUoA = uoa == UoA.USD ? p.attoUSD : p.attoEUR;
+            whenDefault = attoUoA.lte(_defaultThreshold())
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -72,14 +74,22 @@ contract CollateralP0 is ICollateral, AssetP0 {
         prevBlock = block.number;
     }
 
+    /// Disable the collateral directly
+    function disable() external override {
+        require(_msgSender() == address(main), "main only");
+        if (whenDefault > block.timestamp) {
+            whenDefault = block.timestamp;
+        }
+    }
+
     /// @return The asset's default status
     function status() public view returns (CollateralStatus) {
-        if (whenDefault == 0) {
+        if (whenDefault == NEVER) {
             return CollateralStatus.SOUND;
-        } else if (block.timestamp < whenDefault) {
-            return CollateralStatus.IFFY;
+        } else if (whenDefault <= block.timestamp) {
+            return CollateralStatus.DISABLED;
         } else {
-            return CollateralStatus.DEFAULTED;
+            return CollateralStatus.IFFY;
         }
     }
 
@@ -91,9 +101,9 @@ contract CollateralP0 is ICollateral, AssetP0 {
 
         p = underlying.price();
         // {attoUSD/tok} = {attoUSD/underlyingTok} * {underlyingTok/tok}
-        p.attoUSD = p.attoUSD.mul(_rateToUnderlying());
+        p.attoUSD = p.attoUSD.mul(rateToUnderlying());
         // {attoEUR/tok} = {attoEUR/underlyingTok} * {underlyingTok/tok}
-        p.attoEUR = p.attoEUR.mul(_rateToUnderlying());
+        p.attoEUR = p.attoEUR.mul(rateToUnderlying());
     }
 
     /// @return {Price/tok} The price of 1 whole token of the fiatcoin
@@ -106,16 +116,75 @@ contract CollateralP0 is ICollateral, AssetP0 {
     }
 
     /// @return The ERC20 contract of the (maybe underlying) fiatcoin
-    function fiatcoinERC20() public view override returns (IERC20Metadata) {
+    function underlyingERC20() public view override returns (IERC20Metadata) {
         if (address(underlying) == address(0)) {
             return erc20;
         }
 
-        return underlying.fiatcoinERC20();
+        return underlying.underlyingERC20();
+    }
+
+    /// @return If the asset is an instance of ICollateral or not
+    function isCollateral() public view override(AssetP0, IAsset) returns (bool) {
+        return true;
     }
 
     /// @return {underlyingTok/tok} Conversion rate between token and its underlying.
-    function _rateToUnderlying() internal view virtual returns (Fix) {
+    function rateToUnderlying() public view virtual override returns (Fix) {
         return FIX_ONE;
+    }
+
+    /// @return {attoUoA/fiatTok} The price at which a fiatcoin is said to be defaulting
+    function _defaultThreshold() private view returns (Fix) {
+        IAsset[] memory allAssets = main.allAssets();
+        uint256 numFiatcoins;
+        ICollateral[] memory collateral = new ICollateral[](allAssets.length);
+        for (uint256 i = 0; i < allAssets.length; i++) {
+            ICollateral c = ICollateral(address(allAssets[i]));
+            if (
+                allAssets[i].uoa() == uoa &&
+                allAssets[i].isCollateral() &&
+                c.underlyingERC20() == c.erc20()
+            ) {
+                collateral[numFiatcoins] = c;
+                numFiatcoins++;
+            }
+        }
+
+        // Collect prices
+        Fix[] memory prices = new Fix[](numFiatcoins);
+        for (uint256 i = 0; i < numFiatcoins; i++) {
+            if (uoa == UoA.USD) {
+                prices[i] = collateral[i].price().attoUSD;
+            } else if (uoa == UoA.EUR) {
+                prices[i] = collateral[i].price().attoEUR;
+            }
+        }
+
+        // Sort
+        for (uint256 i = 0; i < prices.length - 1; i++) {
+            uint256 min = i;
+            for (uint256 j = i; j < prices.length; j++) {
+                if (prices[j].lt(prices[min])) {
+                    min = j;
+                }
+            }
+            if (min != i) {
+                Fix tmp = prices[i];
+                prices[i] = prices[min];
+                prices[min] = tmp;
+            }
+        }
+
+        // Take the median
+        Fix median;
+        if (prices.length % 2 == 0) {
+            median = prices[prices.length / 2 - 1].plus(prices[prices.length / 2]).divu(2);
+        } else {
+            median = prices[prices.length / 2];
+        }
+
+        // median - (median * defaultThreshold)
+        return median.minus(median.mul(main.defaultThreshold()));
     }
 }

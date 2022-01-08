@@ -2,18 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "contracts/p0/libraries/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
-
-/// Unit of Account
-enum UoA {
-    USD,
-    EUR
-}
-
-struct Price {
-    Fix attoUSD;
-    Fix attoEUR;
-}
+import "./IMain.sol";
 
 /**
  * @title IAsset
@@ -25,17 +16,26 @@ interface IAsset {
     /// @return The primary Unit of Account for the asset
     function uoa() external view returns (UoA);
 
-    /// @return {Price/tok} The price of 1 whole token
+    /// @return The oracle that should be used with the asset
+    function oracleSource() external view returns (Oracle.Source);
+
+    /// @return {Price/tok} The Price of 1 whole token
     function price() external view returns (Price memory);
+
+    /// @return {Price/qTok} The Price of 1 qToken
+    function priceQ() external view returns (Price memory);
 
     /// @return The ERC20 contract of the token with decimals() available
     function erc20() external view returns (IERC20Metadata);
+
+    /// @return If the asset is an instance of ICollateral or not
+    function isCollateral() external view returns (bool);
 }
 
 enum CollateralStatus {
     SOUND,
     IFFY,
-    DEFAULTED
+    DISABLED
 }
 
 /**
@@ -47,16 +47,22 @@ enum CollateralStatus {
  * Note: This structure can be used to capture N-levels-nested asset structures.
  */
 interface ICollateral is IAsset {
-    /// Force any updates, such as updating the default status or poking the defi protocol.
+    /// Force any updates such as updating the default status or poking the defi protocol.
     /// Block-idempotent.
     function forceUpdates() external;
+
+    /// Disable the collateral so it cannot be used as backing
+    function disable() external;
 
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
     function status() external view returns (CollateralStatus);
 
-    /// @return {Price/tok} The price of 1 whole token of the fiatcoin
+    /// @return {Price/tok} The Price of 1 whole token of the fiatcoin
     function fiatcoinPrice() external view returns (Price memory);
 
     /// @return The ERC20 contract of the (maybe underlying) fiatcoin
-    function fiatcoinERC20() external view returns (IERC20Metadata);
+    function underlyingERC20() external view returns (IERC20Metadata);
+
+    /// @return {underlyingTok/tok} The rate between the token and its underlying
+    function rateToUnderlying() external view returns (Fix);
 }

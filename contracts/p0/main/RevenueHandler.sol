@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/assets/collateral/ATokenCollateral.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/p0/main/VaultHandler.sol";
-import "contracts/p0/main/Moody.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
@@ -17,7 +16,6 @@ import "contracts/p0/interfaces/IVault.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./Auctioneer.sol";
-import "./Moody.sol";
 import "./SettingsHandler.sol";
 import "./VaultHandler.sol";
 
@@ -28,7 +26,6 @@ import "./VaultHandler.sol";
 contract RevenueHandlerP0 is
     Pausable,
     Mixin,
-    MoodyP0,
     SettingsHandlerP0,
     RevenueDistributorP0,
     VaultHandlerP0,
@@ -36,7 +33,7 @@ contract RevenueHandlerP0 is
     IRevenueHandler
 {
     using EnumerableSet for EnumerableSet.AddressSet;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
     using FixLib for Fix;
 
     uint256 private _rewardsLastClaimed;
@@ -50,7 +47,7 @@ contract RevenueHandlerP0 is
     }
 
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
-    function poke() public virtual override(Mixin, AuctioneerP0) notPaused {
+    function poke() public virtual override(Mixin, VaultHandlerP0, AuctioneerP0) notPaused {
         super.poke();
         uint256 compBalStart = compAsset().erc20().balanceOf(address(this));
         uint256 aaveBalStart = aaveAsset().erc20().balanceOf(address(this));
@@ -79,11 +76,7 @@ contract RevenueHandlerP0 is
         revenueFurnace().doMelt();
     }
 
-    function beforeUpdate()
-        public
-        virtual
-        override(Mixin, SettingsHandlerP0, RevenueDistributorP0, VaultHandlerP0, AuctioneerP0)
-    {
+    function beforeUpdate() public virtual override(Mixin, VaultHandlerP0, AuctioneerP0) {
         super.beforeUpdate();
     }
 
@@ -94,6 +87,7 @@ contract RevenueHandlerP0 is
     }
 
     function _expandSupplyToRSRTrader() internal {
+        // it's correct for this to be only the basket units held directly by the RToken
         uint256 possible = fromBUs(vault().basketUnits(address(rToken())));
         uint256 totalSupply = rToken().totalSupply();
         if (fullyCapitalized() && possible > totalSupply) {

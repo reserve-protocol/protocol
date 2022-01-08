@@ -2,9 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/libraries/CommonErrors.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/interfaces/IMain.sol";
 
 interface IComptroller {
     function oracle() external view returns (ICompoundOracle);

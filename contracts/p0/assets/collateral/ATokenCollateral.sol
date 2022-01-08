@@ -40,7 +40,7 @@ contract ATokenCollateralP0 is CollateralP0 {
     }
 
     /// @return {underlyingTok/tok} Conversion rate between token and its underlying.
-    function _rateToUnderlying() internal view override returns (Fix) {
+    function rateToUnderlying() public view override returns (Fix) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray underlyingTok/tok}
         return toFixWithShift(rateInRAYs, -27);
     }

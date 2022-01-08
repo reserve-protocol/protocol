@@ -10,13 +10,6 @@ import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./IVault.sol";
 
-/// The state of the system, as a personified mood
-enum Mood {
-    CALM, // 100% capitalized + no auctions
-    DOUBT, // in this state for 24h before default, no auctions or unstaking
-    TRADING // auctions in progress, no unstaking
-}
-
 /// Configuration of the system
 struct Config {
     // Time (seconds)
@@ -52,6 +45,22 @@ struct Config {
     // defaultThreshold = 0.05 (5% deviation)
 }
 
+/// Unit of Account
+enum UoA {
+    USD,
+    EUR
+}
+
+/// Accounting in parallel Units of Account
+struct Price {
+    // Note that `attoUSD` and `attoEUR` are not views of the same data!
+    // They are fundamentally different units of account, and they describe
+    // different assets!
+    // TODO: Maybe this should be an array instead
+    Fix attoUSD;
+    Fix attoEUR;
+}
+
 struct RevenueShare {
     Fix rTokenDist;
     Fix rsrDist;
@@ -60,7 +69,6 @@ struct RevenueShare {
 struct ConstructorArgs {
     ICollateral[] approvedCollateral;
     Oracle.Info usdOracle;
-    Oracle.Info eurOracle;
     Config config;
     RevenueShare dist;
     IVault vault;
@@ -107,21 +115,16 @@ interface IPausable {
     function setPauser(address pauser_) external;
 }
 
-interface IMoody {
-    /// Emitted when there is a change in system state.
-    event MoodChanged(Mood indexed oldState, Mood indexed newState);
-
-    function mood() external returns (Mood);
-}
-
 interface IAssetRegistry {
-    function approveCollateral(ICollateral collateral) external;
+    function addAsset(IAsset asset) external;
 
-    function unapproveCollateral(ICollateral collateral) external;
+    function removeAsset(IAsset asset) external;
+
+    function disableCollateral(ICollateral collateral) external;
+
+    function isRegistered(IAsset asset) external view returns (bool);
 
     function allAssets() external view returns (IAsset[] memory);
-
-    function isApproved(IAsset asset) external view returns (bool);
 }
 
 interface IRevenueDistributor {
@@ -251,10 +254,6 @@ interface IVaultHandler {
     function numVaults() external view returns (uint256);
 }
 
-interface IDefaultHandler {
-    function defaultingFiatcoinPrice() external view returns (Fix);
-}
-
 interface IAuctioneerEvents {
     /// Emitted when an auction is started
     /// @param auctionId The index of the AssetManager.auctions array
@@ -346,12 +345,10 @@ interface IRTokenIssuer {
 interface IMain is
     IPausable,
     IMixin,
-    IMoody,
     IAssetRegistry,
     ISettingsHandler,
     IRevenueDistributor,
     IVaultHandler,
-    IDefaultHandler,
     IAuctioneer,
     IRevenueHandler,
     IRTokenIssuer

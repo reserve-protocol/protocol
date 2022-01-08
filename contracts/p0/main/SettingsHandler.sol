@@ -51,7 +51,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     function init(ConstructorArgs calldata args) public virtual override(Mixin, AssetRegistryP0) {
         super.init(args);
         _oracles[UoA.USD] = args.usdOracle;
-        _oracles[UoA.EUR] = args.eurOracle;
         _market = args.market;
         _revenueFurnace = args.furnace;
 
@@ -68,10 +67,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         _migrationChunk = args.config.migrationChunk;
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
-    }
-
-    function beforeUpdate() public virtual override(Mixin, AssetRegistryP0) {
-        super.beforeUpdate();
     }
 
     function setOracle(UoA uoa, Oracle.Info memory oracle_) external override onlyOwner {
@@ -101,7 +96,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function setRTokenAsset(IAsset rTokenAsset_) external override onlyOwner {
         _rTokenAsset = rTokenAsset_;
-        _allAssets.add(address(_rTokenAsset));
+        _assets.add(address(_rTokenAsset));
     }
 
     function rTokenAsset() public view override returns (IAsset) {
@@ -110,7 +105,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function setRSRAsset(IAsset rsrAsset_) external override onlyOwner {
         _rsrAsset = rsrAsset_;
-        _allAssets.add(address(_rsrAsset));
+        _assets.add(address(_rsrAsset));
     }
 
     function rsrAsset() public view override returns (IAsset) {
@@ -119,7 +114,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function setCompAsset(IAsset compAsset_) external override onlyOwner {
         _compAsset = compAsset_;
-        _allAssets.add(address(_compAsset));
+        _assets.add(address(_compAsset));
     }
 
     function compAsset() public view override returns (IAsset) {
@@ -128,7 +123,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function setAaveAsset(IAsset aaveAsset_) external override onlyOwner {
         _aaveAsset = aaveAsset_;
-        _allAssets.add(address(_aaveAsset));
+        _assets.add(address(_aaveAsset));
     }
 
     function aaveAsset() public view override returns (IAsset) {

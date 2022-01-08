@@ -5,24 +5,16 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/libraries/Oracle.sol";
+import "./Asset.sol";
 
-contract RTokenAssetP0 is IAsset {
+contract RTokenAssetP0 is AssetP0 {
     using FixLib for Fix;
 
-    UoA public immutable override uoa; // Unit of Account
-    IERC20Metadata public immutable override erc20;
-    IMain public immutable main;
-
     // TODO UoA may not make sense here, re-examine later
-    constructor(
-        UoA uoa_,
-        IERC20Metadata erc20_,
-        IMain main_
-    ) {
-        uoa = uoa_;
-        erc20 = erc20_;
-        main = main_;
-    }
+    constructor(IERC20Metadata erc20_, IMain main_)
+        AssetP0(UoA.USD, erc20_, main_, Oracle.Source.AAVE)
+    {}
 
     /// @return p {Price/rTok}
     function price() public view override returns (Price memory p) {
@@ -33,5 +25,10 @@ contract RTokenAssetP0 is IAsset {
         p.attoUSD = p.attoUSD.mul(main.baseFactor());
         // {attoEUR/rTok} = {attoEUR/BU} * {BU/rTok}
         p.attoEUR = p.attoEUR.mul(main.baseFactor());
+    }
+
+    /// @return If the asset is an instance of ICollateral or not
+    function isCollateral() public view virtual override returns (bool) {
+        return false;
     }
 }

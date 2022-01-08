@@ -15,7 +15,7 @@ contract AssetP0 is IAsset {
     UoA public immutable override uoa; // Unit of Account
     IERC20Metadata public immutable override erc20;
     IMain public immutable main;
-    Oracle.Source public immutable oracleSource;
+    Oracle.Source public immutable override oracleSource;
 
     constructor(
         UoA uoa_,
@@ -32,5 +32,17 @@ contract AssetP0 is IAsset {
     /// @return {attoUSD/tok}
     function price() public view virtual override returns (Price memory) {
         return main.oracle(uoa).consult(oracleSource, erc20);
+    }
+
+    /// @return p {attoUSD/qTok} Like `price()` but per token quanta
+    function priceQ() public view virtual override returns (Price memory p) {
+        p = price();
+        p.attoUSD = p.attoUSD.shiftLeft(-int8(erc20.decimals()));
+        p.attoEUR = p.attoEUR.shiftLeft(-int8(erc20.decimals()));
+    }
+
+    /// @return If the asset is an instance of ICollateral or not
+    function isCollateral() public view virtual override returns (bool) {
+        return false;
     }
 }

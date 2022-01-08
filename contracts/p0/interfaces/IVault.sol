@@ -8,11 +8,11 @@ import "contracts/p0/interfaces/IRewardsClaimer.sol";
 import "contracts/libraries/Fixed.sol";
 
 /// @param collateral Mapping from an incremental index to asset
-/// @param quantities {tok/BU}
+/// @param quantities {qTok/BU}
 /// @param size The number of collateral in the basket
 struct Basket {
     mapping(uint256 => ICollateral) collateral; // index -> asset
-    mapping(IAsset => Fix) quantities; // {tok/BU}
+    mapping(IAsset => uint256) quantities; // {qTok/BU}
     uint256 size;
 }
 
@@ -80,11 +80,14 @@ interface IVault is IRewardsClaimer {
     /// @return The number of basket units `account` has
     function basketUnits(address account) external view returns (uint256);
 
-    /// @return {tok/BU} The quantity of whole tokens of `asset` required per whole BU
-    function quantity(IAsset asset) external view returns (Fix);
+    /// @return {qTok/BU} The quantity of qTokens of `asset` required per whole BU
+    function quantity(IAsset asset) external view returns (uint256);
 
     /// @return A list of eligible backup vaults
     function getBackups() external view returns (IVault[] memory);
+
+    /// @return The maximum CollateralStatus among vault collateral
+    function worstCollateralStatus() external view returns (CollateralStatus);
 
     /// @return The number of decimals in a BU
     // solhint-disable-next-line func-name-mixedcase

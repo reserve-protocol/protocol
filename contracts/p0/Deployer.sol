@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./assets/RTokenAsset.sol";
 import "../libraries/CommonErrors.sol";
 import "./libraries/Oracle.sol";
@@ -26,20 +26,20 @@ import "./StRSR.sol";
  */
 contract DeployerP0 is IDeployer {
     IMarket internal market;
-    address internal rsrAddr;
-    address internal compAddr;
-    address internal aaveAddr;
+    IERC20Metadata internal rsr;
+    IERC20Metadata internal comp;
+    IERC20Metadata internal aave;
     IMain[] public deployments;
 
     constructor(
-        address rsrAddr_,
-        address compAddr_,
-        address aaveAddr_,
+        IERC20Metadata rsr_,
+        IERC20Metadata comp_,
+        IERC20Metadata aave_,
         IMarket market_
     ) {
-        rsrAddr = rsrAddr_;
-        compAddr = compAddr_;
-        aaveAddr = aaveAddr_;
+        rsr = rsr_;
+        comp = comp_;
+        aave = aave_;
         market = market_;
     }
 
@@ -50,8 +50,8 @@ contract DeployerP0 is IDeployer {
     /// @param vault The initial vault that backs the RToken
     /// @param config Governance params
     /// @param dist The revenue shares distribution
-    /// @param compound The deployment of the Comptroller on this chain
-    /// @param aave The deployment of the AaveLendingPool on this chain
+    /// @param comptroller The deployment of the Comptroller on this chain
+    /// @param aaveLendingPool The deployment of the AaveLendingPool on this chain
     /// @param collateral The collateral assets in the system
     /// @return The address of the newly deployed Main instance.
     function deploy(
@@ -61,11 +61,11 @@ contract DeployerP0 is IDeployer {
         IVault vault,
         Config memory config,
         RevenueShare memory dist,
-        IComptroller compound,
-        IAaveLendingPool aave,
+        IComptroller comptroller,
+        IAaveLendingPool aaveLendingPool,
         ICollateral[] memory collateral
     ) external override returns (address) {
-        Oracle.Info memory oracle = Oracle.Info(compound, aave);
+        Oracle.Info memory oracle = Oracle.Info(comptroller, aaveLendingPool);
 
         IMain main;
         {
@@ -78,7 +78,7 @@ contract DeployerP0 is IDeployer {
             );
             deployments.push(main);
 
-            RTokenAssetP0 rTokenAsset = new RTokenAssetP0(address(rToken), main);
+            RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main);
             main.setRTokenAsset(rTokenAsset);
 
             rToken.setMain(main);
@@ -86,9 +86,9 @@ contract DeployerP0 is IDeployer {
         }
 
         {
-            AssetP0 rsrAsset = new AssetP0(UoA.USD, rsrAddr, main, Oracle.Source.AAVE);
-            AssetP0 compAsset = new AssetP0(UoA.USD, compAddr, main, Oracle.Source.COMPOUND);
-            AssetP0 aaveAsset = new AssetP0(UoA.USD, aaveAddr, main, Oracle.Source.AAVE);
+            AssetP0 rsrAsset = new AssetP0(UoA.USD, rsr, main, Oracle.Source.AAVE);
+            AssetP0 compAsset = new AssetP0(UoA.USD, comp, main, Oracle.Source.COMPOUND);
+            AssetP0 aaveAsset = new AssetP0(UoA.USD, aave, main, Oracle.Source.AAVE);
 
             main.setRSRAsset(rsrAsset);
             main.setCompAsset(compAsset);

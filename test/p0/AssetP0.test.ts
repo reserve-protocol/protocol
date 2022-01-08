@@ -59,8 +59,18 @@ describe('AssetsP0 contracts', () => {
     let basket: Collateral[]
 
       // Deploy fixture
-    ;({ rsr, rsrAsset, compToken, compAsset, aaveToken, aaveAsset, basket, vault, main, rToken } =
-      await loadFixture(defaultFixture))
+    ;({
+      rsr,
+      rsrAsset,
+      compToken,
+      compAsset,
+      aaveToken,
+      aaveAsset,
+      basket,
+      vault,
+      main,
+      rToken,
+    } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
     tokenAsset = basket[0]
