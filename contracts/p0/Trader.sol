@@ -139,12 +139,13 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
 
     /// @return {qSellTok} The least amount of tokens worth trying to sell
     function _dustThreshold(IAsset asset) private view returns (uint256) {
-        // {attoUSD} = {attoUSD/sellTok} * {qSellTok} / {qSellTok/sellTok}
+        // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
         Fix rTokenMarketCapUSD = main.rTokenAsset().priceQ().usd().mulu(
             main.rToken().totalSupply()
         );
 
-        Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize()); // {attoUSD}
+        // {attoUSD}
+        Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize());
 
         // {attoUSD} / {attoUSD/qSellTok}
         return minSellUSD.div(asset.priceQ().usd()).ceil();
