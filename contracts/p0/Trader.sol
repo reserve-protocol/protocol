@@ -73,13 +73,10 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
             return (false, auction);
         }
 
-        // {attoUSD} = {attoUSD/rTok} * {qRTok} / {qRTok/rTok}
-        Fix rTokenMarketCapUSD = main
-        .rTokenAsset()
-        .price()
-        .usd()
-        .mulu(main.rToken().totalSupply())
-        .shiftLeft(-int8(main.rToken().decimals()));
+        // {attoUSD} = {attoUSD/qRTok} * {qRTok}
+        Fix rTokenMarketCapUSD = main.rTokenAsset().priceQ().usd().mulu(
+            main.rToken().totalSupply()
+        );
         Fix maxSellUSD = rTokenMarketCapUSD.mul(main.maxAuctionSize()); // {attoUSD}
 
         if (sellAmount < _dustThreshold(sell)) {
