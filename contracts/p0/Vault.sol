@@ -130,7 +130,7 @@ contract VaultP0 is IVault, Ownable {
         return _basket.quantities[asset];
     }
 
-    /// @return price {Price/BU} The Price of 1 whole BU
+    /// @return price {attoPrice/BU} The Price of 1 whole BU
     function basketPrice() external view override returns (Price memory price) {
         Fix attoUSD = FIX_ZERO;
         for (uint256 i = 0; i < _basket.size; i++) {

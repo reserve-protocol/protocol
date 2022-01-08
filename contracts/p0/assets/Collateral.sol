@@ -63,7 +63,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
 
         // If the underlying fiatcoin price is below the default-threshold price, default eventually
         if (whenDefault > block.timestamp) {
-            Price memory p = fiatcoinPrice(); // {Price/fiatTok}
+            Price memory p = fiatcoinPrice(); // {attoPrice/fiatTok}
             whenDefault = p.quantity(uoa).lte(_defaultThreshold())
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
@@ -93,7 +93,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         }
     }
 
-    /// @return p {Price/tok} The Price per whole token
+    /// @return p {attoPrice/tok} The Price per whole token
     function price() public view virtual override(AssetP0, IAsset) returns (Price memory p) {
         if (address(underlying) == address(0)) {
             return main.oracle(uoa).consult(oracleSource, erc20);
@@ -106,7 +106,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         }
     }
 
-    /// @return {Price/tok} The price of 1 whole token of the fiatcoin
+    /// @return {attoPrice/tok} The price of 1 whole token of the fiatcoin
     function fiatcoinPrice() public view virtual returns (Price memory) {
         if (address(underlying) == address(0)) {
             return main.oracle(uoa).consult(oracleSource, erc20);

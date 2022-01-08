@@ -18,9 +18,9 @@ contract RTokenAssetP0 is AssetP0 {
         AssetP0(UoA.USD, erc20_, main_, Oracle.Source.AAVE)
     {}
 
-    /// @return p {Price/rTok}
+    /// @return p {attoPrice/rTok}
     function price() public view override returns (Price memory p) {
-        // {Price/BU}
+        // {attoPrice/BU}
         p = main.vault().basketPrice();
 
         for (uint256 i = 0; i < uint256(type(UoA).max); i++) {
