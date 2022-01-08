@@ -54,7 +54,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         }
 
         // If the redemption rate has fallen, default immediately
-        Fix newRate = rateToUnderlying();
+        Fix newRate = fiatcoinRate();
         if (newRate.lt(prevRate)) {
             whenDefault = block.timestamp;
         }
@@ -101,9 +101,9 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
 
         p = underlying.price();
         // {attoUSD/tok} = {attoUSD/underlyingTok} * {underlyingTok/tok}
-        p.attoUSD = p.attoUSD.mul(rateToUnderlying());
+        p.attoUSD = p.attoUSD.mul(fiatcoinRate());
         // {attoEUR/tok} = {attoEUR/underlyingTok} * {underlyingTok/tok}
-        p.attoEUR = p.attoEUR.mul(rateToUnderlying());
+        p.attoEUR = p.attoEUR.mul(fiatcoinRate());
     }
 
     /// @return {Price/tok} The price of 1 whole token of the fiatcoin
@@ -113,6 +113,11 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         }
 
         return underlying.fiatcoinPrice();
+    }
+
+    /// @return {underlyingTok/tok} The rate between the token and fiatcoin
+    function fiatcoinRate() public view virtual override returns (Fix) {
+        return FIX_ONE;
     }
 
     /// @return The ERC20 contract of the (maybe underlying) fiatcoin
@@ -127,11 +132,6 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() public view override(AssetP0, IAsset) returns (bool) {
         return true;
-    }
-
-    /// @return {underlyingTok/tok} Conversion rate between token and its underlying.
-    function rateToUnderlying() public view virtual override returns (Fix) {
-        return FIX_ONE;
     }
 
     /// @return {attoUoA/fiatTok} The price at which a fiatcoin is said to be defaulting

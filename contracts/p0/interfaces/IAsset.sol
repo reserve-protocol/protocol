@@ -60,9 +60,9 @@ interface ICollateral is IAsset {
     /// @return {Price/tok} The Price of 1 whole token of the fiatcoin
     function fiatcoinPrice() external view returns (Price memory);
 
+    /// @return {underlyingTok/tok} The rate between the token and fiatcoin
+    function fiatcoinRate() external view returns (Fix);
+
     /// @return The ERC20 contract of the (maybe underlying) fiatcoin
     function underlyingERC20() external view returns (IERC20Metadata);
-
-    /// @return {underlyingTok/tok} The rate between the token and its underlying
-    function rateToUnderlying() external view returns (Fix);
 }

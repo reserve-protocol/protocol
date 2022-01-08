@@ -298,9 +298,7 @@ contract AdapterP0 is ProtoAdapter {
         s.defiCollateralRates[uint256(AssetName.USDT)] = FIX_ZERO;
         s.defiCollateralRates[uint256(AssetName.BUSD)] = FIX_ZERO;
         for (uint256 i = NUM_FIATCOINS; i < NUM_COLLATERAL; i++) {
-            s.defiCollateralRates[i] = _dumpDefiCollateralRate(
-                ICollateral(address(_assets[AssetName(i)]))
-            );
+            s.defiCollateralRates[i] = _fiatcoinRate(ICollateral(address(_assets[AssetName(i)])));
         }
         s.ethPrice = OraclePrice(
             _aaveOracle.getAssetPrice(_aaveOracle.WETH()),
@@ -340,7 +338,7 @@ contract AdapterP0 is ProtoAdapter {
     ) external override {
         Fix[] memory rates = new Fix[](NUM_COLLATERAL);
         for (uint256 i = NUM_FIATCOINS; i < NUM_COLLATERAL; i++) {
-            rates[i] = _dumpDefiCollateralRate(ICollateral(address(_assets[AssetName(i)])));
+            rates[i] = _fiatcoinRate(ICollateral(address(_assets[AssetName(i)])));
         }
         for (uint256 i = 0; i < defiCollateral.length; i++) {
             require(
@@ -418,9 +416,9 @@ contract AdapterP0 is ProtoAdapter {
     }
 
     /// @return {fiatTok/tok}
-    function _dumpDefiCollateralRate(ICollateral collateral) internal view returns (Fix) {
+    function _fiatcoinRate(ICollateral collateral) internal view returns (Fix) {
         assert(collateral.underlyingERC20() != collateral.erc20());
-        return collateral.rateToUnderlying();
+        return collateral.fiatcoinRate();
     }
 
     /// @param token The ERC20 token

@@ -39,8 +39,8 @@ contract ATokenCollateralP0 is CollateralP0 {
         underlying = underlying_;
     }
 
-    /// @return {underlyingTok/tok} Conversion rate between token and its underlying.
-    function rateToUnderlying() public view override returns (Fix) {
+    /// @return {underlyingTok/tok} The rate between the token and fiatcoin
+    function fiatcoinRate() public view override returns (Fix) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray underlyingTok/tok}
         return toFixWithShift(rateInRAYs, -27);
     }

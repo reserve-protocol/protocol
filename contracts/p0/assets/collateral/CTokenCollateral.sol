@@ -41,8 +41,8 @@ contract CTokenCollateralP0 is CollateralP0 {
         _updateDefaultStatus();
     }
 
-    /// @return {underlyingTok/tok} Conversion rate between token and its underlying.
-    function rateToUnderlying() public view override returns (Fix) {
+    /// @return {underlyingTok/tok} The rate between the token and fiatcoin
+    function fiatcoinRate() public view override returns (Fix) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
         int8 shiftLeft = 8 - int8(underlyingERC20().decimals()) - 18;
         Fix rateNow = toFixWithShift(rate, shiftLeft);
