@@ -67,22 +67,24 @@ contract DeployerP0 is IDeployer {
     ) external override returns (address) {
         Oracle.Info memory oracle = Oracle.Info(comptroller, aaveLendingPool);
 
-        IMain main;
+        ConstructorArgs memory ctorArgs;
+
+        IMain main = _deployMain();
+        deployments.push(main);
+
         {
             IRToken rToken = _deployRToken(name, symbol);
             IFurnace revenueFurnace = _deployRevenueFurnace(rToken, config.rewardPeriod);
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
-            main = _deployMain(
-                ConstructorArgs(collateral, oracle, config, dist, vault, revenueFurnace, market)
-            );
-            deployments.push(main);
+            ctorArgs = ConstructorArgs(collateral, oracle, config, dist, vault, revenueFurnace, market);
 
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main);
             main.setRTokenAsset(rTokenAsset);
 
             rToken.setMain(main);
             Ownable(address(rToken)).transferOwnership(owner);
+
         }
 
         {
@@ -104,6 +106,8 @@ contract DeployerP0 is IDeployer {
             main.setStRSR(stRSR);
         }
 
+        main.init(ctorArgs);
+
         main.setPauser(owner);
         Ownable(address(main)).transferOwnership(owner);
 
@@ -115,10 +119,8 @@ contract DeployerP0 is IDeployer {
     // =================================================================
     /// @dev Helpers used for testing to inject msg.sender and implement contract invariant checks
 
-    function _deployMain(ConstructorArgs memory args) internal virtual returns (IMain) {
-        IMain m = new MainP0();
-        m.init(args);
-        return m;
+    function _deployMain() internal virtual returns (IMain) {
+        return new MainP0();
     }
 
     function _deployRToken(string memory name, string memory symbol)

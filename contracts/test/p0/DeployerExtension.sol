@@ -32,10 +32,8 @@ contract DeployerExtension is DeployerP0, IExtension {
         INVARIANT_currentDeploymentRegistered();
     }
 
-    function _deployMain(ConstructorArgs memory args) internal override returns (IMain) {
-        _main = new MainExtension(_admin);
-        _main.init(args);
-        return _main;
+    function _deployMain() internal override returns (IMain) {
+        return MainExtension(_admin);
     }
 
     function _deployRevenueFurnace(IRToken rToken, uint256 batchDuration)

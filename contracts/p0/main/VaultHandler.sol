@@ -186,7 +186,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     ) private returns (uint256 toRedeem) {
         toRedeem = Math.min(vault_.basketUnits(address(rToken())), maxToRedeem);
         if (toRedeem > 0) {
-            rToken().withdrawBUs(address(this), toRedeem);
+            rToken().withdrawBUs(vault_, address(this), toRedeem);
             vault_.redeem(recipient, toRedeem);
         }
     }
