@@ -37,8 +37,8 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         UoA uoa_,
         IERC20Metadata erc20_,
         IMain main_,
-        IOracle oracleSource_
-    ) AssetP0(uoa_, erc20_, main_, oracleSource_) {}
+        IOracle oracle_
+    ) AssetP0(uoa_, erc20_, main_, oracle_) {}
 
     /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
     function forceUpdates() public virtual override {
@@ -77,6 +77,9 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
             whenDefault = block.timestamp;
         }
     }
+
+    /// @dev Intended to be used via delegatecall
+    function claimAndSweepRewards(ICollateral, IMain) external virtual override {}
 
     /// @return The asset's default status
     function status() public view returns (CollateralStatus) {

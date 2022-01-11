@@ -102,7 +102,7 @@ contract VaultP0 is IVault, Ownable {
 
     /// Claims and sweeps all COMP/AAVE rewards
     function claimAndSweepRewards() external override {
-        RewardsLib.claimAndSweepRewards(main);
+        RewardsLib.claimAndSweepRewards(address(main));
     }
 
     /// @param amtBUs {qBU}

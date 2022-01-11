@@ -51,6 +51,9 @@ interface ICollateral is IAsset {
     /// Disable the collateral so it cannot be used as backing
     function disable() external;
 
+    /// @dev Intended to be used via delegatecall
+    function claimAndSweepRewards(ICollateral collateral, IMain main) external;
+
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
     function status() external view returns (CollateralStatus);
 

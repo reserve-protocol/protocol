@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "./Collateral.sol";
 
 // Interfaces to contracts from: https://git.io/JX7iJ
-interface IStaticAToken is IERC20 {
+interface IStaticAToken is IERC20Metadata {
     function claimRewardsToSelf(bool forceUpdate) external;
 
     // @return RAY{fiatTok/tok}
@@ -29,6 +29,7 @@ interface AToken {
 /// underlying rebasing AToken will have the same number of decimals as its fiatcoin.
 contract ATokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
+    using SafeERC20 for IERC20Metadata;
 
     constructor(
         UoA uoa_,
@@ -37,6 +38,21 @@ contract ATokenCollateralP0 is CollateralP0 {
         ICollateral underlying_
     ) CollateralP0(uoa_, erc20_, main_, underlying_.oracle()) {
         underlying = underlying_;
+    }
+
+    /// @dev Intended to be used via delegatecall
+    function claimAndSweepRewards(ICollateral collateral, IMain main_) external virtual override {
+        // TODO: We need to ensure that calling this function directly,
+        // without delegatecall, does not allow anyone to extract value.
+        // This should already be the case because the Collateral
+        // contract itself should never earn rewards.
+
+        IStaticAToken aToken = IStaticAToken(address(collateral.erc20()));
+        uint256 amount = aToken.getClaimableRewards(address(this));
+        if (amount > 0) {
+            aToken.claimRewardsToSelf(true);
+            main_.aaveAsset().erc20().safeTransfer(address(main), amount);
+        }
     }
 
     /// @return {underlyingTok/tok} The rate between the token and fiatcoin

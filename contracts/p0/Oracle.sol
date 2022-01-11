@@ -9,7 +9,7 @@ import "contracts/libraries/Fixed.sol";
 contract CompoundOracle is IOracle {
     using FixLib for Fix;
 
-    IComptroller public immutable comptroller;
+    IComptroller public immutable override comptroller;
 
     constructor(IComptroller comptroller_) {
         comptroller = comptroller_;

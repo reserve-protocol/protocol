@@ -5,12 +5,12 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "contracts/p0/libraries/Rewards.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IRewardsClaimer.sol";
-import "contracts/libraries/Fixed.sol";
+import "contracts/p0/libraries/Rewards.sol";
 import "contracts/p0/main/VaultHandler.sol";
+import "contracts/libraries/Fixed.sol";
 
 abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     using FixLib for Fix;
@@ -55,7 +55,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
 
     /// Claims and sweeps all COMP/AAVE rewards
     function claimAndSweepRewards() external override {
-        RewardsLib.claimAndSweepRewards(main);
+        RewardsLib.claimAndSweepRewards(address(main));
     }
 
     /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price
