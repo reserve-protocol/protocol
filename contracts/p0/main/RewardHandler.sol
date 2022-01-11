@@ -22,7 +22,7 @@ import "./VaultHandler.sol";
 
 /**
  * @title RewardHandler
- * Brings revenue into the system, including RToken supply expansion and rewards from other protocols.
+ * Brings revenue into the system, including asset growth and rewards from other protocols.
  */
 contract RewardHandlerP0 is
     Pausable,

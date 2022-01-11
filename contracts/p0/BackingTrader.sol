@@ -112,7 +112,7 @@ contract BackingTraderP0 is TraderP0 {
 
     /// Determines what the largest collateral-for-collateral trade is.
     /// Algorithm:
-    ///    1. Target a particular number of basket units based on total fiatcoins held across all collateral.
+    ///    1. Target a number of basket units, based on total value held by all collateral.
     ///    2. Choose the most in-surplus and most in-deficit assets for trading.
     /// @return surplus Surplus asset
     /// @return deficit Deficit asset

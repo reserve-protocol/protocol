@@ -34,7 +34,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     // Fully capitalized: #RTokens <= #BUs / b
 
     Fix internal _historicalBasketDilution; // the product of all historical basket dilutions
-    Fix internal _prevBasketPrice; // {USD/qBU} redemption value of the basket in fiatcoins last update
+    Fix internal _prevBasketPrice; // {USD/qBU} redemption value of the basket at last update
 
     IVault[] public override vaults;
 
@@ -161,7 +161,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     }
 
     /// Redeems up to `maxBUs` basket units, redeeming from the oldest vault first.
-    /// @param allowCurrentVault Whether to allow redemption from the current vault in addition to old vaults.
+    /// @param allowCurrentVault Whether to redeem from the current vault in addition to old vaults.
     /// @return redeemedBUs How many BUs were actually redeemed
     function _redeemFromOldVaults(
         address recipient,
@@ -196,7 +196,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         uint256 indexMax;
         IVault[] memory backups = vault().getBackups();
 
-        // Loop through backups to find the highest value one that doesn't contain defaulting collateral
+        // Find the highest-value backup that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
             if (backups[i].collateralStatus() == CollateralStatus.SOUND) {
                 Fix price = backups[i].basketPrice(UoA.USD); // {attoUSD/BU}

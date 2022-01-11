@@ -20,13 +20,13 @@ struct Config {
     uint256 stRSRWithdrawalDelay; // the "thawing time" of staked RSR before withdrawal
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Ratios
-    Fix maxTradeSlippage; // the maximum amount of slippage in percentage terms we will accept in a trade
-    Fix maxAuctionSize; // the max size of an auction, as a fraction of RToken supply
-    Fix minRecapitalizationAuctionSize; // the min size of a recapitalization auction, as a fraction of RToken supply
-    Fix minRevenueAuctionSize; // the min size of a revenue auction (RToken/COMP/AAVE), as a fraction of RToken supply
-    Fix migrationChunk; // how much backing to migrate at a time, as a fraction of RToken supply
-    Fix issuanceRate; // the number of RToken to issue per block, as a fraction of RToken supply
-    Fix defaultThreshold; // the percent deviation required before a token is marked as in-default
+    Fix maxTradeSlippage; // max slippage acceptable in a trade
+    Fix maxAuctionSize; // max size of an auction / (RToken supply)
+    Fix minRecapitalizationAuctionSize; // min size of a recapitalization auction / (RToken supply)
+    Fix minRevenueAuctionSize; // min size of a revenue auction / (RToken supply)
+    Fix migrationChunk; // how much backing to migrate at a time / (RToken supply)
+    Fix issuanceRate; // number of RToken to issue per block / (RToken supply)
+    Fix defaultThreshold; // stablecoin deviation beyond which a token is marked as in-default
 
     // Sample values
     //

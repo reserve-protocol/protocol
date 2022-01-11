@@ -18,8 +18,8 @@ import "contracts/libraries/Fixed.sol";
 contract CollateralP0 is ICollateral, Context, AssetP0 {
     using FixLib for Fix;
 
-    // underlying == address(0): The collateral is leaf collateral; it has no underlying
-    // underlying != address(0): The collateral is derivative collateral; it has underlying collateral
+    // underlying == address(0): The collateral is leaf collateral; has no underlying
+    // underlying != address(0): The collateral is derivative collateral; has underlying collateral
     ICollateral public underlying;
 
     // Default Status:
@@ -32,13 +32,15 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     uint256 internal prevBlock; // Last block when _updateDefaultStatus() was called
     Fix internal prevRate; // Last rate when _updateDefaultStatus() was called
 
-    // solhint-disable-next-list no-empty-blocks
+    // solhint-disable no-empty-blocks
     constructor(
         UoA uoa_,
         IERC20Metadata erc20_,
         IMain main_,
         IOracle oracle_
     ) AssetP0(uoa_, erc20_, main_, oracle_) {}
+
+    // solhint-enable no-empty-blocks
 
     /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
     function forceUpdates() public virtual override {
@@ -79,6 +81,7 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     }
 
     /// @dev Intended to be used via delegatecall
+    // solhint-disable-next-line no-empty-blocks
     function claimAndSweepRewards(ICollateral, IMain) external virtual override {}
 
     /// @return The asset's default status

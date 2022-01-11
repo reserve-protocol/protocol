@@ -24,9 +24,10 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
     /// @param vault The vault the issuance is against
     /// @param amount {qTok} The quantity of RToken the issuance is for
     /// @param amtBUs {qBU} The number of BUs that corresponded to `amount` at time of issuance
-    /// @param deposits {qTok} The collateral token quantities that were used to pay for the issuance
+    /// @param deposits {qTok} The collateral token quantities that paid for the issuance
     /// @param issuer The account issuing RToken
-    /// @param blockAvailableAt {blockNumber} A continuous block number at which the issuance completes
+    /// @param blockAvailableAt {blockNumber} The block number when the issuance completes
+    ///   May be a fraction; the issuance is available when block.number >= blackAvailableAt
     /// @param processed false when the issuance is still vesting
     struct SlowIssuance {
         IVault vault;
@@ -131,7 +132,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
     // Returns the future block number at which an issuance for *amount* now can complete
     function _nextIssuanceBlockAvailable(uint256 amount) private view returns (Fix) {
         Fix perBlock = fixMax(
-            toFixWithShift(1e4, int8(rToken().decimals())), // lower-bound: 10k whole RToken per block
+            toFixWithShift(1e4, int8(rToken().decimals())), // at least 10k RTokens per block
             issuanceRate().mulu(rToken().totalSupply())
         ); // {RToken/block}
         Fix blockStart = toFix(block.number);
@@ -143,7 +144,9 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
         return blockStart.plus(divFix(amount, perBlock));
     }
 
-    // Processes all slow issuances that have fully vested, or undoes them if the vault has been changed.
+    // Process slow issuances:
+    // - undoes any issuances with changed vaults
+    // - enacts any other issuances that are fully vested
     function _processSlowIssuance() internal {
         for (uint256 i = 0; i < issuances.length; i++) {
             SlowIssuance storage iss = issuances[i];

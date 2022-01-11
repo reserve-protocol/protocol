@@ -82,7 +82,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         // TODO: Should this be floor?
         sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.price()).ceil()); // {qSellTok}
         Fix exactBuyAmount = toFix(sellAmount).mul(sell.price()).div(buy.price()); // {qBuyTok}
-        Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.maxTradeSlippage())); // {qBuyTok}
+        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.maxTradeSlippage())); // {qBuyTok}
 
         return (
             true,

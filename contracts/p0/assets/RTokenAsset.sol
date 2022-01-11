@@ -12,11 +12,14 @@ contract RTokenAssetP0 is AssetP0 {
     using FixLib for Fix;
 
     // TODO UoA may not make sense here, re-examine later
+    // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
         IMain main_,
         IOracle oracle_
     ) AssetP0(UoA.USD, erc20_, main_, oracle_) {}
+
+    // solhint-enable no-empty-blocks
 
     /// @return {attoUSD/qRTok}
     function price() public view override returns (Fix) {
