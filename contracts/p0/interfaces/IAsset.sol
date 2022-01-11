@@ -13,14 +13,14 @@ import "./IMain.sol";
  */
 interface IAsset {
     /// Unit of Account
-    /// @return The primary Unit of Account for the asset
+    /// @return The Unit of Account for the asset
     function uoa() external view returns (UoA);
 
     /// @return The oracle that should be used with the asset
     function oracleSource() external view returns (Oracle.Source);
 
-    /// @return {attoUoA/qTok} The atto price of 1 qToken in the given unit of account
-    function price(UoA uoa_) external view returns (Fix);
+    /// @return {attoUSD/qTok} The atto price of 1 qToken in the unit of account
+    function price() external view returns (Fix);
 
     /// @return The ERC20 contract of the token with decimals() available
     function erc20() external view returns (IERC20Metadata);
@@ -54,7 +54,7 @@ interface ICollateral is IAsset {
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
     function status() external view returns (CollateralStatus);
 
-    /// @return {attoUoA/tok} The atto price of 1 whole fiatcoin in its own unit of account
+    /// @return {attoUSD/tok} The atto price of 1 whole fiatcoin in its own unit of account
     function fiatcoinPrice() external view returns (Fix);
 
     /// @return {underlyingTok/tok} The rate between the token and fiatcoin

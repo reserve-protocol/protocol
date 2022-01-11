@@ -506,8 +506,8 @@ contract AdapterP0 is ProtoAdapter {
                 IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
                 IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
                 newBid.buyAmount = toFix(sellAmount)
-                .mul(buyAsset.price(UoA.USD))
-                .div(sellAsset.price(UoA.USD))
+                .mul(buyAsset.price())
+                .div(sellAsset.price())
                 .ceil();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(

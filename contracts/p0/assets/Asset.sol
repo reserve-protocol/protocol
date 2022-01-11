@@ -29,9 +29,8 @@ contract AssetP0 is IAsset {
         oracleSource = oracleSource_;
     }
 
-    /// @return {attoUoA/qTok} The attoUoA price of 1 qToken
-    function price(UoA uoa_) public view virtual override returns (Fix) {
-        require(uoa_ == uoa, "conversions between units of account not implemented yet");
+    /// @return {attoUSD/qTok} The attoUSD price of 1 qToken
+    function price() public view virtual override returns (Fix) {
         return main.oracle(uoa).consult(oracleSource, erc20).shiftLeft(-int8(erc20.decimals()));
     }
 

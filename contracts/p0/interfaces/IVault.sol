@@ -56,7 +56,7 @@ interface IVault is IRewardsClaimer {
     /// Main Setter
     function setMain(IMain main) external;
 
-    /// @return {attoUoA/BU} The attoUoA price of 1 whole BU
+    /// @return {attoUSD/BU} The attoUSD price of 1 whole BU
     function basketPrice(UoA uoa) external view returns (Fix);
 
     /// @return {qTok} A list of token quantities required in order to issue `amtBUs`, in the order of the basket.

@@ -61,7 +61,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
 
         // If the underlying fiatcoin price is below the default-threshold price, default eventually
         if (whenDefault > block.timestamp) {
-            Fix p = fiatcoinPrice(); // {attoUoA/fiatTok}
+            Fix p = fiatcoinPrice(); // {attoUSD/fiatTok}
             whenDefault = p.lte(_defaultThreshold())
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
@@ -91,16 +91,16 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         }
     }
 
-    /// @return {attoUoA/qTok} The atto price of 1 qToken in the given unit of account
-    function price(UoA uoa_) public view virtual override(AssetP0, IAsset) returns (Fix) {
+    /// @return {attoUSD/qTok} The atto price of 1 qToken in the given unit of account
+    function price() public view virtual override(AssetP0, IAsset) returns (Fix) {
         if (address(underlying) == address(0)) {
-            return AssetP0.price(uoa_);
+            return AssetP0.price();
         }
 
-        return underlying.price(uoa_).mul(fiatcoinRate());
+        return underlying.price().mul(fiatcoinRate());
     }
 
-    /// @return {attoUoA/tok} The atto price of 1 whole fiatcoin in its own unit of account
+    /// @return {attoUSD/tok} The atto price of 1 whole fiatcoin in its own unit of account
     function fiatcoinPrice() public view virtual returns (Fix) {
         if (address(underlying) == address(0)) {
             return main.oracle(uoa).consult(oracleSource, erc20);
@@ -128,7 +128,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         return true;
     }
 
-    /// @return {attoUoA/fiatTok} The price at which a fiatcoin is said to be defaulting
+    /// @return {attoUSD/fiatTok} The price at which a fiatcoin is said to be defaulting
     function _defaultThreshold() private view returns (Fix) {
         IAsset[] memory allAssets = main.allAssets();
         uint256 numFiatcoins;
@@ -148,7 +148,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         // Collect prices
         Fix[] memory prices = new Fix[](numFiatcoins);
         for (uint256 i = 0; i < numFiatcoins; i++) {
-            prices[i] = collateral[i].price(uoa);
+            prices[i] = collateral[i].price();
         }
 
         // Sort

@@ -49,7 +49,7 @@ library Oracle {
         IAaveLendingPool aave;
     }
 
-    /// @return p {attoUoA/tok} The attoUoA price of a whole token on oracle `source`
+    /// @return p {attoUSD/tok} The attoUSD price of a whole token on oracle `source`
     function consult(
         Oracle.Info memory self,
         Source source,

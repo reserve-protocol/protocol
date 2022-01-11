@@ -16,11 +16,10 @@ contract RTokenAssetP0 is AssetP0 {
         AssetP0(UoA.USD, erc20_, main_, Oracle.Source.AAVE)
     {}
 
-    /// @return {attoUoA/qRTok}
-    function price(UoA uoa_) public view override returns (Fix) {
-        require(uoa == uoa_, "conversions across units of account not implemented yet");
+    /// @return {attoUSD/qRTok}
+    function price() public view override returns (Fix) {
         return
-            main.vault().basketPrice(uoa_).mul(main.baseFactor()).shiftLeft(
+            main.vault().basketPrice(uoa).mul(main.baseFactor()).shiftLeft(
                 -int8(main.vault().BU_DECIMALS())
             );
     }

@@ -128,13 +128,15 @@ contract VaultP0 is IVault, Ownable {
         return _basket.quantities[asset];
     }
 
-    /// @return attoUoA {attoUoA/BU} The price of 1 whole BU in a single unit of account
-    function basketPrice(UoA uoa) external view override returns (Fix attoUoA) {
+    /// @return attoUSD {attoUSD/BU} The price of 1 whole BU in a single unit of account
+    function basketPrice(UoA uoa) external view override returns (Fix attoUSD) {
+        require(uoa == UoA.USD, "conversions across units of account not implemented yet");
         for (uint256 i = 0; i < _basket.size; i++) {
             ICollateral a = _basket.collateral[i];
 
-            // {attoUoA/BU} = {attoUoA/BU} + {attoUoQ/qTok} * {qTok/BU}
-            attoUoA = attoUoA.plus(a.price(uoa).mulu(_basket.quantities[a]));
+            // {attoUSD/BU} = {attoUSD/BU} + {attoUoQ/qTok} * {qTok/BU}
+            require(a.uoa() == UoA.USD, "conversions across units of account not implemented yet");
+            attoUSD = attoUSD.plus(a.price().mulu(_basket.quantities[a]));
         }
     }
 

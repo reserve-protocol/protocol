@@ -198,7 +198,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
             if (backups[i].collateralStatus() == CollateralStatus.SOUND) {
-                Fix price = backups[i].basketPrice(UoA.USD); // {attoUoA/BU}
+                Fix price = backups[i].basketPrice(UoA.USD); // {attoUSD/BU}
 
                 // See if it has the highest basket
                 if (price.gt(maxPrice)) {
