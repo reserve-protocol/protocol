@@ -5,12 +5,12 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./assets/RTokenAsset.sol";
 import "../libraries/CommonErrors.sol";
-import "./libraries/Oracle.sol";
 import "./interfaces/IAsset.sol";
 import "./interfaces/IDeployer.sol";
 import "./interfaces/IFurnace.sol";
 import "./interfaces/IMain.sol";
 import "./interfaces/IMarket.sol";
+import "./interfaces/IOracle.sol";
 import "./interfaces/IVault.sol";
 import "./assets/RTokenAsset.sol";
 import "contracts/IExplorer.sol";
@@ -50,8 +50,8 @@ contract DeployerP0 is IDeployer {
     /// @param vault The initial vault that backs the RToken
     /// @param config Governance params
     /// @param dist The revenue shares distribution
-    /// @param comptroller The deployment of the Comptroller on this chain
-    /// @param aaveLendingPool The deployment of the AaveLendingPool on this chain
+    /// @param compoundOracle A deployment of an adapter for the compound oracle
+    /// @param aaveOracle A deployment of an adapter for the aave oracle
     /// @param collateral The collateral assets in the system
     /// @return The address of the newly deployed Main instance.
     function deploy(
@@ -61,12 +61,10 @@ contract DeployerP0 is IDeployer {
         IVault vault,
         Config memory config,
         RevenueShare memory dist,
-        IComptroller comptroller,
-        IAaveLendingPool aaveLendingPool,
+        IOracle compoundOracle,
+        IOracle aaveOracle,
         ICollateral[] memory collateral
     ) external override returns (address) {
-        Oracle.Info memory oracle = Oracle.Info(comptroller, aaveLendingPool);
-
         ConstructorArgs memory ctorArgs;
 
         IMain main = _deployMain();
@@ -77,20 +75,19 @@ contract DeployerP0 is IDeployer {
             IFurnace revenueFurnace = _deployRevenueFurnace(rToken, config.rewardPeriod);
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
-            ctorArgs = ConstructorArgs(collateral, oracle, config, dist, vault, revenueFurnace, market);
+            ctorArgs = ConstructorArgs(collateral, config, dist, vault, revenueFurnace, market);
 
-            RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main);
+            RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main, aaveOracle);
             main.setRTokenAsset(rTokenAsset);
 
             rToken.setMain(main);
             Ownable(address(rToken)).transferOwnership(owner);
-
         }
 
         {
-            AssetP0 rsrAsset = new AssetP0(UoA.USD, rsr, main, Oracle.Source.AAVE);
-            AssetP0 compAsset = new AssetP0(UoA.USD, comp, main, Oracle.Source.COMPOUND);
-            AssetP0 aaveAsset = new AssetP0(UoA.USD, aave, main, Oracle.Source.AAVE);
+            AssetP0 rsrAsset = new AssetP0(UoA.USD, rsr, main, aaveOracle);
+            AssetP0 compAsset = new AssetP0(UoA.USD, comp, main, compoundOracle);
+            AssetP0 aaveAsset = new AssetP0(UoA.USD, aave, main, aaveOracle);
 
             main.setRSRAsset(rsrAsset);
             main.setCompAsset(compAsset);

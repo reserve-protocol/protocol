@@ -28,7 +28,7 @@ contract FurnaceP0 is Ownable, IFurnace {
     }
 
     Batch[] public batches;
-    uint256 firstBatch; // Invariant: if i < firstBatch, then batches[i] is fully melted.
+    uint256 private firstBatch; // Invariant: if i < firstBatch, then batches[i] is fully melted.
 
     /// @param batchDuration_ {sec} The number of seconds to spread the melt over
     constructor(IRToken rToken_, uint256 batchDuration_) {

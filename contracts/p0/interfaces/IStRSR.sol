@@ -5,7 +5,8 @@ import "contracts/p0/interfaces/IERC20Receiver.sol";
 
 /*
  * @title IStRSR
- * @notice A rebasing token that represents claims on staked RSR and entitles the AssetManager to seize RSR.
+ * A token representing shares of the staked RSR pool. The AssetManager is entitled
+ * to seize that staked RSR when needed.
  * @dev The p0-specific IStRSR
  */
 interface IStRSR is IERC20, IERC20Receiver {

@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 
@@ -13,17 +13,14 @@ import "./IMain.sol";
  */
 interface IAsset {
     /// Unit of Account
-    /// @return The primary Unit of Account for the asset
+    /// @return The Unit of Account for the asset
     function uoa() external view returns (UoA);
 
     /// @return The oracle that should be used with the asset
-    function oracleSource() external view returns (Oracle.Source);
+    function oracle() external view returns (IOracle);
 
-    /// @return {attoPrice/tok} The Price of 1 whole token
-    function price() external view returns (Price memory);
-
-    /// @return {attoPrice/qTok} The Price of 1 qToken
-    function priceQ() external view returns (Price memory);
+    /// @return {attoUSD/qTok} The atto price of 1 qToken in the unit of account
+    function price() external view returns (Fix);
 
     /// @return The ERC20 contract of the token with decimals() available
     function erc20() external view returns (IERC20Metadata);
@@ -54,11 +51,14 @@ interface ICollateral is IAsset {
     /// Disable the collateral so it cannot be used as backing
     function disable() external;
 
+    /// @dev Intended to be used via delegatecall
+    function claimAndSweepRewards(ICollateral collateral, IMain main) external;
+
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
     function status() external view returns (CollateralStatus);
 
-    /// @return {attoPrice/tok} The Price of 1 whole token of the fiatcoin
-    function fiatcoinPrice() external view returns (Price memory);
+    /// @return {attoUSD/tok} The atto price of 1 whole fiatcoin in its own unit of account
+    function fiatcoinPrice() external view returns (Fix);
 
     /// @return {underlyingTok/tok} The rate between the token and fiatcoin
     function fiatcoinRate() external view returns (Fix);

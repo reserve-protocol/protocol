@@ -8,21 +8,18 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "contracts/p0/assets/Asset.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/libraries/Oracle.sol";
-import "contracts/p0/libraries/Pricing.sol";
+import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
  * @title CollateralP0
  * @notice A vanilla asset such as a fiatcoin, to be extended by derivative assets.
  */
-contract CollateralP0 is ICollateral, AssetP0, Context {
+contract CollateralP0 is ICollateral, Context, AssetP0 {
     using FixLib for Fix;
-    using Oracle for Oracle.Info;
-    using PricingLib for Price;
 
-    // underlying == address(0): The collateral is leaf collateral; it has no underlying
-    // underlying != address(0): The collateral is derivative collateral; it has underlying collateral
+    // underlying == address(0): The collateral is leaf collateral; has no underlying
+    // underlying != address(0): The collateral is derivative collateral; has underlying collateral
     ICollateral public underlying;
 
     // Default Status:
@@ -35,13 +32,15 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
     uint256 internal prevBlock; // Last block when _updateDefaultStatus() was called
     Fix internal prevRate; // Last rate when _updateDefaultStatus() was called
 
-    // solhint-disable-next-list no-empty-blocks
+    // solhint-disable no-empty-blocks
     constructor(
         UoA uoa_,
         IERC20Metadata erc20_,
         IMain main_,
-        Oracle.Source oracleSource_
-    ) AssetP0(uoa_, erc20_, main_, oracleSource_) {}
+        IOracle oracle_
+    ) AssetP0(uoa_, erc20_, main_, oracle_) {}
+
+    // solhint-enable no-empty-blocks
 
     /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
     function forceUpdates() public virtual override {
@@ -63,8 +62,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
 
         // If the underlying fiatcoin price is below the default-threshold price, default eventually
         if (whenDefault > block.timestamp) {
-            Price memory p = fiatcoinPrice(); // {attoPrice/fiatTok}
-            whenDefault = p.quantity(uoa).lte(_defaultThreshold())
+            whenDefault = fiatcoinPrice().lte(_minFiatcoinPrice())
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -82,6 +80,10 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         }
     }
 
+    /// @dev Intended to be used via delegatecall
+    // solhint-disable-next-line no-empty-blocks
+    function claimAndSweepRewards(ICollateral, IMain) external virtual override {}
+
     /// @return The asset's default status
     function status() public view returns (CollateralStatus) {
         if (whenDefault == NEVER) {
@@ -93,23 +95,19 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         }
     }
 
-    /// @return p {attoPrice/tok} The Price per whole token
-    function price() public view virtual override(AssetP0, IAsset) returns (Price memory p) {
+    /// @return {attoUSD/qTok} The atto price of 1 qToken in the given unit of account
+    function price() public view virtual override(AssetP0, IAsset) returns (Fix) {
         if (address(underlying) == address(0)) {
-            return main.oracle(uoa).consult(oracleSource, erc20);
+            return AssetP0.price();
         }
 
-        p = underlying.price();
-        for (uint256 i = 0; i < uint256(type(UoA).max); i++) {
-            // {attoUoA/tok} = {attoUoA/underlyingTok} * {underlyingTok/tok}
-            p.set(UoA(i), p.quantity(UoA(i)).mul(fiatcoinRate()));
-        }
+        return underlying.price().mul(fiatcoinRate());
     }
 
-    /// @return {attoPrice/tok} The price of 1 whole token of the fiatcoin
-    function fiatcoinPrice() public view virtual returns (Price memory) {
+    /// @return {attoUSD/tok} The atto price of 1 whole fiatcoin in its own unit of account
+    function fiatcoinPrice() public view virtual returns (Fix) {
         if (address(underlying) == address(0)) {
-            return main.oracle(uoa).consult(oracleSource, erc20);
+            return price();
         }
 
         return underlying.fiatcoinPrice();
@@ -134,53 +132,9 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         return true;
     }
 
-    /// @return {attoUoA/fiatTok} The price at which a fiatcoin is said to be defaulting
-    function _defaultThreshold() private view returns (Fix) {
-        IAsset[] memory allAssets = main.allAssets();
-        uint256 numFiatcoins;
-        ICollateral[] memory collateral = new ICollateral[](allAssets.length);
-        for (uint256 i = 0; i < allAssets.length; i++) {
-            ICollateral c = ICollateral(address(allAssets[i]));
-            if (
-                allAssets[i].uoa() == uoa &&
-                allAssets[i].isCollateral() &&
-                c.underlyingERC20() == c.erc20()
-            ) {
-                collateral[numFiatcoins] = c;
-                numFiatcoins++;
-            }
-        }
-
-        // Collect prices
-        Fix[] memory prices = new Fix[](numFiatcoins);
-        for (uint256 i = 0; i < numFiatcoins; i++) {
-            prices[i] = collateral[i].price().quantity(uoa);
-        }
-
-        // Sort
-        for (uint256 i = 0; i < prices.length - 1; i++) {
-            uint256 min = i;
-            for (uint256 j = i; j < prices.length; j++) {
-                if (prices[j].lt(prices[min])) {
-                    min = j;
-                }
-            }
-            if (min != i) {
-                Fix tmp = prices[i];
-                prices[i] = prices[min];
-                prices[min] = tmp;
-            }
-        }
-
-        // Take the median
-        Fix median;
-        if (prices.length % 2 == 0) {
-            median = prices[prices.length / 2 - 1].plus(prices[prices.length / 2]).divu(2);
-        } else {
-            median = prices[prices.length / 2];
-        }
-
-        // median - (median * defaultThreshold)
-        return median.minus(median.mul(main.defaultThreshold()));
+    /// @return {attoUSD/tok} Minimum price of a fiatcoin to be considered non-defaulting
+    function _minFiatcoinPrice() internal view virtual returns (Fix) {
+        // {attoUSD/tok} = 1 attoUSD/tok * {none}
+        return main.defaultThreshold();
     }
 }

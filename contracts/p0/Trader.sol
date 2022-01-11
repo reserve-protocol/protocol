@@ -5,17 +5,15 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "contracts/p0/libraries/Rewards.sol";
-import "contracts/p0/libraries/Pricing.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IRewardsClaimer.sol";
-import "contracts/libraries/Fixed.sol";
+import "contracts/p0/libraries/Rewards.sol";
 import "contracts/p0/main/VaultHandler.sol";
+import "contracts/libraries/Fixed.sol";
 
 abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     using FixLib for Fix;
-    using PricingLib for Price;
     using SafeERC20 for IERC20Metadata;
 
     Auction[] public auctions;
@@ -57,7 +55,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
 
     /// Claims and sweeps all COMP/AAVE rewards
     function claimAndSweepRewards() external override {
-        RewardsLib.claimAndSweepRewards(main);
+        RewardsLib.claimAndSweepRewards(address(main));
     }
 
     /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price
@@ -69,14 +67,12 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         IAsset buy,
         uint256 sellAmount
     ) internal view returns (bool notDust, Auction memory auction) {
-        if (sell.price().usd().eq(FIX_ZERO) || buy.price().usd().eq(FIX_ZERO)) {
+        if (sell.price().eq(FIX_ZERO) || buy.price().eq(FIX_ZERO)) {
             return (false, auction);
         }
 
         // {attoUSD} = {attoUSD/qRTok} * {qRTok}
-        Fix rTokenMarketCapUSD = main.rTokenAsset().priceQ().usd().mulu(
-            main.rToken().totalSupply()
-        );
+        Fix rTokenMarketCapUSD = main.rTokenAsset().price().mulu(main.rToken().totalSupply());
         Fix maxSellUSD = rTokenMarketCapUSD.mul(main.maxAuctionSize()); // {attoUSD}
 
         if (sellAmount < _dustThreshold(sell)) {
@@ -84,9 +80,9 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         }
 
         // TODO: Should this be floor?
-        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceQ().usd()).ceil()); // {qSellTok}
-        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceQ().usd()).div(buy.priceQ().usd()); // {qBuyTok}
-        Fix minBuyAmount = exactBuyAmount.minus(exactBuyAmount.mul(main.maxTradeSlippage())); // {qBuyTok}
+        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.price()).ceil()); // {qSellTok}
+        Fix exactBuyAmount = toFix(sellAmount).mul(sell.price()).div(buy.price()); // {qBuyTok}
+        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.maxTradeSlippage())); // {qBuyTok}
 
         return (
             true,
@@ -125,7 +121,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         deficitAmount = Math.max(deficitAmount, _dustThreshold(buy));
 
         // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
-        Fix exactSellAmount = toFix(deficitAmount).mul(buy.priceQ().usd()).div(sell.priceQ().usd());
+        Fix exactSellAmount = toFix(deficitAmount).mul(buy.price()).div(sell.price());
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
@@ -140,15 +136,13 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     /// @return {qSellTok} The least amount of tokens worth trying to sell
     function _dustThreshold(IAsset asset) private view returns (uint256) {
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
-        Fix rTokenMarketCapUSD = main.rTokenAsset().priceQ().usd().mulu(
-            main.rToken().totalSupply()
-        );
+        Fix rTokenMarketCapUSD = main.rTokenAsset().price().mulu(main.rToken().totalSupply());
 
         // {attoUSD}
         Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize());
 
         // {attoUSD} / {attoUSD/qSellTok}
-        return minSellUSD.div(asset.priceQ().usd()).ceil();
+        return minSellUSD.div(asset.price()).ceil();
     }
 
     /// Launch an auction:

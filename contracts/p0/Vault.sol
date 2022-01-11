@@ -10,7 +10,6 @@ import "contracts/p0/assets/ATokenCollateral.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/libraries/Pricing.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -22,7 +21,6 @@ import "contracts/libraries/Fixed.sol";
  */
 contract VaultP0 is IVault, Ownable {
     using FixLib for Fix;
-    using PricingLib for Price;
     using SafeERC20 for IERC20Metadata;
 
     // {BU} = 1e18{qBU}
@@ -104,7 +102,7 @@ contract VaultP0 is IVault, Ownable {
 
     /// Claims and sweeps all COMP/AAVE rewards
     function claimAndSweepRewards() external override {
-        RewardsLib.claimAndSweepRewards(main);
+        RewardsLib.claimAndSweepRewards(address(main));
     }
 
     /// @param amtBUs {qBU}
@@ -130,16 +128,16 @@ contract VaultP0 is IVault, Ownable {
         return _basket.quantities[asset];
     }
 
-    /// @return price {attoPrice/BU} The Price of 1 whole BU
-    function basketPrice() external view override returns (Price memory price) {
-        Fix attoUSD = FIX_ZERO;
+    /// @return attoUSD {attoUSD/BU} The price of 1 whole BU in a single unit of account
+    function basketPrice(UoA uoa) external view override returns (Fix attoUSD) {
+        require(uoa == UoA.USD, "conversions across units of account not implemented yet");
         for (uint256 i = 0; i < _basket.size; i++) {
             ICollateral a = _basket.collateral[i];
 
-            // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
-            attoUSD = attoUSD.plus(a.priceQ().usd().mulu(_basket.quantities[a]));
+            // {attoUSD/BU} = {attoUSD/BU} + {attoUoQ/qTok} * {qTok/BU}
+            require(a.uoa() == UoA.USD, "conversions across units of account not implemented yet");
+            attoUSD = attoUSD.plus(a.price().mulu(_basket.quantities[a]));
         }
-        price.setUSD(attoUSD);
     }
 
     /// @return {qBU} The maximum number of basket units that `issuer` can issue

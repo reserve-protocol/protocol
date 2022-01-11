@@ -57,7 +57,7 @@ contract AuctioneerP0 is
         // Backing Trader
         backingTrader.poke();
 
-        // TODO: Move a lot of this logic into BackingTrader by making BackingTrader able to access Main's BUs
+        // TODO: Move logic into BackingTrader by making BackingTrader able to access Main's BUs
         if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
             /* If we're here, then we need to run more auctions to capitalize the current vault. The
                BackingTrader will run those auctions, but it needs to be given BUs from old vaults,
@@ -65,9 +65,9 @@ contract AuctioneerP0 is
                raise that number of BUs, and it will redeem away staked RSR if necessary in order to
                do those raises.
 
-               If the current vault is well under-capitalized, then we don't want to run all of those
-               auctions at once, because if tie up all the collateral in auction, then RToken holders
-               won't be able to redeem from the protocol. So, we raise at most
+               If the current vault is well under-capitalized, then we don't want to run all of
+               those auctions at once, because if tie up all the collateral in auction, then RToken
+               holders won't be able to redeem from the protocol. So, we raise at most
                (migrationChunk * rToken supply) BUs at a time
             */
 

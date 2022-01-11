@@ -5,7 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/IVault.sol";
-import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/interfaces/IOracle.sol";
+import "contracts/p0/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/mocks/ERC20Mock.sol";
 import "./CompoundOracleMock.sol";
@@ -42,8 +43,6 @@ contract ManagerInternalMockP0 {
 }
 
 contract MainMockP0 {
-    using Oracle for Oracle.Info;
-
     IERC20Metadata public rsr;
     ManagerInternalMockP0 public manager;
     bool public paused;
@@ -52,15 +51,15 @@ contract MainMockP0 {
     Fix public defaultThreshold;
 
     IStRSR public stRSR;
-
-    ICompoundOracle private _compOracle;
     IComptroller public comptroller;
+    ICompoundOracle public compoundOracle;
 
-    IAaveOracle private _aaveOracle;
+    IAaveOracle private _aaveOracleMock;
     ILendingPoolAddressesProvider private _aaveAddrProvider;
     IAaveLendingPool public aaveLendingPool;
 
-    Oracle.Info internal _oracle;
+    IOracle internal _compoundOracle;
+    IOracle internal _aaveOracle;
 
     IAsset public compAsset;
     IAsset public aaveAsset;
@@ -80,17 +79,18 @@ contract MainMockP0 {
         manager = new ManagerInternalMockP0(address(this));
         paused = false;
 
-        _compOracle = new CompoundOracleMockP0();
-        comptroller = new ComptrollerMockP0(address(_compOracle));
+        compoundOracle = new CompoundOracleMockP0();
+        comptroller = new ComptrollerMockP0(address(compoundOracle));
 
-        _aaveOracle = new AaveOracleMockP0(address(weth));
-        _aaveAddrProvider = new AaveLendingAddrProviderMockP0(address(_aaveOracle));
+        _aaveOracleMock = new AaveOracleMockP0(address(weth));
+        _aaveAddrProvider = new AaveLendingAddrProviderMockP0(address(_aaveOracleMock));
         aaveLendingPool = new AaveLendingPoolMockP0(address(_aaveAddrProvider));
 
-        _oracle = Oracle.Info(comptroller, aaveLendingPool);
+        _compoundOracle = new CompoundOracle(comptroller);
+        _aaveOracle = new AaveOracle(comptroller, aaveLendingPool);
 
-        compAsset = new AssetP0(UoA.USD, compToken, IMain(address(this)), Oracle.Source.COMPOUND);
-        aaveAsset = new AssetP0(UoA.USD, aaveToken, IMain(address(this)), Oracle.Source.AAVE);
+        compAsset = new AssetP0(UoA.USD, compToken, IMain(address(this)), _compoundOracle);
+        aaveAsset = new AssetP0(UoA.USD, aaveToken, IMain(address(this)), _aaveOracle);
     }
 
     function setStRSR(IStRSR stRSR_) external {
@@ -111,18 +111,6 @@ contract MainMockP0 {
 
     function setDefaultThreshold(Fix defaultThreshold_) public {
         defaultThreshold = defaultThreshold_;
-    }
-
-    function oracle() external view returns (Oracle.Info memory) {
-        return _oracle;
-    }
-
-    function compoundOracle() external view returns (address) {
-        return address(_compOracle);
-    }
-
-    function aaveOracle() external view returns (address) {
-        return address(_aaveOracle);
     }
 
     function setVault(IVault vault) external {

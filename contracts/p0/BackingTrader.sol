@@ -7,14 +7,12 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/libraries/Pricing.sol";
 import "contracts/p0/main/VaultHandler.sol";
 import "contracts/p0/Trader.sol";
 import "contracts/libraries/Fixed.sol";
 
 contract BackingTraderP0 is TraderP0 {
     using FixLib for Fix;
-    using PricingLib for Price;
     using SafeERC20 for IERC20Metadata;
 
     // How many more BUs this trader has the duty to construct.
@@ -114,7 +112,7 @@ contract BackingTraderP0 is TraderP0 {
 
     /// Determines what the largest collateral-for-collateral trade is.
     /// Algorithm:
-    ///    1. Target a particular number of basket units based on total fiatcoins held across all collateral.
+    ///    1. Target a number of basket units, based on total value held by all collateral.
     ///    2. Choose the most in-surplus and most in-deficit assets for trading.
     /// @return surplus Surplus asset
     /// @return deficit Deficit asset
@@ -145,10 +143,10 @@ contract BackingTraderP0 is TraderP0 {
             );
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                surpluses[i] = bal.minus(target).mul(assets[i].priceQ().usd());
+                surpluses[i] = bal.minus(target).mul(assets[i].price());
             } else if (bal.lt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                deficits[i] = target.minus(bal).mul(assets[i].priceQ().usd());
+                deficits[i] = target.minus(bal).mul(assets[i].price());
             }
         }
 
@@ -169,10 +167,10 @@ contract BackingTraderP0 is TraderP0 {
         }
 
         // {qSellTok} = {attoUSD} / {attoUSD/qSellTok}
-        Fix sellAmount = surplusMax.div(assets[surplusIndex].priceQ().usd());
+        Fix sellAmount = surplusMax.div(assets[surplusIndex].price());
 
         // {qBuyTok} = {attoUSD} / {attoUSD/qBuyTok}
-        Fix buyAmount = deficitMax.div(assets[deficitIndex].priceQ().usd());
+        Fix buyAmount = deficitMax.div(assets[deficitIndex].price());
         return (assets[surplusIndex], assets[deficitIndex], sellAmount.floor(), buyAmount.floor());
     }
 

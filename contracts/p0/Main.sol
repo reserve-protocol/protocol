@@ -71,4 +71,8 @@ contract MainP0 is
     {
         super.beforeUpdate();
     }
+
+    function owner() public view virtual override(IMain, Ownable) returns (address) {
+        return Ownable.owner();
+    }
 }

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "./Collateral.sol";
@@ -21,6 +23,7 @@ interface ICToken {
 
 contract CTokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
+    using SafeERC20 for IERC20Metadata;
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     Fix public immutable initialExchangeRate; // 0.02, their hardcoded starting rate
@@ -30,7 +33,7 @@ contract CTokenCollateralP0 is CollateralP0 {
         IERC20Metadata erc20_,
         IMain main_,
         ICollateral underlying_
-    ) CollateralP0(uoa_, erc20_, main_, Oracle.Source.COMPOUND) {
+    ) CollateralP0(uoa_, erc20_, main_, underlying_.oracle()) {
         underlying = underlying_;
         initialExchangeRate = toFixWithShift(2, -2);
     }
@@ -39,6 +42,22 @@ contract CTokenCollateralP0 is CollateralP0 {
     function forceUpdates() public virtual override {
         ICToken(address(erc20)).exchangeRateCurrent();
         _updateDefaultStatus();
+    }
+
+    /// @dev Intended to be used via delegatecall
+    function claimAndSweepRewards(ICollateral, IMain main_) external virtual override {
+        // TODO: We need to ensure that calling this function directly,
+        // without delegatecall, does not allow anyone to extract value.
+        // This should already be the case because the Collateral
+        // contract itself should never earn rewards.
+
+        // `collateral` being unused here is expected
+        // compound groups all rewards automatically, meaning do excessive claims
+        oracle.comptroller().claimComp(address(this));
+        uint256 amount = main_.compAsset().erc20().balanceOf(address(this));
+        if (amount > 0) {
+            main_.compAsset().erc20().safeTransfer(address(main), amount);
+        }
     }
 
     /// @return {underlyingTok/tok} The rate between the token and fiatcoin

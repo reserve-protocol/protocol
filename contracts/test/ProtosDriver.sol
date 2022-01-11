@@ -12,7 +12,7 @@ interface ProtoCommon {
 
     /// Updates oracle prices
     /// @param assets One-of DAI/USDC/USDT/BUSD/RSR/COMP/AAVE
-    function setBaseAssetPrices(AssetName[] memory assets, ProtoPrice[] memory prices) external;
+    function setBaseAssetPrices(AssetName[] memory assets, Price[] memory prices) external;
 
     /// Updates DeFi redemption rates
     /// @param defiAssets CTokens and ATokens
@@ -94,7 +94,7 @@ contract ProtosDriver is ProtoCommon {
     }
 
     /// @param baseAssets One-of DAI/USDC/USDT/BUSD/RSR/COMP/AAVE
-    function setBaseAssetPrices(AssetName[] memory baseAssets, ProtoPrice[] memory prices)
+    function setBaseAssetPrices(AssetName[] memory baseAssets, Price[] memory prices)
         external
         override
     {

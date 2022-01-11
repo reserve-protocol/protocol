@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "../libraries/Oracle.sol";
+import "contracts/p0/interfaces/IOracle.sol";
 
 contract AaveLendingPoolMockP0 is IAaveLendingPool {
     ILendingPoolAddressesProvider private _lendingAddressesProvider;

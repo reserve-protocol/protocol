@@ -5,7 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/assets/ATokenCollateral.sol";
-import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/interfaces/IOracle.sol";
+import "contracts/p0/libraries/Rewards.sol";
 import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/p0/main/VaultHandler.sol";
@@ -21,7 +22,7 @@ import "./VaultHandler.sol";
 
 /**
  * @title RewardHandler
- * Brings revenue into the system, including RToken supply expansion and rewards from other protocols.
+ * Brings revenue into the system, including asset growth and rewards from other protocols.
  */
 contract RewardHandlerP0 is
     Pausable,
@@ -60,6 +61,7 @@ contract RewardHandlerP0 is
             for (uint256 i = 0; i < vaults.length; i++) {
                 vaults[i].claimAndSweepRewards();
             }
+            _claimAndSweepRewards();
 
             _expandSupplyToRSRTrader();
             _rewardsLastClaimed = prevRewards;
@@ -110,5 +112,10 @@ contract RewardHandlerP0 is
         int256 reps = (int256(time) - int256(rewardStart())) / int256(rewardPeriod());
         left = uint256(reps * int256(rewardPeriod()) + int256(rewardStart()));
         right = left + rewardPeriod();
+    }
+
+    /// Claims and sweeps all COMP/AAVE rewards
+    function _claimAndSweepRewards() internal {
+        RewardsLib.claimAndSweepRewards(address(this));
     }
 }
