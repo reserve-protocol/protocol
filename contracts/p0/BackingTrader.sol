@@ -7,14 +7,12 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/libraries/Pricing.sol";
 import "contracts/p0/main/VaultHandler.sol";
 import "contracts/p0/Trader.sol";
 import "contracts/libraries/Fixed.sol";
 
 contract BackingTraderP0 is TraderP0 {
     using FixLib for Fix;
-    using PricingLib for Price;
     using SafeERC20 for IERC20Metadata;
 
     // How many more BUs this trader has the duty to construct.
@@ -145,10 +143,10 @@ contract BackingTraderP0 is TraderP0 {
             );
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                surpluses[i] = bal.minus(target).mul(assets[i].priceQ().usd());
+                surpluses[i] = bal.minus(target).mul(assets[i].price(UoA.USD));
             } else if (bal.lt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                deficits[i] = target.minus(bal).mul(assets[i].priceQ().usd());
+                deficits[i] = target.minus(bal).mul(assets[i].price(UoA.USD));
             }
         }
 
@@ -169,10 +167,10 @@ contract BackingTraderP0 is TraderP0 {
         }
 
         // {qSellTok} = {attoUSD} / {attoUSD/qSellTok}
-        Fix sellAmount = surplusMax.div(assets[surplusIndex].priceQ().usd());
+        Fix sellAmount = surplusMax.div(assets[surplusIndex].price(UoA.USD));
 
         // {qBuyTok} = {attoUSD} / {attoUSD/qBuyTok}
-        Fix buyAmount = deficitMax.div(assets[deficitIndex].priceQ().usd());
+        Fix buyAmount = deficitMax.div(assets[deficitIndex].price(UoA.USD));
         return (assets[surplusIndex], assets[deficitIndex], sellAmount.floor(), buyAmount.floor());
     }
 

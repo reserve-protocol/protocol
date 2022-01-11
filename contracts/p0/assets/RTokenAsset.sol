@@ -5,28 +5,24 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Oracle.sol";
-import "contracts/p0/libraries/Pricing.sol";
 import "contracts/libraries/Fixed.sol";
 import "./Asset.sol";
 
 contract RTokenAssetP0 is AssetP0 {
     using FixLib for Fix;
-    using PricingLib for Price;
 
     // TODO UoA may not make sense here, re-examine later
     constructor(IERC20Metadata erc20_, IMain main_)
         AssetP0(UoA.USD, erc20_, main_, Oracle.Source.AAVE)
     {}
 
-    /// @return p {attoPrice/rTok}
-    function price() public view override returns (Price memory p) {
-        // {attoPrice/BU}
-        p = main.vault().basketPrice();
-
-        for (uint256 i = 0; i < uint256(type(UoA).max); i++) {
-            // {attoUoA/rTok} = {attoUoA/BU} * {BU/rTok}
-            p.set(UoA(i), p.quantity(UoA(i)).mul(main.baseFactor()));
-        }
+    /// @return {attoUoA/qRTok}
+    function price(UoA uoa_) public view override returns (Fix) {
+        require(uoa == uoa_, "conversions across units of account not implemented yet");
+        return
+            main.vault().basketPrice(uoa_).mul(main.baseFactor()).shiftLeft(
+                -int8(main.vault().BU_DECIMALS())
+            );
     }
 
     /// @return If the asset is an instance of ICollateral or not

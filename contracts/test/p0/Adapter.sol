@@ -19,7 +19,6 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/libraries/Pricing.sol";
 import "contracts/p0/libraries/Oracle.sol";
 import "contracts/p0/mocks/AaveLendingPoolMock.sol";
 import "contracts/p0/mocks/AaveLendingAddrProviderMock.sol";
@@ -42,7 +41,6 @@ import "hardhat/console.sol";
 contract AdapterP0 is ProtoAdapter {
     using FixLib for Fix;
     using Lib for ProtoState;
-    using PricingLib for Price;
     using Oracle for Oracle.Info;
     using strings for string;
     using strings for strings.slice;
@@ -302,7 +300,7 @@ contract AdapterP0 is ProtoAdapter {
         for (uint256 i = NUM_FIATCOINS; i < NUM_COLLATERAL; i++) {
             s.defiCollateralRates[i] = _fiatcoinRate(ICollateral(address(_assets[AssetName(i)])));
         }
-        s.ethPrice = ProtoPrice(
+        s.ethPrice = Price(
             _aaveOracle.getAssetPrice(_aaveOracle.WETH()),
             _compoundOracle.price(ETH)
         );
@@ -320,7 +318,7 @@ contract AdapterP0 is ProtoAdapter {
     }
 
     /// @param baseAssets One-of DAI/USDC/USDT/BUSD/RSR/COMP/AAVE
-    function setBaseAssetPrices(AssetName[] memory baseAssets, ProtoPrice[] memory prices)
+    function setBaseAssetPrices(AssetName[] memory baseAssets, Price[] memory prices)
         external
         override
     {
@@ -433,7 +431,7 @@ contract AdapterP0 is ProtoAdapter {
             tokenState.balances[i] = erc20.balanceOf(_address(i));
         }
         tokenState.totalSupply = erc20.totalSupply();
-        tokenState.price = ProtoPrice(
+        tokenState.price = Price(
             _aaveOracle.getAssetPrice(address(erc20)),
             _compoundOracle.price(erc20.symbol())
         );
@@ -488,7 +486,7 @@ contract AdapterP0 is ProtoAdapter {
             _aaveOracle.setPrice(address(erc20), tokenState.price.inETH); // {qETH/tok}
             _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUSD); // {microUSD/tok}
 
-            Fix found = _main.oracle(UoA.USD).consult(Oracle.Source.AAVE, erc20).usd(); // {attoUSD/tok}
+            Fix found = _main.oracle(UoA.USD).consult(Oracle.Source.AAVE, erc20); // {attoUSD/tok}
             Fix expected = toFix(tokenState.price.inUSD);
             assert(found.eq(expected));
         }
@@ -508,8 +506,8 @@ contract AdapterP0 is ProtoAdapter {
                 IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
                 IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
                 newBid.buyAmount = toFix(sellAmount)
-                .mul(buyAsset.price().usd())
-                .div(sellAsset.price().usd())
+                .mul(buyAsset.price(UoA.USD))
+                .div(sellAsset.price(UoA.USD))
                 .ceil();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(

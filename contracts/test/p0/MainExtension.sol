@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "contracts/p0/libraries/Oracle.sol";
-import "contracts/p0/libraries/Pricing.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMarket.sol";
@@ -23,7 +22,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
-    using PricingLib for Price;
     using Oracle for Oracle.Info;
 
     constructor(address admin) ContextMixin(admin) {}
@@ -176,12 +174,12 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         for (uint256 i = 0; i < vault().size(); i++) {
             ICollateral c = vault().collateralAt(i);
             if (c.underlyingERC20() == c.erc20()) {
-                ok = ok && oracle_.consult(Oracle.Source.AAVE, c.erc20()).usd().gt(FIX_ZERO);
+                ok = ok && oracle_.consult(Oracle.Source.AAVE, c.erc20()).gt(FIX_ZERO);
             }
         }
-        ok = ok && oracle_.consult(Oracle.Source.COMPOUND, compAsset().erc20()).usd().gt(FIX_ZERO);
-        ok = ok && oracle_.consult(Oracle.Source.AAVE, rsrAsset().erc20()).usd().gt(FIX_ZERO);
-        ok = ok && oracle_.consult(Oracle.Source.AAVE, aaveAsset().erc20()).usd().gt(FIX_ZERO);
+        ok = ok && oracle_.consult(Oracle.Source.COMPOUND, compAsset().erc20()).gt(FIX_ZERO);
+        ok = ok && oracle_.consult(Oracle.Source.AAVE, rsrAsset().erc20()).gt(FIX_ZERO);
+        ok = ok && oracle_.consult(Oracle.Source.AAVE, aaveAsset().erc20()).gt(FIX_ZERO);
         if (!ok) {
             console.log("_INVARIANT_pricesDefined violated");
         }

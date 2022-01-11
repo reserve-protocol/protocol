@@ -47,14 +47,7 @@ struct Config {
 
 /// Unit of Account
 enum UoA {
-    USD,
-    EUR
-}
-
-/// One balance to rule them all; a balance with distinct magnitudes for each unit of account
-/// e.g. Price.quantities[uint256(UoA.USD)]
-struct Price {
-    Fix[] quantities; // {attoUoA}
+    USD
 }
 
 struct RevenueShare {

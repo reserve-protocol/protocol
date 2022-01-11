@@ -2,13 +2,11 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/p0/libraries/Pricing.sol";
 import "contracts/libraries/Fixed.sol";
 import "../libraries/Oracle.sol";
 
 contract OracleCallerMockP0 {
     using Oracle for Oracle.Info;
-    using PricingLib for Price;
 
     Oracle.Info internal _oracle;
 
@@ -18,12 +16,12 @@ contract OracleCallerMockP0 {
 
     function consultAaveOracle(IERC20Metadata token) external view returns (Fix) {
         Oracle.Info memory oracle = _oracle;
-        return oracle.consult(Oracle.Source.AAVE, token).usd();
+        return oracle.consult(Oracle.Source.AAVE, token);
     }
 
     function consultCompoundOracle(IERC20Metadata token) external view returns (Fix) {
         Oracle.Info memory oracle = _oracle;
-        return oracle.consult(Oracle.Source.COMPOUND, token).usd();
+        return oracle.consult(Oracle.Source.COMPOUND, token);
     }
 
     /// @return The deployment of the comptroller on this chain

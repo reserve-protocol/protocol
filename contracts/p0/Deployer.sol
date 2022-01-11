@@ -77,14 +77,21 @@ contract DeployerP0 is IDeployer {
             IFurnace revenueFurnace = _deployRevenueFurnace(rToken, config.rewardPeriod);
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
-            ctorArgs = ConstructorArgs(collateral, oracle, config, dist, vault, revenueFurnace, market);
+            ctorArgs = ConstructorArgs(
+                collateral,
+                oracle,
+                config,
+                dist,
+                vault,
+                revenueFurnace,
+                market
+            );
 
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main);
             main.setRTokenAsset(rTokenAsset);
 
             rToken.setMain(main);
             Ownable(address(rToken)).transferOwnership(owner);
-
         }
 
         {

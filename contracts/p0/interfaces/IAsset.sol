@@ -19,11 +19,8 @@ interface IAsset {
     /// @return The oracle that should be used with the asset
     function oracleSource() external view returns (Oracle.Source);
 
-    /// @return {attoPrice/tok} The Price of 1 whole token
-    function price() external view returns (Price memory);
-
-    /// @return {attoPrice/qTok} The Price of 1 qToken
-    function priceQ() external view returns (Price memory);
+    /// @return {attoUoA/qTok} The atto price of 1 qToken in the given unit of account
+    function price(UoA uoa_) external view returns (Fix);
 
     /// @return The ERC20 contract of the token with decimals() available
     function erc20() external view returns (IERC20Metadata);
@@ -57,8 +54,8 @@ interface ICollateral is IAsset {
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
     function status() external view returns (CollateralStatus);
 
-    /// @return {attoPrice/tok} The Price of 1 whole token of the fiatcoin
-    function fiatcoinPrice() external view returns (Price memory);
+    /// @return {attoUoA/tok} The atto price of 1 whole fiatcoin in its own unit of account
+    function fiatcoinPrice() external view returns (Fix);
 
     /// @return {underlyingTok/tok} The rate between the token and fiatcoin
     function fiatcoinRate() external view returns (Fix);

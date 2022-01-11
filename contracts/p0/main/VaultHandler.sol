@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/libraries/Oracle.sol";
-import "contracts/p0/libraries/Pricing.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
@@ -25,7 +24,6 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
     using FixLib for Fix;
-    using PricingLib for Price;
 
     // ECONOMICS
     //
@@ -35,7 +33,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     // Fully capitalized: #RTokens <= #BUs / b
 
     Fix internal _historicalBasketDilution; // the product of all historical basket dilutions
-    Price internal _prevBasketPrice; // {USD/qBU} redemption value of the basket in fiatcoins last update
+    Fix internal _prevBasketPrice; // {USD/qBU} redemption value of the basket in fiatcoins last update
 
     IVault[] public override vaults;
 
@@ -52,7 +50,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
             revert CommonErrors.UnsoundVault();
         }
 
-        _prevBasketPrice = args.vault.basketPrice();
+        _prevBasketPrice = args.vault.basketPrice(UoA.USD);
         _historicalBasketDilution = FIX_ONE;
     }
 
@@ -66,7 +64,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     function beforeUpdate() public virtual override {
         super.beforeUpdate();
         _historicalBasketDilution = _basketDilutionFactor();
-        _prevBasketPrice = vault().basketPrice();
+        _prevBasketPrice = vault().basketPrice(UoA.USD);
     }
 
     function switchVault(IVault vault_) external override onlyOwner {
@@ -139,16 +137,16 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     /// @return {qBU/qRTok) the basket dilution factor
     function _basketDilutionFactor() internal view returns (Fix) {
         // {USD/qBU}
-        Price memory currentPrice = vault().basketPrice();
-        Price memory prevPrice = _prevBasketPrice;
+        Fix currentPrice = vault().basketPrice(UoA.USD);
+        Fix prevPrice = _prevBasketPrice;
 
         // Assumption: Defi redemption rates are monotonically increasing
         // {USD/qBU}
-        Fix delta = currentPrice.usd().minus(prevPrice.usd());
+        Fix delta = currentPrice.minus(prevPrice);
         // TODO: this should go away after we choose to accept the full UoA agnostic refactor
 
         // r = p2 / (p1 + (p2-p1) * (rTokenCut))
-        Fix r = currentPrice.usd().div(prevPrice.usd().plus(delta.mul(rTokenCut())));
+        Fix r = currentPrice.div(prevPrice.plus(delta.mul(rTokenCut())));
         Fix dilutionFactor = _historicalBasketDilution.mul(r);
         assert(dilutionFactor.neq(FIX_ZERO));
         return dilutionFactor;
@@ -200,11 +198,11 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         // Loop through backups to find the highest value one that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
             if (backups[i].collateralStatus() == CollateralStatus.SOUND) {
-                Price memory price = backups[i].basketPrice(); // {attoPrice/BU}
+                Fix price = backups[i].basketPrice(UoA.USD); // {attoUoA/BU}
 
                 // See if it has the highest basket
-                if (price.usd().gt(maxPrice)) {
-                    maxPrice = price.usd();
+                if (price.gt(maxPrice)) {
+                    maxPrice = price;
                     indexMax = i;
                 }
             }

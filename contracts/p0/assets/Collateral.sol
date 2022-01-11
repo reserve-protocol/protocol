@@ -9,7 +9,6 @@ import "contracts/p0/assets/Asset.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Oracle.sol";
-import "contracts/p0/libraries/Pricing.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
@@ -19,7 +18,6 @@ import "contracts/libraries/Fixed.sol";
 contract CollateralP0 is ICollateral, AssetP0, Context {
     using FixLib for Fix;
     using Oracle for Oracle.Info;
-    using PricingLib for Price;
 
     // underlying == address(0): The collateral is leaf collateral; it has no underlying
     // underlying != address(0): The collateral is derivative collateral; it has underlying collateral
@@ -63,8 +61,8 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
 
         // If the underlying fiatcoin price is below the default-threshold price, default eventually
         if (whenDefault > block.timestamp) {
-            Price memory p = fiatcoinPrice(); // {attoPrice/fiatTok}
-            whenDefault = p.quantity(uoa).lte(_defaultThreshold())
+            Fix p = fiatcoinPrice(); // {attoUoA/fiatTok}
+            whenDefault = p.lte(_defaultThreshold())
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -93,21 +91,17 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         }
     }
 
-    /// @return p {attoPrice/tok} The Price per whole token
-    function price() public view virtual override(AssetP0, IAsset) returns (Price memory p) {
+    /// @return {attoUoA/qTok} The atto price of 1 qToken in the given unit of account
+    function price(UoA uoa_) public view virtual override(AssetP0, IAsset) returns (Fix) {
         if (address(underlying) == address(0)) {
-            return main.oracle(uoa).consult(oracleSource, erc20);
+            return AssetP0.price(uoa_);
         }
 
-        p = underlying.price();
-        for (uint256 i = 0; i < uint256(type(UoA).max); i++) {
-            // {attoUoA/tok} = {attoUoA/underlyingTok} * {underlyingTok/tok}
-            p.set(UoA(i), p.quantity(UoA(i)).mul(fiatcoinRate()));
-        }
+        return underlying.price(uoa_).mul(fiatcoinRate());
     }
 
-    /// @return {attoPrice/tok} The price of 1 whole token of the fiatcoin
-    function fiatcoinPrice() public view virtual returns (Price memory) {
+    /// @return {attoUoA/tok} The atto price of 1 whole fiatcoin in its own unit of account
+    function fiatcoinPrice() public view virtual returns (Fix) {
         if (address(underlying) == address(0)) {
             return main.oracle(uoa).consult(oracleSource, erc20);
         }
@@ -154,7 +148,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         // Collect prices
         Fix[] memory prices = new Fix[](numFiatcoins);
         for (uint256 i = 0; i < numFiatcoins; i++) {
-            prices[i] = collateral[i].price().quantity(uoa);
+            prices[i] = collateral[i].price(uoa);
         }
 
         // Sort

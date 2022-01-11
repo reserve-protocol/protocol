@@ -3,7 +3,6 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/libraries/Pricing.sol";
 import "contracts/libraries/CommonErrors.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -39,7 +38,6 @@ interface IAaveOracle {
 // TODO: Adapt oracles for multiple UoAs. Right now this is just a USD oracle
 library Oracle {
     using FixLib for Fix;
-    using PricingLib for Price;
 
     enum Source {
         AAVE,
@@ -51,16 +49,16 @@ library Oracle {
         IAaveLendingPool aave;
     }
 
-    /// @return p {attoPrice/tok} The Price of a whole token on oracle `source`
+    /// @return p {attoUoA/tok} The attoUoA price of a whole token on oracle `source`
     function consult(
         Oracle.Info memory self,
         Source source,
         IERC20Metadata erc20
-    ) internal view returns (Price memory p) {
+    ) internal view returns (Fix p) {
         if (source == Source.AAVE) {
-            p.setUSD(_consultAave(self, erc20));
+            return _consultAave(self, erc20);
         } else if (source == Source.COMPOUND) {
-            p.setUSD(_consultCompound(self, erc20));
+            return _consultCompound(self, erc20);
         } else {
             revert CommonErrors.UnsupportedProtocol();
         }
