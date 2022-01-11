@@ -60,7 +60,7 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
 
         // If the underlying fiatcoin price is below the default-threshold price, default eventually
         if (whenDefault > block.timestamp) {
-            whenDefault = fiatcoinPrice().lte(main.defaultThreshold())
+            whenDefault = fiatcoinPrice().lte(_minFiatcoinPrice())
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -127,5 +127,11 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() public pure override(AssetP0, IAsset) returns (bool) {
         return true;
+    }
+
+    /// @return {attoUSD/tok} Minimum price of a fiatcoin to be considered non-defaulting
+    function _minFiatcoinPrice() internal view virtual returns (Fix) {
+        // {attoUSD/tok} = 1 attoUSD/tok * {none}
+        return main.defaultThreshold();
     }
 }
