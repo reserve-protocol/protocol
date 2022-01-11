@@ -10,7 +10,7 @@ import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/libraries/Fixed.sol";
 
-contract RevenueDistributorP0 is Ownable, Mixin, SettingsHandlerP0, IRevenueDistributor {
+contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
     using EnumerableSet for EnumerableSet.AddressSet;

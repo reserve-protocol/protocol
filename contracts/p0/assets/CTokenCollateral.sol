@@ -30,7 +30,7 @@ contract CTokenCollateralP0 is CollateralP0 {
         IERC20Metadata erc20_,
         IMain main_,
         ICollateral underlying_
-    ) CollateralP0(uoa_, erc20_, main_, Oracle.Source.COMPOUND) {
+    ) CollateralP0(uoa_, erc20_, main_, underlying_.oracle()) {
         underlying = underlying_;
         initialExchangeRate = toFixWithShift(2, -2);
     }

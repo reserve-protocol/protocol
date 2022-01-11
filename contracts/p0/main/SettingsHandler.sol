@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IFurnace.sol";
@@ -20,10 +20,8 @@ import "contracts/p0/main/Mixin.sol";
 // solhint-disable max-states-count
 contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler {
     using EnumerableSet for EnumerableSet.AddressSet;
-    using Oracle for Oracle.Info;
     using FixLib for Fix;
 
-    mapping(UoA => Oracle.Info) private _oracles;
     IMarket private _market;
 
     uint256 private _rewardStart;
@@ -50,7 +48,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function init(ConstructorArgs calldata args) public virtual override(Mixin, AssetRegistryP0) {
         super.init(args);
-        _oracles[UoA.USD] = args.usdOracle;
         _market = args.market;
         _revenueFurnace = args.furnace;
 
@@ -67,14 +64,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         _migrationChunk = args.config.migrationChunk;
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
-    }
-
-    function setOracle(UoA uoa, Oracle.Info memory oracle_) external override onlyOwner {
-        _oracles[uoa] = oracle_;
-    }
-
-    function oracle(UoA uoa) public view override returns (Oracle.Info memory) {
-        return _oracles[uoa];
     }
 
     function setStRSR(IStRSR stRSR_) external override onlyOwner {
@@ -248,5 +237,9 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     /// @return The RSR deployment
     function rsr() public view override returns (IERC20) {
         return _rsrAsset.erc20();
+    }
+
+    function owner() public view virtual override(ISettingsHandler, Ownable) returns (address) {
+        return Ownable.owner();
     }
 }

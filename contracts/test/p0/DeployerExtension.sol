@@ -32,7 +32,7 @@ contract DeployerExtension is DeployerP0, IExtension {
         INVARIANT_currentDeploymentRegistered();
     }
 
-    function _deployMain() internal override returns (IMain) {
+    function _deployMain() internal view override returns (IMain) {
         return MainExtension(_admin);
     }
 

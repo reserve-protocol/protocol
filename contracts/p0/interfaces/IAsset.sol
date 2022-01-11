@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 
@@ -17,7 +17,7 @@ interface IAsset {
     function uoa() external view returns (UoA);
 
     /// @return The oracle that should be used with the asset
-    function oracleSource() external view returns (Oracle.Source);
+    function oracle() external view returns (IOracle);
 
     /// @return {attoUSD/qTok} The atto price of 1 qToken in the unit of account
     function price() external view returns (Fix);
