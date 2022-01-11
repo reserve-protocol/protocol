@@ -2,12 +2,12 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/p0/libraries/Oracle.sol";
 import "./IAsset.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
+import "./IOracle.sol";
 import "./IVault.sol";
 
 /// Configuration of the system
@@ -57,7 +57,6 @@ struct RevenueShare {
 
 struct ConstructorArgs {
     ICollateral[] approvedCollateral;
-    Oracle.Info usdOracle;
     Config config;
     RevenueShare dist;
     IVault vault;
@@ -155,8 +154,6 @@ interface ISettingsHandler {
 
     function setDefaultThreshold(Fix defaultThreshold) external;
 
-    function setOracle(UoA uoa, Oracle.Info memory oracle) external;
-
     function setStRSR(IStRSR stRSR) external;
 
     function setRevenueFurnace(IFurnace furnace) external;
@@ -209,8 +206,6 @@ interface ISettingsHandler {
 
     function aaveAsset() external view returns (IAsset);
 
-    function oracle(UoA uoa) external view returns (Oracle.Info memory);
-
     function market() external view returns (IMarket);
 
     /// @return The RToken deployment
@@ -218,6 +213,8 @@ interface ISettingsHandler {
 
     /// @return The RSR deployment
     function rsr() external view returns (IERC20);
+
+    function owner() external view returns (address);
 }
 
 interface IVaultHandler {

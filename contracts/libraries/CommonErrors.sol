@@ -49,5 +49,4 @@ library CommonErrors {
 
     // Oracle
     error PriceIsZero(string);
-    error UnsupportedProtocol();
 }

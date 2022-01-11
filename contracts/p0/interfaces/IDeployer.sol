@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "./IAsset.sol";
 import "./IVault.sol";
 
@@ -30,8 +28,8 @@ interface IDeployer {
     /// @param vault The initial vault that backs the RToken
     /// @param config Governance param
     /// @param dist Shares of revenue initially to RSR pool and RToken melting
-    /// @param compound The deployment of the Comptroller on this chain
-    /// @param aave The deployment of the AaveLendingPool on this chain
+    /// @param compoundOracle A deployment of an adapter for the compound oracle
+    /// @param aaveOracle A deployment of an adapter for the aave oracle
     /// @param collateral The collateral assets in the system
     /// @return The address of the newly deployed Main instance.
     function deploy(
@@ -41,8 +39,8 @@ interface IDeployer {
         IVault vault,
         Config calldata config,
         RevenueShare calldata dist,
-        IComptroller compound,
-        IAaveLendingPool aave,
+        IOracle compoundOracle,
+        IOracle aaveOracle,
         ICollateral[] calldata collateral
     ) external returns (address);
 }
