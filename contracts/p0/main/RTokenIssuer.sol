@@ -128,6 +128,16 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
         }
     }
 
+    function owner()
+        public
+        view
+        virtual
+        override(Ownable, SettingsHandlerP0, VaultHandlerP0)
+        returns (address)
+    {
+        return super.owner();
+    }
+
     // Returns the future block number at which an issuance for *amount* now can complete
     function _nextIssuanceBlockAvailable(uint256 amount) private view returns (Fix) {
         Fix perBlock = fixMax(

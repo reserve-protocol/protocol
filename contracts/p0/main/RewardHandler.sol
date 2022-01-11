@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/assets/ATokenCollateral.sol";
-import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/p0/main/VaultHandler.sol";
@@ -78,6 +78,16 @@ contract RewardHandlerP0 is
 
     function beforeUpdate() public virtual override(Mixin, VaultHandlerP0, AuctioneerP0) {
         super.beforeUpdate();
+    }
+
+    function owner()
+        public
+        view
+        virtual
+        override(Ownable, SettingsHandlerP0, VaultHandlerP0, AuctioneerP0)
+        returns (address)
+    {
+        return super.owner();
     }
 
     /// @return The timestamp of the next rewards event

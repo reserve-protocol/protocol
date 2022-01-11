@@ -8,16 +8,15 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "contracts/p0/assets/Asset.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
  * @title CollateralP0
  * @notice A vanilla asset such as a fiatcoin, to be extended by derivative assets.
  */
-contract CollateralP0 is ICollateral, AssetP0, Context {
+contract CollateralP0 is ICollateral, Context, AssetP0 {
     using FixLib for Fix;
-    using Oracle for Oracle.Info;
 
     // underlying == address(0): The collateral is leaf collateral; it has no underlying
     // underlying != address(0): The collateral is derivative collateral; it has underlying collateral
@@ -38,7 +37,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
         UoA uoa_,
         IERC20Metadata erc20_,
         IMain main_,
-        Oracle.Source oracleSource_
+        IOracle oracleSource_
     ) AssetP0(uoa_, erc20_, main_, oracleSource_) {}
 
     /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
@@ -103,7 +102,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
     /// @return {attoUSD/tok} The atto price of 1 whole fiatcoin in its own unit of account
     function fiatcoinPrice() public view virtual returns (Fix) {
         if (address(underlying) == address(0)) {
-            return main.oracle(uoa).consult(oracleSource, erc20);
+            return price();
         }
 
         return underlying.fiatcoinPrice();

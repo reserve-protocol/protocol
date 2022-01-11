@@ -5,12 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/p0/libraries/Oracle.sol";
+import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/main/RevenueDistributor.sol";
+import "contracts/libraries/CommonErrors.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./SettingsHandler.sol";
@@ -77,6 +78,10 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
 
     function numVaults() external view override returns (uint256) {
         return vaults.length;
+    }
+
+    function owner() public view virtual override(Ownable, SettingsHandlerP0) returns (address) {
+        return super.owner();
     }
 
     /// @return Whether the vault is fully capitalized

@@ -71,4 +71,22 @@ contract MainP0 is
     {
         super.beforeUpdate();
     }
+
+    function owner()
+        public
+        view
+        virtual
+        override(
+            ISettingsHandler,
+            Ownable,
+            SettingsHandlerP0,
+            VaultHandlerP0,
+            RewardHandlerP0,
+            AuctioneerP0,
+            RTokenIssuerP0
+        )
+        returns (address)
+    {
+        return super.owner();
+    }
 }

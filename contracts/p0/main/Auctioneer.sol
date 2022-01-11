@@ -99,6 +99,16 @@ contract AuctioneerP0 is
         super.beforeUpdate();
     }
 
+    function owner()
+        public
+        view
+        virtual
+        override(Ownable, SettingsHandlerP0, VaultHandlerP0)
+        returns (address)
+    {
+        return super.owner();
+    }
+
     function backingTraderAddr() external view override returns (address) {
         return address(backingTrader);
     }
