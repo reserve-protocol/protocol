@@ -80,10 +80,6 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         return vaults.length;
     }
 
-    function owner() public view virtual override(Ownable, SettingsHandlerP0) returns (address) {
-        return super.owner();
-    }
-
     /// @return Whether the vault is fully capitalized
     function fullyCapitalized() public view override returns (bool) {
         uint256 amtBUs = vault().basketUnits(address(rToken())) +

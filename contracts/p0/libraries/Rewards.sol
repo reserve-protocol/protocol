@@ -9,7 +9,7 @@ library RewardsLib {
         IAsset[] memory assets = main.allAssets();
         for (uint256 i = 0; i < assets.length; i++) {
             if (assets[i].isCollateral()) {
-                // solhint-disable-next-line
+                // solhint-disable-next-line no-unused-vars
                 (bool success, bytes memory result) = address(assets[i]).delegatecall(
                     abi.encodeWithSignature(
                         "claimRewards(address,address)",

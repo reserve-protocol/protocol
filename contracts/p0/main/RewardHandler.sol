@@ -82,16 +82,6 @@ contract RewardHandlerP0 is
         super.beforeUpdate();
     }
 
-    function owner()
-        public
-        view
-        virtual
-        override(Ownable, SettingsHandlerP0, VaultHandlerP0, AuctioneerP0)
-        returns (address)
-    {
-        return super.owner();
-    }
-
     /// @return The timestamp of the next rewards event
     function nextRewards() public view override returns (uint256) {
         (, uint256 next) = _rewardsAdjacent(block.timestamp);

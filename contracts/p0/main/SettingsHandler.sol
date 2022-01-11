@@ -238,8 +238,4 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     function rsr() public view override returns (IERC20) {
         return _rsrAsset.erc20();
     }
-
-    function owner() public view virtual override(ISettingsHandler, Ownable) returns (address) {
-        return Ownable.owner();
-    }
 }
