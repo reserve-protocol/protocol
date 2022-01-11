@@ -61,8 +61,7 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
 
         // If the underlying fiatcoin price is below the default-threshold price, default eventually
         if (whenDefault > block.timestamp) {
-            Fix p = fiatcoinPrice(); // {attoUoA/fiatTok}
-            whenDefault = p.lte(_defaultThreshold())
+            whenDefault = fiatcoinPrice().lte(main.defaultThreshold())
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -126,55 +125,5 @@ contract CollateralP0 is ICollateral, AssetP0, Context {
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() public pure override(AssetP0, IAsset) returns (bool) {
         return true;
-    }
-
-    /// @return {attoUoA/fiatTok} The price at which a fiatcoin is said to be defaulting
-    function _defaultThreshold() private view returns (Fix) {
-        IAsset[] memory allAssets = main.allAssets();
-        uint256 numFiatcoins;
-        ICollateral[] memory collateral = new ICollateral[](allAssets.length);
-        for (uint256 i = 0; i < allAssets.length; i++) {
-            ICollateral c = ICollateral(address(allAssets[i]));
-            if (
-                allAssets[i].uoa() == uoa &&
-                allAssets[i].isCollateral() &&
-                c.underlyingERC20() == c.erc20()
-            ) {
-                collateral[numFiatcoins] = c;
-                numFiatcoins++;
-            }
-        }
-
-        // Collect prices
-        Fix[] memory prices = new Fix[](numFiatcoins);
-        for (uint256 i = 0; i < numFiatcoins; i++) {
-            prices[i] = collateral[i].price(uoa);
-        }
-
-        // Sort
-        for (uint256 i = 0; i < prices.length - 1; i++) {
-            uint256 min = i;
-            for (uint256 j = i; j < prices.length; j++) {
-                if (prices[j].lt(prices[min])) {
-                    min = j;
-                }
-            }
-            if (min != i) {
-                Fix tmp = prices[i];
-                prices[i] = prices[min];
-                prices[min] = tmp;
-            }
-        }
-
-        // Take the median
-        Fix median;
-        if (prices.length % 2 == 0) {
-            median = prices[prices.length / 2 - 1].plus(prices[prices.length / 2]).divu(2);
-        } else {
-            median = prices[prices.length / 2];
-        }
-
-        // median - (median * defaultThreshold)
-        return median.minus(median.mul(main.defaultThreshold()));
     }
 }
