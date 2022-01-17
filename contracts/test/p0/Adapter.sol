@@ -196,7 +196,14 @@ contract AdapterP0 is ProtoAdapter {
             _aave = new ERC20Mock(s.aave.name, s.aave.symbol);
 
             _market = new MarketMock();
-            _deployer = new DeployerExtension(_rsr, _comp, _aave, _market);
+            _deployer = new DeployerExtension(
+                _rsr,
+                _comp,
+                _aave,
+                _market,
+                _ourCompoundOracle,
+                _ourAaveOracle
+            );
             _setDefiCollateralRates(s.defiCollateralRates);
         }
 
@@ -238,10 +245,7 @@ contract AdapterP0 is ProtoAdapter {
                     s.rToken.symbol,
                     address(this),
                     s.config,
-                    initialShare,
-                    _ourCompoundOracle,
-                    _ourAaveOracle,
-                    collateral
+                    initialShare
                 )
             );
             _main.switchVault(vaults[0]);
@@ -312,6 +316,12 @@ contract AdapterP0 is ProtoAdapter {
                     assert(_main.rToken().balanceOf(_address(i)) == s.rToken.balances[i]);
                 }
             }
+        }
+
+        // Switch vault + unpause
+        {
+            _main.switchVault(vaults[0]);
+            _main.unpause();
         }
     }
 

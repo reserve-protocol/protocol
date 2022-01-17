@@ -14,9 +14,6 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
 
     function init(ConstructorArgs calldata args) public virtual override {
         super.init(args);
-        for (uint256 i = 0; i < args.approvedCollateral.length; i++) {
-            _assets.add(address(args.approvedCollateral[i]));
-        }
     }
 
     function addAsset(IAsset asset) external onlyOwner {

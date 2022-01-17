@@ -61,7 +61,6 @@ struct RevenueShare {
 }
 
 struct ConstructorArgs {
-    ICollateral[] approvedCollateral;
     Config config;
     RevenueShare dist;
     IVault vault;
