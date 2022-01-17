@@ -25,7 +25,6 @@ interface IDeployer {
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
     /// @param owner The address that should own the entire system, hopefully a governance contract
-    /// @param vault The initial vault that backs the RToken
     /// @param config Governance param
     /// @param dist Shares of revenue initially to RSR pool and RToken melting
     /// @param compoundOracle A deployment of an adapter for the compound oracle
@@ -36,7 +35,6 @@ interface IDeployer {
         string calldata name,
         string calldata symbol,
         address owner,
-        IVault vault,
         Config calldata config,
         RevenueShare calldata dist,
         IOracle compoundOracle,
