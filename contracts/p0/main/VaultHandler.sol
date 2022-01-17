@@ -51,7 +51,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
             revert CommonErrors.UnsoundVault();
         }
 
-        _prevBasketPrice = args.vault.basketPrice(UoA.USD);
+        _prevBasketPrice = args.vault.basketPriceUSD();
         _historicalBasketDilution = FIX_ONE;
     }
 
@@ -65,7 +65,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     function beforeUpdate() public virtual override {
         super.beforeUpdate();
         _historicalBasketDilution = _basketDilutionFactor();
-        _prevBasketPrice = vault().basketPrice(UoA.USD);
+        _prevBasketPrice = vault().basketPriceUSD();
     }
 
     function switchVault(IVault vault_) external override onlyOwner {
@@ -138,13 +138,13 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     /// @return {qBU/qRTok) the basket dilution factor
     function _basketDilutionFactor() internal view returns (Fix) {
         // {USD/qBU}
-        Fix currentPrice = vault().basketPrice(UoA.USD);
+        Fix currentPrice = vault().basketPriceUSD();
         Fix prevPrice = _prevBasketPrice;
 
         // Assumption: Defi redemption rates are monotonically increasing
         // {USD/qBU}
         Fix delta = currentPrice.minus(prevPrice);
-        // TODO: this should go away after we choose to accept the full UoA agnostic refactor
+        // TODO: this should go away after we choose to accept the full Unit agnostic refactor
 
         // r = p2 / (p1 + (p2-p1) * (rTokenCut))
         Fix r = currentPrice.div(prevPrice.plus(delta.mul(rTokenCut())));
@@ -199,7 +199,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         // Find the highest-value backup that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
             if (backups[i].collateralStatus() == CollateralStatus.SOUND) {
-                Fix price = backups[i].basketPrice(UoA.USD); // {attoUSD/BU}
+                Fix price = backups[i].basketPriceUSD(); // {attoUSD/BU}
 
                 // See if it has the highest basket
                 if (price.gt(maxPrice)) {

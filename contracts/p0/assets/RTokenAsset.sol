@@ -11,20 +11,20 @@ import "./Asset.sol";
 contract RTokenAssetP0 is AssetP0 {
     using FixLib for Fix;
 
-    // TODO UoA may not make sense here, re-examine later
+    // TODO Unit may not make sense here, re-examine later
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
         IMain main_,
         IOracle oracle_
-    ) AssetP0(UoA.USD, erc20_, main_, oracle_) {}
+    ) AssetP0(erc20_, main_, oracle_) {}
 
     // solhint-enable no-empty-blocks
 
     /// @return {attoUSD/qRTok}
-    function price() public view override returns (Fix) {
+    function priceUSD() public view override returns (Fix) {
         return
-            main.vault().basketPrice(uoa).mul(main.baseFactor()).shiftLeft(
+            main.vault().basketPriceUSD().mul(main.baseFactor()).shiftLeft(
                 -int8(main.vault().BU_DECIMALS())
             );
     }

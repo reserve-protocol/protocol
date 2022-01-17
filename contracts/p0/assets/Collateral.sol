@@ -2,8 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "contracts/p0/assets/Asset.sol";
 import "contracts/p0/interfaces/IAsset.sol";
@@ -13,128 +11,78 @@ import "contracts/libraries/Fixed.sol";
 
 /**
  * @title CollateralP0
- * @notice A vanilla asset such as a fiatcoin, to be extended by derivative assets.
+ * @notice A general collateral type to be extended by more specific collateral types.
  */
 contract CollateralP0 is ICollateral, Context, AssetP0 {
-    using FixLib for Fix;
+    UoA public immutable override uoa;
 
-    // underlying == address(0): The collateral is leaf collateral; has no underlying
-    // underlying != address(0): The collateral is derivative collateral; has underlying collateral
-    ICollateral public underlying;
+    CollateralStatus private _collateralStatus;
 
-    // Default Status:
-    // whenDefault == NEVER: no risk of default (initial value)
-    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
-    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
-    // whenDefault <= block.timestamp: default has already happened (permanently)
-    uint256 internal constant NEVER = type(uint256).max;
-    uint256 internal whenDefault = NEVER;
-    uint256 internal prevBlock; // Last block when _updateDefaultStatus() was called
-    Fix internal prevRate; // Last rate when _updateDefaultStatus() was called
-
-    // solhint-disable no-empty-blocks
     constructor(
-        UoA uoa_,
         IERC20Metadata erc20_,
         IMain main_,
-        IOracle oracle_
-    ) AssetP0(uoa_, erc20_, main_, oracle_) {}
-
-    // solhint-enable no-empty-blocks
-
-    /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
-    function forceUpdates() public virtual override {
-        _updateDefaultStatus();
+        IOracle oracle_,
+        UoA uoa_
+    ) AssetP0(erc20_, main_, oracle_) {
+        uoa = uoa_;
+        _collateralStatus = CollateralStatus.SOUND;
     }
 
-    function _updateDefaultStatus() internal {
-        if (whenDefault <= block.timestamp || block.number <= prevBlock) {
-            // Nothing will change if either we're already fully defaulted
-            // or if we've already updated default status this block.
-            return;
-        }
+    // solhint-disable no-empty-blocks
 
-        // If the redemption rate has fallen, default immediately
-        Fix newRate = fiatcoinRate();
-        if (newRate.lt(prevRate)) {
-            whenDefault = block.timestamp;
-        }
-
-        // If the underlying fiatcoin price is below the default-threshold price, default eventually
-        if (whenDefault > block.timestamp) {
-            whenDefault = fiatcoinPrice().lte(_minFiatcoinPrice())
-                ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
-                : NEVER;
-        }
-
-        // Cache any lesser updates
-        prevRate = newRate;
-        prevBlock = block.number;
-    }
+    /// Extenders of this class can locate necessary block-updates here
+    function forceUpdates() public virtual override {}
 
     /// Disable the collateral directly
-    function disable() external override {
-        require(_msgSender() == address(main), "main only");
-        if (whenDefault > block.timestamp) {
-            whenDefault = block.timestamp;
-        }
+    function disable() external virtual override {
+        require(_msgSender() == address(main) || _msgSender() == main.owner(), "main or its owner");
+        _collateralStatus = CollateralStatus.DISABLED;
     }
 
     /// @dev Intended to be used via delegatecall
-    // solhint-disable-next-line no-empty-blocks
     function claimAndSweepRewards(ICollateral, IMain) external virtual override {}
 
     /// @return The asset's default status
-    function status() public view returns (CollateralStatus) {
-        if (whenDefault == NEVER) {
-            return CollateralStatus.SOUND;
-        } else if (whenDefault <= block.timestamp) {
-            return CollateralStatus.DISABLED;
-        } else {
-            return CollateralStatus.IFFY;
-        }
+    function status() external view virtual override returns (CollateralStatus) {
+        return _collateralStatus;
     }
 
-    /// @return {attoUSD/qTok} The atto price of 1 qToken in the given unit of account
-    function price() public view virtual override(AssetP0, IAsset) returns (Fix) {
-        if (address(underlying) == address(0)) {
-            return AssetP0.price();
+    /// @return {attoUoA/qTok} The price of the asset in its unit of account
+    function priceUoA() public view virtual override returns (Fix) {
+        if (uoa == UoA.USD) {
+            return priceUSD();
+        } else if (uoa == UoA.EUR) {
+            return _priceEUR();
+        } else if (uoa == UoA.BTC) {
+            return _priceBTC();
+        } else if (uoa == UoA.ETH) {
+            return _priceETH();
+        } else if (uoa == UoA.XAU) {
+            return _priceXAU();
         }
-
-        return underlying.price().mul(fiatcoinRate());
-    }
-
-    /// @return {attoUSD/tok} The atto price of 1 whole fiatcoin in its own unit of account
-    function fiatcoinPrice() public view virtual returns (Fix) {
-        if (address(underlying) == address(0)) {
-            return price();
-        }
-
-        return underlying.fiatcoinPrice();
-    }
-
-    /// @return {underlyingTok/tok} The rate between the token and fiatcoin
-    function fiatcoinRate() public view virtual override returns (Fix) {
-        return FIX_ONE;
-    }
-
-    /// @return The ERC20 contract of the (maybe underlying) fiatcoin
-    function underlyingERC20() public view override returns (IERC20Metadata) {
-        if (address(underlying) == address(0)) {
-            return erc20;
-        }
-
-        return underlying.underlyingERC20();
+        return FIX_ZERO;
     }
 
     /// @return If the asset is an instance of ICollateral or not
-    function isCollateral() public pure override(AssetP0, IAsset) returns (bool) {
+    function isCollateral() external pure virtual override(AssetP0, IAsset) returns (bool) {
         return true;
     }
 
-    /// @return {attoUSD/tok} Minimum price of a fiatcoin to be considered non-defaulting
-    function _minFiatcoinPrice() internal view virtual returns (Fix) {
-        // {attoUSD/tok} = 1 attoUSD/tok * {none}
-        return main.defaultThreshold();
+    // Thse are just examples of what it would look like to add other units of account
+
+    function _priceEUR() internal view virtual returns (Fix) {
+        return FIX_ZERO;
+    }
+
+    function _priceBTC() internal view virtual returns (Fix) {
+        return FIX_ZERO;
+    }
+
+    function _priceETH() internal view virtual returns (Fix) {
+        return FIX_ZERO;
+    }
+
+    function _priceXAU() internal view virtual returns (Fix) {
+        return FIX_ZERO;
     }
 }

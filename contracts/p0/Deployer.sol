@@ -85,9 +85,9 @@ contract DeployerP0 is IDeployer {
         }
 
         {
-            AssetP0 rsrAsset = new AssetP0(UoA.USD, rsr, main, aaveOracle);
-            AssetP0 compAsset = new AssetP0(UoA.USD, comp, main, compoundOracle);
-            AssetP0 aaveAsset = new AssetP0(UoA.USD, aave, main, aaveOracle);
+            AssetP0 rsrAsset = new AssetP0(rsr, main, aaveOracle);
+            AssetP0 compAsset = new AssetP0(comp, main, compoundOracle);
+            AssetP0 aaveAsset = new AssetP0(aave, main, aaveOracle);
 
             main.setRSRAsset(rsrAsset);
             main.setCompAsset(compAsset);

@@ -11,30 +11,27 @@ import "contracts/libraries/Fixed.sol";
 contract AssetP0 is IAsset, Context {
     using FixLib for Fix;
 
-    UoA public immutable override uoa; // Unit of Account
     IERC20Metadata public immutable override erc20;
     IMain public immutable main;
     IOracle public override oracle;
 
     constructor(
-        UoA uoa_,
         IERC20Metadata erc20_,
         IMain main_,
         IOracle oracle_
     ) {
-        uoa = uoa_;
         erc20 = erc20_;
         main = main_;
         oracle = oracle_;
     }
 
-    /// @return {attoUSD/qTok} The attoUSD price of 1 qToken
-    function price() public view virtual override returns (Fix) {
+    /// @return {attoUSD/qTok} The price of 1 qToken in attoUSD
+    function priceUSD() public view virtual override returns (Fix) {
         return oracle.consult(erc20).shiftLeft(-int8(erc20.decimals()));
     }
 
     /// @return If the asset is an instance of ICollateral or not
-    function isCollateral() public pure virtual override returns (bool) {
+    function isCollateral() external pure virtual override returns (bool) {
         return false;
     }
 

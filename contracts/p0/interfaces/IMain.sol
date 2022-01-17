@@ -48,7 +48,11 @@ struct Config {
 
 /// Unit of Account
 enum UoA {
-    USD
+    USD,
+    EUR,
+    BTC,
+    ETH,
+    XAU
 }
 
 struct RevenueShare {

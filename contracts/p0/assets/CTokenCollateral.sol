@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "./Collateral.sol";
+import "./LendingCollateral.sol";
 
 // cToken initial exchange rate is 0.02
 
@@ -17,31 +17,32 @@ interface ICToken {
 
     /// @dev From Compound Docs: The stored exchange rate, with 18 - 8 + UnderlyingAsset.Decimals.
     function exchangeRateStored() external view returns (uint256);
-
-    function underlying() external view returns (address);
 }
 
-contract CTokenCollateralP0 is CollateralP0 {
+contract CTokenCollateralP0 is LendingCollateralP0 {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     Fix public immutable initialExchangeRate; // 0.02, their hardcoded starting rate
 
+    uint8 public immutable decimalsForUnderlying;
+
     constructor(
-        UoA uoa_,
         IERC20Metadata erc20_,
         IMain main_,
-        ICollateral underlying_
-    ) CollateralP0(uoa_, erc20_, main_, underlying_.oracle()) {
-        underlying = underlying_;
+        IOracle oracle_,
+        UoA uoa_,
+        uint8 decimalsForUnderlying_
+    ) PeggedCollateralP0(erc20_, main_, oracle_, uoa_, FIX_ONE) {
         initialExchangeRate = toFixWithShift(2, -2);
+        decimalsForUnderlying = decimalsForUnderlying_;
     }
 
     /// Update the Compound protocol + default status
     function forceUpdates() public virtual override {
         ICToken(address(erc20)).exchangeRateCurrent();
-        _updateDefaultStatus();
+        super.forceUpdates();
     }
 
     /// @dev Intended to be used via delegatecall
@@ -60,10 +61,10 @@ contract CTokenCollateralP0 is CollateralP0 {
         }
     }
 
-    /// @return {underlyingTok/tok} The rate between the token and fiatcoin
-    function fiatcoinRate() public view override returns (Fix) {
+    /// @return {underlyingTok/tok} The rate between the cToken and its fiatcoin
+    function rateToUnderlying() public view virtual override returns (Fix) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
-        int8 shiftLeft = 8 - int8(underlyingERC20().decimals()) - 18;
+        int8 shiftLeft = 8 - int8(decimalsForUnderlying) - 18;
         Fix rateNow = toFixWithShift(rate, shiftLeft);
         return rateNow.div(initialExchangeRate);
     }

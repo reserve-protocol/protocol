@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "./Collateral.sol";
+import "./LendingCollateral.sol";
 
 // Interfaces to contracts from: https://git.io/JX7iJ
 interface IStaticAToken is IERC20Metadata {
@@ -27,18 +27,15 @@ interface AToken {
 
 /// @dev In Aave the number of decimals of the staticAToken is always 18, but the
 /// underlying rebasing AToken will have the same number of decimals as its fiatcoin.
-contract ATokenCollateralP0 is CollateralP0 {
-    using FixLib for Fix;
+contract ATokenCollateralP0 is LendingCollateralP0 {
     using SafeERC20 for IERC20Metadata;
 
     constructor(
-        UoA uoa_,
         IERC20Metadata erc20_,
         IMain main_,
-        ICollateral underlying_
-    ) CollateralP0(uoa_, erc20_, main_, underlying_.oracle()) {
-        underlying = underlying_;
-    }
+        IOracle oracle_,
+        UoA uoa_
+    ) PeggedCollateralP0(erc20_, main_, oracle_, uoa_, FIX_ONE) {}
 
     /// @dev Intended to be used via delegatecall
     function claimAndSweepRewards(ICollateral collateral, IMain main_) external virtual override {
@@ -56,7 +53,7 @@ contract ATokenCollateralP0 is CollateralP0 {
     }
 
     /// @return {underlyingTok/tok} The rate between the token and fiatcoin
-    function fiatcoinRate() public view override returns (Fix) {
+    function rateToUnderlying() public view virtual override returns (Fix) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray underlyingTok/tok}
         return toFixWithShift(rateInRAYs, -27);
     }
