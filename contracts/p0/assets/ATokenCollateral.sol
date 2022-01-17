@@ -30,6 +30,8 @@ interface AToken {
 contract ATokenCollateralP0 is LendingCollateralP0 {
     using SafeERC20 for IERC20Metadata;
 
+    // solhint-disable no-empty-blocks
+
     constructor(
         IERC20Metadata erc20_,
         IMain main_,
