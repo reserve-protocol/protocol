@@ -17,6 +17,7 @@ contract Pausable is Ownable, IPausable {
 
     constructor() {
         _pauser = _msgSender();
+        paused = true;
     }
 
     modifier notPaused() {
