@@ -237,7 +237,6 @@ contract AdapterP0 is ProtoAdapter {
                     s.rToken.name,
                     s.rToken.symbol,
                     address(this),
-                    vaults[0],
                     s.config,
                     initialShare,
                     _ourCompoundOracle,
@@ -245,6 +244,7 @@ contract AdapterP0 is ProtoAdapter {
                     collateral
                 )
             );
+            _main.switchVault(vaults[0]);
             _stRSR = StRSRExtension(address(_main.stRSR()));
             _rToken = RTokenExtension(address(_main.rToken()));
 

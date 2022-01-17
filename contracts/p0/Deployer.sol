@@ -19,6 +19,7 @@ import "./Furnace.sol";
 import "./Main.sol";
 import "./RToken.sol";
 import "./StRSR.sol";
+import "./Vault.sol";
 
 /**
  * @title DeployerP0
@@ -47,7 +48,6 @@ contract DeployerP0 is IDeployer {
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
     /// @param owner The address that should own the entire system, hopefully a governance contract
-    /// @param vault The initial vault that backs the RToken
     /// @param config Governance params
     /// @param dist The revenue shares distribution
     /// @param compoundOracle A deployment of an adapter for the compound oracle
@@ -58,7 +58,6 @@ contract DeployerP0 is IDeployer {
         string memory name,
         string memory symbol,
         address owner,
-        IVault vault,
         Config memory config,
         RevenueShare memory dist,
         IOracle compoundOracle,
@@ -74,6 +73,8 @@ contract DeployerP0 is IDeployer {
             IRToken rToken = _deployRToken(name, symbol);
             IFurnace revenueFurnace = _deployRevenueFurnace(rToken, config.rewardPeriod);
             Ownable(address(revenueFurnace)).transferOwnership(owner);
+
+            IVault vault = new VaultP0(new ICollateral[](0), new uint256[](0), new IVault[](0));
 
             ctorArgs = ConstructorArgs(collateral, config, dist, vault, revenueFurnace, market);
 
