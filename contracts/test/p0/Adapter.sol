@@ -349,7 +349,9 @@ contract AdapterP0 is ProtoAdapter {
 
         Fix[] memory quantities = new Fix[](backingCollateral.length);
         for (uint256 i = 0; i < quantities.length; i++) {
-            quantities[i] = _main.vault().quantity(_assets[backingCollateral[i]]);
+            quantities[i] = _main.vault().quantity(
+                ICollateral(address(_assets[backingCollateral[i]]))
+            );
         }
         s.rTokenDefinition = BU(backingCollateral, quantities);
         s.rToken = _dumpERC20(_main.rToken());
@@ -522,7 +524,6 @@ contract AdapterP0 is ProtoAdapter {
                 erc20,
                 _main,
                 underlying.oracle(),
-                UoA.USD,
                 underlying.erc20().decimals()
             );
         } else if (erc20.symbol().toSlice().startsWith(a.toSlice())) {
@@ -537,14 +538,9 @@ contract AdapterP0 is ProtoAdapter {
                     ]
                 )
             );
-            _assets[collateralAsset] = new ATokenCollateralP0(
-                erc20,
-                _main,
-                underlying.oracle(),
-                UoA.USD
-            );
+            _assets[collateralAsset] = new ATokenCollateralP0(erc20, _main, underlying.oracle());
         } else {
-            _assets[collateralAsset] = new CollateralP0(erc20, _main, oracle, UoA.USD);
+            _assets[collateralAsset] = new CollateralP0(erc20, _main, oracle);
         }
         _reverseAssets[ERC20Mock(address(_assets[collateralAsset].erc20()))] = collateralAsset;
         return ICollateral(address(_assets[collateralAsset]));
@@ -567,7 +563,7 @@ contract AdapterP0 is ProtoAdapter {
             _aaveOracle.setPrice(address(erc20), tokenState.price.inETH); // {qETH/tok}
             _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUSD); // {microUSD/tok}
 
-            Fix found = _assets[asset].priceUSD(); // {attoUSD/tok}
+            Fix found = _assets[asset].price(); // {attoUSD/tok}
             Fix expected = toFix(tokenState.price.inUSD);
             assert(found.eq(expected));
         }
@@ -587,8 +583,8 @@ contract AdapterP0 is ProtoAdapter {
                 IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
                 IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
                 newBid.buyAmount = toFix(sellAmount)
-                .mul(buyAsset.priceUSD())
-                .div(sellAsset.priceUSD())
+                .mul(buyAsset.price())
+                .div(sellAsset.price())
                 .ceil();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(
@@ -618,7 +614,9 @@ contract AdapterP0 is ProtoAdapter {
             }
             Fix[] memory quantities = new Fix[](collateral.length);
             for (uint256 i = 0; i < quantities.length; i++) {
-                quantities[i] = _main.vault().quantity(_assets[collateral[i]]);
+                quantities[i] = _main.vault().quantity(
+                    ICollateral(address(_assets[collateral[i]]))
+                );
             }
             next[bu_s.length] = BU(collateral, quantities);
             bu_s = next;

@@ -169,11 +169,11 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = true;
         for (uint256 i = 0; i < vault().size(); i++) {
             ICollateral c = vault().collateralAt(i);
-            ok = ok && c.priceUSD().gt(FIX_ZERO);
+            ok = ok && c.price().gt(FIX_ZERO);
         }
-        ok = ok && compAsset().priceUSD().gt(FIX_ZERO);
-        ok = ok && rsrAsset().priceUSD().gt(FIX_ZERO);
-        ok = ok && aaveAsset().priceUSD().gt(FIX_ZERO);
+        ok = ok && compAsset().price().gt(FIX_ZERO);
+        ok = ok && rsrAsset().price().gt(FIX_ZERO);
+        ok = ok && aaveAsset().price().gt(FIX_ZERO);
         if (!ok) {
             console.log("_INVARIANT_pricesDefined violated");
         }

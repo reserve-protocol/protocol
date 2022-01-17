@@ -51,7 +51,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
             revert CommonErrors.UnsoundVault();
         }
 
-        _prevBasketPrice = args.vault.basketPriceUSD();
+        _prevBasketPrice = args.vault.basketPrice();
         _historicalBasketDilution = FIX_ONE;
     }
 
@@ -65,7 +65,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     function beforeUpdate() public virtual override {
         super.beforeUpdate();
         _historicalBasketDilution = _basketDilutionFactor();
-        _prevBasketPrice = vault().basketPriceUSD();
+        _prevBasketPrice = vault().basketPrice();
     }
 
     function switchVault(IVault vault_) external override onlyOwner {
@@ -138,7 +138,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     /// @return {qBU/qRTok) the basket dilution factor
     function _basketDilutionFactor() internal view returns (Fix) {
         // {USD/qBU}
-        Fix currentPrice = vault().basketPriceUSD();
+        Fix currentPrice = vault().basketPrice();
         Fix prevPrice = _prevBasketPrice;
 
         // Assumption: Defi redemption rates are monotonically increasing
@@ -199,7 +199,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         // Find the highest-value backup that doesn't contain defaulting collateral
         for (uint256 i = 0; i < backups.length; i++) {
             if (backups[i].collateralStatus() == CollateralStatus.SOUND) {
-                Fix price = backups[i].basketPriceUSD(); // {attoUSD/BU}
+                Fix price = backups[i].basketPrice(); // {attoUSD/BU}
 
                 // See if it has the highest basket
                 if (price.gt(maxPrice)) {

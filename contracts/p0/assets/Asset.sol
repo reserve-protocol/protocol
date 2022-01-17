@@ -25,8 +25,13 @@ contract AssetP0 is IAsset, Context {
         oracle = oracle_;
     }
 
+    // solhint-disable no-empty-blocks
+
+    /// @dev Intended to be used via delegatecall
+    function claimAndSweepRewards(ICollateral, IMain) external virtual override {}
+
     /// @return {attoUSD/qTok} The price of 1 qToken in attoUSD
-    function priceUSD() public view virtual override returns (Fix) {
+    function price() public view virtual override returns (Fix) {
         return oracle.consult(erc20).shiftLeft(-int8(erc20.decimals()));
     }
 

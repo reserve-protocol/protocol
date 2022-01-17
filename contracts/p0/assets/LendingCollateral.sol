@@ -25,16 +25,16 @@ abstract contract LendingCollateralP0 is PeggedCollateralP0 {
     }
 
     /// @return {attoUSD/qTok} The price of 1 qToken in attoUSD
-    function priceUSD() public view override returns (Fix) {
-        return super.priceUSD().mul(rateToUnderlying());
+    function price() public view override returns (Fix) {
+        return super.price().mul(rateToUnderlying());
     }
 
-    /// @return {attoUoA/qTok} The price of the asset in its unit of account
-    function priceUoA() public view virtual override returns (Fix) {
-        return super.priceUoA().mul(rateToUnderlying());
+    /// @return {attoRef/qTok} The price of the asset in its unit of account
+    function referencePrice() public view virtual override returns (Fix) {
+        return super.referencePrice().mul(rateToUnderlying());
     }
 
-    /// @return {attoUoA/tok} Minimum price of a pegged asset to be considered non-defaulting
+    /// @return {attoRef/tok} Minimum price of a pegged asset to be considered non-defaulting
     function minPrice() public view virtual override returns (Fix) {
         return super.minPrice().mul(rateToUnderlying());
     }

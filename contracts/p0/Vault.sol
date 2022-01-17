@@ -122,21 +122,21 @@ contract VaultP0 is IVault, Ownable {
     }
 
     /// @return {qTok/BU} The quantity of collateral asset targeted per BU
-    function quantity(IAsset asset) external view override returns (Fix) {
-        Fix amount = _basket.amounts[asset];
-        Fix price = amount.neq(FIX_ZERO) ? ICollateral(address(asset)).priceUoA() : FIX_ONE;
+    function quantity(ICollateral collateral) external view override returns (Fix) {
+        Fix amount = _basket.amounts[collateral];
+        Fix price = ICollateral(address(collateral)).referencePrice();
 
-        // {qTok/BU} = {attoUoA/BU} / {attoUoA/qTok}
+        // {qTok/BU} = {attoRef/BU} / {attoRef/qTok}
         return amount.div(price);
     }
 
     /// @return attoUSD {attoUSD/BU} The price of a whole BU in attoUSD
-    function basketPriceUSD() external view override returns (Fix attoUSD) {
+    function basketPrice() external view override returns (Fix attoUSD) {
         for (uint256 i = 0; i < _basket.size; i++) {
             ICollateral a = _basket.collateral[i];
 
             // {attoUSD/BU} = {attoUSD/BU} + {attoUoQ/qTok} * {qTok/BU}
-            attoUSD = attoUSD.plus(a.priceUSD().mul(_basket.amounts[a]));
+            attoUSD = attoUSD.plus(a.price().mul(_basket.amounts[a]));
         }
     }
 

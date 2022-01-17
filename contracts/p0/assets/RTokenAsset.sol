@@ -22,9 +22,9 @@ contract RTokenAssetP0 is AssetP0 {
     // solhint-enable no-empty-blocks
 
     /// @return {attoUSD/qRTok}
-    function priceUSD() public view override returns (Fix) {
+    function price() public view override returns (Fix) {
         return
-            main.vault().basketPriceUSD().mul(main.baseFactor()).shiftLeft(
+            main.vault().basketPrice().mul(main.baseFactor()).shiftLeft(
                 -int8(main.vault().BU_DECIMALS())
             );
     }

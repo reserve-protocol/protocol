@@ -32,9 +32,8 @@ contract PeggedCollateralP0 is CollateralP0 {
         IERC20Metadata erc20_,
         IMain main_,
         IOracle oracle_,
-        UoA uoa_,
         Fix scalar
-    ) CollateralP0(erc20_, main_, oracle_, uoa_) {
+    ) CollateralP0(erc20_, main_, oracle_) {
         _scalar = scalar;
     }
 
@@ -42,7 +41,7 @@ contract PeggedCollateralP0 is CollateralP0 {
     function forceUpdates() public virtual override {
         if (whenDefault > block.timestamp) {
             // If the price is below the default-threshold price, default eventually
-            whenDefault = priceUoA().lte(minPrice())
+            whenDefault = referencePrice().lte(minPrice())
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -69,9 +68,9 @@ contract PeggedCollateralP0 is CollateralP0 {
         }
     }
 
-    /// @return {attoUoA/tok} Minimum price of a pegged asset to be considered non-defaulting
+    /// @return {attoRef/tok} Minimum price of a pegged asset to be considered non-defaulting
     function minPrice() public view virtual returns (Fix) {
-        // {attoUoA/tok} = {attoUoA/tok} * {none}
+        // {attoRef/tok} = {attoRef/tok} * {none}
         return main.defaultThreshold().mul(_scalar);
     }
 }

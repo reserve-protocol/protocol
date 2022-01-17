@@ -14,17 +14,13 @@ import "contracts/libraries/Fixed.sol";
  * @notice A general collateral type to be extended by more specific collateral types.
  */
 contract CollateralP0 is ICollateral, Context, AssetP0 {
-    UoA public immutable override uoa;
-
     CollateralStatus private _collateralStatus;
 
     constructor(
         IERC20Metadata erc20_,
         IMain main_,
-        IOracle oracle_,
-        UoA uoa_
+        IOracle oracle_
     ) AssetP0(erc20_, main_, oracle_) {
-        uoa = uoa_;
         _collateralStatus = CollateralStatus.SOUND;
     }
 
@@ -39,50 +35,18 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         _collateralStatus = CollateralStatus.DISABLED;
     }
 
-    /// @dev Intended to be used via delegatecall
-    function claimAndSweepRewards(ICollateral, IMain) external virtual override {}
-
     /// @return The asset's default status
     function status() external view virtual override returns (CollateralStatus) {
         return _collateralStatus;
     }
 
-    /// @return {attoUoA/qTok} The price of the asset in its unit of account
-    function priceUoA() public view virtual override returns (Fix) {
-        if (uoa == UoA.USD) {
-            return priceUSD();
-        } else if (uoa == UoA.EUR) {
-            return _priceEUR();
-        } else if (uoa == UoA.BTC) {
-            return _priceBTC();
-        } else if (uoa == UoA.ETH) {
-            return _priceETH();
-        } else if (uoa == UoA.XAU) {
-            return _priceXAU();
-        }
-        return FIX_ZERO;
+    /// @return {attoRef/qTok} The price of the asset in its unit of account
+    function referencePrice() public view virtual override returns (Fix) {
+        return price();
     }
 
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() external pure virtual override(AssetP0, IAsset) returns (bool) {
         return true;
-    }
-
-    // Thse are just examples of what it would look like to add other units of account
-
-    function _priceEUR() internal view virtual returns (Fix) {
-        return FIX_ZERO;
-    }
-
-    function _priceBTC() internal view virtual returns (Fix) {
-        return FIX_ZERO;
-    }
-
-    function _priceETH() internal view virtual returns (Fix) {
-        return FIX_ZERO;
-    }
-
-    function _priceXAU() internal view virtual returns (Fix) {
-        return FIX_ZERO;
     }
 }

@@ -32,9 +32,8 @@ contract CTokenCollateralP0 is LendingCollateralP0 {
         IERC20Metadata erc20_,
         IMain main_,
         IOracle oracle_,
-        UoA uoa_,
         uint8 decimalsForUnderlying_
-    ) PeggedCollateralP0(erc20_, main_, oracle_, uoa_, FIX_ONE) {
+    ) PeggedCollateralP0(erc20_, main_, oracle_, FIX_ONE) {
         initialExchangeRate = toFixWithShift(2, -2);
         decimalsForUnderlying = decimalsForUnderlying_;
     }

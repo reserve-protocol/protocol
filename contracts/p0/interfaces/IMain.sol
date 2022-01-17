@@ -46,15 +46,6 @@ struct Config {
     // defaultThreshold = 0.05 (5% deviation)
 }
 
-/// Unit of Account
-enum UoA {
-    USD,
-    EUR,
-    BTC,
-    ETH,
-    XAU
-}
-
 struct RevenueShare {
     Fix rTokenDist;
     Fix rsrDist;

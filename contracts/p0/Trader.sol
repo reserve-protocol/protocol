@@ -67,12 +67,12 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         IAsset buy,
         uint256 sellAmount
     ) internal view returns (bool notDust, Auction memory auction) {
-        if (sell.priceUSD().eq(FIX_ZERO) || buy.priceUSD().eq(FIX_ZERO)) {
+        if (sell.price().eq(FIX_ZERO) || buy.price().eq(FIX_ZERO)) {
             return (false, auction);
         }
 
         // {attoUSD} = {attoUSD/qRTok} * {qRTok}
-        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD().mulu(main.rToken().totalSupply());
+        Fix rTokenMarketCapUSD = main.rTokenAsset().price().mulu(main.rToken().totalSupply());
         Fix maxSellUSD = rTokenMarketCapUSD.mul(main.maxAuctionSize()); // {attoUSD}
 
         if (sellAmount < _dustThreshold(sell)) {
@@ -80,8 +80,8 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         }
 
         // TODO: Should this be floor?
-        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.priceUSD()).ceil()); // {qSellTok}
-        Fix exactBuyAmount = toFix(sellAmount).mul(sell.priceUSD()).div(buy.priceUSD()); // {qBuyTok}
+        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.price()).ceil()); // {qSellTok}
+        Fix exactBuyAmount = toFix(sellAmount).mul(sell.price()).div(buy.price()); // {qBuyTok}
         Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.maxTradeSlippage())); // {qBuyTok}
 
         return (
@@ -121,7 +121,7 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
         deficitAmount = Math.max(deficitAmount, _dustThreshold(buy));
 
         // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
-        Fix exactSellAmount = toFix(deficitAmount).mul(buy.priceUSD()).div(sell.priceUSD());
+        Fix exactSellAmount = toFix(deficitAmount).mul(buy.price()).div(sell.price());
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
@@ -136,13 +136,13 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     /// @return {qSellTok} The least amount of tokens worth trying to sell
     function _dustThreshold(IAsset asset) private view returns (uint256) {
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
-        Fix rTokenMarketCapUSD = main.rTokenAsset().priceUSD().mulu(main.rToken().totalSupply());
+        Fix rTokenMarketCapUSD = main.rTokenAsset().price().mulu(main.rToken().totalSupply());
 
         // {attoUSD}
         Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize());
 
         // {attoUSD} / {attoUSD/qSellTok}
-        return minSellUSD.div(asset.priceUSD()).ceil();
+        return minSellUSD.div(asset.price()).ceil();
     }
 
     /// Launch an auction:

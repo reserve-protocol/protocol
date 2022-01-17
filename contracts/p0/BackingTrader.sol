@@ -137,16 +137,22 @@ contract BackingTraderP0 is TraderP0 {
             // {qTok}
             Fix bal = toFix(IERC20(assets[i].erc20()).balanceOf(address(this)));
 
-            // {qTok} = {qTok/BU} * {qBU} / {qBU/BU}
-            Fix target = main.vault().quantity(assets[i]).mulu(targetBUs).shiftLeft(
-                -int8(main.vault().BU_DECIMALS())
-            );
+            Fix target;
+            if (assets[i].isCollateral()) {
+                // {qTok} = {qTok/BU} * {qBU} / {qBU/BU}
+                target = main
+                .vault()
+                .quantity(ICollateral(address(assets[i])))
+                .mulu(targetBUs)
+                .shiftLeft(-int8(main.vault().BU_DECIMALS()));
+            }
+
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                surpluses[i] = bal.minus(target).mul(assets[i].priceUSD());
+                surpluses[i] = bal.minus(target).mul(assets[i].price());
             } else if (bal.lt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                deficits[i] = target.minus(bal).mul(assets[i].priceUSD());
+                deficits[i] = target.minus(bal).mul(assets[i].price());
             }
         }
 
@@ -167,10 +173,10 @@ contract BackingTraderP0 is TraderP0 {
         }
 
         // {qSellTok} = {attoUSD} / {attoUSD/qSellTok}
-        Fix sellAmount = surplusMax.div(assets[surplusIndex].priceUSD());
+        Fix sellAmount = surplusMax.div(assets[surplusIndex].price());
 
         // {qBuyTok} = {attoUSD} / {attoUSD/qBuyTok}
-        Fix buyAmount = deficitMax.div(assets[deficitIndex].priceUSD());
+        Fix buyAmount = deficitMax.div(assets[deficitIndex].price());
         return (assets[surplusIndex], assets[deficitIndex], sellAmount.floor(), buyAmount.floor());
     }
 

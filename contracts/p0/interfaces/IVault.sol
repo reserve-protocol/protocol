@@ -8,11 +8,11 @@ import "contracts/p0/interfaces/IRewardsClaimer.sol";
 import "contracts/libraries/Fixed.sol";
 
 /// @param collateral Mapping from an incremental index to asset
-/// @param amounts {attoUoA/BU}
+/// @param amounts {attoRef/BU}
 /// @param size The number of collateral in the basket
 struct Basket {
     mapping(uint256 => ICollateral) collateral; // index -> asset
-    mapping(IAsset => Fix) amounts; // {attoUoA/BU}
+    mapping(ICollateral => Fix) amounts; // {attoRef/BU}
     uint256 size;
 }
 
@@ -57,7 +57,7 @@ interface IVault is IRewardsClaimer {
     function setMain(IMain main) external;
 
     /// @return {attoUSD/BU} The attoUSD price of 1 whole BU
-    function basketPriceUSD() external view returns (Fix);
+    function basketPrice() external view returns (Fix);
 
     /// @return {qTok} The list of token amounts required in order to issue `amtBUs`,
     /// in the same order as the tokens in the basket.
@@ -79,7 +79,7 @@ interface IVault is IRewardsClaimer {
     function basketUnits(address account) external view returns (uint256);
 
     /// @return {qTok/BU} The quantity of collateral asset targeted per BU
-    function quantity(IAsset asset) external view returns (Fix);
+    function quantity(ICollateral collateral) external view returns (Fix);
 
     /// @return A list of eligible backup vaults
     function getBackups() external view returns (IVault[] memory);

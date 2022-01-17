@@ -33,9 +33,8 @@ contract ATokenCollateralP0 is LendingCollateralP0 {
     constructor(
         IERC20Metadata erc20_,
         IMain main_,
-        IOracle oracle_,
-        UoA uoa_
-    ) PeggedCollateralP0(erc20_, main_, oracle_, uoa_, FIX_ONE) {}
+        IOracle oracle_
+    ) PeggedCollateralP0(erc20_, main_, oracle_, FIX_ONE) {}
 
     /// @dev Intended to be used via delegatecall
     function claimAndSweepRewards(ICollateral collateral, IMain main_) external virtual override {

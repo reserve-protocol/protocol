@@ -14,7 +14,10 @@ import "./IMain.sol";
  */
 interface IAsset {
     /// @return {attoUSD/qTok} The price of 1 qToken in attoUSD
-    function priceUSD() external view returns (Fix);
+    function price() external view returns (Fix);
+
+    /// @dev Intended to be used via delegatecall, hence the `collateral` duplication
+    function claimAndSweepRewards(ICollateral collateral, IMain main) external;
 
     /// @return The ERC20 contract of the token with decimals() available
     function erc20() external view returns (IERC20Metadata);
@@ -48,14 +51,8 @@ interface ICollateral is IAsset {
     /// Disable the collateral so it cannot be used as backing
     function disable() external;
 
-    /// The Unit of Account
-    function uoa() external view returns (UoA);
-
-    /// @return {attoUoA/qTok} The price of the asset in its unit of account
-    function priceUoA() external view returns (Fix);
-
-    /// @dev Intended to be used via delegatecall, hence the `collateral` duplication
-    function claimAndSweepRewards(ICollateral collateral, IMain main) external;
+    /// @return {attoRef/qTok} The price of the asset in its unit of account
+    function referencePrice() external view returns (Fix);
 
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
     function status() external view returns (CollateralStatus);
