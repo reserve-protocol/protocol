@@ -26,22 +26,28 @@ import "./Vault.sol";
  * @notice The deployer for the entire system.
  */
 contract DeployerP0 is IDeployer {
-    IMarket internal market;
-    IERC20Metadata internal rsr;
-    IERC20Metadata internal comp;
-    IERC20Metadata internal aave;
+    IERC20Metadata public rsr;
+    IERC20Metadata public comp;
+    IERC20Metadata public aave;
+    IMarket public market;
+    IOracle public compoundOracle;
+    IOracle public aaveOracle;
     IMain[] public deployments;
 
     constructor(
         IERC20Metadata rsr_,
         IERC20Metadata comp_,
         IERC20Metadata aave_,
-        IMarket market_
+        IMarket market_,
+        IOracle compoundOracle_,
+        IOracle aaveOracle_
     ) {
         rsr = rsr_;
         comp = comp_;
         aave = aave_;
         market = market_;
+        compoundOracle = compoundOracle_;
+        aaveOracle = aaveOracle_;
     }
 
     /// Deploys an instance of the entire system
@@ -50,19 +56,13 @@ contract DeployerP0 is IDeployer {
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param config Governance params
     /// @param dist The revenue shares distribution
-    /// @param compoundOracle A deployment of an adapter for the compound oracle
-    /// @param aaveOracle A deployment of an adapter for the aave oracle
-    /// @param collateral The collateral assets in the system
     /// @return The address of the newly deployed Main instance.
     function deploy(
         string memory name,
         string memory symbol,
         address owner,
         Config memory config,
-        RevenueShare memory dist,
-        IOracle compoundOracle,
-        IOracle aaveOracle,
-        ICollateral[] memory collateral
+        RevenueShare memory dist
     ) external override returns (address) {
         ConstructorArgs memory ctorArgs;
 
@@ -75,8 +75,7 @@ contract DeployerP0 is IDeployer {
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
             IVault vault = new VaultP0(new ICollateral[](0), new uint256[](0), new IVault[](0));
-
-            ctorArgs = ConstructorArgs(collateral, config, dist, vault, revenueFurnace, market);
+            ctorArgs = ConstructorArgs(config, dist, vault, revenueFurnace, market);
 
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main, aaveOracle);
             main.setRTokenAsset(rTokenAsset);

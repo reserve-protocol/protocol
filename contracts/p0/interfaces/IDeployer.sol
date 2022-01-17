@@ -27,18 +27,12 @@ interface IDeployer {
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param config Governance param
     /// @param dist Shares of revenue initially to RSR pool and RToken melting
-    /// @param compoundOracle A deployment of an adapter for the compound oracle
-    /// @param aaveOracle A deployment of an adapter for the aave oracle
-    /// @param collateral The collateral assets in the system
     /// @return The address of the newly deployed Main instance.
     function deploy(
         string calldata name,
         string calldata symbol,
         address owner,
         Config calldata config,
-        RevenueShare calldata dist,
-        IOracle compoundOracle,
-        IOracle aaveOracle,
-        ICollateral[] calldata collateral
+        RevenueShare calldata dist
     ) external returns (address);
 }
