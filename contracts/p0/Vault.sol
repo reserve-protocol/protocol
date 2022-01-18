@@ -33,7 +33,7 @@ contract VaultP0 is IVault, Ownable {
 
     IMain public main;
 
-    /// @param amounts {qTok/BU}
+    /// @param amounts {attoRef/BU}
     constructor(
         ICollateral[] memory collateral,
         Fix[] memory amounts,
@@ -115,14 +115,14 @@ contract VaultP0 is IVault, Ownable {
         for (uint256 i = 0; i < _basket.size; i++) {
             // {qTok} = {qBU} * {qTok/BU} / {qBU/BU}
             amounts[i] = toFix(amtBUs)
-            .mul(_basket.amounts[_basket.collateral[i]])
+            .mul(quantity(_basket.collateral[i]))
             .shiftLeft(-int8(BU_DECIMALS))
             .toUint(rounding);
         }
     }
 
     /// @return {qTok/BU} The quantity of collateral asset targeted per BU
-    function quantity(ICollateral collateral) external view override returns (Fix) {
+    function quantity(ICollateral collateral) public view override returns (Fix) {
         Fix amount = _basket.amounts[collateral];
         Fix price = ICollateral(address(collateral)).referencePrice();
 
@@ -135,8 +135,8 @@ contract VaultP0 is IVault, Ownable {
         for (uint256 i = 0; i < _basket.size; i++) {
             ICollateral a = _basket.collateral[i];
 
-            // {attoUSD/BU} = {attoUSD/BU} + {attoUoQ/qTok} * {qTok/BU}
-            attoUSD = attoUSD.plus(a.price().mul(_basket.amounts[a]));
+            // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
+            attoUSD = attoUSD.plus(a.price().mul(quantity(a)));
         }
     }
 
@@ -147,7 +147,7 @@ contract VaultP0 is IVault, Ownable {
             // {qTok}
             Fix bal = toFix(_basket.collateral[i].erc20().balanceOf(issuer));
             // {BU} = {qTok} / {qTok/BU}
-            Fix amtBUs = bal.div(_basket.amounts[_basket.collateral[i]]);
+            Fix amtBUs = bal.div(quantity(_basket.collateral[i]));
             if (amtBUs.lt(min)) {
                 min = amtBUs;
             }
