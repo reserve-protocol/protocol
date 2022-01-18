@@ -13,8 +13,6 @@ import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/libraries/Fixed.sol";
 
-// import "hardhat/console.sol";
-
 /*
  * @title VaultP0
  * @notice An issuer of an internal bookkeeping unit called a BU or basket unit.
@@ -35,19 +33,19 @@ contract VaultP0 is IVault, Ownable {
 
     IMain public main;
 
-    /// @param quantities {qTok/BU}
+    /// @param amounts {attoRef/BU}
     constructor(
         ICollateral[] memory collateral,
-        uint256[] memory quantities,
+        Fix[] memory amounts,
         IVault[] memory backupVaults
     ) {
-        require(collateral.length == quantities.length, "arrays must match in length");
+        require(collateral.length == amounts.length, "arrays must match in length");
 
         // Set default immutable basket
         _basket.size = collateral.length;
         for (uint256 i = 0; i < _basket.size; i++) {
             _basket.collateral[i] = collateral[i];
-            _basket.quantities[collateral[i]] = quantities[i];
+            _basket.amounts[collateral[i]] = amounts[i];
         }
 
         backups = backupVaults;
@@ -117,26 +115,28 @@ contract VaultP0 is IVault, Ownable {
         for (uint256 i = 0; i < _basket.size; i++) {
             // {qTok} = {qBU} * {qTok/BU} / {qBU/BU}
             amounts[i] = toFix(amtBUs)
-            .mulu(_basket.quantities[_basket.collateral[i]])
+            .mul(quantity(_basket.collateral[i]))
             .shiftLeft(-int8(BU_DECIMALS))
             .toUint(rounding);
         }
     }
 
-    /// @return {qTok/BU} The quantity of qTokens of `asset` required per whole BU
-    function quantity(IAsset asset) external view override returns (uint256) {
-        return _basket.quantities[asset];
+    /// @return {qTok/BU} The quantity of collateral asset targeted per BU
+    function quantity(ICollateral collateral) public view override returns (Fix) {
+        Fix amount = _basket.amounts[collateral];
+        Fix price = ICollateral(address(collateral)).referencePrice();
+
+        // {qTok/BU} = {attoRef/BU} / {attoRef/qTok}
+        return amount.div(price);
     }
 
-    /// @return attoUSD {attoUSD/BU} The price of 1 whole BU in a single unit of account
-    function basketPrice(UoA uoa) external view override returns (Fix attoUSD) {
-        require(uoa == UoA.USD, "conversions across units of account not implemented yet");
+    /// @return attoUSD {attoUSD/BU} The price of a whole BU in attoUSD
+    function basketPrice() external view override returns (Fix attoUSD) {
         for (uint256 i = 0; i < _basket.size; i++) {
             ICollateral a = _basket.collateral[i];
 
-            // {attoUSD/BU} = {attoUSD/BU} + {attoUoQ/qTok} * {qTok/BU}
-            require(a.uoa() == UoA.USD, "conversions across units of account not implemented yet");
-            attoUSD = attoUSD.plus(a.price().mulu(_basket.quantities[a]));
+            // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
+            attoUSD = attoUSD.plus(a.price().mul(quantity(a)));
         }
     }
 
@@ -147,7 +147,7 @@ contract VaultP0 is IVault, Ownable {
             // {qTok}
             Fix bal = toFix(_basket.collateral[i].erc20().balanceOf(issuer));
             // {BU} = {qTok} / {qTok/BU}
-            Fix amtBUs = bal.divu(_basket.quantities[_basket.collateral[i]]);
+            Fix amtBUs = bal.div(quantity(_basket.collateral[i]));
             if (amtBUs.lt(min)) {
                 min = amtBUs;
             }

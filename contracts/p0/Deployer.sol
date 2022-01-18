@@ -74,7 +74,7 @@ contract DeployerP0 is IDeployer {
             IFurnace revenueFurnace = _deployRevenueFurnace(rToken, config.rewardPeriod);
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
-            IVault vault = new VaultP0(new ICollateral[](0), new uint256[](0), new IVault[](0));
+            IVault vault = new VaultP0(new ICollateral[](0), new Fix[](0), new IVault[](0));
             ctorArgs = ConstructorArgs(config, dist, vault, revenueFurnace, market);
 
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main, aaveOracle);
@@ -85,9 +85,9 @@ contract DeployerP0 is IDeployer {
         }
 
         {
-            AssetP0 rsrAsset = new AssetP0(UoA.USD, rsr, main, aaveOracle);
-            AssetP0 compAsset = new AssetP0(UoA.USD, comp, main, compoundOracle);
-            AssetP0 aaveAsset = new AssetP0(UoA.USD, aave, main, aaveOracle);
+            AssetP0 rsrAsset = new AssetP0(rsr, main, aaveOracle);
+            AssetP0 compAsset = new AssetP0(comp, main, compoundOracle);
+            AssetP0 aaveAsset = new AssetP0(aave, main, aaveOracle);
 
             main.setRSRAsset(rsrAsset);
             main.setCompAsset(compAsset);

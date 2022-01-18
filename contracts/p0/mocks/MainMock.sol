@@ -89,8 +89,8 @@ contract MainMockP0 {
         _compoundOracle = new CompoundOracle(comptroller);
         _aaveOracle = new AaveOracle(comptroller, aaveLendingPool);
 
-        compAsset = new AssetP0(UoA.USD, compToken, IMain(address(this)), _compoundOracle);
-        aaveAsset = new AssetP0(UoA.USD, aaveToken, IMain(address(this)), _aaveOracle);
+        compAsset = new AssetP0(compToken, IMain(address(this)), _compoundOracle);
+        aaveAsset = new AssetP0(aaveToken, IMain(address(this)), _aaveOracle);
     }
 
     function setStRSR(IStRSR stRSR_) external {

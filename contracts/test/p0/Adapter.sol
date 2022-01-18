@@ -10,8 +10,8 @@ import "contracts/mocks/CTokenMock.sol";
 import "contracts/mocks/ERC20Mock.sol";
 import "contracts/mocks/MarketMock.sol";
 import "contracts/mocks/USDCMock.sol";
+import "contracts/p0/Collateral.sol";
 import "contracts/p0/assets/ATokenCollateral.sol";
-import "contracts/p0/assets/Collateral.sol";
 import "contracts/p0/assets/CTokenCollateral.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IDeployer.sol";
@@ -345,7 +345,14 @@ contract AdapterP0 is ProtoAdapter {
             backingCollateral[i] = _reverseAssets[ERC20Mock(backingTokens[i])];
         }
         s.distribution = _main.STATE_revenueDistribution();
-        s.rTokenDefinition = BU(backingCollateral, _main.quote(10**_main.rToken().decimals()));
+
+        Fix[] memory quantities = new Fix[](backingCollateral.length);
+        for (uint256 i = 0; i < quantities.length; i++) {
+            quantities[i] = _main.vault().quantity(
+                ICollateral(address(_assets[backingCollateral[i]]))
+            );
+        }
+        s.rTokenDefinition = BU(backingCollateral, quantities);
         s.rToken = _dumpERC20(_main.rToken());
         s.rsr = _dumpERC20(_main.rsr());
         s.stRSR = _dumpERC20(_main.stRSR());
@@ -362,7 +369,7 @@ contract AdapterP0 is ProtoAdapter {
         s.defiCollateralRates[uint256(AssetName.USDT)] = FIX_ZERO;
         s.defiCollateralRates[uint256(AssetName.BUSD)] = FIX_ZERO;
         for (uint256 i = NUM_FIATCOINS; i < NUM_COLLATERAL; i++) {
-            s.defiCollateralRates[i] = _fiatcoinRate(ICollateral(address(_assets[AssetName(i)])));
+            s.defiCollateralRates[i] = _rateToUnderlying(address(_assets[AssetName(i)]));
         }
         s.ethPrice = Price(
             _aaveOracle.getAssetPrice(_aaveOracle.WETH()),
@@ -402,7 +409,7 @@ contract AdapterP0 is ProtoAdapter {
     ) external override {
         Fix[] memory rates = new Fix[](NUM_COLLATERAL);
         for (uint256 i = NUM_FIATCOINS; i < NUM_COLLATERAL; i++) {
-            rates[i] = _fiatcoinRate(ICollateral(address(_assets[AssetName(i)])));
+            rates[i] = _rateToUnderlying(address(_assets[AssetName(i)]));
         }
         for (uint256 i = 0; i < defiCollateral.length; i++) {
             require(
@@ -480,9 +487,8 @@ contract AdapterP0 is ProtoAdapter {
     }
 
     /// @return {fiatTok/tok}
-    function _fiatcoinRate(ICollateral collateral) internal view returns (Fix) {
-        assert(collateral.underlyingERC20() != collateral.erc20());
-        return collateral.fiatcoinRate();
+    function _rateToUnderlying(address lendingCollateral) internal view returns (Fix) {
+        return CTokenCollateralP0(lendingCollateral).rateToUnderlying();
     }
 
     /// @param token The ERC20 token
@@ -513,7 +519,12 @@ contract AdapterP0 is ProtoAdapter {
             ICollateral underlying = ICollateral(
                 address(_assets[_reverseAssets[ERC20Mock(CTokenMock(address(erc20)).underlying())]])
             );
-            _assets[collateralAsset] = new CTokenCollateralP0(UoA.USD, erc20, _main, underlying);
+            _assets[collateralAsset] = new CTokenCollateralP0(
+                erc20,
+                _main,
+                underlying.oracle(),
+                underlying.erc20().decimals()
+            );
         } else if (erc20.symbol().toSlice().startsWith(a.toSlice())) {
             ICollateral underlying = ICollateral(
                 address(
@@ -526,9 +537,9 @@ contract AdapterP0 is ProtoAdapter {
                     ]
                 )
             );
-            _assets[collateralAsset] = new ATokenCollateralP0(UoA.USD, erc20, _main, underlying);
+            _assets[collateralAsset] = new ATokenCollateralP0(erc20, _main, underlying.oracle());
         } else {
-            _assets[collateralAsset] = new CollateralP0(UoA.USD, erc20, _main, oracle);
+            _assets[collateralAsset] = new CollateralP0(erc20, _main, oracle);
         }
         _reverseAssets[ERC20Mock(address(_assets[collateralAsset].erc20()))] = collateralAsset;
         return ICollateral(address(_assets[collateralAsset]));
@@ -600,7 +611,13 @@ contract AdapterP0 is ProtoAdapter {
             for (uint256 i = 0; i < v.size(); i++) {
                 collateral[i] = _reverseAssets[ERC20Mock(address(v.collateralAt(i).erc20()))];
             }
-            next[bu_s.length] = BU(collateral, v.quote(10**v.BU_DECIMALS(), RoundingApproach.CEIL));
+            Fix[] memory quantities = new Fix[](collateral.length);
+            for (uint256 i = 0; i < quantities.length; i++) {
+                quantities[i] = _main.vault().quantity(
+                    ICollateral(address(_assets[collateral[i]]))
+                );
+            }
+            next[bu_s.length] = BU(collateral, quantities);
             bu_s = next;
             if (backups.length > 0) {
                 v = backups[0]; // walk the DAG

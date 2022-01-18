@@ -169,9 +169,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = true;
         for (uint256 i = 0; i < vault().size(); i++) {
             ICollateral c = vault().collateralAt(i);
-            if (c.underlyingERC20() == c.erc20()) {
-                ok = ok && c.price().gt(FIX_ZERO);
-            }
+            ok = ok && c.price().gt(FIX_ZERO);
         }
         ok = ok && compAsset().price().gt(FIX_ZERO);
         ok = ok && rsrAsset().price().gt(FIX_ZERO);

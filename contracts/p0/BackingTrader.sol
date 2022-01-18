@@ -137,10 +137,16 @@ contract BackingTraderP0 is TraderP0 {
             // {qTok}
             Fix bal = toFix(IERC20(assets[i].erc20()).balanceOf(address(this)));
 
-            // {qTok} = {qBU} * {qTok/BU} / {qBU/BU}
-            Fix target = toFix(targetBUs).mulu(main.vault().quantity(assets[i])).shiftLeft(
-                -int8(main.vault().BU_DECIMALS())
-            );
+            Fix target;
+            if (assets[i].isCollateral()) {
+                // {qTok} = {qTok/BU} * {qBU} / {qBU/BU}
+                target = main
+                .vault()
+                .quantity(ICollateral(address(assets[i])))
+                .mulu(targetBUs)
+                .shiftLeft(-int8(main.vault().BU_DECIMALS()));
+            }
+
             if (bal.gt(target)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
                 surpluses[i] = bal.minus(target).mul(assets[i].price());

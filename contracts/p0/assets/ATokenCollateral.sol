@@ -3,9 +3,10 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "./Collateral.sol";
+import "contracts/p0/Collateral.sol";
 
 // Interfaces to contracts from: https://git.io/JX7iJ
 interface IStaticAToken is IERC20Metadata {
@@ -31,13 +32,33 @@ contract ATokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
+    Fix public prevRateToUnderlying; // previous rate to underlying, in normal 1:1 units
+
+    // solhint-disable no-empty-blocks
+
     constructor(
-        UoA uoa_,
         IERC20Metadata erc20_,
         IMain main_,
-        ICollateral underlying_
-    ) CollateralP0(uoa_, erc20_, main_, underlying_.oracle()) {
-        underlying = underlying_;
+        IOracle oracle_
+    ) CollateralP0(erc20_, main_, oracle_) {}
+
+    /// Update default status
+    function forceUpdates() public virtual override {
+        if (whenDefault <= block.timestamp) {
+            return;
+        }
+
+        // Check invariants
+        Fix rate = rateToUnderlying();
+        if (rate.lt(prevRateToUnderlying)) {
+            whenDefault = block.timestamp;
+        } else {
+            // If the price is below the default-threshold price, default eventually
+            whenDefault = referencePrice().lt(_minReferencePrice())
+                ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
+                : NEVER;
+        }
+        prevRateToUnderlying = rate;
     }
 
     /// @dev Intended to be used via delegatecall
@@ -55,9 +76,20 @@ contract ATokenCollateralP0 is CollateralP0 {
         }
     }
 
+    /// @return {attoUSD/qTok} The price of 1 qToken in attoUSD
+    function price() public view virtual override returns (Fix) {
+        return oracle.consult(erc20).shiftLeft(-int8(erc20.decimals())).mul(rateToUnderlying());
+    }
+
     /// @return {underlyingTok/tok} The rate between the token and fiatcoin
-    function fiatcoinRate() public view override returns (Fix) {
+    function rateToUnderlying() public view virtual returns (Fix) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray underlyingTok/tok}
         return toFixWithShift(rateInRAYs, -27);
+    }
+
+    /// @return {attoRef/qTok} Minimum price of a pegged asset to be considered non-defaulting
+    function _minReferencePrice() internal view virtual override returns (Fix) {
+        // {attoRef/qTok} = {attoRef/tok} / {qTok/tok}
+        return main.defaultThreshold().shiftLeft(-int8(erc20.decimals())).mul(rateToUnderlying());
     }
 }
