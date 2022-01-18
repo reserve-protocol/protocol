@@ -51,7 +51,7 @@ interface ICollateral is IAsset {
     /// Disable the collateral so it cannot be used as backing
     function disable() external;
 
-    /// @return {attoRef/qTok} The price of the asset in its unit of account
+    /// @return {attoRef/qTok} The price of the asset in a (potentially non-USD) reference asset
     function referencePrice() external view returns (Fix);
 
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)

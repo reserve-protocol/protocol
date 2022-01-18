@@ -2,20 +2,20 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/p0/assets/Asset.sol";
+import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/libraries/Fixed.sol";
-import "./Collateral.sol";
+import "contracts/p0/Asset.sol";
 
 /**
- * @title PeggedCollateralP0
- * @notice A general pegged asset such as a USD fiatcoin or PAXG or WBTC.
+ * @title CollateralP0
+ * @notice A general collateral type that can be USDC, WBTC, or WETH.
  */
-contract PeggedCollateralP0 is CollateralP0 {
+contract CollateralP0 is ICollateral, Context, AssetP0 {
     using FixLib for Fix;
-
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
     // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
@@ -23,30 +23,23 @@ contract PeggedCollateralP0 is CollateralP0 {
     // whenDefault <= block.timestamp: default has already happened (permanently)
     uint256 internal constant NEVER = type(uint256).max;
     uint256 internal whenDefault = NEVER;
-    uint256 internal prevBlock; // Last block when _updateDefaultStatus() was called
 
-    /// The rate between the asset and what it is pegged to. Usually 1
-    Fix private immutable _scalar;
+    // solhint-disable no-empty-blocks
 
     constructor(
         IERC20Metadata erc20_,
         IMain main_,
-        IOracle oracle_,
-        Fix scalar
-    ) CollateralP0(erc20_, main_, oracle_) {
-        _scalar = scalar;
-    }
+        IOracle oracle_
+    ) AssetP0(erc20_, main_, oracle_) {}
 
     /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
     function forceUpdates() public virtual override {
         if (whenDefault > block.timestamp) {
             // If the price is below the default-threshold price, default eventually
-            whenDefault = referencePrice().lte(minPrice())
+            whenDefault = referencePrice().lt(_minReferencePrice())
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
-
-        prevBlock = block.number;
     }
 
     /// Disable the collateral directly
@@ -68,9 +61,19 @@ contract PeggedCollateralP0 is CollateralP0 {
         }
     }
 
-    /// @return {attoRef/tok} Minimum price of a pegged asset to be considered non-defaulting
-    function minPrice() public view virtual returns (Fix) {
-        // {attoRef/tok} = {attoRef/tok} * {none}
-        return main.defaultThreshold().mul(_scalar);
+    /// @return {attoRef/qTok} The price of the asset in a (potentially non-USD) reference asset
+    function referencePrice() public view virtual override returns (Fix) {
+        return price();
+    }
+
+    /// @return If the asset is an instance of ICollateral or not
+    function isCollateral() external pure virtual override(AssetP0, IAsset) returns (bool) {
+        return true;
+    }
+
+    /// @return {attoRef/qTok} Minimum price of a pegged asset to be considered non-defaulting
+    function _minReferencePrice() internal view virtual returns (Fix) {
+        // {attoRef/qTok} = {attoRef/tok} / {qTok/tok}
+        return main.defaultThreshold().shiftLeft(-int8(erc20.decimals()));
     }
 }

@@ -10,9 +10,8 @@ import "contracts/mocks/CTokenMock.sol";
 import "contracts/mocks/ERC20Mock.sol";
 import "contracts/mocks/MarketMock.sol";
 import "contracts/mocks/USDCMock.sol";
+import "contracts/p0/Collateral.sol";
 import "contracts/p0/assets/ATokenCollateral.sol";
-import "contracts/p0/assets/Collateral.sol";
-import "contracts/p0/assets/LendingCollateral.sol";
 import "contracts/p0/assets/CTokenCollateral.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IDeployer.sol";
@@ -489,7 +488,7 @@ contract AdapterP0 is ProtoAdapter {
 
     /// @return {fiatTok/tok}
     function _rateToUnderlying(address lendingCollateral) internal view returns (Fix) {
-        return LendingCollateralP0(lendingCollateral).rateToUnderlying();
+        return CTokenCollateralP0(lendingCollateral).rateToUnderlying();
     }
 
     /// @param token The ERC20 token
