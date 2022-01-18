@@ -95,10 +95,6 @@ contract AuctioneerP0 is
         rTokenTrader.poke();
     }
 
-    function beforeUpdate() public virtual override(Mixin, VaultHandlerP0) {
-        super.beforeUpdate();
-    }
-
     function backingTraderAddr() external view override returns (address) {
         return address(backingTrader);
     }
@@ -113,9 +109,10 @@ contract AuctioneerP0 is
 
     function _rTokenHaircut() private {
         // The ultimate endgame: a haircut for RToken holders.
-        beforeUpdate();
-        _historicalBasketDilution = _meltingFactor().mulu(rToken().totalSupply()).divu(
-            vault().basketUnits(address(rToken()))
-        );
+        // TODO: This is no longer a thing
+        // beforeUpdate();
+        // _historicalBasketDilution = _meltingFactor().mulu(rToken().totalSupply()).divu(
+        //     vault().basketUnits(address(rToken()))
+        // );
     }
 }

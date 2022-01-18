@@ -62,16 +62,6 @@ contract MainP0 is
         super.poke();
     }
 
-    /// An idempotent mutator for updating accounting metrics
-    /// Unlike `poke`, no external side-effects
-    function beforeUpdate()
-        public
-        virtual
-        override(IMixin, Mixin, VaultHandlerP0, AuctioneerP0, RewardHandlerP0, RTokenIssuerP0)
-    {
-        super.beforeUpdate();
-    }
-
     function owner() public view virtual override(IMain, Ownable) returns (address) {
         return Ownable.owner();
     }

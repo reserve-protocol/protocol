@@ -78,10 +78,6 @@ contract RewardHandlerP0 is
         revenueFurnace().doMelt();
     }
 
-    function beforeUpdate() public virtual override(Mixin, VaultHandlerP0, AuctioneerP0) {
-        super.beforeUpdate();
-    }
-
     /// @return The timestamp of the next rewards event
     function nextRewards() public view override returns (uint256) {
         (, uint256 next) = _rewardsAdjacent(block.timestamp);

@@ -38,10 +38,6 @@ enum CollateralStatus {
 /**
  * @title ICollateral
  * @notice A subtype of Asset that consists of the tokens eligible to back the RToken.
- * There are two types of collateral, derivative and non-derivative.
- *   - Derivative collateral has underlying collateral (like a non-leaf node in a linked list)
- *   - Non-derivative collateral is itself a direct representation of a Unit
- * Note: This structure can be used to capture N-levels-nested asset structures.
  */
 interface ICollateral is IAsset {
     /// Force any updates such as updating the default status or poking the defi protocol.

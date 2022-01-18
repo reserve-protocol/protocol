@@ -15,8 +15,4 @@ abstract contract Mixin {
     function poke() public virtual {
         require(_initialized, "not initialized");
     }
-
-    function beforeUpdate() public virtual {
-        require(_initialized, "not initialized");
-    }
 }
