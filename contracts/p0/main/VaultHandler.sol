@@ -18,25 +18,14 @@ import "./SettingsHandler.sol";
 
 /**
  * @title VaultHandler
- * @notice Handles the use of vaults and their associated basket units (BUs), including the tracking
- *    of the base rate, the exchange rate between RToken and BUs.
+ * @notice Tries to ensure the current vault is valid at all times.
  */
 contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributorP0, IVaultHandler {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
     using FixLib for Fix;
 
-    // ECONOMICS
-    //
-    // base factor = exchange rate between Vault BUs and RTokens
-    // base factor = b = _meltingFactor() / _basketDilutionFactor()
-    // <RToken> = b * <Basket Unit Vector>
-    // Fully capitalized: #RTokens <= #BUs / b
-
-    Fix internal _historicalBasketDilution; // the product of all historical basket dilutions
-    Fix internal _prevBasketPrice; // {USD/qBU} redemption value of the basket at last update
-
-    IVault[] public override vaults;
+    IVault[] public vaults;
 
     function init(ConstructorArgs calldata args)
         public
@@ -44,28 +33,17 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         override(Mixin, SettingsHandlerP0, RevenueDistributorP0)
     {
         super.init(args);
-        vaults.push(args.vault);
-
-        // Check vault collateral
-        if (vault().collateralStatus() != CollateralStatus.SOUND) {
+        if (args.vault.collateralStatus() != CollateralStatus.SOUND) {
             revert CommonErrors.UnsoundVault();
         }
 
-        _prevBasketPrice = args.vault.basketPrice();
-        _historicalBasketDilution = FIX_ONE;
+        vaults.push(args.vault);
     }
 
     function poke() public virtual override notPaused {
         super.poke();
         _updateCollateralStatuses();
         _tryEnsureValidVault();
-    }
-
-    /// Fold current metrics into historical metrics
-    function beforeUpdate() public virtual override {
-        super.beforeUpdate();
-        _historicalBasketDilution = _basketDilutionFactor();
-        _prevBasketPrice = vault().basketPrice();
     }
 
     function switchVault(IVault vault_) external override onlyOwner {
@@ -76,15 +54,13 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         return vaults[vaults.length - 1];
     }
 
-    function numVaults() external view override returns (uint256) {
-        return vaults.length;
+    function fullyCapitalized() public view override returns (bool) {
+        // TODO
+        // Sum assets in terms of reference units and compare against vault targets given by BUs
     }
 
-    /// @return Whether the vault is fully capitalized
-    function fullyCapitalized() public view override returns (bool) {
-        uint256 amtBUs = vault().basketUnits(address(rToken())) +
-            vault().basketUnits(address(this));
-        return fromBUs(amtBUs) >= rToken().totalSupply();
+    function numVaults() external view override returns (uint256) {
+        return vaults.length;
     }
 
     /// {qRTok} -> {qBU}
@@ -97,12 +73,11 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         return divFix(amtBUs, baseFactor()).floor();
     }
 
-    /// @return {qRTok/qBU} The conversion rate from BUs to RTokens,
-    /// 1.0 if the total rtoken supply is 0
-    /// Else, (melting factor) / (basket dilution factor)
-    function baseFactor() public view returns (Fix) {
-        return
-            rToken().totalSupply() == 0 ? FIX_ONE : _meltingFactor().div(_basketDilutionFactor());
+    /// @return {none}
+    function baseFactor() public view override returns (Fix) {
+        Fix supply = toFix(rToken().totalSupply()); // {qRTok}
+        Fix melted = toFix(rToken().totalMelted()); // {qRTok}
+        return supply.eq(FIX_ZERO) ? FIX_ONE : supply.plus(melted).div(supply);
     }
 
     // ==== Internal ====
@@ -125,39 +100,8 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     }
 
     function _switchVault(IVault vault_) internal {
-        beforeUpdate();
         emit NewVaultSet(address(vault()), address(vault_));
         vaults.push(vault_);
-    }
-
-    /* As the basketBalance increases, the basketDilutionFactor increases at a proportional rate.
-     * for two times t0 < t1 when the rTokenCut() doesn't change, we have:
-     * (basketDiluationFactor at t1) - (basketDilutionFactor at t0)
-     * = rTokenCut() * ((basketPrice at t1) - (basketPrice at t0))
-     */
-    /// @return {qBU/qRTok) the basket dilution factor
-    function _basketDilutionFactor() internal view returns (Fix) {
-        // {USD/qBU}
-        Fix currentPrice = vault().basketPrice();
-        Fix prevPrice = _prevBasketPrice;
-
-        // Assumption: Defi redemption rates are monotonically increasing
-        // {USD/qBU}
-        Fix delta = currentPrice.minus(prevPrice);
-        // TODO: this should go away after we choose to accept the full Unit agnostic refactor
-
-        // r = p2 / (p1 + (p2-p1) * (rTokenCut))
-        Fix r = currentPrice.div(prevPrice.plus(delta.mul(rTokenCut())));
-        Fix dilutionFactor = _historicalBasketDilution.mul(r);
-        assert(dilutionFactor.neq(FIX_ZERO));
-        return dilutionFactor;
-    }
-
-    /// @return {none} Numerator of the base factor
-    function _meltingFactor() internal view returns (Fix) {
-        Fix supply = toFix(rToken().totalSupply()); // {qRTok}
-        Fix melted = toFix(rToken().totalMelted()); // {qRTok}
-        return supply.eq(FIX_ZERO) ? FIX_ONE : supply.plus(melted).div(supply);
     }
 
     /// Redeems up to `maxBUs` basket units, redeeming from the oldest vault first.

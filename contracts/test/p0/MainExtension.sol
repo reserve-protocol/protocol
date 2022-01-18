@@ -79,7 +79,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && address(rsrAsset()) != address(0);
         ok = ok && address(compAsset()) != address(0);
         ok = ok && address(aaveAsset()) != address(0);
-        ok = ok && _historicalBasketDilution.gt(FIX_ZERO);
         ok = ok && _assets.length() > 0;
         ok = ok && address(vault()) != address(0);
         ok = ok && vaults.length > 0;

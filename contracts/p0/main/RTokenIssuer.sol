@@ -57,12 +57,6 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
         _processSlowIssuance();
     }
 
-    /// Process pending issuances before parameter update.
-    function beforeUpdate() public virtual override(Mixin, VaultHandlerP0) {
-        super.beforeUpdate();
-        _processSlowIssuance();
-    }
-
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     function issue(uint256 amount) public override notPaused {

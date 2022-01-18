@@ -82,8 +82,6 @@ interface IMixin {
     function init(ConstructorArgs calldata args) external;
 
     function poke() external;
-
-    function beforeUpdate() external;
 }
 
 interface IPausable {
@@ -227,8 +225,6 @@ interface IVaultHandler {
     function fullyCapitalized() external view returns (bool);
 
     function vault() external view returns (IVault);
-
-    function vaults(uint256 index) external view returns (IVault);
 
     function numVaults() external view returns (uint256);
 }

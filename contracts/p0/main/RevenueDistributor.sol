@@ -31,7 +31,6 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
     /// main.revenueFurnace() and main.stRSR().
     function setDistribution(address dest, RevenueShare memory share) public override onlyOwner {
-        beforeUpdate();
         _setDistribution(dest, share);
     }
 
