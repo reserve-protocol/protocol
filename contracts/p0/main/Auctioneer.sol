@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
@@ -31,9 +28,9 @@ contract AuctioneerP0 is
     BasketHandlerP0,
     IAuctioneer
 {
-    using EnumerableSet for EnumerableSet.AddressSet;
+    using BasketLib for Basket;
     using FixLib for Fix;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     BackingTraderP0 public backingTrader;
     RevenueTraderP0 public rsrTrader;
@@ -105,8 +102,17 @@ contract AuctioneerP0 is
         return address(rTokenTrader);
     }
 
-    /// The last line of defense after we've run out of RSR to seize
+    /// Mint RToken and send to BackingTrader in order to recapitalize.
     function _diluteRTokenHolders() internal {
-        // TODO
+        Fix heldBUs = _basket.maxIssuableBUs(address(this)); // {BU}
+        Fix missingBUs = basketUnits[address(rToken())].minus(heldBUs); // {BU}
+        assert(missingBUs.gt(FIX_ZERO));
+
+        // {none} = ({BU} + {BU}) / {BU}
+        Fix dilution = missingBUs.plus(heldBUs).div(heldBUs);
+
+        // {qRTok} = {qRTok} * {none}
+        uint256 toMint = dilution.mulu(rToken().totalSupply()).ceil();
+        rToken().mint(address(backingTrader), toMint);
     }
 }

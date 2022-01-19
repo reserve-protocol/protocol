@@ -110,8 +110,8 @@ contract BackingTraderP0 is TraderP0 {
         }
     }
 
-    /// Composes the largest collateral-for-collateral trade by identifying
-    /// the most in-surplus and most in-deficit assets.
+    /// Compute the largest collateral-for-collateral trade by identifying
+    /// the most in-surplus and most in-deficit assets relative to the BU target.
     /// @return surplus Surplus asset
     /// @return deficit Deficit asset
     /// @return surplusAmount {qSellTok} Surplus amount
@@ -131,8 +131,7 @@ contract BackingTraderP0 is TraderP0 {
         // Calculate surplus and deficits relative to the BU target.
         Fix[] memory surpluses = new Fix[](assets.length);
         Fix[] memory deficits = new Fix[](assets.length);
-        // TODO uint256[] memory amounts = main.basketCollateralQuantities();
-        uint256[] memory amounts = new uint256[](assets.length);
+        uint256[] memory amounts = main.basketCollateralQuantities(targetBUs);
         for (uint256 i = 0; i < assets.length; i++) {
             // {qTok}
             Fix bal = toFix(IERC20(assets[i].erc20()).balanceOf(address(this)));
