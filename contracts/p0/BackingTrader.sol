@@ -177,17 +177,17 @@ contract BackingTraderP0 is TraderP0 {
     }
 
     function _tryCreateBUs() private {
-        // TODO all of this is incoherent now
         // Create new BUs
-        // uint256 issuable = main.vault().maxIssuable(address(this));
-        // address[] memory erc20s = main.backingTokens();
-        // if (issuable > 0) {
-        //     uint256[] memory amounts = main.quote(issuable);
-        //     for (uint256 i = 0; i < amounts.length; i++) {
-        //         IERC20Metadata(erc20s[i]).safeApprove(address(main), amounts[i]);
-        //     }
-        //     main.vault().issue(address(main), issuable);
-        //     targetBUs = targetBUs.minus(fixMin(toFix(issuable), targetBUs));
-        // }
+        uint256 issuable = main.maxIssuable(address(this));
+        address[] memory erc20s = main.backingTokens();
+        if (issuable > 0) {
+            uint256[] memory amounts = main.quote(issuable);
+            for (uint256 i = 0; i < amounts.length; i++) {
+                IERC20Metadata(erc20s[i]).safeApprove(address(main), amounts[i]);
+            }
+            // TODO
+            // main.vault().issue(address(main), issuable);
+            targetBUs = targetBUs.minus(fixMin(toFix(issuable), targetBUs));
+        }
     }
 }

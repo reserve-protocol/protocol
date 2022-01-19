@@ -20,7 +20,8 @@ contract RTokenAssetP0 is AssetP0 {
 
     /// @return {attoUSD/qRTok}
     function price() public view override returns (Fix) {
-        // {} = {attoUSD/BU} * {BU/rTok} / {qBU/BU}
+        // TODO This looks right, but something is probably broken elsewhere because it's not
+        // {attoUSD/qRTok} = {attoUSD/BU} * {BU/rTok} / {qRTok/rTok}
         return main.basketPrice().mul(main.baseFactor()).shiftLeft(-int8(erc20.decimals()));
     }
 }

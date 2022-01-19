@@ -54,7 +54,7 @@ library BasketLib {
     }
 
     /// @return max {BU} The maximum number of basket units that `account` can create
-    function maxBUs(Basket storage self, address account) internal view returns (Fix max) {
+    function maxBUsIssuable(Basket storage self, address account) internal view returns (Fix max) {
         max = FIX_MAX;
         for (uint256 i = 0; i < self.size; i++) {
             // {qTok}

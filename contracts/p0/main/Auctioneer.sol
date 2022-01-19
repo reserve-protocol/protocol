@@ -83,7 +83,8 @@ contract AuctioneerP0 is
             if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
                 /* If we're *here*, then we're out of capital we can trade for RToken backing,
                  * including staked RSR. There's only one option left to us... */
-                _rTokenHaircut();
+                // TODO
+                // _rTokenHaircut();
             }
         }
 
@@ -104,14 +105,5 @@ contract AuctioneerP0 is
 
     function rTokenTraderAddr() external view override returns (address) {
         return address(rTokenTrader);
-    }
-
-    function _rTokenHaircut() private {
-        // The ultimate endgame: a haircut for RToken holders.
-        // TODO: This is no longer a thing
-        // beforeUpdate();
-        // _historicalBasketDilution = _meltingFactor().mulu(rToken().totalSupply()).divu(
-        //     basketUnits(address(rToken()))
-        // );
     }
 }

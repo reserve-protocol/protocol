@@ -241,8 +241,8 @@ interface IAuctioneerEvents {
         uint256 indexed auctionId,
         address indexed sell,
         address indexed buy,
-        uint256 sellAmount, // {qSellTok}
-        uint256 minBuyAmount // {qBuyTok}
+        uint256 sellAmount,
+        uint256 minBuyAmount
     );
 
     /// Emitted after an auction ends

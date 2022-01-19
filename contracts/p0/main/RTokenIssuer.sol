@@ -114,7 +114,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
 
     /// @return How much RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
-        return fromBUs(_basket.maxBUs(account));
+        return fromBUs(_basket.maxBUsIssuable(account));
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
