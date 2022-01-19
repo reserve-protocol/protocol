@@ -75,16 +75,8 @@ describe('VaultP0 contract', () => {
     ;[owner, addr1, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({
-      compToken,
-      compoundMock,
-      aaveToken,
-      erc20s,
-      collateral,
-      basket,
-      vault,
-      main,
-    } = await loadFixture(defaultFixture))
+    ;({ compToken, compoundMock, aaveToken, erc20s, collateral, basket, vault, main } =
+      await loadFixture(defaultFixture))
 
     // Get assets and tokens
     collateral0 = basket[0]
@@ -127,7 +119,6 @@ describe('VaultP0 contract', () => {
       const assetAddress = await vault.collateralAt(index)
       const assetInstance = <CollateralP0>await ethers.getContractAt('CollateralP0', assetAddress)
       expect(await assetInstance.erc20()).to.equal(assetInfo.erc20)
-      expect(await assetInstance.decimals()).to.equal(assetInfo.decimals)
       expect(await vault.quantity(assetInstance.address)).to.equal(assetInfo.quantity)
     }
 
@@ -137,28 +128,24 @@ describe('VaultP0 contract', () => {
       // Token at 0
       expectAsset(0, {
         erc20: token0.address,
-        decimals: await token0.decimals(),
         quantity: quantities[0],
       })
 
       // Token at 1
       expectAsset(1, {
         erc20: token1.address,
-        decimals: await token1.decimals(),
         quantity: quantities[1],
       })
 
       // Token at 2
       expectAsset(2, {
         erc20: token2.address,
-        decimals: await token2.decimals(),
         quantity: quantities[2],
       })
 
       // Token at 3
       expectAsset(3, {
         erc20: token3.address,
-        decimals: await token3.decimals(),
         quantity: quantities[3],
       })
     })

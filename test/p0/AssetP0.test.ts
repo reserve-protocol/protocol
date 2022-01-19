@@ -3,12 +3,10 @@ import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { fp } from '../../common/numbers'
-import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
-import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
+import { AssetP0 } from '../../typechain/AssetP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainP0 } from '../../typechain/MainP0'
-import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
 import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
@@ -36,9 +34,9 @@ describe('AssetsP0 contracts', () => {
   let usdcAsset: Collateral
   let aTokenAsset: Collateral
   let cTokenAsset: Collateral
-  let rsrAsset: RSRAssetP0
-  let compAsset: COMPAssetP0
-  let aaveAsset: AAVEAssetP0
+  let rsrAsset: AssetP0
+  let compAsset: AssetP0
+  let aaveAsset: AssetP0
   let rTokenAsset: RTokenAssetP0
 
   // Main and Vault
@@ -70,6 +68,7 @@ describe('AssetsP0 contracts', () => {
       vault,
       main,
       rToken,
+      rTokenAsset,
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
@@ -83,14 +82,6 @@ describe('AssetsP0 contracts', () => {
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
     cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenAsset.erc20())
-
-    // Setup Main
-    await vault.connect(owner).setMain(main.address)
-
-    // Get RToken Asset
-    rTokenAsset = <RTokenAssetP0>(
-      await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
-    )
   })
 
   describe('Deployment', () => {
