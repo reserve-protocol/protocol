@@ -224,9 +224,7 @@ interface IBasketHandler {
 
     function fullyCapitalized() external view returns (bool);
 
-    // TODO These are only here because the traders are living outside main. To confirm.
-    function basketCollateralQuantities() external view returns (uint256[] memory);
-
+    // This is only here for the Adapter (generic tests)
     function basketReferenceAmounts() external view returns (Fix[] memory);
 }
 

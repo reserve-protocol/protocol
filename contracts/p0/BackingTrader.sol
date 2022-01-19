@@ -132,7 +132,8 @@ contract BackingTraderP0 is TraderP0 {
         // Calculate surplus and deficits relative to the BU target.
         Fix[] memory surpluses = new Fix[](assets.length);
         Fix[] memory deficits = new Fix[](assets.length);
-        uint256[] memory amounts = main.basketCollateralQuantities();
+        // TODO uint256[] memory amounts = main.basketCollateralQuantities();
+        uint256[] memory amounts = new uint256[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {
             // {qTok}
             Fix bal = toFix(IERC20(assets[i].erc20()).balanceOf(address(this)));
