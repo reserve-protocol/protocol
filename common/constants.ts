@@ -18,6 +18,13 @@ export enum Mood {
   TRADING,
 }
 
+// @dev Must match `IAsset.CollateralStatus`.
+export enum CollateralStatus {
+  SOUND,
+  IFFY,
+  DISABLED,
+}
+
 // @dev Must match `Fixed.RoundingApproach`.
 export enum RoundingApproach {
   FLOOR,
