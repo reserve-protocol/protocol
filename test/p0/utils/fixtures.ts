@@ -1,16 +1,17 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
-
-import { Mood } from '../../../common/constants'
 import { expectInReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
 import { AaveLendingAddrProviderMockP0 } from '../../../typechain/AaveLendingAddrProviderMockP0'
 import { AaveLendingPoolMockP0 } from '../../../typechain/AaveLendingPoolMockP0'
 import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
+import { AaveOracle } from '../../../typechain/AaveOracle'
+import { AssetP0 } from '../../../typechain/AssetP0'
 import { ATokenCollateralP0 } from '../../../typechain/ATokenCollateralP0'
 import { CollateralP0 } from '../../../typechain/CollateralP0'
 import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
+import { CompoundOracle } from '../../../typechain/CompoundOracle'
 import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
 import { CTokenCollateralP0 } from '../../../typechain/CTokenCollateralP0'
 import { CTokenMock } from '../../../typechain/CTokenMock'
@@ -19,6 +20,7 @@ import { ERC20Mock } from '../../../typechain/ERC20Mock'
 import { FurnaceP0 } from '../../../typechain/FurnaceP0'
 import { MainP0 } from '../../../typechain/MainP0'
 import { MarketMock } from '../../../typechain/MarketMock'
+import { RTokenAssetP0 } from '../../../typechain/RTokenAssetP0'
 import { RTokenP0 } from '../../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../../typechain/StRSRP0'
@@ -50,7 +52,6 @@ export interface IRevenueShare {
 
 interface RSRFixture {
   rsr: ERC20Mock
-  rsrAsset: RSRAssetP0
 }
 
 async function rsrFixture(): Promise<RSRFixture> {
@@ -58,41 +59,34 @@ async function rsrFixture(): Promise<RSRFixture> {
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const rsr: ERC20Mock = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
 
-  const RSRAssetFactory: ContractFactory = await ethers.getContractFactory('RSRAssetP0')
-  const rsrAsset: RSRAssetP0 = <RSRAssetP0>await RSRAssetFactory.deploy(rsr.address)
-
-  return { rsr, rsrAsset }
+  return { rsr }
 }
 
 interface COMPAAVEFixture {
   weth: ERC20Mock
   compToken: ERC20Mock
-  compAsset: COMPAssetP0
-  compoundOracle: CompoundOracleMockP0
+  compoundOracleInternal: CompoundOracleMockP0
   compoundMock: ComptrollerMockP0
+  compoundOracle: CompoundOracle
   aaveToken: ERC20Mock
-  aaveAsset: AAVEAssetP0
-  aaveOracle: AaveOracleMockP0
+  aaveOracleInternal: AaveOracleMockP0
   aaveMock: AaveLendingPoolMockP0
+  aaveOracle: AaveOracle
 }
 
 async function compAaveFixture(): Promise<COMPAAVEFixture> {
   // Deploy COMP token and Asset
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const compToken: ERC20Mock = <ERC20Mock>await ERC20.deploy('COMP Token', 'COMP')
-  const COMPAssetFactory: ContractFactory = await ethers.getContractFactory('COMPAssetP0')
-  const compAsset: COMPAssetP0 = <COMPAssetP0>await COMPAssetFactory.deploy(compToken.address)
 
   // Deploy AAVE token and Asset
   const aaveToken: ERC20Mock = <ERC20Mock>await ERC20.deploy('AAVE Token', 'AAVE')
-  const AAVEAssetFactory: ContractFactory = await ethers.getContractFactory('AAVEAssetP0')
-  const aaveAsset: AAVEAssetP0 = <AAVEAssetP0>await AAVEAssetFactory.deploy(aaveToken.address)
 
   // Deploy Comp and Aave Oracle Mocks
   const CompoundOracleMockFactory: ContractFactory = await ethers.getContractFactory(
     'CompoundOracleMockP0'
   )
-  const compoundOracle: CompoundOracleMockP0 = <CompoundOracleMockP0>(
+  const compoundOracleInternal: CompoundOracleMockP0 = <CompoundOracleMockP0>(
     await CompoundOracleMockFactory.deploy()
   )
 
@@ -100,13 +94,18 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
     'ComptrollerMockP0'
   )
   const compoundMock: ComptrollerMockP0 = <ComptrollerMockP0>(
-    await ComptrollerMockFactory.deploy(compoundOracle.address)
+    await ComptrollerMockFactory.deploy(compoundOracleInternal.address)
   )
   await compoundMock.setCompToken(compToken.address)
 
+  const CompoundOracleFactory: ContractFactory = await ethers.getContractFactory('CompoundOracle')
+  const compoundOracle: CompoundOracle = <CompoundOracle>(
+    await CompoundOracleFactory.deploy(compoundMock.address)
+  )
+
   const AaveOracleMockFactory: ContractFactory = await ethers.getContractFactory('AaveOracleMockP0')
   const weth: ERC20Mock = <ERC20Mock>await ERC20.deploy('Wrapped ETH', 'WETH')
-  const aaveOracle: AaveOracleMockP0 = <AaveOracleMockP0>(
+  const aaveOracleInternal: AaveOracleMockP0 = <AaveOracleMockP0>(
     await AaveOracleMockFactory.deploy(weth.address)
   )
 
@@ -114,7 +113,7 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
     'AaveLendingAddrProviderMockP0'
   )
   const aaveAddrProvider: AaveLendingAddrProviderMockP0 = <AaveLendingAddrProviderMockP0>(
-    await AaveAddrProviderFactory.deploy(aaveOracle.address)
+    await AaveAddrProviderFactory.deploy(aaveOracleInternal.address)
   )
 
   const AaveLendingPoolMockFactory: ContractFactory = await ethers.getContractFactory(
@@ -124,16 +123,21 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
     await AaveLendingPoolMockFactory.deploy(aaveAddrProvider.address)
   )
 
+  const AaveOracleFactory: ContractFactory = await ethers.getContractFactory('AaveOracle')
+  const aaveOracle: AaveOracle = <AaveOracle>(
+    await AaveOracleFactory.deploy(compoundMock.address, aaveMock.address)
+  )
+
   return {
     weth,
     compToken,
-    compAsset,
-    compoundOracle,
+    compoundOracleInternal,
     compoundMock,
+    compoundOracle,
     aaveToken,
-    aaveAsset,
-    aaveOracle,
+    aaveOracleInternal,
     aaveMock,
+    aaveOracle,
   }
 }
 
@@ -154,7 +158,11 @@ interface VaultFixture {
   vault: VaultP0
 }
 
-async function vaultFixture(): Promise<VaultFixture> {
+async function vaultFixture(
+  main: MainP0,
+  compoundOracle: CompoundOracle,
+  aaveOracle: AaveOracle
+): Promise<VaultFixture> {
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
@@ -166,20 +174,39 @@ async function vaultFixture(): Promise<VaultFixture> {
   // Deploy all potential collateral assets
   const makeVanilla = async (symbol: string): Promise<[ERC20Mock, CollateralP0]> => {
     const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(symbol + ' Token', symbol)
-    return [erc20, <CollateralP0>await CollateralFactory.deploy(erc20.address)]
+    return [
+      erc20,
+      <CollateralP0>(
+        await CollateralFactory.deploy(erc20.address, main.address, compoundOracle.address)
+      ),
+    ]
   }
   const makeSixDecimal = async (symbol: string): Promise<[USDCMock, CollateralP0]> => {
     const erc20: USDCMock = <USDCMock>await USDC.deploy(symbol + ' Token', symbol)
-    return [erc20, <CollateralP0>await CollateralFactory.deploy(erc20.address)]
+    return [
+      erc20,
+      <CollateralP0>await CollateralFactory.deploy(erc20.address, main.address, aaveOracle.address),
+    ]
   }
   const makeCToken = async (
     symbol: string,
-    underlyingAddress: string
+    underlyingAddress: string,
+    underlyingDecimals: number
   ): Promise<[CTokenMock, CTokenCollateralP0]> => {
     const erc20: CTokenMock = <CTokenMock>(
       await CTokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
     )
-    return [erc20, <CTokenCollateralP0>await CTokenCollateralFactory.deploy(erc20.address)]
+    return [
+      erc20,
+      <CTokenCollateralP0>(
+        await CTokenCollateralFactory.deploy(
+          erc20.address,
+          main.address,
+          compoundOracle.address,
+          underlyingDecimals
+        )
+      ),
+    ]
   }
   const makeAToken = async (
     symbol: string,
@@ -188,7 +215,12 @@ async function vaultFixture(): Promise<VaultFixture> {
     const erc20: StaticATokenMock = <StaticATokenMock>(
       await ATokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
     )
-    return [erc20, <ATokenCollateralP0>await ATokenCollateralFactory.deploy(erc20.address)]
+    return [
+      erc20,
+      <ATokenCollateralP0>(
+        await ATokenCollateralFactory.deploy(erc20.address, main.address, aaveOracle.address)
+      ),
+    ]
   }
 
   // Create all possible collateral
@@ -196,9 +228,9 @@ async function vaultFixture(): Promise<VaultFixture> {
   const usdc = await makeSixDecimal('USDC')
   const usdt = await makeVanilla('USDT')
   const busd = await makeVanilla('BUSD')
-  const cdai = await makeCToken('cDAI', dai[0].address)
-  const cusdc = await makeCToken('cUSDC', usdc[0].address)
-  const cusdt = await makeCToken('cUSDT', usdt[0].address)
+  const cdai = await makeCToken('cDAI', dai[0].address, await dai[0].decimals())
+  const cusdc = await makeCToken('cUSDC', usdc[0].address, await usdc[0].decimals())
+  const cusdt = await makeCToken('cUSDT', usdt[0].address, await usdt[0].decimals())
   const adai = await makeAToken('aDAI', dai[0].address)
   const ausdc = await makeAToken('aUSDC', usdc[0].address)
   const ausdt = await makeAToken('aUSDT', usdt[0].address)
@@ -259,7 +291,11 @@ interface DefaultFixture extends RSRAndCompAaveAndVaultAndMarketFixture {
   dist: IRevenueShare
   deployer: DeployerP0
   main: MainP0
+  rsrAsset: AssetP0
+  compAsset: AssetP0
+  aaveAsset: AssetP0
   rToken: RTokenP0
+  rTokenAsset: RTokenAssetP0
   furnace: FurnaceP0
   stRSR: StRSRP0
 }
@@ -267,33 +303,19 @@ interface DefaultFixture extends RSRAndCompAaveAndVaultAndMarketFixture {
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
   owner,
 ]): Promise<DefaultFixture> {
-  const { rsr, rsrAsset } = await rsrFixture()
-  const { erc20s, collateral, basket, vault } = await vaultFixture()
+  const { rsr } = await rsrFixture()
   const {
     weth,
     compToken,
-    compAsset,
-    compoundOracle,
+    compoundOracleInternal,
     compoundMock,
+    compoundOracle,
     aaveToken,
-    aaveAsset,
-    aaveOracle,
+    aaveOracleInternal,
     aaveMock,
+    aaveOracle,
   } = await compAaveFixture()
   const { market } = await marketFixture()
-
-  // Set Default Oracle Prices
-  await compoundOracle.setPrice('ETH', bn('4000e6'))
-  await compoundOracle.setPrice('COMP', bn('1e6'))
-  await aaveOracle.setPrice(weth.address, bn('1e18'))
-  await aaveOracle.setPrice(aaveToken.address, bn('2.5e14'))
-  await aaveOracle.setPrice(compToken.address, bn('2.5e14'))
-  await aaveOracle.setPrice(rsr.address, bn('2.5e14'))
-  for (let i = 0; i < collateral.length; i++) {
-    const erc20 = await ethers.getContractAt('ERC20Mock', await collateral[i].erc20())
-    await compoundOracle.setPrice(await erc20.symbol(), bn('1e6'))
-    await aaveOracle.setPrice(erc20.address, bn('2.5e14'))
-  }
 
   // Setup Config
   const rewardStart: BigNumber = bn(await getLatestBlockTimestamp())
@@ -321,10 +343,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0')
   const deployer: DeployerP0 = <DeployerP0>(
     await DeployerFactory.deploy(
-      rsrAsset.address,
-      compAsset.address,
-      aaveAsset.address,
-      market.address
+      rsr.address,
+      compToken.address,
+      aaveToken.address,
+      market.address,
+      compoundOracle.address,
+      aaveOracle.address
     )
   )
 
@@ -334,12 +358,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       'RTKN RToken',
       'RTKN',
       owner.address,
-      vault.address,
       config,
-      dist,
-      compoundMock.address,
-      aaveMock.address,
-      collateral.map((c) => c.address)
+      dist
+      //collateral.map((c) => c.address)
     )
   ).wait()
 
@@ -347,11 +368,43 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Get Components
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
+  const rsrAsset: AssetP0 = <AssetP0>await ethers.getContractAt('AssetP0', await main.rsrAsset())
+  const compAsset: AssetP0 = <AssetP0>await ethers.getContractAt('AssetP0', await main.compAsset())
+  const aaveAsset: AssetP0 = <AssetP0>await ethers.getContractAt('AssetP0', await main.aaveAsset())
   const rToken: RTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', await main.rToken())
+  const rTokenAsset: RTokenAssetP0 = <RTokenAssetP0>(
+    await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+  )
+
   const furnace: FurnaceP0 = <FurnaceP0>(
     await ethers.getContractAt('FurnaceP0', await main.revenueFurnace())
   )
   const stRSR: StRSRP0 = <StRSRP0>await ethers.getContractAt('StRSRP0', await main.stRSR())
+
+  // Deploy vault and collateral for Main
+  const { erc20s, collateral, basket, vault } = await vaultFixture(main, compoundOracle, aaveOracle)
+
+  // Set Default Oracle Prices
+  await compoundOracleInternal.setPrice('ETH', bn('4000e6'))
+  await compoundOracleInternal.setPrice('COMP', bn('1e6'))
+  await aaveOracleInternal.setPrice(weth.address, bn('1e18'))
+  await aaveOracleInternal.setPrice(aaveToken.address, bn('2.5e14'))
+  await aaveOracleInternal.setPrice(compToken.address, bn('2.5e14'))
+  await aaveOracleInternal.setPrice(rsr.address, bn('2.5e14'))
+  for (let i = 0; i < collateral.length; i++) {
+    const erc20 = await ethers.getContractAt('ERC20Mock', await collateral[i].erc20())
+    await compoundOracleInternal.setPrice(await erc20.symbol(), bn('1e6'))
+    await aaveOracleInternal.setPrice(erc20.address, bn('2.5e14'))
+
+    // Add approved Collateral
+    await main.connect(owner).addAsset(collateral[i].address)
+  }
+
+  // Switch to real vault
+  await main.connect(owner).switchVault(vault.address)
+
+  // Unpause
+  await main.connect(owner).unpause()
 
   return {
     rsr,
@@ -359,10 +412,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     weth,
     compToken,
     compAsset,
+    compoundOracleInternal,
     compoundOracle,
     compoundMock,
     aaveToken,
     aaveAsset,
+    aaveOracleInternal,
     aaveOracle,
     aaveMock,
     erc20s,
@@ -374,6 +429,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     deployer,
     main,
     rToken,
+    rTokenAsset,
     furnace,
     stRSR,
     market,
