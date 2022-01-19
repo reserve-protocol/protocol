@@ -40,21 +40,21 @@ library BasketLib {
     }
 
     /// @param amtBUs {BU}
-    /// @return amounts {qTok} A list of token quantities that are worth approximately `amtBUs`
-    function toCollateralAmounts(
+    /// @return quantities {qTok} A list of token quantities that are worth approximately `amtBUs`
+    function toCollateralQuantities(
         Basket storage self,
         Fix amtBUs,
         RoundingApproach rounding
-    ) internal view returns (uint256[] memory amounts) {
-        amounts = new uint256[](self.size);
+    ) internal view returns (uint256[] memory quantities) {
+        quantities = new uint256[](self.size);
         for (uint256 i = 0; i < self.size; i++) {
             // {qTok} = {BU} * {qTok/BU}
-            amounts[i] = amtBUs.mul(quantity(self, self.collateral[i])).toUint(rounding);
+            quantities[i] = amtBUs.mul(quantity(self, self.collateral[i])).toUint(rounding);
         }
     }
 
     /// @return max {BU} The maximum number of basket units that `account` can create
-    function maxBUsIssuable(Basket storage self, address account) internal view returns (Fix max) {
+    function maxIssuableBUs(Basket storage self, address account) internal view returns (Fix max) {
         max = FIX_MAX;
         for (uint256 i = 0; i < self.size; i++) {
             // {qTok}

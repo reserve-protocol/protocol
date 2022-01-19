@@ -60,8 +60,27 @@ contract BasketHandlerP0 is
         _basket.set(collateral, amounts);
     }
 
+    /// Anyone can create BUs for the BasketHandler if they would like to!
+    function donateBUs(Fix amtBUs) external override {
+        _issueBUs(_msgSender(), address(rToken()), amtBUs);
+    }
+
+    /// @return attoUSD {attoUSD/BU} The price of a whole BU in attoUSD
+    function basketPrice() external view override returns (Fix attoUSD) {
+        return _basket.price();
+    }
+
+    /// @return Whether the vault is fully capitalized or not
     function fullyCapitalized() public view override returns (bool) {
-        // TODO Sum assets in terms of reference units and compare against targets
+        Fix amtBUs = basketUnits[address(rToken())];
+        for (uint256 i = 0; i < _basket.size; i++) {
+            uint256 found = _basket.collateral[i].erc20().balanceOf(address(this));
+            // {qTok} = {qTok/BU} * {BU}
+            uint256 required = _basket.quantity(_basket.collateral[i]).mul(amtBUs).ceil();
+            if (found < required) {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -84,19 +103,6 @@ contract BasketHandlerP0 is
         return supply.eq(FIX_ZERO) ? FIX_ONE : supply.plus(melted).div(supply);
     }
 
-    /// @return quantities {qTok/BU} The quantities of collateral required per BU
-    function basketCollateralQuantities()
-        external
-        view
-        override
-        returns (uint256[] memory quantities)
-    {
-        quantities = new uint256[](_basket.size);
-        for (uint256 i = 0; i < _basket.size; i++) {
-            quantities[i] = _basket.quantity(_basket.collateral[i]).ceil();
-        }
-    }
-
     /// @return amounts {attoRef/BU} The amounts of collateral required per BU
     function basketReferenceAmounts() external view override returns (Fix[] memory amounts) {
         amounts = new Fix[](_basket.size);
@@ -105,9 +111,20 @@ contract BasketHandlerP0 is
         }
     }
 
-    /// @return attoUSD {attoUSD/BU} The price of a whole BU in attoUSD
-    function basketPrice() external view override returns (Fix attoUSD) {
-        return _basket.price();
+    /// @return {qTok} The basket collateral quantities corresponding to an amount of BUs
+    function basketCollateralQuantities(Fix amtBUs)
+        external
+        view
+        override
+        returns (uint256[] memory)
+    {
+        return _basket.toCollateralQuantities(amtBUs, RoundingApproach.CEIL);
+    }
+
+    /// @return The max BUs the account can issue
+    function maxIssuableBUs(address account) external view override returns (Fix) {
+        // TODO There's inelegance here -- both this function and `donateBUs` above smell weird
+        return _basket.maxIssuableBUs(account);
     }
 
     // ==== Internal ====
@@ -139,7 +156,7 @@ contract BasketHandlerP0 is
         address to,
         Fix amtBUs
     ) internal {
-        uint256[] memory amounts = _basket.toCollateralAmounts(amtBUs, RoundingApproach.CEIL);
+        uint256[] memory amounts = _basket.toCollateralQuantities(amtBUs, RoundingApproach.CEIL);
         for (uint256 i = 0; i < amounts.length; i++) {
             _basket.collateral[i].erc20().safeTransferFrom(from, to, amounts[i]);
         }
@@ -154,8 +171,8 @@ contract BasketHandlerP0 is
         address to,
         Fix amtBUs
     ) internal returns (Fix) {
-        amtBUs = fixMin(amtBUs, basketUnits[address(this)]);
-        uint256[] memory amounts = _basket.toCollateralAmounts(amtBUs, RoundingApproach.FLOOR);
+        amtBUs = fixMin(amtBUs, basketUnits[from]);
+        uint256[] memory amounts = _basket.toCollateralQuantities(amtBUs, RoundingApproach.FLOOR);
         for (uint256 i = 0; i < amounts.length; i++) {
             _basket.collateral[i].erc20().safeTransfer(to, amounts[i]);
         }

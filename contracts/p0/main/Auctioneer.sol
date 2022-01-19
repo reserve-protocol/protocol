@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
@@ -31,9 +28,9 @@ contract AuctioneerP0 is
     BasketHandlerP0,
     IAuctioneer
 {
-    using EnumerableSet for EnumerableSet.AddressSet;
+    using BasketLib for Basket;
     using FixLib for Fix;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     BackingTraderP0 public backingTrader;
     RevenueTraderP0 public rsrTrader;
@@ -56,7 +53,6 @@ contract AuctioneerP0 is
         // Backing Trader
         backingTrader.poke();
 
-        // TODO: Move logic into BackingTrader by making BackingTrader able to access Main's BUs
         if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
             /* If we're here, then we need to run more auctions to capitalize the current vault. The
                BackingTrader will run those auctions, but it needs to be given BUs from old vaults,
@@ -83,8 +79,7 @@ contract AuctioneerP0 is
             if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
                 /* If we're *here*, then we're out of capital we can trade for RToken backing,
                  * including staked RSR. There's only one option left to us... */
-                // TODO
-                // _rTokenHaircut();
+                _diluteRTokenHolders();
             }
         }
 
@@ -105,5 +100,19 @@ contract AuctioneerP0 is
 
     function rTokenTraderAddr() external view override returns (address) {
         return address(rTokenTrader);
+    }
+
+    /// Mint RToken and send to BackingTrader in order to recapitalize.
+    function _diluteRTokenHolders() internal {
+        Fix heldBUs = _basket.maxIssuableBUs(address(this)); // {BU}
+        Fix missingBUs = basketUnits[address(rToken())].minus(heldBUs); // {BU}
+        assert(missingBUs.gt(FIX_ZERO));
+
+        // {none} = ({BU} + {BU}) / {BU}
+        Fix dilution = missingBUs.plus(heldBUs).div(heldBUs);
+
+        // {qRTok} = {qRTok} * {none}
+        uint256 toMint = dilution.mulu(rToken().totalSupply()).ceil();
+        rToken().mint(address(backingTrader), toMint);
     }
 }
