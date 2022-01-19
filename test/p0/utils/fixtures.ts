@@ -176,9 +176,7 @@ async function vaultFixture(
     const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(symbol + ' Token', symbol)
     return [
       erc20,
-      <CollateralP0>(
-        await CollateralFactory.deploy(erc20.address, main.address, compoundOracle.address)
-      ),
+      <CollateralP0>await CollateralFactory.deploy(erc20.address, main.address, aaveOracle.address),
     ]
   }
   const makeSixDecimal = async (symbol: string): Promise<[USDCMock, CollateralP0]> => {
@@ -264,7 +262,7 @@ async function vaultFixture(
 
   // Create the initial basket
   const basket = [dai[1], usdc[1], adai[1], cdai[1]]
-  const quantities = [bn('2.5e17'), bn('2.5e5'), bn('2.5e17'), bn('2.5e7')]
+  const quantities = [bn('2.5e17'), bn('2.5e17'), bn('2.5e17'), bn('2.5e17')]
 
   const VaultFactory: ContractFactory = await ethers.getContractFactory('VaultP0')
   const vault: VaultP0 = <VaultP0>await VaultFactory.deploy(
