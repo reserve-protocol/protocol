@@ -45,12 +45,12 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     Fix internal _historicalBasketDilution; // the product of all historical basket dilutions
     Fix internal _prevBasketPrice; // {USD/qBU} redemption value of the basket at last update
 
-    Basket basket;
+    Basket public basket;
 
     // basket templates:
     // - a basket template is a collection of template elements, whose weights should add up to 1.
     // - the order of the templates array is not guaranteed; deletion may occur via "swap-and-pop"
-    Template[] templates;
+    Template[] public templates;
 
     // TODO: eliminate vaults; use only basket.
     IVault[] public override vaults;
@@ -124,8 +124,7 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     /// Add the new basket template `template`
     function addBasketTemplate(Template memory template) public {
         /// @dev A manual copy necessary here because moving from memory to storage.
-        Template storage new_t = templates.push();
-        _copyTemplateToStorage(template, new_t);
+        _copyTemplateToStorage(template, templates.push());
     }
 
     /// Replace the template at `index` with `template`.
@@ -141,20 +140,18 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         templates.pop();
     }
 
-    function _copyTemplateToStorage(Template memory mem_tmpl, Template storage storage_tmpl)
-        private
-    {
-        storage_tmpl.govScore = mem_tmpl.govScore;
-        delete storage_tmpl.slots;
-        for (uint256 i = 0; i < mem_tmpl.slots.length; i++) {
-            storage_tmpl.slots.push(mem_tmpl.slots[i]);
+    function _copyTemplateToStorage(Template memory memTmpl, Template storage storageTmpl) private {
+        storageTmpl.govScore = memTmpl.govScore;
+        delete storageTmpl.slots;
+        for (uint256 i = 0; i < memTmpl.slots.length; i++) {
+            storageTmpl.slots.push(memTmpl.slots[i]);
         }
     }
 
-    /// The highest-scoring collateral for each role, effectively used as a local variable in _setNextBasket.
-    mapping(bytes32 => ICollateral) collFor;
-    /// The highest collateral score to fill each role, effectively used as a local variable in _setNextBasket.
-    mapping(bytes32 => Fix) score;
+    /// The highest-scoring collateral for each role; used only in _setNextBasket.
+    mapping(bytes32 => ICollateral) private collFor;
+    /// The highest collateral score to fill each role; used only in _setNextBasket.
+    mapping(bytes32 => Fix) private score;
 
     function _setNextBasket() private {
         // Find _score_ and _collFor_
