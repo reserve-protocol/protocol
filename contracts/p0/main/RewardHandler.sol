@@ -52,6 +52,7 @@ contract RewardHandlerP0 is
         uint256 aaveBalStart = aaveAsset().erc20().balanceOf(address(this));
         (uint256 prevRewards, ) = _whenRewards(block.timestamp);
         if (prevRewards > _rewardsLastClaimed && fullyCapitalized()) {
+            _rewardsLastClaimed = prevRewards;
             _takeProfits();
 
             // Claim + Sweep COMP/AAVE from self + traders
@@ -59,7 +60,6 @@ contract RewardHandlerP0 is
             rsrTrader.claimAndSweepRewards();
             rTokenTrader.claimAndSweepRewards();
             RewardsLib.claimAndSweepRewards(address(this));
-            _rewardsLastClaimed = prevRewards;
         }
         uint256 compDelta = compAsset().erc20().balanceOf(address(this)) - compBalStart;
         uint256 aaveDelta = aaveAsset().erc20().balanceOf(address(this)) - aaveBalStart;
@@ -81,7 +81,7 @@ contract RewardHandlerP0 is
 
     /// Take a portion of backing collateral as profits and split to traders
     function _takeProfits() private {
-        Fix amtBUs = basketUnits[address(this)];
+        Fix amtBUs = basketUnits[address(rToken())];
         for (uint256 i = 0; i < _basket.size; i++) {
             uint256 found = _basket.collateral[i].erc20().balanceOf(address(this));
             // {qTok} = {qTok/BU} * {BU}

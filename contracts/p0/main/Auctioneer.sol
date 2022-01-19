@@ -56,7 +56,6 @@ contract AuctioneerP0 is
         // Backing Trader
         backingTrader.poke();
 
-        // TODO: Move logic into BackingTrader by making BackingTrader able to access Main's BUs
         if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
             /* If we're here, then we need to run more auctions to capitalize the current vault. The
                BackingTrader will run those auctions, but it needs to be given BUs from old vaults,
@@ -83,8 +82,7 @@ contract AuctioneerP0 is
             if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
                 /* If we're *here*, then we're out of capital we can trade for RToken backing,
                  * including staked RSR. There's only one option left to us... */
-                // TODO
-                // _rTokenHaircut();
+                _diluteRTokenHolders();
             }
         }
 
@@ -105,5 +103,10 @@ contract AuctioneerP0 is
 
     function rTokenTraderAddr() external view override returns (address) {
         return address(rTokenTrader);
+    }
+
+    /// The last line of defense after we've run out of RSR to seize
+    function _diluteRTokenHolders() internal {
+        // TODO
     }
 }

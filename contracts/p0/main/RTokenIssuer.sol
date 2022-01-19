@@ -76,7 +76,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
             blockStartedAt: block.number,
             amount: amount,
             amtBUs: amtBUs,
-            deposits: _basket.toCollateralAmounts(amtBUs, RoundingApproach.CEIL),
+            deposits: _basket.toCollateralQuantities(amtBUs, RoundingApproach.CEIL),
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
@@ -109,12 +109,12 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
 
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) public view override returns (uint256[] memory) {
-        return _basket.toCollateralAmounts(toBUs(amount), RoundingApproach.CEIL);
+        return _basket.toCollateralQuantities(toBUs(amount), RoundingApproach.CEIL);
     }
 
     /// @return How much RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
-        return fromBUs(_basket.maxBUsIssuable(account));
+        return fromBUs(_basket.maxIssuableBUs(account));
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken

@@ -214,6 +214,8 @@ interface IBasketHandler {
 
     function setBasket(ICollateral[] calldata collateral, Fix[] calldata amounts) external;
 
+    function donateBUs(Fix amtBUs) external;
+
     function toBUs(uint256 amount) external view returns (Fix);
 
     function fromBUs(Fix amtBUs) external view returns (uint256);
@@ -226,6 +228,11 @@ interface IBasketHandler {
 
     // This is only here for the Adapter (generic tests)
     function basketReferenceAmounts() external view returns (Fix[] memory);
+
+    // These are only here for the BackingTrader
+    function basketCollateralQuantities(Fix amtBUs) external view returns (uint256[] memory);
+
+    function maxIssuableBUs(address account) external view returns (Fix);
 }
 
 interface IAuctioneerEvents {

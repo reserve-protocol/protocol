@@ -90,6 +90,7 @@ contract BackingTraderP0 is TraderP0 {
         }
         if (trade) {
             _launchAuction(auction);
+            return;
         }
 
         // If we're here, all the surplus is dust and we're still recapitalizing
@@ -109,10 +110,8 @@ contract BackingTraderP0 is TraderP0 {
         }
     }
 
-    /// Determines what the largest collateral-for-collateral trade is.
-    /// Algorithm:
-    ///    1. Target a number of basket units, based on total value held by all collateral.
-    ///    2. Choose the most in-surplus and most in-deficit assets for trading.
+    /// Composes the largest collateral-for-collateral trade by identifying
+    /// the most in-surplus and most in-deficit assets.
     /// @return surplus Surplus asset
     /// @return deficit Deficit asset
     /// @return surplusAmount {qSellTok} Surplus amount
@@ -138,7 +137,7 @@ contract BackingTraderP0 is TraderP0 {
             // {qTok}
             Fix bal = toFix(IERC20(assets[i].erc20()).balanceOf(address(this)));
 
-            Fix target;
+            Fix target = FIX_ZERO;
             if (assets[i].isCollateral()) {
                 // {qTok} = {BU} * {qTok/BU}
                 target = targetBUs.mulu(amounts[i]);
@@ -174,21 +173,20 @@ contract BackingTraderP0 is TraderP0 {
 
         // {qBuyTok} = {attoUSD} / {attoUSD/qBuyTok}
         Fix buyAmount = deficitMax.div(assets[deficitIndex].price());
-        return (assets[surplusIndex], assets[deficitIndex], sellAmount.floor(), buyAmount.floor());
+        return (assets[surplusIndex], assets[deficitIndex], sellAmount.floor(), buyAmount.ceil());
     }
 
     function _tryCreateBUs() private {
         // Create new BUs
-        uint256 issuable = main.maxIssuable(address(this));
-        address[] memory erc20s = main.backingTokens();
-        if (issuable > 0) {
-            uint256[] memory amounts = main.quote(issuable);
+        Fix issuable = main.maxIssuableBUs(address(this));
+        if (issuable.gt(FIX_ZERO)) {
+            address[] memory erc20s = main.backingTokens();
+            uint256[] memory amounts = main.basketCollateralQuantities(issuable);
             for (uint256 i = 0; i < amounts.length; i++) {
                 IERC20Metadata(erc20s[i]).safeApprove(address(main), amounts[i]);
             }
-            // TODO
-            // main.vault().issue(address(main), issuable);
-            targetBUs = targetBUs.minus(fixMin(toFix(issuable), targetBUs));
+            main.donateBUs(issuable);
+            targetBUs = targetBUs.minus(fixMin(issuable, targetBUs));
         }
     }
 }

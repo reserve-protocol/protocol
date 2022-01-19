@@ -8,8 +8,8 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/Trader.sol";
 import "contracts/p0/main/BasketHandler.sol";
 
-/// The RevenueTrader converts all asset balances at its address to a single target asset,
-/// and transfers this to either the Furnace or StRSR.
+/// The RevenueTrader converts all asset balances at its address to a single target asset
+/// and sends this asset to the RevenueDistributor at Main.
 contract RevenueTraderP0 is TraderP0 {
     using SafeERC20 for IERC20;
 
@@ -33,11 +33,14 @@ contract RevenueTraderP0 is TraderP0 {
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20 erc20 = assets[i].erc20();
             uint256 bal = erc20.balanceOf(address(this));
+            if (bal == 0) {
+                continue;
+            }
 
-            if (assets[i] == assetToBuy && bal > 0) {
+            if (assets[i] == assetToBuy) {
                 erc20.safeApprove(address(main), bal);
                 main.distribute(erc20, address(this), bal);
-            } else if (bal > 0) {
+            } else {
                 // If not dust, trade the non-target asset for the target asset
                 bool launch;
                 Auction memory auction;
