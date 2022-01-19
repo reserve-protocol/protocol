@@ -262,7 +262,7 @@ async function collateralFixture(
 
   // Create the initial basket
   const basket = [dai[1], usdc[1], adai[1], cdai[1]]
-  const basketReferenceAmounts = [bn('2.5e17'), bn('2.5e17'), bn('2.5e17'), bn('2.5e17')]
+  const basketReferenceAmounts = [fp('2.5e17'), fp('2.5e17'), fp('2.5e17'), fp('2.5e17')]
 
   return {
     erc20s,

@@ -25,7 +25,7 @@ library BasketLib {
         Fix[] memory amounts
     ) internal {
         require(collateral.length == amounts.length, "must be same lengths");
-        for (uint256 i = 0; i < self.size; i++) {
+        for (uint256 i = 0; i < collateral.length; i++) {
             self.collateral[i] = collateral[i];
             self.amounts[collateral[i]] = amounts[i];
         }
