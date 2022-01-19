@@ -1,17 +1,18 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
+
 import { expectInReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
 import { AaveLendingAddrProviderMockP0 } from '../../../typechain/AaveLendingAddrProviderMockP0'
 import { AaveLendingPoolMockP0 } from '../../../typechain/AaveLendingPoolMockP0'
-import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
 import { AaveOracle } from '../../../typechain/AaveOracle'
+import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
 import { AssetP0 } from '../../../typechain/AssetP0'
 import { ATokenCollateralP0 } from '../../../typechain/ATokenCollateralP0'
 import { CollateralP0 } from '../../../typechain/CollateralP0'
-import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
 import { CompoundOracle } from '../../../typechain/CompoundOracle'
+import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
 import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
 import { CTokenCollateralP0 } from '../../../typechain/CTokenCollateralP0'
 import { CTokenMock } from '../../../typechain/CTokenMock'
@@ -25,7 +26,6 @@ import { RTokenP0 } from '../../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../../typechain/StRSRP0'
 import { USDCMock } from '../../../typechain/USDCMock'
-import { VaultP0 } from '../../../typechain/VaultP0'
 import { getLatestBlockTimestamp } from '../../utils/time'
 
 export type Collateral = CollateralP0 | CTokenCollateralP0 | ATokenCollateralP0
@@ -151,18 +151,18 @@ async function marketFixture(): Promise<MarketFixture> {
   return { market: marketMock }
 }
 
-interface VaultFixture {
+interface CollateralFixture {
   erc20s: ERC20Mock[] // all erc20 addresses
   collateral: Collateral[] // all collateral
   basket: Collateral[] // only the collateral actively backing the RToken
-  vault: VaultP0
+  basketReferenceAmounts: BigNumber[] // reference amounts
 }
 
-async function vaultFixture(
+async function collateralFixture(
   main: MainP0,
   compoundOracle: CompoundOracle,
   aaveOracle: AaveOracle
-): Promise<VaultFixture> {
+): Promise<CollateralFixture> {
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
@@ -262,26 +262,19 @@ async function vaultFixture(
 
   // Create the initial basket
   const basket = [dai[1], usdc[1], adai[1], cdai[1]]
-  const quantities = [bn('2.5e17'), bn('2.5e17'), bn('2.5e17'), bn('2.5e17')]
-
-  const VaultFactory: ContractFactory = await ethers.getContractFactory('VaultP0')
-  const vault: VaultP0 = <VaultP0>await VaultFactory.deploy(
-    basket.map((b) => b.address),
-    quantities,
-    []
-  )
+  const basketReferenceAmounts = [bn('2.5e17'), bn('2.5e17'), bn('2.5e17'), bn('2.5e17')]
 
   return {
     erc20s,
     collateral,
     basket,
-    vault,
+    basketReferenceAmounts,
   }
 }
 
 type RSRAndCompAaveAndVaultAndMarketFixture = RSRFixture &
   COMPAAVEFixture &
-  VaultFixture &
+  CollateralFixture &
   MarketFixture
 
 interface DefaultFixture extends RSRAndCompAaveAndVaultAndMarketFixture {
@@ -379,8 +372,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
   const stRSR: StRSRP0 = <StRSRP0>await ethers.getContractAt('StRSRP0', await main.stRSR())
 
-  // Deploy vault and collateral for Main
-  const { erc20s, collateral, basket, vault } = await vaultFixture(main, compoundOracle, aaveOracle)
+  // Deploy collateral for Main
+  const { erc20s, collateral, basket, basketReferenceAmounts } = await collateralFixture(
+    main,
+    compoundOracle,
+    aaveOracle
+  )
 
   // Set Default Oracle Prices
   await compoundOracleInternal.setPrice('ETH', bn('4000e6'))
@@ -398,11 +395,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await main.connect(owner).addAsset(collateral[i].address)
   }
 
-  // Setup Main
-  await vault.connect(owner).setMain(main.address)
-
-  // Switch to real vault
-  await main.connect(owner).switchVault(vault.address)
+  // Set non-empty basket
+  await main.connect(owner).setBasket(
+    basket.map((b) => b.address),
+    basketReferenceAmounts
+  )
 
   // Unpause
   await main.connect(owner).unpause()
@@ -424,7 +421,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     erc20s,
     collateral,
     basket,
-    vault,
+    basketReferenceAmounts,
     config,
     dist,
     deployer,
