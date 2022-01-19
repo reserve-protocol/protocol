@@ -22,7 +22,7 @@ contract ExplorerP0 is IExplorer {
 
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
-        return main.fromBUs(main.maxIssuable(account));
+        return main.maxIssuable(account);
     }
 
     function currentBacking()
@@ -38,16 +38,7 @@ contract ExplorerP0 is IExplorer {
         // Convert IAsset to ERC20 address
         for (uint256 j = 0; j < assets.length; j++) {
             tokens[j] = address(assets[j].erc20());
-            quantities[j] += assets[j].erc20().balanceOf(address(main.vault()));
-        }
-
-        // Add vaults contents
-        for (uint256 i = 0; i < main.numVaults(); i++) {
-            // TODO after vault destruction
-            // IVault vault = main.vaults(i);
-            // for (uint256 j = 0; j < tokens.length; j++) {
-            //     quantities[j] += IERC20(tokens[j]).balanceOf(address(vault));
-            // }
+            quantities[j] += assets[j].erc20().balanceOf(address(main));
         }
 
         // Add BackingTrader contents

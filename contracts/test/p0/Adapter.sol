@@ -226,7 +226,6 @@ contract AdapterP0 is ProtoAdapter {
                     initialShare
                 )
             );
-            _main.switchVault(vaults[0]);
             _stRSR = StRSRExtension(address(_main.stRSR()));
             _rToken = RTokenExtension(address(_main.rToken()));
 
@@ -242,10 +241,6 @@ contract AdapterP0 is ProtoAdapter {
                         RevenueShare(s.distribution[i].rTokenDist, s.distribution[i].rsrDist)
                     );
                 }
-            }
-
-            for (uint256 i = 0; i < vaults.length; i++) {
-                vaults[i].setMain(_main);
             }
         }
 
@@ -329,14 +324,7 @@ contract AdapterP0 is ProtoAdapter {
             backingCollateral[i] = _reverseAssets[ERC20Mock(backingTokens[i])];
         }
         s.distribution = _main.STATE_revenueDistribution();
-
-        Fix[] memory quantities = new Fix[](backingCollateral.length);
-        for (uint256 i = 0; i < quantities.length; i++) {
-            quantities[i] = _main.vault().quantity(
-                ICollateral(address(_assets[backingCollateral[i]]))
-            );
-        }
-        s.rTokenDefinition = BU(backingCollateral, quantities);
+        s.rTokenDefinition = BU(backingCollateral, _main.basketReferenceAmounts());
         s.rToken = _dumpERC20(_main.rToken());
         s.rsr = _dumpERC20(_main.rsr());
         s.stRSR = _dumpERC20(_main.stRSR());
@@ -582,31 +570,14 @@ contract AdapterP0 is ProtoAdapter {
 
     /// @return bu_s The Basket Units of the stick DAG
     function _traverseVaults() internal view returns (BU[] memory bu_s) {
-        IVault v = _main.vault();
-        AssetName[] memory collateral;
-        IVault[] memory backups;
-        do {
-            backups = v.getBackups();
-            BU[] memory next = new BU[](bu_s.length + 1);
-            for (uint256 i = 0; i < bu_s.length; i++) {
-                next[i] = bu_s[i];
-            }
-            collateral = new AssetName[](v.size());
-            for (uint256 i = 0; i < v.size(); i++) {
-                collateral[i] = _reverseAssets[ERC20Mock(address(v.collateralAt(i).erc20()))];
-            }
-            Fix[] memory quantities = new Fix[](collateral.length);
-            for (uint256 i = 0; i < quantities.length; i++) {
-                quantities[i] = _main.vault().quantity(
-                    ICollateral(address(_assets[collateral[i]]))
-                );
-            }
-            next[bu_s.length] = BU(collateral, quantities);
-            bu_s = next;
-            if (backups.length > 0) {
-                v = backups[0]; // walk the DAG
-            }
-        } while (backups.length > 0);
+        address[] memory tokens = _main.backingTokens();
+        AssetName[] memory assets = new AssetName[](tokens.length);
+        for (uint256 i = 0; i < assets.length; i++) {
+            assets[i] = _reverseAssets[ERC20Mock(address(tokens[i]))];
+        }
+
+        bu_s = new BU[](1);
+        bu_s[0] = BU(assets, _main.basketReferenceAmounts());
     }
 
     /// Account index -> address

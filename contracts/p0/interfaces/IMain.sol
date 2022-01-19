@@ -212,17 +212,22 @@ interface IBasketHandler {
     // /// @param newBasket The address of the new vault
     // // event NewBasketSet(address indexed oldBasket, address indexed newBasket);
 
-    function switchBasket(ICollateral[] calldata collateral, Fix[] calldata amounts) external;
+    function setBasket(ICollateral[] calldata collateral, Fix[] calldata amounts) external;
 
-    function toBUs(uint256 amount) external view returns (uint256);
+    function toBUs(uint256 amount) external view returns (Fix);
 
-    function fromBUs(uint256 amtBUs) external view returns (uint256);
+    function fromBUs(Fix amtBUs) external view returns (uint256);
 
     function baseFactor() external view returns (Fix);
 
+    function basketPrice() external view returns (Fix);
+
     function fullyCapitalized() external view returns (bool);
 
-    function collateralStatus() external view returns (CollateralStatus status);
+    // TODO These are only here because the traders are living outside main. To confirm.
+    function basketCollateralQuantities() external view returns (uint256[] memory);
+
+    function basketReferenceAmounts() external view returns (Fix[] memory);
 }
 
 interface IAuctioneerEvents {

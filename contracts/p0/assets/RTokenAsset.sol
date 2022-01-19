@@ -20,9 +20,7 @@ contract RTokenAssetP0 is AssetP0 {
 
     /// @return {attoUSD/qRTok}
     function price() public view override returns (Fix) {
-        return
-            main.vault().basketPrice().mul(main.baseFactor()).shiftLeft(
-                -int8(main.vault().BU_DECIMALS())
-            );
+        // {} = {attoUSD/BU} * {BU/rTok} / {qBU/BU}
+        return main.basketPrice().mul(main.baseFactor()).shiftLeft(-int8(erc20.decimals()));
     }
 }

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "contracts/p0/interfaces/IOracle.sol";
+import "contracts/p0/Asset.sol";
 import "contracts/p0/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/mocks/ERC20Mock.sol";
@@ -113,9 +114,5 @@ contract MainMockP0 {
 
     function setDefaultThreshold(Fix defaultThreshold_) public {
         defaultThreshold = defaultThreshold_;
-    }
-
-    function setVault(IVault vault) external {
-        manager.setVault(vault);
     }
 }

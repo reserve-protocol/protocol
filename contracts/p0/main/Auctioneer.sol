@@ -70,12 +70,12 @@ contract AuctioneerP0 is
                (migrationChunk * rToken supply) BUs at a time
             */
 
-            uint256 maxBUs = toBUs(migrationChunk().mulu(rToken().totalSupply()).round());
-            uint256 redeemedBUs = _redeemFromOldVaults(address(backingTrader), maxBUs, false);
-            uint256 buShortfall = toBUs(rToken().totalSupply()) -
-                vault().basketUnits(address(rToken()));
+            Fix maxBUs = migrationChunk().mul(toBUs(rToken().totalSupply()));
+            Fix redeemedBUs = _redeemBUs(address(this), address(backingTrader), maxBUs);
+            Fix buShortfall = toBUs(rToken().totalSupply()).minus(basketUnits[address(rToken())]);
+            require(buShortfall.gte(FIX_ZERO), "buShortfall negative");
 
-            if (redeemedBUs > 0) {
+            if (redeemedBUs.gt(FIX_ZERO)) {
                 backingTrader.increaseBUTarget(redeemedBUs, buShortfall);
                 backingTrader.poke();
             }
@@ -111,7 +111,7 @@ contract AuctioneerP0 is
         // TODO: This is no longer a thing
         // beforeUpdate();
         // _historicalBasketDilution = _meltingFactor().mulu(rToken().totalSupply()).divu(
-        //     vault().basketUnits(address(rToken()))
+        //     basketUnits(address(rToken()))
         // );
     }
 }

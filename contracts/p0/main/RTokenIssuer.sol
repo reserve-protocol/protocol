@@ -1,6 +1,7 @@
 pragma solidity 0.8.9;
 // SPDX-License-Identifier: BlueOak-1.0.0
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/main/SettingsHandler.sol";
@@ -18,7 +19,7 @@ import "./BasketHandler.sol";
  */
 contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, IRTokenIssuer {
     using BasketLib for Basket;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
     using SafeERC20 for IRToken;
     using FixLib for Fix;
 
@@ -34,7 +35,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     struct SlowIssuance {
         uint256 blockStartedAt;
         uint256 amount; // {qTok}
-        uint256 amtBUs; // {qBU}
+        Fix amtBUs; // {BU}
         uint256[] deposits; // {qTok}, same index as vault basket assets
         address issuer;
         Fix blockAvailableAt; // {blockNumber} fractional
@@ -65,10 +66,10 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         require(amount > 0, "Cannot issue zero");
         revenueFurnace().doMelt();
         _updateCollateralStatuses();
-        _tryEnsureValidVault();
-        require(vault().collateralStatus() == CollateralStatus.SOUND, "collateral not sound");
+        _tryEnsureValidBasket();
+        require(_worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
-        uint256 amtBUs = toBUs(amount);
+        Fix amtBUs = toBUs(amount);
 
         // During SlowIssuance, RTokens are minted and held by Main until vesting completes
         SlowIssuance memory iss = SlowIssuance({
@@ -83,7 +84,11 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         issuances.push(iss);
 
         for (uint256 i = 0; i < _basket.size; i++) {
-            _basket.collateral[i].safeTransferFrom(iss.issuer, address(this), iss.deposits[i]);
+            _basket.collateral[i].erc20().safeTransferFrom(
+                iss.issuer,
+                address(this),
+                iss.deposits[i]
+            );
         }
 
         _issueBUs(iss.issuer, address(this), iss.amtBUs);
@@ -144,7 +149,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
                 continue;
             }
 
-            if (iss.blockStartedAt <= _basket.configuredAtBlock) {
+            if (iss.blockStartedAt <= _basket.lastBlock) {
                 // Rollback issuance i
                 rToken().burn(address(this), iss.amount);
                 _redeemBUs(address(rToken()), iss.issuer, iss.amtBUs);

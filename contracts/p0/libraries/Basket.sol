@@ -12,27 +12,29 @@ struct Basket {
     mapping(uint256 => ICollateral) collateral; // index -> asset
     mapping(ICollateral => Fix) amounts; // {attoRef/BU}
     uint256 size;
-    uint256 configuredAtBlock; // {block number}
+    uint256 lastBlock; // {block number} last set
 }
 
 library BasketLib {
+    using FixLib for Fix;
+
     /// Sets the basket using a data format that can actually be passed around in memory
     function set(
-        Basket self,
-        ICollateral[] calldata collateral,
-        Fix[] calldata amounts
+        Basket storage self,
+        ICollateral[] memory collateral,
+        Fix[] memory amounts
     ) internal {
         require(collateral.length == amounts.length, "must be same lengths");
         for (uint256 i = 0; i < self.size; i++) {
             self.collateral[i] = collateral[i];
-            self.amounts[i] = amounts[i];
+            self.amounts[collateral[i]] = amounts[i];
         }
         self.size = collateral.length;
-        self.configuredAtBlock = block.number;
+        self.lastBlock = block.number;
     }
 
     /// @return {qTok/BU} The quantity of collateral asset targeted per BU
-    function perBU(Basket self, ICollateral collateral) internal view returns (Fix) {
+    function quantity(Basket storage self, ICollateral collateral) internal view returns (Fix) {
         // {qTok/BU} = {attoRef/BU} / {attoRef/qTok}
         return self.amounts[collateral].div(collateral.referencePrice());
     }
@@ -40,25 +42,25 @@ library BasketLib {
     /// @param amtBUs {BU}
     /// @return amounts {qTok} A list of token quantities that are worth approximately `amtBUs`
     function toCollateralAmounts(
-        Basket self,
+        Basket storage self,
         Fix amtBUs,
         RoundingApproach rounding
     ) internal view returns (uint256[] memory amounts) {
         amounts = new uint256[](self.size);
         for (uint256 i = 0; i < self.size; i++) {
             // {qTok} = {BU} * {qTok/BU}
-            amounts[i] = amtBUs.mul(perBU(self, self.collateral[i])).toUint(rounding);
+            amounts[i] = amtBUs.mul(quantity(self, self.collateral[i])).toUint(rounding);
         }
     }
 
-    /// @return max {qBU} The maximum number of basket units that `account` can create
-    function maxBUs(Basket self, address account) internal view returns (Fix max) {
+    /// @return max {BU} The maximum number of basket units that `account` can create
+    function maxBUs(Basket storage self, address account) internal view returns (Fix max) {
         max = FIX_MAX;
         for (uint256 i = 0; i < self.size; i++) {
             // {qTok}
             Fix bal = toFix(self.collateral[i].erc20().balanceOf(account));
             // {BU} = {qTok} / {qTok/BU}
-            Fix amtBUs = bal.div(perBU(self, self.collateral[i]));
+            Fix amtBUs = bal.div(quantity(self, self.collateral[i]));
             if (amtBUs.lt(max)) {
                 max = amtBUs;
             }
@@ -66,10 +68,20 @@ library BasketLib {
     }
 
     /// @return erc20s The addresses of the ERC20 tokens of the backing collateral tokens
-    function backingERC20s(Basket self) internal view returns (address[] memory erc20s) {
+    function backingERC20s(Basket storage self) internal view returns (address[] memory erc20s) {
         erc20s = new address[](self.size);
         for (uint256 i = 0; i < self.size; i++) {
             erc20s[i] = address(self.collateral[i].erc20());
+        }
+    }
+
+    /// @return attoUSD {attoUSD/BU} The price of a whole BU in attoUSD
+    function price(Basket storage self) internal view returns (Fix attoUSD) {
+        for (uint256 i = 0; i < self.size; i++) {
+            ICollateral a = self.collateral[i];
+
+            // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
+            attoUSD = attoUSD.plus(a.price().mul(quantity(self, a)));
         }
     }
 }

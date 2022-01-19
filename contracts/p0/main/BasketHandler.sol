@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/p0/interfaces/IAsset.sol";
@@ -27,11 +28,12 @@ contract BasketHandlerP0 is
     IBasketHandler
 {
     using BasketLib for Basket;
-    using SafeERC20 for IERC20;
+    using EnumerableSet for EnumerableSet.AddressSet;
+    using SafeERC20 for IERC20Metadata;
     using FixLib for Fix;
 
     // {BU}
-    mapping(address => Fix) public override basketUnits;
+    mapping(address => Fix) public basketUnits;
     Fix private _totalBUs;
 
     Basket internal _basket;
@@ -50,7 +52,7 @@ contract BasketHandlerP0 is
         _tryEnsureValidBasket();
     }
 
-    function switchBasket(ICollateral[] calldata collateral, Fix[] calldata amounts)
+    function setBasket(ICollateral[] calldata collateral, Fix[] calldata amounts)
         external
         override
         onlyOwner
@@ -63,14 +65,14 @@ contract BasketHandlerP0 is
         return true;
     }
 
-    /// {qRTok} -> {qBU}
-    function toBUs(uint256 amount) public view override returns (uint256) {
-        return baseFactor().mulu(amount).floor();
+    /// {qRTok} -> {BU}
+    function toBUs(uint256 amount) public view override returns (Fix) {
+        return baseFactor().mulu(amount).shiftLeft(int8(rToken().decimals()));
     }
 
-    /// {qBU} -> {qRTok}
-    function fromBUs(uint256 amtBUs) public view override returns (uint256) {
-        return divFix(amtBUs, baseFactor()).floor();
+    /// {BU} -> {qRTok}
+    function fromBUs(Fix amtBUs) public view override returns (uint256) {
+        return amtBUs.div(baseFactor()).shiftLeft(-int8(rToken().decimals())).floor();
     }
 
     /// @return {none}
@@ -80,12 +82,50 @@ contract BasketHandlerP0 is
         return supply.eq(FIX_ZERO) ? FIX_ONE : supply.plus(melted).div(supply);
     }
 
+    /// @return quantities {qTok/BU} The quantities of collateral required per BU
+    function basketCollateralQuantities()
+        external
+        view
+        override
+        returns (uint256[] memory quantities)
+    {
+        quantities = new uint256[](_basket.size);
+        for (uint256 i = 0; i < _basket.size; i++) {
+            quantities[i] = _basket.quantity(_basket.collateral[i]).ceil();
+        }
+    }
+
+    /// @return amounts {attoRef/BU} The amounts of collateral required per BU
+    function basketReferenceAmounts() external view override returns (Fix[] memory amounts) {
+        amounts = new Fix[](_basket.size);
+        for (uint256 i = 0; i < _basket.size; i++) {
+            amounts[i] = _basket.amounts[_basket.collateral[i]];
+        }
+    }
+
+    /// @return attoUSD {attoUSD/BU} The price of a whole BU in attoUSD
+    function basketPrice() external view override returns (Fix attoUSD) {
+        return _basket.price();
+    }
+
     // ==== Internal ====
 
     function _updateCollateralStatuses() internal {
         for (uint256 i = 0; i < _assets.length(); i++) {
             if (IAsset(_assets.at(i)).isCollateral()) {
                 ICollateral(_assets.at(i)).forceUpdates();
+            }
+        }
+    }
+
+    function _tryEnsureValidBasket() internal {
+        if (_worstCollateralStatus() == CollateralStatus.DISABLED) {
+            // TODO
+            bool hasNext = _selectNextVault();
+            if (hasNext) {
+                // TODO
+                // _switchVault(nextVault);
+                _basket.set(new ICollateral[](0), new Fix[](0));
             }
         }
     }
@@ -111,7 +151,8 @@ contract BasketHandlerP0 is
         address from,
         address to,
         Fix amtBUs
-    ) internal {
+    ) internal returns (Fix) {
+        amtBUs = fixMin(amtBUs, basketUnits[address(this)]);
         uint256[] memory amounts = _basket.toCollateralAmounts(amtBUs, RoundingApproach.FLOOR);
         for (uint256 i = 0; i < amounts.length; i++) {
             _basket.collateral[i].erc20().safeTransfer(to, amounts[i]);
@@ -120,6 +161,7 @@ contract BasketHandlerP0 is
         require(basketUnits[from].gte(FIX_ZERO), "not enough basket units");
         _totalBUs = _totalBUs.minus(amtBUs);
         require(_totalBUs.gte(FIX_ZERO), "_totalBUs underflow");
+        return amtBUs;
     }
 
     function _transferBUs(
@@ -144,22 +186,8 @@ contract BasketHandlerP0 is
         }
     }
 
-    // ==== Private ====
-
-    function _tryEnsureValidBasket() private {
-        if (_worstCollateralStatus() == CollateralStatus.DISABLED) {
-            // TODO
-            bool hasNext = _selectNextVault();
-            if (hasNext) {
-                // TODO
-                // _switchVault(nextVault);
-                _basket.set(new ICollateral[](0), new Fix[](0));
-            }
-        }
-    }
-
     /// @return A vault from the list of backup vaults that is not defaulting
-    function _selectNextVault() private view returns (bool) {
+    function _selectNextVault() internal view returns (bool) {
         // TODO where matt hooks in
         return true;
     }

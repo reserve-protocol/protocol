@@ -15,7 +15,7 @@ contract BackingTraderP0 is TraderP0 {
     using SafeERC20 for IERC20Metadata;
 
     // How many more BUs this trader has the duty to construct.
-    uint256 public targetBUs; // {qBU}
+    Fix public targetBUs; // {BU}
 
     // solhint-disable-next-line no-empty-blocks
     constructor(IMain main_) TraderP0(main_) {}
@@ -25,7 +25,7 @@ contract BackingTraderP0 is TraderP0 {
         closeDueAuctions();
 
         // If no auctions are open, try creating BUs.
-        if (!hasOpenAuctions() && targetBUs > 0) {
+        if (!hasOpenAuctions() && targetBUs.gt(FIX_ZERO)) {
             _tryCreateBUs();
             _startNextAuction();
         }
@@ -50,14 +50,14 @@ contract BackingTraderP0 is TraderP0 {
         }
     }
 
-    function increaseBUTarget(uint256 amtBUs, uint256 maxTarget) external {
+    function increaseBUTarget(Fix amtBUs, Fix maxTarget) external {
         require(_msgSender() == address(main), "main only");
-        targetBUs = Math.max(targetBUs + amtBUs, maxTarget);
+        targetBUs = fixMax(targetBUs.plus(amtBUs), maxTarget);
     }
 
     /// Launch auctions to reach BUTarget. Use RSR if needed.
     function _startNextAuction() private {
-        if (targetBUs == 0) {
+        if (targetBUs.eq(FIX_ZERO)) {
             return;
         }
         // Is there a collateral surplus?
@@ -132,18 +132,15 @@ contract BackingTraderP0 is TraderP0 {
         // Calculate surplus and deficits relative to the BU target.
         Fix[] memory surpluses = new Fix[](assets.length);
         Fix[] memory deficits = new Fix[](assets.length);
+        uint256[] memory amounts = main.basketCollateralQuantities();
         for (uint256 i = 0; i < assets.length; i++) {
             // {qTok}
             Fix bal = toFix(IERC20(assets[i].erc20()).balanceOf(address(this)));
 
             Fix target;
             if (assets[i].isCollateral()) {
-                // {qTok} = {qTok/BU} * {qBU} / {qBU/BU}
-                target = main
-                .vault()
-                .quantity(ICollateral(address(assets[i])))
-                .mulu(targetBUs)
-                .shiftLeft(-int8(main.vault().BU_DECIMALS()));
+                // {qTok} = {BU} * {qTok/BU}
+                target = targetBUs.mulu(amounts[i]);
             }
 
             if (bal.gt(target)) {
@@ -180,15 +177,17 @@ contract BackingTraderP0 is TraderP0 {
     }
 
     function _tryCreateBUs() private {
+        // TODO all of this is incoherent now
         // Create new BUs
-        uint256 issuable = main.vault().maxIssuable(address(this));
-        if (issuable > 0) {
-            uint256[] memory amounts = main.vault().quote(issuable, RoundingApproach.CEIL);
-            for (uint256 i = 0; i < amounts.length; i++) {
-                main.vault().collateralAt(i).erc20().safeApprove(address(main.vault()), amounts[i]);
-            }
-            main.vault().issue(address(main), issuable);
-            targetBUs -= Math.min(issuable, targetBUs);
-        }
+        // uint256 issuable = main.vault().maxIssuable(address(this));
+        // address[] memory erc20s = main.backingTokens();
+        // if (issuable > 0) {
+        //     uint256[] memory amounts = main.quote(issuable);
+        //     for (uint256 i = 0; i < amounts.length; i++) {
+        //         IERC20Metadata(erc20s[i]).safeApprove(address(main), amounts[i]);
+        //     }
+        //     main.vault().issue(address(main), issuable);
+        //     targetBUs = targetBUs.minus(fixMin(toFix(issuable), targetBUs));
+        // }
     }
 }

@@ -53,13 +53,10 @@ contract RewardHandlerP0 is
         uint256 aaveBalStart = aaveAsset().erc20().balanceOf(address(this));
         (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
         if (prevRewards > _rewardsLastClaimed && fullyCapitalized()) {
-            // Sweep COMP/AAVE from vaults + traders into Main
+            // Claim + Sweep COMP/AAVE from self + traders
             backingTrader.claimAndSweepRewards();
             rsrTrader.claimAndSweepRewards();
             rTokenTrader.claimAndSweepRewards();
-            for (uint256 i = 0; i < vaults.length; i++) {
-                vaults[i].claimAndSweepRewards();
-            }
             _claimAndSweepRewards();
 
             _expandSupplyToRSRTrader();
@@ -85,7 +82,7 @@ contract RewardHandlerP0 is
 
     function _expandSupplyToRSRTrader() internal {
         // it's correct for this to be only the basket units held directly by the RToken
-        uint256 possible = fromBUs(vault().basketUnits(address(rToken())));
+        uint256 possible = fromBUs(basketUnits[address(rToken())]);
         uint256 totalSupply = rToken().totalSupply();
         if (fullyCapitalized() && possible > totalSupply) {
             rToken().mint(address(rsrTrader), possible - totalSupply);
