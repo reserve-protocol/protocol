@@ -16,10 +16,13 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./SettingsHandler.sol";
 
-
 struct TemplateElmt {
     bytes32 role;
     Fix weight;
+}
+struct Template {
+    Fix govScore;
+    TemplateElmt[] slots;
 }
 
 /**
@@ -30,7 +33,6 @@ struct TemplateElmt {
 
 contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributorP0, IVaultHandler {
     using EnumerableSet for EnumerableSet.AddressSet;
-    using EnumerableSet for EnumerableSet.Bytes32Set; // bytes32 by default.
     using SafeERC20 for IERC20;
     using FixLib for Fix;
     // ECONOMICS
@@ -43,13 +45,14 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     Fix internal _historicalBasketDilution; // the product of all historical basket dilutions
     Fix internal _prevBasketPrice; // {USD/qBU} redemption value of the basket at last update
 
-    // ADD: list of basket templates
-    // ADD: set of roles
     Basket basket;
-    EnumerableSet.Bytes32Set allRoles;
-    TemplateElmt[][] templates;
 
-    // TODO: eliminate vaults
+    // basket templates:
+    // - a basket template is a collection of template elements, whose weights should add up to 1.
+    // - the order of the templates array is not guaranteed; deletion may occur via "swap-and-pop"
+    Template[] templates;
+
+    // TODO: eliminate vaults; use only basket.
     IVault[] public override vaults;
 
     function init(ConstructorArgs calldata args)
@@ -116,6 +119,92 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     function baseFactor() public view returns (Fix) {
         return
             rToken().totalSupply() == 0 ? FIX_ONE : _meltingFactor().div(_basketDilutionFactor());
+    }
+
+    /// Add the new basket template `template`
+    function addBasketTemplate(Template memory template) public {
+        /// @dev A manual copy necessary here because moving from memory to storage.
+        Template storage new_t = templates.push();
+        _copyTemplateToStorage(template, new_t);
+    }
+
+    /// Replace the template at `index` with `template`.
+    function setBasketTemplate(uint256 index, Template memory template) public {
+        _copyTemplateToStorage(template, templates[index]);
+    }
+
+    /// Delete the template at `index`
+    function deleteBasketTemplate(uint256 index) public {
+        if (index < templates.length - 1) {
+            templates[index] = templates[templates.length - 1];
+        }
+        templates.pop();
+    }
+
+    function _copyTemplateToStorage(Template memory mem_tmpl, Template storage storage_tmpl)
+        private
+    {
+        storage_tmpl.govScore = mem_tmpl.govScore;
+        delete storage_tmpl.slots;
+        for (uint256 i = 0; i < mem_tmpl.slots.length; i++) {
+            storage_tmpl.slots.push(mem_tmpl.slots[i]);
+        }
+    }
+
+    /// The highest-scoring collateral for each role, effectively used as a local variable in _setNextBasket.
+    mapping(bytes32 => ICollateral) collFor;
+    /// The highest collateral score to fill each role, effectively used as a local variable in _setNextBasket.
+    mapping(bytes32 => Fix) score;
+
+    function _setNextBasket() private {
+        // Find _score_ and _collFor_
+        for (uint256 i = 0; i < _assets.length(); i++) {
+            IAsset asset = IAsset(_assets.at(i));
+            if (!asset.isCollateral()) continue;
+            ICollateral coll = ICollateral(address(asset));
+
+            Fix collScore = coll.score();
+            bytes32 role = coll.role();
+            if (collScore.gt(score[role])) {
+                score[role] = collScore;
+                collFor[role] = coll;
+            }
+        }
+
+        // Find the highest-scoring template
+        uint256 bestTemplateIndex;
+        if (templates.length <= 1) {
+            bestTemplateIndex = 0;
+        } else {
+            Fix bestScore;
+            for (uint256 i = 0; i < templates.length; i++) {
+                Fix tmplScore = FIX_ZERO;
+                TemplateElmt[] storage slots = templates[i].slots;
+                for (uint256 c = 0; c < slots.length; c++) {
+                    tmplScore.plus(slots[c].weight.mul(score[slots[c].role]));
+                }
+                tmplScore = tmplScore.mul(templates[i].govScore);
+                if (tmplScore.gt(bestScore)) {
+                    bestScore = tmplScore;
+                    bestTemplateIndex = i;
+                }
+            }
+        }
+
+        // Clear the old basket
+        for (uint256 i = 0; i < basket.size; i++) {
+            basket.amounts[basket.collateral[i]] = FIX_ZERO;
+            delete basket.collateral[i];
+        }
+
+        // Set the new basket
+        Template storage template = templates[bestTemplateIndex];
+        basket.size = template.slots.length;
+        for (uint256 i = 0; i < basket.size; i++) {
+            ICollateral coll = collFor[template.slots[i].role];
+            basket.collateral[i] = coll;
+            basket.amounts[coll] = template.slots[i].weight.mul(coll.roleCoefficient());
+        }
     }
 
     // ==== Internal ====
@@ -201,13 +290,6 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
             rToken().withdrawBUs(vault_, address(this), toRedeem);
             vault_.redeem(recipient, toRedeem);
         }
-    }
-
-    /// @return Whether the basket was changed
-    function _setNextBasket() private view returns (bool) {
-
-        // For each role, pick best[role]
-
     }
 
     /// @return A vault from the list of backup vaults that is not defaulting
