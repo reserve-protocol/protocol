@@ -11,7 +11,6 @@ import "./interfaces/IFurnace.sol";
 import "./interfaces/IMain.sol";
 import "./interfaces/IMarket.sol";
 import "./interfaces/IOracle.sol";
-import "./interfaces/IVault.sol";
 import "./assets/RTokenAsset.sol";
 import "contracts/IExplorer.sol";
 import "./Explorer.sol";
@@ -19,7 +18,6 @@ import "./Furnace.sol";
 import "./Main.sol";
 import "./RToken.sol";
 import "./StRSR.sol";
-import "./Vault.sol";
 
 /**
  * @title DeployerP0
@@ -74,8 +72,7 @@ contract DeployerP0 is IDeployer {
             IFurnace revenueFurnace = _deployRevenueFurnace(rToken, config.rewardPeriod);
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
-            IVault vault = new VaultP0(new ICollateral[](0), new Fix[](0), new IVault[](0));
-            ctorArgs = ConstructorArgs(config, dist, vault, revenueFurnace, market);
+            ctorArgs = ConstructorArgs(config, dist, revenueFurnace, market);
 
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main, aaveOracle);
             main.setRTokenAsset(rTokenAsset);

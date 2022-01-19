@@ -9,8 +9,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
-import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/main/VaultHandler.sol";
+import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/BackingTrader.sol";
 import "contracts/p0/RevenueTrader.sol";
@@ -18,7 +17,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./AssetRegistry.sol";
 import "./SettingsHandler.sol";
-import "./VaultHandler.sol";
+import "./BasketHandler.sol";
 
 /**
  * @title Auctioneer
@@ -29,7 +28,7 @@ contract AuctioneerP0 is
     Mixin,
     AssetRegistryP0,
     SettingsHandlerP0,
-    VaultHandlerP0,
+    BasketHandlerP0,
     IAuctioneer
 {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -43,7 +42,7 @@ contract AuctioneerP0 is
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
+        override(Mixin, AssetRegistryP0, SettingsHandlerP0, BasketHandlerP0)
     {
         super.init(args);
         backingTrader = new BackingTraderP0(IMain(address(this)));
@@ -51,7 +50,7 @@ contract AuctioneerP0 is
         rTokenTrader = new RevenueTraderP0(IMain(address(this)), rTokenAsset());
     }
 
-    function poke() public virtual override(Mixin, VaultHandlerP0) notPaused {
+    function poke() public virtual override(Mixin, BasketHandlerP0) notPaused {
         super.poke();
 
         // Backing Trader

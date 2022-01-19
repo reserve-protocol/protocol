@@ -6,8 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/main/VaultHandler.sol";
+import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/Trader.sol";
 import "contracts/libraries/Fixed.sol";
 

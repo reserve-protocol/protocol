@@ -18,7 +18,6 @@ import "contracts/p0/interfaces/IDeployer.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
-import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/p0/mocks/AaveLendingPoolMock.sol";
 import "contracts/p0/mocks/AaveLendingAddrProviderMock.sol";
@@ -27,7 +26,6 @@ import "contracts/p0/mocks/CompoundOracleMock.sol";
 import "contracts/p0/mocks/ComptrollerMock.sol";
 import "contracts/p0/mocks/RTokenMock.sol";
 import "contracts/p0/Oracle.sol";
-import "contracts/p0/Vault.sol";
 import "contracts/test/Lib.sol";
 import "contracts/test/ProtosDriver.sol";
 import "contracts/test/ProtoState.sol";
@@ -206,25 +204,6 @@ contract AdapterP0 is ProtoAdapter {
             _setDefiCollateralRates(s.defiCollateralRates);
         }
 
-        // Deploy vault for each basket
-        IVault[] memory vaults = new IVault[](s.bu_s.length);
-        {
-            for (int256 i = int256(s.bu_s.length) - 1; i >= 0; i--) {
-                uint256 iUint = uint256(i);
-                IVault[] memory prevVaults = new IVault[](s.bu_s.length - 1 - iUint);
-                for (uint256 j = iUint + 1; j < s.bu_s.length; j++) {
-                    prevVaults[j - (iUint + 1)] = vaults[j];
-                }
-
-                ICollateral[] memory backing = new ICollateral[](s.bu_s[iUint].assets.length);
-                for (uint256 j = 0; j < s.bu_s[iUint].assets.length; j++) {
-                    backing[j] = collateral[uint256(s.bu_s[iUint].assets[j])];
-                }
-
-                vaults[iUint] = new VaultP0(backing, s.bu_s[iUint].quantities, prevVaults);
-            }
-        }
-
         // Deploy Main/StRSR/RToken
         {
             // compute initial share from ProtoState
@@ -317,9 +296,14 @@ contract AdapterP0 is ProtoAdapter {
             }
         }
 
-        // Switch vault + unpause
+        // Set basket + unpause
         {
-            _main.switchVault(vaults[0]);
+            ICollateral[] memory backing = new ICollateral[](s.bu_s[0].assets.length);
+            for (uint256 i = 0; i < s.bu_s[0].assets.length; i++) {
+                backing[i] = collateral[uint256(s.bu_s[0].assets[i])];
+            }
+
+            _main.setBasket(backing, s.bu_s[0].amounts);
             _main.unpause();
         }
     }

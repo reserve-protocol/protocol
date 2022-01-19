@@ -9,16 +9,15 @@ import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/p0/main/SettingsHandler.sol";
-import "contracts/p0/main/VaultHandler.sol";
+import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IVault.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./Auctioneer.sol";
 import "./SettingsHandler.sol";
-import "./VaultHandler.sol";
+import "./BasketHandler.sol";
 
 /**
  * @title RewardHandler
@@ -29,7 +28,7 @@ contract RewardHandlerP0 is
     Mixin,
     SettingsHandlerP0,
     RevenueDistributorP0,
-    VaultHandlerP0,
+    BasketHandlerP0,
     AuctioneerP0,
     IRewardHandler
 {
@@ -42,13 +41,13 @@ contract RewardHandlerP0 is
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, SettingsHandlerP0, RevenueDistributorP0, VaultHandlerP0, AuctioneerP0)
+        override(Mixin, SettingsHandlerP0, RevenueDistributorP0, BasketHandlerP0, AuctioneerP0)
     {
         super.init(args);
     }
 
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
-    function poke() public virtual override(Mixin, VaultHandlerP0, AuctioneerP0) notPaused {
+    function poke() public virtual override(Mixin, BasketHandlerP0, AuctioneerP0) notPaused {
         super.poke();
         uint256 compBalStart = compAsset().erc20().balanceOf(address(this));
         uint256 aaveBalStart = aaveAsset().erc20().balanceOf(address(this));

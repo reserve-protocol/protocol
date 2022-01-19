@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
-import "../interfaces/IVault.sol";
 import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/p0/Oracle.sol";
 import "contracts/libraries/Fixed.sol";
@@ -15,10 +14,13 @@ import "./AaveOracleMock.sol";
 import "./AaveLendingAddrProviderMock.sol";
 import "./AaveLendingPoolMock.sol";
 
+// TODO Do we still need to mock main?
+
 contract ManagerInternalMockP0 {
     bool public fullyCapitalized;
     IMain public main;
-    IVault public vault;
+
+    // IVault public vault;
 
     constructor(address main_) {
         fullyCapitalized = true;
@@ -33,9 +35,9 @@ contract ManagerInternalMockP0 {
         main.stRSR().seizeRSR(amount);
     }
 
-    function setVault(IVault vault_) external {
-        vault = vault_;
-    }
+    // function setVault(IVault vault_) external {
+    //     vault = vault_;
+    // }
 
     function baseFactor() external pure returns (Fix) {
         return FIX_ONE;

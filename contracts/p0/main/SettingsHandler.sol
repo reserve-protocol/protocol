@@ -12,7 +12,6 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
-import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/main/AssetRegistry.sol";
 import "contracts/p0/main/Mixin.sol";
 

@@ -4,24 +4,26 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/main/SettingsHandler.sol";
-import "contracts/p0/main/VaultHandler.sol";
+import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/interfaces/IMain.sol";
+import "contracts/p0/libraries/Basket.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/Pausable.sol";
 import "./SettingsHandler.sol";
-import "./VaultHandler.sol";
+import "./BasketHandler.sol";
 
 /**
  * @title RTokenIssuer
  * @notice Handles issuance and redemption of RToken.
  */
-contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, IRTokenIssuer {
+contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, IRTokenIssuer {
+    using BasketLib for Basket;
     using SafeERC20 for IERC20;
     using SafeERC20 for IRToken;
     using FixLib for Fix;
 
     /// Tracks data for a SlowIssuance
-    /// @param vault The vault the issuance is against
+    /// @param blockStartedAt The block number the issuance was started in, non-fractional
     /// @param amount {qTok} The quantity of RToken the issuance is for
     /// @param amtBUs {qBU} The number of BUs that corresponded to `amount` at time of issuance
     /// @param deposits {qTok} The collateral token quantities that paid for the issuance
@@ -30,7 +32,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
     ///   May be a fraction; the issuance is available when block.number >= blackAvailableAt
     /// @param processed false when the issuance is still vesting
     struct SlowIssuance {
-        IVault vault;
+        uint256 blockStartedAt;
         uint256 amount; // {qTok}
         uint256 amtBUs; // {qBU}
         uint256[] deposits; // {qTok}, same index as vault basket assets
@@ -45,13 +47,13 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, SettingsHandlerP0, VaultHandlerP0)
+        override(Mixin, SettingsHandlerP0, BasketHandlerP0)
     {
         super.init(args);
     }
 
     /// Process pending issuances on poke
-    function poke() public virtual override(Mixin, VaultHandlerP0) notPaused {
+    function poke() public virtual override(Mixin, BasketHandlerP0) notPaused {
         super.poke();
         revenueFurnace().doMelt();
         _processSlowIssuance();
@@ -70,23 +72,21 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
 
         // During SlowIssuance, RTokens are minted and held by Main until vesting completes
         SlowIssuance memory iss = SlowIssuance({
-            vault: vault(),
+            blockStartedAt: block.number,
             amount: amount,
             amtBUs: amtBUs,
-            deposits: vault().quote(amtBUs, RoundingApproach.CEIL),
+            deposits: _basket.toCollateralAmounts(amtBUs, RoundingApproach.CEIL),
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
         });
         issuances.push(iss);
 
-        for (uint256 i = 0; i < iss.vault.size(); i++) {
-            IERC20 coll = IERC20(iss.vault.collateralAt(i).erc20());
-            coll.safeTransferFrom(iss.issuer, address(this), iss.deposits[i]);
-            coll.safeApprove(address(iss.vault), iss.deposits[i]);
+        for (uint256 i = 0; i < _basket.size; i++) {
+            _basket.collateral[i].safeTransferFrom(iss.issuer, address(this), iss.deposits[i]);
         }
 
-        iss.vault.issue(address(this), iss.amtBUs);
+        _issueBUs(iss.issuer, address(this), iss.amtBUs);
         rToken().mint(address(this), amount);
         emit IssuanceStarted(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
     }
@@ -98,29 +98,23 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
         revenueFurnace().doMelt();
 
         rToken().burn(_msgSender(), amount);
-        uint256 amtBUs = toBUs(amount);
-        uint256 amtRedeemed = _redeemFromOldVaults(_msgSender(), amtBUs, true);
-        require(amtRedeemed >= amtBUs, "Too few available basket units!");
-
+        _redeemBUs(address(rToken()), _msgSender(), toBUs(amount));
         emit Redemption(_msgSender(), amount);
     }
 
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) public view override returns (uint256[] memory) {
-        return vault().quote(toBUs(amount), RoundingApproach.CEIL);
+        return _basket.toCollateralAmounts(toBUs(amount), RoundingApproach.CEIL);
     }
 
     /// @return How much RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
-        return fromBUs(vault().maxIssuable(account));
+        return fromBUs(_basket.maxBUs(account));
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
     function backingTokens() public view override returns (address[] memory erc20s) {
-        erc20s = new address[](vault().size());
-        for (uint256 i = 0; i < vault().size(); i++) {
-            erc20s[i] = address(vault().collateralAt(i).erc20());
-        }
+        return _basket.backingERC20s();
     }
 
     // Returns the future block number at which an issuance for *amount* now can complete
@@ -139,9 +133,10 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
     }
 
     // Process slow issuances:
-    // - undoes any issuances with changed vaults
+    // - undoes any issuances that was started before the basket was last set
     // - enacts any other issuances that are fully vested
     function _processSlowIssuance() internal {
+        bool backingIsSound = _worstCollateralStatus() == CollateralStatus.SOUND;
         for (uint256 i = 0; i < issuances.length; i++) {
             SlowIssuance storage iss = issuances[i];
             if (iss.processed) {
@@ -149,21 +144,15 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, VaultHandlerP0, I
                 continue;
             }
 
-            CollateralStatus cs = vault().collateralStatus();
-            if (
-                (cs == CollateralStatus.SOUND || cs == CollateralStatus.DISABLED) &&
-                iss.vault != vault()
-            ) {
+            if (iss.blockStartedAt <= _basket.configuredAtBlock) {
                 // Rollback issuance i
                 rToken().burn(address(this), iss.amount);
-                iss.vault.redeem(iss.issuer, iss.amtBUs);
+                _redeemBUs(address(rToken()), iss.issuer, iss.amtBUs);
                 iss.processed = true;
                 emit IssuanceCanceled(i);
-            } else if (
-                cs == CollateralStatus.SOUND && iss.blockAvailableAt.ceil() <= block.number
-            ) {
+            } else if (backingIsSound) {
                 // Complete issuance i
-                iss.vault.transfer(address(rToken()), iss.amtBUs);
+                _transferBUs(address(this), address(rToken()), iss.amtBUs);
                 rToken().transfer(iss.issuer, iss.amount);
                 iss.processed = true;
                 emit IssuanceCompleted(i);

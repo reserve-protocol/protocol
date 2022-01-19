@@ -10,7 +10,7 @@ import "contracts/p0/main/RewardHandler.sol";
 import "contracts/p0/main/RTokenIssuer.sol";
 import "contracts/p0/main/Auctioneer.sol";
 import "contracts/p0/main/AssetRegistry.sol";
-import "contracts/p0/main/VaultHandler.sol";
+import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/Pausable.sol";
@@ -25,7 +25,7 @@ contract MainP0 is
     AssetRegistryP0,
     SettingsHandlerP0,
     RevenueDistributorP0,
-    VaultHandlerP0,
+    BasketHandlerP0,
     AuctioneerP0,
     RewardHandlerP0,
     RTokenIssuerP0,
@@ -44,7 +44,7 @@ contract MainP0 is
             AssetRegistryP0,
             SettingsHandlerP0,
             RevenueDistributorP0,
-            VaultHandlerP0,
+            BasketHandlerP0,
             AuctioneerP0,
             RewardHandlerP0,
             RTokenIssuerP0
@@ -57,7 +57,7 @@ contract MainP0 is
     function poke()
         public
         virtual
-        override(IMixin, Mixin, VaultHandlerP0, AuctioneerP0, RewardHandlerP0, RTokenIssuerP0)
+        override(IMixin, Mixin, BasketHandlerP0, AuctioneerP0, RewardHandlerP0, RTokenIssuerP0)
     {
         super.poke();
     }

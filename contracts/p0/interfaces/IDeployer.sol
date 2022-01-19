@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "./IAsset.sol";
-import "./IVault.sol";
+import "./IMain.sol";
 
 /**
  * @title IDeployer

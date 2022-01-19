@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/libraries/Fixed.sol";
 import "contracts/p0/interfaces/IERC20Receiver.sol";
+import "contracts/libraries/Fixed.sol";
 
 /**
  * @title IFurnace

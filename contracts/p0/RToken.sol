@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
-import "contracts/p0/interfaces/IVault.sol";
 
 /**
  * @title RTokenP0
@@ -48,15 +47,6 @@ contract RTokenP0 is Ownable, ERC20, IRToken {
         _burn(from, amount);
         totalMelted += amount;
         return true;
-    }
-
-    function withdrawBUs(
-        IVault vault,
-        address to,
-        uint256 amount
-    ) external virtual override {
-        require(_msgSender() == address(main), "only main");
-        vault.transfer(to, amount);
     }
 
     function setMain(IMain main_) external virtual override onlyOwner {

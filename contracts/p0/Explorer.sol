@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/Main.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/IExplorer.sol";
@@ -44,10 +43,11 @@ contract ExplorerP0 is IExplorer {
 
         // Add vaults contents
         for (uint256 i = 0; i < main.numVaults(); i++) {
-            IVault vault = main.vaults(i);
-            for (uint256 j = 0; j < tokens.length; j++) {
-                quantities[j] += IERC20(tokens[j]).balanceOf(address(vault));
-            }
+            // TODO after vault destruction
+            // IVault vault = main.vaults(i);
+            // for (uint256 j = 0; j < tokens.length; j++) {
+            //     quantities[j] += IERC20(tokens[j]).balanceOf(address(vault));
+            // }
         }
 
         // Add BackingTrader contents
