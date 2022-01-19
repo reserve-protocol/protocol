@@ -9,16 +9,15 @@ import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/p0/main/SettingsHandler.sol";
-import "contracts/p0/main/VaultHandler.sol";
+import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IVault.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./Auctioneer.sol";
 import "./SettingsHandler.sol";
-import "./VaultHandler.sol";
+import "./BasketHandler.sol";
 
 /**
  * @title RewardHandler
@@ -29,7 +28,7 @@ contract RewardHandlerP0 is
     Mixin,
     SettingsHandlerP0,
     RevenueDistributorP0,
-    VaultHandlerP0,
+    BasketHandlerP0,
     AuctioneerP0,
     IRewardHandler
 {
@@ -42,25 +41,22 @@ contract RewardHandlerP0 is
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, SettingsHandlerP0, RevenueDistributorP0, VaultHandlerP0, AuctioneerP0)
+        override(Mixin, SettingsHandlerP0, RevenueDistributorP0, BasketHandlerP0, AuctioneerP0)
     {
         super.init(args);
     }
 
     /// Collects revenue by expanding RToken supply and claiming COMP/AAVE rewards
-    function poke() public virtual override(Mixin, VaultHandlerP0, AuctioneerP0) notPaused {
+    function poke() public virtual override(Mixin, BasketHandlerP0, AuctioneerP0) notPaused {
         super.poke();
         uint256 compBalStart = compAsset().erc20().balanceOf(address(this));
         uint256 aaveBalStart = aaveAsset().erc20().balanceOf(address(this));
         (uint256 prevRewards, ) = _rewardsAdjacent(block.timestamp);
         if (prevRewards > _rewardsLastClaimed && fullyCapitalized()) {
-            // Sweep COMP/AAVE from vaults + traders into Main
+            // Claim + Sweep COMP/AAVE from self + traders
             backingTrader.claimAndSweepRewards();
             rsrTrader.claimAndSweepRewards();
             rTokenTrader.claimAndSweepRewards();
-            for (uint256 i = 0; i < vaults.length; i++) {
-                vaults[i].claimAndSweepRewards();
-            }
             _claimAndSweepRewards();
 
             _expandSupplyToRSRTrader();
@@ -86,7 +82,7 @@ contract RewardHandlerP0 is
 
     function _expandSupplyToRSRTrader() internal {
         // it's correct for this to be only the basket units held directly by the RToken
-        uint256 possible = fromBUs(vault().basketUnits(address(rToken())));
+        uint256 possible = fromBUs(basketUnits[address(rToken())]);
         uint256 totalSupply = rToken().totalSupply();
         if (fullyCapitalized() && possible > totalSupply) {
             rToken().mint(address(rsrTrader), possible - totalSupply);

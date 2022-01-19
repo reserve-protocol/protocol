@@ -29,10 +29,6 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         collateral.disable();
     }
 
-    function isRegistered(IAsset asset) external view override returns (bool) {
-        return _assets.contains(address(asset));
-    }
-
     function allAssets() external view override returns (IAsset[] memory assets) {
         assets = new IAsset[](_assets.length());
         for (uint256 i = 0; i < _assets.length(); i++) {

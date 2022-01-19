@@ -9,7 +9,7 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IRewardsClaimer.sol";
 import "contracts/p0/libraries/Rewards.sol";
-import "contracts/p0/main/VaultHandler.sol";
+import "contracts/p0/main/BasketHandler.sol";
 import "contracts/libraries/Fixed.sol";
 
 abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {

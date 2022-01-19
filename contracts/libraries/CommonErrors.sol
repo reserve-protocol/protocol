@@ -26,7 +26,6 @@ library CommonErrors {
     error BasketTooBig();
     error UninitializedTokens();
     error InvalidTokenIndex();
-    error UnsoundVault();
 
     // Circuit Breaker
     error CircuitPaused();

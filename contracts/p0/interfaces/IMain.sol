@@ -3,13 +3,13 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "contracts/p0/libraries/Basket.sol";
 import "./IAsset.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./IOracle.sol";
-import "./IVault.sol";
 
 /// Configuration of the system
 struct Config {
@@ -54,7 +54,6 @@ struct RevenueShare {
 struct ConstructorArgs {
     Config config;
     RevenueShare dist;
-    IVault vault;
     IFurnace furnace;
     IMarket market;
 }
@@ -102,8 +101,6 @@ interface IAssetRegistry {
     function removeAsset(IAsset asset) external;
 
     function disableCollateral(ICollateral collateral) external;
-
-    function isRegistered(IAsset asset) external view returns (bool);
 
     function allAssets() external view returns (IAsset[] memory);
 }
@@ -208,25 +205,29 @@ interface ISettingsHandler {
     function rsr() external view returns (IERC20);
 }
 
-interface IVaultHandler {
-    /// Emitted when the current vault is changed
-    /// @param oldVault The address of the old vault
-    /// @param newVault The address of the new vault
-    event NewVaultSet(address indexed oldVault, address indexed newVault);
+interface IBasketHandler {
+    // // TODO figure out what this event turns into
+    // /// Emitted when the current vault is changed
+    // /// @param oldBasket The address of the old vault
+    // /// @param newBasket The address of the new vault
+    // // event NewBasketSet(address indexed oldBasket, address indexed newBasket);
 
-    function switchVault(IVault vault) external;
+    function setBasket(ICollateral[] calldata collateral, Fix[] calldata amounts) external;
 
-    function toBUs(uint256 amount) external view returns (uint256);
+    function toBUs(uint256 amount) external view returns (Fix);
 
-    function fromBUs(uint256 amtBUs) external view returns (uint256);
+    function fromBUs(Fix amtBUs) external view returns (uint256);
 
     function baseFactor() external view returns (Fix);
 
+    function basketPrice() external view returns (Fix);
+
     function fullyCapitalized() external view returns (bool);
 
-    function vault() external view returns (IVault);
+    // TODO These are only here because the traders are living outside main. To confirm.
+    function basketCollateralQuantities() external view returns (uint256[] memory);
 
-    function numVaults() external view returns (uint256);
+    function basketReferenceAmounts() external view returns (Fix[] memory);
 }
 
 interface IAuctioneerEvents {
@@ -240,8 +241,8 @@ interface IAuctioneerEvents {
         uint256 indexed auctionId,
         address indexed sell,
         address indexed buy,
-        uint256 sellAmount, // {qSellTok}
-        uint256 minBuyAmount // {qBuyTok}
+        uint256 sellAmount,
+        uint256 minBuyAmount
     );
 
     /// Emitted after an auction ends
@@ -323,7 +324,7 @@ interface IMain is
     IAssetRegistry,
     ISettingsHandler,
     IRevenueDistributor,
-    IVaultHandler,
+    IBasketHandler,
     IAuctioneer,
     IRewardHandler,
     IRTokenIssuer

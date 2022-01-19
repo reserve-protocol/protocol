@@ -79,9 +79,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && address(rsrAsset()) != address(0);
         ok = ok && address(compAsset()) != address(0);
         ok = ok && address(aaveAsset()) != address(0);
-        ok = ok && _assets.length() > 0;
-        ok = ok && address(vault()) != address(0);
-        ok = ok && vaults.length > 0;
         if (!ok) {
             console.log("_INVARIANT_stateDefined violated");
         }
@@ -166,9 +163,8 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_pricesDefined() internal view returns (bool ok) {
         ok = true;
-        for (uint256 i = 0; i < vault().size(); i++) {
-            ICollateral c = vault().collateralAt(i);
-            ok = ok && c.price().gt(FIX_ZERO);
+        for (uint256 i = 0; i < _basket.size; i++) {
+            ok = ok && _basket.collateral[i].price().gt(FIX_ZERO);
         }
         ok = ok && compAsset().price().gt(FIX_ZERO);
         ok = ok && rsrAsset().price().gt(FIX_ZERO);
@@ -215,10 +211,14 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_fromBUInverseToBU() internal view returns (bool ok) {
         ok = true;
-        uint256 bu_s = vault().basketUnits(address(rToken()));
-        ok = ok && toFix(toBUs(fromBUs(bu_s))).near(toFix(bu_s), toFix(2)); // < 2 away
+        Fix bu_s = basketUnits[address(rToken())];
+        ok = ok && toBUs(fromBUs(bu_s)).near(bu_s, toFix(2)); // < 2 away
         if (!ok) {
-            console.log("_INVARIANT_fromBUInverseToBU violated", toBUs(fromBUs(bu_s)), bu_s);
+            console.log(
+                "_INVARIANT_fromBUInverseToBU violated",
+                toBUs(fromBUs(bu_s)).round(),
+                bu_s.round()
+            );
         }
     }
 

@@ -9,8 +9,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
-import "contracts/p0/interfaces/IVault.sol";
-import "contracts/p0/main/VaultHandler.sol";
+import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/BackingTrader.sol";
 import "contracts/p0/RevenueTrader.sol";
@@ -18,7 +17,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./AssetRegistry.sol";
 import "./SettingsHandler.sol";
-import "./VaultHandler.sol";
+import "./BasketHandler.sol";
 
 /**
  * @title Auctioneer
@@ -29,7 +28,7 @@ contract AuctioneerP0 is
     Mixin,
     AssetRegistryP0,
     SettingsHandlerP0,
-    VaultHandlerP0,
+    BasketHandlerP0,
     IAuctioneer
 {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -43,7 +42,7 @@ contract AuctioneerP0 is
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, AssetRegistryP0, SettingsHandlerP0, VaultHandlerP0)
+        override(Mixin, AssetRegistryP0, SettingsHandlerP0, BasketHandlerP0)
     {
         super.init(args);
         backingTrader = new BackingTraderP0(IMain(address(this)));
@@ -51,7 +50,7 @@ contract AuctioneerP0 is
         rTokenTrader = new RevenueTraderP0(IMain(address(this)), rTokenAsset());
     }
 
-    function poke() public virtual override(Mixin, VaultHandlerP0) notPaused {
+    function poke() public virtual override(Mixin, BasketHandlerP0) notPaused {
         super.poke();
 
         // Backing Trader
@@ -71,12 +70,12 @@ contract AuctioneerP0 is
                (migrationChunk * rToken supply) BUs at a time
             */
 
-            uint256 maxBUs = toBUs(migrationChunk().mulu(rToken().totalSupply()).round());
-            uint256 redeemedBUs = _redeemFromOldVaults(address(backingTrader), maxBUs, false);
-            uint256 buShortfall = toBUs(rToken().totalSupply()) -
-                vault().basketUnits(address(rToken()));
+            Fix maxBUs = migrationChunk().mul(toBUs(rToken().totalSupply()));
+            Fix redeemedBUs = _redeemBUs(address(this), address(backingTrader), maxBUs);
+            Fix buShortfall = toBUs(rToken().totalSupply()).minus(basketUnits[address(rToken())]);
+            require(buShortfall.gte(FIX_ZERO), "buShortfall negative");
 
-            if (redeemedBUs > 0) {
+            if (redeemedBUs.gt(FIX_ZERO)) {
                 backingTrader.increaseBUTarget(redeemedBUs, buShortfall);
                 backingTrader.poke();
             }
@@ -84,7 +83,8 @@ contract AuctioneerP0 is
             if (!backingTrader.hasOpenAuctions() && !fullyCapitalized()) {
                 /* If we're *here*, then we're out of capital we can trade for RToken backing,
                  * including staked RSR. There's only one option left to us... */
-                _rTokenHaircut();
+                // TODO
+                // _rTokenHaircut();
             }
         }
 
@@ -105,14 +105,5 @@ contract AuctioneerP0 is
 
     function rTokenTraderAddr() external view override returns (address) {
         return address(rTokenTrader);
-    }
-
-    function _rTokenHaircut() private {
-        // The ultimate endgame: a haircut for RToken holders.
-        // TODO: This is no longer a thing
-        // beforeUpdate();
-        // _historicalBasketDilution = _meltingFactor().mulu(rToken().totalSupply()).divu(
-        //     vault().basketUnits(address(rToken()))
-        // );
     }
 }

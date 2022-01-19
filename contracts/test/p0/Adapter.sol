@@ -18,7 +18,6 @@ import "contracts/p0/interfaces/IDeployer.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
-import "contracts/p0/interfaces/IVault.sol";
 import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/p0/mocks/AaveLendingPoolMock.sol";
 import "contracts/p0/mocks/AaveLendingAddrProviderMock.sol";
@@ -27,7 +26,6 @@ import "contracts/p0/mocks/CompoundOracleMock.sol";
 import "contracts/p0/mocks/ComptrollerMock.sol";
 import "contracts/p0/mocks/RTokenMock.sol";
 import "contracts/p0/Oracle.sol";
-import "contracts/p0/Vault.sol";
 import "contracts/test/Lib.sol";
 import "contracts/test/ProtosDriver.sol";
 import "contracts/test/ProtoState.sol";
@@ -206,25 +204,6 @@ contract AdapterP0 is ProtoAdapter {
             _setDefiCollateralRates(s.defiCollateralRates);
         }
 
-        // Deploy vault for each basket
-        IVault[] memory vaults = new IVault[](s.bu_s.length);
-        {
-            for (int256 i = int256(s.bu_s.length) - 1; i >= 0; i--) {
-                uint256 iUint = uint256(i);
-                IVault[] memory prevVaults = new IVault[](s.bu_s.length - 1 - iUint);
-                for (uint256 j = iUint + 1; j < s.bu_s.length; j++) {
-                    prevVaults[j - (iUint + 1)] = vaults[j];
-                }
-
-                ICollateral[] memory backing = new ICollateral[](s.bu_s[iUint].assets.length);
-                for (uint256 j = 0; j < s.bu_s[iUint].assets.length; j++) {
-                    backing[j] = collateral[uint256(s.bu_s[iUint].assets[j])];
-                }
-
-                vaults[iUint] = new VaultP0(backing, s.bu_s[iUint].quantities, prevVaults);
-            }
-        }
-
         // Deploy Main/StRSR/RToken
         {
             // compute initial share from ProtoState
@@ -247,7 +226,6 @@ contract AdapterP0 is ProtoAdapter {
                     initialShare
                 )
             );
-            _main.switchVault(vaults[0]);
             _stRSR = StRSRExtension(address(_main.stRSR()));
             _rToken = RTokenExtension(address(_main.rToken()));
 
@@ -263,10 +241,6 @@ contract AdapterP0 is ProtoAdapter {
                         RevenueShare(s.distribution[i].rTokenDist, s.distribution[i].rsrDist)
                     );
                 }
-            }
-
-            for (uint256 i = 0; i < vaults.length; i++) {
-                vaults[i].setMain(_main);
             }
         }
 
@@ -317,9 +291,14 @@ contract AdapterP0 is ProtoAdapter {
             }
         }
 
-        // Switch vault + unpause
+        // Set basket + unpause
         {
-            _main.switchVault(vaults[0]);
+            ICollateral[] memory backing = new ICollateral[](s.bu_s[0].assets.length);
+            for (uint256 i = 0; i < s.bu_s[0].assets.length; i++) {
+                backing[i] = collateral[uint256(s.bu_s[0].assets[i])];
+            }
+
+            _main.setBasket(backing, s.bu_s[0].amounts);
             _main.unpause();
         }
     }
@@ -345,14 +324,7 @@ contract AdapterP0 is ProtoAdapter {
             backingCollateral[i] = _reverseAssets[ERC20Mock(backingTokens[i])];
         }
         s.distribution = _main.STATE_revenueDistribution();
-
-        Fix[] memory quantities = new Fix[](backingCollateral.length);
-        for (uint256 i = 0; i < quantities.length; i++) {
-            quantities[i] = _main.vault().quantity(
-                ICollateral(address(_assets[backingCollateral[i]]))
-            );
-        }
-        s.rTokenDefinition = BU(backingCollateral, quantities);
+        s.rTokenDefinition = BU(backingCollateral, _main.basketReferenceAmounts());
         s.rToken = _dumpERC20(_main.rToken());
         s.rsr = _dumpERC20(_main.rsr());
         s.stRSR = _dumpERC20(_main.stRSR());
@@ -598,31 +570,14 @@ contract AdapterP0 is ProtoAdapter {
 
     /// @return bu_s The Basket Units of the stick DAG
     function _traverseVaults() internal view returns (BU[] memory bu_s) {
-        IVault v = _main.vault();
-        AssetName[] memory collateral;
-        IVault[] memory backups;
-        do {
-            backups = v.getBackups();
-            BU[] memory next = new BU[](bu_s.length + 1);
-            for (uint256 i = 0; i < bu_s.length; i++) {
-                next[i] = bu_s[i];
-            }
-            collateral = new AssetName[](v.size());
-            for (uint256 i = 0; i < v.size(); i++) {
-                collateral[i] = _reverseAssets[ERC20Mock(address(v.collateralAt(i).erc20()))];
-            }
-            Fix[] memory quantities = new Fix[](collateral.length);
-            for (uint256 i = 0; i < quantities.length; i++) {
-                quantities[i] = _main.vault().quantity(
-                    ICollateral(address(_assets[collateral[i]]))
-                );
-            }
-            next[bu_s.length] = BU(collateral, quantities);
-            bu_s = next;
-            if (backups.length > 0) {
-                v = backups[0]; // walk the DAG
-            }
-        } while (backups.length > 0);
+        address[] memory tokens = _main.backingTokens();
+        AssetName[] memory assets = new AssetName[](tokens.length);
+        for (uint256 i = 0; i < assets.length; i++) {
+            assets[i] = _reverseAssets[ERC20Mock(address(tokens[i]))];
+        }
+
+        bu_s = new BU[](1);
+        bu_s[0] = BU(assets, _main.basketReferenceAmounts());
     }
 
     /// Account index -> address
