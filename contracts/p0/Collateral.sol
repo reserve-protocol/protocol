@@ -93,9 +93,9 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     }
 
     /// @return The vault-selection score of this collateral
-    /// @dev That is, govScore * growth
+    /// @dev That is, govScore * (growth relative to the reference asset)
     function score() external view override returns (Fix) {
-        return govScore;
+        return govScore.mul(referencePrice()).div(oldRefPrice);
     }
 
     /// @return {attoRef/qTok} Minimum price of a pegged asset to be considered non-defaulting
