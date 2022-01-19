@@ -57,7 +57,7 @@ contract RewardHandlerP0 is
             backingTrader.claimAndSweepRewards();
             rsrTrader.claimAndSweepRewards();
             rTokenTrader.claimAndSweepRewards();
-            _claimAndSweepRewards();
+            RewardsLib.claimAndSweepRewards(address(this));
 
             _expandSupplyToRSRTrader();
             _rewardsLastClaimed = prevRewards;
@@ -104,10 +104,5 @@ contract RewardHandlerP0 is
         int256 reps = (int256(time) - int256(rewardStart())) / int256(rewardPeriod());
         left = uint256(reps * int256(rewardPeriod()) + int256(rewardStart()));
         right = left + rewardPeriod();
-    }
-
-    /// Claims and sweeps all COMP/AAVE rewards
-    function _claimAndSweepRewards() internal {
-        RewardsLib.claimAndSweepRewards(address(this));
     }
 }

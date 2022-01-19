@@ -67,15 +67,17 @@ contract BasketHandlerP0 is
 
     /// {qRTok} -> {BU}
     function toBUs(uint256 amount) public view override returns (Fix) {
-        return baseFactor().mulu(amount).shiftLeft(int8(rToken().decimals()));
+        // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
+        return baseFactor().mulu(amount).shiftLeft(-int8(rToken().decimals()));
     }
 
     /// {BU} -> {qRTok}
     function fromBUs(Fix amtBUs) public view override returns (uint256) {
-        return amtBUs.div(baseFactor()).shiftLeft(-int8(rToken().decimals())).floor();
+        // {qRTok} = {BU} / {BU/rTok} * {qRTok/rTok}
+        return amtBUs.div(baseFactor()).shiftLeft(int8(rToken().decimals())).floor();
     }
 
-    /// @return {none}
+    /// @return {BU/rTok}
     function baseFactor() public view override returns (Fix) {
         Fix supply = toFix(rToken().totalSupply()); // {qRTok}
         Fix melted = toFix(rToken().totalMelted()); // {qRTok}

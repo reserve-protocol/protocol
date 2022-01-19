@@ -8,17 +8,15 @@ library RewardsLib {
         IMain main = IMain(mainAddr);
         IAsset[] memory assets = main.allAssets();
         for (uint256 i = 0; i < assets.length; i++) {
-            if (assets[i].isCollateral()) {
-                // solhint-disable-next-line avoid-low-level-calls
-                (bool success, ) = address(assets[i]).delegatecall(
-                    abi.encodeWithSignature(
-                        "claimRewards(address,address)",
-                        address(assets[i]),
-                        address(main)
-                    )
-                );
-                require(success, "delegatecall rewards claim failed");
-            }
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = address(assets[i]).delegatecall(
+                abi.encodeWithSignature(
+                    "claimAndSweepRewards(address,address)",
+                    address(assets[i]),
+                    address(main)
+                )
+            );
+            require(success, "delegatecall rewards claim failed");
         }
     }
 }
