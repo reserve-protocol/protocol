@@ -16,7 +16,6 @@ import { MarketMock } from '../../typechain/MarketMock'
 import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StRSRP0 } from '../../typechain/StRSRP0'
-import { VaultP0 } from '../../typechain/VaultP0'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -27,8 +26,7 @@ describe('DeployerP0 contract', () => {
   // Deployer contract
   let deployer: DeployerP0
 
-  // Vault and Collateral
-  let vault: VaultP0
+  //  Collateral
   let collateral: Collateral[]
 
   // RSR
@@ -79,7 +77,6 @@ describe('DeployerP0 contract', () => {
       compoundOracle,
       aaveOracle,
       collateral,
-      vault,
       config,
       dist,
       deployer,
@@ -111,7 +108,6 @@ describe('DeployerP0 contract', () => {
       expect(rTokenAsset.address).to.not.equal(ZERO_ADDRESS)
       expect(furnace.address).to.not.equal(ZERO_ADDRESS)
       expect(stRSR.address).to.not.equal(ZERO_ADDRESS)
-      expect(vault.address).to.not.equal(ZERO_ADDRESS)
     })
 
     it('Should register deployment', async () => {
@@ -122,9 +118,6 @@ describe('DeployerP0 contract', () => {
       // Owner/Pauser
       expect(await main.owner()).to.equal(owner.address)
       expect(await main.pauser()).to.equal(owner.address)
-
-      // Vault
-      expect(await main.vault()).to.equal(vault.address)
 
       // Assets
       // RSR
