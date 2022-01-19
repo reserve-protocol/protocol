@@ -1,14 +1,13 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { bn, fp } from '../../common/numbers'
+import { bn } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainP0 } from '../../typechain/MainP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { VaultP0 } from '../../typechain/VaultP0'
 
 import { Collateral, defaultFixture } from './utils/fixtures'
 
@@ -17,6 +16,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 describe('RTokenP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
+  let mainMock: SignerWithAddress
   let other: SignerWithAddress
 
   // Main
@@ -36,8 +36,7 @@ describe('RTokenP0 contract', () => {
   // RToken
   let rToken: RTokenP0
 
-  // Vault and Basket
-  let vault: VaultP0
+  // Basket
   let basket: Collateral[]
 
   // Quantities
@@ -52,10 +51,10 @@ describe('RTokenP0 contract', () => {
   })
 
   beforeEach(async () => {
-    ;[owner, addr1, other] = await ethers.getSigners()
+    ;[owner, addr1, mainMock, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, vault, main, rToken } = await loadFixture(defaultFixture))
+    ;({ basket, main, rToken } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
     initialBal = bn('100e18')
@@ -71,9 +70,6 @@ describe('RTokenP0 contract', () => {
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
     token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
-
-    // Setup Main
-    await vault.connect(owner).setMain(main.address)
   })
 
   describe('Deployment', () => {
@@ -83,6 +79,7 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.decimals()).to.equal(18)
       expect(await rToken.totalSupply()).to.equal(bn(0))
       expect(await rToken.main()).to.equal(main.address)
+      expect(await rToken.totalMelted()).to.equal(0)
     })
   })
 
@@ -106,7 +103,7 @@ describe('RTokenP0 contract', () => {
     })
   })
 
-  describe('Burn/Melt', () => {
+  describe('Burn/Melt/Mint', () => {
     const issueAmount: BigNumber = bn('100e18')
 
     beforeEach(async () => {
@@ -129,7 +126,7 @@ describe('RTokenP0 contract', () => {
       await main.poke()
     })
 
-    it('Should allow to burn tokes if holder', async () => {
+    it('Should allow to burn tokens if holder or Main', async () => {
       // Burn tokens
       const burnAmount: BigNumber = bn('10e18')
 
@@ -142,9 +139,24 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(burnAmount))
       expect(await rToken.totalSupply()).to.equal(issueAmount.sub(burnAmount))
       expect(await rToken.totalMelted()).to.equal(0)
+
+      // Update Main to mock call - from mainMock
+      await rToken.connect(owner).setMain(mainMock.address)
+
+      // Burn another set of tokens
+      await rToken.connect(mainMock).burn(addr1.address, burnAmount)
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(burnAmount.mul(2)))
+      expect(await rToken.totalSupply()).to.equal(issueAmount.sub(burnAmount.mul(2)))
+      expect(await rToken.totalMelted()).to.equal(0)
+
+      // Trying to burn with another account will fail
+      await expect(rToken.connect(other).burn(addr1.address, burnAmount)).to.be.revertedWith(
+        'only self or main'
+      )
     })
 
-    it('Should allow to melt tokes if holder', async () => {
+    it('Should allow to melt tokens if holder or Main', async () => {
       // Burn tokens
       const burnAmount: BigNumber = bn('10e18')
 
@@ -157,6 +169,34 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(burnAmount))
       expect(await rToken.totalSupply()).to.equal(issueAmount.sub(burnAmount))
       expect(await rToken.totalMelted()).to.equal(burnAmount)
+
+      // Trying to melt with another account will fail
+      await expect(rToken.connect(other).melt(addr1.address, burnAmount)).to.be.revertedWith(
+        'only self'
+      )
+    })
+
+    it('Should allow to mint tokens when called by Main', async () => {
+      // Mint tokens
+      const mintAmount: BigNumber = bn('10e18')
+
+      // Update Main to mock call - from mainMock
+      await rToken.connect(owner).setMain(mainMock.address)
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+      expect(await rToken.totalMelted()).to.equal(0)
+
+      await rToken.connect(mainMock).mint(addr1.address, mintAmount)
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(mintAmount))
+      expect(await rToken.totalSupply()).to.equal(issueAmount.add(mintAmount))
+      expect(await rToken.totalMelted()).to.equal(0)
+
+      // Trying to mint with another account will fail
+      await expect(rToken.connect(other).mint(addr1.address, mintAmount)).to.be.revertedWith(
+        'only main'
+      )
     })
   })
 })
