@@ -24,13 +24,27 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 internal whenDefault = NEVER;
 
-    // solhint-disable no-empty-blocks
+    // role: The basket-template role this Collateral plays. (See BasketHandler)
+    bytes32 immutable role;
+    // govScore: Among Collateral with that rolw, the measure of governance's
+    // preference that this Collateral plays that role. Higher is stronger.
+    Fix public immutable govScore;
+    // oldReferencePrice: {attoUSD/qTok} The price of this derivative asset at some RToken-specific
+    // previous time. Used when choosing new baskets.
+    Fix public immutable oldPrice;
 
     constructor(
         IERC20Metadata erc20_,
         IMain main_,
-        IOracle oracle_
-    ) AssetP0(erc20_, main_, oracle_) {}
+        IOracle oracle_,
+        bytes32 role_,
+        Fix govScore_,
+        Fix oldPrice_
+    ) AssetP0(erc20_, main_, oracle_) {
+        role = role_;
+        govScore = govScore_;
+        oldPrice = oldPrice_;
+    }
 
     /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
     function forceUpdates() public virtual override {

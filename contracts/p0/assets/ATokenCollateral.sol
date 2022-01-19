@@ -39,8 +39,11 @@ contract ATokenCollateralP0 is CollateralP0 {
     constructor(
         IERC20Metadata erc20_,
         IMain main_,
-        IOracle oracle_
-    ) CollateralP0(erc20_, main_, oracle_) {}
+        IOracle oracle_,
+        bytes32 role_,
+        Fix govScore_,
+        Fix oldPrice_
+    ) CollateralP0(erc20_, main_, oracle_, role_, govScore_, oldPrice_) {}
 
     /// Update default status
     function forceUpdates() public virtual override {

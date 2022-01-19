@@ -16,16 +16,23 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./SettingsHandler.sol";
 
+
+struct TemplateElmt {
+    bytes32 role;
+    Fix weight;
+}
+
 /**
  * @title VaultHandler
  * @notice Handles the use of vaults and their associated basket units (BUs), including the tracking
  *    of the base rate, the exchange rate between RToken and BUs.
  */
+
 contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributorP0, IVaultHandler {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.Bytes32Set; // bytes32 by default.
     using SafeERC20 for IERC20;
     using FixLib for Fix;
-
     // ECONOMICS
     //
     // base factor = exchange rate between Vault BUs and RTokens
@@ -36,6 +43,13 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
     Fix internal _historicalBasketDilution; // the product of all historical basket dilutions
     Fix internal _prevBasketPrice; // {USD/qBU} redemption value of the basket at last update
 
+    // ADD: list of basket templates
+    // ADD: set of roles
+    Basket basket;
+    EnumerableSet.Bytes32Set allRoles;
+    TemplateElmt[][] templates;
+
+    // TODO: eliminate vaults
     IVault[] public override vaults;
 
     function init(ConstructorArgs calldata args)
@@ -44,7 +58,6 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
         override(Mixin, SettingsHandlerP0, RevenueDistributorP0)
     {
         super.init(args);
-        vaults.push(args.vault);
 
         // Check vault collateral
         if (vault().collateralStatus() != CollateralStatus.SOUND) {
@@ -188,6 +201,13 @@ contract VaultHandlerP0 is Pausable, Mixin, SettingsHandlerP0, RevenueDistributo
             rToken().withdrawBUs(vault_, address(this), toRedeem);
             vault_.redeem(recipient, toRedeem);
         }
+    }
+
+    /// @return Whether the basket was changed
+    function _setNextBasket() private view returns (bool) {
+
+        // For each role, pick best[role]
+
     }
 
     /// @return A vault from the list of backup vaults that is not defaulting
