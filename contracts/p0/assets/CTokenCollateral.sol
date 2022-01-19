@@ -75,7 +75,7 @@ contract CTokenCollateralP0 is CollateralP0 {
         oracle.comptroller().claimComp(address(this));
         uint256 amount = main_.compAsset().erc20().balanceOf(address(this));
         if (amount > 0) {
-            main_.compAsset().erc20().safeTransfer(address(main), amount);
+            main_.compAsset().erc20().safeTransfer(address(main_), amount);
         }
     }
 

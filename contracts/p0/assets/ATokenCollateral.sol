@@ -72,7 +72,7 @@ contract ATokenCollateralP0 is CollateralP0 {
         uint256 amount = aToken.getClaimableRewards(address(this));
         if (amount > 0) {
             aToken.claimRewardsToSelf(true);
-            main_.aaveAsset().erc20().safeTransfer(address(main), amount);
+            main_.aaveAsset().erc20().safeTransfer(address(main_), amount);
         }
     }
 
