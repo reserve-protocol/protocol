@@ -119,6 +119,9 @@ describe('DeployerP0 contract', () => {
     })
 
     it('Should setup Main correctly', async () => {
+      expect(await main.owner()).to.equal(owner.address)
+      expect(await main.pauser()).to.equal(owner.address)
+
       expect(await main.vault()).to.equal(vault.address)
       expect(await main.rsr()).to.equal(rsr.address)
 
@@ -156,6 +159,8 @@ describe('DeployerP0 contract', () => {
 
     it('Should setup Furnace correctly', async () => {
       expect(await furnace.rToken()).to.equal(rToken.address)
+      expect(await furnace.batchDuration()).to.equal(config.rewardPeriod)
+      expect(await furnace.owner()).to.equal(owner.address)
     })
 
     it('Should setup stRSR correctly', async () => {

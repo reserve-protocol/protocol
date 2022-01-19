@@ -400,7 +400,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await main.connect(owner).addAsset(collateral[i].address)
   }
 
-
   // Setup Main
   await vault.connect(owner).setMain(main.address)
 
