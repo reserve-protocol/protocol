@@ -131,7 +131,7 @@ describe('In FixLib,', async () => {
   describe('divFix', async () => {
     it('correctly divides inside its range', async () => {
       //prettier-ignore
-      ;[[10, 1, 10], [10, 2, 5], [20, 2.5, 8], [1, 5, 0.2], [256, 256, 1],]
+      [[10, 1, 10], [10, 2, 5], [20, 2.5, 8], [1, 5, 0.2], [256, 256, 1],]
         .flatMap(([x, y, z]) => [[x, y, z], [x, -y, -z], [x, z, y], [x, -z, -y],])
         .concat([[0, 1, 0], [0, -1, 0],])
         .forEach(async ([x, y, result]) =>
@@ -797,14 +797,14 @@ describe('In FixLib,', async () => {
     })
     it('fails to divide by zero', async () => {
       // prettier-ignore
-      ;[fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
+      [fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
         .forEach(async (x) => await expect(caller.div(x, bn(0)), `div(${x}, 0`).to.be.reverted)
     })
   })
   describe('divi', async () => {
     it('correctly divides inside its range', async () => {
       // prettier-ignore
-      ;[
+      [
         [fp(100), bn(20), fp(5)],
         [fp(1.0), bn(25), fp(0.04)],
         [bn(50), bn(50), bn(1)],
@@ -818,7 +818,7 @@ describe('In FixLib,', async () => {
     })
     it('correctly divides at the extremes of its range', async () => {
       // prettier-ignore
-      ;[
+      [
         [MAX_INT192, bn(1), MAX_INT192],
         [MAX_INT192, bn(-1), neg(MAX_INT192)],
         [MIN_INT192, bn(2), MIN_INT192.div(2)],
@@ -827,7 +827,7 @@ describe('In FixLib,', async () => {
     })
     it('correctly truncates results towards zero', async () => {
       // prettier-ignore
-      ;[
+      [
         [bn(5), bn(2), bn(2)],
         [bn(-5), bn(2), bn(-2)],
         [bn(29), bn(10), bn(2)],
@@ -836,14 +836,14 @@ describe('In FixLib,', async () => {
     })
     it('fails to divide by zero', async () => {
       // prettier-ignore
-      ;[fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
+      [fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
         .forEach(async (x) => await expect(caller.divi(x, bn(0)), `divi(${x}, 0`).to.be.reverted)
     })
   })
   describe('divu', async () => {
     it('correctly divides inside its range', async () => {
       // prettier-ignore
-      ;[
+      [
         [fp(100), bn(20), fp(5)],
         [fp(1.0), bn(25), fp(0.04)],
         [bn(50), bn(50), bn(1)],
@@ -855,7 +855,7 @@ describe('In FixLib,', async () => {
     })
     it('correctly divides at the extremes of its range', async () => {
       // prettier-ignore
-      ;[
+      [
         [MAX_INT192, bn(1), MAX_INT192],
         [MIN_INT192, bn(1), MIN_INT192],
         [MIN_INT192, bn(2), MIN_INT192.div(2)],
@@ -863,7 +863,7 @@ describe('In FixLib,', async () => {
     })
     it('correctly truncates results towards zero', async () => {
       // prettier-ignore
-      ;[
+      [
         [bn(5), bn(2), bn(2)],
         [bn(-5), bn(2), bn(-2)],
         [bn(29), bn(10), bn(2)],
@@ -872,14 +872,14 @@ describe('In FixLib,', async () => {
     })
     it('fails to divide by zero', async () => {
       // prettier-ignore
-      ;[fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
+      [fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
         .forEach(async (x) => await expect(caller.divu(x, bn(0)), `divu(${x}, 0`).to.be.reverted)
     })
   })
   describe('inv', async () => {
     it('correctly inverts inside its range', async () => {
       // prettier-ignore
-      ;[
+      [
         [fp(1), fp(1)],
         [fp(2), fp(0.5)],
         [bn(2), fp('0.5e18')],
@@ -889,7 +889,7 @@ describe('In FixLib,', async () => {
     })
     it('correctly inverts at the extremes of its range', async () => {
       // prettier-ignore
-      ;[
+      [
         [MAX_INT192, 0],
         [MIN_INT192, 0],
         [fp('1e18'), bn(1)],
@@ -905,7 +905,7 @@ describe('In FixLib,', async () => {
   describe('powu', async () => {
     it('correctly exponentiates inside its range', async () => {
       // prettier-ignore
-      ;[
+      [
         [fp(1.0), bn(1), fp(1.0)],
         [fp(1.0), bn(15), fp(1.0)],
         [fp(2), bn(7), fp(128)],
@@ -1029,7 +1029,7 @@ describe('In FixLib,', async () => {
   describe('near', async () => {
     it('correctly evaluates approximate equality', async () => {
       // prettier-ignore
-      ;[
+      [
         [fp(0), fp(0.1), fp(0.10001)],
         [fp(1), fp('1.00001'), fp('0.00001')],
         [fp(1), fp('1.000014'), fp('0.00001')],
@@ -1045,7 +1045,7 @@ describe('In FixLib,', async () => {
     })
     it('correctly evaluates approximate equality at the extremes of its range', async () => {
       // prettier-ignore
-      ;[
+      [
         [MAX_INT192, MAX_INT192, bn(1)],
         [MAX_INT192, MIN_INT192, bn(1)],
         [MIN_INT192, MAX_INT192, bn(1)],
