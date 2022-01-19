@@ -12,7 +12,7 @@ import { MainP0 } from '../../typechain/MainP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { VaultP0 } from '../../typechain/VaultP0'
-import { Collateral, defaultFixture } from './utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
 
 interface IBatchInfo {
@@ -35,6 +35,9 @@ describe('FurnaceP0 contract', () => {
   let rToken: RTokenP0
   let vault: VaultP0
   let basket: Collateral[]
+
+  // Config values
+  let config: IConfig
 
   // Tokens/Assets
   let token0: ERC20Mock
@@ -69,7 +72,7 @@ describe('FurnaceP0 contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, rToken, vault, furnace, main } = await loadFixture(defaultFixture))
+    ;({ basket, rToken, vault, furnace, config, main } = await loadFixture(defaultFixture))
 
     // Setup issuance of RTokens for users
     initialBal = bn('100e18')
@@ -108,11 +111,29 @@ describe('FurnaceP0 contract', () => {
   describe('Deployment', () => {
     it('Deployment should setup Furnace correctly', async () => {
       expect(await furnace.rToken()).to.equal(rToken.address)
+      expect(await furnace.batchDuration()).to.equal(config.rewardPeriod)
+      expect(await furnace.owner()).to.equal(owner.address)
     })
 
     it('Deployment does not accept empty token', async () => {
       await expect(FurnaceFactory.deploy(ZERO_ADDRESS, bn('0'))).to.be.revertedWith(
         'Token is zero address'
+      )
+    })
+  })
+
+  describe('Configuration / State', () => {
+    it('Should allow to update batchDuration correctly if Owner', async () => {
+      // Setup a new value
+      const newRewardPeriod: BigNumber = bn('100000')
+
+      await furnace.connect(owner).setBatchDuration(newRewardPeriod)
+
+      expect(await furnace.batchDuration()).to.equal(newRewardPeriod)
+
+      // Try to update again if not owner
+      await expect(furnace.connect(addr1).setBatchDuration(bn('0'))).to.be.revertedWith(
+        'Ownable: caller is not the owner'
       )
     })
 
@@ -351,7 +372,6 @@ describe('FurnaceP0 contract', () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
       // Advance to the middle of period
-      //await advanceTime(timePeriod / 2 - 1)
       await advanceToTimestamp(hndTimestamp + timePeriod / 2 - 1)
 
       // Burn
@@ -368,7 +388,6 @@ describe('FurnaceP0 contract', () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt.div(2))
 
       // Advance to the end
-      //await advanceTime(timePeriod / 2)
       await advanceToTimestamp((await getLatestBlockTimestamp()) + timePeriod / 2)
 
       // Burn with any account
