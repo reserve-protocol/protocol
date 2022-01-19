@@ -119,34 +119,43 @@ describe('DeployerP0 contract', () => {
     })
 
     it('Should setup Main correctly', async () => {
+      // Owner/Pauser
       expect(await main.owner()).to.equal(owner.address)
       expect(await main.pauser()).to.equal(owner.address)
 
+      // Vault
       expect(await main.vault()).to.equal(vault.address)
-      expect(await main.rsr()).to.equal(rsr.address)
 
+      // Assets
+      // RSR
       expect(await main.rsrAsset()).to.equal(rsrAsset.address)
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
+      expect(await main.rsr()).to.equal(rsr.address)
 
+      // Comp
       expect(await main.compAsset()).to.equal(compAsset.address)
       expect(await compAsset.erc20()).to.equal(compToken.address)
 
+      // Aave
       expect(await main.aaveAsset()).to.equal(aaveAsset.address)
       expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
 
+      // RToken
       expect(await main.rTokenAsset()).to.equal(rTokenAsset.address)
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
+      expect(await main.rToken()).to.equal(rToken.address)
 
-      expect(await main.stRSR()).to.equal(stRSR.address)
-      expect(await main.revenueFurnace()).to.equal(furnace.address)
-
-      // Check assets
+      // Check assets/collateral
       const allAssets = await main.allAssets()
       expect(allAssets[0]).to.equal(rTokenAsset.address)
       expect(allAssets[1]).to.equal(rsrAsset.address)
       expect(allAssets[2]).to.equal(compAsset.address)
       expect(allAssets[3]).to.equal(aaveAsset.address)
       expect(allAssets.slice(4)).to.eql(collateral.map((c) => c.address))
+
+      // Other components
+      expect(await main.stRSR()).to.equal(stRSR.address)
+      expect(await main.revenueFurnace()).to.equal(furnace.address)
     })
 
     it('Should setup RToken correctly', async () => {
