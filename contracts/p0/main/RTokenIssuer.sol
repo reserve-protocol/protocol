@@ -13,8 +13,6 @@ import "contracts/Pausable.sol";
 import "./SettingsHandler.sol";
 import "./BasketHandler.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title RTokenIssuer
  * @notice Handles issuance and redemption of RToken.
@@ -138,12 +136,6 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     // - undoes any issuances that was started before the basket was last set
     // - enacts any other issuances that are fully vested
     function _processSlowIssuance() internal {
-        console.log(
-            "_processSlowIssuance()",
-            _BUTarget().shiftLeft(18).round(),
-            _actualBUHoldings().shiftLeft(18).round()
-        );
-        console.log("_processSlowIssuance()", fullyCapitalized());
         if (!fullyCapitalized()) {
             return;
         }

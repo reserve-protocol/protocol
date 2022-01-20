@@ -6,8 +6,6 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
-import "hardhat/console.sol";
-
 /// @param collateral Mapping from an incremental index to asset
 /// @param amounts {attoRef/BU}
 /// @param size The number of collateral in the basket
@@ -69,7 +67,6 @@ library BasketLib {
 
     /// @return max {BU} The maximum number of basket units that `account` can create
     function maxIssuableBUs(Basket storage self, address account) internal view returns (Fix max) {
-        console.log("maxIssuableBUs");
         max = FIX_MAX;
         for (uint256 i = 0; i < self.size; i++) {
             Fix bal = toFix(self.collateral[i].erc20().balanceOf(account)); // {qTok}
@@ -77,7 +74,6 @@ library BasketLib {
             if (q.gt(FIX_ZERO)) {
                 // {BU} = {qTok} / {qTok/BU}
                 Fix amtBUs = bal.div(q);
-                console.log("maxIssuableBUs", i, amtBUs.round(), max.round());
                 if (amtBUs.lt(max)) {
                     max = amtBUs;
                 }
