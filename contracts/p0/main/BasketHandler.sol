@@ -218,7 +218,7 @@ contract BasketHandlerP0 is
             _basket.collateral[i].erc20().safeTransfer(to, amounts[i]);
         }
         basketUnits[from] = basketUnits[from].minus(amtBUs);
-        require(basketUnits[from].gte(FIX_ZERO), "not enough basket units");
+        require(basketUnits[from].gte(FIX_ZERO), "not enough _basket units");
         _totalBUs = _totalBUs.minus(amtBUs);
         require(_totalBUs.gte(FIX_ZERO), "_totalBUs underflow");
         return amtBUs;
@@ -230,7 +230,7 @@ contract BasketHandlerP0 is
         Fix amtBUs
     ) internal {
         basketUnits[from] = basketUnits[from].minus(amtBUs);
-        require(basketUnits[from].gte(FIX_ZERO), "not enough basket units");
+        require(basketUnits[from].gte(FIX_ZERO), "not enough _basket units");
         basketUnits[to] = basketUnits[to].plus(amtBUs);
     }
 
@@ -283,18 +283,19 @@ contract BasketHandlerP0 is
         }
 
         // Clear the old basket
-        for (uint256 i = 0; i < basket.size; i++) {
-            basket.amounts[basket.collateral[i]] = FIX_ZERO;
-            delete basket.collateral[i];
+        for (uint256 i = 0; i < _basket.size; i++) {
+            _basket.amounts[_basket.collateral[i]] = FIX_ZERO;
+            delete _basket.collateral[i];
         }
 
-        // Set the new basket
+        // Set the new _basket
         Template storage template = templates[bestTemplateIndex];
-        basket.size = template.slots.length;
-        for (uint256 i = 0; i < basket.size; i++) {
+        _basket.size = template.slots.length;
+        _basket.lastBlock = block.number;
+        for (uint256 i = 0; i < _basket.size; i++) {
             ICollateral coll = collFor[template.slots[i].role];
-            basket.collateral[i] = coll;
-            basket.amounts[coll] = template.slots[i].weight.mul(coll.roleCoefficient());
+            _basket.collateral[i] = coll;
+            _basket.amounts[coll] = template.slots[i].weight.mul(coll.roleCoefficient());
         }
     }
 }
