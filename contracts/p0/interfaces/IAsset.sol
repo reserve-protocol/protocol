@@ -50,6 +50,18 @@ interface ICollateral is IAsset {
     /// @return {attoRef/qTok} The price of the asset in a (potentially non-USD) reference asset
     function referencePrice() external view returns (Fix);
 
+    /// @return {basket quantity/tok} At basket selection time, how many of the reference token does
+    /// it take to satisfy this Collateral's role? 1.0 by default, but (e.g.) if you're satisfying a
+    /// role that expects a USD reference, and the collateral's reference is actually worth a $0.25,
+    /// then roleCoefficient() should return 4.0.
+    function roleCoefficient() external returns (Fix);
+
+    /// @return The vault-selection score of this collateral
+    function score() external returns (Fix);
+
+    /// @return The vault-selection role of this collateral
+    function role() external returns (bytes32);
+
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
     function status() external view returns (CollateralStatus);
 }

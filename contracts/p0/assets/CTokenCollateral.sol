@@ -35,8 +35,11 @@ contract CTokenCollateralP0 is CollateralP0 {
         IERC20Metadata erc20_,
         IMain main_,
         IOracle oracle_,
+        bytes32 role_,
+        Fix govScore_,
+        Fix oldPrice_,
         uint8 decimalsForUnderlying_
-    ) CollateralP0(erc20_, main_, oracle_) {
+    ) CollateralP0(erc20_, main_, oracle_, role_, govScore_, oldPrice_) {
         initialExchangeRate = toFixWithShift(2, -2);
         decimalsForUnderlying = decimalsForUnderlying_;
     }

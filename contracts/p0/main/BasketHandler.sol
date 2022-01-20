@@ -16,6 +16,15 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./SettingsHandler.sol";
 
+struct TemplateElmt {
+    bytes32 role;
+    Fix weight;
+}
+struct Template {
+    Fix govScore;
+    TemplateElmt[] slots;
+}
+
 /**
  * @title BasketHandler
  * @notice Tries to ensure the current vault is valid at all times.
@@ -31,6 +40,16 @@ contract BasketHandlerP0 is
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20Metadata;
     using FixLib for Fix;
+
+    // Basket templates:
+    // - a basket template is a collection of template elements, whose weights should add up to 1.
+    // - the order of the templates array is not guaranteed; deletion may occur via "swap-and-pop"
+    Template[] public templates;
+
+    /// The highest-scoring collateral for each role; used *only* in _setNextBasket.
+    mapping(bytes32 => ICollateral) private collFor;
+    /// The highest collateral score to fill each role; used *only* in _setNextBasket.
+    mapping(bytes32 => Fix) private score;
 
     // {BU}
     mapping(address => Fix) public basketUnits;
@@ -58,6 +77,34 @@ contract BasketHandlerP0 is
         onlyOwner
     {
         _basket.set(collateral, amounts);
+    }
+
+    // Govern set of templates
+    /// Add the new basket template `template`
+    function addBasketTemplate(Template memory template) public {
+        /// @dev A manual copy necessary here because moving from memory to storage.
+        _copyTemplateToStorage(template, templates.push());
+    }
+
+    /// Replace the template at `index` with `template`.
+    function setBasketTemplate(uint256 index, Template memory template) public {
+        _copyTemplateToStorage(template, templates[index]);
+    }
+
+    /// Delete the template at `index`
+    function deleteBasketTemplate(uint256 index) public {
+        if (index < templates.length - 1) {
+            templates[index] = templates[templates.length - 1];
+        }
+        templates.pop();
+    }
+
+    function _copyTemplateToStorage(Template memory memTmpl, Template storage storageTmpl) private {
+        storageTmpl.govScore = memTmpl.govScore;
+        delete storageTmpl.slots;
+        for (uint256 i = 0; i < memTmpl.slots.length; i++) {
+            storageTmpl.slots.push(memTmpl.slots[i]);
+        }
     }
 
     /// Anyone can create BUs for the BasketHandler if they would like to!
@@ -139,13 +186,7 @@ contract BasketHandlerP0 is
 
     function _tryEnsureValidBasket() internal {
         if (_worstCollateralStatus() == CollateralStatus.DISABLED) {
-            // TODO
-            bool hasNext = _selectNextVault();
-            if (hasNext) {
-                // TODO
-                // _switchVault(nextVault);
-                _basket.set(new ICollateral[](0), new Fix[](0));
-            }
+            _setNextBasket();
         }
     }
 
@@ -205,9 +246,55 @@ contract BasketHandlerP0 is
         }
     }
 
-    /// @return A vault from the list of backup vaults that is not defaulting
-    function _selectNextVault() internal view returns (bool) {
-        // TODO where matt hooks in
-        return true;
+    /// Select and set the next basket
+    function _setNextBasket() private {
+        // Find _score_ and _collFor_
+        for (uint256 i = 0; i < _assets.length(); i++) {
+            IAsset asset = IAsset(_assets.at(i));
+            if (!asset.isCollateral()) continue;
+            ICollateral coll = ICollateral(address(asset));
+
+            Fix collScore = coll.score();
+            bytes32 role = coll.role();
+            if (collScore.gt(score[role])) {
+                score[role] = collScore;
+                collFor[role] = coll;
+            }
+        }
+
+        // Find the highest-scoring template
+        uint256 bestTemplateIndex;
+        if (templates.length <= 1) {
+            bestTemplateIndex = 0;
+        } else {
+            Fix bestScore;
+            for (uint256 i = 0; i < templates.length; i++) {
+                Fix tmplScore = FIX_ZERO;
+                TemplateElmt[] storage slots = templates[i].slots;
+                for (uint256 c = 0; c < slots.length; c++) {
+                    tmplScore.plus(slots[c].weight.mul(score[slots[c].role]));
+                }
+                tmplScore = tmplScore.mul(templates[i].govScore);
+                if (tmplScore.gt(bestScore)) {
+                    bestScore = tmplScore;
+                    bestTemplateIndex = i;
+                }
+            }
+        }
+
+        // Clear the old basket
+        for (uint256 i = 0; i < basket.size; i++) {
+            basket.amounts[basket.collateral[i]] = FIX_ZERO;
+            delete basket.collateral[i];
+        }
+
+        // Set the new basket
+        Template storage template = templates[bestTemplateIndex];
+        basket.size = template.slots.length;
+        for (uint256 i = 0; i < basket.size; i++) {
+            ICollateral coll = collFor[template.slots[i].role];
+            basket.collateral[i] = coll;
+            basket.amounts[coll] = template.slots[i].weight.mul(coll.roleCoefficient());
+        }
     }
 }

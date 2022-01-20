@@ -19,6 +19,7 @@ library BasketLib {
     using FixLib for Fix;
 
     /// Sets the basket using a data format that can actually be passed around in memory
+    /// TODO: I think this doesn't need to exist --ME
     function set(
         Basket storage self,
         ICollateral[] memory collateral,

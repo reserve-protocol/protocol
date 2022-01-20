@@ -24,13 +24,34 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 internal whenDefault = NEVER;
 
-    // solhint-disable no-empty-blocks
+    // role: The basket-template role this Collateral plays. (See BasketHandler)
+    bytes32 public immutable role;
+
+    // govScore: Among Collateral with that rolw, the measure of governance's
+    // preference that this Collateral plays that role. Higher is stronger.
+    Fix private immutable govScore;
+
+    // oldRefPrice: {attoUSD/qTok} The price of this derivative asset at some RToken-specific
+    // previous time. Used when choosing new baskets.
+    Fix private immutable oldRefPrice;
+
+    /// @return {basket quantity/tok} At basket selection time, how many of the reference token does
+    /// it take to satisfy this Collateral's role?
+    // solhint-disable-next-line const-name-snakecase
+    Fix public constant roleCoefficient = FIX_ONE;
 
     constructor(
         IERC20Metadata erc20_,
         IMain main_,
-        IOracle oracle_
-    ) AssetP0(erc20_, main_, oracle_) {}
+        IOracle oracle_,
+        bytes32 role_,
+        Fix govScore_,
+        Fix oldRefPrice_
+    ) AssetP0(erc20_, main_, oracle_) {
+        role = role_;
+        govScore = govScore_;
+        oldRefPrice = oldRefPrice_;
+    }
 
     /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
     function forceUpdates() public virtual override {
@@ -69,6 +90,12 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() external pure virtual override(AssetP0, IAsset) returns (bool) {
         return true;
+    }
+
+    /// @return The vault-selection score of this collateral
+    /// @dev That is, govScore * (growth relative to the reference asset)
+    function score() external view override returns (Fix) {
+        return govScore.mul(referencePrice()).div(oldRefPrice);
     }
 
     /// @return {attoRef/qTok} Minimum price of a pegged asset to be considered non-defaulting
