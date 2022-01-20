@@ -4192,6 +4192,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"emoji-regex@npm:^10.0.0":
+  version: 10.0.0
+  resolution: "emoji-regex@npm:10.0.0"
+  checksum: 9a2e0ad35b84d8ce92777126d122196ff319f64de596e0ca8560298f94eec64b9be26f5b799bb47e2ad3e8791691817f3aec4e3c507e58d5b94a6adeea271921
+  languageName: node
+  linkType: hard
+
 "emoji-regex@npm:^7.0.1":
   version: 7.0.3
   resolution: "emoji-regex@npm:7.0.3"
@@ -4203,13 +4210,6 @@ __metadata:
   version: 8.0.0
   resolution: "emoji-regex@npm:8.0.0"
   checksum: d4c5c39d5a9868b5fa152f00cada8a936868fd3367f33f71be515ecee4c803132d11b31a6222b2571b1e5f7e13890156a94880345594d0ce7e3c9895f560f192
-  languageName: node
-  linkType: hard
-
-"emoji-regex@npm:^9.2.2":
-  version: 9.2.2
-  resolution: "emoji-regex@npm:9.2.2"
-  checksum: 8487182da74aabd810ac6d6f1994111dfc0e331b01271ae01ec1eb0ad7b5ecc2bbbbd2f053c05cb55a1ac30449527d819bbfbf0e3de1023db308cbcb47f86601
   languageName: node
   linkType: hard
 
@@ -9562,19 +9562,19 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"prettier-plugin-solidity@npm:1.0.0-beta.13":
-  version: 1.0.0-beta.13
-  resolution: "prettier-plugin-solidity@npm:1.0.0-beta.13"
+"prettier-plugin-solidity@npm:^1.0.0-beta.13":
+  version: 1.0.0-beta.19
+  resolution: "prettier-plugin-solidity@npm:1.0.0-beta.19"
   dependencies:
-    "@solidity-parser/parser": ^0.13.2
-    emoji-regex: ^9.2.2
+    "@solidity-parser/parser": ^0.14.0
+    emoji-regex: ^10.0.0
     escape-string-regexp: ^4.0.0
     semver: ^7.3.5
     solidity-comments-extractor: ^0.0.7
-    string-width: ^4.2.2
+    string-width: ^4.2.3
   peerDependencies:
     prettier: ^2.3.0
-  checksum: 253de4255f3e9f64b88dbc2a2d8de595090ff10eb9dca845b58632d9ce71d23f5e1954864d0e5542a34d103aa0f4d1a1a9267a7a7dea3e5dfbe41f1f7bf9cbcf
+  checksum: 830297e27551137bd38d153b96ca2977ef6d8438fd0857cad8b7168d984ba054b401871892d0409aadfb4ea10212d4da95de0a5949f55c113d3307cd156cd719
   languageName: node
   linkType: hard
 
@@ -10255,7 +10255,7 @@ fsevents@~2.3.2:
     hardhat-gas-reporter: ^1.0.6
     husky: ^7.0.0
     prettier: 2.5.1
-    prettier-plugin-solidity: 1.0.0-beta.13
+    prettier-plugin-solidity: ^1.0.0-beta.13
     solhint: ^3.3.6
     solhint-plugin-prettier: ^0.0.5
     solidity-coverage: ^0.7.17
@@ -11297,7 +11297,7 @@ resolve@~1.20.0:
   languageName: node
   linkType: hard
 
-"string-width@npm:^1.0.2 || 2 || 3 || 4, string-width@npm:^4.2.2, string-width@npm:^4.2.3":
+"string-width@npm:^1.0.2 || 2 || 3 || 4, string-width@npm:^4.2.3":
   version: 4.2.3
   resolution: "string-width@npm:4.2.3"
   dependencies:
