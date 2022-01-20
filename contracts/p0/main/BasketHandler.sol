@@ -51,11 +51,8 @@ contract BasketHandlerP0 is
     /// The highest collateral score to fill each role; used *only* in _setNextBasket.
     mapping(bytes32 => Fix) private score;
 
-    // {BU}
-    mapping(address => Fix) public basketUnits;
-    Fix private _totalBUs;
-
     Basket internal _basket;
+    uint256 internal _blockBasketLastUpdated; // {block number} last set
 
     function init(ConstructorArgs calldata args)
         public
@@ -68,31 +65,37 @@ contract BasketHandlerP0 is
     function poke() public virtual override notPaused {
         super.poke();
         _updateCollateralStatuses();
-        _tryEnsureValidBasket();
+        _updateBasket();
     }
 
     function setBasket(ICollateral[] calldata collateral, Fix[] calldata amounts)
-        external
+        public
         override
         onlyOwner
     {
-        _basket.set(collateral, amounts);
+        require(collateral.length == amounts.length, "must be same lengths");
+        for (uint256 i = 0; i < collateral.length; i++) {
+            _basket.collateral[i] = collateral[i];
+            _basket.amounts[collateral[i]] = amounts[i];
+        }
+        _basket.size = collateral.length;
+        _blockBasketLastUpdated = block.number;
     }
 
     // Govern set of templates
     /// Add the new basket template `template`
-    function addBasketTemplate(Template memory template) public {
+    function addBasketTemplate(Template memory template) public onlyOwner {
         /// @dev A manual copy necessary here because moving from memory to storage.
         _copyTemplateToStorage(template, templates.push());
     }
 
     /// Replace the template at `index` with `template`.
-    function setBasketTemplate(uint256 index, Template memory template) public {
+    function setBasketTemplate(uint256 index, Template memory template) public onlyOwner {
         _copyTemplateToStorage(template, templates[index]);
     }
 
     /// Delete the template at `index`
-    function deleteBasketTemplate(uint256 index) public {
+    function deleteBasketTemplate(uint256 index) public onlyOwner {
         if (index < templates.length - 1) {
             templates[index] = templates[templates.length - 1];
         }
@@ -107,40 +110,14 @@ contract BasketHandlerP0 is
         }
     }
 
-    /// Anyone can create BUs for the BasketHandler if they would like to!
-    function donateBUs(Fix amtBUs) external override {
-        _issueBUs(_msgSender(), address(rToken()), amtBUs);
-    }
-
     /// @return attoUSD {attoUSD/BU} The price of a whole BU in attoUSD
     function basketPrice() external view override returns (Fix attoUSD) {
         return _basket.price();
     }
 
-    /// @return Whether the vault is fully capitalized or not
+    /// @return Whether it holds enough basket units of collateral
     function fullyCapitalized() public view override returns (bool) {
-        Fix amtBUs = basketUnits[address(rToken())];
-        for (uint256 i = 0; i < _basket.size; i++) {
-            uint256 found = _basket.collateral[i].erc20().balanceOf(address(this));
-            // {qTok} = {qTok/BU} * {BU}
-            uint256 required = _basket.quantity(_basket.collateral[i]).mul(amtBUs).ceil();
-            if (found < required) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /// {qRTok} -> {BU}
-    function toBUs(uint256 amount) public view override returns (Fix) {
-        // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
-        return baseFactor().mulu(amount).shiftLeft(-int8(rToken().decimals()));
-    }
-
-    /// {BU} -> {qRTok}
-    function fromBUs(Fix amtBUs) public view override returns (uint256) {
-        // {qRTok} = {BU} / {BU/rTok} * {qRTok/rTok}
-        return amtBUs.div(baseFactor()).shiftLeft(int8(rToken().decimals())).floor();
+        return _actualBUHoldings().gte(_BUTarget());
     }
 
     /// @return {BU/rTok}
@@ -158,22 +135,6 @@ contract BasketHandlerP0 is
         }
     }
 
-    /// @return {qTok} The basket collateral quantities corresponding to an amount of BUs
-    function basketCollateralQuantities(Fix amtBUs)
-        external
-        view
-        override
-        returns (uint256[] memory)
-    {
-        return _basket.toCollateralQuantities(amtBUs, RoundingApproach.CEIL);
-    }
-
-    /// @return The max BUs the account can issue
-    function maxIssuableBUs(address account) external view override returns (Fix) {
-        // TODO There's inelegance here -- both this function and `donateBUs` above smell weird
-        return _basket.maxIssuableBUs(account);
-    }
-
     // ==== Internal ====
 
     function _updateCollateralStatuses() internal {
@@ -184,54 +145,33 @@ contract BasketHandlerP0 is
         }
     }
 
-    function _tryEnsureValidBasket() internal {
+    function _updateBasket() internal {
         if (_worstCollateralStatus() == CollateralStatus.DISABLED) {
             _setNextBasket();
         }
     }
 
-    /// @param from The address funding the BU purchase with collateral tokens
-    /// @param to The address being credited the BUs
-    function _issueBUs(
-        address from,
-        address to,
-        Fix amtBUs
-    ) internal {
-        uint256[] memory amounts = _basket.toCollateralQuantities(amtBUs, RoundingApproach.CEIL);
-        for (uint256 i = 0; i < amounts.length; i++) {
-            _basket.collateral[i].erc20().safeTransferFrom(from, to, amounts[i]);
-        }
-        basketUnits[to] = basketUnits[to].plus(amtBUs);
-        _totalBUs = _totalBUs.plus(amtBUs);
+    /// @return {BU} The BU target to be considered capitalized
+    // solhint-disable-next-line func-name-mixedcase
+    function _BUTarget() internal view returns (Fix) {
+        return _toBUs(rToken().totalSupply());
     }
 
-    /// @param from The address holding the BUs to redeem
-    /// @param to The address to receive the collateral tokens
-    function _redeemBUs(
-        address from,
-        address to,
-        Fix amtBUs
-    ) internal returns (Fix) {
-        amtBUs = fixMin(amtBUs, basketUnits[from]);
-        uint256[] memory amounts = _basket.toCollateralQuantities(amtBUs, RoundingApproach.FLOOR);
-        for (uint256 i = 0; i < amounts.length; i++) {
-            _basket.collateral[i].erc20().safeTransfer(to, amounts[i]);
-        }
-        basketUnits[from] = basketUnits[from].minus(amtBUs);
-        require(basketUnits[from].gte(FIX_ZERO), "not enough _basket units");
-        _totalBUs = _totalBUs.minus(amtBUs);
-        require(_totalBUs.gte(FIX_ZERO), "_totalBUs underflow");
-        return amtBUs;
+    /// @return {BU} The equivalent of the current holdings in BUs without considering trading
+    function _actualBUHoldings() internal view returns (Fix) {
+        return _basket.maxIssuableBUs(address(rToken()));
     }
 
-    function _transferBUs(
-        address from,
-        address to,
-        Fix amtBUs
-    ) internal {
-        basketUnits[from] = basketUnits[from].minus(amtBUs);
-        require(basketUnits[from].gte(FIX_ZERO), "not enough _basket units");
-        basketUnits[to] = basketUnits[to].plus(amtBUs);
+    /// {qRTok} -> {BU}
+    function _toBUs(uint256 amount) internal view returns (Fix) {
+        // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
+        return baseFactor().mulu(amount).shiftLeft(-int8(rToken().decimals()));
+    }
+
+    /// {BU} -> {qRTok}
+    function _fromBUs(Fix amtBUs) internal view returns (uint256) {
+        // {qRTok} = {BU} / {BU/rTok} * {qRTok/rTok}
+        return amtBUs.div(baseFactor()).shiftLeft(int8(rToken().decimals())).floor();
     }
 
     /// @return status The maximum CollateralStatus among basket collateral
@@ -291,7 +231,7 @@ contract BasketHandlerP0 is
         // Set the new _basket
         Template storage template = templates[bestTemplateIndex];
         _basket.size = template.slots.length;
-        _basket.lastBlock = block.number;
+        _blockBasketLastUpdated = block.number;
         for (uint256 i = 0; i < _basket.size; i++) {
             ICollateral coll = collFor[template.slots[i].role];
             _basket.collateral[i] = coll;

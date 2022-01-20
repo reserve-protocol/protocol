@@ -31,7 +31,7 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     // preference that this Collateral plays that role. Higher is stronger.
     Fix private immutable govScore;
 
-    // oldRefPrice: {attoUSD/qTok} The price of this derivative asset at some RToken-specific
+    // oldRefPrice: {attoRef/qTok} The price of this derivative asset at some RToken-specific
     // previous time. Used when choosing new baskets.
     Fix private immutable oldRefPrice;
 
@@ -92,9 +92,10 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         return true;
     }
 
-    /// @return The vault-selection score of this collateral
+    /// @return {none} The vault-selection score of this collateral
     /// @dev That is, govScore * (growth relative to the reference asset)
     function score() external view override returns (Fix) {
+        // {none} = {none} * {attoRef/qTok} / {attoRef/qTok}
         return govScore.mul(referencePrice()).div(oldRefPrice);
     }
 

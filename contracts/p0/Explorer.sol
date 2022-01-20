@@ -40,10 +40,5 @@ contract ExplorerP0 is IExplorer {
             tokens[j] = address(assets[j].erc20());
             quantities[j] += assets[j].erc20().balanceOf(address(main));
         }
-
-        // Add BackingTrader contents
-        for (uint256 i = 0; i < tokens.length; i++) {
-            quantities[i] += IERC20(tokens[i]).balanceOf(address(main.backingTrader()));
-        }
     }
 }

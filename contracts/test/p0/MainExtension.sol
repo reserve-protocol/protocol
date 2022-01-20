@@ -198,7 +198,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_toBUInverseFromBU() internal view returns (bool ok) {
         ok = true;
-        Fix converted = toFix(fromBUs(toBUs(rToken().totalSupply())));
+        Fix converted = toFix(_fromBUs(_toBUs(rToken().totalSupply())));
         ok = ok && converted.near(toFix(rToken().totalSupply()), toFix(2)); // < 2 away
         if (!ok) {
             console.log(
@@ -211,12 +211,12 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_fromBUInverseToBU() internal view returns (bool ok) {
         ok = true;
-        Fix bu_s = basketUnits[address(rToken())];
-        ok = ok && toBUs(fromBUs(bu_s)).near(bu_s, toFix(2)); // < 2 away
+        Fix bu_s = _actualBUHoldings();
+        ok = ok && _toBUs(_fromBUs(bu_s)).near(bu_s, toFix(2)); // < 2 away
         if (!ok) {
             console.log(
                 "_INVARIANT_fromBUInverseToBU violated",
-                toBUs(fromBUs(bu_s)).round(),
+                _toBUs(_fromBUs(bu_s)).round(),
                 bu_s.round()
             );
         }

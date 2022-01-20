@@ -54,13 +54,13 @@ interface ICollateral is IAsset {
     /// it take to satisfy this Collateral's role? 1.0 by default, but (e.g.) if you're satisfying a
     /// role that expects a USD reference, and the collateral's reference is actually worth a $0.25,
     /// then roleCoefficient() should return 4.0.
-    function roleCoefficient() external returns (Fix);
+    function roleCoefficient() external view returns (Fix);
 
     /// @return The vault-selection score of this collateral
-    function score() external returns (Fix);
+    function score() external view returns (Fix);
 
     /// @return The vault-selection role of this collateral
-    function role() external returns (bytes32);
+    function role() external view returns (bytes32);
 
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
     function status() external view returns (CollateralStatus);

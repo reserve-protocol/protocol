@@ -214,25 +214,14 @@ interface IBasketHandler {
 
     function setBasket(ICollateral[] calldata collateral, Fix[] calldata amounts) external;
 
-    function donateBUs(Fix amtBUs) external;
-
-    function toBUs(uint256 amount) external view returns (Fix);
-
-    function fromBUs(Fix amtBUs) external view returns (uint256);
-
     function baseFactor() external view returns (Fix);
-
-    function basketPrice() external view returns (Fix);
 
     function fullyCapitalized() external view returns (bool);
 
+    function basketPrice() external view returns (Fix);
+
     // This is only here for the Adapter (generic tests)
     function basketReferenceAmounts() external view returns (Fix[] memory);
-
-    // These are only here for the BackingTrader
-    function basketCollateralQuantities(Fix amtBUs) external view returns (uint256[] memory);
-
-    function maxIssuableBUs(address account) external view returns (Fix);
 }
 
 interface IAuctioneerEvents {
@@ -263,15 +252,12 @@ interface IAuctioneerEvents {
     );
 }
 
+// solhint-disable-next-line no-empty-blocks
 interface IAuctioneer {
-    function rsrTraderAddr() external view returns (address);
 
-    function rTokenTraderAddr() external view returns (address);
-
-    function backingTraderAddr() external view returns (address);
 }
 
-interface IRewardHandler {
+interface IRewardClaimer {
     /// Emitted whenever rewards are claimed
     /// @param compAmount {qCOMP} The amount of COMP claimed
     /// @param aaveAmount {qAAVE} The amount of COMP claimed
@@ -331,7 +317,7 @@ interface IMain is
     IRevenueDistributor,
     IBasketHandler,
     IAuctioneer,
-    IRewardHandler,
+    IRewardClaimer,
     IRTokenIssuer
 {
     function owner() external view returns (address);

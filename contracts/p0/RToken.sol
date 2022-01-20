@@ -49,6 +49,14 @@ contract RTokenP0 is Ownable, ERC20, IRToken {
         return true;
     }
 
+    /// Withdraws a quantity of RToken from the RToken itself
+    /// @param to The address to send the tokens to
+    /// @param amount {qRTok} The amount to be withdrawn
+    function withdraw(address to, uint256 amount) external virtual override {
+        require(_msgSender() == address(main), "only main");
+        _transfer(address(this), to, amount);
+    }
+
     function setMain(IMain main_) external virtual override onlyOwner {
         main = main_;
     }

@@ -5,17 +5,19 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IERC20Receiver.sol";
 import "contracts/p0/interfaces/IMain.sol";
+import "contracts/p0/interfaces/IRewardsClaimer.sol";
 import "contracts/p0/Trader.sol";
 import "contracts/p0/main/BasketHandler.sol";
 
 /// The RevenueTrader converts all asset balances at its address to a single target asset
 /// and sends this asset to the RevenueDistributor at Main.
-contract RevenueTraderP0 is TraderP0 {
+contract RevenueTraderP0 is TraderP0, IRewardsClaimer {
     using SafeERC20 for IERC20;
 
     IAsset private assetToBuy;
 
-    constructor(IMain main_, IAsset assetToBuy_) TraderP0(main_) {
+    constructor(address main_, IAsset assetToBuy_) TraderP0() {
+        initTrader(main_);
         assetToBuy = assetToBuy_;
     }
 
@@ -23,6 +25,11 @@ contract RevenueTraderP0 is TraderP0 {
         // Always process auctions *and* do funds management; don't short-circuit here.
         closeDueAuctions();
         _manageFunds();
+    }
+
+    /// Claims and sweeps all COMP/AAVE rewards
+    function claimAndSweepRewards() external override {
+        RewardsLib.claimAndSweepRewards(address(main));
     }
 
     /// Iterate through all asset types, and perform the appropriate action with each:
