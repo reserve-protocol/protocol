@@ -13,35 +13,17 @@ struct Basket {
     mapping(uint256 => ICollateral) collateral; // index -> asset
     mapping(ICollateral => Fix) amounts; // {attoRef/BU}
     uint256 size;
-    uint256 lastBlock; // {block number} last set
 }
 
 /*
  * @title BasketLib
- * @dev Simple interface: set, deposit, withdraw
- *   - set(collateral, amounts): Configure the BU definition
+ * @dev
  *   - deposit(from, amtBUs): Deposit collateral equivalent to amtBUs
  *   - withdraw(to, amtBUs): Withdraw collateral equivalent to amtBUs
  */
 library BasketLib {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
-
-    /// Sets the basket using a data format that can actually be passed around in memory
-    /// TODO: I think this doesn't need to exist --ME
-    function set(
-        Basket storage self,
-        ICollateral[] memory collateral,
-        Fix[] memory amounts
-    ) internal {
-        require(collateral.length == amounts.length, "must be same lengths");
-        for (uint256 i = 0; i < collateral.length; i++) {
-            self.collateral[i] = collateral[i];
-            self.amounts[collateral[i]] = amounts[i];
-        }
-        self.size = collateral.length;
-        self.lastBlock = block.number;
-    }
 
     /// Transfer `amtBUs` worth of collateral into the caller's account
     /// @param from The address that is sending collateral

@@ -148,7 +148,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
                 continue;
             }
 
-            if (iss.blockStartedAt <= _basket.lastBlock) {
+            if (iss.blockStartedAt <= _blockBasketLastUpdated) {
                 // Rollback issuance i
                 rToken().burn(address(rToken()), iss.amount);
                 for (uint256 j = 0; j < iss.erc20s.length; i++) {

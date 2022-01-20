@@ -52,6 +52,7 @@ contract BasketHandlerP0 is
     mapping(bytes32 => Fix) private score;
 
     Basket internal _basket;
+    uint256 internal _blockBasketLastUpdated; // {block number} last set
 
     function init(ConstructorArgs calldata args)
         public
@@ -68,11 +69,17 @@ contract BasketHandlerP0 is
     }
 
     function setBasket(ICollateral[] calldata collateral, Fix[] calldata amounts)
-        external
+        public
         override
         onlyOwner
     {
-        _basket.set(collateral, amounts);
+        require(collateral.length == amounts.length, "must be same lengths");
+        for (uint256 i = 0; i < collateral.length; i++) {
+            _basket.collateral[i] = collateral[i];
+            _basket.amounts[collateral[i]] = amounts[i];
+        }
+        _basket.size = collateral.length;
+        _blockBasketLastUpdated = block.number;
     }
 
     // Govern set of templates
@@ -232,7 +239,7 @@ contract BasketHandlerP0 is
         // Set the new _basket
         Template storage template = templates[bestTemplateIndex];
         _basket.size = template.slots.length;
-        _basket.lastBlock = block.number;
+        _blockBasketLastUpdated = block.number;
         for (uint256 i = 0; i < _basket.size; i++) {
             ICollateral coll = collFor[template.slots[i].role];
             _basket.collateral[i] = coll;
