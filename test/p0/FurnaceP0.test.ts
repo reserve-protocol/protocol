@@ -11,7 +11,6 @@ import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { VaultP0 } from '../../typechain/VaultP0'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
 
@@ -33,7 +32,6 @@ describe('FurnaceP0 contract', () => {
   let furnace: FurnaceP0
   let main: MainP0
   let rToken: RTokenP0
-  let vault: VaultP0
   let basket: Collateral[]
 
   // Config values
@@ -72,7 +70,7 @@ describe('FurnaceP0 contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, rToken, vault, furnace, config, main } = await loadFixture(defaultFixture))
+    ;({ basket, rToken, furnace, config, main } = await loadFixture(defaultFixture))
 
     // Setup issuance of RTokens for users
     initialBal = bn('100e18')
@@ -103,9 +101,6 @@ describe('FurnaceP0 contract', () => {
 
     // Set Furnace Factory
     FurnaceFactory = await ethers.getContractFactory('FurnaceP0')
-
-    // Setup Main
-    await vault.connect(owner).setMain(main.address)
   })
 
   describe('Deployment', () => {
