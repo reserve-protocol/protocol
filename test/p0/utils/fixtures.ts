@@ -175,14 +175,32 @@ async function collateralFixture(
     const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(symbol + ' Token', symbol)
     return [
       erc20,
-      <CollateralP0>await CollateralFactory.deploy(erc20.address, main.address, aaveOracle.address),
+      <CollateralP0>(
+        await CollateralFactory.deploy(
+          erc20.address,
+          main.address,
+          aaveOracle.address,
+          ethers.utils.formatBytes32String(symbol),
+          fp('1'),
+          fp('1')
+        )
+      ),
     ]
   }
   const makeSixDecimal = async (symbol: string): Promise<[USDCMock, CollateralP0]> => {
     const erc20: USDCMock = <USDCMock>await USDC.deploy(symbol + ' Token', symbol)
     return [
       erc20,
-      <CollateralP0>await CollateralFactory.deploy(erc20.address, main.address, aaveOracle.address),
+      <CollateralP0>(
+        await CollateralFactory.deploy(
+          erc20.address,
+          main.address,
+          aaveOracle.address,
+          ethers.utils.formatBytes32String(symbol),
+          fp('1'),
+          fp('1')
+        )
+      ),
     ]
   }
   const makeCToken = async (
@@ -200,6 +218,9 @@ async function collateralFixture(
           erc20.address,
           main.address,
           compoundOracle.address,
+          ethers.utils.formatBytes32String(symbol),
+          fp('1'),
+          fp('1'),
           underlyingDecimals
         )
       ),
@@ -215,7 +236,14 @@ async function collateralFixture(
     return [
       erc20,
       <ATokenCollateralP0>(
-        await ATokenCollateralFactory.deploy(erc20.address, main.address, aaveOracle.address)
+        await ATokenCollateralFactory.deploy(
+          erc20.address,
+          main.address,
+          aaveOracle.address,
+          ethers.utils.formatBytes32String(symbol),
+          fp('1'),
+          fp('1')
+        )
       ),
     ]
   }
