@@ -3,20 +3,14 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/p0/assets/ATokenCollateral.sol";
-import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/p0/libraries/Rewards.sol";
-import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/p0/main/SettingsHandler.sol";
-import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/main/Mixin.sol";
-import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./Auctioneer.sol";
 import "./SettingsHandler.sol";
-import "./BasketHandler.sol";
 
 /**
  * @title RewardHandler
@@ -50,10 +44,8 @@ contract RewardHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
             rsrTrader.claimAndSweepRewards();
             rTokenTrader.claimAndSweepRewards();
             RewardsLib.claimAndSweepRewards(address(this));
-        }
-        uint256 compDelta = compAsset().erc20().balanceOf(address(this)) - compBalStart;
-        uint256 aaveDelta = aaveAsset().erc20().balanceOf(address(this)) - aaveBalStart;
-        if (compDelta > 0 || aaveDelta > 0) {
+            uint256 compDelta = compAsset().erc20().balanceOf(address(this)) - compBalStart;
+            uint256 aaveDelta = aaveAsset().erc20().balanceOf(address(this)) - aaveBalStart;
             emit RewardsClaimed(compDelta, aaveDelta);
         }
     }
