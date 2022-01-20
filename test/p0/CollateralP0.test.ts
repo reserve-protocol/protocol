@@ -15,7 +15,7 @@ import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('AssetsP0 contracts', () => {
+describe('CollateralP0 contracts', () => {
   let owner: SignerWithAddress
 
   // Tokens
