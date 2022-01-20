@@ -341,7 +341,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       aaveOracle.address
     )
   )
-g
+
   // Deploy actual contracts
   const receipt = await (
     await deployer.deploy(
