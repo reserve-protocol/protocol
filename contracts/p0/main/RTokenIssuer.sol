@@ -97,9 +97,14 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         emit Redemption(_msgSender(), amount);
     }
 
-    /// @return The token quantities required to issue `amount` RToken.
-    function quote(uint256 amount) public view override returns (uint256[] memory) {
-        return _basket.toCollateralQuantities(_toBUs(amount), RoundingApproach.CEIL);
+    /// @return quantities {qTok} The token quantities required to issue `amount` RToken.
+    function quote(uint256 amount) public view override returns (uint256[] memory quantities) {
+        Fix amtBUs = _toBUs(amount);
+        quantities = new uint256[](_basket.size);
+        for (uint256 i = 0; i < _basket.size; i++) {
+            // {qTok} = {BU} * {qTok/BU}
+            quantities[i] = amtBUs.mul(_basket.quantity(_basket.collateral[i])).ceil();
+        }
     }
 
     /// @return How much RToken `account` can issue given current holdings

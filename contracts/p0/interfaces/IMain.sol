@@ -205,15 +205,6 @@ interface ISettingsHandler {
     function rsr() external view returns (IERC20);
 }
 
-interface IRewardHandler {
-    /// Emitted whenever rewards are claimed
-    /// @param compAmount {qCOMP} The amount of COMP claimed
-    /// @param aaveAmount {qAAVE} The amount of COMP claimed
-    event RewardsClaimed(uint256 indexed compAmount, uint256 indexed aaveAmount);
-
-    function nextRewards() external view returns (uint256);
-}
-
 interface IBasketHandler {
     // // TODO figure out what this event turns into
     // /// Emitted when the current vault is changed
@@ -262,6 +253,15 @@ interface IAuctioneerEvents {
 }
 
 interface IAuctioneer {}
+
+interface IRewardHandler {
+    /// Emitted whenever rewards are claimed
+    /// @param compAmount {qCOMP} The amount of COMP claimed
+    /// @param aaveAmount {qAAVE} The amount of COMP claimed
+    event RewardsClaimed(uint256 indexed compAmount, uint256 indexed aaveAmount);
+
+    function nextRewards() external view returns (uint256);
+}
 
 interface IRTokenIssuer {
     /// Emitted when issuance is started, at the point collateral is taken in
