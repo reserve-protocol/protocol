@@ -495,6 +495,9 @@ contract AdapterP0 is ProtoAdapter {
                 erc20,
                 _main,
                 underlying.oracle(),
+                bytes32(bytes(erc20.symbol())),
+                FIX_ONE,
+                toFixWithShift(2, -2),
                 underlying.erc20().decimals()
             );
         } else if (erc20.symbol().toSlice().startsWith(a.toSlice())) {
@@ -509,9 +512,23 @@ contract AdapterP0 is ProtoAdapter {
                     ]
                 )
             );
-            _assets[collateralAsset] = new ATokenCollateralP0(erc20, _main, underlying.oracle());
+            _assets[collateralAsset] = new ATokenCollateralP0(
+                erc20,
+                _main,
+                underlying.oracle(),
+                bytes32(bytes(erc20.symbol())),
+                FIX_ONE,
+                FIX_ONE
+            );
         } else {
-            _assets[collateralAsset] = new CollateralP0(erc20, _main, oracle);
+            _assets[collateralAsset] = new CollateralP0(
+                erc20,
+                _main,
+                oracle,
+                bytes32(bytes(erc20.symbol())),
+                FIX_ONE,
+                FIX_ONE
+            );
         }
         _reverseAssets[ERC20Mock(address(_assets[collateralAsset].erc20()))] = collateralAsset;
         return ICollateral(address(_assets[collateralAsset]));
@@ -593,4 +610,9 @@ contract AdapterP0 is ProtoAdapter {
         // EOA: Use 0x1, 0x2, ...
         return address((uint160(index) + 1));
     }
+
+    /// Return bytes32 from a string
+    /* function _bytes32OfString(string s) private returns (bytes32) { */
+    /*     /// @dev This is not a place of honor. */
+    /* } */
 }
