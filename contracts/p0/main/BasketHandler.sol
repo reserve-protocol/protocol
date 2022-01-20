@@ -152,6 +152,7 @@ contract BasketHandlerP0 is
     }
 
     /// @return {BU} The BU target to be considered capitalized
+    // solhint-disable-next-line func-name-mixedcase
     function _BUTarget() internal view returns (Fix) {
         return _toBUs(rToken().totalSupply());
     }

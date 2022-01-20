@@ -252,7 +252,10 @@ interface IAuctioneerEvents {
     );
 }
 
-interface IAuctioneer {}
+// solhint-disable-next-line no-empty-blocks
+interface IAuctioneer {
+
+}
 
 interface IRewardClaimer {
     /// Emitted whenever rewards are claimed
