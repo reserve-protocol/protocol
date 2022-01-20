@@ -13,10 +13,10 @@ import "./Auctioneer.sol";
 import "./SettingsHandler.sol";
 
 /**
- * @title RewardHandler
- * Claims rewards.
+ * @title RewardClaimer
+ * @notice Claims rewards and leaves them in Main for Auctioneer to handle.
  */
-contract RewardHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IRewardHandler {
+contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IRewardClaimer {
     using BasketLib for Basket;
     using SafeERC20 for IERC20Metadata;
     using FixLib for Fix;

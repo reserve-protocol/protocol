@@ -19,7 +19,7 @@ import "./BasketHandler.sol";
 
 /**
  * @title Auctioneer
- * @notice Handles auctions.
+ * @notice Handles auctions across Main and the RevenueTraders
  */
 contract AuctioneerP0 is
     Pausable,
@@ -53,16 +53,14 @@ contract AuctioneerP0 is
         super.poke();
         closeDueAuctions();
 
+        // Backing Trading
         if (!hasOpenAuctions()) {
-            if (!fullyCapitalized()) {
-                bool launched = _tryStartNextAuction();
-                if (!launched) {
-                    /* If we're *here*, then we're out of capital we can trade for RToken backing,
-                     * including staked RSR. There's only one option left to us... */
-                    _diluteRTokenHolders();
-                } else {
-                    _handoutExcess();
-                }
+            if (fullyCapitalized()) {
+                _handoutAnyExcess();
+            } else if (!_tryStartNextAuction()) {
+                /* If we're *here*, then we're out of capital we can trade for RToken backing,
+                 * including staked RSR. There's only one option left to us... */
+                _diluteRTokenHolders();
             }
         }
 
@@ -75,13 +73,8 @@ contract AuctioneerP0 is
 
     /// Launch auctions until recapitalized
     /// Fallback to RSR seizure
-    /// Fallback-fallback to RToken dilution
     /// @return Whether an auction was launched
     function _tryStartNextAuction() private returns (bool) {
-        if (_toBUs(rToken().totalSupply()).lte(_actualBUHoldings())) {
-            return false;
-        }
-
         // Is there a collateral surplus?
         //     Yes: Try to trade surpluses for deficits
         //     No: Seize RSR and trade for deficit
@@ -213,7 +206,7 @@ contract AuctioneerP0 is
     }
 
     /// Send excess assets to the RSR and RToken traders
-    function _handoutExcess() private {
+    function _handoutAnyExcess() private {
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
             uint256 bal = a.erc20().balanceOf(address(this));

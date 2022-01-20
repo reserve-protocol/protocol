@@ -216,9 +216,9 @@ interface IBasketHandler {
 
     function baseFactor() external view returns (Fix);
 
-    function basketPrice() external view returns (Fix);
-
     function fullyCapitalized() external view returns (bool);
+
+    function basketPrice() external view returns (Fix);
 
     // This is only here for the Adapter (generic tests)
     function basketReferenceAmounts() external view returns (Fix[] memory);
@@ -254,7 +254,7 @@ interface IAuctioneerEvents {
 
 interface IAuctioneer {}
 
-interface IRewardHandler {
+interface IRewardClaimer {
     /// Emitted whenever rewards are claimed
     /// @param compAmount {qCOMP} The amount of COMP claimed
     /// @param aaveAmount {qAAVE} The amount of COMP claimed
@@ -314,7 +314,7 @@ interface IMain is
     IRevenueDistributor,
     IBasketHandler,
     IAuctioneer,
-    IRewardHandler,
+    IRewardClaimer,
     IRTokenIssuer
 {
     function owner() external view returns (address);

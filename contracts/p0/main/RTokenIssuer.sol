@@ -66,7 +66,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         require(amount > 0, "Cannot issue zero");
         revenueFurnace().doMelt();
         _updateCollateralStatuses();
-        _tryEnsureValidBasket();
+        _updateBasket();
         require(_worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
         uint256[] memory amounts = _basket.deposit(_msgSender(), _toBUs(amount));
