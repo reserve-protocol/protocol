@@ -67,15 +67,15 @@ contract CTokenCollateralP0 is CollateralP0 {
     }
 
     /// @dev Intended to be used via delegatecall
-    function claimAndSweepRewards(ICollateral, IMain main_) external virtual override {
+    function claimAndSweepRewards(ICollateral collateral, IMain main_) external virtual override {
         // TODO: We need to ensure that calling this function directly,
         // without delegatecall, does not allow anyone to extract value.
         // This should already be the case because the Collateral
         // contract itself should never earn rewards.
 
-        // `collateral` being unused here is expected
-        // compound groups all rewards automatically, meaning do excessive claims
-        oracle.comptroller().claimComp(address(this));
+        // compound groups all rewards automatically
+        // we still need to use `collateral` to avoid storage reads in the delegateCall
+        collateral.oracle().comptroller().claimComp(address(this));
         uint256 amount = main_.compAsset().erc20().balanceOf(address(this));
         if (amount > 0) {
             main_.compAsset().erc20().safeTransfer(address(main_), amount);
