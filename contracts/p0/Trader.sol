@@ -7,12 +7,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
-import "contracts/p0/interfaces/IRewardsClaimer.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/p0/main/BasketHandler.sol";
 import "contracts/libraries/Fixed.sol";
 
-abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
+abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
@@ -22,14 +21,16 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
 
     IMain public main;
 
-    constructor(IMain main_) {
-        main = main_;
+    function initTrader(address main_) public virtual {
+        main = IMain(main_);
     }
+
+    // solhint-disable no-empty-blocks
 
     /// The driver of each concrete trader. Implementations should call closeDueAuctions(), decide
     /// what to do with auctioned funds, and decide what auctions to run, though not necessarily in
     /// that order.
-    function poke() external virtual;
+    function poke() public virtual override {}
 
     /// Settle any auctions that are due (past their end time)
     function closeDueAuctions() public {
@@ -47,15 +48,6 @@ abstract contract TraderP0 is Ownable, IAuctioneerEvents, IRewardsClaimer {
     /// @return true iff this trader now has open auctions.
     function hasOpenAuctions() public view returns (bool) {
         return countOpenAuctions > 0;
-    }
-
-    function setMain(IMain main_) external onlyOwner {
-        main = main_;
-    }
-
-    /// Claims and sweeps all COMP/AAVE rewards
-    function claimAndSweepRewards() external override {
-        RewardsLib.claimAndSweepRewards(address(main));
     }
 
     /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price

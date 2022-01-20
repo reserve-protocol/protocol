@@ -12,21 +12,26 @@ import "contracts/p0/interfaces/IMain.sol";
 interface IRToken is IERC20Metadata {
     /// Mints a quantity of RToken to the `recipient`, only callable by AssetManager
     /// @param recipient The recipient of the newly minted RToken
-    /// @param amount {qTok} The amount to be minted
+    /// @param amount {qRTok} The amount to be minted
     /// @return true
     function mint(address recipient, uint256 amount) external returns (bool);
 
     /// Burns a quantity of RToken from the callers account
     /// @param from The account from which RToken should be burned
-    /// @param amount {qTok} The amount to be burned
+    /// @param amount {qRTok} The amount to be burned
     /// @return true
     function burn(address from, uint256 amount) external returns (bool);
 
     /// Melts a quantity of RToken from the caller's account
     /// @param from The account from which RToken should be melted
-    /// @param amount {qTok} The amount to be melted
+    /// @param amount {qRTok} The amount to be melted
     /// @return true
     function melt(address from, uint256 amount) external returns (bool);
+
+    /// Withdraws a quantity of RToken from the RToken itself
+    /// @param to The address to send the tokens to
+    /// @param amount {qRTok} The amount to be withdrawn
+    function withdraw(address to, uint256 amount) external;
 
     function setMain(IMain main) external;
 

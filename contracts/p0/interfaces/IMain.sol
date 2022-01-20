@@ -205,6 +205,15 @@ interface ISettingsHandler {
     function rsr() external view returns (IERC20);
 }
 
+interface IRewardHandler {
+    /// Emitted whenever rewards are claimed
+    /// @param compAmount {qCOMP} The amount of COMP claimed
+    /// @param aaveAmount {qAAVE} The amount of COMP claimed
+    event RewardsClaimed(uint256 indexed compAmount, uint256 indexed aaveAmount);
+
+    function nextRewards() external view returns (uint256);
+}
+
 interface IBasketHandler {
     // // TODO figure out what this event turns into
     // /// Emitted when the current vault is changed
@@ -214,12 +223,6 @@ interface IBasketHandler {
 
     function setBasket(ICollateral[] calldata collateral, Fix[] calldata amounts) external;
 
-    function donateBUs(Fix amtBUs) external;
-
-    function toBUs(uint256 amount) external view returns (Fix);
-
-    function fromBUs(Fix amtBUs) external view returns (uint256);
-
     function baseFactor() external view returns (Fix);
 
     function basketPrice() external view returns (Fix);
@@ -228,11 +231,6 @@ interface IBasketHandler {
 
     // This is only here for the Adapter (generic tests)
     function basketReferenceAmounts() external view returns (Fix[] memory);
-
-    // These are only here for the BackingTrader
-    function basketCollateralQuantities(Fix amtBUs) external view returns (uint256[] memory);
-
-    function maxIssuableBUs(address account) external view returns (Fix);
 }
 
 interface IAuctioneerEvents {
@@ -263,22 +261,7 @@ interface IAuctioneerEvents {
     );
 }
 
-interface IAuctioneer {
-    function rsrTraderAddr() external view returns (address);
-
-    function rTokenTraderAddr() external view returns (address);
-
-    function backingTraderAddr() external view returns (address);
-}
-
-interface IRewardHandler {
-    /// Emitted whenever rewards are claimed
-    /// @param compAmount {qCOMP} The amount of COMP claimed
-    /// @param aaveAmount {qAAVE} The amount of COMP claimed
-    event RewardsClaimed(uint256 indexed compAmount, uint256 indexed aaveAmount);
-
-    function nextRewards() external view returns (uint256);
-}
+interface IAuctioneer {}
 
 interface IRTokenIssuer {
     /// Emitted when issuance is started, at the point collateral is taken in

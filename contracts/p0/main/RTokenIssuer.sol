@@ -34,8 +34,8 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     /// @param processed false when the issuance is still vesting
     struct SlowIssuance {
         uint256 blockStartedAt;
-        uint256 amount; // {qTok}
-        Fix amtBUs; // {BU}
+        uint256 amount; // {qRTok}
+        address[] erc20s;
         uint256[] deposits; // {qTok}, same index as vault basket assets
         address issuer;
         Fix blockAvailableAt; // {blockNumber} fractional
@@ -69,30 +69,20 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         _tryEnsureValidBasket();
         require(_worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
-        Fix amtBUs = toBUs(amount);
+        uint256[] memory amounts = _basket.deposit(_msgSender(), _toBUs(amount));
 
         // During SlowIssuance, RTokens are minted and held by Main until vesting completes
         SlowIssuance memory iss = SlowIssuance({
             blockStartedAt: block.number,
             amount: amount,
-            amtBUs: amtBUs,
-            deposits: _basket.toCollateralQuantities(amtBUs, RoundingApproach.CEIL),
+            erc20s: _basket.backingERC20s(),
+            deposits: amounts,
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
         });
         issuances.push(iss);
-
-        for (uint256 i = 0; i < _basket.size; i++) {
-            _basket.collateral[i].erc20().safeTransferFrom(
-                iss.issuer,
-                address(this),
-                iss.deposits[i]
-            );
-        }
-
-        _issueBUs(iss.issuer, address(this), iss.amtBUs);
-        rToken().mint(address(this), amount);
+        rToken().mint(address(rToken()), amount);
         emit IssuanceStarted(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
     }
 
@@ -103,18 +93,18 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         revenueFurnace().doMelt();
 
         rToken().burn(_msgSender(), amount);
-        _redeemBUs(address(rToken()), _msgSender(), toBUs(amount));
+        _basket.withdraw(_msgSender(), _toBUs(amount));
         emit Redemption(_msgSender(), amount);
     }
 
     /// @return The token quantities required to issue `amount` RToken.
     function quote(uint256 amount) public view override returns (uint256[] memory) {
-        return _basket.toCollateralQuantities(toBUs(amount), RoundingApproach.CEIL);
+        return _basket.toCollateralQuantities(_toBUs(amount), RoundingApproach.CEIL);
     }
 
     /// @return How much RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
-        return fromBUs(_basket.maxIssuableBUs(account));
+        return _fromBUs(_basket.maxIssuableBUs(account));
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
@@ -141,6 +131,10 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     // - undoes any issuances that was started before the basket was last set
     // - enacts any other issuances that are fully vested
     function _processSlowIssuance() internal {
+        if (!fullyCapitalized()) {
+            return;
+        }
+
         bool backingIsSound = _worstCollateralStatus() == CollateralStatus.SOUND;
         for (uint256 i = 0; i < issuances.length; i++) {
             SlowIssuance storage iss = issuances[i];
@@ -151,14 +145,15 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
 
             if (iss.blockStartedAt <= _basket.lastBlock) {
                 // Rollback issuance i
-                rToken().burn(address(this), iss.amount);
-                _redeemBUs(address(rToken()), iss.issuer, iss.amtBUs);
+                rToken().burn(address(rToken()), iss.amount);
+                for (uint256 j = 0; j < iss.erc20s.length; i++) {
+                    IERC20Metadata(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
+                }
                 iss.processed = true;
                 emit IssuanceCanceled(i);
             } else if (backingIsSound) {
                 // Complete issuance i
-                _transferBUs(address(this), address(rToken()), iss.amtBUs);
-                rToken().transfer(iss.issuer, iss.amount);
+                rToken().withdraw(iss.issuer, iss.amount);
                 iss.processed = true;
                 emit IssuanceCompleted(i);
             }
