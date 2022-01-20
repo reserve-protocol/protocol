@@ -9,7 +9,6 @@ import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainP0 } from '../../typechain/MainP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
-import { VaultP0 } from '../../typechain/VaultP0'
 import { advanceTime } from '../utils/time'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
@@ -43,10 +42,9 @@ describe('StRSRP0 contract', () => {
   let collateral2: Collateral
   let collateral3: Collateral
 
-  // Vault and Basket
-  let VaultFactory: ContractFactory
-  let vault: VaultP0
+  // Basket
   let basket: Collateral[]
+  let basketReferenceAmounts: BigNumber[]
 
   // Quantities
   let initialBal: BigNumber
@@ -63,7 +61,7 @@ describe('StRSRP0 contract', () => {
     ;[owner, addr1, addr2, addr3, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ rsr, stRSR, basket, vault, main } = await loadFixture(defaultFixture))
+    ;({ rsr, stRSR, basket, basketReferenceAmounts, main } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
     initialBal = bn('100e18')
@@ -83,12 +81,6 @@ describe('StRSRP0 contract', () => {
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
     token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
-
-    // Setup Vault Factory
-    VaultFactory = await ethers.getContractFactory('VaultP0')
-
-    // Setup Main
-    await vault.connect(owner).setMain(main.address)
   })
 
   describe('Deployment', () => {
@@ -332,13 +324,8 @@ describe('StRSRP0 contract', () => {
         // Move forward past stakingWithdrawalDelay
         await advanceTime(stkWithdrawalDelay + 1)
 
-        // Set not fully capitalized by changing vault
-        const newVault: VaultP0 = <VaultP0>(
-          await VaultFactory.deploy([basket[0].address], [bn('1e18')], [])
-        )
-
-        // Switch vault
-        await main.connect(owner).switchVault(newVault.address)
+        // Set not fully capitalized by changing basket
+        await main.connect(owner).setBasket([basket[0].address], [fp('1e18')])
         expect(await main.fullyCapitalized()).to.equal(false)
 
         // Process unstakes
@@ -349,8 +336,12 @@ describe('StRSRP0 contract', () => {
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
 
-        // If fully capitalized should process OK  - Set back original vault
-        await main.connect(owner).switchVault(vault.address)
+        // If fully capitalized should process OK  - Set back original basket
+        await main.connect(owner).setBasket(
+          basket.map((b) => b.address),
+          basketReferenceAmounts
+        )
+
         expect(await main.fullyCapitalized()).to.equal(true)
 
         // Process unstakes
