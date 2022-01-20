@@ -143,7 +143,7 @@ contract AuctioneerP0 is
             uint256 deficitAmount
         )
     {
-        Fix targetBUs = _toBUs(rToken().totalSupply());
+        Fix targetBUs = _BUTarget();
         // Calculate surplus and deficits relative to the target BUs.
         Fix[] memory surpluses = new Fix[](_assets.length());
         Fix[] memory deficits = new Fix[](_assets.length());
@@ -200,26 +200,31 @@ contract AuctioneerP0 is
         Fix actual = _actualBUHoldings();
         assert(actual.lt(target));
 
-        // {qRTok} = {BU} / {BU} * {qRTok}
-        uint256 expectedSupply = target.div(actual).mulu(rToken().totalSupply()).floor();
-        rToken().mint(address(this), expectedSupply - rToken().totalSupply());
+        if (actual.gt(FIX_ZERO)) {
+            // {qRTok} = {BU} / {BU} * {qRTok}
+            uint256 expectedSupply = target.div(actual).mulu(rToken().totalSupply()).floor();
+            rToken().mint(address(this), expectedSupply - rToken().totalSupply());
+        }
     }
 
     /// Send excess assets to the RSR and RToken traders
     function _handoutAnyExcess() private {
+        Fix target = _toBUs(rToken().totalSupply());
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
             uint256 bal = a.erc20().balanceOf(address(this));
-            if (bal == 0) {
-                continue;
-            }
+            uint256 expected = a.isCollateral()
+                ? target.mul(_basket.quantity(ICollateral(address(a)))).ceil()
+                : 0;
 
-            if (!a.isCollateral()) {
-                uint256 amtToRSR = rsrCut().mulu(bal).round();
-                a.erc20().safeTransfer(address(rsrTrader), amtToRSR); // cut
-                a.erc20().safeTransfer(address(rTokenTrader), bal - amtToRSR); // 1 - cut
-            } else {
-                a.erc20().safeTransfer(address(rTokenTrader), bal);
+            if (bal > expected) {
+                uint256 amtToRSR = rsrCut().mulu(bal - expected).round();
+                if (amtToRSR > 0) {
+                    a.erc20().safeTransfer(address(rsrTrader), amtToRSR);
+                }
+                if (bal - expected - amtToRSR > 0) {
+                    a.erc20().safeTransfer(address(rTokenTrader), bal - expected - amtToRSR);
+                }
             }
         }
     }

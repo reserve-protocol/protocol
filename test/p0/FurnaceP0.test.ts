@@ -3,6 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre from 'hardhat'
 import { ethers, waffle } from 'hardhat'
+
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
@@ -11,8 +12,8 @@ import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
+import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 
 interface IBatchInfo {
   amount: BigNumber

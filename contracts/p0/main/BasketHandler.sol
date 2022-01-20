@@ -159,7 +159,7 @@ contract BasketHandlerP0 is
 
     /// @return {BU} The equivalent of the current holdings in BUs without considering trading
     function _actualBUHoldings() internal view returns (Fix) {
-        return _basket.maxIssuableBUs(address(rToken()));
+        return _basket.maxIssuableBUs(address(this));
     }
 
     /// {qRTok} -> {BU}
