@@ -1,7 +1,6 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
-
 import { expectInReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
 import { AaveLendingAddrProviderMockP0 } from '../../../typechain/AaveLendingAddrProviderMockP0'
@@ -272,12 +271,12 @@ async function collateralFixture(
   }
 }
 
-type RSRAndCompAaveAndVaultAndMarketFixture = RSRFixture &
+type RSRAndCompAaveAndCollateralAndMarketFixture = RSRFixture &
   COMPAAVEFixture &
   CollateralFixture &
   MarketFixture
 
-interface DefaultFixture extends RSRAndCompAaveAndVaultAndMarketFixture {
+interface DefaultFixture extends RSRAndCompAaveAndCollateralAndMarketFixture {
   config: IConfig
   dist: IRevenueShare
   deployer: DeployerP0
@@ -342,7 +341,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       aaveOracle.address
     )
   )
-
+g
   // Deploy actual contracts
   const receipt = await (
     await deployer.deploy(
