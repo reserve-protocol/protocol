@@ -64,7 +64,6 @@ contract BasketHandlerP0 is
 
     function poke() public virtual override notPaused {
         super.poke();
-        _updateCollateralStatuses();
         _updateBasket();
     }
 
@@ -137,15 +136,12 @@ contract BasketHandlerP0 is
 
     // ==== Internal ====
 
-    function _updateCollateralStatuses() internal {
+    function _updateBasket() internal {
         for (uint256 i = 0; i < _assets.length(); i++) {
             if (IAsset(_assets.at(i)).isCollateral()) {
                 ICollateral(_assets.at(i)).forceUpdates();
             }
         }
-    }
-
-    function _updateBasket() internal {
         if (_worstCollateralStatus() == CollateralStatus.DISABLED) {
             _setNextBasket();
         }

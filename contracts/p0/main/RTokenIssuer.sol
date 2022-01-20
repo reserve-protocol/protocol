@@ -65,7 +65,6 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     function issue(uint256 amount) public override notPaused {
         require(amount > 0, "Cannot issue zero");
         revenueFurnace().doMelt();
-        _updateCollateralStatuses();
         _updateBasket();
         require(_worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
