@@ -130,10 +130,9 @@ contract StRSRP0 is IStRSR, Context {
         }
     }
 
-    /// auth: BackingTrader only
     /// @param amount {qRSR}
     function seizeRSR(uint256 amount) external override {
-        require(_msgSender() == address(main), "Caller is not backing trader");
+        require(_msgSender() == address(main), "not main");
         require(amount > 0, "Amount cannot be zero");
 
         // Process pending withdrawals

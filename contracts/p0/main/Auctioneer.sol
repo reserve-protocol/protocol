@@ -196,7 +196,7 @@ contract AuctioneerP0 is
         return (surplusAsset, deficitAsset, sellAmount.floor(), buyAmount.ceil());
     }
 
-    /// Mint RToken and send to BackingTrader in order to recapitalize.
+    /// Mint RToken in order to recapitalize.
     function _diluteRTokenHolders() private {
         Fix target = _toBUs(rToken().totalSupply());
         Fix actual = _actualBUHoldings();
