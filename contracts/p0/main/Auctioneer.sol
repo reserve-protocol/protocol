@@ -19,7 +19,9 @@ import "./BasketHandler.sol";
 
 /**
  * @title Auctioneer
- * @notice Handles auctions across Main and the RevenueTraders
+ * @notice The auctioneer changes the asset balances located at Main using auctions to swap
+ *   collateral---or in the worst-case---RSR, in order to remain capitalized. Excess assets
+ *   are split according to the RSR cuts to RevenueTraders.
  */
 contract AuctioneerP0 is
     Pausable,
@@ -53,33 +55,33 @@ contract AuctioneerP0 is
         super.poke();
         closeDueAuctions();
 
-        // Backing Trading
+        // Purchase collateral off the market
         if (!hasOpenAuctions()) {
             if (fullyCapitalized()) {
                 _handoutAnyExcess();
-            } else if (!_tryStartNextAuction()) {
+            } else if (!_ableToBuyCollateral()) {
                 /* If we're *here*, then we're out of capital we can trade for RToken backing,
                  * including staked RSR. There's only one option left to us... */
                 _diluteRTokenHolders();
             }
         }
 
-        // RSR Trader
+        // Revenue - RSR Trader
         rsrTrader.poke();
 
-        // RToken Trader
+        // Revenue - RToken Trader
         rTokenTrader.poke();
     }
 
-    /// Launch auctions until recapitalized
-    /// Fallback to RSR seizure
-    /// @return Whether an auction was launched
-    function _tryStartNextAuction() private returns (bool) {
+    /// Launch collateral-for-collateral auctions until recapitalized
+    /// Fallback to RSR seizure if we run out of collateral excessess
+    /// @return Whether an auction was launched to buy collateral
+    function _ableToBuyCollateral() private returns (bool) {
         // Is there a collateral surplus?
         //     Yes: Try to trade surpluses for deficits
         //     No: Seize RSR and trade for deficit
 
-        // Are we able to trade sideways, or is it all dust?
+        // Are we able to liquidate surplus collateral, or is all excess dust?
         (
             IAsset surplus,
             IAsset deficit,
