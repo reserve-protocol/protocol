@@ -55,83 +55,144 @@ contract AuctioneerP0 is
         super.poke();
         closeDueAuctions();
 
-        // Purchase collateral off the market
         if (!hasOpenAuctions()) {
-            if (fullyCapitalized()) {
-                _handoutAnyExcess();
-            } else if (!_ableToBuyCollateral()) {
-                /* If we're *here*, then we're out of capital we can trade for RToken backing,
-                 * including staked RSR. There's only one option left to us... */
-                _diluteRTokenHolders();
-                // No auction is launched in this tx, we'll wait for the next one
-            }
+            _doAuctions();
         }
 
-        // Revenue - RSR Trader
         rsrTrader.poke();
-
-        // Revenue - RToken Trader
         rTokenTrader.poke();
     }
 
-    /// Launch collateral-for-collateral auctions until recapitalized
-    /// Fallback to RSR seizure if we run out of collateral excessess
-    /// @return Whether an auction was launched to buy collateral
-    function _ableToBuyCollateral() private returns (bool) {
-        // Is there a collateral surplus?
-        //     Yes: Try to trade surpluses for deficits
-        //     No: Seize RSR and trade for deficit
+    function _doAuctions() private {
+        if (fullyCapitalized()) {
+            _handoutExcessAssets();
+            return;
+        }
 
-        // Are we able to liquidate surplus collateral, or is all excess dust?
+        /*
+         * The strategy for handling undercapitalization is pretty simple:
+         *   1. Prefer selling surplus collateral
+         *   2. When there is no surplus collateral, seize RSR and use that
+         *   3. When there is no more RSR, dilute RToken holders
+         */
+        if (_tryToBuyCollateral()) {
+            return;
+        }
+
+        _seizeRSR();
+        if (_tryToBuyCollateral()) {
+            return;
+        }
+
+        _diluteRTokenHolders();
+        _tryToBuyCollateral();
+    }
+
+    /// Try to launch asset-for-collateral auctions until recapitalized
+    /// @return Whether an auction was launched
+    function _tryToBuyCollateral() private returns (bool) {
         (
             IAsset surplus,
-            IAsset deficit,
+            ICollateral deficit,
             uint256 surplusAmount,
             uint256 deficitAmount
         ) = _largestSurplusAndDeficit();
 
         bool trade;
         Auction memory auction;
-        // TODO This means that RToken sales will not be priced. Probably wrong
         if (
             surplus.isCollateral() &&
-            ICollateral(address(surplus)).status() == CollateralStatus.SOUND
+            ICollateral(address(surplus)).status() != CollateralStatus.SOUND
         ) {
+            (trade, auction) = _prepareAuctionSell(surplus, deficit, surplusAmount);
+            auction.minBuyAmount = 0;
+        } else {
             (trade, auction) = _prepareAuctionToCoverDeficit(
                 surplus,
                 deficit,
                 surplusAmount,
                 deficitAmount
             );
-        } else {
-            (trade, auction) = _prepareAuctionSell(surplus, deficit, surplusAmount);
-            auction.minBuyAmount = 0;
         }
         if (trade) {
             _launchAuction(auction);
-            return true;
         }
+        return trade;
+    }
 
-        // If we're here, all the surplus is dust and we're still recapitalizing
-        // So it's time to seize and spend staked RSR
-        (trade, auction) = _prepareAuctionToCoverDeficit(
-            main.rsrAsset(),
+    /// Seize an amount of RSR to recapitalize our most in-deficit collateral
+    function _seizeRSR() private {
+        assert(!hasOpenAuctions() && !fullyCapitalized());
+        (, ICollateral deficit, , uint256 deficitAmount) = _largestSurplusAndDeficit();
+
+        uint256 bal = rsr().balanceOf(address(this));
+        (bool trade, Auction memory auction) = _prepareAuctionToCoverDeficit(
+            rsrAsset(),
             deficit,
-            main.rsr().balanceOf(address(main.stRSR())), // max(RSR that can be seized)
+            bal + rsr().balanceOf(address(stRSR())),
             deficitAmount
         );
         if (trade) {
-            uint256 balance = main.rsr().balanceOf(address(this));
-            if (auction.sellAmount > balance) {
-                main.stRSR().seizeRSR(auction.sellAmount - balance);
+            if (auction.sellAmount > bal) {
+                stRSR().seizeRSR(auction.sellAmount - bal);
             }
-            _launchAuction(auction);
-            return true;
         }
-        return false;
     }
 
-    /// Compute the largest collateral-for-collateral trade by identifying
+    /// Mint RToken in order to recapitalize our most in-deficit collateral.
+    function _diluteRTokenHolders() private {
+        assert(!hasOpenAuctions() && !fullyCapitalized());
+        (, ICollateral deficit, , uint256 deficitAmount) = _largestSurplusAndDeficit();
+        uint256 targetBuyAmount = Math.max(deficitAmount, _dustThreshold(deficit));
+
+        Fix collateralUSD;
+        for (uint256 i = 0; i < _basket.size; i++) {
+            uint256 bal = _basket.collateral[i].erc20().balanceOf(address(this));
+
+            // {attoUSD} = {attoUSD} + {attoUSD/qTok} * {qTok}
+            collateralUSD = collateralUSD.plus(_basket.collateral[i].price().mulu(bal));
+        }
+
+        // {attoUSD} = {attoUSD/qBuyTok} * {qBuyTok}
+        Fix deficitUSD = deficit.price().mulu(targetBuyAmount);
+
+        // The increase in RToken supply should match the deficit to collateral USD ratios
+        Fix ratio = deficitUSD.plus(collateralUSD).div(collateralUSD);
+        // TODO This calculation should probably get a second set of eyes
+
+        // {qRTok} = {none} * {qRTok} - {qRTok}
+        uint256 sellAmount = ratio.mulu(rToken().totalSupply()).ceil() - rToken().totalSupply();
+
+        // {qRTok} = {none} * {qRTok}
+        uint256 maxSellAmount = maxAuctionSize().mulu(rToken().totalSupply()).floor();
+
+        // Mint to self and leave
+        rToken().mint(address(this), Math.min(sellAmount, maxSellAmount));
+    }
+
+    /// Send excess assets to the RSR and RToken traders
+    function _handoutExcessAssets() private {
+        Fix target = _targetBUs();
+        for (uint256 i = 0; i < _assets.length(); i++) {
+            IAsset a = IAsset(_assets.at(i));
+            uint256 bal = a.erc20().balanceOf(address(this));
+            uint256 expected = a.isCollateral()
+                ? target.mul(_basket.quantity(ICollateral(address(a)))).ceil()
+                : 0;
+
+            if (bal > expected) {
+                uint256 amtToRSR = rsrCut().mulu(bal - expected).round();
+                if (amtToRSR > 0) {
+                    a.erc20().safeTransfer(address(rsrTrader), amtToRSR);
+                }
+                if (bal - expected - amtToRSR > 0) {
+                    a.erc20().safeTransfer(address(rTokenTrader), bal - expected - amtToRSR);
+                }
+            }
+        }
+    }
+
+    /// Compute the largest asset-for-collateral trade by identifying
     /// the most in-surplus and most in-deficit assets relative to the BU target.
     /// @return surplus Surplus asset
     /// @return deficit Deficit asset
@@ -142,12 +203,12 @@ contract AuctioneerP0 is
         view
         returns (
             IAsset surplus,
-            IAsset deficit,
+            ICollateral deficit,
             uint256 surplusAmount,
             uint256 deficitAmount
         )
     {
-        Fix targetBUs = _BUTarget();
+        Fix targetBUs = _targetBUs();
         // Calculate surplus and deficits relative to the target BUs.
         Fix[] memory surpluses = new Fix[](_assets.length());
         Fix[] memory deficits = new Fix[](_assets.length());
@@ -156,18 +217,18 @@ contract AuctioneerP0 is
 
             // {qTok}
             Fix bal = toFix(a.erc20().balanceOf(address(this)));
-            Fix target = FIX_ZERO;
+            Fix required = FIX_ZERO;
             if (a.isCollateral()) {
                 // {qTok} = {BU} * {qTok/BU}
-                target = targetBUs.mul(_basket.quantity(ICollateral(address(a))));
+                required = targetBUs.mul(_basket.quantity(ICollateral(address(a))));
             }
 
-            if (bal.gt(target)) {
+            if (bal.gt(required)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                surpluses[i] = bal.minus(target).mul(a.price());
-            } else if (bal.lt(target)) {
+                surpluses[i] = bal.minus(required).mul(a.price());
+            } else if (bal.lt(required)) {
                 // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                deficits[i] = target.minus(bal).mul(a.price());
+                deficits[i] = required.minus(bal).mul(a.price());
             }
         }
 
@@ -188,48 +249,13 @@ contract AuctioneerP0 is
         }
 
         IAsset surplusAsset = IAsset(_assets.at(surplusIndex));
-        IAsset deficitAsset = IAsset(_assets.at(deficitIndex));
+        ICollateral deficitCollateral = ICollateral(_assets.at(deficitIndex));
 
         // {qSellTok} = {attoUSD} / {attoUSD/qSellTok}
         Fix sellAmount = surplusMax.div(surplusAsset.price());
 
         // {qBuyTok} = {attoUSD} / {attoUSD/qBuyTok}
-        Fix buyAmount = deficitMax.div(deficitAsset.price());
-        return (surplusAsset, deficitAsset, sellAmount.floor(), buyAmount.ceil());
-    }
-
-    /// Mint RToken in order to recapitalize.
-    function _diluteRTokenHolders() private {
-        Fix target = _toBUs(rToken().totalSupply());
-        Fix actual = _actualBUHoldings();
-        assert(actual.lt(target));
-
-        if (actual.gt(FIX_ZERO)) {
-            // {qRTok} = {BU} / {BU} * {qRTok}
-            uint256 expectedSupply = target.div(actual).mulu(rToken().totalSupply()).floor();
-            rToken().mint(address(this), expectedSupply - rToken().totalSupply());
-        }
-    }
-
-    /// Send excess assets to the RSR and RToken traders
-    function _handoutAnyExcess() private {
-        Fix target = _toBUs(rToken().totalSupply());
-        for (uint256 i = 0; i < _assets.length(); i++) {
-            IAsset a = IAsset(_assets.at(i));
-            uint256 bal = a.erc20().balanceOf(address(this));
-            uint256 expected = a.isCollateral()
-                ? target.mul(_basket.quantity(ICollateral(address(a)))).ceil()
-                : 0;
-
-            if (bal > expected) {
-                uint256 amtToRSR = rsrCut().mulu(bal - expected).round();
-                if (amtToRSR > 0) {
-                    a.erc20().safeTransfer(address(rsrTrader), amtToRSR);
-                }
-                if (bal - expected - amtToRSR > 0) {
-                    a.erc20().safeTransfer(address(rTokenTrader), bal - expected - amtToRSR);
-                }
-            }
-        }
+        Fix buyAmount = deficitMax.div(deficitCollateral.price());
+        return (surplusAsset, deficitCollateral, sellAmount.floor(), buyAmount.ceil());
     }
 }

@@ -198,7 +198,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function _INVARIANT_toBUInverseFromBU() internal view returns (bool ok) {
         ok = true;
-        Fix converted = toFix(_fromBUs(_toBUs(rToken().totalSupply())));
+        Fix converted = toFix(_fromBUs(_targetBUs()));
         ok = ok && converted.near(toFix(rToken().totalSupply()), toFix(2)); // < 2 away
         if (!ok) {
             console.log(

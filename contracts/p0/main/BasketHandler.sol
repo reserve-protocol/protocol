@@ -20,6 +20,7 @@ struct TemplateElmt {
     bytes32 role;
     Fix[] weights; // The intended weight for the [best, 2nd best, 3rd best, ...] elements of role
 }
+
 struct Template {
     Fix govScore;
     TemplateElmt[] slots;
@@ -112,7 +113,7 @@ contract BasketHandlerP0 is
 
     /// @return Whether it holds enough basket units of collateral
     function fullyCapitalized() public view override returns (bool) {
-        return _actualBUHoldings().gte(_BUTarget());
+        return _actualBUHoldings().gte(_targetBUs());
     }
 
     /// @return status The maximum CollateralStatus among basket collateral
@@ -156,8 +157,7 @@ contract BasketHandlerP0 is
     }
 
     /// @return {BU} The BU target to be considered capitalized
-    // solhint-disable-next-line func-name-mixedcase
-    function _BUTarget() internal view returns (Fix) {
+    function _targetBUs() internal view returns (Fix) {
         return _toBUs(rToken().totalSupply());
     }
 

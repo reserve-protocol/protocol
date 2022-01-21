@@ -126,7 +126,7 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
     }
 
     /// @return {qSellTok} The least amount of tokens worth trying to sell
-    function _dustThreshold(IAsset asset) private view returns (uint256) {
+    function _dustThreshold(IAsset asset) internal view returns (uint256) {
         // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
         Fix rTokenMarketCapUSD = main.rTokenAsset().price().mulu(main.rToken().totalSupply());
 
