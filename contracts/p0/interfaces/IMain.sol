@@ -218,6 +218,8 @@ interface IBasketHandler {
 
     function fullyCapitalized() external view returns (bool);
 
+    function worstCollateralStatus() external view returns (CollateralStatus status);
+
     function basketPrice() external view returns (Fix);
 
     // This is only here for the Adapter (generic tests)

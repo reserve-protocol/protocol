@@ -10,8 +10,8 @@ import { IConfig } from '../p0/utils/fixtures'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import {
   Account,
-  AssetName,
   ASSET_TOKEN_LEN,
+  AssetName,
   Balance,
   COLLATERAL_TOKEN_LEN,
   DefiRate,
@@ -89,7 +89,6 @@ describe('Unit tests (Generic)', () => {
     it('Should set up correctly', async () => {
       const state = await driver.state()
       const lastCollateral = COLLATERAL_TOKEN_LEN - 1
-      expect(state.mood).to.equal(Mood.CALM)
       expect(state.rToken.balances[Account.ALICE]).to.equal(0)
       expect(state.rToken.balances[Account.EVE]).to.equal(bn('1e20'))
       expect(state.collateral[0].balances[Account.ALICE]).to.equal(bn('1e36'))

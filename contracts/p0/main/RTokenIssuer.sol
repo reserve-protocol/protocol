@@ -66,7 +66,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         require(amount > 0, "Cannot issue zero");
         revenueFurnace().doMelt();
         _updateBasket();
-        require(_worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
+        require(worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
         uint256[] memory amounts = _basket.deposit(_msgSender(), _toBUs(amount));
 
@@ -139,7 +139,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
             return;
         }
 
-        bool backingIsSound = _worstCollateralStatus() == CollateralStatus.SOUND;
+        bool backingIsSound = worstCollateralStatus() == CollateralStatus.SOUND;
         for (uint256 i = 0; i < issuances.length; i++) {
             SlowIssuance storage iss = issuances[i];
             if (iss.processed) {

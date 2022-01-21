@@ -63,6 +63,7 @@ contract AuctioneerP0 is
                 /* If we're *here*, then we're out of capital we can trade for RToken backing,
                  * including staked RSR. There's only one option left to us... */
                 _diluteRTokenHolders();
+                // No auction is launched in this tx, we'll wait for the next one
             }
         }
 
@@ -91,6 +92,7 @@ contract AuctioneerP0 is
 
         bool trade;
         Auction memory auction;
+        // TODO This means that RToken sales will not be priced. Probably wrong
         if (
             surplus.isCollateral() &&
             ICollateral(address(surplus)).status() == CollateralStatus.SOUND

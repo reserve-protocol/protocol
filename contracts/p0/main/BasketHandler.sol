@@ -115,6 +115,18 @@ contract BasketHandlerP0 is
         return _actualBUHoldings().gte(_BUTarget());
     }
 
+    /// @return status The maximum CollateralStatus among basket collateral
+    function worstCollateralStatus() public view override returns (CollateralStatus status) {
+        for (uint256 i = 0; i < _basket.size; i++) {
+            if (!_assets.contains(address(_basket.collateral[i]))) {
+                return CollateralStatus.DISABLED;
+            }
+            if (uint256(_basket.collateral[i].status()) > uint256(status)) {
+                status = _basket.collateral[i].status();
+            }
+        }
+    }
+
     /// @return {BU/rTok}
     function baseFactor() public view override returns (Fix) {
         Fix supply = toFix(rToken().totalSupply()); // {qRTok}
@@ -138,7 +150,7 @@ contract BasketHandlerP0 is
                 ICollateral(_assets.at(i)).forceUpdates();
             }
         }
-        if (_worstCollateralStatus() == CollateralStatus.DISABLED) {
+        if (worstCollateralStatus() == CollateralStatus.DISABLED) {
             _setNextBasket();
         }
     }
@@ -164,18 +176,6 @@ contract BasketHandlerP0 is
     function _fromBUs(Fix amtBUs) internal view returns (uint256) {
         // {qRTok} = {BU} / {BU/rTok} * {qRTok/rTok}
         return amtBUs.div(baseFactor()).shiftLeft(int8(rToken().decimals())).floor();
-    }
-
-    /// @return status The maximum CollateralStatus among basket collateral
-    function _worstCollateralStatus() internal view returns (CollateralStatus status) {
-        for (uint256 i = 0; i < _basket.size; i++) {
-            if (!_assets.contains(address(_basket.collateral[i]))) {
-                return CollateralStatus.DISABLED;
-            }
-            if (uint256(_basket.collateral[i].status()) > uint256(status)) {
-                status = _basket.collateral[i].status();
-            }
-        }
     }
 
     /* /// The highest-scoring collateral for each role; used *only* in _setNextBasket. */
