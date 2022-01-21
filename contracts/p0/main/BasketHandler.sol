@@ -18,7 +18,7 @@ import "./SettingsHandler.sol";
 
 struct TemplateElmt {
     bytes32 role;
-    Fix weight;
+    Fix[] weights; // The intended weight for the [best, 2nd best, 3rd best, ...] elements of role
 }
 struct Template {
     Fix govScore;
@@ -38,6 +38,7 @@ contract BasketHandlerP0 is
 {
     using BasketLib for Basket;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
     using SafeERC20 for IERC20Metadata;
     using FixLib for Fix;
 
@@ -45,11 +46,6 @@ contract BasketHandlerP0 is
     // - a basket template is a collection of template elements, whose weights should add up to 1.
     // - the order of the templates array is not guaranteed; deletion may occur via "swap-and-pop"
     Template[] public templates;
-
-    /// The highest-scoring collateral for each role; used *only* in _setNextBasket.
-    mapping(bytes32 => ICollateral) private collFor;
-    /// The highest collateral score to fill each role; used *only* in _setNextBasket.
-    mapping(bytes32 => Fix) private score;
 
     Basket internal _basket;
     uint256 internal _blockBasketLastUpdated; // {block number} last set
@@ -182,38 +178,100 @@ contract BasketHandlerP0 is
         }
     }
 
+    /* /// The highest-scoring collateral for each role; used *only* in _setNextBasket. */
+    /* mapping(bytes32 => ICollateral) private collFor; */
+    /* /// The highest collateral score to fill each role; used *only* in _setNextBasket. */
+    /* mapping(bytes32 => Fix) private score; */
+
+    struct ScoredColl {
+        Fix score;
+        ICollateral coll;
+    }
+
+    // Helper data structures for _setNextBasket. Should be zeroed out by the end of each txn!
+    // For P3: This is probably *costly* with in-storage data structures. Can we do better?
+    // (one way to do better is for each scores array to be an in-place maxheap)
+    // @dev Y NO MEMMAPS SOLIDITY Y
+    EnumerableSet.Bytes32Set private roles;
+    mapping(bytes32 => ScoredColl[]) private scores;
+    mapping(bytes32 => ScoredColl[]) private topScores;
+    mapping(ICollateral => uint256) private basketIndicesPlusOne;
+
+    /// In the context of _setNextBasket, get the kth highest-scoring Collateral for the given role.
+    /// Sorts scores into topScores as needed.
+    /// @return the kth highest-scoring Collateral
+    function _kthBest(bytes32 role, uint256 k) private returns (ScoredColl memory) {
+        // If no collateral fills role, then return a zero-value ScoredColl
+        if (scores[role].length == 0) {
+            return ScoredColl(FIX_ZERO, ICollateral(address(0)));
+        }
+        // If k > the number N of collaterals that fill role, then "wrap around"
+        k %= scores[role].length;
+
+        // Ensure that topScores[role] holds the k highest-scoring Collaterals, in decreasing order.
+        for (uint256 n = topScores[role].length; n <= k; n++) {
+            // find the best-scoring remaining Collateral in scores[role], add it to topScores.
+            // (this is basically a prefix of selection sort, which I claim is *right* here)
+            uint256 bestIndex;
+            Fix bestScore = FIX_MIN;
+            for (uint256 i = 0; i < scores[role].length; i++) {
+                if (scores[role][i].score.gt(bestScore)) {
+                    bestIndex = i;
+                    bestScore = scores[role][i].score;
+                }
+            }
+            // remove the best-scoring Collateral from scores (swap+pop) and add it to topScores
+            topScores[role].push(scores[role][bestIndex]);
+            if (bestIndex < scores[role].length - 1) {
+                scores[role][bestIndex] = scores[role][scores[role].length - 1];
+            }
+            scores[role].pop();
+        }
+
+        return topScores[role][k];
+    }
+
     /// Select and set the next basket
     function _setNextBasket() private {
-        // Find _score_ and _collFor_
+        // Collect roles and collateral scores per role
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset asset = IAsset(_assets.at(i));
             if (!asset.isCollateral()) continue;
-            ICollateral coll = ICollateral(address(asset));
 
-            Fix collScore = coll.score();
+            ICollateral coll = ICollateral(address(asset));
+            Fix score = coll.score();
             bytes32 role = coll.role();
-            if (collScore.gt(score[role])) {
-                score[role] = collScore;
-                collFor[role] = coll;
-            }
+
+            roles.add(role);
+            scores[role].push(ScoredColl(score, coll));
         }
 
         // Find the highest-scoring template
-        uint256 bestTemplateIndex;
+        uint256 bestTemplateIdx;
         if (templates.length <= 1) {
-            bestTemplateIndex = 0;
+            bestTemplateIdx = 0;
         } else {
             Fix bestScore;
-            for (uint256 i = 0; i < templates.length; i++) {
+            for (uint256 tmplIdx = 0; tmplIdx < templates.length; tmplIdx++) {
+                // compute each template's score:
+                //     sum (weight * (collateral score)) for each weight, in each template slot
                 Fix tmplScore = FIX_ZERO;
-                TemplateElmt[] storage slots = templates[i].slots;
-                for (uint256 c = 0; c < slots.length; c++) {
-                    tmplScore.plus(slots[c].weight.mul(score[slots[c].role]));
+                TemplateElmt[] storage slots = templates[tmplIdx].slots;
+                for (uint256 slotIdx = 0; slotIdx < slots.length; slotIdx++) {
+                    TemplateElmt storage slot = slots[slotIdx];
+                    for (uint256 wtIdx = 0; wtIdx < slot.weights.length; wtIdx++) {
+                        Fix weight = slot.weights[wtIdx];
+                        Fix collScore = _kthBest(slot.role, wtIdx).score;
+                        tmplScore = tmplScore.plus(weight.mul(collScore));
+                    }
                 }
-                tmplScore = tmplScore.mul(templates[i].govScore);
+
+                // ... times the template's own gov score.
+                tmplScore = tmplScore.mul(templates[tmplIdx].govScore);
+
                 if (tmplScore.gt(bestScore)) {
                     bestScore = tmplScore;
-                    bestTemplateIndex = i;
+                    bestTemplateIdx = tmplIdx;
                 }
             }
         }
@@ -225,13 +283,34 @@ contract BasketHandlerP0 is
         }
 
         // Set the new _basket
-        Template storage template = templates[bestTemplateIndex];
-        _basket.size = template.slots.length;
-        _blockBasketLastUpdated = block.number;
-        for (uint256 i = 0; i < _basket.size; i++) {
-            ICollateral coll = collFor[template.slots[i].role];
-            _basket.collateral[i] = coll;
-            _basket.amounts[coll] = template.slots[i].weight.mul(coll.roleCoefficient());
+        Template storage template = templates[bestTemplateIdx];
+        uint256 basketSize = 0;
+
+        for (uint256 slotIdx = 0; slotIdx < template.slots.length; slotIdx++) {
+            TemplateElmt storage slot = template.slots[slotIdx];
+            for (uint256 wtIdx = 0; wtIdx < slot.weights.length; wtIdx++) {
+                ICollateral coll = _kthBest(slot.role, wtIdx).coll;
+                uint256 loc = basketIndicesPlusOne[coll];
+                if (loc == 0) {
+                    // Add coll to basket if not already present.
+                    _basket.collateral[basketSize] = coll;
+                    basketSize++;
+                }
+                // Add this template weight to the basket (whether or not coll was already present)
+                _basket.amounts[coll] = _basket.amounts[coll].plus(
+                    slot.weights[wtIdx].mul(coll.roleCoefficient())
+                );
+            }
+        }
+        _basket.size = basketSize;
+        _basket.lastBlock = block.number;
+
+        // Finally, zero out the local, in-storage data structures
+        for (uint256 i = 0; i < roles.length(); i++) {
+            bytes32 role = roles.at(i);
+            delete scores[role];
+            delete topScores[role];
+            roles.remove(role);
         }
     }
 }

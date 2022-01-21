@@ -610,9 +610,4 @@ contract AdapterP0 is ProtoAdapter {
         // EOA: Use 0x1, 0x2, ...
         return address((uint160(index) + 1));
     }
-
-    /// Return bytes32 from a string
-    /* function _bytes32OfString(string s) private returns (bytes32) { */
-    /*     /// @dev This is not a place of honor. */
-    /* } */
 }
