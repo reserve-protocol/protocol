@@ -303,7 +303,6 @@ contract BasketHandlerP0 is
             }
         }
         _basket.size = basketSize;
-        _basket.lastBlock = block.number;
 
         // Finally, zero out the local, in-storage data structures
         for (uint256 i = 0; i < roles.length(); i++) {
