@@ -201,13 +201,10 @@ contract BasketHandlerP0 is
     /// Sorts scores into topScores as needed.
     /// @return the kth highest-scoring Collateral
     function _kthBest(bytes32 role, uint256 k) private returns (ScoredColl memory) {
-        // If no collateral fills role, then return a zero-value ScoredColl
-        if (scores[role].length == 0) {
+        // If not enough collateral fills role to have a kth value, then return a zero-value ScoredColl
+        if (scores[role].length + topScores[role].length <= k) {
             return ScoredColl(FIX_ZERO, ICollateral(address(0)));
         }
-        // If k > the number N of collaterals that fill role, then "wrap around"
-        k %= scores[role].length;
-
         // Ensure that topScores[role] holds the k highest-scoring Collaterals, in decreasing order.
         for (uint256 n = topScores[role].length; n <= k; n++) {
             // find the best-scoring remaining Collateral in scores[role], add it to topScores.
@@ -227,18 +224,27 @@ contract BasketHandlerP0 is
             }
             scores[role].pop();
         }
-
         return topScores[role][k];
     }
 
+    struct WeightedColl {
+        Fix weight;
+        ICollateral coll;
+    }
+
     /// Select and set the next basket
-    function _setNextBasket() private {
+    /// @return whether or not a new basket was derived from templates
+    function _setNextBasket() private returns (bool) {
         // Collect roles and collateral scores per role
         for (uint256 i = 0; i < _assets.length(); i++) {
+            // Ignore any assets that aren't collateral
             IAsset asset = IAsset(_assets.at(i));
             if (!asset.isCollateral()) continue;
 
+            // Ignore any collateral that has defaulted or been disabled
             ICollateral coll = ICollateral(address(asset));
+            if (coll.status() == CollateralStatus.DISABLED) continue;
+
             Fix score = coll.score();
             bytes32 role = coll.role();
 
@@ -252,6 +258,7 @@ contract BasketHandlerP0 is
             bestTemplateIdx = 0;
         } else {
             Fix bestScore;
+            Fix bestTotalWeight;
             for (uint256 tmplIdx = 0; tmplIdx < templates.length; tmplIdx++) {
                 // compute each template's score:
                 //     sum (weight * (collateral score)) for each weight, in each template slot
@@ -274,6 +281,7 @@ contract BasketHandlerP0 is
                     bestTemplateIdx = tmplIdx;
                 }
             }
+            if (bestScore.eq(FIX_ZERO)) return false;
         }
 
         // Clear the old basket
@@ -286,23 +294,67 @@ contract BasketHandlerP0 is
         Template storage template = templates[bestTemplateIdx];
         uint256 basketSize = 0;
 
+        Fix totalTemplateWeight = FIX_ZERO; // The total weight of the template
+        Fix fulfilledTemplateWeight = FIX_ZERO; // The total weight of filled roles
+
         for (uint256 slotIdx = 0; slotIdx < template.slots.length; slotIdx++) {
             TemplateElmt storage slot = template.slots[slotIdx];
+
+            // First, compute each of the following:
+
+            // The template weights of slot's collateral
+            WeightedColl[] memory slotColl = new WeightedColl[](slot.weights.length);
+            Fix totalSlotWeight = FIX_ZERO; // The total weight of slot
+            Fix fulfilledSlotWeight = FIX_ZERO; // The weight of *filled* parts of slot
+            uint256 numFulfilled = 0;
+
             for (uint256 wtIdx = 0; wtIdx < slot.weights.length; wtIdx++) {
-                ICollateral coll = _kthBest(slot.role, wtIdx).coll;
-                uint256 loc = basketIndicesPlusOne[coll];
-                if (loc == 0) {
-                    // Add coll to basket if not already present.
-                    _basket.collateral[basketSize] = coll;
-                    basketSize++;
+                totalSlotWeight = totalSlotWeight.plus(slot.weights[wtIdx]);
+                ScoredColl memory best = _kthBest(slot.role, wtIdx);
+                if (best.coll != ICollateral(address(0))) {
+                    numFulfilled++;
+                    ICollateral coll = best.coll;
+                    fulfilledSlotWeight = fulfilledSlotWeight.plus(slot.weights[wtIdx]);
+                    slotColl[wtIdx] = WeightedColl(slot.weights[wtIdx], coll);
+                } // else, best is a dropout subslot
+            }
+
+            totalTemplateWeight = totalTemplateWeight.plus(totalSlotWeight);
+            if (!fulfilledSlotWeight.eq(FIX_ZERO)) {
+                fulfilledTemplateWeight = fulfilledTemplateWeight.plus(totalSlotWeight);
+                // Then, actually add colls and weights to the basket. This can't be done in one pass
+                // because we needed to know the total weight of dropout subslots in this role first.
+                Fix slotWeightFactor = totalSlotWeight.div(fulfilledSlotWeight);
+
+                for (uint256 collIdx = 0; collIdx < numFulfilled; collIdx++) {
+                    ICollateral coll = slotColl[collIdx].coll;
+                    // Place collateral in the basket
+                    uint256 loc = basketIndicesPlusOne[coll];
+                    if (loc == 0) {
+                        // Add coll to basket if not already present.
+                        _basket.collateral[basketSize] = coll;
+                        basketSize++;
+                    }
+                    // Add the appropriate weight to this coll, whether or not coll was already present.
+                    Fix basketWeight = slotColl[collIdx].weight.mul(coll.roleCoefficient()).mul(
+                        slotWeightFactor
+                    );
+                    _basket.amounts[coll] = _basket.amounts[coll].plus(basketWeight);
                 }
-                // Add this template weight to the basket (whether or not coll was already present)
-                _basket.amounts[coll] = _basket.amounts[coll].plus(
-                    slot.weights[wtIdx].mul(coll.roleCoefficient())
+            }
+        }
+
+        _basket.size = basketSize;
+
+        // Now, if there were any entire dropout *roles*, we need to adjust basket weights;
+        if (!totalTemplateWeight.eq(fulfilledTemplateWeight)) {
+            Fix roleWeightFactor = totalTemplateWeight.div(fulfilledTemplateWeight);
+            for (uint256 i = 0; i < basketSize; i++) {
+                _basket.amounts[_basket.collateral[i]] = _basket.amounts[_basket.collateral[i]].mul(
+                    roleWeightFactor
                 );
             }
         }
-        _basket.size = basketSize;
 
         // Finally, zero out the local, in-storage data structures
         for (uint256 i = 0; i < roles.length(); i++) {
@@ -311,5 +363,8 @@ contract BasketHandlerP0 is
             delete topScores[role];
             roles.remove(role);
         }
+
+        // Yes, we have set the basket now.
+        return true;
     }
 }
