@@ -66,6 +66,11 @@ library BasketLib {
         address to,
         Fix slice
     ) internal returns (uint256[] memory amounts) {
+        // TODO In this case there is likely to be some collateral out in an auction.
+        // Should we take that into account? On one hand it seems like we don't care that much
+        // about exactly what prices redemption happens at in the event of a default, but on
+        // the other a 1% loss due to the maximum auction size could be pretty painful.
+
         amounts = new uint256[](self.size);
         for (uint256 i = 0; i < self.size; i++) {
             // {qTok} = {BU} * {qTok/BU}
