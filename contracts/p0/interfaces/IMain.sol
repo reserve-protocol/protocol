@@ -273,11 +273,15 @@ interface IRTokenIssuer {
     /// @param issuanceId The index off the issuance, a globally unique identifier
     /// @param issuer The account performing the issuance
     /// @param amount The quantity of RToken being issued
+    /// @param tokens The ERC20 contracts of the backing tokens
+    /// @param quantities The quantities of tokens paid with
     /// @param blockAvailableAt The (continuous) block at which the issuance vests
     event IssuanceStarted(
         uint256 indexed issuanceId,
         address indexed issuer,
         uint256 indexed amount,
+        address[] tokens,
+        uint256[] quantities,
         Fix blockAvailableAt
     );
 
@@ -292,7 +296,14 @@ interface IRTokenIssuer {
     /// Emitted when a redemption of RToken occurs
     /// @param redeemer The address of the account redeeeming RTokens
     /// @param amount The quantity of RToken being redeemed
-    event Redemption(address indexed redeemer, uint256 indexed amount);
+    /// @param tokens The ERC20 contracts of the backing tokens
+    /// @param quantities The quantities of tokens paid with
+    event Redemption(
+        address indexed redeemer,
+        uint256 indexed amount,
+        address[] tokens,
+        uint256[] quantities
+    );
 
     function issue(uint256 amount) external;
 

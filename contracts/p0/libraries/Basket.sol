@@ -57,6 +57,23 @@ library BasketLib {
         }
     }
 
+    /// Transfer a prorata `slice` of all collateral out of the caller's account
+    /// @param to The address that is receiving the collateral
+    /// @param slice The fraction of the collateral to transfer out
+    /// @return amounts The token amounts transferred out
+    function withdrawProrata(
+        Basket storage self,
+        address to,
+        Fix slice
+    ) internal returns (uint256[] memory amounts) {
+        amounts = new uint256[](self.size);
+        for (uint256 i = 0; i < self.size; i++) {
+            // {qTok} = {BU} * {qTok/BU}
+            amounts[i] = slice.mulu(self.collateral[i].erc20().balanceOf(address(this))).floor();
+            self.collateral[i].erc20().safeTransfer(to, amounts[i]);
+        }
+    }
+
     // ==== View ====
 
     /// @return {qTok/BU} The quantity of collateral asset targeted per BU

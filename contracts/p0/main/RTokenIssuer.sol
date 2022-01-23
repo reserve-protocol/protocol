@@ -68,21 +68,28 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         _updateBasket();
         require(worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
-        uint256[] memory amounts = _basket.deposit(_msgSender(), _toBUs(amount));
+        uint256[] memory deposits = _basket.deposit(_msgSender(), _toBUs(amount));
 
         // During SlowIssuance, RTokens are minted and held by Main until vesting completes
         SlowIssuance memory iss = SlowIssuance({
             blockStartedAt: block.number,
             amount: amount,
             erc20s: _basket.backingERC20s(),
-            deposits: amounts,
+            deposits: deposits,
             issuer: _msgSender(),
             blockAvailableAt: _nextIssuanceBlockAvailable(amount),
             processed: false
         });
         issuances.push(iss);
         rToken().mint(address(rToken()), amount);
-        emit IssuanceStarted(issuances.length - 1, iss.issuer, iss.amount, iss.blockAvailableAt);
+        emit IssuanceStarted(
+            issuances.length - 1,
+            iss.issuer,
+            iss.amount,
+            iss.erc20s,
+            iss.deposits,
+            iss.blockAvailableAt
+        );
     }
 
     /// Redeem RToken for basket collateral
@@ -91,9 +98,12 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         require(amount > 0, "Cannot redeem zero");
         revenueFurnace().doMelt();
 
+        uint256[] memory compensation = fullyCapitalized()
+            ? _basket.withdraw(_msgSender(), _toBUs(amount))
+            : _basket.withdrawProrata(_msgSender(), divFix(amount, toFix(rToken().totalSupply())));
         rToken().burn(_msgSender(), amount);
-        _basket.withdraw(_msgSender(), _toBUs(amount));
-        emit Redemption(_msgSender(), amount);
+
+        emit Redemption(_msgSender(), amount, _basket.backingERC20s(), compensation);
     }
 
     /// @return quantities {qTok} The token quantities required to issue `amount` RToken.
