@@ -101,7 +101,7 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
 
     /// @return {attoRef/qTok} Minimum price of a pegged asset to be considered non-defaulting
     function _minReferencePrice() internal view virtual returns (Fix) {
-        // {attoRef/qTok} = {attoRef/tok} / {qTok/tok}
-        return main.defaultThreshold().shiftLeft(-int8(erc20.decimals()));
+        // {attoRef/qTok} = {ref/tok} * {attoRef/ref} / {qTok/tok}
+        return main.defaultThreshold().shiftLeft(18 - int8(erc20.decimals()));
     }
 }

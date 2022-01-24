@@ -26,7 +26,7 @@ struct Config {
     Fix minRevenueAuctionSize; // min size of a revenue auction / (RToken supply)
     Fix migrationChunk; // how much backing to migrate at a time / (RToken supply)
     Fix issuanceRate; // number of RToken to issue per block / (RToken supply)
-    Fix defaultThreshold; // stablecoin deviation beyond which a token is marked as in-default
+    Fix defaultThreshold; // {ref/tok} multiplier beyond which a token is marked as in-default
 
     // Sample values
     //
