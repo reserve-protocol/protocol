@@ -323,7 +323,7 @@ describe('MainP0 contract', () => {
   })
 
   describe('Asset Registry', () => {
-    it.only('Should allow to disable Collateral if Owner', async () => {
+    it('Should allow to disable Collateral if Owner', async () => {
       // Check collateral is not disabled by default
       expect(await collateral2.status()).to.equal(CollateralStatus.SOUND)
 
