@@ -2,8 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
-import { ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AaveOracle } from '../../typechain/AaveOracle'
@@ -21,6 +20,7 @@ import { MainP0 } from '../../typechain/MainP0'
 import { MarketMock } from '../../typechain/MarketMock'
 import { RevenueTraderP0 } from '../../typechain/RevenueTraderP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
+import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { USDCMock } from '../../typechain/USDCMock'
@@ -44,6 +44,7 @@ describe('MainP0 contract', () => {
   // Non-backing assets
   let rsr: ERC20Mock
   let rsrAsset: AssetP0
+  let compToken: ERC20Mock
   let compAsset: AssetP0
   let compoundMock: ComptrollerMockP0
   let compoundOracle: CompoundOracle
@@ -74,6 +75,7 @@ describe('MainP0 contract', () => {
 
   // Contracts to retrieve after deploy
   let rToken: RTokenP0
+  let rTokenAsset: RTokenAssetP0
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
@@ -94,6 +96,7 @@ describe('MainP0 contract', () => {
     ;({
       rsr,
       rsrAsset,
+      compToken,
       aaveToken,
       compAsset,
       aaveAsset,
@@ -109,6 +112,7 @@ describe('MainP0 contract', () => {
       dist,
       main,
       rToken,
+      rTokenAsset,
       furnace,
       stRSR,
       market,
@@ -148,10 +152,42 @@ describe('MainP0 contract', () => {
 
   describe('Deployment', () => {
     it('Should setup Main correctly', async () => {
+      // Owner/Pauser
       expect(await main.paused()).to.equal(false)
       expect(await main.owner()).to.equal(owner.address)
       expect(await main.pauser()).to.equal(owner.address)
-      //expect(await main.mood()).to.equal(Mood.CALM)
+
+      // Assets
+      // RSR
+      expect(await main.rsrAsset()).to.equal(rsrAsset.address)
+      expect(await rsrAsset.erc20()).to.equal(rsr.address)
+      expect(await main.rsr()).to.equal(rsr.address)
+
+      // Comp
+      expect(await main.compAsset()).to.equal(compAsset.address)
+      expect(await compAsset.erc20()).to.equal(compToken.address)
+
+      // Aave
+      expect(await main.aaveAsset()).to.equal(aaveAsset.address)
+      expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
+
+      // RToken
+      expect(await main.rTokenAsset()).to.equal(rTokenAsset.address)
+      expect(await rTokenAsset.erc20()).to.equal(rToken.address)
+      expect(await main.rToken()).to.equal(rToken.address)
+
+      // Check assets/collateral
+      const allAssets = await main.allAssets()
+      expect(allAssets[0]).to.equal(rTokenAsset.address)
+      expect(allAssets[1]).to.equal(rsrAsset.address)
+      expect(allAssets[2]).to.equal(compAsset.address)
+      expect(allAssets[3]).to.equal(aaveAsset.address)
+      expect(allAssets.slice(4)).to.eql(collateral.map((c) => c.address))
+
+      // Other components
+      expect(await main.stRSR()).to.equal(stRSR.address)
+      expect(await main.revenueFurnace()).to.equal(furnace.address)
+
       expect(await main.rsrCut()).to.equal(fp('0.6'))
       expect(await main.rTokenCut()).to.equal(fp('0.4'))
       expect(await main.rewardStart()).to.equal(config.rewardStart)
@@ -168,9 +204,7 @@ describe('MainP0 contract', () => {
       expect(await main.migrationChunk()).to.equal(config.migrationChunk)
       expect(await main.issuanceRate()).to.equal(config.issuanceRate)
       expect(await main.defaultThreshold()).to.equal(config.defaultThreshold)
-      expect(await main.stRSR()).to.equal(stRSR.address)
-      expect(await main.revenueFurnace()).to.equal(furnace.address)
-      const rTokenAsset = await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await main.rsrAsset()).to.equal(rsrAsset.address)
       expect(await main.compAsset()).to.equal(compAsset.address)
@@ -285,6 +319,24 @@ describe('MainP0 contract', () => {
         await collateral2.erc20(),
         await collateral3.erc20(),
       ])
+    })
+  })
+
+  describe('Asset Registry', () => {
+    it.only('Should allow to disable Collateral if Owner', async () => {
+      // Check collateral is not disabled by default
+      expect(await collateral2.status()).to.equal(CollateralStatus.SOUND)
+
+      // Disable collateral
+      await main.connect(owner).disableCollateral(collateral2.address)
+
+      // Check Collateral disabled
+      expect(await collateral2.status()).to.equal(CollateralStatus.DISABLED)
+
+      // Cannot disable collateral if not owner
+      await expect(main.connect(other).disableCollateral(collateral3.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
     })
   })
 })
