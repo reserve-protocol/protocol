@@ -32,25 +32,17 @@ contract ATokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
-    IERC20Metadata public immutable underlyingERC20; // this should be the underlying fiatcoin
-
-    Fix public prevRateToUnderlying; // previous rate to underlying, in normal 1:1 units
-
-    // {ref/tok} The rate to underlying of this derivative asset at some RToken-specific
-    // previous time. Used when choosing new baskets.
-    Fix private immutable genesisRateToUnderlying;
+    Fix public prevReferencePrice; // previous rate to underlying, in normal 1:1 units
 
     constructor(
         IERC20Metadata erc20_,
+        IERC20Metadata referenceERC20_,
         IMain main_,
         IOracle oracle_,
         bytes32 role_,
-        Fix govScore_,
-        IERC20Metadata underlyingERC20_
-    ) CollateralP0(erc20_, main_, oracle_, role_, govScore_) {
-        underlyingERC20 = underlyingERC20_;
-        genesisRateToUnderlying = rateToUnderlying();
-        prevRateToUnderlying = genesisRateToUnderlying;
+        Fix govScore_
+    ) CollateralP0(erc20_, referenceERC20_, main_, oracle_, role_, govScore_) {
+        prevReferencePrice = genesisReferencePrice;
     }
 
     /// Update default status
@@ -60,16 +52,16 @@ contract ATokenCollateralP0 is CollateralP0 {
         }
 
         // Check invariants
-        Fix rate = rateToUnderlying();
-        if (rate.lt(prevRateToUnderlying)) {
+        Fix p = referencePrice();
+        if (p.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
             // If the underlying is showing signs of depegging, default eventually
-            whenDefault = _isUnderlyingDepegged()
+            whenDefault = _isReferenceDepegged()
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
-        prevRateToUnderlying = rate;
+        prevReferencePrice = p;
     }
 
     /// @dev Intended to be used via delegatecall
@@ -90,26 +82,21 @@ contract ATokenCollateralP0 is CollateralP0 {
     /// @return {attoUSD/qTok} The price of 1 qToken in attoUSD
     function price() public view virtual override returns (Fix) {
         // {attoUSD/qTok} = {attoUSD/ref} * {ref/tok} / {qTok/tok}
-        return oracle.consult(underlyingERC20).mul(rateToUnderlying()).shiftLeft(18);
-    }
-
-    /// @return {none} The growth since genesis
-    function growth() public view override returns (Fix) {
-        return rateToUnderlying().div(genesisRateToUnderlying);
+        return oracle.consult(referenceERC20).mul(referencePrice()).shiftLeft(-18);
     }
 
     /// @return {ref/tok} The rate between the token and fiatcoin
-    function rateToUnderlying() public view virtual returns (Fix) {
+    function referencePrice() public view override returns (Fix) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray ref/tok}
         return toFixWithShift(rateInRAYs, -27);
     }
 
-    function _isUnderlyingDepegged() internal view returns (bool) {
+    function _isReferenceDepegged() internal view returns (bool) {
         // {USD/ref} = {none} * {USD/ref}
         Fix delta = main.defaultThreshold().mul(PEG);
 
         // {USD/ref} = {attoUSD/ref} / {attoUSD/USD}
-        Fix p = oracle.consult(underlyingERC20).shiftLeft(-18);
+        Fix p = oracle.consult(referenceERC20).shiftLeft(-18);
 
         return p.lt(PEG.minus(delta)) || p.gt(PEG.plus(delta));
     }

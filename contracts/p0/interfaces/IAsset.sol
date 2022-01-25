@@ -53,8 +53,8 @@ interface ICollateral is IAsset {
     /// then roleCoefficient() should return 4.0.
     function roleCoefficient() external view returns (Fix);
 
-    /// @return {none} The growth since genesis
-    function growth() external view returns (Fix);
+    /// @return {ref/tok} The price of 1 whole token in terms of whole reference units
+    function referencePrice() external view returns (Fix);
 
     /// @return The vault-selection score of this collateral
     function score() external view returns (Fix);

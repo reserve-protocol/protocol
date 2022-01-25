@@ -15,7 +15,7 @@ contract CompoundOracle is IOracle {
         comptroller = comptroller_;
     }
 
-    /// @return p {attoUSD/tok} The attoUSD price of a whole token on the compound oracle
+    /// @return {attoUSD/tok} The attoUSD price of a whole token on the compound oracle
     function consult(IERC20Metadata erc20) external view virtual override returns (Fix) {
         // Compound stores prices with 6 decimals of precision
 
@@ -40,7 +40,7 @@ contract AaveOracle is CompoundOracle {
         aaveLendingPool = aaveLendingPool_;
     }
 
-    /// @return p {attoUSD/tok} The attoUSD price of a whole token on the Aave oracle
+    /// @return {attoUSD/tok} The attoUSD price of a whole token on the Aave oracle
     function consult(IERC20Metadata erc20) external view virtual override returns (Fix) {
         // Aave keeps their prices in terms of ETH
         IAaveOracle aaveOracle = aaveLendingPool.getAddressesProvider().getPriceOracle();

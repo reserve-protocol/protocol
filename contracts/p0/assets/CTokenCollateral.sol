@@ -25,28 +25,19 @@ contract CTokenCollateralP0 is CollateralP0 {
     using SafeERC20 for IERC20Metadata;
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
-    Fix public immutable initialExchangeRate; // 0.02, their hardcoded starting rate
+    Fix public constant COMPOUND_BASE = Fix.wrap(2e16); // 0.02 as a fix
 
-    IERC20Metadata public immutable underlyingERC20; // this should be the underlying fiatcoin
-
-    Fix public prevRateToUnderlying; // previous rate to underlying, in normal 1:1 units
-
-    // {ref/tok} The rate to underlying of this derivative asset at some RToken-specific
-    // previous time. Used when choosing new baskets.
-    Fix private immutable genesisRateToUnderlying;
+    Fix public prevReferencePrice; // {ref/tok} previous rate to reference
 
     constructor(
         IERC20Metadata erc20_,
+        IERC20Metadata referenceERC20_,
         IMain main_,
         IOracle oracle_,
         bytes32 role_,
-        Fix govScore_,
-        IERC20Metadata underlyingERC20_
-    ) CollateralP0(erc20_, main_, oracle_, role_, govScore_) {
-        initialExchangeRate = toFixWithShift(2, -2);
-        underlyingERC20 = underlyingERC20_;
-        genesisRateToUnderlying = rateToUnderlying();
-        prevRateToUnderlying = genesisRateToUnderlying;
+        Fix govScore_
+    ) CollateralP0(erc20_, referenceERC20_, main_, oracle_, role_, govScore_) {
+        prevReferencePrice = genesisReferencePrice;
     }
 
     /// Update the Compound protocol + default status
@@ -59,16 +50,16 @@ contract CTokenCollateralP0 is CollateralP0 {
         ICToken(address(erc20)).exchangeRateCurrent();
 
         // Check invariants
-        Fix rate = rateToUnderlying();
-        if (rate.lt(prevRateToUnderlying)) {
+        Fix p = referencePrice();
+        if (p.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
             // If the underlying is showing signs of depegging, default eventually
-            whenDefault = _isUnderlyingDepegged()
+            whenDefault = _isReferenceDepegged()
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
-        prevRateToUnderlying = rate;
+        prevReferencePrice = p;
     }
 
     /// @dev Intended to be used via delegatecall
@@ -90,28 +81,23 @@ contract CTokenCollateralP0 is CollateralP0 {
     /// @return {attoUSD/qTok} The price of 1 qToken in attoUSD
     function price() public view virtual override returns (Fix) {
         // {attoUSD/qTok} = {attoUSD/ref} * {ref/tok} / {qTok/tok}
-        return oracle.consult(underlyingERC20).mul(rateToUnderlying()).shiftLeft(8);
-    }
-
-    /// @return {none} The growth since genesis
-    function growth() public view override returns (Fix) {
-        return rateToUnderlying().div(genesisRateToUnderlying);
+        return oracle.consult(referenceERC20).mul(referencePrice()).shiftLeft(-8);
     }
 
     /// @return {ref/tok} The rate between the cToken and its fiatcoin
-    function rateToUnderlying() public view virtual returns (Fix) {
+    function referencePrice() public view override returns (Fix) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
-        int8 shiftLeft = 8 - int8(underlyingERC20.decimals()) - 18;
+        int8 shiftLeft = 8 - int8(referenceERC20.decimals()) - 18;
         Fix rateNow = toFixWithShift(rate, shiftLeft);
-        return rateNow.div(initialExchangeRate);
+        return rateNow.div(COMPOUND_BASE);
     }
 
-    function _isUnderlyingDepegged() internal view returns (bool) {
+    function _isReferenceDepegged() internal view returns (bool) {
         // {USD/ref} = {none} * {USD/ref}
         Fix delta = main.defaultThreshold().mul(PEG);
 
         // {USD/ref} = {attoUSD/ref} / {attoUSD/USD}
-        Fix p = oracle.consult(underlyingERC20).shiftLeft(-18);
+        Fix p = oracle.consult(referenceERC20).shiftLeft(-18);
 
         return p.lt(PEG.minus(delta)) || p.gt(PEG.plus(delta));
     }

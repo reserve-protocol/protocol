@@ -459,7 +459,7 @@ contract AdapterP0 is ProtoAdapter {
 
     /// @return {fiatTok/tok}
     function _rateToUnderlying(address lendingCollateral) internal view returns (Fix) {
-        return CTokenCollateralP0(lendingCollateral).rateToUnderlying();
+        return CTokenCollateralP0(lendingCollateral).referencePrice();
     }
 
     /// @param token The ERC20 token
@@ -492,11 +492,11 @@ contract AdapterP0 is ProtoAdapter {
             );
             _assets[collateralAsset] = new CTokenCollateralP0(
                 erc20,
+                underlying.erc20(),
                 _main,
                 underlying.oracle(),
                 bytes32(bytes(erc20.symbol())),
-                FIX_ONE,
-                underlying.erc20()
+                FIX_ONE
             );
         } else if (erc20.symbol().toSlice().startsWith(a.toSlice())) {
             ICollateral underlying = ICollateral(
@@ -512,14 +512,15 @@ contract AdapterP0 is ProtoAdapter {
             );
             _assets[collateralAsset] = new ATokenCollateralP0(
                 erc20,
+                underlying.erc20(),
                 _main,
                 underlying.oracle(),
                 bytes32(bytes(erc20.symbol())),
-                FIX_ONE,
-                underlying.erc20()
+                FIX_ONE
             );
         } else {
             _assets[collateralAsset] = new CollateralP0(
+                erc20,
                 erc20,
                 _main,
                 oracle,

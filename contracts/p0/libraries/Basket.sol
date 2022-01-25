@@ -83,9 +83,9 @@ library BasketLib {
 
     /// @return {qTok/BU} The quantity of collateral asset targeted per BU
     function quantity(Basket storage self, ICollateral collateral) internal view returns (Fix) {
-        // {qTok/BU} = {ref/BU} / {none} * {qTok/ref}
+        // {qTok/BU} = {ref/BU} / {ref/tok} * {qTok/tok}
         return
-            self.refTargets[collateral].div(collateral.growth()).shiftLeft(
+            self.refTargets[collateral].div(collateral.referencePrice()).shiftLeft(
                 int8(collateral.erc20().decimals())
             );
     }
@@ -117,10 +117,10 @@ library BasketLib {
     /// @return attoUSD {attoUSD/BU} The price of a whole BU in attoUSD
     function price(Basket storage self) internal view returns (Fix attoUSD) {
         for (uint256 i = 0; i < self.size; i++) {
-            ICollateral a = self.collateral[i];
+            ICollateral c = self.collateral[i];
 
             // {attoUSD/BU} = {attoUSD/BU} + {attoUSD/qTok} * {qTok/BU}
-            attoUSD = attoUSD.plus(a.price().mul(quantity(self, a)));
+            attoUSD = attoUSD.plus(c.price().mul(quantity(self, c)));
         }
     }
 }

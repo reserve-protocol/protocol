@@ -179,6 +179,7 @@ async function collateralFixture(
       <CollateralP0>(
         await CollateralFactory.deploy(
           erc20.address,
+          erc20.address,
           main.address,
           aaveOracle.address,
           ethers.utils.formatBytes32String(symbol),
@@ -193,6 +194,7 @@ async function collateralFixture(
       erc20,
       <CollateralP0>(
         await CollateralFactory.deploy(
+          erc20.address,
           erc20.address,
           main.address,
           aaveOracle.address,
@@ -215,11 +217,11 @@ async function collateralFixture(
       <CTokenCollateralP0>(
         await CTokenCollateralFactory.deploy(
           erc20.address,
+          underlyingAddress,
           main.address,
           compoundOracle.address,
           ethers.utils.formatBytes32String(symbol),
-          fp('1'),
-          underlyingAddress
+          fp('1')
         )
       ),
     ]
@@ -236,11 +238,11 @@ async function collateralFixture(
       <ATokenCollateralP0>(
         await ATokenCollateralFactory.deploy(
           erc20.address,
+          underlyingAddress,
           main.address,
           aaveOracle.address,
           ethers.utils.formatBytes32String(symbol),
-          fp('1'),
-          underlyingAddress
+          fp('1')
         )
       ),
     ]

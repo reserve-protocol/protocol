@@ -39,15 +39,23 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     /// @return {USD/ref}
     Fix public constant PEG = FIX_ONE;
 
+    // {ref/tok} The rate to underlying of this derivative asset at collateral genesis
+    Fix internal immutable genesisReferencePrice;
+
+    IERC20Metadata public immutable referenceERC20;
+
     constructor(
         IERC20Metadata erc20_,
+        IERC20Metadata referenceERC20_,
         IMain main_,
         IOracle oracle_,
         bytes32 role_,
         Fix govScore_
     ) AssetP0(erc20_, main_, oracle_) {
+        referenceERC20 = referenceERC20_;
         role = role_;
         govScore = govScore_;
+        genesisReferencePrice = referencePrice();
     }
 
     /// Default checks
@@ -84,16 +92,15 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         return true;
     }
 
-    /// @return {none} The growth since genesis
-    function growth() public view virtual override returns (Fix) {
+    /// @return {ref/tok} The price of 1 whole token in terms of whole reference units
+    function referencePrice() public view virtual override returns (Fix) {
         return FIX_ONE;
     }
 
     /// @return {none} The vault-selection score of this collateral
     /// @dev That is, govScore * (growth relative to the reference asset)
     function score() external view virtual override returns (Fix) {
-        // There is no growth
-        return govScore.mul(growth());
+        return govScore.mul(genesisReferencePrice.div(referencePrice()));
     }
 
     function _isDepegged() private view returns (bool) {
