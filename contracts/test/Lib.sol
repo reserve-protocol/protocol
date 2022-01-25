@@ -212,11 +212,11 @@ library Lib {
     function _assertBUEq(BU memory a, BU memory b) internal pure returns (bool ok) {
         ok =
             assertEq(a.assets.length, b.assets.length, "Tokens size mismatch") &&
-            assertEq(a.amounts.length, b.amounts.length, "Amounts size mismatch") &&
-            assertEq(a.assets.length, a.amounts.length, "invalid input");
+            assertEq(a.refTargets.length, b.refTargets.length, "Portions size mismatch") &&
+            assertEq(a.assets.length, a.refTargets.length, "invalid input");
 
-        for (uint256 i = 0; ok && i < a.amounts.length; i++) {
-            ok = assertEq(a.amounts[i], b.amounts[i], "BU quantities mismatch");
+        for (uint256 i = 0; ok && i < a.refTargets.length; i++) {
+            ok = assertEq(a.refTargets[i], b.refTargets[i], "BU quantities mismatch");
         }
     }
 

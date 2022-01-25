@@ -26,7 +26,7 @@ struct Config {
     Fix minRevenueAuctionSize; // min size of a revenue auction / (RToken supply)
     Fix migrationChunk; // how much backing to migrate at a time / (RToken supply)
     Fix issuanceRate; // number of RToken to issue per block / (RToken supply)
-    Fix defaultThreshold; // {ref/tok} multiplier beyond which a token is marked as in-default
+    Fix defaultThreshold; // multiplier beyond which a token is marked as in-default
 
     // Sample values
     //
@@ -43,7 +43,7 @@ struct Config {
     // minRevenueAuctionSize = 0.0001 (0.01%)
     // migrationChunk = 0.2 (20%)
     // issuanceRate = 0.00025 (0.025% per block, or ~0.1% per minute)
-    // defaultThreshold = 0.05 (5% deviation)
+    // defaultThreshold = 0.05 (5% deviation, either above or below)
 }
 
 struct RevenueShare {
@@ -212,7 +212,7 @@ interface IBasketHandler {
     // /// @param newBasket The address of the new vault
     // // event NewBasketSet(address indexed oldBasket, address indexed newBasket);
 
-    function setBasket(ICollateral[] calldata collateral, Fix[] calldata amounts) external;
+    function setBasket() external;
 
     function baseFactor() external view returns (Fix);
 
@@ -221,9 +221,6 @@ interface IBasketHandler {
     function worstCollateralStatus() external view returns (CollateralStatus status);
 
     function basketPrice() external view returns (Fix);
-
-    // This is only here for the Adapter (generic tests)
-    function basketReferenceAmounts() external view returns (Fix[] memory);
 }
 
 interface IAuctioneerEvents {

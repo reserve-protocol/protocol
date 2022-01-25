@@ -64,18 +64,8 @@ contract BasketHandlerP0 is
         _updateBasket();
     }
 
-    function setBasket(ICollateral[] calldata collateral, Fix[] calldata amounts)
-        public
-        override
-        onlyOwner
-    {
-        require(collateral.length == amounts.length, "must be same lengths");
-        for (uint256 i = 0; i < collateral.length; i++) {
-            _basket.collateral[i] = collateral[i];
-            _basket.amounts[collateral[i]] = amounts[i];
-        }
-        _basket.size = collateral.length;
-        _blockBasketLastUpdated = block.number;
+    function setBasket() public override onlyOwner {
+        // TODO
     }
 
     // Govern set of templates
@@ -133,14 +123,6 @@ contract BasketHandlerP0 is
         Fix supply = toFix(rToken().totalSupply()); // {qRTok}
         Fix melted = toFix(rToken().totalMelted()); // {qRTok}
         return supply.eq(FIX_ZERO) ? FIX_ONE : supply.plus(melted).div(supply);
-    }
-
-    /// @return amounts {attoRef/BU} The amounts of collateral required per BU
-    function basketReferenceAmounts() external view override returns (Fix[] memory amounts) {
-        amounts = new Fix[](_basket.size);
-        for (uint256 i = 0; i < _basket.size; i++) {
-            amounts[i] = _basket.amounts[_basket.collateral[i]];
-        }
     }
 
     // ==== Internal ====
@@ -286,7 +268,7 @@ contract BasketHandlerP0 is
 
         // Clear the old basket
         for (uint256 i = 0; i < _basket.size; i++) {
-            _basket.amounts[_basket.collateral[i]] = FIX_ZERO;
+            _basket.refTargets[_basket.collateral[i]] = FIX_ZERO;
             delete _basket.collateral[i];
         }
 
@@ -339,7 +321,7 @@ contract BasketHandlerP0 is
                     Fix basketWeight = slotColl[collIdx].weight.mul(coll.roleCoefficient()).mul(
                         slotWeightFactor
                     );
-                    _basket.amounts[coll] = _basket.amounts[coll].plus(basketWeight);
+                    _basket.refTargets[coll] = _basket.refTargets[coll].plus(basketWeight);
                 }
             }
         }
@@ -350,9 +332,9 @@ contract BasketHandlerP0 is
         if (!totalTemplateWeight.eq(fulfilledTemplateWeight)) {
             Fix roleWeightFactor = totalTemplateWeight.div(fulfilledTemplateWeight);
             for (uint256 i = 0; i < basketSize; i++) {
-                _basket.amounts[_basket.collateral[i]] = _basket.amounts[_basket.collateral[i]].mul(
-                    roleWeightFactor
-                );
+                _basket.refTargets[_basket.collateral[i]] = _basket
+                .refTargets[_basket.collateral[i]]
+                .mul(roleWeightFactor);
             }
         }
 

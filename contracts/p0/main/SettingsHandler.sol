@@ -227,7 +227,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         return _market;
     }
 
-    // Useful view functions for reading portions of the state
+    // Useful view functions for reading refTargets of the state
     /// @return The RToken deployment
     function rToken() public view override returns (IRToken) {
         return IRToken(address(_rTokenAsset.erc20()));

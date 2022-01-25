@@ -27,7 +27,7 @@ contract CTokenCollateralP0 is CollateralP0 {
 
     Fix public immutable initialExchangeRate; // 0.02, their hardcoded starting rate
 
-    uint8 public immutable decimalsForUnderlying;
+    IERC20Metadata public immutable underlyingERC20; // this should be the underlying fiatcoin
 
     Fix public prevRateToUnderlying; // previous rate to underlying, in normal 1:1 units
 
@@ -38,10 +38,10 @@ contract CTokenCollateralP0 is CollateralP0 {
         bytes32 role_,
         Fix govScore_,
         Fix oldPrice_,
-        uint8 decimalsForUnderlying_
+        IERC20Metadata underlyingERC20_
     ) CollateralP0(erc20_, main_, oracle_, role_, govScore_, oldPrice_) {
         initialExchangeRate = toFixWithShift(2, -2);
-        decimalsForUnderlying = decimalsForUnderlying_;
+        underlyingERC20 = underlyingERC20_;
     }
 
     /// Update the Compound protocol + default status
@@ -58,8 +58,8 @@ contract CTokenCollateralP0 is CollateralP0 {
         if (rate.lt(prevRateToUnderlying)) {
             whenDefault = block.timestamp;
         } else {
-            // If the price is below the default-threshold price, default eventually
-            whenDefault = referencePrice().lt(_minReferencePrice())
+            // If the underlying is showing signs of depegging, default eventually
+            whenDefault = _isUnderlyingDepegged()
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -84,21 +84,32 @@ contract CTokenCollateralP0 is CollateralP0 {
 
     /// @return {attoUSD/qTok} The price of 1 qToken in attoUSD
     function price() public view virtual override returns (Fix) {
-        return oracle.consult(erc20).shiftLeft(-int8(erc20.decimals())).mul(rateToUnderlying());
+        // {attoUSD/qTok} = {attoUSD/ref} * {ref/tok} / {qTok/tok}
+        return oracle.consult(underlyingERC20).mul(rateToUnderlying()).shiftLeft(8);
     }
 
-    /// @return {underlyingTok/tok} The rate between the cToken and its fiatcoin
+    /// @return {qRef/qTok} The price of the asset in a (potentially non-USD) reference asset
+    function referencePrice() public view virtual override returns (Fix) {
+        // {qRef/qTok} = {ref/tok} * {qRef/ref} / {qTok/tok}
+        return rateToUnderlying().shiftLeft(int8(underlyingERC20.decimals()) - 8);
+    }
+
+    /// @return {ref/tok} The rate between the cToken and its fiatcoin
     function rateToUnderlying() public view virtual returns (Fix) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
-        int8 shiftLeft = 8 - int8(decimalsForUnderlying) - 18;
+        int8 shiftLeft = 8 - int8(underlyingERC20.decimals()) - 18;
         Fix rateNow = toFixWithShift(rate, shiftLeft);
         return rateNow.div(initialExchangeRate);
     }
 
-    /// @return {attoRef/qTok} Minimum price of a pegged asset to be considered non-defaulting
-    function _minReferencePrice() internal view virtual override returns (Fix) {
-        // {attoRef/qTok} = {ref/tok} * {attoRef/ref} / {qTok/tok}
-        return
-            main.defaultThreshold().shiftLeft(18 - int8(erc20.decimals())).mul(rateToUnderlying());
+    function _isUnderlyingDepegged() internal view virtual returns (bool) {
+        // {attoUSD/qRef} = {USD/ref} * {attoUSD/USD} / {qRef/ref}
+        Fix delta = main.defaultThreshold().mul(PEG).shiftLeft(
+            18 - int8(underlyingERC20.decimals())
+        );
+
+        // {attoUSD/qRef} = {attoUSD/ref} / {qRef/ref}
+        Fix p = oracle.consult(underlyingERC20).shiftLeft(-int8(underlyingERC20.decimals()));
+        return p.lt(PEG.minus(delta)) || p.gt(PEG.plus(delta));
     }
 }

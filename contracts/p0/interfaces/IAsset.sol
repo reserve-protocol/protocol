@@ -47,7 +47,7 @@ interface ICollateral is IAsset {
     /// Disable the collateral so it cannot be used as backing
     function disable() external;
 
-    /// @return {attoRef/qTok} The price of the asset in a (potentially non-USD) reference asset
+    /// @return {qRef/qTok} The price of the asset in a (potentially non-USD) reference asset
     function referencePrice() external view returns (Fix);
 
     /// @return {basket quantity/tok} At basket selection time, how many of the reference token does

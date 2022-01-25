@@ -293,12 +293,9 @@ contract AdapterP0 is ProtoAdapter {
 
         // Set basket + unpause
         {
-            ICollateral[] memory backing = new ICollateral[](s.bu_s[0].assets.length);
-            for (uint256 i = 0; i < s.bu_s[0].assets.length; i++) {
-                backing[i] = collateral[uint256(s.bu_s[0].assets[i])];
-            }
+            // TODO Basket Templating
 
-            _main.setBasket(backing, s.bu_s[0].amounts);
+            _main.setBasket();
             _main.unpause();
         }
     }
@@ -324,7 +321,7 @@ contract AdapterP0 is ProtoAdapter {
             backingCollateral[i] = _reverseAssets[ERC20Mock(backingTokens[i])];
         }
         s.distribution = _main.STATE_revenueDistribution();
-        s.rTokenDefinition = BU(backingCollateral, _main.basketReferenceAmounts());
+        s.rTokenDefinition = BU(backingCollateral, _main.basketRefTargets());
         s.rToken = _dumpERC20(_main.rToken());
         s.rsr = _dumpERC20(_main.rsr());
         s.stRSR = _dumpERC20(_main.stRSR());
@@ -498,7 +495,7 @@ contract AdapterP0 is ProtoAdapter {
                 bytes32(bytes(erc20.symbol())),
                 FIX_ONE,
                 toFixWithShift(2, -2),
-                underlying.erc20().decimals()
+                underlying.erc20()
             );
         } else if (erc20.symbol().toSlice().startsWith(a.toSlice())) {
             ICollateral underlying = ICollateral(
@@ -518,7 +515,8 @@ contract AdapterP0 is ProtoAdapter {
                 underlying.oracle(),
                 bytes32(bytes(erc20.symbol())),
                 FIX_ONE,
-                FIX_ONE
+                FIX_ONE,
+                underlying.erc20()
             );
         } else {
             _assets[collateralAsset] = new CollateralP0(
@@ -594,7 +592,7 @@ contract AdapterP0 is ProtoAdapter {
         }
 
         bu_s = new BU[](1);
-        bu_s[0] = BU(assets, _main.basketReferenceAmounts());
+        bu_s[0] = BU(assets, _main.basketRefTargets());
     }
 
     /// Account index -> address

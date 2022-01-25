@@ -222,7 +222,7 @@ async function collateralFixture(
           ethers.utils.formatBytes32String(symbol),
           fp('1'),
           fp('1'),
-          underlyingDecimals
+          underlyingAddress
         )
       ),
     ]
@@ -243,7 +243,8 @@ async function collateralFixture(
           aaveOracle.address,
           ethers.utils.formatBytes32String(symbol),
           fp('1'),
-          fp('1')
+          fp('1'),
+          underlyingAddress
         )
       ),
     ]
