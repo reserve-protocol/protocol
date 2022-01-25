@@ -12,7 +12,7 @@ import "contracts/p0/Asset.sol";
 
 /**
  * @title CollateralP0
- * @notice A general pegged collateral type to be extended. Supports fiatcoins as-is.
+ * @notice A general non-appreciating collateral type to be extended.
  */
 contract CollateralP0 is ICollateral, Context, AssetP0 {
     using FixLib for Fix;
@@ -29,18 +29,14 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
 
     // govScore: Among Collateral with that rolw, the measure of governance's
     // preference that this Collateral plays that role. Higher is stronger.
-    Fix private immutable govScore;
-
-    // oldRefPrice: {qRef/qTok} The price of this derivative asset at some RToken-specific
-    // previous time. Used when choosing new baskets.
-    Fix private immutable oldRefPrice;
+    Fix internal immutable govScore;
 
     /// @return {basket quantity/tok} At basket selection time, how many of the reference token does
     /// it take to satisfy this Collateral's role?
     // solhint-disable-next-line const-name-snakecase
     Fix public constant roleCoefficient = FIX_ONE;
 
-    /// @return {USD/tok}
+    /// @return {USD/ref}
     Fix public constant PEG = FIX_ONE;
 
     constructor(
@@ -48,12 +44,10 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         IMain main_,
         IOracle oracle_,
         bytes32 role_,
-        Fix govScore_,
-        Fix oldRefPrice_
+        Fix govScore_
     ) AssetP0(erc20_, main_, oracle_) {
         role = role_;
         govScore = govScore_;
-        oldRefPrice = oldRefPrice_;
     }
 
     /// Default checks
@@ -85,11 +79,6 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         }
     }
 
-    /// @return {qRef/qTok} The price of the asset in a (potentially non-USD) reference asset
-    function referencePrice() public view virtual override returns (Fix) {
-        return FIX_ONE;
-    }
-
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() external pure virtual override(AssetP0, IAsset) returns (bool) {
         return true;
@@ -97,13 +86,19 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
 
     /// @return {none} The vault-selection score of this collateral
     /// @dev That is, govScore * (growth relative to the reference asset)
-    function score() external view override returns (Fix) {
-        // {none} = {none} * {qRef/qTok} / {qRef/qTok}
-        return govScore.mul(referencePrice()).div(oldRefPrice);
+    function score() external view virtual override returns (Fix) {
+        // There is no growth
+        return govScore;
     }
 
-    function _isDepegged() internal view virtual returns (bool) {
-        // {attoUSD/qTok} = {none} * {USD/tok} * {attoUSD/USD} / {qTok/tok}
+    /// @return {qTok/BU} The quantity of collateral asset for a given refTarget
+    function toQuantity(Fix refTarget) external view virtual override returns (Fix) {
+        // {qTok/BU} = {ref/BU} * {qTok/ref}
+        return refTarget.shiftLeft(int8(erc20.decimals()));
+    }
+
+    function _isDepegged() private view returns (bool) {
+        // {attoUSD/qRef} = {none} * {USD/ref} * {attoUSD/USD} / {qRef/ref}
         Fix delta = main.defaultThreshold().mul(PEG).shiftLeft(18 - int8(erc20.decimals()));
         Fix p = price();
         return p.lt(PEG.minus(delta)) || p.gt(PEG.plus(delta));

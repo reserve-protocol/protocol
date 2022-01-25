@@ -47,14 +47,15 @@ interface ICollateral is IAsset {
     /// Disable the collateral so it cannot be used as backing
     function disable() external;
 
-    /// @return {qRef/qTok} The price of the asset in a (potentially non-USD) reference asset
-    function referencePrice() external view returns (Fix);
-
     /// @return {basket quantity/tok} At basket selection time, how many of the reference token does
     /// it take to satisfy this Collateral's role? 1.0 by default, but (e.g.) if you're satisfying a
     /// role that expects a USD reference, and the collateral's reference is actually worth a $0.25,
     /// then roleCoefficient() should return 4.0.
     function roleCoefficient() external view returns (Fix);
+
+    /// @param refTarget {ref/BU} A number of whole reference units per BU
+    /// @return {qTok/BU} The quantity of collateral asset for a given refTarget
+    function toQuantity(Fix refTarget) external view returns (Fix);
 
     /// @return The vault-selection score of this collateral
     function score() external view returns (Fix);

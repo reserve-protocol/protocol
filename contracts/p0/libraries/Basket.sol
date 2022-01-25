@@ -83,11 +83,7 @@ library BasketLib {
 
     /// @return {qTok/BU} The quantity of collateral asset targeted per BU
     function quantity(Basket storage self, ICollateral collateral) internal view returns (Fix) {
-        // {qTok/BU} = {ref/BU} * {qRef/ref} / {qRef/qTok}
-        return
-            self.refTargets[collateral].shiftLeft(int8(collateral.erc20().decimals())).div(
-                collateral.referencePrice()
-            );
+        return collateral.toQuantity(self.refTargets[collateral]);
     }
 
     /// @return max {BU} The maximum number of basket units that `account` can create

@@ -494,7 +494,6 @@ contract AdapterP0 is ProtoAdapter {
                 underlying.oracle(),
                 bytes32(bytes(erc20.symbol())),
                 FIX_ONE,
-                toFixWithShift(2, -2),
                 underlying.erc20()
             );
         } else if (erc20.symbol().toSlice().startsWith(a.toSlice())) {
@@ -515,7 +514,6 @@ contract AdapterP0 is ProtoAdapter {
                 underlying.oracle(),
                 bytes32(bytes(erc20.symbol())),
                 FIX_ONE,
-                FIX_ONE,
                 underlying.erc20()
             );
         } else {
@@ -524,7 +522,6 @@ contract AdapterP0 is ProtoAdapter {
                 _main,
                 oracle,
                 bytes32(bytes(erc20.symbol())),
-                FIX_ONE,
                 FIX_ONE
             );
         }

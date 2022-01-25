@@ -32,9 +32,13 @@ contract ATokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
+    IERC20Metadata public immutable underlyingERC20; // this should be the underlying fiatcoin
+
     Fix public prevRateToUnderlying; // previous rate to underlying, in normal 1:1 units
 
-    IERC20Metadata public immutable underlyingERC20; // this should be the underlying fiatcoin
+    // {ref/tok} The rate to underlying of this derivative asset at some RToken-specific
+    // previous time. Used when choosing new baskets.
+    Fix private immutable genesisRateToUnderlying;
 
     constructor(
         IERC20Metadata erc20_,
@@ -42,10 +46,11 @@ contract ATokenCollateralP0 is CollateralP0 {
         IOracle oracle_,
         bytes32 role_,
         Fix govScore_,
-        Fix oldPrice_,
         IERC20Metadata underlyingERC20_
-    ) CollateralP0(erc20_, main_, oracle_, role_, govScore_, oldPrice_) {
+    ) CollateralP0(erc20_, main_, oracle_, role_, govScore_) {
         underlyingERC20 = underlyingERC20_;
+        genesisRateToUnderlying = rateToUnderlying();
+        prevRateToUnderlying = genesisRateToUnderlying;
     }
 
     /// Update default status
@@ -88,26 +93,30 @@ contract ATokenCollateralP0 is CollateralP0 {
         return oracle.consult(underlyingERC20).mul(rateToUnderlying()).shiftLeft(18);
     }
 
-    /// @return {qRef/qTok} The price of the asset in a (potentially non-USD) reference asset
-    function referencePrice() public view virtual override returns (Fix) {
-        // {qRef/qTok} = {ref/tok} * {qRef/ref} / {qTok/tok}
-        return rateToUnderlying().shiftLeft(int8(underlyingERC20.decimals()) - 18);
+    /// @return {qTok/BU} The quantity of collateral asset for a given refTarget
+    function toQuantity(Fix refTarget) external view override returns (Fix) {
+        // {qTok/BU} = {ref/BU} / {ref/tok} * {qTok/tok}
+        return refTarget.div(rateToUnderlying()).shiftLeft(18);
     }
 
-    /// @return {underlyingTok/tok} The rate between the token and fiatcoin
+    /// @return {none} The vault-selection score of this collateral
+    /// @dev That is, govScore * (growth relative to the reference asset)
+    function score() external view override returns (Fix) {
+        return govScore.mul(rateToUnderlying().div(genesisRateToUnderlying));
+    }
+
+    /// @return {ref/tok} The rate between the token and fiatcoin
     function rateToUnderlying() public view virtual returns (Fix) {
-        uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray underlyingTok/tok}
+        uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray ref/tok}
         return toFixWithShift(rateInRAYs, -27);
     }
 
-    function _isUnderlyingDepegged() internal view virtual returns (bool) {
-        // {attoUSD/qRef} = {USD/ref} * {attoUSD/USD} / {qRef/ref}
-        Fix delta = main.defaultThreshold().mul(PEG).shiftLeft(
-            18 - int8(underlyingERC20.decimals())
-        );
+    function _isUnderlyingDepegged() internal view returns (bool) {
+        // {attoUSD/ref} = {USD/ref} * {attoUSD/USD}
+        Fix delta = main.defaultThreshold().mul(PEG).shiftLeft(18);
 
-        // {attoUSD/qRef} = {attoUSD/ref} / {qRef/ref}
-        Fix p = oracle.consult(underlyingERC20).shiftLeft(-int8(underlyingERC20.decimals()));
+        // {attoUSD/ref}
+        Fix p = oracle.consult(underlyingERC20);
         return p.lt(PEG.minus(delta)) || p.gt(PEG.plus(delta));
     }
 }
