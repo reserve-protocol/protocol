@@ -212,7 +212,7 @@ interface IBasketHandler {
     // /// @param newBasket The address of the new vault
     // // event NewBasketSet(address indexed oldBasket, address indexed newBasket);
 
-    function setBasket() external;
+    function setBasket(ICollateral[] memory collateral, Fix[] memory refTargets) external;
 
     function baseFactor() external view returns (Fix);
 

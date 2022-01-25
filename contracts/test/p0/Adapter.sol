@@ -293,9 +293,11 @@ contract AdapterP0 is ProtoAdapter {
 
         // Set basket + unpause
         {
-            // TODO Basket Templating
-
-            _main.setBasket();
+            ICollateral[] memory basketCollateral = new ICollateral[](s.bu_s[0].assets.length);
+            for (uint256 i = 0; i < basketCollateral.length; i++) {
+                basketCollateral[i] = collateral[uint256(s.bu_s[0].assets[i])];
+            }
+            _main.setBasket(basketCollateral, s.bu_s[0].refTargets);
             _main.unpause();
         }
     }

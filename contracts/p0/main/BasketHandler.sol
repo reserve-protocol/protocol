@@ -64,8 +64,19 @@ contract BasketHandlerP0 is
         _updateBasket();
     }
 
-    function setBasket() public override onlyOwner {
-        // TODO
+    /// @param refTargets {ref/BU}
+    function setBasket(ICollateral[] memory collateral, Fix[] memory refTargets)
+        public
+        override
+        onlyOwner
+    {
+        require(collateral.length == refTargets.length, "must be same length");
+        for (uint256 i = 0; i < collateral.length; i++) {
+            _basket.collateral[i] = collateral[i];
+            _basket.refTargets[collateral[i]] = refTargets[i];
+        }
+        _basket.size = collateral.length;
+        _blockBasketLastUpdated = block.number;
     }
 
     // Govern set of templates
@@ -347,6 +358,7 @@ contract BasketHandlerP0 is
         }
 
         // Yes, we have set the basket now.
+        _blockBasketLastUpdated = block.number;
         return true;
     }
 }
