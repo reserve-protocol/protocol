@@ -2,8 +2,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { fp } from '../../common/numbers'
+
 import { CollateralStatus } from '../../common/constants'
+import { fp } from '../../common/numbers'
 import { AaveOracle } from '../../typechain/AaveOracle'
 import { CompoundOracle } from '../../typechain/CompoundOracle'
 import { CTokenMock } from '../../typechain/CTokenMock'
@@ -75,7 +76,7 @@ describe('CollateralP0 contracts', () => {
       expect(await tokenAsset.erc20()).to.equal(token.address)
       expect(await token.decimals()).to.equal(18)
       expect(await tokenAsset.status()).to.equal(CollateralStatus.SOUND)
-      expect(await tokenAsset.referencePrice()).to.equal(fp('1'))
+      // TODO Test for score() + quantity()
       expect(await tokenAsset.price()).to.equal(fp('1'))
 
       // USDC Fiat Token
@@ -85,7 +86,7 @@ describe('CollateralP0 contracts', () => {
       expect(await usdcAsset.erc20()).to.equal(usdc.address)
       expect(await usdc.decimals()).to.equal(6)
       expect(await usdcAsset.status()).to.equal(CollateralStatus.SOUND)
-      expect(await usdcAsset.referencePrice()).to.equal(fp('1e12'))
+      // TODO Test for score() + quantity()
       expect(await usdcAsset.price()).to.equal(fp('1e12'))
 
       // AToken
@@ -95,7 +96,7 @@ describe('CollateralP0 contracts', () => {
       expect(await aTokenAsset.erc20()).to.equal(aToken.address)
       expect(await aToken.decimals()).to.equal(18)
       expect(await aTokenAsset.status()).to.equal(CollateralStatus.SOUND)
-      expect(await aTokenAsset.referencePrice()).to.equal(fp('1'))
+      // TODO Test for score() + quantity()
       expect(await aTokenAsset.price()).to.equal(fp('1'))
 
       // CToken
@@ -105,7 +106,7 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenAsset.erc20()).to.equal(cToken.address)
       expect(await cToken.decimals()).to.equal(8)
       expect(await cTokenAsset.status()).to.equal(CollateralStatus.SOUND)
-      expect(await cTokenAsset.referencePrice()).to.equal(fp('1e10'))
+      // TODO Test for score() + quantity()
       expect(await cTokenAsset.price()).to.equal(fp('1e10'))
     })
   })
