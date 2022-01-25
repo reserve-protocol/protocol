@@ -93,16 +93,9 @@ contract ATokenCollateralP0 is CollateralP0 {
         return oracle.consult(underlyingERC20).mul(rateToUnderlying()).shiftLeft(18);
     }
 
-    /// @return {qTok/BU} The quantity of collateral asset for a given refTarget
-    function toQuantity(Fix refTarget) external view override returns (Fix) {
-        // {qTok/BU} = {ref/BU} / {ref/tok} * {qTok/tok}
-        return refTarget.div(rateToUnderlying()).shiftLeft(18);
-    }
-
-    /// @return {none} The vault-selection score of this collateral
-    /// @dev That is, govScore * (growth relative to the reference asset)
-    function score() external view override returns (Fix) {
-        return govScore.mul(rateToUnderlying().div(genesisRateToUnderlying));
+    /// @return {none} The growth since genesis
+    function growth() public view override returns (Fix) {
+        return rateToUnderlying().div(genesisRateToUnderlying);
     }
 
     /// @return {ref/tok} The rate between the token and fiatcoin

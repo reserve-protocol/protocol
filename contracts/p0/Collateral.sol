@@ -84,17 +84,16 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         return true;
     }
 
+    /// @return {none} The growth since genesis
+    function growth() public view virtual override returns (Fix) {
+        return FIX_ONE;
+    }
+
     /// @return {none} The vault-selection score of this collateral
     /// @dev That is, govScore * (growth relative to the reference asset)
     function score() external view virtual override returns (Fix) {
         // There is no growth
-        return govScore;
-    }
-
-    /// @return {qTok/BU} The quantity of collateral asset for a given refTarget
-    function toQuantity(Fix refTarget) external view virtual override returns (Fix) {
-        // {qTok/BU} = {ref/BU} * {qTok/ref}
-        return refTarget.shiftLeft(int8(erc20.decimals()));
+        return govScore.mul(growth());
     }
 
     function _isDepegged() private view returns (bool) {
