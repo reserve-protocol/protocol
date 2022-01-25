@@ -128,7 +128,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function setRewardPeriod(uint256 rewardPeriod_) external override onlyOwner {
         _rewardPeriod = rewardPeriod_;
-        _revenueFurnace.setBatchDuration(rewardPeriod_);
     }
 
     function rewardPeriod() public view override returns (uint256) {

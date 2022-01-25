@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber, Wallet, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
@@ -295,7 +295,7 @@ describe('MainP0 contract', () => {
     })
   })
 
-  describe.only('Configuration/State', () => {
+  describe('Configuration/State', () => {
     it('Should allow to update rewardStart if Owner', async () => {
       const newValue: BigNumber = bn(await getLatestBlockTimestamp())
 
@@ -317,7 +317,7 @@ describe('MainP0 contract', () => {
       expect(await main.rewardStart()).to.equal(newValue)
     })
 
-    it.skip('Should allow to update rewardPeriod if Owner', async () => {
+    it('Should allow to update rewardPeriod if Owner', async () => {
       const newValue: BigNumber = bn('360')
 
       // Check existing value
@@ -580,6 +580,58 @@ describe('MainP0 contract', () => {
   })
 
   describe('Asset Registry', () => {
+    it('Should allow to add Asset if Owner', async () => {
+      // Setup new Asset
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('AssetP0')
+
+      const newAsset: AssetP0 = <AssetP0>(
+        await AssetFactory.deploy(token0.address, main.address, aaveOracle.address)
+      )
+
+      // Get previous length for assets
+      const previousLength = (await main.allAssets()).length
+
+      // Cannot add asset if not owner
+      await expect(main.connect(other).addAsset(newAsset.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check nothing changed
+      let allAssets = await main.allAssets()
+      expect(allAssets.length).to.equal(previousLength)
+
+      // Add new asset
+      await main.connect(owner).addAsset(newAsset.address)
+
+      // Check if it was added
+      allAssets = await main.allAssets()
+      expect(allAssets[allAssets.length - 1]).to.equal(newAsset.address)
+      expect(allAssets.length).to.equal(previousLength + 1)
+    })
+
+    it('Should allow to remove asset if Owner', async () => {
+      // Get previous length for assets
+      const previousLength = (await main.allAssets()).length
+
+      // Cannot remove asset if not owner
+      await expect(main.connect(other).removeAsset(compAsset.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check nothing changed
+      let allAssets = await main.allAssets()
+      expect(allAssets.length).to.equal(previousLength)
+      expect(allAssets).to.contain(compAsset.address)
+
+      // Remove asset
+      await main.connect(owner).removeAsset(compAsset.address)
+
+      // Check if it was removed
+      allAssets = await main.allAssets()
+      expect(allAssets).to.not.contain(compAsset.address)
+      expect(allAssets.length).to.equal(previousLength - 1)
+    })
+
     it('Should allow to disable Collateral if Owner', async () => {
       // Check collateral is not disabled by default
       expect(await collateral2.status()).to.equal(CollateralStatus.SOUND)
