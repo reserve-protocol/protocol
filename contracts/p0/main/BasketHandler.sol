@@ -145,7 +145,8 @@ contract BasketHandlerP0 is
             }
         }
         if (worstCollateralStatus() == CollateralStatus.DISABLED) {
-            _setNextBasket();
+            // TODO uncomment after mechanism is implemented
+            // _setNextBasket();
         }
     }
 

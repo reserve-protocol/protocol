@@ -97,9 +97,12 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     }
 
     function _isDepegged() private view returns (bool) {
-        // {attoUSD/qRef} = {none} * {USD/ref} * {attoUSD/USD} / {qRef/ref}
-        Fix delta = main.defaultThreshold().mul(PEG).shiftLeft(18 - int8(erc20.decimals()));
-        Fix p = price();
+        // {USD/ref} = {none} * {USD/ref}
+        Fix delta = main.defaultThreshold().mul(PEG);
+
+        // {USD/ref} = {attoUSD/ref} / {attoUSD/USD}
+        Fix p = oracle.consult(erc20).shiftLeft(-18);
+
         return p.lt(PEG.minus(delta)) || p.gt(PEG.plus(delta));
     }
 }

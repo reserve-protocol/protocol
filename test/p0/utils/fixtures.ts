@@ -182,7 +182,6 @@ async function collateralFixture(
           main.address,
           aaveOracle.address,
           ethers.utils.formatBytes32String(symbol),
-          fp('1'),
           fp('1')
         )
       ),
@@ -288,7 +287,7 @@ async function collateralFixture(
 
   // Create the initial basket
   const basket = [dai[1], usdc[1], adai[1], cdai[1]]
-  const basketReferenceAmounts = [fp('2.5e17'), fp('2.5e17'), fp('2.5e17'), fp('2.5e17')]
+  const basketReferenceAmounts = [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
 
   return {
     erc20s,
@@ -405,7 +404,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     aaveOracle
   )
 
-  // Set Default Oracle Prices
+  // Set Oracle Prices
   await compoundOracleInternal.setPrice('ETH', bn('4000e6'))
   await compoundOracleInternal.setPrice('COMP', bn('1e6'))
   await aaveOracleInternal.setPrice(weth.address, bn('1e18'))

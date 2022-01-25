@@ -105,11 +105,12 @@ contract ATokenCollateralP0 is CollateralP0 {
     }
 
     function _isUnderlyingDepegged() internal view returns (bool) {
-        // {attoUSD/ref} = {USD/ref} * {attoUSD/USD}
-        Fix delta = main.defaultThreshold().mul(PEG).shiftLeft(18);
+        // {USD/ref} = {none} * {USD/ref}
+        Fix delta = main.defaultThreshold().mul(PEG);
 
-        // {attoUSD/ref}
-        Fix p = oracle.consult(underlyingERC20);
+        // {USD/ref} = {attoUSD/ref} / {attoUSD/USD}
+        Fix p = oracle.consult(underlyingERC20).shiftLeft(-18);
+
         return p.lt(PEG.minus(delta)) || p.gt(PEG.plus(delta));
     }
 }
