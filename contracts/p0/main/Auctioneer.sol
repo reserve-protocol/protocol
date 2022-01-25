@@ -173,6 +173,16 @@ contract AuctioneerP0 is
     /// Send excess assets to the RSR and RToken traders
     function _handoutExcessAssets() private {
         Fix target = _targetBUs();
+
+        // First mint RToken
+        Fix actual = _actualBUHoldings();
+        if (actual.gt(target)) {
+            uint256 toMint = _fromBUs(actual.minus(target));
+            rToken().mint(address(this), toMint);
+            target = _targetBUs();
+        }
+
+        // Handout excess assets, including RToken
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
             uint256 bal = a.erc20().balanceOf(address(this));
@@ -185,7 +195,7 @@ contract AuctioneerP0 is
                 if (amtToRSR > 0) {
                     a.erc20().safeTransfer(address(rsrTrader), amtToRSR);
                 }
-                if (bal - expected - amtToRSR > 0) {
+                if (bal - expected - amtToRSR > 0 {
                     a.erc20().safeTransfer(address(rTokenTrader), bal - expected - amtToRSR);
                 }
             }
