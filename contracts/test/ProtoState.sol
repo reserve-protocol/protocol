@@ -48,7 +48,7 @@ struct RevenueDestination {
 /// Basket Unit, ie 1e18{qBU}
 struct BU {
     AssetName[] assets;
-    Fix[] amounts; // {qRef/BU}
+    Fix[] refTargets; // {qRef/BU}
 }
 
 struct Price {

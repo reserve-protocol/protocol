@@ -212,7 +212,7 @@ interface IBasketHandler {
     // /// @param newBasket The address of the new vault
     // // event NewBasketSet(address indexed oldBasket, address indexed newBasket);
 
-    function setBasket(ICollateral[] calldata collateral, Fix[] calldata amounts) external;
+    function setBasket() external;
 
     function baseFactor() external view returns (Fix);
 
@@ -221,9 +221,6 @@ interface IBasketHandler {
     function worstCollateralStatus() external view returns (CollateralStatus status);
 
     function basketPrice() external view returns (Fix);
-
-    // This is only here for the Adapter (generic tests)
-    function basketReferenceAmounts() external view returns (Fix[] memory);
 }
 
 interface IAuctioneerEvents {

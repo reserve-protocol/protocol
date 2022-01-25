@@ -38,6 +38,14 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         require(rTokenAsset().erc20().balanceOf(account) - start == amount, "issue failure");
     }
 
+    /// @return targets {ref/BU} The reference targets targeted per BU
+    function basketRefTargets() external view returns (Fix[] memory targets) {
+        targets = new Fix[](_basket.size);
+        for (uint256 i = 0; i < _basket.size; i++) {
+            targets[i] = _basket.refTargets[_basket.collateral[i]];
+        }
+    }
+
     function STATE_revenueDistribution()
         external
         view
