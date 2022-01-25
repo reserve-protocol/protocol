@@ -7,11 +7,11 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
 /// @param collateral Mapping from an incremental index to asset
-/// @param amounts {attoRef/BU}
+/// @param amounts {qRef/BU}
 /// @param size The number of collateral in the basket
 struct Basket {
     mapping(uint256 => ICollateral) collateral; // index -> asset
-    mapping(ICollateral => Fix) amounts; // {attoRef/BU}
+    mapping(ICollateral => Fix) amounts; // {qRef/BU}
     uint256 size;
 }
 
@@ -83,7 +83,7 @@ library BasketLib {
 
     /// @return {qTok/BU} The quantity of collateral asset targeted per BU
     function quantity(Basket storage self, ICollateral collateral) internal view returns (Fix) {
-        // {qTok/BU} = {attoRef/BU} / {attoRef/qTok}
+        // {qTok/BU} = {qRef/BU} / {qRef/qTok}
         return self.amounts[collateral].div(collateral.referencePrice());
     }
 

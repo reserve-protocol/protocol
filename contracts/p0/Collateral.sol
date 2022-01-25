@@ -12,7 +12,7 @@ import "contracts/p0/Asset.sol";
 
 /**
  * @title CollateralP0
- * @notice A general collateral type that can be USDC, WBTC, or WETH.
+ * @notice A general pegged collateral type to be extended. Supports fiatcoins as-is.
  */
 contract CollateralP0 is ICollateral, Context, AssetP0 {
     using FixLib for Fix;
@@ -31,7 +31,7 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     // preference that this Collateral plays that role. Higher is stronger.
     Fix private immutable govScore;
 
-    // oldRefPrice: {attoRef/qTok} The price of this derivative asset at some RToken-specific
+    // oldRefPrice: {qRef/qTok} The price of this derivative asset at some RToken-specific
     // previous time. Used when choosing new baskets.
     Fix private immutable oldRefPrice;
 
@@ -39,6 +39,9 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     /// it take to satisfy this Collateral's role?
     // solhint-disable-next-line const-name-snakecase
     Fix public constant roleCoefficient = FIX_ONE;
+
+    /// @return {USD/tok}
+    Fix public constant PEG = FIX_ONE;
 
     constructor(
         IERC20Metadata erc20_,
@@ -53,11 +56,11 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         oldRefPrice = oldRefPrice_;
     }
 
-    /// Sets `whenDefault`, `prevBlock`, and `prevRate` idempotently
+    /// Default checks
     function forceUpdates() public virtual override {
         if (whenDefault > block.timestamp) {
             // If the price is below the default-threshold price, default eventually
-            whenDefault = referencePrice().lt(_minReferencePrice())
+            whenDefault = _isDepegged()
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -82,9 +85,9 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         }
     }
 
-    /// @return {attoRef/qTok} The price of the asset in a (potentially non-USD) reference asset
+    /// @return {qRef/qTok} The price of the asset in a (potentially non-USD) reference asset
     function referencePrice() public view virtual override returns (Fix) {
-        return price();
+        return FIX_ONE;
     }
 
     /// @return If the asset is an instance of ICollateral or not
@@ -95,13 +98,14 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     /// @return {none} The vault-selection score of this collateral
     /// @dev That is, govScore * (growth relative to the reference asset)
     function score() external view override returns (Fix) {
-        // {none} = {none} * {attoRef/qTok} / {attoRef/qTok}
+        // {none} = {none} * {qRef/qTok} / {qRef/qTok}
         return govScore.mul(referencePrice()).div(oldRefPrice);
     }
 
-    /// @return {attoRef/qTok} Minimum price of a pegged asset to be considered non-defaulting
-    function _minReferencePrice() internal view virtual returns (Fix) {
-        // {attoRef/qTok} = {ref/tok} * {attoRef/ref} / {qTok/tok}
-        return main.defaultThreshold().shiftLeft(18 - int8(erc20.decimals()));
+    function _isDepegged() internal view virtual returns (bool) {
+        // {attoUSD/qTok} = {none} * {USD/tok} * {attoUSD/USD} / {qTok/tok}
+        Fix delta = main.defaultThreshold().mul(PEG).shiftLeft(18 - int8(erc20.decimals()));
+        Fix p = price();
+        return p.lt(PEG.minus(delta)) || p.gt(PEG.plus(delta));
     }
 }

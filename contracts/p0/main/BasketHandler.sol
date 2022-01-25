@@ -135,7 +135,7 @@ contract BasketHandlerP0 is
         return supply.eq(FIX_ZERO) ? FIX_ONE : supply.plus(melted).div(supply);
     }
 
-    /// @return amounts {attoRef/BU} The amounts of collateral required per BU
+    /// @return amounts {qRef/BU} The amounts of collateral required per BU
     function basketReferenceAmounts() external view override returns (Fix[] memory amounts) {
         amounts = new Fix[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {

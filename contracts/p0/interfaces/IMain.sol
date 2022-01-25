@@ -26,7 +26,7 @@ struct Config {
     Fix minRevenueAuctionSize; // min size of a revenue auction / (RToken supply)
     Fix migrationChunk; // how much backing to migrate at a time / (RToken supply)
     Fix issuanceRate; // number of RToken to issue per block / (RToken supply)
-    Fix defaultThreshold; // {ref/tok} multiplier beyond which a token is marked as in-default
+    Fix defaultThreshold; // multiplier beyond which a token is marked as in-default
 
     // Sample values
     //
@@ -43,7 +43,7 @@ struct Config {
     // minRevenueAuctionSize = 0.0001 (0.01%)
     // migrationChunk = 0.2 (20%)
     // issuanceRate = 0.00025 (0.025% per block, or ~0.1% per minute)
-    // defaultThreshold = 0.05 (5% deviation)
+    // defaultThreshold = 0.05 (5% deviation, either above or below)
 }
 
 struct RevenueShare {
