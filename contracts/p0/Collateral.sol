@@ -22,7 +22,7 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     //                In this case, the asset may recover, reachiving whenDefault == NEVER.
     // whenDefault <= block.timestamp: default has already happened (permanently)
     uint256 internal constant NEVER = type(uint256).max;
-    uint256 internal whenDefault = NEVER;
+    uint256 public whenDefault = NEVER;
 
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
