@@ -215,25 +215,19 @@ interface IBasketHandler {
     /// Set the prime basket in the basket configuration.
     /// @param collateral The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    /// @param selectBasket If true, immediately re-select the working basket
-    /// @return true if the actual basket might have been modified; false if it definitely wasn't
-    function setPrimeBasket(
-        ICollateral[] memory collateral,
-        Fix[] memory targetAmts,
-        bool selectBasket
-    ) external returns (bool);
+    function setPrimeBasket(ICollateral[] memory collateral, Fix[] memory targetAmts) external;
 
     /// Set the backup configuration for target unit `targetName`
     /// @param maxCollateral The maximum number of backup tokens to use at once for `targetName`
     /// @param collateral The preference-ordered list of collateral to consider backup tokens
-    /// @param selectBasket If true, immediately re-select the working basket
-    /// @return true if the actual basket might have been modified, false if it definitely wasn't
     function setBackupConfig(
         bytes32 targetName,
         uint256 maxCollateral,
-        ICollateral[] memory collateral,
-        bool selectBasket
-    ) external returns (bool);
+        ICollateral[] memory collateral
+    ) external;
+
+    /// Actually switch the current basket, based on the configuration. Is onlyOwner.
+    function switchBasket() external returns (bool);
 
     function baseFactor() external view returns (Fix);
 

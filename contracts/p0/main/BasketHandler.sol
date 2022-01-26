@@ -63,19 +63,17 @@ contract BasketHandlerP0 is
 
     function poke() public virtual override notPaused {
         super.poke();
-        _updateBasket();
+        _ensureValidBasket();
     }
 
     /// Set the prime basket in the basket configuration.
     /// @param collateral The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    /// @param selectBasket If true, immediately recompute the actual basket
-    /// @return true if the actual basket might have been modified
-    function setPrimeBasket(
-        ICollateral[] memory collateral,
-        Fix[] memory targetAmts,
-        bool selectBasket
-    ) public override onlyOwner returns (bool) {
+    function setPrimeBasket(ICollateral[] memory collateral, Fix[] memory targetAmts)
+        public
+        override
+        onlyOwner
+    {
         require(collateral.length == targetAmts.length, "must be same length");
         delete basketConf.collateral;
         delete basketConf.targetNames;
@@ -95,18 +93,14 @@ contract BasketHandlerP0 is
                 basketConf.targetNames.push(targetName);
             }
         }
-
-        if (selectBasket) return _selectBasket();
-        else return false;
     }
 
-    /// @return true if the actual basket might have been modified
+    /// Set the backup configuration for some target name.
     function setBackupConfig(
         bytes32 targetName,
         uint256 maxCollateral,
-        ICollateral[] memory collateral,
-        bool selectBasket
-    ) public override onlyOwner returns (bool) {
+        ICollateral[] memory collateral
+    ) public override onlyOwner {
         BackupConfig storage conf = basketConf.backups[targetName];
         conf.maxCollateral = maxCollateral;
 
@@ -116,8 +110,11 @@ contract BasketHandlerP0 is
         for (uint256 i = 0; i < collateral.length; i++) {
             conf.collateral[i] = collateral[i];
         }
-        if (selectBasket) return _selectBasket();
-        else return false;
+    }
+
+    /// @return true if we registered a change in the underlying basket
+    function switchBasket() public override onlyOwner returns (bool) {
+        return _switchBasket();
     }
 
     /// @return attoUSD {attoUSD/BU} The price of a whole BU in attoUSD
@@ -152,14 +149,14 @@ contract BasketHandlerP0 is
     // ==== Internal ====
 
     // Check collateral statuses; Select a new basket if needed.
-    function _updateBasket() internal {
+    function _ensureValidBasket() internal {
         for (uint256 i = 0; i < _assets.length(); i++) {
             if (IAsset(_assets.at(i)).isCollateral()) {
                 ICollateral(_assets.at(i)).forceUpdates();
             }
         }
         if (worstCollateralStatus() == CollateralStatus.DISABLED) {
-            _selectBasket();
+            _switchBasket();
         }
     }
 
@@ -185,16 +182,13 @@ contract BasketHandlerP0 is
         return amtBUs.div(baseFactor()).shiftLeft(int8(rToken().decimals())).floor();
     }
 
-    // newBasket is effectively a local variable of _selectBasket. Nothing should use its value
+    // newBasket is effectively a local variable of _switchBasket. Nothing should use its value
     // from a previous transaction.
     Basket private newBasket;
 
     /// Select and save the next basket, based on the BasketConfig and Collateral statuses
     /// @return whether or not a new basket was derived from templates
-    function _selectBasket() private returns (bool) {
-        // If the current basket doesn't need changing, don't change it.
-        if (worstCollateralStatus() != CollateralStatus.DISABLED) return false;
-
+    function _switchBasket() private returns (bool) {
         // Here, "good" collateral is non-defaulted collateral; any status other than DISABLED
         // goodWeights and totalWeights are in index-correspondence with basketConf.targetNames
         Fix[] memory goodWeights; // total target weight of good, prime collateral with target i
@@ -262,11 +256,7 @@ contract BasketHandlerP0 is
         }
 
         // If we haven't already given up, then commit the new basket!
-        // roughly, _basket = newBasket
-        // But you can't just set _basket equal to newBasket, because you can't assign maps.
-        // So....
-
-        _basket.copy(newBasket); /// nooooooo
+        _basket.copy(newBasket);
         return true;
     }
 }

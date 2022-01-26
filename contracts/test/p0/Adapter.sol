@@ -297,7 +297,7 @@ contract AdapterP0 is ProtoAdapter {
             for (uint256 i = 0; i < basketCollateral.length; i++) {
                 basketCollateral[i] = collateral[uint256(s.bu_s[0].assets[i])];
             }
-            _main.setPrimeBasket(basketCollateral, s.bu_s[0].refTargets, true);
+            _main.setPrimeBasket(basketCollateral, s.bu_s[0].refTargets);
             _main.unpause();
         }
     }
