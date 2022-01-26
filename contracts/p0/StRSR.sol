@@ -116,6 +116,7 @@ contract StRSRP0 is IStRSR, Context {
 
         uint256 balance = main.rsr().balanceOf(address(this));
         uint256 overage = balance - _totalStaked - _amountBeingWithdrawn();
+        uint256 addedAmount = 0;
 
         if (overage > 0) {
             for (uint256 index = 0; index < _accounts.length(); index++) {
@@ -124,9 +125,10 @@ contract StRSRP0 is IStRSR, Context {
                     _totalStaked
                 );
                 _balances[_accounts.at(index)] += amtToAdd.floor();
+                addedAmount += amtToAdd.floor();
             }
-            _totalStaked += overage;
-            emit RSRAdded(_msgSender(), overage);
+            _totalStaked += addedAmount;
+            emit RSRAdded(_msgSender(), addedAmount);
         }
     }
 
@@ -140,17 +142,17 @@ contract StRSRP0 is IStRSR, Context {
 
         uint256 snapshotTotalStakedPlus = _totalStaked + _amountBeingWithdrawn();
 
-        // _totalStaked -= (amount * _totalStaked) / snapshotTotalStakedPlus;
-        _totalStaked -= toFix(amount).mulu(_totalStaked).divu(snapshotTotalStakedPlus).floor();
-
         // Remove RSR for stakers and from withdrawals too
         if (snapshotTotalStakedPlus > 0) {
+            uint256 removedStake = 0;
             for (uint256 index = 0; index < _accounts.length(); index++) {
                 Fix amtToRemove = toFix(_balances[_accounts.at(index)]).mulu(amount).divu(
                     snapshotTotalStakedPlus
                 );
                 _balances[_accounts.at(index)] -= amtToRemove.floor();
+                removedStake += amtToRemove.floor();
             }
+            _totalStaked -= removedStake;
 
             for (uint256 index = 0; index < withdrawals.length; index++) {
                 Fix amtToRemove = toFix(withdrawals[index].amount).mulu(amount).divu(
@@ -159,6 +161,8 @@ contract StRSRP0 is IStRSR, Context {
                 withdrawals[index].amount -= amtToRemove.floor();
             }
         }
+
+
         // Transfer RSR to caller
         main.rsr().safeTransfer(_msgSender(), amount);
         emit RSRSeized(_msgSender(), amount);
