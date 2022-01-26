@@ -27,7 +27,7 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
 
-    /// @return {ref/targetUnit} How many of the reference token makes up 1 target unit?
+    /// @return {ref/target} How many of the reference token makes up 1 target unit?
     // solhint-disable-next-line const-name-snakecase
     Fix public constant targetRate = FIX_ONE;
 

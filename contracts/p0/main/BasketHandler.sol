@@ -26,7 +26,7 @@ struct BasketConfig {
     ICollateral[] collateral;
     // An enumeration of the target names in collateral
     bytes32[] targetNames;
-    // Amount of target units per basket for each primt collateral. {target/BU}
+    // Amount of target units per basket for each prime collateral. {target/BU}
     mapping(ICollateral => Fix) targetAmts;
     // Backup configurations, one per target name.
     mapping(bytes32 => BackupConfig) backups;
@@ -194,10 +194,10 @@ contract BasketHandlerP0 is
         // Here, "good" collateral is non-defaulted collateral; any status other than DISABLED
         // goodWeights and totalWeights are in index-correspondence with basketConf.targetNames
 
-        // total target weight of good, prime collateral with target i
+        // {target/BU} total target weight of good, prime collateral with target i
         Fix[] memory goodWeights = new Fix[](basketConf.targetNames.length);
 
-        // total target weight of all prime collateral with target i
+        // {target/BU} total target weight of all prime collateral with target i
         Fix[] memory totalWeights = new Fix[](basketConf.targetNames.length);
 
         // For each prime collateral:
@@ -220,6 +220,8 @@ contract BasketHandlerP0 is
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
                 // Add collateral to newBasket
                 newBasket.collateral[newBasket.size] = coll;
+
+                // {ref/BU} = {target/BU} * {ref/target}
                 newBasket.refTargets[coll] = targetWeight.mul(coll.targetRate());
                 newBasket.size++;
             }
@@ -253,6 +255,8 @@ contract BasketHandlerP0 is
                 if (coll.status() != CollateralStatus.DISABLED) {
                     // Add backup asset to newBasket
                     newBasket.collateral[newBasket.size] = coll;
+
+                    // {target/BU} = {target/BU} / {none}
                     newBasket.refTargets[coll] = totalWeights[i].minus(goodWeights[i]).divu(size);
                     newBasket.size++;
                     assigned++;

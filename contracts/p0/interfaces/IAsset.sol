@@ -50,7 +50,7 @@ interface ICollateral is IAsset {
     /// @return The canonical name of this collateral's target unit.
     function targetName() external view returns (bytes32);
 
-    /// @return {ref/targetUnit} How many of the reference token makes up 1 target unit?
+    /// @return {ref/target} How many of the reference token makes up 1 target unit?
     function targetRate() external view returns (Fix);
 
     /// @return {ref/tok} The price of 1 whole token in terms of whole reference units
