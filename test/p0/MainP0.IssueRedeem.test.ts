@@ -220,7 +220,8 @@ describe('MainP0 contract', () => {
       const issueAmount: BigNumber = bn('1000e18')
 
       // Set basket
-      await main.connect(owner).setBasket([collateral[0].address], [fp('1e18')])
+      await main.connect(owner).setPrimeBasket([collateral[0].address], [fp('1e18')])
+      await main.connect(owner).switchBasket()
 
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)

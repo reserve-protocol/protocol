@@ -325,7 +325,8 @@ describe('StRSRP0 contract', () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Set not fully capitalized by changing basket
-        await main.connect(owner).setBasket([basket[0].address], [fp('1e18')])
+        await main.connect(owner).setPrimeBasket([basket[0].address], [fp('1e18')])
+        await main.connect(owner).switchBasket()
         expect(await main.fullyCapitalized()).to.equal(false)
 
         // Process unstakes
@@ -337,10 +338,11 @@ describe('StRSRP0 contract', () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
 
         // If fully capitalized should process OK  - Set back original basket
-        await main.connect(owner).setBasket(
+        await main.connect(owner).setPrimeBasket(
           basket.map((b) => b.address),
           basketReferenceAmounts
         )
+        await main.connect(owner).switchBasket()
 
         expect(await main.fullyCapitalized()).to.equal(true)
 

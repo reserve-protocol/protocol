@@ -182,8 +182,7 @@ async function collateralFixture(
           erc20.address,
           main.address,
           aaveOracle.address,
-          ethers.utils.formatBytes32String(symbol),
-          fp('1')
+          ethers.utils.formatBytes32String('USD')
         )
       ),
     ]
@@ -198,8 +197,7 @@ async function collateralFixture(
           erc20.address,
           main.address,
           aaveOracle.address,
-          ethers.utils.formatBytes32String(symbol),
-          fp('1')
+          ethers.utils.formatBytes32String('USD')
         )
       ),
     ]
@@ -220,8 +218,7 @@ async function collateralFixture(
           underlyingAddress,
           main.address,
           compoundOracle.address,
-          ethers.utils.formatBytes32String(symbol),
-          fp('1')
+          ethers.utils.formatBytes32String('USD')
         )
       ),
     ]
@@ -241,8 +238,7 @@ async function collateralFixture(
           underlyingAddress,
           main.address,
           aaveOracle.address,
-          ethers.utils.formatBytes32String(symbol),
-          fp('1')
+          ethers.utils.formatBytes32String('USD')
         )
       ),
     ]
@@ -423,10 +419,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   }
 
   // Set non-empty basket
-  await main.connect(owner).setBasket(
+  await main.connect(owner).setPrimeBasket(
     basket.map((b) => b.address),
     basketReferenceAmounts
   )
+  await main.connect(owner).switchBasket()
 
   // Unpause
   await main.connect(owner).unpause()
