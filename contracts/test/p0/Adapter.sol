@@ -557,7 +557,7 @@ contract AdapterP0 is ProtoAdapter {
         uint256 numAuctions = _market.numAuctions();
         for (uint256 i = 0; i < numAuctions; i++) {
             (, IERC20 sell, IERC20 buy, uint256 sellAmount, , , , AuctionStatus state_) = _market
-            .auctions(i);
+                .auctions(i);
             (address bidder, , ) = _market.bids(i);
             if (state_ == AuctionStatus.OPEN && bidder == address(0)) {
                 Bid memory newBid;
@@ -566,9 +566,9 @@ contract AdapterP0 is ProtoAdapter {
                 IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
                 IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
                 newBid.buyAmount = toFix(sellAmount)
-                .mul(buyAsset.price())
-                .div(sellAsset.price())
-                .ceil();
+                    .mul(buyAsset.price())
+                    .div(sellAsset.price())
+                    .ceil();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(
                     newBid.bidder,

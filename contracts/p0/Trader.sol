@@ -118,8 +118,8 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
         uint256 idealSellAmount = exactSellAmount
-        .div(FIX_ONE.minus(main.maxTradeSlippage()))
-        .ceil();
+            .div(FIX_ONE.minus(main.maxTradeSlippage()))
+            .ceil();
 
         uint256 sellAmount = Math.min(idealSellAmount, maxSellAmount);
         return _prepareAuctionSell(sell, buy, sellAmount);
