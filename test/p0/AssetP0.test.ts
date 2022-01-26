@@ -2,11 +2,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
-import { fp } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import { AaveOracle } from '../../typechain/AaveOracle'
+import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
 import { AssetP0 } from '../../typechain/AssetP0'
 import { CompoundOracle } from '../../typechain/CompoundOracle'
+import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainP0 } from '../../typechain/MainP0'
 import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
@@ -33,7 +34,9 @@ describe('AssetsP0 contracts', () => {
 
   // Oracles
   let compoundOracle: CompoundOracle
+  let compoundOracleInternal: CompoundOracleMockP0
   let aaveOracle: AaveOracle
+  let aaveOracleInternal: AaveOracleMockP0
 
   // Main
   let main: MainP0
@@ -55,9 +58,11 @@ describe('AssetsP0 contracts', () => {
       rsrAsset,
       compToken,
       compAsset,
+      compoundOracleInternal,
       compoundOracle,
       aaveToken,
       aaveAsset,
+      aaveOracleInternal,
       aaveOracle,
       main,
       rToken,
@@ -98,6 +103,28 @@ describe('AssetsP0 contracts', () => {
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await rToken.decimals()).to.equal(18)
       expect(await rTokenAsset.price()).to.equal(fp('1'))
+    })
+  })
+
+  describe('Prices', () => {
+    it('Should calculate price correctly', async () => {
+      // Check initial prices
+      expect(await rsrAsset.price()).to.equal(fp('1'))
+      expect(await compAsset.price()).to.equal(fp('1'))
+      expect(await aaveAsset.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.price()).to.equal(fp('1'))
+
+      // Update values in Oracles increase by 10-20%
+      await compoundOracleInternal.setPrice('COMP', bn('1.1e6')) // 10%
+      await aaveOracleInternal.setPrice(aaveToken.address, bn('3e14')) // 20%
+      await aaveOracleInternal.setPrice(compToken.address, bn('2.75e14')) // 10%
+      await aaveOracleInternal.setPrice(rsr.address, bn('3e14')) // 20%
+
+      // Check new prices
+      expect(await rsrAsset.price()).to.equal(fp('1.2'))
+      expect(await compAsset.price()).to.equal(fp('1.1'))
+      expect(await aaveAsset.price()).to.equal(fp('1.2'))
+      expect(await rTokenAsset.price()).to.equal(fp('1')) // No changes
     })
   })
 
