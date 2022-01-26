@@ -32,18 +32,18 @@ contract ATokenCollateralP0 is CollateralP0 {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
-    Fix public prevReferencePrice; // previous rate to underlying, in normal 1:1 units
+    Fix public prevReferencePrice; // previous rate, {collateral/reference}
 
+    // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
         IERC20Metadata referenceERC20_,
         IMain main_,
         IOracle oracle_,
-        bytes32 role_,
-        Fix govScore_
-    ) CollateralP0(erc20_, referenceERC20_, main_, oracle_, role_, govScore_) {
-        prevReferencePrice = genesisReferencePrice;
-    }
+        bytes32 targetName_
+    ) CollateralP0(erc20_, referenceERC20_, main_, oracle_, targetName_) {}
+
+    // solhint-enable no-empty-blocks
 
     /// Update default status
     function forceUpdates() public virtual override {
@@ -92,12 +92,12 @@ contract ATokenCollateralP0 is CollateralP0 {
     }
 
     function _isReferenceDepegged() internal view returns (bool) {
-        // {USD/ref} = {none} * {USD/ref}
-        Fix delta = main.defaultThreshold().mul(PEG);
+        // {target/ref} = {} * {target/ref}
+        Fix delta = main.defaultThreshold().mul(targetRate);
 
-        // {USD/ref} = {attoUSD/ref} / {attoUSD/USD}
+        // {target/ref} = {attoUSD/ref} / {attoUSD/target}
         Fix p = oracle.consult(referenceERC20).shiftLeft(-18);
 
-        return p.lt(PEG.minus(delta)) || p.gt(PEG.plus(delta));
+        return p.lt(targetRate.minus(delta)) || p.gt(targetRate.plus(delta));
     }
 }

@@ -195,7 +195,7 @@ contract AuctioneerP0 is
                 if (amtToRSR > 0) {
                     a.erc20().safeTransfer(address(rsrTrader), amtToRSR);
                 }
-                if (bal - expected - amtToRSR > 0 {
+                if (bal - expected - amtToRSR > 0) {
                     a.erc20().safeTransfer(address(rTokenTrader), bal - expected - amtToRSR);
                 }
             }
