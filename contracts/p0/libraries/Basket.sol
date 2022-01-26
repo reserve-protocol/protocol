@@ -25,6 +25,26 @@ library BasketLib {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
+    // Empty self
+    function empty(Basket storage self) internal {
+        for (uint256 i = 0; i < self.size; i++) {
+            self.refTargets[self.collateral[i]] = FIX_ZERO;
+            delete self.collateral[i];
+        }
+        self.size = 0;
+    }
+
+    /// Set `self` equal to `other`
+    function copy(Basket storage self, Basket storage other) internal {
+        empty(self);
+        for (uint256 i = 0; i < other.size; i++) {
+            ICollateral coll = other.collateral[i];
+            self.collateral[i] = coll;
+            self.refTargets[coll] = other.refTargets[coll];
+        }
+        self.size = other.size;
+    }
+
     /// Transfer `amtBUs` worth of collateral into the caller's account
     /// @param from The address that is sending collateral
     /// @return amounts The token amounts transferred in

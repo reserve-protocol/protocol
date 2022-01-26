@@ -24,23 +24,12 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 internal whenDefault = NEVER;
 
-    // role: The basket-template role this Collateral plays. (See BasketHandler)
-    bytes32 public immutable role;
+    // targetName: The canonical name of this collateral's target unit.
+    bytes32 public immutable targetName;
 
-    // govScore: Among Collateral with that rolw, the measure of governance's
-    // preference that this Collateral plays that role. Higher is stronger.
-    Fix internal immutable govScore;
-
-    /// @return {basket quantity/tok} At basket selection time, how many of the reference token does
-    /// it take to satisfy this Collateral's role?
+    /// @return {ref/targetUnit} How many of the reference token makes up 1 target unit?
     // solhint-disable-next-line const-name-snakecase
-    Fix public constant roleCoefficient = FIX_ONE;
-
-    /// @return {USD/ref}
-    Fix public constant PEG = FIX_ONE;
-
-    // {ref/tok} The rate to underlying of this derivative asset at collateral genesis
-    Fix internal immutable genesisReferencePrice;
+    Fix public constant targetRate = FIX_ONE;
 
     IERC20Metadata public immutable referenceERC20;
 
@@ -49,13 +38,10 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         IERC20Metadata referenceERC20_,
         IMain main_,
         IOracle oracle_,
-        bytes32 role_,
-        Fix govScore_
+        bytes32 targetName_
     ) AssetP0(erc20_, main_, oracle_) {
         referenceERC20 = referenceERC20_;
-        role = role_;
-        govScore = govScore_;
-        genesisReferencePrice = referencePrice();
+        targetName = targetName_;
     }
 
     /// Default checks
@@ -97,19 +83,13 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         return FIX_ONE;
     }
 
-    /// @return {none} The vault-selection score of this collateral
-    /// @dev That is, govScore * (growth relative to the reference asset)
-    function score() external view virtual override returns (Fix) {
-        return govScore.mul(genesisReferencePrice.div(referencePrice()));
-    }
-
     function _isDepegged() private view returns (bool) {
         // {USD/ref} = {none} * {USD/ref}
-        Fix delta = main.defaultThreshold().mul(PEG);
+        Fix delta = main.defaultThreshold().mul(targetRate);
 
         // {USD/ref} = {attoUSD/ref} / {attoUSD/USD}
         Fix p = oracle.consult(erc20).shiftLeft(-18);
 
-        return p.lt(PEG.minus(delta)) || p.gt(PEG.plus(delta));
+        return p.lt(targetRate.minus(delta)) || p.gt(targetRate.plus(delta));
     }
 }

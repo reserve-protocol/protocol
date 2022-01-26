@@ -16,14 +16,20 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 import "./SettingsHandler.sol";
 
-struct TemplateElmt {
-    bytes32 role;
-    Fix[] weights; // The intended weight for the [best, 2nd best, 3rd best, ...] elements of role
+struct BackupConfig {
+    uint256 maxCollateral; // Maximum number of backup collateral elements to use in a basket
+    ICollateral[] collateral; // Ordered list of backup collateral
 }
 
-struct Template {
-    Fix govScore;
-    TemplateElmt[] slots;
+struct BasketConfig {
+    // The collateral in the prime (explicitly governance-set) basket
+    ICollateral[] collateral;
+    // An enumeration of the target names in collateral
+    bytes32[] targetNames;
+    // Amount of target units per basket for each primt collateral. {target/BU}
+    mapping(ICollateral => Fix) targetAmts;
+    // Backup configurations, one per target name.
+    mapping(bytes32 => BackupConfig) backups;
 }
 
 /**
@@ -43,13 +49,9 @@ contract BasketHandlerP0 is
     using SafeERC20 for IERC20Metadata;
     using FixLib for Fix;
 
-    // Basket templates:
-    // - a basket template is a collection of template elements, whose weights should add up to 1.
-    // - the order of the templates array is not guaranteed; deletion may occur via "swap-and-pop"
-    Template[] public templates;
-
-    Basket internal _basket;
-    uint256 internal _blockBasketLastUpdated; // {block number} last set
+    BasketConfig private basketConf;
+    Basket internal _basket; // TODO: no underscore
+    uint256 internal _blockBasketLastUpdated; // {block number} last set  TODO: no underscore
 
     function init(ConstructorArgs calldata args)
         public
@@ -61,50 +63,58 @@ contract BasketHandlerP0 is
 
     function poke() public virtual override notPaused {
         super.poke();
-        _updateBasket();
+        _ensureValidBasket();
     }
 
-    /// @param refTargets {ref/BU}
-    function setBasket(ICollateral[] memory collateral, Fix[] memory refTargets)
+    /// Set the prime basket in the basket configuration.
+    /// @param collateral The collateral for the new prime basket
+    /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    function setPrimeBasket(ICollateral[] memory collateral, Fix[] memory targetAmts)
         public
         override
         onlyOwner
     {
-        require(collateral.length == refTargets.length, "must be same length");
+        require(collateral.length == targetAmts.length, "must be same length");
+        delete basketConf.collateral;
+        delete basketConf.targetNames;
+
         for (uint256 i = 0; i < collateral.length; i++) {
-            _basket.collateral[i] = collateral[i];
-            _basket.refTargets[collateral[i]] = refTargets[i];
+            ICollateral coll = collateral[i];
+            basketConf.collateral.push(coll);
+            basketConf.targetAmts[coll] = targetAmts[i];
+
+            // Add coll's target name to basketConf.targetNames if it's not already there.
+            bytes32 targetName = coll.targetName();
+            uint256 j;
+            for (j = 0; j < basketConf.targetNames.length; j++) {
+                if (basketConf.targetNames[j] == targetName) break;
+            }
+            if (j >= basketConf.targetNames.length) {
+                basketConf.targetNames.push(targetName);
+            }
         }
-        _basket.size = collateral.length;
-        _blockBasketLastUpdated = block.number;
     }
 
-    // Govern set of templates
-    /// Add the new basket template `template`
-    function addBasketTemplate(Template memory template) public onlyOwner {
-        /// @dev A manual copy necessary here because moving from memory to storage.
-        _copyTemplateToStorage(template, templates.push());
-    }
+    /// Set the backup configuration for some target name.
+    function setBackupConfig(
+        bytes32 targetName,
+        uint256 maxCollateral,
+        ICollateral[] memory collateral
+    ) public override onlyOwner {
+        BackupConfig storage conf = basketConf.backups[targetName];
+        conf.maxCollateral = maxCollateral;
 
-    /// Replace the template at `index` with `template`.
-    function setBasketTemplate(uint256 index, Template memory template) public onlyOwner {
-        _copyTemplateToStorage(template, templates[index]);
-    }
-
-    /// Delete the template at `index`
-    function deleteBasketTemplate(uint256 index) public onlyOwner {
-        if (index < templates.length - 1) {
-            templates[index] = templates[templates.length - 1];
+        while (conf.collateral.length > collateral.length) {
+            conf.collateral.pop();
         }
-        templates.pop();
+        for (uint256 i = 0; i < collateral.length; i++) {
+            conf.collateral[i] = collateral[i];
+        }
     }
 
-    function _copyTemplateToStorage(Template memory memTmpl, Template storage storageTmpl) private {
-        storageTmpl.govScore = memTmpl.govScore;
-        delete storageTmpl.slots;
-        for (uint256 i = 0; i < memTmpl.slots.length; i++) {
-            storageTmpl.slots.push(memTmpl.slots[i]);
-        }
+    /// @return true if we registered a change in the underlying basket
+    function switchBasket() public override onlyOwner returns (bool) {
+        return _switchBasket();
     }
 
     /// @return attoUSD {attoUSD/BU} The price of a whole BU in attoUSD
@@ -138,15 +148,15 @@ contract BasketHandlerP0 is
 
     // ==== Internal ====
 
-    function _updateBasket() internal {
+    // Check collateral statuses; Select a new basket if needed.
+    function _ensureValidBasket() internal {
         for (uint256 i = 0; i < _assets.length(); i++) {
             if (IAsset(_assets.at(i)).isCollateral()) {
                 ICollateral(_assets.at(i)).forceUpdates();
             }
         }
         if (worstCollateralStatus() == CollateralStatus.DISABLED) {
-            // TODO uncomment after mechanism is implemented
-            // _setNextBasket();
+            _switchBasket();
         }
     }
 
@@ -172,193 +182,86 @@ contract BasketHandlerP0 is
         return amtBUs.div(baseFactor()).shiftLeft(int8(rToken().decimals())).floor();
     }
 
-    /* /// The highest-scoring collateral for each role; used *only* in _setNextBasket. */
-    /* mapping(bytes32 => ICollateral) private collFor; */
-    /* /// The highest collateral score to fill each role; used *only* in _setNextBasket. */
-    /* mapping(bytes32 => Fix) private score; */
+    // newBasket is effectively a local variable of _switchBasket. Nothing should use its value
+    // from a previous transaction.
+    Basket private newBasket;
 
-    struct ScoredColl {
-        Fix score;
-        ICollateral coll;
-    }
-
-    // Helper data structures for _setNextBasket. Should be zeroed out by the end of each txn!
-    // For P3: This is probably *costly* with in-storage data structures. Can we do better?
-    // (one way to do better is for each scores array to be an in-place maxheap)
-    // @dev Y NO MEMMAPS SOLIDITY Y
-    EnumerableSet.Bytes32Set private roles;
-    mapping(bytes32 => ScoredColl[]) private scores;
-    mapping(bytes32 => ScoredColl[]) private topScores;
-    mapping(ICollateral => uint256) private basketIndicesPlusOne;
-
-    /// In the context of _setNextBasket, get the kth highest-scoring Collateral for the given role.
-    /// Sorts scores into topScores as needed.
-    /// @return the kth highest-scoring Collateral
-    function _kthBest(bytes32 role, uint256 k) private returns (ScoredColl memory) {
-        // If not enough collateral fills role to have a kth value, then return a zero-value ScoredColl
-        if (scores[role].length + topScores[role].length <= k) {
-            return ScoredColl(FIX_ZERO, ICollateral(address(0)));
-        }
-        // Ensure that topScores[role] holds the k highest-scoring Collaterals, in decreasing order.
-        for (uint256 n = topScores[role].length; n <= k; n++) {
-            // find the best-scoring remaining Collateral in scores[role], add it to topScores.
-            // (this is basically a prefix of selection sort, which I claim is *right* here)
-            uint256 bestIndex;
-            Fix bestScore = FIX_MIN;
-            for (uint256 i = 0; i < scores[role].length; i++) {
-                if (scores[role][i].score.gt(bestScore)) {
-                    bestIndex = i;
-                    bestScore = scores[role][i].score;
-                }
-            }
-            // remove the best-scoring Collateral from scores (swap+pop) and add it to topScores
-            topScores[role].push(scores[role][bestIndex]);
-            if (bestIndex < scores[role].length - 1) {
-                scores[role][bestIndex] = scores[role][scores[role].length - 1];
-            }
-            scores[role].pop();
-        }
-        return topScores[role][k];
-    }
-
-    struct WeightedColl {
-        Fix weight;
-        ICollateral coll;
-    }
-
-    /// Select and set the next basket
+    /// Select and save the next basket, based on the BasketConfig and Collateral statuses
     /// @return whether or not a new basket was derived from templates
-    function _setNextBasket() private returns (bool) {
-        // Collect roles and collateral scores per role
-        for (uint256 i = 0; i < _assets.length(); i++) {
-            // Ignore any assets that aren't collateral
-            IAsset asset = IAsset(_assets.at(i));
-            if (!asset.isCollateral()) continue;
+    function _switchBasket() private returns (bool) {
+        newBasket.empty();
 
-            // Ignore any collateral that has defaulted or been disabled
-            ICollateral coll = ICollateral(address(asset));
-            if (coll.status() == CollateralStatus.DISABLED) continue;
+        // Here, "good" collateral is non-defaulted collateral; any status other than DISABLED
+        // goodWeights and totalWeights are in index-correspondence with basketConf.targetNames
 
-            Fix score = coll.score();
-            bytes32 role = coll.role();
+        // total target weight of good, prime collateral with target i
+        Fix[] memory goodWeights = new Fix[](basketConf.targetNames.length);
 
-            roles.add(role);
-            scores[role].push(ScoredColl(score, coll));
+        // total target weight of all prime collateral with target i
+        Fix[] memory totalWeights = new Fix[](basketConf.targetNames.length);
+
+        // For each prime collateral:
+        for (uint256 i = 0; i < basketConf.collateral.length; i++) {
+            ICollateral coll = basketConf.collateral[i];
+
+            // Find coll's targetName index
+            uint256 targetIndex;
+            for (targetIndex = 0; targetIndex < basketConf.targetNames.length; targetIndex++) {
+                if (basketConf.targetNames[targetIndex] == coll.targetName()) break;
+            }
+            assert(targetIndex < basketConf.targetNames.length);
+
+            // Set basket weights for good, prime collateral,
+            // and accumulate the values of goodWeights and targetWeights
+            Fix targetWeight = basketConf.targetAmts[coll];
+            totalWeights[targetIndex] = totalWeights[targetIndex].plus(targetWeight);
+
+            if (coll.status() != CollateralStatus.DISABLED) {
+                goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
+                // Add collateral to newBasket
+                newBasket.collateral[newBasket.size] = coll;
+                newBasket.refTargets[coll] = targetWeight.mul(coll.targetRate());
+                newBasket.size++;
+            }
         }
 
-        // Find the highest-scoring template
-        uint256 bestTemplateIdx;
-        if (templates.length <= 1) {
-            bestTemplateIdx = 0;
-        } else {
-            Fix bestScore;
-            Fix bestTotalWeight;
-            for (uint256 tmplIdx = 0; tmplIdx < templates.length; tmplIdx++) {
-                // compute each template's score:
-                //     sum (weight * (collateral score)) for each weight, in each template slot
-                Fix tmplScore = FIX_ZERO;
-                TemplateElmt[] storage slots = templates[tmplIdx].slots;
-                for (uint256 slotIdx = 0; slotIdx < slots.length; slotIdx++) {
-                    TemplateElmt storage slot = slots[slotIdx];
-                    for (uint256 wtIdx = 0; wtIdx < slot.weights.length; wtIdx++) {
-                        Fix weight = slot.weights[wtIdx];
-                        Fix collScore = _kthBest(slot.role, wtIdx).score;
-                        tmplScore = tmplScore.plus(weight.mul(collScore));
-                    }
-                }
+        // For each target i, if we still need more weight for target i then try to add the backup
+        // basket for target i to make up that weight:
+        for (uint256 i = 0; i < basketConf.targetNames.length; i++) {
+            if (totalWeights[i].lte(goodWeights[i])) continue; // Don't need backup weight
 
-                // ... times the template's own gov score.
-                tmplScore = tmplScore.mul(templates[tmplIdx].govScore);
+            uint256 size = 0; // backup basket size
+            BackupConfig storage backup = basketConf.backups[basketConf.targetNames[i]];
 
-                if (tmplScore.gt(bestScore)) {
-                    bestScore = tmplScore;
-                    bestTemplateIdx = tmplIdx;
+            // Find the backup basket size: max(1, maxCollateral, # of good backup collateral)
+            for (uint256 j = 0; j < backup.collateral.length; j++) {
+                if (backup.collateral[j].status() != CollateralStatus.DISABLED) {
+                    size++;
+                    if (size >= backup.maxCollateral) break;
                 }
             }
-            if (bestScore.eq(FIX_ZERO)) return false;
-        }
 
-        // Clear the old basket
-        for (uint256 i = 0; i < _basket.size; i++) {
-            _basket.refTargets[_basket.collateral[i]] = FIX_ZERO;
-            delete _basket.collateral[i];
-        }
+            // If we need backup collateral, but there's no good backup collateral, then we're in a
+            // bad case! Do not change the basket; the protocol will remain issuance-paused until
+            // governance acts.
+            if (size == 0) return false;
 
-        // Set the new _basket
-        Template storage template = templates[bestTemplateIdx];
-        uint256 basketSize = 0;
-
-        Fix totalTemplateWeight = FIX_ZERO; // The total weight of the template
-        Fix fulfilledTemplateWeight = FIX_ZERO; // The total weight of filled roles
-
-        for (uint256 slotIdx = 0; slotIdx < template.slots.length; slotIdx++) {
-            TemplateElmt storage slot = template.slots[slotIdx];
-
-            // First, compute each of the following:
-
-            // The template weights of slot's collateral
-            WeightedColl[] memory slotColl = new WeightedColl[](slot.weights.length);
-            Fix totalSlotWeight = FIX_ZERO; // The total weight of slot
-            Fix fulfilledSlotWeight = FIX_ZERO; // The weight of *filled* parts of slot
-            uint256 numFulfilled = 0;
-
-            for (uint256 wtIdx = 0; wtIdx < slot.weights.length; wtIdx++) {
-                totalSlotWeight = totalSlotWeight.plus(slot.weights[wtIdx]);
-                ScoredColl memory best = _kthBest(slot.role, wtIdx);
-                if (best.coll != ICollateral(address(0))) {
-                    numFulfilled++;
-                    ICollateral coll = best.coll;
-                    fulfilledSlotWeight = fulfilledSlotWeight.plus(slot.weights[wtIdx]);
-                    slotColl[wtIdx] = WeightedColl(slot.weights[wtIdx], coll);
-                } // else, best is a dropout subslot
-            }
-
-            totalTemplateWeight = totalTemplateWeight.plus(totalSlotWeight);
-            if (!fulfilledSlotWeight.eq(FIX_ZERO)) {
-                fulfilledTemplateWeight = fulfilledTemplateWeight.plus(totalSlotWeight);
-                // Then, actually add colls and weights to the basket. This can't be done in one pass
-                // because we needed to know the total weight of dropout subslots in this role first.
-                Fix slotWeightFactor = totalSlotWeight.div(fulfilledSlotWeight);
-
-                for (uint256 collIdx = 0; collIdx < numFulfilled; collIdx++) {
-                    ICollateral coll = slotColl[collIdx].coll;
-                    // Place collateral in the basket
-                    uint256 loc = basketIndicesPlusOne[coll];
-                    if (loc == 0) {
-                        // Add coll to basket if not already present.
-                        _basket.collateral[basketSize] = coll;
-                        basketSize++;
-                    }
-                    // Add the appropriate weight to this coll, whether or not coll was already present.
-                    Fix basketWeight = slotColl[collIdx].weight.mul(coll.roleCoefficient()).mul(
-                        slotWeightFactor
-                    );
-                    _basket.refTargets[coll] = _basket.refTargets[coll].plus(basketWeight);
+            // Set backup basket weights
+            uint256 assigned = 0;
+            for (uint256 j = 0; j < backup.collateral.length && assigned < size; j++) {
+                ICollateral coll = backup.collateral[j];
+                if (coll.status() != CollateralStatus.DISABLED) {
+                    // Add backup asset to newBasket
+                    newBasket.collateral[newBasket.size] = coll;
+                    newBasket.refTargets[coll] = totalWeights[i].minus(goodWeights[i]).divu(size);
+                    newBasket.size++;
+                    assigned++;
                 }
             }
         }
 
-        _basket.size = basketSize;
-
-        // Now, if there were any entire dropout *roles*, we need to adjust basket weights;
-        if (!totalTemplateWeight.eq(fulfilledTemplateWeight)) {
-            Fix roleWeightFactor = totalTemplateWeight.div(fulfilledTemplateWeight);
-            for (uint256 i = 0; i < basketSize; i++) {
-                _basket.refTargets[_basket.collateral[i]] = _basket
-                .refTargets[_basket.collateral[i]]
-                .mul(roleWeightFactor);
-            }
-        }
-
-        // Finally, zero out the local, in-storage data structures
-        for (uint256 i = 0; i < roles.length(); i++) {
-            bytes32 role = roles.at(i);
-            delete scores[role];
-            delete topScores[role];
-            roles.remove(role);
-        }
-
-        // Yes, we have set the basket now.
+        // If we haven't already given up, then commit the new basket!
+        _basket.copy(newBasket);
         _blockBasketLastUpdated = block.number;
         return true;
     }
