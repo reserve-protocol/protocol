@@ -44,7 +44,7 @@ describe('StRSRP0 contract', () => {
 
   // Basket
   let basket: Collateral[]
-  let basketReferenceAmounts: BigNumber[]
+  let basketTargetAmts: BigNumber[]
 
   // Quantities
   let initialBal: BigNumber
@@ -61,7 +61,7 @@ describe('StRSRP0 contract', () => {
     ;[owner, addr1, addr2, addr3, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ rsr, stRSR, basket, basketReferenceAmounts, main } = await loadFixture(defaultFixture))
+    ;({ rsr, stRSR, basket, basketTargetAmts, main } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
     initialBal = bn('100e18')
@@ -340,7 +340,7 @@ describe('StRSRP0 contract', () => {
         // If fully capitalized should process OK  - Set back original basket
         await main.connect(owner).setPrimeBasket(
           basket.map((b) => b.address),
-          basketReferenceAmounts
+          basketTargetAmts
         )
         await main.connect(owner).switchBasket()
 

@@ -189,11 +189,16 @@ contract BasketHandlerP0 is
     /// Select and save the next basket, based on the BasketConfig and Collateral statuses
     /// @return whether or not a new basket was derived from templates
     function _switchBasket() private returns (bool) {
+        newBasket.empty();
+
         // Here, "good" collateral is non-defaulted collateral; any status other than DISABLED
         // goodWeights and totalWeights are in index-correspondence with basketConf.targetNames
-        Fix[] memory goodWeights; // total target weight of good, prime collateral with target i
-        Fix[] memory totalWeights; // total target weight of all prime collateral with target i
-        newBasket.empty();
+
+        // total target weight of good, prime collateral with target i
+        Fix[] memory goodWeights = new Fix[](basketConf.targetNames.length);
+
+        // total target weight of all prime collateral with target i
+        Fix[] memory totalWeights = new Fix[](basketConf.targetNames.length);
 
         // For each prime collateral:
         for (uint256 i = 0; i < basketConf.collateral.length; i++) {
