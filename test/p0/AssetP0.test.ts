@@ -107,7 +107,7 @@ describe('AssetsP0 contracts', () => {
   })
 
   describe('Prices', () => {
-    it('Should calculate price correctly', async () => {
+    it('Should calculate prices correctly', async () => {
       // Check initial prices
       expect(await rsrAsset.price()).to.equal(fp('1'))
       expect(await compAsset.price()).to.equal(fp('1'))
@@ -125,6 +125,10 @@ describe('AssetsP0 contracts', () => {
       expect(await compAsset.price()).to.equal(fp('1.1'))
       expect(await aaveAsset.price()).to.equal(fp('1.2'))
       expect(await rTokenAsset.price()).to.equal(fp('1')) // No changes
+    })
+
+    it.skip('Should calculate RToken price correctly', async () => {
+      // TODO: Complete with specific test once the question about Oracle is resolved
     })
   })
 
