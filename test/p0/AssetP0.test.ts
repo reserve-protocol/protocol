@@ -12,7 +12,8 @@ import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainP0 } from '../../typechain/MainP0'
 import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
-import { defaultFixture } from './utils/fixtures'
+import { USDCMock } from '../../typechain/USDCMock'
+import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -25,12 +26,16 @@ describe('AssetsP0 contracts', () => {
   let compToken: ERC20Mock
   let aaveToken: ERC20Mock
   let rToken: RTokenP0
+  let token: ERC20Mock
+  let usdc: USDCMock
 
   // Assets
   let rsrAsset: AssetP0
   let compAsset: AssetP0
   let aaveAsset: AssetP0
   let rTokenAsset: RTokenAssetP0
+  let tokenAsset: Collateral
+  let usdcAsset: Collateral
 
   // Oracles
   let compoundOracle: CompoundOracle
@@ -52,7 +57,9 @@ describe('AssetsP0 contracts', () => {
   beforeEach(async () => {
     ;[owner, other] = await ethers.getSigners()
 
-    // Deploy fixture
+    let basket: Collateral[]
+
+      // Deploy fixture
     ;({
       rsr,
       rsrAsset,
@@ -64,10 +71,17 @@ describe('AssetsP0 contracts', () => {
       aaveAsset,
       aaveOracleInternal,
       aaveOracle,
+      basket,
       main,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
+
+    // Get assets and tokens
+    tokenAsset = basket[0]
+    usdcAsset = basket[1]
+    token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
+    usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
   })
 
   describe('Deployment', () => {
@@ -127,8 +141,17 @@ describe('AssetsP0 contracts', () => {
       expect(await rTokenAsset.price()).to.equal(fp('1')) // No changes
     })
 
-    it.skip('Should calculate RToken price correctly', async () => {
-      // TODO: Complete with specific test once the question about Oracle is resolved
+    it('Should calculate RToken price correctly', async () => {
+      // Check initial price
+      expect(await rTokenAsset.price()).to.equal(fp('1'))
+
+      // Update values of underlying tokens - increase all by 10%
+      await aaveOracleInternal.setPrice(token.address, bn('2.75e14')) // 10%
+      await aaveOracleInternal.setPrice(usdc.address, bn('2.75e14')) // 10%
+      await compoundOracleInternal.setPrice(await token.symbol(), bn('1.1e6')) // 10%
+
+      // Price of RToken should increase by 10%
+      expect(await rTokenAsset.price()).to.equal(fp('1.1'))
     })
   })
 
