@@ -24,6 +24,8 @@ struct BackupConfig {
 struct BasketConfig {
     // The collateral in the prime (explicitly governance-set) basket
     ICollateral[] collateral;
+    // An enumeration of the target names in collateral
+    bytes32[] targetNames;
     // Amount of target units per basket for each primt collateral. {target/BU}
     mapping(ICollateral => Fix) targetAmts;
     // Backup configurations, one per target name.
@@ -76,11 +78,24 @@ contract BasketHandlerP0 is
     ) public override onlyOwner returns (bool) {
         require(collateral.length == targetAmts.length, "must be same length");
         delete basketConf.collateral;
+        delete basketConf.targetNames;
+
         for (uint256 i = 0; i < collateral.length; i++) {
-            ICollateral c = collateral[i];
-            basketConf.collateral.push(c);
-            basketConf.targetAmts[c] = targetAmts[i];
+            ICollateral coll = collateral[i];
+            basketConf.collateral.push(coll);
+            basketConf.targetAmts[coll] = targetAmts[i];
+
+            // Add coll's target name to basketConf.targetNames if it's not already there.
+            bytes32 targetName = coll.targetName();
+            uint256 j;
+            for (j = 0; j < basketConf.targetNames.length; j++) {
+                if (basketConf.targetNames[j] == targetName) break;
+            }
+            if (j >= basketConf.targetNames.length) {
+                basketConf.targetNames.push(targetName);
+            }
         }
+
         if (selectBasket) return _selectBasket();
         else return false;
     }
@@ -136,6 +151,7 @@ contract BasketHandlerP0 is
 
     // ==== Internal ====
 
+    // Check collateral statuses; Select a new basket if needed.
     function _updateBasket() internal {
         for (uint256 i = 0; i < _assets.length(); i++) {
             if (IAsset(_assets.at(i)).isCollateral()) {
@@ -169,9 +185,88 @@ contract BasketHandlerP0 is
         return amtBUs.div(baseFactor()).shiftLeft(int8(rToken().decimals())).floor();
     }
 
+    // newBasket is effectively a local variable of _selectBasket. Nothing should use its value
+    // from a previous transaction.
+    Basket private newBasket;
+
     /// Select and save the next basket, based on the BasketConfig and Collateral statuses
     /// @return whether or not a new basket was derived from templates
     function _selectBasket() private returns (bool) {
-        return false;
+        // If the current basket doesn't need changing, don't change it.
+        if (worstCollateralStatus() != CollateralStatus.DISABLED) return false;
+
+        // Here, "good" collateral is non-defaulted collateral; any status other than DISABLED
+        // goodWeights and totalWeights are in index-correspondence with basketConf.targetNames
+        Fix[] memory goodWeights; // total target weight of good, prime collateral with target i
+        Fix[] memory totalWeights; // total target weight of all prime collateral with target i
+        newBasket.empty();
+
+        // For each prime collateral:
+        for (uint256 i = 0; i < basketConf.collateral.length; i++) {
+            ICollateral coll = basketConf.collateral[i];
+
+            // Find coll's targetName index
+            uint256 targetIndex;
+            for (targetIndex = 0; targetIndex < basketConf.targetNames.length; targetIndex++) {
+                if (basketConf.targetNames[targetIndex] == coll.targetName()) break;
+            }
+            assert(targetIndex < basketConf.targetNames.length);
+
+            // Set basket weights for good, prime collateral,
+            // and accumulate the values of goodWeights and targetWeights
+            Fix targetWeight = basketConf.targetAmts[coll];
+            totalWeights[targetIndex] = totalWeights[targetIndex].plus(targetWeight);
+
+            if (coll.status() != CollateralStatus.DISABLED) {
+                goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
+                // Add collateral to newBasket
+                newBasket.collateral[newBasket.size] = coll;
+                newBasket.refTargets[coll] = targetWeight.mul(coll.targetRate());
+                newBasket.size++;
+            }
+        }
+
+        // For each target i, if we still need more weight for target i then try to add the backup
+        // basket for target i to make up that weight:
+        for (uint256 i = 0; i < basketConf.targetNames.length; i++) {
+            if (totalWeights[i].lte(goodWeights[i])) continue; // Don't need backup weight
+
+            uint256 size = 0; // backup basket size
+            BackupConfig storage backup = basketConf.backups[basketConf.targetNames[i]];
+
+            // Find the backup basket size: max(1, maxCollateral, # of good backup collateral)
+            for (uint256 j = 0; j < backup.collateral.length; j++) {
+                if (backup.collateral[j].status() != CollateralStatus.DISABLED) {
+                    size++;
+                    if (size >= backup.maxCollateral) break;
+                }
+            }
+
+            // If we need backup collateral, but there's no good backup collateral, then we're in a
+            // bad case! Do not change the basket; the protocol will remain issuance-paused until
+            // governance acts.
+            if (size == 0) return false;
+
+            // Set backup basket weights
+            uint256 assigned = 0;
+            for (uint256 j = 0; j < backup.collateral.length && assigned < size; j++) {
+                ICollateral coll = backup.collateral[j];
+                if (coll.status() != CollateralStatus.DISABLED) {
+                    // Add backup asset to newBasket
+                    newBasket.collateral[newBasket.size] = coll;
+                    newBasket.refTargets[coll] = totalWeights[i].minus(goodWeights[i]).divu(size);
+                    newBasket.size++;
+                    assigned++;
+                }
+            }
+        }
+
+        // If we haven't already given up, then commit the new basket!
+        // roughly, _basket = newBasket
+        // But you can't just set _basket equal to newBasket, because you can't assign maps.
+        // So....
+
+        _basket.copy(newBasket); /// nooooooo
+        return true;
     }
 }
