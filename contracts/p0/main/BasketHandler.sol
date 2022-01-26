@@ -257,6 +257,7 @@ contract BasketHandlerP0 is
 
         // If we haven't already given up, then commit the new basket!
         _basket.copy(newBasket);
+        _blockBasketLastUpdated = block.number;
         return true;
     }
 }
