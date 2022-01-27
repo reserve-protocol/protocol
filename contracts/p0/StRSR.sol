@@ -164,7 +164,6 @@ contract StRSRP0 is IStRSR, Context {
             }
         }
 
-
         // Transfer RSR to caller
         main.rsr().safeTransfer(_msgSender(), amount);
         emit RSRSeized(_msgSender(), amount);
