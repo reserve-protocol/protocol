@@ -528,7 +528,26 @@ describe('MainP0 contract', () => {
       ])
     })
 
-    it.only('Should allow to set Revenue Furnace if Owner and perform validations', async () => {
+    it('Should allow to set Market if Owner', async () => {
+      // Check existing value
+      expect(await main.market()).to.equal(market.address)
+
+      // If not owner cannot update - use mock address
+      await expect(main.connect(other).setMarket(other.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.market()).to.equal(market.address)
+
+      // Update with owner
+      await main.connect(owner).setMarket(other.address)
+
+      // Check value was updated
+      expect(await main.market()).to.equal(other.address)
+    })
+
+    it('Should allow to set RevenueFurnace if Owner and perform validations', async () => {
       // Setup test furnaces
       const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')
       const newFurnace = <FurnaceP0>await FurnaceFactory.deploy(rToken.address, config.rewardPeriod)
