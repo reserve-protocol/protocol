@@ -649,5 +649,12 @@ describe('MainP0 contract', () => {
         'Ownable: caller is not the owner'
       )
     })
+
+    it('Should not allow to disable non-collateral asset', async () => {
+      // Attempt to disable asset
+      await expect(main.connect(owner).disableCollateral(compAsset.address)).to.be.revertedWith(
+        'can only disable ICollateral assets'
+      )
+    })
   })
 })
