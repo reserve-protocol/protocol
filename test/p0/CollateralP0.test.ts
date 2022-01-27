@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+
 import { CollateralStatus, MAX_UINT256 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AaveOracle } from '../../typechain/AaveOracle'
@@ -82,8 +83,8 @@ describe('CollateralP0 contracts', () => {
       expect(await token.decimals()).to.equal(18)
       expect(await tokenAsset.status()).to.equal(CollateralStatus.SOUND)
       expect(await tokenAsset.whenDefault()).to.equal(MAX_UINT256)
-      expect(await tokenAsset.referencePrice()).to.equal(fp('1'))
-      expect(await tokenAsset.price()).to.equal(fp('1'))
+      expect(await tokenAsset.refPerTok()).to.equal(fp('1'))
+      expect(await tokenAsset.marketPrice()).to.equal(fp('1'))
 
       // USDC Fiat Token
       expect(await usdcAsset.main()).to.equal(main.address)
@@ -93,8 +94,8 @@ describe('CollateralP0 contracts', () => {
       expect(await usdc.decimals()).to.equal(6)
       expect(await usdcAsset.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcAsset.whenDefault()).to.equal(MAX_UINT256)
-      expect(await usdcAsset.referencePrice()).to.equal(fp('1'))
-      expect(await usdcAsset.price()).to.equal(fp('1e12'))
+      expect(await usdcAsset.refPerTok()).to.equal(fp('1'))
+      expect(await usdcAsset.marketPrice()).to.equal(fp('1'))
 
       // AToken
       expect(await aTokenAsset.main()).to.equal(main.address)
@@ -104,8 +105,8 @@ describe('CollateralP0 contracts', () => {
       expect(await aToken.decimals()).to.equal(18)
       expect(await aTokenAsset.status()).to.equal(CollateralStatus.SOUND)
       expect(await aTokenAsset.whenDefault()).to.equal(MAX_UINT256)
-      expect(await aTokenAsset.referencePrice()).to.equal(fp('1'))
-      expect(await aTokenAsset.price()).to.equal(fp('1'))
+      expect(await aTokenAsset.refPerTok()).to.equal(fp('1'))
+      expect(await aTokenAsset.marketPrice()).to.equal(fp('1'))
 
       // CToken
       expect(await cTokenAsset.main()).to.equal(main.address)
@@ -115,18 +116,18 @@ describe('CollateralP0 contracts', () => {
       expect(await cToken.decimals()).to.equal(8)
       expect(await cTokenAsset.status()).to.equal(CollateralStatus.SOUND)
       expect(await cTokenAsset.whenDefault()).to.equal(MAX_UINT256)
-      expect(await cTokenAsset.referencePrice()).to.equal(fp('1'))
-      expect(await cTokenAsset.price()).to.equal(fp('1e10'))
+      expect(await cTokenAsset.refPerTok()).to.equal(fp('1'))
+      expect(await cTokenAsset.marketPrice()).to.equal(fp('1'))
     })
   })
 
   describe('Prices', () => {
     it('Should calculate prices correctly', async () => {
       // Check initial prices
-      expect(await tokenAsset.price()).to.equal(fp('1'))
-      expect(await usdcAsset.price()).to.equal(fp('1e12'))
-      expect(await aTokenAsset.price()).to.equal(fp('1'))
-      expect(await cTokenAsset.price()).to.equal(fp('1e10'))
+      expect(await tokenAsset.marketPrice()).to.equal(fp('1'))
+      expect(await usdcAsset.marketPrice()).to.equal(fp('1'))
+      expect(await aTokenAsset.marketPrice()).to.equal(fp('1'))
+      expect(await cTokenAsset.marketPrice()).to.equal(fp('1'))
 
       // Update values in Oracles increase by 10-20%
       await aaveOracleInternal.setPrice(token.address, bn('2.75e14')) // 10%
@@ -134,24 +135,24 @@ describe('CollateralP0 contracts', () => {
       await compoundOracleInternal.setPrice(await token.symbol(), bn('1.1e6')) // 10%
 
       // Check new prices
-      expect(await tokenAsset.price()).to.equal(fp('1.1'))
-      expect(await usdcAsset.price()).to.equal(fp('1.1e12'))
-      expect(await aTokenAsset.price()).to.equal(fp('1.1'))
-      expect(await cTokenAsset.price()).to.equal(fp('1.1e10'))
+      expect(await tokenAsset.marketPrice()).to.equal(fp('1.1'))
+      expect(await usdcAsset.marketPrice()).to.equal(fp('1.1'))
+      expect(await aTokenAsset.marketPrice()).to.equal(fp('1.1'))
+      expect(await cTokenAsset.marketPrice()).to.equal(fp('1.1'))
     })
 
     it('Should calculate price correctly when ATokens and CTokens appreciate', async () => {
       // Check initial prices
-      expect(await aTokenAsset.price()).to.equal(fp('1'))
-      expect(await cTokenAsset.price()).to.equal(fp('1e10'))
+      expect(await aTokenAsset.marketPrice()).to.equal(fp('1'))
+      expect(await cTokenAsset.marketPrice()).to.equal(fp('1'))
 
       // Increase rate for Ctoken and AToken to double
       await aToken.setExchangeRate(fp(2))
       await cToken.setExchangeRate(fp(2))
 
       // Check prices doubled
-      expect(await aTokenAsset.price()).to.equal(fp('2'))
-      expect(await cTokenAsset.price()).to.equal(fp('2e10'))
+      expect(await aTokenAsset.marketPrice()).to.equal(fp('2'))
+      expect(await cTokenAsset.marketPrice()).to.equal(fp('2'))
     })
   })
 

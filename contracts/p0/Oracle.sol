@@ -15,7 +15,7 @@ contract CompoundOracle is IOracle {
         comptroller = comptroller_;
     }
 
-    /// @return {attoUSD/tok} The attoUSD price of a whole token on the compound oracle
+    /// @return {USD/tok} The USD price of a whole token on the compound oracle
     function consult(IERC20Metadata erc20) external view virtual override returns (Fix) {
         // Compound stores prices with 6 decimals of precision
 
@@ -24,8 +24,8 @@ contract CompoundOracle is IOracle {
             revert CommonErrors.PriceIsZero(erc20.symbol());
         }
 
-        // {microUSD/tok} * {attoUSD/microUSD}
-        return toFix(p).shiftLeft(12);
+        // {USD/tok} = {microUSD/tok} / {microUSD/USD}
+        return toFix(p).shiftLeft(-6);
     }
 }
 
@@ -40,7 +40,7 @@ contract AaveOracle is CompoundOracle {
         aaveLendingPool = aaveLendingPool_;
     }
 
-    /// @return {attoUSD/tok} The attoUSD price of a whole token on the Aave oracle
+    /// @return {USD/tok} The USD price of a whole token on the Aave oracle
     function consult(IERC20Metadata erc20) external view virtual override returns (Fix) {
         // Aave keeps their prices in terms of ETH
         IAaveOracle aaveOracle = aaveLendingPool.getAddressesProvider().getPriceOracle();
@@ -54,7 +54,7 @@ contract AaveOracle is CompoundOracle {
         Fix ethNorm = toFix(aaveOracle.getAssetPrice(aaveOracle.WETH())); // {qETH/ETH}
         Fix ethInUsd = toFix(comptroller.oracle().price("ETH")); // {microUSD/ETH}
 
-        // {qETH/tok} * {microUSD/ETH} / {qETH/ETH} * {attoUSD/microUSD}
-        return inETH.mul(ethInUsd).div(ethNorm).shiftLeft(12);
+        // {USD/tok} = {qETH/tok} * {microUSD/ETH} / {qETH/ETH} / {microUSD/USD}
+        return inETH.mul(ethInUsd).div(ethNorm).shiftLeft(-6);
     }
 }

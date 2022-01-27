@@ -27,10 +27,6 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
 
-    /// @return {ref/target} How many of the reference token makes up 1 target unit?
-    // solhint-disable-next-line const-name-snakecase
-    Fix public constant targetRate = FIX_ONE;
-
     IERC20Metadata public immutable referenceERC20;
 
     constructor(
@@ -48,7 +44,7 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     function forceUpdates() public virtual override {
         if (whenDefault > block.timestamp) {
             // If the price is below the default-threshold price, default eventually
-            whenDefault = _isDepegged()
+            whenDefault = _isReferenceDepegged()
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -78,18 +74,32 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         return true;
     }
 
-    /// @return {ref/tok} The price of 1 whole token in terms of whole reference units
-    function referencePrice() public view virtual override returns (Fix) {
+    /// @return {USD/tok} The price of 1 whole token in USD, based on oracle pricing
+    function marketPrice() public view virtual override(AssetP0, IAsset) returns (Fix) {
+        // {USD/tok} = {target/ref} * {ref/tok} * {USD/target}
+        return oracle.consult(referenceERC20).mul(refPerTok()).mul(marketPricePerTarget());
+    }
+
+    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
+    function refPerTok() public view virtual override returns (Fix) {
         return FIX_ONE;
     }
 
-    function _isDepegged() private view returns (bool) {
-        // {USD/ref} = {none} * {USD/ref}
-        Fix delta = main.defaultThreshold().mul(targetRate);
+    /// @return {target/ref} Quantity of whole target units per whole reference unit, /wo oracles
+    function peggedTargetPerRef() public view virtual override returns (Fix) {
+        return FIX_ONE;
+    }
 
-        // {USD/ref} = {attoUSD/ref} / {attoUSD/USD}
-        Fix p = oracle.consult(erc20).shiftLeft(-18);
+    /// @return {USD/target} The price of a target unit in USD (typically: 1)
+    function marketPricePerTarget() public view virtual override returns (Fix) {
+        return FIX_ONE;
+    }
 
-        return p.lt(targetRate.minus(delta)) || p.gt(targetRate.plus(delta));
+    function _isReferenceDepegged() internal view virtual returns (bool) {
+        // {USD/ref} = {USD/target} * {target/ref}
+        Fix peg = marketPricePerTarget().mul(peggedTargetPerRef());
+        Fix delta = peg.mul(main.defaultThreshold());
+        Fix p = oracle.consult(referenceERC20);
+        return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }
 }

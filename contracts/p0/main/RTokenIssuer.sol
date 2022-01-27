@@ -118,12 +118,29 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
 
     /// @return How much RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
-        return _fromBUs(_basket.maxIssuableBUs(account));
+        return _fromBUs(_basket.virtualBUs(account));
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
     function backingTokens() public view override returns (address[] memory erc20s) {
         return _basket.backingERC20s();
+    }
+
+    /// @return p {USD} The protocol's expectation about the current RToken market cap, in USD
+    function projectedMcap() public view override returns (Fix p) {
+        Fix amtBUs = _actualBUHoldings();
+        for (uint256 i = 0; i < _basket.size; i++) {
+            ICollateral c = _basket.collateral[i];
+
+            // Exclude collateral that has defaulted
+            if (c.status() != CollateralStatus.DISABLED) {
+                // {USD} = {BU} * {ref/BU} * {target/ref} * {USD/target}
+                Fix add = amtBUs.mul(_basket.refAmts[c]).mul(c.peggedTargetPerRef()).mul(
+                    c.marketPricePerTarget()
+                );
+                p = p.plus(add);
+            }
+        }
     }
 
     // Returns the future block number at which an issuance for *amount* now can complete

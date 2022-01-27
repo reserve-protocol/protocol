@@ -50,39 +50,39 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
         return countOpenAuctions > 0;
     }
 
-    /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price
-    /// @param sellAmount {qSellTok}
+    /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price,
+    /// without explicitly aiming at a particular quantity to purchase.
+    /// @param sellAmount {sellTok}
     /// @return notDust Whether the prepared auction is large enough to be worth trading
     /// @return auction The prepared auction
     function _prepareAuctionSell(
         IAsset sell,
         IAsset buy,
-        uint256 sellAmount
+        Fix sellAmount
     ) internal view returns (bool notDust, Auction memory auction) {
-        if (sell.price().eq(FIX_ZERO) || buy.price().eq(FIX_ZERO)) {
+        assert(sell.marketPrice().neq(FIX_ZERO) && buy.marketPrice().neq(FIX_ZERO));
+        if (sellAmount.lt(_dustThreshold(sell))) {
             return (false, auction);
         }
 
-        // {attoUSD} = {attoUSD/qRTok} * {qRTok}
-        Fix rTokenMarketCapUSD = main.rTokenAsset().price().mulu(main.rToken().totalSupply());
-        Fix maxSellUSD = rTokenMarketCapUSD.mul(main.maxAuctionSize()); // {attoUSD}
+        // {USD} = {USD} * {none}
+        Fix maxSellUSD = main.projectedMcap().mul(main.maxAuctionSize());
 
-        if (sellAmount < _dustThreshold(sell)) {
-            return (false, auction);
-        }
+        // {sellTok}
+        sellAmount = fixMin(sellAmount, maxSellUSD.div(sell.marketPrice()));
 
-        // TODO: Should this be floor?
-        sellAmount = Math.min(sellAmount, maxSellUSD.div(sell.price()).ceil()); // {qSellTok}
-        Fix exactBuyAmount = toFix(sellAmount).mul(sell.price()).div(buy.price()); // {qBuyTok}
-        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.maxTradeSlippage())); // {qBuyTok}
+        // {buyTok} = {sellTok} * {USD/sellTok} / {USD/buyTok}
+        Fix exactBuyAmount = sellAmount.mul(sell.marketPrice()).div(buy.marketPrice());
+        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.maxTradeSlippage()));
 
+        // TODO Check floor() and ceil() rounding below
         return (
             true,
             Auction({
                 sell: sell,
                 buy: buy,
-                sellAmount: sellAmount,
-                minBuyAmount: minBuyAmount.ceil(),
+                sellAmount: sellAmount.shiftLeft(int8(sell.erc20().decimals())).floor(),
+                minBuyAmount: minBuyAmount.shiftLeft(int8(buy.erc20().decimals())).ceil(),
                 clearingSellAmount: 0,
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,
@@ -95,46 +95,40 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
 
     /// Assuming we have `maxSellAmount` sell tokens avaialable, prepare an auction to
     /// cover as much of our deficit as possible, given expected trade slippage.
-    /// @param maxSellAmount {qSellTok}
-    /// @param deficitAmount {qBuyTok}
+    /// @param maxSellAmount {sellTok}
+    /// @param deficitAmount {buyTok}
     /// @return notDust Whether the prepared auction is large enough to be worth trading
     /// @return auction The prepared auction
     function _prepareAuctionToCoverDeficit(
         IAsset sell,
         IAsset buy,
-        uint256 maxSellAmount,
-        uint256 deficitAmount
+        Fix maxSellAmount,
+        Fix deficitAmount
     ) internal view returns (bool notDust, Auction memory auction) {
         // Don't sell dust.
-        if (maxSellAmount < _dustThreshold(sell)) {
+        if (maxSellAmount.lt(_dustThreshold(sell))) {
             return (false, auction);
         }
         // Don't buy dust.
-        deficitAmount = Math.max(deficitAmount, _dustThreshold(buy));
+        deficitAmount = fixMax(deficitAmount, _dustThreshold(buy));
 
-        // {qSellTok} = {qBuyTok} * {attoUSD/qBuyTok} / {attoUSD/qSellTok}
-        Fix exactSellAmount = toFix(deficitAmount).mul(buy.price()).div(sell.price());
+        // {sellTok} = {buyTok} * {USD/buyTok} / {USD/sellTok}
+        Fix exactSellAmount = deficitAmount.mul(buy.marketPrice()).div(sell.marketPrice());
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
-        uint256 idealSellAmount = exactSellAmount
-            .div(FIX_ONE.minus(main.maxTradeSlippage()))
-            .ceil();
+        Fix idealSellAmount = exactSellAmount.div(FIX_ONE.minus(main.maxTradeSlippage()));
 
-        uint256 sellAmount = Math.min(idealSellAmount, maxSellAmount);
+        Fix sellAmount = fixMin(idealSellAmount, maxSellAmount);
         return _prepareAuctionSell(sell, buy, sellAmount);
     }
 
-    /// @return {qSellTok} The least amount of tokens worth trying to sell
-    function _dustThreshold(IAsset asset) internal view returns (uint256) {
-        // {attoUSD} = {attoUSD/qSellTok} * {qSellTok}
-        Fix rTokenMarketCapUSD = main.rTokenAsset().price().mulu(main.rToken().totalSupply());
+    /// @return {tok} The least amount of whole tokens worth trying to sell
+    function _dustThreshold(IAsset asset) internal view returns (Fix) {
+        Fix minSellUSD = main.projectedMcap().mul(main.minAuctionSize());
 
-        // {attoUSD}
-        Fix minSellUSD = rTokenMarketCapUSD.mul(main.minRevenueAuctionSize());
-
-        // {attoUSD} / {attoUSD/qSellTok}
-        return minSellUSD.div(asset.price()).ceil();
+        // {tok} = {USD} / {USD/tok}
+        return minSellUSD.div(asset.marketPrice());
     }
 
     /// Launch an auction:

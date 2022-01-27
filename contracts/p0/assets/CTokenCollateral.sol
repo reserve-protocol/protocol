@@ -50,7 +50,7 @@ contract CTokenCollateralP0 is CollateralP0 {
         ICToken(address(erc20)).exchangeRateCurrent();
 
         // Check invariants
-        Fix p = referencePrice();
+        Fix p = refPerTok();
         if (p.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
@@ -78,27 +78,11 @@ contract CTokenCollateralP0 is CollateralP0 {
         }
     }
 
-    /// @return {attoUSD/qTok} The price of 1 qToken in attoUSD
-    function price() public view virtual override returns (Fix) {
-        // {attoUSD/qTok} = {attoUSD/ref} * {ref/tok} / {qTok/tok}
-        return oracle.consult(referenceERC20).mul(referencePrice()).shiftLeft(-8);
-    }
-
-    /// @return {ref/tok} The rate between the cToken and its fiatcoin
-    function referencePrice() public view override returns (Fix) {
+    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
+    function refPerTok() public view override returns (Fix) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20.decimals()) - 18;
         Fix rateNow = toFixWithShift(rate, shiftLeft);
         return rateNow.div(COMPOUND_BASE);
-    }
-
-    function _isReferenceDepegged() internal view returns (bool) {
-        // {USD/ref} = {none} * {USD/ref}
-        Fix delta = main.defaultThreshold().mul(targetRate);
-
-        // {USD/ref} = {attoUSD/ref} / {attoUSD/USD}
-        Fix p = oracle.consult(referenceERC20).shiftLeft(-18);
-
-        return p.lt(targetRate.minus(delta)) || p.gt(targetRate.plus(delta));
     }
 }

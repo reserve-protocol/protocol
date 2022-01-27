@@ -117,11 +117,6 @@ contract BasketHandlerP0 is
         return _switchBasket();
     }
 
-    /// @return attoUSD {attoUSD/BU} The price of a whole BU in attoUSD
-    function basketPrice() external view override returns (Fix attoUSD) {
-        return _basket.price();
-    }
-
     /// @return Whether it holds enough basket units of collateral
     function fullyCapitalized() public view override returns (bool) {
         return _actualBUHoldings().gte(_targetBUs());
@@ -167,7 +162,7 @@ contract BasketHandlerP0 is
 
     /// @return {BU} The equivalent of the current holdings in BUs without considering trading
     function _actualBUHoldings() internal view returns (Fix) {
-        return _basket.maxIssuableBUs(address(this));
+        return _basket.virtualBUs(address(this));
     }
 
     /// {qRTok} -> {BU}
@@ -221,8 +216,8 @@ contract BasketHandlerP0 is
                 // Add collateral to newBasket
                 newBasket.collateral[newBasket.size] = coll;
 
-                // {ref/BU} = {target/BU} * {ref/target}
-                newBasket.refTargets[coll] = targetWeight.mul(coll.targetRate());
+                // {ref/BU} = {target/BU} / {target/ref}
+                newBasket.refAmts[coll] = targetWeight.div(coll.peggedTargetPerRef());
                 newBasket.size++;
             }
         }
@@ -257,7 +252,7 @@ contract BasketHandlerP0 is
                     newBasket.collateral[newBasket.size] = coll;
 
                     // {target/BU} = {target/BU} / {none}
-                    newBasket.refTargets[coll] = totalWeights[i].minus(goodWeights[i]).divu(size);
+                    newBasket.refAmts[coll] = totalWeights[i].minus(goodWeights[i]).divu(size);
                     newBasket.size++;
                     assigned++;
                 }

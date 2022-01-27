@@ -38,9 +38,7 @@ export interface IConfig {
   defaultDelay: BigNumber
   maxTradeSlippage: BigNumber
   maxAuctionSize: BigNumber
-  minRecapitalizationAuctionSize: BigNumber
-  minRevenueAuctionSize: BigNumber
-  migrationChunk: BigNumber
+  minAuctionSize: BigNumber
   issuanceRate: BigNumber
   defaultThreshold: BigNumber
 }
@@ -341,9 +339,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     defaultDelay: bn('86400'), // 24 hs
     maxTradeSlippage: fp('0.01'), // 1%
     maxAuctionSize: fp('0.01'), // 1%
-    minRecapitalizationAuctionSize: fp('0.001'), // 0.1%
-    minRevenueAuctionSize: fp('0.0001'), // 0.01%
-    migrationChunk: fp('0.2'), // 20%
+    minAuctionSize: fp('0.001'), // 0.1%
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
     defaultThreshold: fp('0.05'), // 5% deviation
   }

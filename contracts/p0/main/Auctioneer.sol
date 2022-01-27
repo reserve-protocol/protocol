@@ -94,9 +94,12 @@ contract AuctioneerP0 is
         (
             IAsset surplus,
             ICollateral deficit,
-            uint256 surplusAmount,
-            uint256 deficitAmount
+            Fix surplusAmount,
+            Fix deficitAmount
         ) = _largestSurplusAndDeficit();
+
+        // Of primary concern here is whether we can trust the prices for the assets
+        // we are selling. If we cannot, then we should not `_prepareAuctionToCoverDeficit`
 
         bool trade;
         Auction memory auction;
@@ -123,13 +126,13 @@ contract AuctioneerP0 is
     /// Seize an amount of RSR to recapitalize our most in-deficit collateral
     function _seizeRSR() private {
         assert(!hasOpenAuctions() && !fullyCapitalized());
-        (, ICollateral deficit, , uint256 deficitAmount) = _largestSurplusAndDeficit();
+        (, ICollateral deficit, , Fix deficitAmount) = _largestSurplusAndDeficit();
 
         uint256 bal = rsr().balanceOf(address(this));
         (bool trade, Auction memory auction) = _prepareAuctionToCoverDeficit(
             rsrAsset(),
             deficit,
-            bal + rsr().balanceOf(address(stRSR())),
+            toFixWithShift(bal + rsr().balanceOf(address(stRSR())), -int8(rsr().decimals())),
             deficitAmount
         );
         if (trade) {
@@ -142,32 +145,47 @@ contract AuctioneerP0 is
     /// Mint RToken in order to recapitalize our most in-deficit collateral.
     function _diluteRTokenHolders() private {
         assert(!hasOpenAuctions() && !fullyCapitalized());
-        (, ICollateral deficit, , uint256 deficitAmount) = _largestSurplusAndDeficit();
-        uint256 targetBuyAmount = Math.max(deficitAmount, _dustThreshold(deficit));
+        (, ICollateral deficit, , Fix deficitAmount) = _largestSurplusAndDeficit();
 
         Fix collateralUSD;
         for (uint256 i = 0; i < _basket.size; i++) {
-            uint256 bal = _basket.collateral[i].erc20().balanceOf(address(this));
+            ICollateral c = _basket.collateral[i];
 
-            // {attoUSD} = {attoUSD} + {attoUSD/qTok} * {qTok}
-            collateralUSD = collateralUSD.plus(_basket.collateral[i].price().mulu(bal));
+            // {USD/tok} = {ref/tok} * {target/ref} * {USD/target}
+            Fix p = c.refPerTok().mul(c.peggedTargetPerRef()).mul(c.marketPricePerTarget());
+
+            // {tok}
+            Fix tokBal = toFixWithShift(
+                c.erc20().balanceOf(address(this)),
+                -int8(c.erc20().decimals())
+            );
+
+            // {USD} = {USD} + {tok} * {USD/tok}
+            collateralUSD = collateralUSD.plus(tokBal.mul(p));
         }
 
-        // {attoUSD} = {attoUSD/qBuyTok} * {qBuyTok}
-        Fix deficitUSD = deficit.price().mulu(targetBuyAmount);
+        // {USD/buyTok} = {ref/buyTok} * {target/ref} * {USD/target}
+        Fix deficitPrice = deficit.refPerTok().mul(deficit.peggedTargetPerRef()).mul(
+            deficit.marketPricePerTarget()
+        );
+
+        // {USD} = {USD/buyTok} * {buyTok}
+        Fix deficitUSD = deficitPrice.mul(fixMax(deficitAmount, _dustThreshold(deficit)));
 
         // The increase in RToken supply should match the deficit to collateral USD ratios
-        Fix ratio = deficitUSD.plus(collateralUSD).div(collateralUSD);
         // TODO This calculation should probably get a second set of eyes
 
-        // {qRTok} = {none} * {qRTok} - {qRTok}
-        uint256 sellAmount = ratio.mulu(rToken().totalSupply()).ceil() - rToken().totalSupply();
+        Fix ratio = deficitUSD.plus(collateralUSD).div(collateralUSD);
 
-        // {qRTok} = {none} * {qRTok}
-        uint256 maxSellAmount = maxAuctionSize().mulu(rToken().totalSupply()).floor();
+        // {rTok} = {qRTok} / {qRTok/rTok}
+        Fix rTokBal = toFixWithShift(main.rToken().totalSupply(), -int8(main.rToken().decimals()));
+
+        // {rTok} = {none} * {rTok} - {rTok}
+        Fix sellAmount = ratio.mul(rTokBal).minus(rTokBal);
+        sellAmount = fixMin(sellAmount, rTokBal.mul(maxAuctionSize()));
 
         // Mint to self and leave
-        rToken().mint(address(this), Math.min(sellAmount, maxSellAmount));
+        rToken().mint(address(this), sellAmount.ceil());
     }
 
     /// Send excess assets to the RSR and RToken traders
@@ -186,67 +204,89 @@ contract AuctioneerP0 is
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
             uint256 bal = a.erc20().balanceOf(address(this));
-            uint256 expected = a.isCollateral()
-                ? target.mul(_basket.quantity(ICollateral(address(a)))).ceil()
-                : 0;
+            uint256 required = 0;
+            if (a.isCollateral()) {
+                ICollateral c = ICollateral(_assets.at(i));
 
-            if (bal > expected) {
-                uint256 amtToRSR = rsrCut().mulu(bal - expected).round();
+                // {tok} = {BU} * {ref/BU} / {ref/tok}
+                Fix tokRequired = target.mul(_basket.refAmts[c]).div(c.refPerTok());
+
+                // {qTok} = {tok} * {qTok/tok}
+                required = tokRequired.shiftLeft(int8(c.erc20().decimals())).ceil();
+            }
+
+            if (bal > required) {
+                uint256 amtToRSR = rsrCut().mulu(bal - required).round();
                 if (amtToRSR > 0) {
                     a.erc20().safeTransfer(address(rsrTrader), amtToRSR);
                 }
-                if (bal - expected - amtToRSR > 0) {
-                    a.erc20().safeTransfer(address(rTokenTrader), bal - expected - amtToRSR);
+                if (bal - required - amtToRSR > 0) {
+                    a.erc20().safeTransfer(address(rTokenTrader), bal - required - amtToRSR);
                 }
             }
         }
     }
 
     /// Compute the largest asset-for-collateral trade by identifying
-    /// the most in-surplus and most in-deficit assets relative to the BU target.
-    /// @return surplus Surplus asset
-    /// @return deficit Deficit asset
-    /// @return surplusAmount {qSellTok} Surplus amount
-    /// @return deficitAmount {qBuyTok} Deficit amount
+    /// the most in-surplus and most in-deficit assets relative to their basket refAmts,
+    /// using the unit of account for interconversion.
+    /// @return Surplus (RToken/RSR/COMP/AAVE or collateral) asset
+    /// @return Deficit collateral
+    /// @return {sellTok} Surplus amount (whole tokens)
+    /// @return {buyTok} Deficit amount (whole tokens)
     function _largestSurplusAndDeficit()
         private
         view
         returns (
-            IAsset surplus,
-            ICollateral deficit,
-            uint256 surplusAmount,
-            uint256 deficitAmount
+            IAsset,
+            ICollateral,
+            Fix,
+            Fix
         )
     {
-        Fix targetBUs = _targetBUs();
-        // Calculate surplus and deficits relative to the target BUs.
-        Fix[] memory surpluses = new Fix[](_assets.length());
-        Fix[] memory deficits = new Fix[](_assets.length());
+        Fix targetBUs = _targetBUs(); // number of BUs needed to back the RToken fully
+
+        // Calculate surplus and deficits relative to basket reference amounts.
+        Fix[] memory prices = new Fix[](_assets.length()); // {USD/tok}
+        Fix[] memory surpluses = new Fix[](_assets.length()); // {USD}
+        Fix[] memory deficits = new Fix[](_assets.length()); // {USD}
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
+            Fix required = FIX_ZERO; // {USD}
 
-            // {qTok}
-            Fix bal = toFix(a.erc20().balanceOf(address(this)));
-            Fix required = FIX_ZERO;
+            // Calculate {USD/tok} price
             if (a.isCollateral()) {
-                // {qTok} = {BU} * {qTok/BU}
-                required = targetBUs.mul(_basket.quantity(ICollateral(address(a))));
+                ICollateral c = ICollateral(_assets.at(i));
+
+                // {USD/tok} = {ref/tok} * {target/ref} * {USD/target}
+                prices[i] = c.refPerTok().mul(c.peggedTargetPerRef()).mul(c.marketPricePerTarget());
+
+                // {USD} = {BU} * {ref/BU} / {ref/tok} * {USD/tok}
+                required = targetBUs.mul(_basket.refAmts[c]).div(c.refPerTok()).mul(prices[i]);
+            } else {
+                prices[i] = a.marketPrice();
             }
 
-            if (bal.gt(required)) {
-                // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                surpluses[i] = bal.minus(required).mul(a.price());
-            } else if (bal.lt(required)) {
-                // {attoUSD} = ({qTok} - {qTok}) * {attoUSD/qTok}
-                deficits[i] = required.minus(bal).mul(a.price());
+            // {tok} = {qTok} / {qTok/tok}
+            Fix tokBal = toFixWithShift(
+                a.erc20().balanceOf(address(this)),
+                -int8(a.erc20().decimals())
+            );
+
+            // {USD} = {tok} * {USD/tok}
+            Fix actual = tokBal.mul(prices[i]);
+            if (actual.gt(required)) {
+                surpluses[i] = actual.minus(required);
+            } else if (actual.lt(required)) {
+                deficits[i] = required.minus(actual);
             }
         }
 
         // Calculate the maximums.
         uint256 surplusIndex;
         uint256 deficitIndex;
-        Fix surplusMax; // {attoUSD}
-        Fix deficitMax; // {attoUSD}
+        Fix surplusMax; // {USD}
+        Fix deficitMax; // {USD}
         for (uint256 i = 0; i < _assets.length(); i++) {
             if (surpluses[i].gt(surplusMax)) {
                 surplusMax = surpluses[i];
@@ -261,11 +301,11 @@ contract AuctioneerP0 is
         IAsset surplusAsset = IAsset(_assets.at(surplusIndex));
         ICollateral deficitCollateral = ICollateral(_assets.at(deficitIndex));
 
-        // {qSellTok} = {attoUSD} / {attoUSD/qSellTok}
-        Fix sellAmount = surplusMax.div(surplusAsset.price());
+        // {tok} = {USD} / {USD/tok}
+        Fix sellAmount = surplusMax.div(prices[surplusIndex]);
 
-        // {qBuyTok} = {attoUSD} / {attoUSD/qBuyTok}
-        Fix buyAmount = deficitMax.div(deficitCollateral.price());
-        return (surplusAsset, deficitCollateral, sellAmount.floor(), buyAmount.ceil());
+        // {tok} = {USD} / {USD/tok}
+        Fix buyAmount = deficitMax.div(prices[deficitIndex]);
+        return (surplusAsset, deficitCollateral, sellAmount, buyAmount);
     }
 }

@@ -12,6 +12,7 @@ import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
+import { USDCMock } from '../../typechain/USDCMock'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 
@@ -83,7 +84,7 @@ describe('FurnaceP0 contract', () => {
     collateral3 = basket[3]
 
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
-    token1 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral1.erc20())
+    token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )

@@ -18,9 +18,14 @@ contract RTokenAssetP0 is AssetP0 {
         IOracle oracle_
     ) AssetP0(erc20_, main_, oracle_) {}
 
-    /// @return {attoUSD/qRTok}
-    function price() public view override returns (Fix) {
-        // {attoUSD/qRTok} = {attoUSD/BU} * {BU/rTok} / {qRTok/rTok}
-        return main.basketPrice().mul(main.baseFactor()).shiftLeft(-int8(erc20.decimals()));
+    /// @return {USD/rTok}
+    function marketPrice() public view override returns (Fix) {
+        // Until an RToken has been live for a while, it probably won't have an oracle
+
+        // {rTok} = {qRTok} / {qRTok/rTok}
+        Fix rTok = toFixWithShift(erc20.totalSupply(), -int8(erc20.decimals()));
+
+        // {USD/rTok} = {USD} / {rTok}
+        return main.projectedMcap().div(rTok);
     }
 }

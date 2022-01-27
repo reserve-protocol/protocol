@@ -297,7 +297,7 @@ contract AdapterP0 is ProtoAdapter {
             for (uint256 i = 0; i < basketCollateral.length; i++) {
                 basketCollateral[i] = collateral[uint256(s.bu_s[0].assets[i])];
             }
-            _main.setPrimeBasket(basketCollateral, s.bu_s[0].refTargets);
+            _main.setPrimeBasket(basketCollateral, s.bu_s[0].refAmts);
             _main.unpause();
         }
     }
@@ -311,9 +311,7 @@ contract AdapterP0 is ProtoAdapter {
             _main.defaultDelay(),
             _main.maxTradeSlippage(),
             _main.maxAuctionSize(),
-            _main.minRecapitalizationAuctionSize(),
-            _main.minRevenueAuctionSize(),
-            _main.migrationChunk(),
+            _main.minAuctionSize(),
             _main.issuanceRate(),
             _main.defaultThreshold()
         );
@@ -340,7 +338,7 @@ contract AdapterP0 is ProtoAdapter {
         s.defiCollateralRates[uint256(AssetName.USDT)] = FIX_ZERO;
         s.defiCollateralRates[uint256(AssetName.BUSD)] = FIX_ZERO;
         for (uint256 i = NUM_FIATCOINS; i < NUM_COLLATERAL; i++) {
-            s.defiCollateralRates[i] = _rateToUnderlying(address(_assets[AssetName(i)]));
+            s.defiCollateralRates[i] = ICollateral(address(_assets[AssetName(i)])).refPerTok();
         }
         s.ethPrice = Price(
             _aaveOracle.getAssetPrice(_aaveOracle.WETH()),
@@ -380,7 +378,7 @@ contract AdapterP0 is ProtoAdapter {
     ) external override {
         Fix[] memory rates = new Fix[](NUM_COLLATERAL);
         for (uint256 i = NUM_FIATCOINS; i < NUM_COLLATERAL; i++) {
-            rates[i] = _rateToUnderlying(address(_assets[AssetName(i)]));
+            rates[i] = ICollateral(address(_assets[AssetName(i)])).refPerTok();
         }
         for (uint256 i = 0; i < defiCollateral.length; i++) {
             require(
@@ -455,11 +453,6 @@ contract AdapterP0 is ProtoAdapter {
             // StaticATokenMock also has `setExchangeRate(Fix)`
             CTokenMock(address(_assets[AssetName(i)].erc20())).setExchangeRate(rates[i]);
         }
-    }
-
-    /// @return {fiatTok/tok}
-    function _rateToUnderlying(address lendingCollateral) internal view returns (Fix) {
-        return CTokenCollateralP0(lendingCollateral).referencePrice();
     }
 
     /// @param token The ERC20 token
@@ -546,7 +539,7 @@ contract AdapterP0 is ProtoAdapter {
             _aaveOracle.setPrice(address(erc20), tokenState.price.inETH); // {qETH/tok}
             _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUSD); // {microUSD/tok}
 
-            Fix found = _assets[asset].price(); // {attoUSD/tok}
+            Fix found = _assets[asset].marketPrice(); // {USD/tok}
             Fix expected = toFix(tokenState.price.inUSD);
             assert(found.eq(expected));
         }
@@ -557,7 +550,7 @@ contract AdapterP0 is ProtoAdapter {
         uint256 numAuctions = _market.numAuctions();
         for (uint256 i = 0; i < numAuctions; i++) {
             (, IERC20 sell, IERC20 buy, uint256 sellAmount, , , , AuctionStatus state_) = _market
-                .auctions(i);
+            .auctions(i);
             (address bidder, , ) = _market.bids(i);
             if (state_ == AuctionStatus.OPEN && bidder == address(0)) {
                 Bid memory newBid;
@@ -566,9 +559,9 @@ contract AdapterP0 is ProtoAdapter {
                 IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
                 IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
                 newBid.buyAmount = toFix(sellAmount)
-                    .mul(buyAsset.price())
-                    .div(sellAsset.price())
-                    .ceil();
+                .mul(buyAsset.marketPrice())
+                .div(sellAsset.marketPrice())
+                .ceil();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(
                     newBid.bidder,

@@ -13,8 +13,8 @@ import "./IMain.sol";
  * to be an asset.
  */
 interface IAsset {
-    /// @return {attoUSD/qTok} The price of 1 qToken in attoUSD
-    function price() external view returns (Fix);
+    /// @return {USD/tok} The price of 1 whole token in USD, based on oracle pricing
+    function marketPrice() external view returns (Fix);
 
     /// @dev Intended to be used via delegatecall, hence the `collateral` duplication
     function claimAndSweepRewards(ICollateral collateral, IMain main) external;
@@ -50,12 +50,17 @@ interface ICollateral is IAsset {
     /// @return The canonical name of this collateral's target unit.
     function targetName() external view returns (bytes32);
 
-    /// @return {ref/target} How many of the reference token makes up 1 target unit?
-    function targetRate() external view returns (Fix);
-
-    /// @return {ref/tok} The price of 1 whole token in terms of whole reference units
-    function referencePrice() external view returns (Fix);
-
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
     function status() external view returns (CollateralStatus);
+
+    // ==== Exchange Rates ====
+
+    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
+    function refPerTok() external view returns (Fix);
+
+    /// @return {target/ref} Quantity of whole target units per whole reference unit, /wo oracles
+    function peggedTargetPerRef() external view returns (Fix);
+
+    /// @return {USD/target} The price of a target unit in USD (typically: 1)
+    function marketPricePerTarget() external view returns (Fix);
 }

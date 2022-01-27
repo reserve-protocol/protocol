@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IERC20Receiver.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRewardsClaimer.sol";
@@ -12,7 +12,7 @@ import "contracts/p0/main/BasketHandler.sol";
 /// The RevenueTrader converts all asset balances at its address to a single target asset
 /// and sends this asset to the RevenueDistributor at Main.
 contract RevenueTraderP0 is TraderP0, IRewardsClaimer {
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     IAsset private assetToBuy;
 
@@ -38,7 +38,7 @@ contract RevenueTraderP0 is TraderP0, IRewardsClaimer {
     function _manageFunds() private {
         IAsset[] memory assets = main.allAssets(); // includes RToken/RSR/COMP/AAVE
         for (uint256 i = 0; i < assets.length; i++) {
-            IERC20 erc20 = assets[i].erc20();
+            IERC20Metadata erc20 = assets[i].erc20();
             uint256 bal = erc20.balanceOf(address(this));
             if (bal == 0) {
                 continue;
@@ -52,7 +52,9 @@ contract RevenueTraderP0 is TraderP0, IRewardsClaimer {
                 bool launch;
                 Auction memory auction;
 
-                (launch, auction) = _prepareAuctionSell(assets[i], assetToBuy, bal);
+                // {tok} =  {qTok} / {qTok/tok}
+                Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
+                (launch, auction) = _prepareAuctionSell(assets[i], assetToBuy, sellAmount);
                 if (launch) {
                     _launchAuction(auction);
                 }

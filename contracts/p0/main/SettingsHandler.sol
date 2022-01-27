@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity ^0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/libraries/Fixed.sol";
@@ -31,9 +31,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     Fix private _maxTradeSlippage;
     Fix private _maxAuctionSize;
-    Fix private _minRecapitalizationAuctionSize;
-    Fix private _minRevenueAuctionSize;
-    Fix private _migrationChunk;
+    Fix private _minAuctionSize;
     Fix private _issuanceRate;
     Fix private _defaultThreshold;
 
@@ -58,9 +56,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
         _maxTradeSlippage = args.config.maxTradeSlippage;
         _maxAuctionSize = args.config.maxAuctionSize;
-        _minRecapitalizationAuctionSize = args.config.minRecapitalizationAuctionSize;
-        _minRevenueAuctionSize = args.config.minRevenueAuctionSize;
-        _migrationChunk = args.config.migrationChunk;
+        _minAuctionSize = args.config.minAuctionSize;
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
     }
@@ -174,32 +170,12 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         return _maxAuctionSize;
     }
 
-    function setMinRecapitalizationAuctionSize(Fix minRecapitalizationAuctionSize_)
-        external
-        override
-        onlyOwner
-    {
-        _minRecapitalizationAuctionSize = minRecapitalizationAuctionSize_;
+    function setMinAuctionSize(Fix minAuctionSize_) external override onlyOwner {
+        _minAuctionSize = minAuctionSize_;
     }
 
-    function minRecapitalizationAuctionSize() public view override returns (Fix) {
-        return _minRecapitalizationAuctionSize;
-    }
-
-    function setMinRevenueAuctionSize(Fix minRevenueAuctionSize_) external override onlyOwner {
-        _minRevenueAuctionSize = minRevenueAuctionSize_;
-    }
-
-    function minRevenueAuctionSize() public view override returns (Fix) {
-        return _minRevenueAuctionSize;
-    }
-
-    function setMigrationChunk(Fix migrationChunk_) external override onlyOwner {
-        _migrationChunk = migrationChunk_;
-    }
-
-    function migrationChunk() public view override returns (Fix) {
-        return _migrationChunk;
+    function minAuctionSize() public view override returns (Fix) {
+        return _minAuctionSize;
     }
 
     function setIssuanceRate(Fix issuanceRate_) external override onlyOwner {
@@ -226,14 +202,14 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         return _market;
     }
 
-    // Useful view functions for reading refTargets of the state
+    // Useful view functions for reading refAmts of the state
     /// @return The RToken deployment
     function rToken() public view override returns (IRToken) {
         return IRToken(address(_rTokenAsset.erc20()));
     }
 
     /// @return The RSR deployment
-    function rsr() public view override returns (IERC20) {
-        return _rsrAsset.erc20();
+    function rsr() public view override returns (IERC20Metadata) {
+        return IERC20Metadata(address(_rsrAsset.erc20()));
     }
 }

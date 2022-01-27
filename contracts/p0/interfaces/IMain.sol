@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/libraries/Basket.sol";
@@ -22,9 +23,7 @@ struct Config {
     // Ratios
     Fix maxTradeSlippage; // max slippage acceptable in a trade
     Fix maxAuctionSize; // max size of an auction / (RToken supply)
-    Fix minRecapitalizationAuctionSize; // min size of a recapitalization auction / (RToken supply)
-    Fix minRevenueAuctionSize; // min size of a revenue auction / (RToken supply)
-    Fix migrationChunk; // how much backing to migrate at a time / (RToken supply)
+    Fix minAuctionSize; // min size of an auction / (RToken supply)
     Fix issuanceRate; // number of RToken to issue per block / (RToken supply)
     Fix defaultThreshold; // multiplier beyond which a token is marked as in-default
 
@@ -39,9 +38,7 @@ struct Config {
     // maxTradeSlippage = 0.01 (1%)
     // auctionClearingTolerance = 0.1 (10%)
     // maxAuctionSize = 0.01 (1%)
-    // minRecapitalizationAuctionSize = 0.001 (0.1%)
-    // minRevenueAuctionSize = 0.0001 (0.01%)
-    // migrationChunk = 0.2 (20%)
+    // minAuctionSize = 0.001 (0.1%)
     // issuanceRate = 0.00025 (0.025% per block, or ~0.1% per minute)
     // defaultThreshold = 0.05 (5% deviation, either above or below)
 }
@@ -132,13 +129,9 @@ interface ISettingsHandler {
 
     function setMaxTradeSlippage(Fix maxTradeSlippage) external;
 
-    function setMaxAuctionSize(Fix maxTradeSlippage) external;
+    function setMaxAuctionSize(Fix maxAuctionSize) external;
 
-    function setMinRecapitalizationAuctionSize(Fix minRecapitalizationAuctionSize) external;
-
-    function setMinRevenueAuctionSize(Fix minRevenueAuctionSize) external;
-
-    function setMigrationChunk(Fix migrationChunk) external;
+    function setMinAuctionSize(Fix minAuctionSize) external;
 
     function setIssuanceRate(Fix issuanceRate) external;
 
@@ -174,11 +167,7 @@ interface ISettingsHandler {
 
     function maxAuctionSize() external view returns (Fix);
 
-    function minRecapitalizationAuctionSize() external view returns (Fix);
-
-    function minRevenueAuctionSize() external view returns (Fix);
-
-    function migrationChunk() external view returns (Fix);
+    function minAuctionSize() external view returns (Fix);
 
     function issuanceRate() external view returns (Fix);
 
@@ -202,7 +191,7 @@ interface ISettingsHandler {
     function rToken() external view returns (IRToken);
 
     /// @return The RSR deployment
-    function rsr() external view returns (IERC20);
+    function rsr() external view returns (IERC20Metadata);
 }
 
 interface IBasketHandler {
@@ -234,8 +223,6 @@ interface IBasketHandler {
     function fullyCapitalized() external view returns (bool);
 
     function worstCollateralStatus() external view returns (CollateralStatus status);
-
-    function basketPrice() external view returns (Fix);
 }
 
 interface IAuctioneerEvents {
@@ -326,6 +313,8 @@ interface IRTokenIssuer {
     function quote(uint256 amount) external view returns (uint256[] memory);
 
     function maxIssuable(address account) external view returns (uint256);
+
+    function projectedMcap() external view returns (Fix p);
 }
 
 /**

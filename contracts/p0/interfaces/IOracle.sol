@@ -33,7 +33,7 @@ interface IAaveOracle {
 }
 
 interface IOracle {
-    /// @return p {attoUSD/tok} The attoUSD price of a whole token
+    /// @return p {USD/tok} The USD price of a whole token
     function consult(IERC20Metadata erc20) external view returns (Fix p);
 
     function comptroller() external view returns (IComptroller);

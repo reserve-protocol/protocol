@@ -99,19 +99,9 @@ library Lib {
                 "Config.maxAuctionSize"
             ) &&
             assertEq(
-                _rawFix(a.minRecapitalizationAuctionSize),
-                _rawFix(b.minRecapitalizationAuctionSize),
-                "Config.minRecapitalizationAuctionSize"
-            ) &&
-            assertEq(
-                _rawFix(a.minRevenueAuctionSize),
-                _rawFix(b.minRevenueAuctionSize),
-                "Config.minRevenueAuctionSize"
-            ) &&
-            assertEq(
-                _rawFix(a.migrationChunk),
-                _rawFix(b.migrationChunk),
-                "Config.migrationChunk"
+                _rawFix(a.minAuctionSize),
+                _rawFix(b.minAuctionSize),
+                "Config.minAuctionSize"
             ) &&
             assertEq(_rawFix(a.issuanceRate), _rawFix(b.issuanceRate), "Config.issuanceRate") &&
             assertEq(
@@ -212,11 +202,11 @@ library Lib {
     function _assertBUEq(BU memory a, BU memory b) internal pure returns (bool ok) {
         ok =
             assertEq(a.assets.length, b.assets.length, "Tokens size mismatch") &&
-            assertEq(a.refTargets.length, b.refTargets.length, "Portions size mismatch") &&
-            assertEq(a.assets.length, a.refTargets.length, "invalid input");
+            assertEq(a.refAmts.length, b.refAmts.length, "Portions size mismatch") &&
+            assertEq(a.assets.length, a.refAmts.length, "invalid input");
 
-        for (uint256 i = 0; ok && i < a.refTargets.length; i++) {
-            ok = assertEq(a.refTargets[i], b.refTargets[i], "BU quantities mismatch");
+        for (uint256 i = 0; ok && i < a.refAmts.length; i++) {
+            ok = assertEq(a.refAmts[i], b.refAmts[i], "BU quantities mismatch");
         }
     }
 

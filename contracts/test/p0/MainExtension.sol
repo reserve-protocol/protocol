@@ -42,7 +42,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     function basketRefTargets() external view returns (Fix[] memory targets) {
         targets = new Fix[](_basket.size);
         for (uint256 i = 0; i < _basket.size; i++) {
-            targets[i] = _basket.refTargets[_basket.collateral[i]];
+            targets[i] = _basket.refAmts[_basket.collateral[i]];
         }
     }
 
@@ -101,12 +101,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && defaultDelay() > 0;
         ok = ok && maxTradeSlippage().gte(FIX_ZERO) && maxTradeSlippage().lte(FIX_ONE);
         ok = ok && maxAuctionSize().gte(FIX_ZERO) && maxAuctionSize().lte(FIX_ONE);
-        ok =
-            ok &&
-            minRecapitalizationAuctionSize().gte(FIX_ZERO) &&
-            minRecapitalizationAuctionSize().lte(FIX_ONE);
-        ok = ok && minRevenueAuctionSize().gte(FIX_ZERO) && minRevenueAuctionSize().lte(FIX_ONE);
-        ok = ok && migrationChunk().gte(FIX_ZERO) && migrationChunk().lte(FIX_ONE);
+        ok = ok && minAuctionSize().gte(FIX_ZERO) && minAuctionSize().lte(FIX_ONE);
         ok = ok && issuanceRate().gte(FIX_ZERO) && issuanceRate().lte(FIX_ONE);
         ok = ok && defaultThreshold().gte(FIX_ZERO) && defaultThreshold().lte(FIX_ONE);
         if (!ok) {
@@ -172,11 +167,11 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     function _INVARIANT_pricesDefined() internal view returns (bool ok) {
         ok = true;
         for (uint256 i = 0; i < _basket.size; i++) {
-            ok = ok && _basket.collateral[i].price().gt(FIX_ZERO);
+            ok = ok && _basket.collateral[i].marketPrice().gt(FIX_ZERO);
         }
-        ok = ok && compAsset().price().gt(FIX_ZERO);
-        ok = ok && rsrAsset().price().gt(FIX_ZERO);
-        ok = ok && aaveAsset().price().gt(FIX_ZERO);
+        ok = ok && compAsset().marketPrice().gt(FIX_ZERO);
+        ok = ok && rsrAsset().marketPrice().gt(FIX_ZERO);
+        ok = ok && aaveAsset().marketPrice().gt(FIX_ZERO);
         if (!ok) {
             console.log("_INVARIANT_pricesDefined violated");
         }

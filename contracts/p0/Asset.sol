@@ -30,9 +30,9 @@ contract AssetP0 is IAsset, Context {
     /// @dev Intended to be used via delegatecall
     function claimAndSweepRewards(ICollateral, IMain) external virtual override {}
 
-    /// @return {attoUSD/qTok} The price of 1 qToken in attoUSD
-    function price() public view virtual override returns (Fix) {
-        return oracle.consult(erc20).shiftLeft(-int8(erc20.decimals()));
+    /// @return {USD/tok} The price of 1 whole token in USD, based on oracle pricing
+    function marketPrice() public view virtual override returns (Fix) {
+        return oracle.consult(erc20);
     }
 
     /// @return If the asset is an instance of ICollateral or not
