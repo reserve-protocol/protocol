@@ -527,6 +527,39 @@ describe('MainP0 contract', () => {
         await collateral3.erc20(),
       ])
     })
+
+    it.only('Should allow to set Revenue Furnace if Owner and perform validations', async () => {
+      // Setup test furnaces
+      const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')
+      const newFurnace = <FurnaceP0>await FurnaceFactory.deploy(rToken.address, config.rewardPeriod)
+      const invalidFurnace = <FurnaceP0>await FurnaceFactory.deploy(rToken.address, 0)
+
+      // Check existing value
+      expect(await main.revenueFurnace()).to.equal(furnace.address)
+
+      // If not owner cannot update
+      await expect(main.connect(other).setRevenueFurnace(newFurnace.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.revenueFurnace()).to.equal(furnace.address)
+
+      // Update with owner
+      await main.connect(owner).setRevenueFurnace(newFurnace.address)
+
+      // Check value was updated
+      expect(await main.revenueFurnace()).to.equal(newFurnace.address)
+
+      // Ensure validation of reward period is checked
+      // Should not be able to update to a furnace with different rewardPeriod
+      await expect(
+        main.connect(owner).setRevenueFurnace(invalidFurnace.address)
+      ).to.be.revertedWith('does not match rewardPeriod')
+
+      // Check furnace was not updated
+      expect(await main.revenueFurnace()).to.equal(newFurnace.address)
+    })
   })
 
   describe('Asset Registry', () => {
