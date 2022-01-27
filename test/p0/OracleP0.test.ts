@@ -96,36 +96,36 @@ describe('OracleP0 contract', () => {
   describe('Prices', () => {
     it('Oracles should return initial prices correctly', async () => {
       // Compound Oracle
-      expect(await compoundOracle.consult(token.address)).to.equal(fp('1e18'))
-      expect(await compoundOracle.consult(usdc.address)).to.equal(fp('1e18'))
-      expect(await compoundOracle.consult(aToken.address)).to.equal(fp('1e18'))
-      expect(await compoundOracle.consult(cToken.address)).to.equal(fp('1e18'))
+      expect(await compoundOracle.consult(token.address)).to.equal(fp('1'))
+      expect(await compoundOracle.consult(usdc.address)).to.equal(fp('1'))
+      expect(await compoundOracle.consult(aToken.address)).to.equal(fp('1'))
+      expect(await compoundOracle.consult(cToken.address)).to.equal(fp('1'))
 
       // Aave Oracle
-      expect(await aaveOracle.consult(token.address)).to.equal(fp('1e18'))
-      expect(await aaveOracle.consult(usdc.address)).to.equal(fp('1e18'))
-      expect(await aaveOracle.consult(aToken.address)).to.equal(fp('1e18'))
-      expect(await aaveOracle.consult(cToken.address)).to.equal(fp('1e18'))
+      expect(await aaveOracle.consult(token.address)).to.equal(fp('1'))
+      expect(await aaveOracle.consult(usdc.address)).to.equal(fp('1'))
+      expect(await aaveOracle.consult(aToken.address)).to.equal(fp('1'))
+      expect(await aaveOracle.consult(cToken.address)).to.equal(fp('1'))
     })
 
     it('Oracles should return correct prices for fiat Tokens', async () => {
       // Increase price of fiat Token by 20%
       await aaveOracleInternal.setPrice(token.address, bn('3e14'))
-      expect(await aaveOracle.consult(token.address)).to.equal(fp('1.2e18'))
+      expect(await aaveOracle.consult(token.address)).to.equal(fp('1.2'))
 
       // Increase price of 6-decimal fiat Token by 10%
       await aaveOracleInternal.setPrice(usdc.address, bn('2.75e14'))
-      expect(await aaveOracle.consult(usdc.address)).to.equal(fp('1.1e18'))
+      expect(await aaveOracle.consult(usdc.address)).to.equal(fp('1.1'))
     })
 
     it('Oracles should return same price for ATokens/CTokens even if underlying changes', async () => {
       // Increase price of underlying for CToken by 10%
       await compoundOracleInternal.setPrice(await token.symbol(), bn('1.1e6'))
-      expect(await compoundOracle.consult(cToken.address)).to.equal(fp('1e18'))
+      expect(await compoundOracle.consult(cToken.address)).to.equal(fp('1'))
 
       // Increase price of underlying for AToken by 10%
       await aaveOracleInternal.setPrice(token.address, bn('2.75e14'))
-      expect(await aaveOracle.consult(aToken.address)).to.equal(fp('1e18'))
+      expect(await aaveOracle.consult(aToken.address)).to.equal(fp('1'))
     })
 
     it('Oracles should return same price when ATokens/CTokens appreciate', async () => {
@@ -134,10 +134,10 @@ describe('OracleP0 contract', () => {
       await cToken.setExchangeRate(fp(2))
 
       // Compound Oracle
-      expect(await compoundOracle.consult(cToken.address)).to.equal(fp('1e18'))
+      expect(await compoundOracle.consult(cToken.address)).to.equal(fp('1'))
 
       // Aave Oracle
-      expect(await aaveOracle.consult(aToken.address)).to.equal(fp('1e18'))
+      expect(await aaveOracle.consult(aToken.address)).to.equal(fp('1'))
     })
   })
 })
