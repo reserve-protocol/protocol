@@ -176,11 +176,7 @@ describe('MainP0 contract', () => {
       expect(await main.defaultDelay()).to.equal(config.defaultDelay)
       expect(await main.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
       expect(await main.maxAuctionSize()).to.equal(config.maxAuctionSize)
-      expect(await main.minRecapitalizationAuctionSize()).to.equal(
-        config.minRecapitalizationAuctionSize
-      )
-      expect(await main.minRevenueAuctionSize()).to.equal(config.minRevenueAuctionSize)
-      expect(await main.migrationChunk()).to.equal(config.migrationChunk)
+      expect(await main.minAuctionSize()).to.equal(config.minAuctionSize)
       expect(await main.issuanceRate()).to.equal(config.issuanceRate)
       expect(await main.defaultThreshold()).to.equal(config.defaultThreshold)
     })
@@ -443,71 +439,25 @@ describe('MainP0 contract', () => {
       expect(await main.maxAuctionSize()).to.equal(newValue)
     })
 
-    it('Should allow to update minRecapitalizationAuctionSize if Owner', async () => {
+    it('Should allow to update minAuctionSize if Owner', async () => {
       const newValue: BigNumber = fp('0.02')
 
       // Check existing value
-      expect(await main.minRecapitalizationAuctionSize()).to.equal(
-        config.minRecapitalizationAuctionSize
-      )
+      expect(await main.minAuctionSize()).to.equal(config.minAuctionSize)
 
       // If not owner cannot update
-      await expect(
-        main.connect(other).setMinRecapitalizationAuctionSize(newValue)
-      ).to.be.revertedWith('Ownable: caller is not the owner')
-
-      // Check value did not change
-      expect(await main.minRecapitalizationAuctionSize()).to.equal(
-        config.minRecapitalizationAuctionSize
-      )
-
-      // Update with owner
-      await main.connect(owner).setMinRecapitalizationAuctionSize(newValue)
-
-      // Check value was updated
-      expect(await main.minRecapitalizationAuctionSize()).to.equal(newValue)
-    })
-
-    it('Should allow to update minRevenueAuctionSize if Owner', async () => {
-      const newValue: BigNumber = fp('0.02')
-
-      // Check existing value
-      expect(await main.minRevenueAuctionSize()).to.equal(config.minRevenueAuctionSize)
-
-      // If not owner cannot update
-      await expect(main.connect(other).setMinRevenueAuctionSize(newValue)).to.be.revertedWith(
+      await expect(main.connect(other).setMinAuctionSize(newValue)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
 
       // Check value did not change
-      expect(await main.minRevenueAuctionSize()).to.equal(config.minRevenueAuctionSize)
+      expect(await main.minAuctionSize()).to.equal(config.minAuctionSize)
 
       // Update with owner
-      await main.connect(owner).setMinRevenueAuctionSize(newValue)
+      await main.connect(owner).setMinAuctionSize(newValue)
 
       // Check value was updated
-      expect(await main.minRevenueAuctionSize()).to.equal(newValue)
-    })
-
-    it('Should allow to update migrationChunk if Owner', async () => {
-      const newValue: BigNumber = fp('0.5')
-
-      // Check existing value
-      expect(await main.migrationChunk()).to.equal(config.migrationChunk)
-
-      // If not owner cannot update
-      await expect(main.connect(other).setMigrationChunk(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
-
-      // Check value did not change
-      expect(await main.migrationChunk()).to.equal(config.migrationChunk)
-
-      // Update with owner
-      await main.connect(owner).setMigrationChunk(newValue)
-
-      // Check value was updated
-      expect(await main.migrationChunk()).to.equal(newValue)
+      expect(await main.minAuctionSize()).to.equal(newValue)
     })
 
     it('Should allow to update issuanceRate if Owner', async () => {
