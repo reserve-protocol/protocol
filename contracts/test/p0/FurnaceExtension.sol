@@ -25,7 +25,7 @@ contract FurnaceExtension is ContextMixin, FurnaceP0, IExtension {
 
     function assertInvariants() external override {
         _INVARIANT_stateDefined();
-        _INVARIANT_meltIdempotent();
+        _INVARIANT_burnIdempotent();
     }
 
     function _msgSender() internal view override returns (address) {
@@ -37,10 +37,10 @@ contract FurnaceExtension is ContextMixin, FurnaceP0, IExtension {
     }
 
     /// Burns any vested RToken and checks that the second call is a no-op
-    function _INVARIANT_meltIdempotent() internal {
-        doMelt();
-        uint256 mid = rToken.totalMelted();
-        doMelt();
-        assert(mid == rToken.totalMelted());
+    function _INVARIANT_burnIdempotent() internal {
+        doBurn();
+        uint256 burnt = rToken.totalSupply();
+        doBurn();
+        assert(burnt == rToken.totalSupply());
     }
 }

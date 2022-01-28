@@ -24,13 +24,13 @@ contract FurnaceP0 is Ownable, IFurnace {
     struct Batch {
         uint256 amount; // {qTok}
         uint256 start; // {timestamp}
-        uint256 melted; // {qTok}
+        uint256 burnt; // {qTok}
     }
 
     Batch[] public batches;
-    uint256 private firstBatch; // Invariant: if i < firstBatch, then batches[i] is fully melted.
+    uint256 private firstBatch; // Invariant: if i < firstBatch, then batches[i] is fully burnt.
 
-    /// @param batchDuration_ {sec} The number of seconds to spread the melt over
+    /// @param batchDuration_ {sec} The number of seconds to spread the burn over
     constructor(IRToken rToken_, uint256 batchDuration_) {
         require(address(rToken_) != address(0), "rToken is zero address");
         rToken = rToken_;
@@ -39,14 +39,14 @@ contract FurnaceP0 is Ownable, IFurnace {
 
     /// Causes the Furnace to re-examine its holdings and create new batches.
     function notifyOfDeposit(IERC20 erc20) external override {
-        require(address(erc20) == address(rToken), "RToken melting only");
+        require(address(erc20) == address(rToken), "RToken only");
 
         // Compute the previously-unregistered amount as `amount`
         uint256 balance = erc20.balanceOf(address(this));
         uint256 batchTotal;
         for (uint256 i = 0; i < batches.length; i++) {
             Batch storage batch = batches[i];
-            batchTotal += batch.amount - batch.melted;
+            batchTotal += batch.amount - batch.burnt;
         }
         uint256 amount = balance - batchTotal;
 
@@ -57,29 +57,29 @@ contract FurnaceP0 is Ownable, IFurnace {
     }
 
     /// Performs any burning that has vested since last call. Idempotent
-    function doMelt() public override {
+    function doBurn() public override {
         // Compute the current total to melt across the batches,
         // and pull that total out of the batches that are here.
 
-        uint256 toMelt = 0;
+        uint256 toBurn = 0;
         for (uint256 i = firstBatch; i < batches.length; i++) {
             Batch storage batch = batches[i];
-            if (batch.melted < batch.amount) {
-                // Pull the meltable amount out of batch and register it melted.
+            if (batch.burnt < batch.amount) {
+                // Pull the burnable amount out of batch and register it burnt.
                 uint256 amt = vestedAmount(batch, block.timestamp);
-                toMelt += amt - batch.melted;
-                batch.melted = amt;
+                toBurn += amt - batch.burnt;
+                batch.burnt = amt;
             }
 
-            if (i == firstBatch && batch.melted == batch.amount) {
+            if (i == firstBatch && batch.burnt == batch.amount) {
                 firstBatch++;
             }
         }
 
-        if (toMelt > 0) {
-            bool success = rToken.melt(address(this), toMelt);
-            require(success, "should melt from self successfully");
-            emit Melted(toMelt);
+        if (toBurn > 0) {
+            bool success = rToken.burn(address(this), toBurn);
+            require(success, "should burn successfully");
+            emit Burnt(toBurn);
         }
     }
 

@@ -142,57 +142,20 @@ contract AuctioneerP0 is
         }
     }
 
-    /// Mint RToken to an inaccessible address in order to get back to capitalized
+    /// Compromise on the BU target in order to become recapitalized again
     function diluteRTokenHolders() private {
         assert(!hasOpenAuctions() && !fullyCapitalized());
-
-        /*
-         * Since the collateral must be relatively in balance at this point,
-         *   we can just do some clever accounting to recover. Main has the
-         *   ability to mint RToken. That _itself_ is worth something, even
-         *   without interfacing with external markets. It's uhhh...finance?
-         */
-
-        // Let:
-        //   x = RToken supply
-        //   y = RTokens melted
-        //   z = BUs
-        //
-        // x = z * baseFactor = z * (y + x) / x
-        // x^2 - xz - yz = 0
-        //
-        // Applying the quadratic equation:
-        //   x = (z +- sqrt(z^2 - 4 * 1 * (-yz))) / 2
-        // We only want to keep the positive solution. So:
-        //   x = (z + sqrt(z^2 + 4yz)) / 2
-
-        Fix y = toFixWithShift(rToken().totalMelted(), -int8(rToken().decimals())); // {rTok}
-        Fix z = actualBUHoldings(); // {BU}
-
-        // TODO FixedLib.sqrt implementation
-        Fix x = z.plus(z.mul(z).plus(y.mul(z).mulu(4)).sqrt()).divu(2);
-
-        // {qRTok} = {rTok} * {qRTok/rTok}
-        uint256 targetSupply = x.shiftLeft(int8(rToken().decimals())).ceil();
-        assert(targetSupply > rToken().totalSupply());
-
-        // Mint to the 0x1 address
-        rToken().mint(address(1), targetSupply - rToken().totalSupply());
-
-        // Finance!
+        targetBUs = actualBUHoldings();
         assert(fullyCapitalized());
     }
 
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
-        Fix target = targetBUs();
-
         // First mint RToken
         Fix actual = actualBUHoldings();
-        if (actual.gt(target)) {
-            uint256 toMint = fromBUs(actual.minus(target));
+        if (actual.gt(targetBUs)) {
+            uint256 toMint = fromBUs(actual.minus(targetBUs));
             rToken().mint(address(this), toMint);
-            target = targetBUs();
         }
 
         // Handout excess assets, including RToken
@@ -204,7 +167,7 @@ contract AuctioneerP0 is
                 ICollateral c = ICollateral(_assets.at(i));
 
                 // {tok} = {BU} * {ref/BU} / {ref/tok}
-                Fix tokRequired = target.mul(basket.refAmts[c]).div(c.refPerTok());
+                Fix tokRequired = targetBUs.mul(basket.refAmts[c]).div(c.refPerTok());
 
                 // {qTok} = {tok} * {qTok/tok}
                 required = tokRequired.shiftLeft(int8(c.erc20().decimals())).ceil();
@@ -239,8 +202,6 @@ contract AuctioneerP0 is
             Fix
         )
     {
-        Fix targetBUs = targetBUs(); // number of BUs needed to back the RToken fully
-
         // Calculate surplus and deficits relative to basket reference amounts.
         Fix[] memory prices = new Fix[](_assets.length()); // {USD/tok}
         Fix[] memory surpluses = new Fix[](_assets.length()); // {USD}

@@ -56,7 +56,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     /// Process pending issuances on poke
     function poke() public virtual override(Mixin, BasketHandlerP0) notPaused {
         super.poke();
-        revenueFurnace().doMelt();
+        revenueFurnace().doBurn();
         processSlowIssuance();
     }
 
@@ -64,11 +64,13 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     /// @param amount {qTok} The quantity of RToken to issue
     function issue(uint256 amount) public override notPaused {
         require(amount > 0, "Cannot issue zero");
-        revenueFurnace().doMelt();
+        revenueFurnace().doBurn();
         tryEnsureValidBasket();
         require(worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
-        uint256[] memory deposits = basket.deposit(_msgSender(), toBUs(amount));
+        Fix amtBUs = toBUs(amount);
+        uint256[] memory deposits = basket.deposit(_msgSender(), amtBUs);
+        targetBUs = targetBUs.plus(amtBUs); // TODO Double-check the ordering with .deposit()
 
         // During SlowIssuance, RTokens are minted and held by Main until vesting completes
         SlowIssuance memory iss = SlowIssuance({
@@ -96,12 +98,16 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     function redeem(uint256 amount) public override {
         require(amount > 0, "Cannot redeem zero");
-        revenueFurnace().doMelt();
+        revenueFurnace().doBurn();
 
+        Fix amtBUs = toBUs(amount);
         uint256[] memory compensation = fullyCapitalized()
-            ? basket.withdraw(_msgSender(), toBUs(amount))
+            ? basket.withdraw(_msgSender(), amtBUs)
             : basket.withdrawProrata(_msgSender(), divFix(amount, toFix(rToken().totalSupply())));
         rToken().burn(_msgSender(), amount);
+
+        // TODO Double-check the order with .withdraw
+        targetBUs = targetBUs.minus(amtBUs);
 
         emit Redemption(_msgSender(), amount, basket.backingERC20s(), compensation);
     }
@@ -129,7 +135,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     /// @return p {USD/rTok} The protocol's best guess of the RToken price on markets
     function rTokenPrice() public view override returns (Fix p) {
         // {USD/rTok} = {USD/BU} * {BU/rTok}
-        return basket.price().mul(baseFactor());
+        return basket.price().mul(amtBUsPerRTok());
     }
 
     // Returns the future block number at which an issuance for *amount* now can complete

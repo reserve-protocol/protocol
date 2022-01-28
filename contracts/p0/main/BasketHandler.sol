@@ -53,6 +53,8 @@ contract BasketHandlerP0 is
     Basket internal basket;
     uint256 internal blockBasketLastUpdated; // {block number} last set
 
+    Fix internal targetBUs; // {BU}
+
     function init(ConstructorArgs calldata args)
         public
         virtual
@@ -119,7 +121,7 @@ contract BasketHandlerP0 is
 
     /// @return Whether it holds enough basket units of collateral
     function fullyCapitalized() public view override returns (bool) {
-        return actualBUHoldings().gte(targetBUs());
+        return actualBUHoldings().gte(targetBUs);
     }
 
     /// @return status The maximum CollateralStatus among basket collateral
@@ -132,13 +134,6 @@ contract BasketHandlerP0 is
                 status = basket.collateral[i].status();
             }
         }
-    }
-
-    /// @return {BU/rTok} (melted + totalSupply) / totalSupply
-    function baseFactor() public view override returns (Fix) {
-        Fix supply = toFix(rToken().totalSupply()); // {qRTok}
-        Fix melted = toFix(rToken().totalMelted()); // {qRTok}
-        return supply.eq(FIX_ZERO) ? FIX_ONE : supply.plus(melted).div(supply);
     }
 
     /// @return p {USD} An estimate at the net worth of all assets held at this address
@@ -171,26 +166,29 @@ contract BasketHandlerP0 is
         }
     }
 
-    /// @return {BU} The BU target to be considered capitalized
-    function targetBUs() internal view returns (Fix) {
-        return toBUs(rToken().totalSupply());
-    }
-
     /// @return {BU} The equivalent of the current holdings in BUs without considering trading
     function actualBUHoldings() internal view returns (Fix) {
         return basket.virtualBUs(address(this));
     }
 
+    /// @return {BU/rTok} The observed exchange rate between BUs and rTok
+    function amtBUsPerRTok() internal view returns (Fix) {
+        Fix rTok = toFixWithShift(rToken().totalSupply(), -int8(rToken().decimals()));
+
+        // {BU} = {BU} / {rTok}
+        return rTok.eq(FIX_ZERO) ? FIX_ONE : targetBUs.div(rTok);
+    }
+
     /// {qRTok} -> {BU}
     function toBUs(uint256 amount) internal view returns (Fix) {
         // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
-        return baseFactor().mulu(amount).shiftLeft(-int8(rToken().decimals()));
+        return amtBUsPerRTok().mulu(amount).shiftLeft(-int8(rToken().decimals()));
     }
 
     /// {BU} -> {qRTok}
     function fromBUs(Fix amtBUs) internal view returns (uint256) {
         // {qRTok} = {BU} / {BU/rTok} * {qRTok/rTok}
-        return amtBUs.div(baseFactor()).shiftLeft(int8(rToken().decimals())).floor();
+        return amtBUs.div(amtBUsPerRTok()).shiftLeft(int8(rToken().decimals())).floor();
     }
 
     // newBasket is effectively a local variable of _switchBasket. Nothing should use its value

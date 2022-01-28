@@ -13,8 +13,6 @@ import "contracts/p0/interfaces/IRToken.sol";
 contract RTokenP0 is Ownable, ERC20, IRToken {
     IMain public main;
 
-    uint256 public override totalMelted;
-
     // solhint-disable no-empty-blocks
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
 
@@ -35,17 +33,6 @@ contract RTokenP0 is Ownable, ERC20, IRToken {
     function burn(address from, uint256 amount) external virtual override returns (bool) {
         require(_msgSender() == from || _msgSender() == address(main), "only self or main");
         _burn(from, amount);
-        return true;
-    }
-
-    /// Melts a quantity of RToken from an account
-    /// @param from The account from which RToken should be melted
-    /// @param amount {qTok} The amount to be melted
-    /// @return true
-    function melt(address from, uint256 amount) external virtual override returns (bool) {
-        require(_msgSender() == from, "only self");
-        _burn(from, amount);
-        totalMelted += amount;
         return true;
     }
 

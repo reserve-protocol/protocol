@@ -22,18 +22,10 @@ interface IRToken is IERC20Metadata {
     /// @return true
     function burn(address from, uint256 amount) external returns (bool);
 
-    /// Melts a quantity of RToken from the caller's account
-    /// @param from The account from which RToken should be melted
-    /// @param amount {qRTok} The amount to be melted
-    /// @return true
-    function melt(address from, uint256 amount) external returns (bool);
-
     /// Withdraws a quantity of RToken from the RToken itself
     /// @param to The address to send the tokens to
     /// @param amount {qRTok} The amount to be withdrawn
     function withdraw(address to, uint256 amount) external;
 
     function setMain(IMain main) external;
-
-    function totalMelted() external view returns (uint256);
 }

@@ -70,7 +70,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         assert(INVARIANT_tokensAndQuantitiesSameLength());
         assert(INVARIANT_pricesDefined());
         assert(INVARIANT_issuancesAreValid());
-        assert(INVARIANT_baseFactorDefined());
+        assert(INVARIANT_amtBUsPerRTokDefined());
         assert(INVARIANT_toBUInverseFromBU());
         assert(INVARIANT_fromBUInverseToBU());
     }
@@ -187,17 +187,17 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     // Ex-asset manager
 
-    function INVARIANT_baseFactorDefined() internal view returns (bool ok) {
-        Fix b = baseFactor();
+    function INVARIANT_amtBUsPerRTokDefined() internal view returns (bool ok) {
+        Fix b = amtBUsPerRTok();
         ok = b.gt(FIX_ZERO);
         if (!ok) {
-            console.log("INVARIANT_baseFactorDefined violated");
+            console.log("INVARIANT_amtBUsPerRTokDefined violated");
         }
     }
 
     function INVARIANT_toBUInverseFromBU() internal view returns (bool ok) {
         ok = true;
-        Fix converted = toFix(fromBUs(targetBUs()));
+        Fix converted = toFix(fromBUs(targetBUs));
         ok = ok && converted.near(toFix(rToken().totalSupply()), toFix(2)); // < 2 away
         if (!ok) {
             console.log(

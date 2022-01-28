@@ -218,8 +218,6 @@ interface IBasketHandler {
     /// Actually switch the current basket, based on the configuration. Is onlyOwner.
     function switchBasket() external returns (bool);
 
-    function baseFactor() external view returns (Fix);
-
     function fullyCapitalized() external view returns (bool);
 
     function worstCollateralStatus() external view returns (CollateralStatus status);
