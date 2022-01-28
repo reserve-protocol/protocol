@@ -36,7 +36,9 @@ contract CTokenCollateralP0 is CollateralP0 {
         IMain main_,
         IOracle oracle_,
         bytes32 targetName_
-    ) CollateralP0(erc20_, referenceERC20_, main_, oracle_, targetName_) {}
+    ) CollateralP0(erc20_, referenceERC20_, main_, oracle_, targetName_) {
+        prevReferencePrice = refPerTok();
+    }
 
     // solhint-enable no-empty-blocks
 
