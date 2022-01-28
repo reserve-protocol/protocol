@@ -126,21 +126,10 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         return _basket.backingERC20s();
     }
 
-    /// @return p {USD} The protocol's expectation about the current RToken market cap, in USD
-    function projectedMcap() public view override returns (Fix p) {
-        Fix amtBUs = _actualBUHoldings();
-        for (uint256 i = 0; i < _basket.size; i++) {
-            ICollateral c = _basket.collateral[i];
-
-            // Exclude collateral that has defaulted
-            if (c.status() != CollateralStatus.DISABLED) {
-                // {USD} = {BU} * {ref/BU} * {target/ref} * {USD/target}
-                Fix add = amtBUs.mul(_basket.refAmts[c]).mul(c.peggedTargetPerRef()).mul(
-                    c.marketPricePerTarget()
-                );
-                p = p.plus(add);
-            }
-        }
+    /// @return p {USD/rTok} The protocol's best guess of the RToken price on markets
+    function rTokenPrice() public view override returns (Fix p) {
+        // {USD/rTok} = {USD/BU} * {BU/rTok}
+        return _basket.price().mul(baseFactor());
     }
 
     // Returns the future block number at which an issuance for *amount* now can complete

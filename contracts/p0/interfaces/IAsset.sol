@@ -13,8 +13,8 @@ import "./IMain.sol";
  * to be an asset.
  */
 interface IAsset {
-    /// @return {USD/tok} The price of 1 whole token in USD, based on oracle pricing
-    function marketPrice() external view returns (Fix);
+    /// @return {USD/tok} Our best guess at the market price of 1 whole token in USD
+    function price() external view returns (Fix);
 
     /// @dev Intended to be used via delegatecall, hence the `collateral` duplication
     function claimAndSweepRewards(ICollateral collateral, IMain main) external;
@@ -58,9 +58,9 @@ interface ICollateral is IAsset {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() external view returns (Fix);
 
-    /// @return {target/ref} Quantity of whole target units per whole reference unit, /wo oracles
+    /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function peggedTargetPerRef() external view returns (Fix);
 
-    /// @return {USD/target} The price of a target unit in USD (typically: 1)
-    function marketPricePerTarget() external view returns (Fix);
+    /// @return {USD/target} The price of the target unit in USD (usually this is {USD/USD} = 1)
+    function usdPerTarget() external view returns (Fix);
 }

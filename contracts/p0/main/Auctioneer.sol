@@ -152,7 +152,7 @@ contract AuctioneerP0 is
             ICollateral c = _basket.collateral[i];
 
             // {USD/tok} = {ref/tok} * {target/ref} * {USD/target}
-            Fix p = c.refPerTok().mul(c.peggedTargetPerRef()).mul(c.marketPricePerTarget());
+            Fix p = c.refPerTok().mul(c.peggedTargetPerRef()).mul(c.usdPerTarget());
 
             // {tok}
             Fix tokBal = toFixWithShift(
@@ -166,7 +166,7 @@ contract AuctioneerP0 is
 
         // {USD/buyTok} = {ref/buyTok} * {target/ref} * {USD/target}
         Fix deficitPrice = deficit.refPerTok().mul(deficit.peggedTargetPerRef()).mul(
-            deficit.marketPricePerTarget()
+            deficit.usdPerTarget()
         );
 
         // {USD} = {USD/buyTok} * {buyTok}
@@ -259,12 +259,12 @@ contract AuctioneerP0 is
                 ICollateral c = ICollateral(_assets.at(i));
 
                 // {USD/tok} = {ref/tok} * {target/ref} * {USD/target}
-                prices[i] = c.refPerTok().mul(c.peggedTargetPerRef()).mul(c.marketPricePerTarget());
+                prices[i] = c.refPerTok().mul(c.peggedTargetPerRef()).mul(c.usdPerTarget());
 
                 // {USD} = {BU} * {ref/BU} / {ref/tok} * {USD/tok}
                 required = targetBUs.mul(_basket.refAmts[c]).div(c.refPerTok()).mul(prices[i]);
             } else {
-                prices[i] = a.marketPrice();
+                prices[i] = a.price();
             }
 
             // {tok} = {qTok} / {qTok/tok}

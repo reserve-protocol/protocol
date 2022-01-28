@@ -75,9 +75,9 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     }
 
     /// @return {USD/tok} The price of 1 whole token in USD, based on oracle pricing
-    function marketPrice() public view virtual override(AssetP0, IAsset) returns (Fix) {
+    function price() public view virtual override(AssetP0, IAsset) returns (Fix) {
         // {USD/tok} = {target/ref} * {ref/tok} * {USD/target}
-        return oracle.consult(referenceERC20).mul(refPerTok()).mul(marketPricePerTarget());
+        return oracle.consult(referenceERC20).mul(refPerTok()).mul(usdPerTarget());
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
@@ -91,13 +91,13 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     }
 
     /// @return {USD/target} The price of a target unit in USD (typically: 1)
-    function marketPricePerTarget() public view virtual override returns (Fix) {
+    function usdPerTarget() public view virtual override returns (Fix) {
         return FIX_ONE;
     }
 
     function _isReferenceDepegged() internal view virtual returns (bool) {
         // {USD/ref} = {USD/target} * {target/ref}
-        Fix peg = marketPricePerTarget().mul(peggedTargetPerRef());
+        Fix peg = usdPerTarget().mul(peggedTargetPerRef());
         Fix delta = peg.mul(main.defaultThreshold());
         Fix p = oracle.consult(referenceERC20);
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));

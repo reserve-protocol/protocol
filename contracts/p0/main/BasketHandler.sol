@@ -141,6 +141,22 @@ contract BasketHandlerP0 is
         return supply.eq(FIX_ZERO) ? FIX_ONE : supply.plus(melted).div(supply);
     }
 
+    /// @return p {USD} An estimate at the net worth of all assets held at this address
+    function netWorth() public view override returns (Fix p) {
+        for (uint256 i = 0; i < _assets.length(); i++) {
+            IAsset a = IAsset(_assets.at(i));
+            ICollateral c = ICollateral(_assets.at(i));
+
+            // Exclude collateral that has defaulted
+            if (!a.isCollateral() || c.status() != CollateralStatus.DISABLED) {
+                uint256 bal = a.erc20().balanceOf(address(this));
+
+                // {USD} = {USD} + {USD/tok} * {qTok} / {qTok/tok}
+                p = p.plus(a.price().mulu(bal).shiftLeft(-int8(a.erc20().decimals())));
+            }
+        }
+    }
+
     // ==== Internal ====
 
     // Check collateral statuses; Select a new basket if needed.

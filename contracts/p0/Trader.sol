@@ -60,19 +60,19 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
         IAsset buy,
         Fix sellAmount
     ) internal view returns (bool notDust, Auction memory auction) {
-        assert(sell.marketPrice().neq(FIX_ZERO) && buy.marketPrice().neq(FIX_ZERO));
+        assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
         if (sellAmount.lt(_dustThreshold(sell))) {
             return (false, auction);
         }
 
         // {USD} = {USD} * {none}
-        Fix maxSellUSD = main.projectedMcap().mul(main.maxAuctionSize());
+        Fix maxSellUSD = main.netWorth().mul(main.maxAuctionSize());
 
         // {sellTok}
-        sellAmount = fixMin(sellAmount, maxSellUSD.div(sell.marketPrice()));
+        sellAmount = fixMin(sellAmount, maxSellUSD.div(sell.price()));
 
         // {buyTok} = {sellTok} * {USD/sellTok} / {USD/buyTok}
-        Fix exactBuyAmount = sellAmount.mul(sell.marketPrice()).div(buy.marketPrice());
+        Fix exactBuyAmount = sellAmount.mul(sell.price()).div(buy.price());
         Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.maxTradeSlippage()));
 
         // TODO Check floor() and ceil() rounding below
@@ -113,7 +113,7 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
         deficitAmount = fixMax(deficitAmount, _dustThreshold(buy));
 
         // {sellTok} = {buyTok} * {USD/buyTok} / {USD/sellTok}
-        Fix exactSellAmount = deficitAmount.mul(buy.marketPrice()).div(sell.marketPrice());
+        Fix exactSellAmount = deficitAmount.mul(buy.price()).div(sell.price());
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
@@ -125,10 +125,10 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
 
     /// @return {tok} The least amount of whole tokens worth trying to sell
     function _dustThreshold(IAsset asset) internal view returns (Fix) {
-        Fix minSellUSD = main.projectedMcap().mul(main.minAuctionSize());
+        Fix minSellUSD = main.netWorth().mul(main.minAuctionSize());
 
         // {tok} = {USD} / {USD/tok}
-        return minSellUSD.div(asset.marketPrice());
+        return minSellUSD.div(asset.price());
     }
 
     /// Launch an auction:

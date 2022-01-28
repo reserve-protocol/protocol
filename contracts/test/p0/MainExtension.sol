@@ -167,11 +167,11 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     function _INVARIANT_pricesDefined() internal view returns (bool ok) {
         ok = true;
         for (uint256 i = 0; i < _basket.size; i++) {
-            ok = ok && _basket.collateral[i].marketPrice().gt(FIX_ZERO);
+            ok = ok && _basket.collateral[i].price().gt(FIX_ZERO);
         }
-        ok = ok && compAsset().marketPrice().gt(FIX_ZERO);
-        ok = ok && rsrAsset().marketPrice().gt(FIX_ZERO);
-        ok = ok && aaveAsset().marketPrice().gt(FIX_ZERO);
+        ok = ok && compAsset().price().gt(FIX_ZERO);
+        ok = ok && rsrAsset().price().gt(FIX_ZERO);
+        ok = ok && aaveAsset().price().gt(FIX_ZERO);
         if (!ok) {
             console.log("_INVARIANT_pricesDefined violated");
         }

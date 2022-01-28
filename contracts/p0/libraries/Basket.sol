@@ -131,4 +131,16 @@ library BasketLib {
             erc20s[i] = address(self.collateral[i].erc20());
         }
     }
+
+    /// @return p {USD/BU} The protocol's best guess at what a BU would be priced at in USD
+    function price(Basket storage self) internal view returns (Fix p) {
+        for (uint256 i = 0; i < self.size; i++) {
+            ICollateral c = ICollateral(self.collateral[i]);
+
+            if (c.status() != CollateralStatus.DISABLED) {
+                // {USD/BU} = {USD/BU} + {USD/tok} * {qTok/BU} / {qTok/tok}
+                p = p.plus(c.price().mul(self.quantity(c))).shiftLeft(-int8(c.erc20().decimals()));
+            }
+        }
+    }
 }

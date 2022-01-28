@@ -539,7 +539,7 @@ contract AdapterP0 is ProtoAdapter {
             _aaveOracle.setPrice(address(erc20), tokenState.price.inETH); // {qETH/tok}
             _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUSD); // {microUSD/tok}
 
-            Fix found = _assets[asset].marketPrice(); // {USD/tok}
+            Fix found = _assets[asset].price(); // {USD/tok}
             Fix expected = toFix(tokenState.price.inUSD);
             assert(found.eq(expected));
         }
@@ -559,8 +559,8 @@ contract AdapterP0 is ProtoAdapter {
                 IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
                 IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
                 newBid.buyAmount = toFix(sellAmount)
-                .mul(buyAsset.marketPrice())
-                .div(sellAsset.marketPrice())
+                .mul(buyAsset.price())
+                .div(sellAsset.price())
                 .ceil();
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(

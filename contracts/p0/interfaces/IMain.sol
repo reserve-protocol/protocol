@@ -223,6 +223,9 @@ interface IBasketHandler {
     function fullyCapitalized() external view returns (bool);
 
     function worstCollateralStatus() external view returns (CollateralStatus status);
+
+    /// @return p {USD} An estimate at the net worth of all assets held
+    function netWorth() external view returns (Fix p);
 }
 
 interface IAuctioneerEvents {
@@ -314,7 +317,8 @@ interface IRTokenIssuer {
 
     function maxIssuable(address account) external view returns (uint256);
 
-    function projectedMcap() external view returns (Fix p);
+    // {USD/rTok}
+    function rTokenPrice() external view returns (Fix p);
 }
 
 /**
