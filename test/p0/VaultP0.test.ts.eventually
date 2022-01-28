@@ -427,49 +427,6 @@ describe('VaultP0 contract', () => {
     })
   })
 
-  describe('Rewards', () => {
-    const qtyHalf: BigNumber = bn('1e18').div(2)
-
-    it('Should claim and sweep rewards', async function () {
-      // Set vault with AToken and CToken
-      const qtyHalfCToken: BigNumber = bn('1e8').div(2)
-
-      // Set reward token for the AToken
-      await token2.setAaveToken(aaveToken.address)
-
-      let newVault: VaultP0 = <VaultP0>(
-        await VaultFactory.deploy(
-          [collateral2.address, collateral3.address],
-          [qtyHalf, qtyHalfCToken],
-          []
-        )
-      )
-      // Setup Main
-      await newVault.connect(owner).setMain(main.address)
-
-      // Set COMP and AAVE tokens as reward
-      const rewardAmountCOMP: BigNumber = bn('100e18')
-      const rewardAmountAAVE: BigNumber = bn('20e18')
-      await compoundMock.setRewards(newVault.address, rewardAmountCOMP)
-      await token2.setRewards(newVault.address, rewardAmountAAVE)
-
-      // Check no funds yet
-      expect(await compToken.balanceOf(main.address)).to.equal(0)
-      expect(await aaveToken.balanceOf(main.address)).to.equal(0)
-
-      // Claim and Sweep rewards
-      await newVault.claimAndSweepRewards()
-
-      // Check rewards were transfered to Asset Manager
-      expect(await compToken.balanceOf(await main.address)).to.equal(rewardAmountCOMP)
-      expect(await aaveToken.balanceOf(await main.address)).to.equal(rewardAmountAAVE)
-
-      // No funds in vault
-      expect(await compToken.balanceOf(newVault.address)).to.equal(0)
-      expect(await aaveToken.balanceOf(newVault.address)).to.equal(0)
-    })
-  })
-
   describe('Backups', () => {
     let backupVault: VaultP0
 

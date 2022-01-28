@@ -1,14 +1,15 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { ERC20 } from '@typechain/ERC20'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
 import { CollateralStatus, MAX_UINT256 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AaveOracle } from '../../typechain/AaveOracle'
 import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
 import { CompoundOracle } from '../../typechain/CompoundOracle'
 import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
+import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainP0 } from '../../typechain/MainP0'
@@ -21,12 +22,15 @@ const createFixtureLoader = waffle.createFixtureLoader
 
 describe('CollateralP0 contracts', () => {
   let owner: SignerWithAddress
+  let other: SignerWithAddress
 
   // Tokens
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
   let cToken: CTokenMock
+  let aaveToken: ERC20Mock
+  let compToken: ERC20Mock
 
   // Assets
   let tokenAsset: Collateral
@@ -35,6 +39,7 @@ describe('CollateralP0 contracts', () => {
   let cTokenAsset: Collateral
 
   // Oracles
+  let compoundMock: ComptrollerMockP0
   let compoundOracle: CompoundOracle
   let compoundOracleInternal: CompoundOracleMockP0
   let aaveOracle: AaveOracle
@@ -52,13 +57,22 @@ describe('CollateralP0 contracts', () => {
   })
 
   beforeEach(async () => {
-    ;[owner] = await ethers.getSigners()
+    ;[owner, other] = await ethers.getSigners()
 
     let basket: Collateral[]
 
       // Deploy fixture
-    ;({ compoundOracleInternal, compoundOracle, aaveOracleInternal, aaveOracle, basket, main } =
-      await loadFixture(defaultFixture))
+    ;({
+      compToken,
+      compoundMock,
+      compoundOracleInternal,
+      compoundOracle,
+      aaveToken,
+      aaveOracleInternal,
+      aaveOracle,
+      basket,
+      main,
+    } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
     tokenAsset = basket[0]
@@ -234,6 +248,19 @@ describe('CollateralP0 contracts', () => {
       expect(await usdcAsset.status()).to.equal(CollateralStatus.SOUND)
       expect(await aTokenAsset.status()).to.equal(CollateralStatus.DISABLED)
       expect(await cTokenAsset.status()).to.equal(CollateralStatus.DISABLED)
+
+      // Nothing changes if attempt to forceUpdates after default for ATokens/CTokens
+      // AToken
+      let prevWhenDefault: BigNumber = await aTokenAsset.whenDefault()
+      await aTokenAsset.forceUpdates()
+      expect(await aTokenAsset.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await aTokenAsset.whenDefault()).to.equal(prevWhenDefault)
+
+      // CToken
+      prevWhenDefault = await cTokenAsset.whenDefault()
+      await cTokenAsset.forceUpdates()
+      expect(await cTokenAsset.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await cTokenAsset.whenDefault()).to.equal(prevWhenDefault)
     })
 
     it('Disables collateral correcly', async () => {
@@ -255,6 +282,39 @@ describe('CollateralP0 contracts', () => {
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
       expect(await tokenAsset.status()).to.equal(CollateralStatus.DISABLED)
       expect(await tokenAsset.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Cannot disable collateral if not main or owner
+      await expect(usdcAsset.connect(other).disable()).to.be.revertedWith('main or its owner')
+    })
+  })
+
+  describe('Rewards', () => {
+    it('Should claim and sweep rewards for ATokens/CTokens', async function () {
+      // Set COMP and AAVE rewards for Main
+      const rewardAmountCOMP: BigNumber = bn('100e18')
+      const rewardAmountAAVE: BigNumber = bn('20e18')
+      await compoundMock.setRewards(main.address, rewardAmountCOMP)
+      await aToken.setRewards(main.address, rewardAmountAAVE)
+
+      // Check funds not yet swept available
+      expect(await compToken.balanceOf(main.address)).to.equal(0)
+      expect(await aaveToken.balanceOf(main.address)).to.equal(0)
+
+      // Claim and Sweep rewards - Directly
+      await aTokenAsset.claimAndSweepRewards(aTokenAsset.address, main.address)
+      await cTokenAsset.claimAndSweepRewards(cTokenAsset.address, main.address)
+
+      // Check funds not yet swept because they dont reside in the Collateral
+      // This has to be called via Delegate call (through Main)
+      expect(await compToken.balanceOf(main.address)).to.equal(0)
+      expect(await aaveToken.balanceOf(main.address)).to.equal(0)
+
+      // Claim and Sweep rewards - From Main, delegate call
+      await main.poke()
+
+      // Check rewards were transfered to Main
+      expect(await compToken.balanceOf(await main.address)).to.equal(rewardAmountCOMP)
+      expect(await aaveToken.balanceOf(await main.address)).to.equal(rewardAmountAAVE)
     })
   })
 })
