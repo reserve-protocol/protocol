@@ -135,7 +135,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     /// @return p {USD/rTok} The protocol's best guess of the RToken price on markets
     function rTokenPrice() public view override returns (Fix p) {
         // {USD/rTok} = {USD/BU} * {BU/rTok}
-        return basket.price().mul(amtBUsPerRTok());
+        return basket.price().mul(targetBUsPerRTok());
     }
 
     // Returns the future block number at which an issuance for *amount* now can complete
@@ -172,6 +172,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
             if (iss.blockStartedAt <= blockBasketLastUpdated) {
                 // Rollback issuance i
                 rToken().burn(address(rToken()), iss.amount);
+                targetBUs = targetBUs.minus(iss.amtBUs);
                 for (uint256 j = 0; j < iss.erc20s.length; i++) {
                     IERC20Metadata(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
                 }

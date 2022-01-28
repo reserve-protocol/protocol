@@ -171,8 +171,8 @@ contract BasketHandlerP0 is
         return basket.virtualBUs(address(this));
     }
 
-    /// @return {BU/rTok} The observed exchange rate between BUs and rTok
-    function amtBUsPerRTok() internal view returns (Fix) {
+    /// @return {BU/rTok} The targeted exchange rate between BUs and rTok
+    function targetBUsPerRTok() internal view returns (Fix) {
         Fix rTok = toFixWithShift(rToken().totalSupply(), -int8(rToken().decimals()));
 
         // {BU} = {BU} / {rTok}
@@ -182,13 +182,13 @@ contract BasketHandlerP0 is
     /// {qRTok} -> {BU}
     function toBUs(uint256 amount) internal view returns (Fix) {
         // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
-        return amtBUsPerRTok().mulu(amount).shiftLeft(-int8(rToken().decimals()));
+        return targetBUsPerRTok().mulu(amount).shiftLeft(-int8(rToken().decimals()));
     }
 
     /// {BU} -> {qRTok}
     function fromBUs(Fix amtBUs) internal view returns (uint256) {
         // {qRTok} = {BU} / {BU/rTok} * {qRTok/rTok}
-        return amtBUs.div(amtBUsPerRTok()).shiftLeft(int8(rToken().decimals())).floor();
+        return amtBUs.div(targetBUsPerRTok()).shiftLeft(int8(rToken().decimals())).floor();
     }
 
     // newBasket is effectively a local variable of _switchBasket. Nothing should use its value
