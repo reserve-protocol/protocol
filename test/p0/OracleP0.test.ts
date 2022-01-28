@@ -98,14 +98,22 @@ describe('OracleP0 contract', () => {
       // Compound Oracle
       expect(await compoundOracle.consult(token.address)).to.equal(fp('1'))
       expect(await compoundOracle.consult(usdc.address)).to.equal(fp('1'))
-      expect(await compoundOracle.consult(aToken.address)).to.equal(fp('1'))
-      expect(await compoundOracle.consult(cToken.address)).to.equal(fp('1'))
+      await expect(compoundOracle.consult(aToken.address)).to.be.revertedWith(
+        `PriceIsZero("${await aToken.symbol()}")`
+      )
+      await expect(compoundOracle.consult(cToken.address)).to.be.revertedWith(
+        `PriceIsZero("${await cToken.symbol()}")`
+      )
 
       // Aave Oracle
       expect(await aaveOracle.consult(token.address)).to.equal(fp('1'))
       expect(await aaveOracle.consult(usdc.address)).to.equal(fp('1'))
-      expect(await aaveOracle.consult(aToken.address)).to.equal(fp('1'))
-      expect(await aaveOracle.consult(cToken.address)).to.equal(fp('1'))
+      await expect(aaveOracle.consult(aToken.address)).to.be.revertedWith(
+        `PriceIsZero("${await aToken.symbol()}")`
+      )
+      await expect(aaveOracle.consult(cToken.address)).to.be.revertedWith(
+        `PriceIsZero("${await cToken.symbol()}")`
+      )
     })
 
     it('Should return correct prices for fiat Tokens', async () => {
@@ -130,30 +138,6 @@ describe('OracleP0 contract', () => {
       await expect(compoundOracle.consult(token.address)).to.be.revertedWith(
         `PriceIsZero("${await token.symbol()}")`
       )
-    })
-
-    // TODO: Review if this is valid or no price should be defined
-    it.skip('Should return same price for ATokens/CTokens even if underlying changes', async () => {
-      // Increase price of underlying for CToken by 10%
-      await compoundOracleInternal.setPrice(await token.symbol(), bn('1.1e6'))
-      expect(await compoundOracle.consult(cToken.address)).to.equal(fp('1'))
-
-      // Increase price of underlying for AToken by 10%
-      await aaveOracleInternal.setPrice(token.address, bn('2.75e14'))
-      expect(await aaveOracle.consult(aToken.address)).to.equal(fp('1'))
-    })
-
-    // TODO: Review if this is valid or no price should be defined
-    it.skip('Should return same price when ATokens/CTokens appreciate', async () => {
-      // Increase rate for AToken and Ctoken to double
-      await aToken.setExchangeRate(fp(2))
-      await cToken.setExchangeRate(fp(2))
-
-      // Compound Oracle
-      expect(await compoundOracle.consult(cToken.address)).to.equal(fp('1'))
-
-      // Aave Oracle
-      expect(await aaveOracle.consult(aToken.address)).to.equal(fp('1'))
     })
   })
 })

@@ -411,9 +411,15 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   await aaveOracleInternal.setPrice(compToken.address, bn('2.5e14'))
   await aaveOracleInternal.setPrice(rsr.address, bn('2.5e14'))
   for (let i = 0; i < collateral.length; i++) {
+    // Get erc29 and refERC20
     const erc20 = await ethers.getContractAt('ERC20Mock', await collateral[i].erc20())
-    await compoundOracleInternal.setPrice(await erc20.symbol(), bn('1e6'))
-    await aaveOracleInternal.setPrice(erc20.address, bn('2.5e14'))
+    const refERC20 = await ethers.getContractAt('ERC20Mock', await collateral[i].referenceERC20())
+
+    // Set Oracle price only if its a fiat token (exclude aTokens, cTokens, etc)
+    if (erc20.address == refERC20.address) {
+      await compoundOracleInternal.setPrice(await erc20.symbol(), bn('1e6'))
+      await aaveOracleInternal.setPrice(erc20.address, bn('2.5e14'))
+    }
 
     // Add approved Collateral
     await main.connect(owner).addAsset(collateral[i].address)
