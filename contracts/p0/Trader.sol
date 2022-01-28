@@ -39,7 +39,7 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
             Auction storage auction = auctions[i];
             if (auction.status == AuctionStatus.OPEN) {
                 if (block.timestamp >= auction.endTime) {
-                    _closeAuction(auction, i);
+                    closeAuction(auction, i);
                 }
             }
         }
@@ -55,13 +55,13 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
     /// @param sellAmount {sellTok}
     /// @return notDust Whether the prepared auction is large enough to be worth trading
     /// @return auction The prepared auction
-    function _prepareAuctionSell(
+    function prepareAuctionSell(
         IAsset sell,
         IAsset buy,
         Fix sellAmount
     ) internal view returns (bool notDust, Auction memory auction) {
         assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
-        if (sellAmount.lt(_dustThreshold(sell))) {
+        if (sellAmount.lt(dustThreshold(sell))) {
             return (false, auction);
         }
 
@@ -99,18 +99,18 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
     /// @param deficitAmount {buyTok}
     /// @return notDust Whether the prepared auction is large enough to be worth trading
     /// @return auction The prepared auction
-    function _prepareAuctionToCoverDeficit(
+    function prepareAuctionToCoverDeficit(
         IAsset sell,
         IAsset buy,
         Fix maxSellAmount,
         Fix deficitAmount
     ) internal view returns (bool notDust, Auction memory auction) {
         // Don't sell dust.
-        if (maxSellAmount.lt(_dustThreshold(sell))) {
+        if (maxSellAmount.lt(dustThreshold(sell))) {
             return (false, auction);
         }
         // Don't buy dust.
-        deficitAmount = fixMax(deficitAmount, _dustThreshold(buy));
+        deficitAmount = fixMax(deficitAmount, dustThreshold(buy));
 
         // {sellTok} = {buyTok} * {USD/buyTok} / {USD/sellTok}
         Fix exactSellAmount = deficitAmount.mul(buy.price()).div(sell.price());
@@ -120,11 +120,11 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
         Fix idealSellAmount = exactSellAmount.div(FIX_ONE.minus(main.maxTradeSlippage()));
 
         Fix sellAmount = fixMin(idealSellAmount, maxSellAmount);
-        return _prepareAuctionSell(sell, buy, sellAmount);
+        return prepareAuctionSell(sell, buy, sellAmount);
     }
 
     /// @return {tok} The least amount of whole tokens worth trying to sell
-    function _dustThreshold(IAsset asset) internal view returns (Fix) {
+    function dustThreshold(IAsset asset) internal view returns (Fix) {
         Fix minSellUSD = main.netWorth().mul(main.minAuctionSize());
 
         // {tok} = {USD} / {USD/tok}
@@ -136,7 +136,7 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
     /// - Create the auction in the external auction protocol
     /// - Emit AuctionStarted event
     /// @dev The struct must already be populated
-    function _launchAuction(Auction memory auction_) internal {
+    function launchAuction(Auction memory auction_) internal {
         auctions.push(auction_);
         Auction storage auction = auctions[auctions.length - 1];
 
@@ -167,12 +167,12 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
         );
     }
 
-    function _closeAuction(Auction storage auction, uint256 i) private {
+    function closeAuction(Auction storage auction, uint256 i) private {
         require(auction.status == AuctionStatus.OPEN, "can only close in-progress auctions");
         require(auction.endTime <= block.timestamp, "auction not over");
 
         bytes32 encodedOrder = main.market().settleAuction(auction.externalAuctionId);
-        (auction.clearingSellAmount, auction.clearingBuyAmount) = _decodeOrder(encodedOrder);
+        (auction.clearingSellAmount, auction.clearingBuyAmount) = decodeOrder(encodedOrder);
 
         auction.status = AuctionStatus.DONE;
 
@@ -188,7 +188,7 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
     }
 
     /// Decode EasyAuction output into its components.
-    function _decodeOrder(bytes32 encodedOrder)
+    function decodeOrder(bytes32 encodedOrder)
         private
         pure
         returns (uint256 amountSold, uint256 amountBought)

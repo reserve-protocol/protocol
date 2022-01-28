@@ -139,7 +139,7 @@ library BasketLib {
 
             if (c.status() != CollateralStatus.DISABLED) {
                 // {USD/BU} = {USD/BU} + {USD/tok} * {qTok/BU} / {qTok/tok}
-                p = p.plus(c.price().mul(self.quantity(c))).shiftLeft(-int8(c.erc20().decimals()));
+                p = p.plus(c.price().mul(self.quantity(c)).shiftLeft(-int8(c.erc20().decimals())));
             }
         }
     }

@@ -59,7 +59,7 @@ interface ICollateral is IAsset {
     function refPerTok() external view returns (Fix);
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
-    function peggedTargetPerRef() external view returns (Fix);
+    function targetPerRef() external view returns (Fix);
 
     /// @return {USD/target} The price of the target unit in USD (usually this is {USD/USD} = 1)
     function usdPerTarget() external view returns (Fix);

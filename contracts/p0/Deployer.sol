@@ -64,12 +64,12 @@ contract DeployerP0 is IDeployer {
     ) external override returns (address) {
         ConstructorArgs memory ctorArgs;
 
-        IMain main = _deployMain();
+        IMain main = deployMain();
         deployments.push(main);
 
         {
-            IRToken rToken = _deployRToken(name, symbol);
-            IFurnace revenueFurnace = _deployRevenueFurnace(rToken, config.rewardPeriod);
+            IRToken rToken = deployRToken(name, symbol);
+            IFurnace revenueFurnace = deployRevenueFurnace(rToken, config.rewardPeriod);
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
             ctorArgs = ConstructorArgs(config, dist, revenueFurnace, market);
@@ -92,7 +92,7 @@ contract DeployerP0 is IDeployer {
         }
 
         {
-            IStRSR stRSR = _deployStRSR(
+            IStRSR stRSR = deployStRSR(
                 main,
                 string(abi.encodePacked("st", symbol, "RSR Token")),
                 string(abi.encodePacked("st", symbol, "RSR"))
@@ -113,11 +113,11 @@ contract DeployerP0 is IDeployer {
     // =================================================================
     /// @dev Helpers used for testing to inject msg.sender and implement contract invariant checks
 
-    function _deployMain() internal virtual returns (IMain) {
+    function deployMain() internal virtual returns (IMain) {
         return new MainP0();
     }
 
-    function _deployRToken(string memory name, string memory symbol)
+    function deployRToken(string memory name, string memory symbol)
         internal
         virtual
         returns (IRToken)
@@ -125,7 +125,7 @@ contract DeployerP0 is IDeployer {
         return new RTokenP0(name, symbol);
     }
 
-    function _deployRevenueFurnace(IRToken rToken, uint256 batchDuration)
+    function deployRevenueFurnace(IRToken rToken, uint256 batchDuration)
         internal
         virtual
         returns (IFurnace)
@@ -133,7 +133,7 @@ contract DeployerP0 is IDeployer {
         return new FurnaceP0(rToken, batchDuration);
     }
 
-    function _deployStRSR(
+    function deployStRSR(
         IMain main,
         string memory name,
         string memory symbol

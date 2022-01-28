@@ -33,14 +33,14 @@ contract StRSRP0 is IStRSR, Context {
     string private _symbol;
 
     // Amount of RSR staked per account
-    mapping(address => uint256) private _balances;
-    mapping(address => mapping(address => uint256)) private _allowances;
+    mapping(address => uint256) private balances;
+    mapping(address => mapping(address => uint256)) private allowances;
 
     // List of accounts
-    EnumerableSet.AddressSet internal _accounts;
+    EnumerableSet.AddressSet internal accounts;
 
     // Total staked
-    uint256 internal _totalStaked;
+    uint256 internal totalStaked;
 
     // Delayed Withdrawals
     struct Withdrawal {
@@ -70,9 +70,9 @@ contract StRSRP0 is IStRSR, Context {
         require(amount > 0, "Cannot stake zero");
 
         main.rsr().safeTransferFrom(_msgSender(), address(this), amount);
-        _accounts.add(_msgSender());
-        _balances[_msgSender()] += amount;
-        _totalStaked += amount;
+        accounts.add(_msgSender());
+        balances[_msgSender()] += amount;
+        totalStaked += amount;
         emit Staked(_msgSender(), amount);
     }
 
@@ -83,11 +83,11 @@ contract StRSRP0 is IStRSR, Context {
         processWithdrawals();
 
         require(amount > 0, "Cannot withdraw zero");
-        require(_balances[_msgSender()] >= amount, "Not enough balance");
+        require(balances[_msgSender()] >= amount, "Not enough balance");
 
         // Take it out up front
-        _balances[_msgSender()] -= amount;
-        _totalStaked -= amount;
+        balances[_msgSender()] -= amount;
+        totalStaked -= amount;
 
         // Submit delayed withdrawal
         uint256 availableAt = block.timestamp + main.stRSRWithdrawalDelay();
@@ -96,7 +96,7 @@ contract StRSRP0 is IStRSR, Context {
     }
 
     function balanceOf(address account) external view override returns (uint256) {
-        return _balances[account];
+        return balances[account];
     }
 
     function processWithdrawals() public {
@@ -117,19 +117,17 @@ contract StRSRP0 is IStRSR, Context {
         require(erc20 == main.rsr(), "RSR dividends only");
 
         uint256 balance = main.rsr().balanceOf(address(this));
-        uint256 overage = balance - _totalStaked - _amountBeingWithdrawn();
+        uint256 overage = balance - totalStaked - amountBeingWithdrawn();
         uint256 addedAmount = 0;
 
         if (overage > 0) {
-            for (uint256 index = 0; index < _accounts.length(); index++) {
-                // amtToAdd = amount * _balances[_accounts.at(index)] / snapshotTotalStaked;
-                Fix amtToAdd = toFix(_balances[_accounts.at(index)]).mulu(overage).divu(
-                    _totalStaked
-                );
-                _balances[_accounts.at(index)] += amtToAdd.floor();
+            for (uint256 index = 0; index < accounts.length(); index++) {
+                // amtToAdd = amount * balances[accounts.at(index)] / snapshotTotalStaked;
+                Fix amtToAdd = toFix(balances[accounts.at(index)]).mulu(overage).divu(totalStaked);
+                balances[accounts.at(index)] += amtToAdd.floor();
                 addedAmount += amtToAdd.floor();
             }
-            _totalStaked += addedAmount;
+            totalStaked += addedAmount;
             emit RSRAdded(_msgSender(), addedAmount);
         }
     }
@@ -142,19 +140,19 @@ contract StRSRP0 is IStRSR, Context {
         // Process pending withdrawals
         processWithdrawals();
 
-        uint256 snapshotTotalStakedPlus = _totalStaked + _amountBeingWithdrawn();
+        uint256 snapshotTotalStakedPlus = totalStaked + amountBeingWithdrawn();
 
         // Remove RSR for stakers and from withdrawals too
         if (snapshotTotalStakedPlus > 0) {
             uint256 removedStake = 0;
-            for (uint256 index = 0; index < _accounts.length(); index++) {
-                Fix amtToRemove = toFix(_balances[_accounts.at(index)]).mulu(amount).divu(
+            for (uint256 index = 0; index < accounts.length(); index++) {
+                Fix amtToRemove = toFix(balances[accounts.at(index)]).mulu(amount).divu(
                     snapshotTotalStakedPlus
                 );
-                _balances[_accounts.at(index)] -= amtToRemove.floor();
+                balances[accounts.at(index)] -= amtToRemove.floor();
                 removedStake += amtToRemove.floor();
             }
-            _totalStaked -= removedStake;
+            totalStaked -= removedStake;
 
             for (uint256 index = 0; index < withdrawals.length; index++) {
                 Fix amtToRemove = toFix(withdrawals[index].amount).mulu(amount).divu(
@@ -183,7 +181,7 @@ contract StRSRP0 is IStRSR, Context {
     }
 
     function totalSupply() external view override returns (uint256) {
-        return _totalStaked + _amountBeingWithdrawn();
+        return totalStaked + amountBeingWithdrawn();
     }
 
     function transfer(address recipient, uint256 amount) external override returns (bool) {
@@ -202,14 +200,14 @@ contract StRSRP0 is IStRSR, Context {
         // Process pending withdrawals
         processWithdrawals();
 
-        require(_balances[sender] >= amount, "ERC20: transfer amount exceeds balance");
-        _balances[sender] -= amount;
-        _balances[recipient] += amount;
-        _accounts.add(recipient);
+        require(balances[sender] >= amount, "ERC20: transfer amount exceeds balance");
+        balances[sender] -= amount;
+        balances[recipient] += amount;
+        accounts.add(recipient);
     }
 
     function allowance(address owner_, address spender) public view override returns (uint256) {
-        return _allowances[owner_][spender];
+        return allowances[owner_][spender];
     }
 
     function approve(address spender, uint256 amount) public override returns (bool) {
@@ -224,7 +222,7 @@ contract StRSRP0 is IStRSR, Context {
     ) public override returns (bool) {
         _transfer(sender, recipient, amount);
 
-        uint256 currentAllowance = _allowances[sender][_msgSender()];
+        uint256 currentAllowance = allowances[sender][_msgSender()];
         require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
         _approve(sender, _msgSender(), currentAllowance - amount);
         return true;
@@ -238,11 +236,11 @@ contract StRSRP0 is IStRSR, Context {
         require(owner_ != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
 
-        _allowances[owner_][spender] = amount;
+        allowances[owner_][spender] = amount;
     }
 
     /// @return total {stRSR} Total amount of stRSR being withdrawn
-    function _amountBeingWithdrawn() internal view returns (uint256 total) {
+    function amountBeingWithdrawn() internal view returns (uint256 total) {
         for (uint256 index = 0; index < withdrawals.length; index++) {
             total += withdrawals[index].amount;
         }

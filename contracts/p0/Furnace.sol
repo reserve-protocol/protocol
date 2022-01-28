@@ -66,9 +66,9 @@ contract FurnaceP0 is Ownable, IFurnace {
             Batch storage batch = batches[i];
             if (batch.melted < batch.amount) {
                 // Pull the meltable amount out of batch and register it melted.
-                uint256 vestedAmount = _vestedAmount(batch, block.timestamp);
-                toMelt += vestedAmount - batch.melted;
-                batch.melted = vestedAmount;
+                uint256 amt = vestedAmount(batch, block.timestamp);
+                toMelt += amt - batch.melted;
+                batch.melted = amt;
             }
 
             if (i == firstBatch && batch.melted == batch.amount) {
@@ -88,7 +88,7 @@ contract FurnaceP0 is Ownable, IFurnace {
     }
 
     // @return The cumulative amount of tokens from batch that have vested at `timestamp`
-    function _vestedAmount(Batch storage batch, uint256 timestamp) private view returns (uint256) {
+    function vestedAmount(Batch storage batch, uint256 timestamp) private view returns (uint256) {
         if (timestamp <= batch.start) {
             return 0;
         } else if (batch.start + batchDuration <= timestamp) {

@@ -56,16 +56,16 @@ contract AuctioneerP0 is
         closeDueAuctions();
 
         if (!hasOpenAuctions()) {
-            _doAuctions();
+            doAuctions();
         }
 
         rsrTrader.poke();
         rTokenTrader.poke();
     }
 
-    function _doAuctions() private {
+    function doAuctions() private {
         if (fullyCapitalized()) {
-            _handoutExcessAssets();
+            handoutExcessAssets();
             return;
         }
 
@@ -75,31 +75,31 @@ contract AuctioneerP0 is
          *   2. When there is no surplus collateral, seize RSR and use that
          *   3. When there is no more RSR, dilute RToken holders
          */
-        if (_tryToBuyCollateral()) {
+        if (tryToBuyCollateral()) {
             return;
         }
 
-        _seizeRSR();
-        if (_tryToBuyCollateral()) {
+        seizeRSR();
+        if (tryToBuyCollateral()) {
             return;
         }
 
-        _diluteRTokenHolders();
-        _tryToBuyCollateral();
+        diluteRTokenHolders();
+        tryToBuyCollateral();
     }
 
     /// Try to launch asset-for-collateral auctions until recapitalized
     /// @return Whether an auction was launched
-    function _tryToBuyCollateral() private returns (bool) {
+    function tryToBuyCollateral() private returns (bool) {
         (
             IAsset surplus,
             ICollateral deficit,
             Fix surplusAmount,
             Fix deficitAmount
-        ) = _largestSurplusAndDeficit();
+        ) = largestSurplusAndDeficit();
 
         // Of primary concern here is whether we can trust the prices for the assets
-        // we are selling. If we cannot, then we should not `_prepareAuctionToCoverDeficit`
+        // we are selling. If we cannot, then we should not `prepareAuctionToCoverDeficit`
 
         bool trade;
         Auction memory auction;
@@ -107,10 +107,10 @@ contract AuctioneerP0 is
             surplus.isCollateral() &&
             ICollateral(address(surplus)).status() != CollateralStatus.SOUND
         ) {
-            (trade, auction) = _prepareAuctionSell(surplus, deficit, surplusAmount);
+            (trade, auction) = prepareAuctionSell(surplus, deficit, surplusAmount);
             auction.minBuyAmount = 0;
         } else {
-            (trade, auction) = _prepareAuctionToCoverDeficit(
+            (trade, auction) = prepareAuctionToCoverDeficit(
                 surplus,
                 deficit,
                 surplusAmount,
@@ -118,18 +118,18 @@ contract AuctioneerP0 is
             );
         }
         if (trade) {
-            _launchAuction(auction);
+            launchAuction(auction);
         }
         return trade;
     }
 
     /// Seize an amount of RSR to recapitalize our most in-deficit collateral
-    function _seizeRSR() private {
+    function seizeRSR() private {
         assert(!hasOpenAuctions() && !fullyCapitalized());
-        (, ICollateral deficit, , Fix deficitAmount) = _largestSurplusAndDeficit();
+        (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit();
 
         uint256 bal = rsr().balanceOf(address(this));
-        (bool trade, Auction memory auction) = _prepareAuctionToCoverDeficit(
+        (bool trade, Auction memory auction) = prepareAuctionToCoverDeficit(
             rsrAsset(),
             deficit,
             toFixWithShift(bal + rsr().balanceOf(address(stRSR())), -int8(rsr().decimals())),
@@ -143,9 +143,9 @@ contract AuctioneerP0 is
     }
 
     /// Mint RToken in order to recapitalize our most in-deficit collateral.
-    function _diluteRTokenHolders() private {
+    function diluteRTokenHolders() private {
         assert(!hasOpenAuctions() && !fullyCapitalized());
-        (, ICollateral deficit, , Fix deficitAmount) = _largestSurplusAndDeficit();
+        (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit();
 
         Fix collateralUSD;
         for (uint256 i = 0; i < _basket.size; i++) {
@@ -189,7 +189,7 @@ contract AuctioneerP0 is
     }
 
     /// Send excess assets to the RSR and RToken traders
-    function _handoutExcessAssets() private {
+    function handoutExcessAssets() private {
         Fix target = _targetBUs();
 
         // First mint RToken
@@ -234,7 +234,7 @@ contract AuctioneerP0 is
     /// @return Deficit collateral
     /// @return {sellTok} Surplus amount (whole tokens)
     /// @return {buyTok} Deficit amount (whole tokens)
-    function _largestSurplusAndDeficit()
+    function largestSurplusAndDeficit()
         private
         view
         returns (

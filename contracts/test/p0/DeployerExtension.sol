@@ -34,11 +34,11 @@ contract DeployerExtension is DeployerP0, IExtension {
         INVARIANT_currentDeploymentRegistered();
     }
 
-    function _deployMain() internal view override returns (IMain) {
+    function deployMain() internal view override returns (IMain) {
         return MainExtension(_admin);
     }
 
-    function _deployRevenueFurnace(IRToken rToken, uint256 batchDuration)
+    function deployRevenueFurnace(IRToken rToken, uint256 batchDuration)
         internal
         override
         returns (IFurnace)
@@ -46,7 +46,7 @@ contract DeployerExtension is DeployerP0, IExtension {
         return new FurnaceExtension(_admin, rToken, batchDuration);
     }
 
-    function _deployRToken(string memory name, string memory symbol)
+    function deployRToken(string memory name, string memory symbol)
         internal
         override
         returns (IRToken)
@@ -54,7 +54,7 @@ contract DeployerExtension is DeployerP0, IExtension {
         return new RTokenExtension(_admin, name, symbol);
     }
 
-    function _deployStRSR(
+    function deployStRSR(
         IMain main,
         string memory name,
         string memory symbol

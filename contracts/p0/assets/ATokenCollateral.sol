@@ -57,7 +57,7 @@ contract ATokenCollateralP0 is CollateralP0 {
             whenDefault = block.timestamp;
         } else {
             // If the underlying is showing signs of depegging, default eventually
-            whenDefault = _isReferenceDepegged()
+            whenDefault = isReferenceDepegged()
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }

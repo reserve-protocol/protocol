@@ -50,8 +50,8 @@ contract BasketHandlerP0 is
     using FixLib for Fix;
 
     BasketConfig private basketConf;
-    Basket internal _basket; // TODO: no underscore
-    uint256 internal _blockBasketLastUpdated; // {block number} last set  TODO: no underscore
+    Basket internal basket;
+    uint256 internal blockBasketLastUpdated; // {block number} last set
 
     function init(ConstructorArgs calldata args)
         public
@@ -63,7 +63,7 @@ contract BasketHandlerP0 is
 
     function poke() public virtual override notPaused {
         super.poke();
-        _ensureValidBasket();
+        tryEnsureValidBasket();
     }
 
     /// Set the prime basket in the basket configuration.
@@ -119,22 +119,22 @@ contract BasketHandlerP0 is
 
     /// @return Whether it holds enough basket units of collateral
     function fullyCapitalized() public view override returns (bool) {
-        return _actualBUHoldings().gte(_targetBUs());
+        return actualBUHoldings().gte(targetBUs());
     }
 
     /// @return status The maximum CollateralStatus among basket collateral
     function worstCollateralStatus() public view override returns (CollateralStatus status) {
-        for (uint256 i = 0; i < _basket.size; i++) {
-            if (!_assets.contains(address(_basket.collateral[i]))) {
+        for (uint256 i = 0; i < basket.size; i++) {
+            if (!_assets.contains(address(basket.collateral[i]))) {
                 return CollateralStatus.DISABLED;
             }
-            if (uint256(_basket.collateral[i].status()) > uint256(status)) {
-                status = _basket.collateral[i].status();
+            if (uint256(basket.collateral[i].status()) > uint256(status)) {
+                status = basket.collateral[i].status();
             }
         }
     }
 
-    /// @return {BU/rTok}
+    /// @return {BU/rTok} (melted + totalSupply) / totalSupply
     function baseFactor() public view override returns (Fix) {
         Fix supply = toFix(rToken().totalSupply()); // {qRTok}
         Fix melted = toFix(rToken().totalMelted()); // {qRTok}
@@ -160,7 +160,7 @@ contract BasketHandlerP0 is
     // ==== Internal ====
 
     // Check collateral statuses; Select a new basket if needed.
-    function _ensureValidBasket() internal {
+    function tryEnsureValidBasket() internal {
         for (uint256 i = 0; i < _assets.length(); i++) {
             if (IAsset(_assets.at(i)).isCollateral()) {
                 ICollateral(_assets.at(i)).forceUpdates();
@@ -172,23 +172,23 @@ contract BasketHandlerP0 is
     }
 
     /// @return {BU} The BU target to be considered capitalized
-    function _targetBUs() internal view returns (Fix) {
-        return _toBUs(rToken().totalSupply());
+    function targetBUs() internal view returns (Fix) {
+        return toBUs(rToken().totalSupply());
     }
 
     /// @return {BU} The equivalent of the current holdings in BUs without considering trading
-    function _actualBUHoldings() internal view returns (Fix) {
-        return _basket.virtualBUs(address(this));
+    function actualBUHoldings() internal view returns (Fix) {
+        return basket.virtualBUs(address(this));
     }
 
     /// {qRTok} -> {BU}
-    function _toBUs(uint256 amount) internal view returns (Fix) {
+    function toBUs(uint256 amount) internal view returns (Fix) {
         // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
         return baseFactor().mulu(amount).shiftLeft(-int8(rToken().decimals()));
     }
 
     /// {BU} -> {qRTok}
-    function _fromBUs(Fix amtBUs) internal view returns (uint256) {
+    function fromBUs(Fix amtBUs) internal view returns (uint256) {
         // {qRTok} = {BU} / {BU/rTok} * {qRTok/rTok}
         return amtBUs.div(baseFactor()).shiftLeft(int8(rToken().decimals())).floor();
     }
@@ -233,7 +233,7 @@ contract BasketHandlerP0 is
                 newBasket.collateral[newBasket.size] = coll;
 
                 // {ref/BU} = {target/BU} / {target/ref}
-                newBasket.refAmts[coll] = targetWeight.div(coll.peggedTargetPerRef());
+                newBasket.refAmts[coll] = targetWeight.div(coll.targetPerRef());
                 newBasket.size++;
             }
         }
@@ -276,8 +276,8 @@ contract BasketHandlerP0 is
         }
 
         // If we haven't already given up, then commit the new basket!
-        _basket.copy(newBasket);
-        _blockBasketLastUpdated = block.number;
+        basket.copy(newBasket);
+        blockBasketLastUpdated = block.number;
         return true;
     }
 }

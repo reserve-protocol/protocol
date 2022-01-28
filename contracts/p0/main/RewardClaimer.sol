@@ -21,7 +21,7 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
     using SafeERC20 for IERC20Metadata;
     using FixLib for Fix;
 
-    uint256 private _rewardsLastClaimed;
+    uint256 private rewardsLastClaimed;
 
     function init(ConstructorArgs calldata args)
         public
@@ -36,9 +36,9 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
         super.poke();
         uint256 compBalStart = compAsset().erc20().balanceOf(address(this));
         uint256 aaveBalStart = aaveAsset().erc20().balanceOf(address(this));
-        (uint256 prevRewards, ) = _whenRewards(block.timestamp);
-        if (prevRewards > _rewardsLastClaimed) {
-            _rewardsLastClaimed = prevRewards;
+        (uint256 prevRewards, ) = whenRewards(block.timestamp);
+        if (prevRewards > rewardsLastClaimed) {
+            rewardsLastClaimed = prevRewards;
 
             // Claim + Sweep COMP/AAVE from self + traders
             rsrTrader.claimAndSweepRewards();
@@ -52,14 +52,14 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
 
     /// @return The timestamp of the next rewards event
     function nextRewards() public view override returns (uint256) {
-        (, uint256 next) = _whenRewards(block.timestamp);
+        (, uint256 next) = whenRewards(block.timestamp);
         return next;
     }
 
     // ==== Private ====
 
     // Return the reward boundaries on either side of *time* as timestamps.
-    function _whenRewards(uint256 time) private view returns (uint256 left, uint256 right) {
+    function whenRewards(uint256 time) private view returns (uint256 left, uint256 right) {
         int256 reps = (int256(time) - int256(rewardStart())) / int256(rewardPeriod());
         left = uint256(reps * int256(rewardPeriod()) + int256(rewardStart()));
         right = left + rewardPeriod();

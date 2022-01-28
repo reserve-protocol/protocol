@@ -25,7 +25,7 @@ contract CTokenCollateralP0 is CollateralP0 {
     using SafeERC20 for IERC20Metadata;
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
-    Fix public constant COMPOUND_BASE = Fix.wrap(2e16); // 0.02 as a fix
+    Fix public constant COMPOUND_BASE = Fix.wrap(2e16); // 0.02
 
     Fix public prevReferencePrice; // {ref/tok} previous rate {collateral/reference}
 
@@ -55,7 +55,7 @@ contract CTokenCollateralP0 is CollateralP0 {
             whenDefault = block.timestamp;
         } else {
             // If the underlying is showing signs of depegging, default eventually
-            whenDefault = _isReferenceDepegged()
+            whenDefault = isReferenceDepegged()
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }

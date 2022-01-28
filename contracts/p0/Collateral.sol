@@ -44,7 +44,7 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     function forceUpdates() public virtual override {
         if (whenDefault > block.timestamp) {
             // If the price is below the default-threshold price, default eventually
-            whenDefault = _isReferenceDepegged()
+            whenDefault = isReferenceDepegged()
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -74,7 +74,7 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         return true;
     }
 
-    /// @return {USD/tok} The price of 1 whole token in USD, based on oracle pricing
+    /// @return {USD/tok} Our best guess at the market price of 1 whole token in USD
     function price() public view virtual override(AssetP0, IAsset) returns (Fix) {
         // {USD/tok} = {target/ref} * {ref/tok} * {USD/target}
         return oracle.consult(referenceERC20).mul(refPerTok()).mul(usdPerTarget());
@@ -85,8 +85,8 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         return FIX_ONE;
     }
 
-    /// @return {target/ref} Quantity of whole target units per whole reference unit, /wo oracles
-    function peggedTargetPerRef() public view virtual override returns (Fix) {
+    /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
+    function targetPerRef() public view virtual override returns (Fix) {
         return FIX_ONE;
     }
 
@@ -95,9 +95,9 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         return FIX_ONE;
     }
 
-    function _isReferenceDepegged() internal view virtual returns (bool) {
+    function isReferenceDepegged() internal view virtual returns (bool) {
         // {USD/ref} = {USD/target} * {target/ref}
-        Fix peg = usdPerTarget().mul(peggedTargetPerRef());
+        Fix peg = usdPerTarget().mul(targetPerRef());
         Fix delta = peg.mul(main.defaultThreshold());
         Fix p = oracle.consult(referenceERC20);
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));

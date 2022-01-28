@@ -325,6 +325,10 @@ library FixLib {
         }
     }
 
+    function sqrt(Fix x) internal pure returns (Fix result) {
+        // TODO
+    }
+
     /// Comparison operators...
     function lt(Fix x, Fix y) internal pure returns (bool) {
         return Fix.unwrap(x) < Fix.unwrap(y);

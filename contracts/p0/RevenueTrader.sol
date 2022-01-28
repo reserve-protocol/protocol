@@ -24,7 +24,7 @@ contract RevenueTraderP0 is TraderP0, IRewardsClaimer {
     function poke() public override {
         // Always process auctions *and* do funds management; don't short-circuit here.
         closeDueAuctions();
-        _manageFunds();
+        manageFunds();
     }
 
     /// Claims and sweeps all COMP/AAVE rewards
@@ -35,7 +35,7 @@ contract RevenueTraderP0 is TraderP0, IRewardsClaimer {
     /// Iterate through all asset types, and perform the appropriate action with each:
     /// - If we have any of `assetToBuy` (RSR or RToken), distribute it.
     /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
-    function _manageFunds() private {
+    function manageFunds() private {
         IAsset[] memory assets = main.allAssets(); // includes RToken/RSR/COMP/AAVE
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata erc20 = assets[i].erc20();
@@ -54,9 +54,9 @@ contract RevenueTraderP0 is TraderP0, IRewardsClaimer {
 
                 // {tok} =  {qTok} / {qTok/tok}
                 Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
-                (launch, auction) = _prepareAuctionSell(assets[i], assetToBuy, sellAmount);
+                (launch, auction) = prepareAuctionSell(assets[i], assetToBuy, sellAmount);
                 if (launch) {
-                    _launchAuction(auction);
+                    launchAuction(auction);
                 }
             }
         }

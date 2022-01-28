@@ -15,8 +15,8 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
     using FixLib for Fix;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    EnumerableSet.AddressSet internal _destinations;
-    mapping(address => RevenueShare) internal _distribution;
+    EnumerableSet.AddressSet internal destinations;
+    mapping(address => RevenueShare) internal distribution;
     // invariant: distribution values are all nonnegative, and at least one is nonzero.
 
     address public constant FURNACE = address(1);
@@ -34,7 +34,7 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
         _setDistribution(dest, share);
     }
 
-    /// Distribute revenue, in rsr or rtoken, per the _distribution table.
+    /// Distribute revenue, in rsr or rtoken, per the distribution table.
     /// Requires that this contract has an allowance of at least
     /// `amount` tokens, from `from`, of the token at `erc20`.
     function distribute(
@@ -44,13 +44,13 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
     ) public override {
         require(erc20 == rsr() || erc20 == rToken(), "RSR or RToken");
         bool isRSR = erc20 == rsr(); // if false: isRToken
-        (Fix rTokenTotal, Fix rsrTotal) = _totals();
+        (Fix rTokenTotal, Fix rsrTotal) = totals();
         Fix total = isRSR ? rsrTotal : rTokenTotal;
 
         uint256 sliceSum;
-        for (uint256 i = 0; i < _destinations.length(); i++) {
-            address addrTo = _destinations.at(i);
-            Fix subshare = isRSR ? _distribution[addrTo].rsrDist : _distribution[addrTo].rTokenDist;
+        for (uint256 i = 0; i < destinations.length(); i++) {
+            address addrTo = destinations.at(i);
+            Fix subshare = isRSR ? distribution[addrTo].rsrDist : distribution[addrTo].rTokenDist;
             uint256 slice = subshare.mulu(amount).div(total).floor();
             if (slice == 0 || (!isRSR && addrTo == FURNACE) || (isRSR && addrTo == ST_RSR)) {
                 continue;
@@ -78,7 +78,7 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
 
     /// Returns the sum of all rsr cuts
     function rsrCut() public view returns (Fix) {
-        (Fix rTokenTotal, Fix rsrTotal) = _totals();
+        (Fix rTokenTotal, Fix rsrTotal) = totals();
         return rsrTotal.div(rsrTotal.plus(rTokenTotal));
     }
 
@@ -88,9 +88,9 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
     }
 
     /// Returns the rsr + rToken totals
-    function _totals() private view returns (Fix rTokenTotal, Fix rsrTotal) {
-        for (uint256 i = 0; i < _destinations.length(); i++) {
-            RevenueShare storage share = _distribution[_destinations.at(i)];
+    function totals() private view returns (Fix rTokenTotal, Fix rsrTotal) {
+        for (uint256 i = 0; i < destinations.length(); i++) {
+            RevenueShare storage share = distribution[destinations.at(i)];
             rTokenTotal = rTokenTotal.plus(share.rTokenDist);
             rsrTotal = rsrTotal.plus(share.rsrDist);
         }
@@ -98,7 +98,7 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
 
     /// Sets the distribution values - Internals
     function _setDistribution(address dest, RevenueShare memory share) internal {
-        _destinations.add(dest);
-        _distribution[dest] = share;
+        destinations.add(dest);
+        distribution[dest] = share;
     }
 }
