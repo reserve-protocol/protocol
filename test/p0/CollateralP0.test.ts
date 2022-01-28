@@ -1,5 +1,4 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { ERC20 } from '@typechain/ERC20'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
@@ -7,9 +6,11 @@ import { CollateralStatus, MAX_UINT256 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AaveOracle } from '../../typechain/AaveOracle'
 import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
+import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
 import { CompoundOracle } from '../../typechain/CompoundOracle'
 import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
+import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainP0 } from '../../typechain/MainP0'
@@ -35,8 +36,8 @@ describe('CollateralP0 contracts', () => {
   // Assets
   let tokenAsset: Collateral
   let usdcAsset: Collateral
-  let aTokenAsset: Collateral
-  let cTokenAsset: Collateral
+  let aTokenAsset: ATokenCollateralP0
+  let cTokenAsset: CTokenCollateralP0
 
   // Oracles
   let compoundMock: ComptrollerMockP0
@@ -77,8 +78,8 @@ describe('CollateralP0 contracts', () => {
     // Get assets and tokens
     tokenAsset = basket[0]
     usdcAsset = basket[1]
-    aTokenAsset = basket[2]
-    cTokenAsset = basket[3]
+    aTokenAsset = basket[2] as ATokenCollateralP0
+    cTokenAsset = basket[3] as CTokenCollateralP0
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
     aToken = <StaticATokenMock>(
@@ -120,6 +121,7 @@ describe('CollateralP0 contracts', () => {
       expect(await aTokenAsset.status()).to.equal(CollateralStatus.SOUND)
       expect(await aTokenAsset.whenDefault()).to.equal(MAX_UINT256)
       expect(await aTokenAsset.refPerTok()).to.equal(fp('1'))
+      expect(await aTokenAsset.prevReferencePrice()).to.equal(await aTokenAsset.refPerTok())
       expect(await aTokenAsset.price()).to.equal(fp('1'))
 
       // CToken
@@ -131,6 +133,7 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenAsset.status()).to.equal(CollateralStatus.SOUND)
       expect(await cTokenAsset.whenDefault()).to.equal(MAX_UINT256)
       expect(await cTokenAsset.refPerTok()).to.equal(fp('1'))
+      expect(await cTokenAsset.prevReferencePrice()).to.equal(await cTokenAsset.refPerTok())
       expect(await cTokenAsset.price()).to.equal(fp('1'))
     })
   })
@@ -201,7 +204,7 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenAsset.whenDefault()).to.equal(MAX_UINT256)
     })
 
-    it('Updates status in case of Default', async () => {
+    it('Updates status in case of soft default', async () => {
       const defaultDelay: BigNumber = await main.defaultDelay()
 
       // Check initial state
@@ -261,6 +264,40 @@ describe('CollateralP0 contracts', () => {
       await cTokenAsset.forceUpdates()
       expect(await cTokenAsset.status()).to.equal(CollateralStatus.DISABLED)
       expect(await cTokenAsset.whenDefault()).to.equal(prevWhenDefault)
+    })
+
+    it('Updates status in case of hard default', async () => {
+      // Check initial state
+      expect(await tokenAsset.status()).to.equal(CollateralStatus.SOUND)
+      expect(await usdcAsset.status()).to.equal(CollateralStatus.SOUND)
+      expect(await aTokenAsset.status()).to.equal(CollateralStatus.SOUND)
+      expect(await cTokenAsset.status()).to.equal(CollateralStatus.SOUND)
+
+      expect(await tokenAsset.whenDefault()).to.equal(MAX_UINT256)
+      expect(await usdcAsset.whenDefault()).to.equal(MAX_UINT256)
+      expect(await aTokenAsset.whenDefault()).to.equal(MAX_UINT256)
+      expect(await cTokenAsset.whenDefault()).to.equal(MAX_UINT256)
+
+      // Decrease rate for AToken and CToken, will disable collateral immediately
+      await aToken.setExchangeRate(fp('0.99'))
+      await cToken.setExchangeRate(fp('0.95'))
+
+      // Force updates - Should update whenDefault and status for Atokens/CTokens
+      await tokenAsset.forceUpdates()
+      expect(await tokenAsset.status()).to.equal(CollateralStatus.SOUND)
+      expect(await tokenAsset.whenDefault()).to.equal(MAX_UINT256)
+
+      await usdcAsset.forceUpdates()
+      expect(await usdcAsset.status()).to.equal(CollateralStatus.SOUND)
+      expect(await usdcAsset.whenDefault()).to.equal(MAX_UINT256)
+
+      await aTokenAsset.forceUpdates()
+      expect(await aTokenAsset.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await aTokenAsset.whenDefault()).to.equal(bn(await getLatestBlockTimestamp()))
+
+      await cTokenAsset.forceUpdates()
+      expect(await cTokenAsset.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await cTokenAsset.whenDefault()).to.equal(bn(await getLatestBlockTimestamp()))
     })
 
     it('Disables collateral correcly', async () => {
