@@ -35,6 +35,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     struct SlowIssuance {
         uint256 blockStartedAt;
         uint256 amount; // {qRTok}
+        Fix amtBUs; // {BU}
         address[] erc20s;
         uint256[] deposits; // {qTok}, same index as vault basket assets
         address issuer;
@@ -76,6 +77,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         SlowIssuance memory iss = SlowIssuance({
             blockStartedAt: block.number,
             amount: amount,
+            amtBUs: amtBUs,
             erc20s: basket.backingERC20s(),
             deposits: deposits,
             issuer: _msgSender(),
@@ -103,7 +105,11 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         Fix amtBUs = toBUs(amount);
         uint256[] memory compensation = fullyCapitalized()
             ? basket.withdraw(_msgSender(), amtBUs)
-            : basket.withdrawProrata(_msgSender(), divFix(amount, toFix(rToken().totalSupply())));
+            : basket.withdrawProrata(
+                _msgSender(),
+                amtBUs,
+                divFix(amount, toFix(rToken().totalSupply()))
+            );
         rToken().burn(_msgSender(), amount);
 
         // TODO Double-check the order with .withdraw

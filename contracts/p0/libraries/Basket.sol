@@ -80,11 +80,13 @@ library BasketLib {
 
     /// Transfer a prorata `slice` of all collateral out of the caller's account
     /// @param to The address that is receiving the collateral
-    /// @param slice The fraction of the collateral to transfer out
+    /// @param amtBUs {BU} The amount BUs to withdraw prorata
+    /// @param slice {none} The withdrawers fraction of the RToken supply
     /// @return amounts The token amounts transferred out
     function withdrawProrata(
         Basket storage self,
         address to,
+        Fix amtBUs,
         Fix slice
     ) internal returns (uint256[] memory amounts) {
         // TODO In this case there is likely to be some collateral out in an auction.
@@ -95,7 +97,11 @@ library BasketLib {
         amounts = new uint256[](self.size);
         for (uint256 i = 0; i < self.size; i++) {
             // {qTok} = {BU} * {qTok/BU}
-            amounts[i] = slice.mulu(self.collateral[i].erc20().balanceOf(address(this))).floor();
+            Fix perBU = amtBUs.mul(self.quantity(self.collateral[i]));
+
+            // {qTok} = {BU} * {qTok/BU}
+            Fix prorata = slice.mulu(self.collateral[i].erc20().balanceOf(address(this)));
+            amounts[i] = fixMin(prorata, perBU).floor();
             self.collateral[i].erc20().safeTransfer(to, amounts[i]);
         }
     }
