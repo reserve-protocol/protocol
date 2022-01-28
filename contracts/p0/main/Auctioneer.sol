@@ -71,10 +71,11 @@ contract AuctioneerP0 is
 
         /*
          * The strategy for handling undercapitalization is pretty simple:
-         *   1. Prefer selling surplus collateral
-         *   2. When there is no surplus collateral, seize RSR and use that
-         *   3. When there is no more RSR, dilute RToken holders
+         *   1. Prefer selling surplus assets
+         *   2. When there are no more surplus assets, seize RSR and sell that
+         *   3. When there is no more RSR left, dilute RToken holders
          */
+
         if (tryToBuyCollateral()) {
             return;
         }
@@ -85,7 +86,6 @@ contract AuctioneerP0 is
         }
 
         diluteRTokenHolders();
-        tryToBuyCollateral();
     }
 
     /// Try to launch asset-for-collateral auctions until recapitalized
@@ -142,62 +142,57 @@ contract AuctioneerP0 is
         }
     }
 
-    /// Mint RToken in order to recapitalize our most in-deficit collateral.
+    /// Mint RToken to an inaccessible address in order to get back to capitalized
     function diluteRTokenHolders() private {
         assert(!hasOpenAuctions() && !fullyCapitalized());
-        (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit();
 
-        Fix collateralUSD;
-        for (uint256 i = 0; i < _basket.size; i++) {
-            ICollateral c = _basket.collateral[i];
+        /*
+         * Since the collateral must be relatively in balance at this point,
+         *   we can just do some clever accounting to recover. Main has the
+         *   ability to mint RToken. That _itself_ is worth something, even
+         *   without interfacing with external markets. It's uhhh...finance?
+         */
 
-            // {USD/tok} = {ref/tok} * {target/ref} * {USD/target}
-            Fix p = c.refPerTok().mul(c.peggedTargetPerRef()).mul(c.usdPerTarget());
+        // Let:
+        //   x = RToken supply
+        //   y = RTokens melted
+        //   z = BUs
+        //
+        // x = z * baseFactor = z * (y + x) / x
+        // x^2 - xz - yz = 0
+        //
+        // Applying the quadratic equation:
+        //   x = (z +- sqrt(z^2 - 4 * 1 * (-yz))) / 2
+        // We only want to keep the positive solution. So:
+        //   x = (z + sqrt(z^2 + 4yz)) / 2
 
-            // {tok}
-            Fix tokBal = toFixWithShift(
-                c.erc20().balanceOf(address(this)),
-                -int8(c.erc20().decimals())
-            );
+        Fix y = toFixWithShift(rToken().totalMelted(), -int8(rToken().decimals())); // {rTok}
+        Fix z = actualBUHoldings(); // {BU}
 
-            // {USD} = {USD} + {tok} * {USD/tok}
-            collateralUSD = collateralUSD.plus(tokBal.mul(p));
-        }
+        // TODO FixedLib.sqrt implementation
+        Fix x = z.plus(z.mul(z).plus(y.mul(z).mulu(4)).sqrt()).divu(2);
 
-        // {USD/buyTok} = {ref/buyTok} * {target/ref} * {USD/target}
-        Fix deficitPrice = deficit.refPerTok().mul(deficit.peggedTargetPerRef()).mul(
-            deficit.usdPerTarget()
-        );
+        // {qRTok} = {rTok} * {qRTok/rTok}
+        uint256 targetSupply = x.shiftLeft(int8(rToken().decimals())).ceil();
+        assert(targetSupply > rToken().totalSupply());
 
-        // {USD} = {USD/buyTok} * {buyTok}
-        Fix deficitUSD = deficitPrice.mul(fixMax(deficitAmount, _dustThreshold(deficit)));
+        // Mint to the 0x1 address
+        rToken().mint(address(1), targetSupply - rToken().totalSupply());
 
-        // The increase in RToken supply should match the deficit to collateral USD ratios
-        // TODO This calculation should probably get a second set of eyes
-
-        Fix ratio = deficitUSD.plus(collateralUSD).div(collateralUSD);
-
-        // {rTok} = {qRTok} / {qRTok/rTok}
-        Fix rTokBal = toFixWithShift(main.rToken().totalSupply(), -int8(main.rToken().decimals()));
-
-        // {rTok} = {none} * {rTok} - {rTok}
-        Fix sellAmount = ratio.mul(rTokBal).minus(rTokBal);
-        sellAmount = fixMin(sellAmount, rTokBal.mul(maxAuctionSize()));
-
-        // Mint to self and leave
-        rToken().mint(address(this), sellAmount.ceil());
+        // Finance!
+        assert(fullyCapitalized());
     }
 
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
-        Fix target = _targetBUs();
+        Fix target = targetBUs();
 
         // First mint RToken
-        Fix actual = _actualBUHoldings();
+        Fix actual = actualBUHoldings();
         if (actual.gt(target)) {
-            uint256 toMint = _fromBUs(actual.minus(target));
+            uint256 toMint = fromBUs(actual.minus(target));
             rToken().mint(address(this), toMint);
-            target = _targetBUs();
+            target = targetBUs();
         }
 
         // Handout excess assets, including RToken
@@ -209,7 +204,7 @@ contract AuctioneerP0 is
                 ICollateral c = ICollateral(_assets.at(i));
 
                 // {tok} = {BU} * {ref/BU} / {ref/tok}
-                Fix tokRequired = target.mul(_basket.refAmts[c]).div(c.refPerTok());
+                Fix tokRequired = target.mul(basket.refAmts[c]).div(c.refPerTok());
 
                 // {qTok} = {tok} * {qTok/tok}
                 required = tokRequired.shiftLeft(int8(c.erc20().decimals())).ceil();
@@ -244,7 +239,7 @@ contract AuctioneerP0 is
             Fix
         )
     {
-        Fix targetBUs = _targetBUs(); // number of BUs needed to back the RToken fully
+        Fix targetBUs = targetBUs(); // number of BUs needed to back the RToken fully
 
         // Calculate surplus and deficits relative to basket reference amounts.
         Fix[] memory prices = new Fix[](_assets.length()); // {USD/tok}
@@ -259,10 +254,10 @@ contract AuctioneerP0 is
                 ICollateral c = ICollateral(_assets.at(i));
 
                 // {USD/tok} = {ref/tok} * {target/ref} * {USD/target}
-                prices[i] = c.refPerTok().mul(c.peggedTargetPerRef()).mul(c.usdPerTarget());
+                prices[i] = c.refPerTok().mul(c.targetPerRef()).mul(c.usdPerTarget());
 
                 // {USD} = {BU} * {ref/BU} / {ref/tok} * {USD/tok}
-                required = targetBUs.mul(_basket.refAmts[c]).div(c.refPerTok()).mul(prices[i]);
+                required = targetBUs.mul(basket.refAmts[c]).div(c.refPerTok()).mul(prices[i]);
             } else {
                 prices[i] = a.price();
             }
