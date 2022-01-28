@@ -160,7 +160,8 @@ interface CollateralFixture {
 async function collateralFixture(
   main: MainP0,
   compoundOracle: CompoundOracle,
-  aaveOracle: AaveOracle
+  aaveOracle: AaveOracle,
+  aaveToken: ERC20Mock
 ): Promise<CollateralFixture> {
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
@@ -229,6 +230,10 @@ async function collateralFixture(
     const erc20: StaticATokenMock = <StaticATokenMock>(
       await ATokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
     )
+
+    // Set reward token
+    await erc20.setAaveToken(aaveToken.address)
+
     return [
       erc20,
       <ATokenCollateralP0>(
@@ -400,7 +405,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const { erc20s, collateral, basket, basketTargetAmts } = await collateralFixture(
     main,
     compoundOracle,
-    aaveOracle
+    aaveOracle,
+    aaveToken
   )
 
   // Set Oracle Prices
