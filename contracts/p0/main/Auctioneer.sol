@@ -70,83 +70,13 @@ contract AuctioneerP0 is
         }
 
         /*
-         * The strategy for handling undercapitalization is pretty simple:
-         *   1. Prefer selling surplus assets
-         *   2. When there are no more surplus assets, seize RSR and sell that
-         *   3. When there is no more RSR left, dilute RToken holders
+         * Recapitalization logic:
+         *   1. Sell all surplus assets at Main for deficit collateral
+         *   2. When there is no more surplus, seize RSR and sell that for RToken
+         *   3. When there is no more RSR, give RToken holders a haircut
          */
 
-        if (tryToBuyCollateral()) {
-            return;
-        }
-
-        seizeRSR();
-        if (tryToBuyCollateral()) {
-            return;
-        }
-
-        diluteRTokenHolders();
-    }
-
-    /// Try to launch asset-for-collateral auctions until recapitalized
-    /// @return Whether an auction was launched
-    function tryToBuyCollateral() private returns (bool) {
-        (
-            IAsset surplus,
-            ICollateral deficit,
-            Fix surplusAmount,
-            Fix deficitAmount
-        ) = largestSurplusAndDeficit();
-
-        // Of primary concern here is whether we can trust the prices for the assets
-        // we are selling. If we cannot, then we should not `prepareAuctionToCoverDeficit`
-
-        bool trade;
-        Auction memory auction;
-        if (
-            surplus.isCollateral() &&
-            ICollateral(address(surplus)).status() != CollateralStatus.SOUND
-        ) {
-            (trade, auction) = prepareAuctionSell(surplus, deficit, surplusAmount);
-            auction.minBuyAmount = 0;
-        } else {
-            (trade, auction) = prepareAuctionToCoverDeficit(
-                surplus,
-                deficit,
-                surplusAmount,
-                deficitAmount
-            );
-        }
-        if (trade) {
-            launchAuction(auction);
-        }
-        return trade;
-    }
-
-    /// Seize an amount of RSR to recapitalize our most in-deficit collateral
-    function seizeRSR() private {
-        assert(!hasOpenAuctions() && !fullyCapitalized());
-        (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit();
-
-        uint256 bal = rsr().balanceOf(address(this));
-        (bool trade, Auction memory auction) = prepareAuctionToCoverDeficit(
-            rsrAsset(),
-            deficit,
-            toFixWithShift(bal + rsr().balanceOf(address(stRSR())), -int8(rsr().decimals())),
-            deficitAmount
-        );
-        if (trade) {
-            if (auction.sellAmount > bal) {
-                stRSR().seizeRSR(auction.sellAmount - bal);
-            }
-        }
-    }
-
-    /// Compromise on the BU target in order to become recapitalized again
-    function diluteRTokenHolders() private {
-        assert(!hasOpenAuctions() && !fullyCapitalized());
-        targetBUs = actualBUHoldings();
-        assert(fullyCapitalized());
+        sellSurplusAssetsForCollateral() || sellRSRForRToken() || giveRTokenHoldersAHaircut();
     }
 
     /// Send excess assets to the RSR and RToken traders
@@ -183,6 +113,74 @@ contract AuctioneerP0 is
                 }
             }
         }
+    }
+
+    /// Try to launch a asset-for-collateral auction
+    /// @return Whether an auction was launched
+    function sellSurplusAssetsForCollateral() private returns (bool) {
+        (
+            IAsset surplus,
+            ICollateral deficit,
+            Fix surplusAmount,
+            Fix deficitAmount
+        ) = largestSurplusAndDeficit();
+
+        // Of primary concern here is whether we can trust the prices for the assets
+        // we are selling. If we cannot, then we should not `prepareAuctionToCoverDeficit`
+
+        bool trade;
+        Auction memory auction;
+        if (
+            surplus.isCollateral() &&
+            ICollateral(address(surplus)).status() != CollateralStatus.SOUND
+        ) {
+            (trade, auction) = prepareAuctionSell(surplus, deficit, surplusAmount);
+            auction.minBuyAmount = 0;
+        } else {
+            (trade, auction) = prepareAuctionToCoverDeficit(
+                surplus,
+                deficit,
+                surplusAmount,
+                deficitAmount
+            );
+        }
+        if (trade) {
+            launchAuction(auction);
+        }
+        return trade;
+    }
+
+    /// Try to seize RSR and sell it for RToken to melt
+    /// @return Whether an auction was launched
+    function sellRSRForRToken() private returns (bool) {
+        assert(!hasOpenAuctions() && !fullyCapitalized());
+
+        uint256 deficit = fromBUs(targetBUs.minus(actualBUHoldings())); // {qRTok}
+        uint256 bal = rsr().balanceOf(address(this)); // {qRSR}
+        uint256 max = bal + rsr().balanceOf(address(rToken())); // {qRSR}
+
+        (bool trade, Auction memory auction) = prepareAuctionToCoverDeficit(
+            rsrAsset(),
+            rTokenAsset(),
+            toFixWithShift(max, -int8(rsr().decimals())),
+            toFixWithShift(deficit, -int8(rToken().decimals()))
+        );
+
+        if (trade) {
+            if (auction.sellAmount > bal) {
+                stRSR().seizeRSR(auction.sellAmount - bal);
+            }
+            launchAuction(auction);
+        }
+        return trade;
+    }
+
+    /// Compromise on the BU target in order to become recapitalized again
+    function giveRTokenHoldersAHaircut() private returns (bool) {
+        assert(!hasOpenAuctions() && !fullyCapitalized());
+        targetBUs = actualBUHoldings();
+        assert(fullyCapitalized());
+        return true;
     }
 
     /// Compute the largest asset-for-collateral trade by identifying
