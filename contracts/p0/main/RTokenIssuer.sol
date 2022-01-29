@@ -57,7 +57,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     /// Process pending issuances on poke
     function poke() public virtual override(Mixin, BasketHandlerP0) notPaused {
         super.poke();
-        revenueFurnace().doBurn();
+        revenueFurnace().melt();
         processSlowIssuance();
     }
 
@@ -65,7 +65,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     /// @param amount {qTok} The quantity of RToken to issue
     function issue(uint256 amount) public override notPaused {
         require(amount > 0, "Cannot issue zero");
-        revenueFurnace().doBurn();
+        revenueFurnace().melt();
         tryEnsureValidBasket();
         require(worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
@@ -100,7 +100,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     function redeem(uint256 amount) public override {
         require(amount > 0, "Cannot redeem zero");
-        revenueFurnace().doBurn();
+        revenueFurnace().melt();
 
         Fix amtBUs = toBUs(amount);
         uint256[] memory compensation = fullyCapitalized()

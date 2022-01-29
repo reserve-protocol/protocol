@@ -263,7 +263,7 @@ describe('FurnaceP0 contract', () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
       // Burn
-      await furnace.connect(addr1).doBurn()
+      await furnace.connect(addr1).melt()
 
       // Check burn registered
       await expectBatchInfo(0, {
@@ -298,7 +298,7 @@ describe('FurnaceP0 contract', () => {
       await advanceTime(timePeriod + 1)
 
       // Burn
-      await furnace.connect(addr1).doBurn()
+      await furnace.connect(addr1).melt()
 
       // Check burn registered
       await expectBatchInfo(0, {
@@ -330,13 +330,13 @@ describe('FurnaceP0 contract', () => {
       await advanceTime(timePeriod + 1)
 
       // Burn
-      await furnace.connect(addr1).doBurn()
+      await furnace.connect(addr1).melt()
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
       // Try to burn again
-      await furnace.connect(addr1).doBurn()
+      await furnace.connect(addr1).melt()
 
       // Check burn not modified
       await expectBatchInfo(0, {
@@ -372,7 +372,7 @@ describe('FurnaceP0 contract', () => {
       await advanceToTimestamp(hndTimestamp + timePeriod / 2 - 1)
 
       // Burn
-      await furnace.connect(addr1).doBurn()
+      await furnace.connect(addr1).melt()
 
       // Check burn registered
       await expectBatchInfo(0, {
@@ -388,7 +388,7 @@ describe('FurnaceP0 contract', () => {
       await advanceToTimestamp((await getLatestBlockTimestamp()) + timePeriod / 2)
 
       // Burn with any account
-      await furnace.connect(addr2).doBurn()
+      await furnace.connect(addr2).melt()
 
       // Check burn registered
       await expectBatchInfo(0, {
@@ -434,7 +434,7 @@ describe('FurnaceP0 contract', () => {
       await advanceToTimestamp(hndTimestamp1 + timePeriod + 100)
 
       // Burn with any account
-      await furnace.connect(addr2).doBurn()
+      await furnace.connect(addr2).melt()
 
       // Check burn registered in both batches
       await expectBatchInfo(0, {
@@ -467,7 +467,7 @@ describe('FurnaceP0 contract', () => {
       await furnace.connect(addr1).notifyOfDeposit(rToken.address)
 
       // Burn
-      await furnace.connect(addr1).doBurn()
+      await furnace.connect(addr1).melt()
 
       // Mine block
       await hre.network.provider.send('evm_mine', [])

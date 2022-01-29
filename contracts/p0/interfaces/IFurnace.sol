@@ -20,7 +20,7 @@ interface IFurnace is IERC20Receiver {
     //
 
     /// Performs any RToken burning that has vested since last call. Idempotent
-    function doBurn() external;
+    function melt() external;
 
     function setBatchDuration(uint256 batchDuration) external;
 

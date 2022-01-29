@@ -38,9 +38,9 @@ contract FurnaceExtension is ContextMixin, FurnaceP0, IExtension {
 
     /// Burns any vested RToken and checks that the second call is a no-op
     function _INVARIANT_burnIdempotent() internal {
-        doBurn();
+        melt();
         uint256 burnt = rToken.totalSupply();
-        doBurn();
+        melt();
         assert(burnt == rToken.totalSupply());
     }
 }

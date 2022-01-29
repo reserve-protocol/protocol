@@ -57,7 +57,7 @@ contract FurnaceP0 is Ownable, IFurnace {
     }
 
     /// Performs any burning that has vested since last call. Idempotent
-    function doBurn() public override {
+    function melt() public override {
         // Compute the current total to melt across the batches,
         // and pull that total out of the batches that are here.
 
