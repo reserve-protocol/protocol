@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { AuctionStatus, BN_SCALE_FACTOR } from '../../common/constants'
+import { AuctionStatus, FURNACE_DEST, BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AaveOracle } from '../../typechain/AaveOracle'
@@ -425,109 +425,103 @@ describe('MainP0 contract', () => {
         await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
       })
 
-      // it('Should handle large auctions for using maxAuctionSize with f=1 (RSR only)', async () => {
-      //   // Advance time to get next reward
-      //   await advanceTime(config.rewardPeriod.toString())
+      it('Should handle large auctions for using maxAuctionSize with f=1 (RSR only)', async () => {
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
 
-      //   // Set f = 1
-      //   await main
-      //     .connect(owner)
-      //     .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        // Set f = 1
+        await main
+          .connect(owner)
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
 
-      //   // Set COMP tokens as reward
-      //   rewardAmountCOMP = bn('2e18')
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('2e18')
 
-      //   // Check initial state
-      //   expect(await main.mood()).to.equal(Mood.CALM)
+        // COMP Rewards
+        await compoundMock.setRewards(main.address, rewardAmountCOMP)
 
-      //   // COMP Rewards
-      //   await compoundMock.setRewards(vault.address, rewardAmountCOMP)
+        // Collect revenue - Called via poke
+        // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
+        let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
+        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-      //   // Collect revenue - Called via poke
-      //   // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
-      //   let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
-      //   let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(rewardAmountCOMP, 0)
 
-      //   await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(rewardAmountCOMP, 0)
+        await expect(main.poke())
+          .to.emit(rsrTrader, 'AuctionStarted')
+          .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
+          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
-      //   await expect(main.poke())
-      //     .to.emit(rsrTrader, 'AuctionStarted')
-      //     .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-      //     .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+        const auctionTimestamp: number = await getLatestBlockTimestamp()
+        // Check auction registered
+        // COMP -> RSR Auction
+        await expectAuctionInfo(rsrTrader, 0, {
+          sell: compAsset.address,
+          buy: rsrAsset.address,
+          sellAmount: sellAmt,
+          minBuyAmount: minBuyAmt,
+          startTime: auctionTimestamp,
+          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          clearingSellAmount: bn('0'),
+          clearingBuyAmount: bn('0'),
+          externalAuctionId: bn('0'),
+          status: AuctionStatus.OPEN,
+        })
 
-      //   const auctionTimestamp: number = await getLatestBlockTimestamp()
-      //   // Check auction registered
-      //   // COMP -> RSR Auction
-      //   await expectAuctionInfo(rsrTrader, 0, {
-      //     sell: compAsset.address,
-      //     buy: rsrAsset.address,
-      //     sellAmount: sellAmt,
-      //     minBuyAmount: minBuyAmt,
-      //     startTime: auctionTimestamp,
-      //     endTime: auctionTimestamp + Number(config.auctionPeriod),
-      //     clearingSellAmount: bn('0'),
-      //     clearingBuyAmount: bn('0'),
-      //     externalAuctionId: bn('0'),
-      //     status: AuctionStatus.OPEN,
-      //   })
+        // Another call will create a new auction
+        await expect(main.poke())
+          .to.emit(rsrTrader, 'AuctionStarted')
+          .withArgs(1, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
+          .and.to.not.emit(rsrTrader, 'AuctionEnded')
+          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
-      //   // Another call will create a new auction
-      //   await expect(main.poke())
-      //     .to.emit(rsrTrader, 'AuctionStarted')
-      //     .withArgs(1, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-      //     .and.to.not.emit(rsrTrader, 'AuctionEnded')
-      //     .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+        // COMP -> RSR Auction
+        await expectAuctionInfo(rsrTrader, 1, {
+          sell: compAsset.address,
+          buy: rsrAsset.address,
+          sellAmount: sellAmt,
+          minBuyAmount: minBuyAmt,
+          startTime: await getLatestBlockTimestamp(),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          clearingSellAmount: bn('0'),
+          clearingBuyAmount: bn('0'),
+          externalAuctionId: bn('1'),
+          status: AuctionStatus.OPEN,
+        })
 
-      //   // COMP -> RSR Auction
-      //   await expectAuctionInfo(rsrTrader, 1, {
-      //     sell: compAsset.address,
-      //     buy: rsrAsset.address,
-      //     sellAmount: sellAmt,
-      //     minBuyAmount: minBuyAmt,
-      //     startTime: await getLatestBlockTimestamp(),
-      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
-      //     clearingSellAmount: bn('0'),
-      //     clearingBuyAmount: bn('0'),
-      //     externalAuctionId: bn('0'),
-      //     status: AuctionStatus.OPEN,
-      //   })
+        // Check existing auctions still open
+        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.OPEN)
 
-      //   // Check existing auctions still open
-      //   await expectAuctionStatus(rsrTrader, 0, AuctionStatus.OPEN)
+        // Perform Mock Bids for RSR (addr1 has balance)
+        await rsr.connect(addr1).approve(market.address, minBuyAmt)
+        await market.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
 
-      //   // Perform Mock Bids for RSR (addr1 has balance)
-      //   await rsr.connect(addr1).approve(market.address, minBuyAmt)
-      //   await market.placeBid(0, {
-      //     bidder: addr1.address,
-      //     sellAmount: sellAmt,
-      //     buyAmount: minBuyAmt,
-      //   })
+        await rsr.connect(addr1).approve(market.address, minBuyAmt)
+        await market.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
 
-      //   await rsr.connect(addr1).approve(market.address, minBuyAmt)
-      //   await market.placeBid(1, {
-      //     bidder: addr1.address,
-      //     sellAmount: sellAmt,
-      //     buyAmount: minBuyAmt,
-      //   })
+        // Advance time till auction ended
+        await advanceTime(config.auctionPeriod.add(100).toString())
 
-      //   // Advance time till auction ended
-      //   await advanceTime(config.auctionPeriod.add(100).toString())
+        // Close auctions
+        await expect(main.poke())
+          .to.emit(rsrTrader, 'AuctionEnded')
+          .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
+          .and.to.emit(rsrTrader, 'AuctionEnded')
+          .withArgs(1, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
+          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
-      //   // Close auctions
-      //   await expect(main.poke())
-      //     .to.emit(rsrTrader, 'AuctionEnded')
-      //     .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-      //     .and.to.emit(rsrTrader, 'AuctionEnded')
-      //     .withArgs(1, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-      //     .and.to.not.emit(rTokenTrader, 'AuctionStarted')
-
-      //   // Check existing auctions are closed
-      //   await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
-      //   await expectAuctionStatus(rsrTrader, 1, AuctionStatus.DONE)
-
-      //   // Mood moved to CALM
-      //   expect(await main.mood()).to.equal(Mood.CALM)
-      // })
+        // Check existing auctions are closed
+        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
+        await expectAuctionStatus(rsrTrader, 1, AuctionStatus.DONE)
+      })
 
       // it('Should handle large auctions for using maxAuctionSize with f=0 (RToken only)', async () => {
       //   // Advance time to get next reward
