@@ -13,6 +13,11 @@ import "./IMain.sol";
  * is eligible to be an asset.
  */
 interface IAsset {
+    /// Emitted when the asset's oracle is changed
+    /// @param oldOracle The old oracle contract
+    /// @param newOracle The new oracle contract
+    event OracleChanged(IOracle indexed oldOracle, IOracle indexed newOracle);
+
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() external view returns (Fix);
 
@@ -40,6 +45,16 @@ enum CollateralStatus {
  * @notice A subtype of Asset that consists of the tokens eligible to back the RToken.
  */
 interface ICollateral is IAsset {
+    /// Emitted whenever `whenDefault` is changed
+    /// @param oldWhenDefault The old value of `whenDefault`
+    /// @param newWhenDefault The new value of `whenDefault`
+    /// @param status The updated CollateralStatus
+    event DefaultStatusChanged(
+        uint256 indexed oldWhenDefault,
+        uint256 indexed newWhenDefault,
+        CollateralStatus indexed status
+    );
+
     /// Force any updates such as updating the default status or poking the defi protocol.
     /// Block-idempotent.
     function forceUpdates() external;

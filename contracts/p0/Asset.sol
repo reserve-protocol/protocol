@@ -42,6 +42,9 @@ contract AssetP0 is IAsset, Context {
 
     function setOracle(IOracle newOracle) external {
         require(_msgSender() == main.owner(), "only main.owner");
-        oracle = newOracle;
+        if (oracle != newOracle) {
+            emit OracleChanged(oracle, newOracle);
+            oracle = newOracle;
+        }
     }
 }

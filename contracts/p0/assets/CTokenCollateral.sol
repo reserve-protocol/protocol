@@ -47,6 +47,7 @@ contract CTokenCollateralP0 is CollateralP0 {
         if (whenDefault <= block.timestamp) {
             return;
         }
+        uint256 cached = whenDefault;
 
         // Update Compound
         ICToken(address(erc20)).exchangeRateCurrent();
@@ -62,6 +63,10 @@ contract CTokenCollateralP0 is CollateralP0 {
                 : NEVER;
         }
         prevReferencePrice = p;
+
+        if (whenDefault != cached) {
+            emit DefaultStatusChanged(cached, whenDefault, status());
+        }
     }
 
     /// @dev Intended to be used via delegatecall
