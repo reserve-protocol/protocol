@@ -341,98 +341,89 @@ describe('MainP0 contract', () => {
         })
       })
 
-      // it('Should claim AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
-      //   // Advance time to get next reward
-      //   await advanceTime(config.rewardPeriod.toString())
+      it('Should claim AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
 
-      //   rewardAmountAAVE = bn('0.5e18')
+        rewardAmountAAVE = bn('0.5e18')
 
-      //   // Check initial state
-      //   expect(await main.mood()).to.equal(Mood.CALM)
+        // AAVE Rewards
+        await token2.setRewards(main.address, rewardAmountAAVE)
 
-      //   // AAVE Rewards
-      //   await token2.setRewards(vault.address, rewardAmountAAVE)
+        // Collect revenue - Called via poke
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        let sellAmt: BigNumber = rewardAmountAAVE.mul(6).div(10) // due to f = 60%
+        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-      //   // Get RToken Asset
-      //   const rTokenAsset = <RTokenAssetP0>(
-      //     await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
-      //   )
+        let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-      //   // Collect revenue - Called via poke
-      //   // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-      //   let sellAmt: BigNumber = rewardAmountAAVE.mul(6).div(10) // due to f = 60%
-      //   let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(0, rewardAmountAAVE)
 
-      //   let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
-      //   let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        await expect(main.poke())
+          .to.emit(rsrTrader, 'AuctionStarted')
+          .withArgs(0, aaveAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
+          .and.to.emit(rTokenTrader, 'AuctionStarted')
+          .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
 
-      //   await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(0, rewardAmountAAVE)
+        // Check auctions registered
+        // AAVE -> RSR Auction
+        await expectAuctionInfo(rsrTrader, 0, {
+          sell: aaveAsset.address,
+          buy: rsrAsset.address,
+          sellAmount: sellAmt,
+          minBuyAmount: minBuyAmt,
+          startTime: await getLatestBlockTimestamp(),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          clearingSellAmount: bn('0'),
+          clearingBuyAmount: bn('0'),
+          externalAuctionId: bn('0'),
+          status: AuctionStatus.OPEN,
+        })
 
-      //   await expect(main.poke())
-      //     .to.emit(rsrTrader, 'AuctionStarted')
-      //     .withArgs(0, aaveAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-      //     .and.to.emit(rTokenTrader, 'AuctionStarted')
-      //     .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
+        // AAVE -> RToken Auction
+        await expectAuctionInfo(rTokenTrader, 0, {
+          sell: aaveAsset.address,
+          buy: rTokenAsset.address,
+          sellAmount: sellAmtRToken,
+          minBuyAmount: minBuyAmtRToken,
+          startTime: await getLatestBlockTimestamp(),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          clearingSellAmount: bn('0'),
+          clearingBuyAmount: bn('0'),
+          externalAuctionId: bn('1'),
+          status: AuctionStatus.OPEN,
+        })
 
-      //   // Check auctions registered
-      //   // AAVE -> RSR Auction
-      //   await expectAuctionInfo(rsrTrader, 0, {
-      //     sell: aaveAsset.address,
-      //     buy: rsrAsset.address,
-      //     sellAmount: sellAmt,
-      //     minBuyAmount: minBuyAmt,
-      //     startTime: await getLatestBlockTimestamp(),
-      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
-      //     clearingSellAmount: bn('0'),
-      //     clearingBuyAmount: bn('0'),
-      //     status: AuctionStatus.OPEN,
-      //   })
+        // Advance time till auctioo ended
+        await advanceTime(config.auctionPeriod.add(100).toString())
 
-      //   // AAVE -> RToken Auction
-      //   await expectAuctionInfo(rTokenTrader, 0, {
-      //     sell: aaveAsset.address,
-      //     buy: rTokenAsset.address,
-      //     sellAmount: sellAmtRToken,
-      //     minBuyAmount: minBuyAmtRToken,
-      //     startTime: await getLatestBlockTimestamp(),
-      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
-      //     clearingSellAmount: bn('0'),
-      //     clearingBuyAmount: bn('0'),
-      //     status: AuctionStatus.OPEN,
-      //   })
+        // Mock auction by minting the buy tokens (in this case RSR and RToken)
+        await rsr.connect(addr1).approve(market.address, minBuyAmt)
+        await rToken.connect(addr1).approve(market.address, minBuyAmtRToken)
+        await market.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
+        await market.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRToken,
+          buyAmount: minBuyAmtRToken,
+        })
 
-      //   // Advance time till auctioo ended
-      //   await advanceTime(config.auctionPeriod.add(100).toString())
+        // Close auctions
+        await expect(main.poke())
+          .to.emit(rsrTrader, 'AuctionEnded')
+          .withArgs(0, aaveAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
+          .and.to.emit(rTokenTrader, 'AuctionEnded')
+          .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
+          .and.to.not.emit(rsrTrader, 'AuctionStarted')
+          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
-      //   // Mock auction by minting the buy tokens (in this case RSR and RToken)
-      //   await rsr.connect(addr1).approve(market.address, minBuyAmt)
-      //   await rToken.connect(addr1).approve(market.address, minBuyAmtRToken)
-      //   await market.placeBid(0, {
-      //     bidder: addr1.address,
-      //     sellAmount: sellAmt,
-      //     buyAmount: minBuyAmt,
-      //   })
-      //   await market.placeBid(1, {
-      //     bidder: addr1.address,
-      //     sellAmount: sellAmtRToken,
-      //     buyAmount: minBuyAmtRToken,
-      //   })
-
-      //   // Close auctions
-      //   await expect(main.poke())
-      //     .to.emit(rsrTrader, 'AuctionEnded')
-      //     .withArgs(0, aaveAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-      //     .and.to.emit(rTokenTrader, 'AuctionEnded')
-      //     .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
-      //     .and.to.not.emit(rsrTrader, 'AuctionStarted')
-      //     .and.to.not.emit(rTokenTrader, 'AuctionStarted')
-
-      //   await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
-      //   await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
-
-      //   // Mood back to CALM
-      //   expect(await main.mood()).to.equal(Mood.CALM)
-      // })
+        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
+        await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
+      })
 
       // it('Should handle large auctions for using maxAuctionSize with f=1 (RSR only)', async () => {
       //   // Advance time to get next reward
