@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IERC20Receiver.sol";
+import "./IMain.sol";
 
 /*
  * @title IStRSR
@@ -10,10 +11,16 @@ import "contracts/p0/interfaces/IERC20Receiver.sol";
  * @dev The p0-specific IStRSR
  */
 interface IStRSR is IERC20, IERC20Receiver {
+    /// Emitted when Main is set
+    /// @param oldMain The old address of Main
+    /// @param newMain The new address of Main
+    event MainSet(IMain indexed oldMain, IMain indexed newMain);
+
     /// Emitted when RSR is staked
     /// @param staker The address of the staker
     /// @param amount {qRSR} The quantity of RSR staked
     event Staked(address indexed staker, uint256 indexed amount);
+
     /// Emitted when an unstaking is started
     /// @param withdrawalId The id of the withdrawal, globally unique
     /// @param staker The address of the unstaker
@@ -25,6 +32,7 @@ interface IStRSR is IERC20, IERC20Receiver {
         uint256 indexed amount,
         uint256 availableAt
     );
+
     /// Emitted when RSR is unstaked
     /// @param withdrawalId The id of the withdrawal, globally unique
     /// @param staker The address of the unstaker
@@ -34,10 +42,12 @@ interface IStRSR is IERC20, IERC20Receiver {
         address indexed staker,
         uint256 indexed amount
     );
+
     /// Emitted when dividend RSR is added to the pool
     /// @param from The address that sent the dividend RSR
     /// @param amount {qRSR} The quantity of RSR added
     event RSRAdded(address indexed from, uint256 indexed amount);
+
     /// Emitted when insurance RSR is seized from the pool
     /// @param from The address that seized the staked RSR (should only be the AssetManager)
     /// @param amount {qRSR} The quantity of RSR seized
@@ -54,4 +64,7 @@ interface IStRSR is IERC20, IERC20Receiver {
     /// AssetManager only
     /// @param amount {qRSR}
     function seizeRSR(uint256 amount) external;
+
+    /// Sets Main, only by owner
+    function setMain(IMain main) external;
 }
