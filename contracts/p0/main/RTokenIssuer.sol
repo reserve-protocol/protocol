@@ -73,7 +73,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         uint256[] memory deposits = basket.deposit(_msgSender(), amtBUs);
         targetBUs = targetBUs.plus(amtBUs); // TODO Double-check the ordering with .deposit()
 
-        // During SlowIssuance, RTokens are minted and held by Main until vesting completes
+        // During SlowIssuance, RTokens are minted and held by RToken until vesting completes
         SlowIssuance memory iss = SlowIssuance({
             blockStartedAt: block.number,
             amount: amount,
@@ -184,7 +184,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
                 }
                 iss.processed = true;
                 emit IssuanceCanceled(i);
-            } else if (backingIsSound) {
+            } else if (backingIsSound && iss.blockAvailableAt.lte(toFix(block.number))) {
                 // Complete issuance i
                 rToken().withdraw(iss.issuer, iss.amount);
                 iss.processed = true;
