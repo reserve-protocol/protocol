@@ -23,15 +23,15 @@ enum Account {
 enum AssetName {
     DAI, // 0
     USDC,
-    UoAT,
-    BUoA,
+    USDT,
+    BUSD,
     cDAI,
     cUSDC,
-    cUoAT,
+    cUSDT,
     aDAI,
     aUSDC,
-    aUoAT,
-    aBUoA,
+    aUSDT,
+    aBUSD,
     // Below: not collateral eligible
     RSR,
     COMP,
@@ -78,7 +78,7 @@ struct ProtoState {
     // System-external state
     TokenState comp;
     TokenState aave;
-    TokenState[] collateral; // AssetName.DAI - AssetName.aBUoA
-    Fix[] defiCollateralRates; // AssetName.DAI - AssetName.aBUoA, fiatcoins are ignored
+    TokenState[] collateral; // AssetName.DAI - AssetName.aBUSD
+    Fix[] defiCollateralRates; // AssetName.DAI - AssetName.aBUSD, fiatcoins are ignored
     Price ethPrice;
 }
