@@ -45,6 +45,7 @@ contract RTokenP0 is Ownable, ERC20, IRToken {
     }
 
     function setMain(IMain main_) external virtual override onlyOwner {
+        emit MainSet(main, main_);
         main = main_;
     }
 }
