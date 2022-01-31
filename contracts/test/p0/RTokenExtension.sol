@@ -10,8 +10,9 @@ contract RTokenExtension is ContextMixin, RTokenP0, IExtension {
     constructor(
         address admin,
         string memory name_,
-        string memory symbol_
-    ) ContextMixin(admin) RTokenP0(name_, symbol_) {}
+        string memory symbol_,
+        address owner_
+    ) ContextMixin(admin) RTokenP0(name_, symbol_, owner_) {}
 
     function assertInvariants() external pure override {
         assert(true);
