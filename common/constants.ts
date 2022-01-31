@@ -18,6 +18,13 @@ export enum Mood {
   TRADING,
 }
 
+// @dev Must match `IMain.AuctionStatus`
+export enum AuctionStatus {
+  NOT_YET_OPEN,
+  OPEN,
+  DONE,
+}
+
 // @dev Must match `IAsset.CollateralStatus`.
 export enum CollateralStatus {
   SOUND,
