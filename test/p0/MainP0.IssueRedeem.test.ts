@@ -23,7 +23,7 @@ import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { USDCMock } from '../../typechain/USDCMock'
-import { advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
+import { advanceTime, getLatestBlockNumber } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -242,7 +242,7 @@ describe('MainP0 contract', () => {
       expect(await main.fullyCapitalized()).to.equal(true)
 
       // Check if minting was registered
-      const currentBlockNumber = await ethers.provider.getBlockNumber()
+      const currentBlockNumber = await getLatestBlockNumber()
       const [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
         await main.issuances(0)
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
@@ -307,7 +307,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check if minting was registered
-      let currentBlockNumber = await ethers.provider.getBlockNumber()
+      let currentBlockNumber = await getLatestBlockNumber()
       let [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
         await main.issuances(0)
 
@@ -349,7 +349,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr2.address)).to.equal(0)
 
       // Check new issuances was processed
-      currentBlockNumber = await ethers.provider.getBlockNumber()
+      currentBlockNumber = await getLatestBlockNumber()
       ;[sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
         await main.issuances(1)
       expect(sm_startedAt).to.equal(currentBlockNumber)
@@ -396,7 +396,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check if minting was registered
-      let currentBlockNumber = await ethers.provider.getBlockNumber()
+      let currentBlockNumber = await getLatestBlockNumber()
       let [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
         await main.issuances(0)
       expect(sm_startedAt).to.equal(currentBlockNumber)
@@ -415,9 +415,9 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Process 4 blocks
-      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
+      await advanceTime(100)
+      await advanceTime(100)
+      await advanceTime(100)
       await main.poke()
 
       // Check previous minting was processed and funds sent to minter
@@ -440,10 +440,10 @@ describe('MainP0 contract', () => {
       await main.connect(addr1).issue(issueAmount)
 
       // Process slow issuances
-      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
+      await advanceTime(100)
+      await advanceTime(100)
+      await advanceTime(100)
+      await advanceTime(100)
       await main.poke()
 
       // Check issuance was confirmed
@@ -463,7 +463,7 @@ describe('MainP0 contract', () => {
       await main.connect(addr1).issue(newIssuanceAmt)
 
       // Check if minting was registered
-      let currentBlockNumber = await ethers.provider.getBlockNumber()
+      let currentBlockNumber = await getLatestBlockNumber()
 
       let [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
         await main.issuances(1)
@@ -497,48 +497,40 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssuanceAmt))
     })
 
-    // it('Should process multiple issuances in the correct order', async function () {
-    // // Provide approvals
-    // await token0.connect(addr1).approve(main.address, initialBal)
-    // await token1.connect(addr1).approve(main.address, initialBal)
-    // await token2.connect(addr1).approve(main.address, initialBal)
-    // await token3.connect(addr1).approve(main.address, initialBal)
+    it('Should process multiple issuances in the correct order', async function () {
+      // Provide approvals
+      await token0.connect(addr1).approve(main.address, initialBal)
+      await token1.connect(addr1).approve(main.address, initialBal)
+      await token2.connect(addr1).approve(main.address, initialBal)
+      await token3.connect(addr1).approve(main.address, initialBal)
 
-    // // Issuance #1 - Will be processed in 5 blocks
-    // const issueAmount: BigNumber = bn('50000e18')
-    // await main.connect(addr1).issue(issueAmount)
+      // Issuance #1 - Will be processed in 5 blocks
+      const issueAmount: BigNumber = bn('50000e18')
+      await main.connect(addr1).issue(issueAmount)
 
-    // // Issuance #2 and #3 - Will be processed in one additional block each
-    // const newIssueAmount: BigNumber = bn('10000e18')
-    // await main.connect(addr1).issue(newIssueAmount)
-    // await main.connect(addr1).issue(newIssueAmount)
+      // Issuance #2 and #3 - Will be processed in one additional block each
+      const newIssueAmount: BigNumber = bn('10000e18')
+      await main.connect(addr1).issue(newIssueAmount)
+      await main.connect(addr1).issue(newIssueAmount)
 
-    // // Process remaining 3 blocks for first issuance (2 already processed by issue calls)
-    // await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-    // await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-    // await main.poke()
+      // Process remaining 3 blocks for first issuance (2 already processed by issue calls)
+      await advanceTime(100)
+      await advanceTime(100)
+      await main.poke()
 
-    // // Check first slow minting is confirmed
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-    // expect(await vault.basketUnits(main.address)).to.equal(newIssueAmount.mul(2))
-    // expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount)
+      // Check first slow minting is confirmed
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
-    // // Process another block to get the 2nd issuance processed
-    // await main.poke()
+      // Process another block to get the 2nd issuance processed
+      await main.poke()
 
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
-    // expect(await vault.basketUnits(main.address)).to.equal(newIssueAmount)
-    // expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount.add(newIssueAmount))
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
 
-    // // Process another block to get the 3rd issuance processed
-    // await main.poke()
+      // Process another block to get the 3rd issuance processed
+      await main.poke()
 
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
-    // expect(await vault.basketUnits(main.address)).to.equal(0)
-    // expect(await vault.basketUnits(rToken.address)).to.equal(
-    // issueAmount.add(newIssueAmount.mul(2))
-    // )
-    // })
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
+    })
 
     // it('Should rollback mintings if Vault changes (2 blocks)', async function () {
     // const issueAmount: BigNumber = bn('50000e18')
@@ -623,100 +615,99 @@ describe('MainP0 contract', () => {
     // expect(await vault.basketUnits(main.address)).to.equal(0)
     // expect(await newVault.basketUnits(main.address)).to.equal(0)
     // })
-    // })
+  })
 
-    // describe('Redeem', function () {
-    // it('Should revert if zero amount', async function () {
-    // const zero: BigNumber = bn('0')
-    // await expect(main.connect(addr1).redeem(zero)).to.be.revertedWith('Cannot redeem zero')
-    // })
+  describe('Redeem', function () {
+    it('Should revert if zero amount', async function () {
+      const zero: BigNumber = bn('0')
+      await expect(main.connect(addr1).redeem(zero)).to.be.revertedWith('Cannot redeem zero')
+    })
 
-    // it('Should revert if no balance of RToken', async function () {
-    // const redeemAmount: BigNumber = bn('1000e18')
+    it('Should revert if no balance of RToken', async function () {
+      const redeemAmount: BigNumber = bn('1000e18')
 
-    // await expect(main.connect(addr1).redeem(redeemAmount)).to.be.revertedWith(
-    // 'ERC20: burn amount exceeds balance'
-    // )
-    // })
+      await expect(main.connect(addr1).redeem(redeemAmount)).to.be.revertedWith(
+        'ERC20: transfer amount exceeds balance'
+      )
+    })
 
-    // context('With issued RTokens', async function () {
-    // let issueAmount: BigNumber
+    context('With issued RTokens', async function () {
+      let issueAmount: BigNumber
 
-    // beforeEach(async function () {
-    // // Issue some RTokens to user
-    // issueAmount = bn('100e18')
-    // // Provide approvals
-    // await token0.connect(addr1).approve(main.address, initialBal)
-    // await token1.connect(addr1).approve(main.address, initialBal)
-    // await token2.connect(addr1).approve(main.address, initialBal)
-    // await token3.connect(addr1).approve(main.address, initialBal)
+      beforeEach(async function () {
+        // Issue some RTokens to user
+        issueAmount = bn('100e18')
+        // Provide approvals
+        await token0.connect(addr1).approve(main.address, initialBal)
+        await token1.connect(addr1).approve(main.address, initialBal)
+        await token2.connect(addr1).approve(main.address, initialBal)
+        await token3.connect(addr1).approve(main.address, initialBal)
 
-    // // Issue rTokens
-    // await main.connect(addr1).issue(issueAmount)
+        // Issue rTokens
+        await main.connect(addr1).issue(issueAmount)
 
-    // // Process the issuance
-    // await main.poke()
-    // })
+        // Process the issuance
+        await main.poke()
+      })
 
-    // it('Should redeem RTokens correctly', async function () {
-    // const redeemAmount = bn('100e18')
+      it('Should redeem RTokens correctly', async function () {
+        const redeemAmount = bn('100e18')
 
-    // // Check balances
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-    // expect(await rToken.totalSupply()).to.equal(issueAmount)
-    // expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount)
+        // Check balances
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-    // // Redeem rTokens
-    // await main.connect(addr1).redeem(redeemAmount)
+        // Redeem rTokens
+        await main.connect(addr1).redeem(redeemAmount)
 
-    // // Check funds were transferred
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-    // expect(await rToken.totalSupply()).to.equal(0)
+        // Check funds were transferred
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
 
-    // expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
-    // expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
-    // expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
-    // expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
-    // })
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+      })
 
-    // it('Should redeem RTokens correctly for multiple users', async function () {
-    // const issueAmount = bn('100e18')
-    // const redeemAmount = bn('100e18')
+      it('Should redeem RTokens correctly for multiple users', async function () {
+        const issueAmount = bn('100e18')
+        const redeemAmount = bn('100e18')
 
-    // //Issue new RTokens
-    // await token0.connect(addr2).approve(main.address, initialBal)
-    // await token1.connect(addr2).approve(main.address, initialBal)
-    // await token2.connect(addr2).approve(main.address, initialBal)
-    // await token3.connect(addr2).approve(main.address, initialBal)
+        //Issue new RTokens
+        await token0.connect(addr2).approve(main.address, initialBal)
+        await token1.connect(addr2).approve(main.address, initialBal)
+        await token2.connect(addr2).approve(main.address, initialBal)
+        await token3.connect(addr2).approve(main.address, initialBal)
 
-    // //Issue rTokens
-    // await main.connect(addr2).issue(issueAmount)
+        //Issue rTokens
+        await main.connect(addr2).issue(issueAmount)
 
-    // // Process the issuance
-    // await main.poke()
+        // Process the issuance
+        await main.poke()
 
-    // // Redeem rTokens
-    // await main.connect(addr1).redeem(redeemAmount)
+        // Redeem rTokens
+        await main.connect(addr1).redeem(redeemAmount)
 
-    // // Redeem rTokens with another user
-    // await main.connect(addr2).redeem(redeemAmount)
+        // Redeem rTokens with another user
+        await main.connect(addr2).redeem(redeemAmount)
 
-    // // Check funds were transferred
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-    // expect(await rToken.balanceOf(addr2.address)).to.equal(0)
+        // Check funds were transferred
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.balanceOf(addr2.address)).to.equal(0)
 
-    // expect(await rToken.totalSupply()).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
 
-    // expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
-    // expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
-    // expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
-    // expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
-    // expect(await token0.balanceOf(addr2.address)).to.equal(initialBal)
-    // expect(await token1.balanceOf(addr2.address)).to.equal(initialBal)
-    // expect(await token2.balanceOf(addr2.address)).to.equal(initialBal)
-    // expect(await token3.balanceOf(addr2.address)).to.equal(initialBal)
-    // })
-    // })
+        expect(await token0.balanceOf(addr2.address)).to.equal(initialBal)
+        expect(await token1.balanceOf(addr2.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr2.address)).to.equal(initialBal)
+        expect(await token3.balanceOf(addr2.address)).to.equal(initialBal)
+      })
+    })
   })
 })
