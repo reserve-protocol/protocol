@@ -242,11 +242,11 @@ describe('MainP0 contract', () => {
 
       // Check if minting was registered
       const currentBlockNumber = await ethers.provider.getBlockNumber()
-      console.log(await main.issuances(0))
-      const [sm_startedAt, sm_amt, sm_minter, sm_availableAt, sm_proc] = await main.issuances(0)
+      const [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] = await main.issuances(0)
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
       expect(sm_startedAt).to.equal(currentBlockNumber)
       expect(sm_amt).to.equal(issueAmount)
+      expect(sm_amt_bus).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
