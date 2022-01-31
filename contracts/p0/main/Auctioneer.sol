@@ -76,7 +76,7 @@ contract AuctioneerP0 is
          *   3. When there is no more RSR, give RToken holders a haircut
          */
 
-        sellSurplusAssetsForCollateral() || sellRSRForRToken() || giveRTokenHoldersAHaircut();
+        sellSurplusAssetsForCollateral() || sellRSRForCollateral() || giveRTokenHoldersAHaircut();
     }
 
     /// Send excess assets to the RSR and RToken traders
@@ -115,7 +115,7 @@ contract AuctioneerP0 is
         }
     }
 
-    /// Try to launch a asset-for-collateral auction
+    /// Try to launch a surplus-asset-for-collateral auction
     /// @return Whether an auction was launched
     function sellSurplusAssetsForCollateral() private returns (bool) {
         (
@@ -150,25 +150,24 @@ contract AuctioneerP0 is
         return trade;
     }
 
-    /// Try to seize RSR and sell it for RToken to melt
+    /// Try to seize RSR and sell it for missing collateral
     /// @return Whether an auction was launched
-    function sellRSRForRToken() private returns (bool) {
+    function sellRSRForCollateral() private returns (bool) {
         assert(!hasOpenAuctions() && !fullyCapitalized());
 
-        uint256 deficit = fromBUs(targetBUs.minus(actualBUHoldings())); // {qRTok}
-        uint256 bal = rsr().balanceOf(address(this)); // {qRSR}
-        uint256 max = bal + rsr().balanceOf(address(rToken())); // {qRSR}
+        (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit();
 
+        uint256 rsrBal = rsr().balanceOf(address(this));
         (bool trade, Auction memory auction) = prepareAuctionToCoverDeficit(
             rsrAsset(),
-            rTokenAsset(),
-            toFixWithShift(max, -int8(rsr().decimals())),
-            toFixWithShift(deficit, -int8(rToken().decimals()))
+            deficit,
+            toFixWithShift(rsrBal + rsr().balanceOf(address(stRSR())), -int8(rsr().decimals())),
+            deficitAmount
         );
 
         if (trade) {
-            if (auction.sellAmount > bal) {
-                stRSR().seizeRSR(auction.sellAmount - bal);
+            if (auction.sellAmount > rsrBal) {
+                stRSR().seizeRSR(auction.sellAmount - rsrBal);
             }
             launchAuction(auction);
         }
