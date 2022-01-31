@@ -1,5 +1,6 @@
-import { BigNumberish, BigNumber } from 'ethers'
+import { BigNumber, BigNumberish } from 'ethers'
 import { ethers } from 'hardhat'
+
 import { BN_SCALE_FACTOR, SCALE_DECIMALS } from './constants'
 
 export const ZERO = BigNumber.from(0)
@@ -29,6 +30,14 @@ export const fp = (x: BigNumberish): BigNumber => {
 export const divCeil = (x: BigNumber, y: BigNumber): BigNumber =>
   // ceil(x/y) == (x + y - 1) / y
   x.add(y).sub(1).div(y)
+
+// Wheter the absolute difference between x and y is less than z
+export const near = (x: BigNumber, y: BigNumber, z: BigNumberish): boolean => {
+  if (x.lt(y)) {
+    return y.sub(x).lte(z)
+  }
+  return x.sub(y).lte(z)
+}
 
 // _parseScientific(s, scale) returns a BigNumber with value (s * 10**scale),
 // where s is a string in decimal or scientific notation,

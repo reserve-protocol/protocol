@@ -3,11 +3,11 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
-import { bn, fp } from '../../common/numbers'
+import { bn, fp, near } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { MainP0 } from '../../typechain/MainP0'
 import { MainCallerMockP0 } from '../../typechain/MainCallerMockP0'
+import { MainP0 } from '../../typechain/MainP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { advanceTime } from '../utils/time'
@@ -541,7 +541,7 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3).add(amount2))
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(near(await rsr.balanceOf(stRSR.address), await stRSR.totalSupply(), 1)).to.equal(true)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
@@ -642,7 +642,9 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSRMock.address)).to.equal(amount.mul(3))
-      expect(await rsr.balanceOf(stRSRMock.address)).to.equal(await stRSRMock.totalSupply())
+      expect(
+        near(await rsr.balanceOf(stRSRMock.address), await stRSRMock.totalSupply(), 1)
+      ).to.equal(true)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
@@ -655,7 +657,9 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSRMock.address)).to.equal(amount.mul(3).sub(amount2))
-      expect(await rsr.balanceOf(stRSRMock.address)).to.equal(await stRSRMock.totalSupply())
+      expect(
+        near(await rsr.balanceOf(stRSRMock.address), await stRSRMock.totalSupply(), 1)
+      ).to.equal(true)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
@@ -675,7 +679,9 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSRMock.address)).to.equal(amount)
-      expect(await rsr.balanceOf(stRSRMock.address)).to.equal(await stRSRMock.totalSupply())
+      expect(
+        near(await rsr.balanceOf(stRSRMock.address), await stRSRMock.totalSupply(), 1)
+      ).to.equal(true)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSRMock.balanceOf(addr1.address)).to.equal(amount)
 
