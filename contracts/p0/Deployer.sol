@@ -106,7 +106,7 @@ contract DeployerP0 is IDeployer {
         Ownable(address(main)).transferOwnership(owner);
 
         IExplorer explorer = new ExplorerP0(address(main));
-        emit RTokenCreated(address(main), address(main.rToken()), address(explorer), owner);
+        emit RTokenCreated(main, main.rToken(), main.stRSR(), address(explorer), owner);
         return (address(main));
     }
 

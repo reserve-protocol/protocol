@@ -2,6 +2,8 @@
 pragma solidity 0.8.9;
 
 import "./IMain.sol";
+import "./IRToken.sol";
+import "./IStRSR.sol";
 
 /**
  * @title IDeployer
@@ -10,10 +12,14 @@ import "./IMain.sol";
 interface IDeployer {
     /// Emitted when a new RToken and accompanying system is deployed
     /// @param main The address of `Main`
+    /// @param rToken The address of the RToken ERC20
+    /// @param stRSR The address of the StRSR ERC20 staking pool/token
+    /// @param explorer The address of the peripheral explorer
     /// @param owner The owner of the newly deployed system
     event RTokenCreated(
-        address indexed main,
-        address indexed rToken,
+        IMain indexed main,
+        IRToken indexed rToken,
+        IStRSR stRSR,
         address explorer,
         address indexed owner
     );
