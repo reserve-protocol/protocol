@@ -32,8 +32,13 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
     /// that order.
     function poke() public virtual override {}
 
+    /// @return true iff this trader now has open auctions.
+    function hasOpenAuctions() public view returns (bool) {
+        return countOpenAuctions > 0;
+    }
+
     /// Settle any auctions that are due (past their end time)
-    function closeDueAuctions() public {
+    function closeDueAuctions() internal {
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctions.length; i++) {
             Auction storage auction = auctions[i];
@@ -43,11 +48,6 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
                 }
             }
         }
-    }
-
-    /// @return true iff this trader now has open auctions.
-    function hasOpenAuctions() public view returns (bool) {
-        return countOpenAuctions > 0;
     }
 
     /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price,
