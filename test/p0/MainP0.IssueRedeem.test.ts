@@ -23,7 +23,7 @@ import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { USDCMock } from '../../typechain/USDCMock'
-import { advanceTime } from '../utils/time'
+import { advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -254,7 +254,7 @@ describe('MainP0 contract', () => {
       expect(sm_proc).to.equal(false)
     })
 
-    it.only('Should issue RTokens correctly for more complex basket multiple users', async function () {
+    it('Should issue RTokens correctly for more complex basket multiple users', async function () {
       const issueAmount: BigNumber = bn('1000e18')
 
       const quotes: BigNumber[] = await main.quote(issueAmount)
@@ -360,153 +360,142 @@ describe('MainP0 contract', () => {
       expect(sm_proc).to.equal(false)
     })
 
-    // it('Should process issuances in multiple attempts (using minimum issuance)', async function () {
-    // const issueAmount: BigNumber = bn('50000e18')
+    it('Should process issuances in multiple attempts (using minimum issuance)', async function () {
+      const issueAmount: BigNumber = bn('50000e18')
 
-    // const expectedTkn0: BigNumber = issueAmount
-    // .mul(await vault.quantity(collateral0.address))
-    // .div(BN_SCALE_FACTOR)
-    // const expectedTkn1: BigNumber = issueAmount
-    // .mul(await vault.quantity(collateral1.address))
-    // .div(BN_SCALE_FACTOR)
-    // const expectedTkn2: BigNumber = issueAmount
-    // .mul(await vault.quantity(collateral2.address))
-    // .div(BN_SCALE_FACTOR)
-    // const expectedTkn3: BigNumber = issueAmount
-    // .mul(await vault.quantity(collateral3.address))
-    // .div(BN_SCALE_FACTOR)
+      const quotes: BigNumber[] = await main.quote(issueAmount)
 
-    // // Provide approvals
-    // await token0.connect(addr1).approve(main.address, initialBal)
-    // await token1.connect(addr1).approve(main.address, initialBal)
-    // await token2.connect(addr1).approve(main.address, initialBal)
-    // await token3.connect(addr1).approve(main.address, initialBal)
+      // Provide approvals
+      await token0.connect(addr1).approve(main.address, initialBal)
+      await token1.connect(addr1).approve(main.address, initialBal)
+      await token2.connect(addr1).approve(main.address, initialBal)
+      await token3.connect(addr1).approve(main.address, initialBal)
 
-    // // Issue rTokens
-    // await main.connect(addr1).issue(issueAmount)
+      // Issue rTokens
+      await main.connect(addr1).issue(issueAmount)
 
-    // // Check Balances after
-    // expect(await token0.balanceOf(vault.address)).to.equal(expectedTkn0)
-    // expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
+      // Check Balances after
+      const expectedTkn0: BigNumber = quotes[0]
+      expect(await token0.balanceOf(main.address)).to.equal(expectedTkn0)
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
 
-    // expect(await token1.balanceOf(vault.address)).to.equal(expectedTkn1)
-    // expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
+      const expectedTkn1: BigNumber = quotes[1]
+      expect(await token1.balanceOf(main.address)).to.equal(expectedTkn1)
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
 
-    // expect(await token2.balanceOf(vault.address)).to.equal(expectedTkn2)
-    // expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
+      const expectedTkn2: BigNumber = quotes[2]
+      expect(await token2.balanceOf(main.address)).to.equal(expectedTkn2)
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
 
-    // expect(await token3.balanceOf(vault.address)).to.equal(expectedTkn3)
-    // expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
+      const expectedTkn3: BigNumber = quotes[3]
+      expect(await token3.balanceOf(main.address)).to.equal(expectedTkn3)
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
 
-    // expect(await rToken.balanceOf(main.address)).to.equal(issueAmount)
-    // expect(await vault.basketUnits(main.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
-    // // Check if minting was registered
-    // let currentBlockNumber = await ethers.provider.getBlockNumber()
-    // let [sm_vault, sm_amt, sm_bu, sm_minter, sm_at, sm_proc] = await main.issuances(0)
-    // expect(sm_vault).to.equal(vault.address)
-    // expect(sm_amt).to.equal(issueAmount)
-    // expect(sm_bu).to.equal(issueAmount)
-    // expect(sm_minter).to.equal(addr1.address)
-    // expect(sm_at).to.equal(fp(currentBlockNumber + 5))
-    // expect(sm_proc).to.equal(false)
+      // Check if minting was registered
+      let currentBlockNumber = await ethers.provider.getBlockNumber()
+      let [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
+        await main.issuances(0)
+      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_amt).to.equal(issueAmount)
+      expect(sm_amt_bus).to.equal(issueAmount)
+      expect(sm_minter).to.equal(addr1.address)
+      expect(sm_availableAt).to.equal(fp(currentBlockNumber + 5))
+      expect(sm_proc).to.equal(false)
 
-    // // Process slow issuances
-    // await main.poke()
+      // Process slow issuances
+      await main.poke()
 
-    // // Check previous minting was not processed
-    // ;[, , , , , sm_proc] = await main.issuances(0)
-    // expect(sm_proc).to.equal(false)
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      // Check previous minting was not processed
+      ;[, , , , , sm_proc] = await main.issuances(0)
+      expect(sm_proc).to.equal(false)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
-    // // Process 4 blocks
-    // await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-    // await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-    // await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-    // await main.poke()
+      // Process 4 blocks
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
+      await main.poke()
 
-    // // Check previous minting was processed and funds sent to minter
-    // ;[, , , , , sm_proc] = await main.issuances(0)
-    // expect(sm_proc).to.equal(true)
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-    // expect(await vault.basketUnits(main.address)).to.equal(0)
-    // expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount)
-    // })
+      // Check previous minting was processed and funds sent to minter
+      ;[, , , , , sm_proc] = await main.issuances(0)
+      expect(sm_proc).to.equal(true)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+    })
 
-    // it('Should process issuances in multiple attempts (using issuanceRate)', async function () {
-    // const issueAmount: BigNumber = bn('50000e18')
+    it('Should process issuances in multiple attempts (using issuanceRate)', async function () {
+      const issueAmount: BigNumber = bn('50000e18')
 
-    // // Provide approvals
-    // await token0.connect(addr1).approve(main.address, initialBal)
-    // await token1.connect(addr1).approve(main.address, initialBal)
-    // await token2.connect(addr1).approve(main.address, initialBal)
-    // await token3.connect(addr1).approve(main.address, initialBal)
+      // Provide approvals
+      await token0.connect(addr1).approve(main.address, initialBal)
+      await token1.connect(addr1).approve(main.address, initialBal)
+      await token2.connect(addr1).approve(main.address, initialBal)
+      await token3.connect(addr1).approve(main.address, initialBal)
 
-    // // Issue rTokens
-    // await main.connect(addr1).issue(issueAmount)
+      // Issue rTokens
+      await main.connect(addr1).issue(issueAmount)
 
-    // // Process slow issuances
-    // await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-    // await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-    // await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-    // await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
-    // await main.poke()
+      // Process slow issuances
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
+      await advanceToTimestamp((await getLatestBlockTimestamp()) + 1)
+      await main.poke()
 
-    // // Check issuance was confirmed
-    // expect(await rToken.totalSupply()).to.equal(issueAmount)
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-    // expect(await vault.basketUnits(main.address)).to.equal(0)
-    // expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount)
+      // Check issuance was confirmed
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
-    // // Set issuance rate to 50% per block
-    // // Set Max auction to 100% and migration chunk to 100% to do it in one single redemption and auction
+      // Set issuance rate to 50% per block
+      // Update config
+      main.connect(owner).setIssuanceRate(fp('0.5'))
 
-    // // Update config
-    // main.connect(owner).setIssuanceRate(fp('0.5'))
+      // Try new issuance. Should be based on issuance rate = 50% per block should take two blocks
+      // Based on current supply its gonna be 25000e18 tokens per block
+      const ISSUANCE_PER_BLOCK = bn('25000e18')
+      const newIssuanceAmt: BigNumber = bn('30000e18')
 
-    // // Try new issuance. Should be based on issuance rate = 50% per block should take two blocks
-    // // Based on current supply its gonna be 25000e18 tokens per block
-    // const ISSUANCE_PER_BLOCK = bn('25000e18')
-    // const newIssuanceAmt: BigNumber = bn('30000e18')
+      // Issue rTokens
+      await main.connect(addr1).issue(newIssuanceAmt)
 
-    // // Issue rTokens
-    // await main.connect(addr1).issue(newIssuanceAmt)
+      // Check if minting was registered
+      let currentBlockNumber = await ethers.provider.getBlockNumber()
 
-    // // Check if minting was registered
-    // let currentBlockNumber = await ethers.provider.getBlockNumber()
-    // let [sm_vault, sm_amt, sm_bu, sm_minter, sm_at, sm_proc] = await main.issuances(1)
+      let [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
+        await main.issuances(1)
+      const blockAddPct: BigNumber = newIssuanceAmt.mul(BN_SCALE_FACTOR).div(ISSUANCE_PER_BLOCK)
+      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_amt).to.equal(newIssuanceAmt)
+      expect(sm_amt_bus).to.equal(newIssuanceAmt)
+      expect(sm_minter).to.equal(addr1.address)
+      // Using issuance rate of 50% = 2 blocks
+      expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
+      expect(sm_proc).to.equal(false)
 
-    // const blockAddPct: BigNumber = newIssuanceAmt.mul(BN_SCALE_FACTOR).div(ISSUANCE_PER_BLOCK)
-    // expect(sm_vault).to.equal(vault.address)
-    // expect(sm_amt).to.equal(newIssuanceAmt)
-    // expect(sm_bu).to.equal(newIssuanceAmt)
-    // expect(sm_minter).to.equal(addr1.address)
-    // // Using issuance rate of 50% = 2 blocks
-    // expect(sm_at).to.equal(fp(currentBlockNumber).add(blockAddPct))
-    // expect(sm_proc).to.equal(false)
+      // Process slow issuances
+      await main.poke()
 
-    // // Process slow issuances
-    // await main.poke()
+      // Check previous minting was not processed
+      ;[, , , , , sm_proc] = await main.issuances(1)
+      expect(sm_proc).to.equal(false)
+      expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
+      expect(await rToken.balanceOf(rToken.address)).to.equal(newIssuanceAmt)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
-    // // Check previous minting was not processed
-    // ;[, , , , , sm_proc] = await main.issuances(1)
-    // expect(sm_proc).to.equal(false)
-    // expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
-    // expect(await vault.basketUnits(main.address)).to.equal(newIssuanceAmt)
-    // expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount)
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      // Process slow mintings one more time
+      await main.poke()
 
-    // // Process slow mintings one more time
-    // await main.poke()
-
-    // // Check previous minting was processed and funds sent to minter
-    // ;[, , , , , sm_proc] = await main.issuances(1)
-    // expect(sm_proc).to.equal(true)
-    // expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssuanceAmt))
-    // expect(await vault.basketUnits(main.address)).to.equal(0)
-    // expect(await vault.basketUnits(rToken.address)).to.equal(issueAmount.add(newIssuanceAmt))
-    // })
+      // Check previous minting was processed and funds sent to minter
+      ;[, , , , , sm_proc] = await main.issuances(1)
+      expect(sm_proc).to.equal(true)
+      expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssuanceAmt))
+    })
 
     // it('Should process multiple issuances in the correct order', async function () {
     // // Provide approvals
