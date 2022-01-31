@@ -218,7 +218,7 @@ library Lib {
     ) internal pure returns (bool) {
         return
             assertEq(a.inETH, b.inETH, string(abi.encodePacked(str, ".price.inETH"))) &&
-            assertEq(a.inUSD, b.inUSD, string(abi.encodePacked(str, ".price.inUSD")));
+            assertEq(a.inUoA, b.inUoA, string(abi.encodePacked(str, ".price.inUoA")));
     }
 
     function _rawFix(Fix fix) internal pure returns (uint256) {

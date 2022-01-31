@@ -138,13 +138,13 @@ library BasketLib {
         }
     }
 
-    /// @return p {USD/BU} The protocol's best guess at what a BU would be priced at in USD
+    /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
     function price(Basket storage self) internal view returns (Fix p) {
         for (uint256 i = 0; i < self.size; i++) {
             ICollateral c = ICollateral(self.collateral[i]);
 
             if (c.status() != CollateralStatus.DISABLED) {
-                // {USD/BU} = {USD/BU} + {USD/tok} * {qTok/BU} / {qTok/tok}
+                // {UoA/BU} = {UoA/BU} + {UoA/tok} * {qTok/BU} / {qTok/tok}
                 p = p.plus(c.price().mul(self.quantity(c)).shiftLeft(-int8(c.erc20().decimals())));
             }
         }

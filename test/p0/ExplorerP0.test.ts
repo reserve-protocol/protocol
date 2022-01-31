@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+
 import { bn, fp } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
@@ -95,7 +96,7 @@ describe('ExplorerP0 contract', () => {
       expect(await explorer.maxIssuable(other.address)).to.equal(0)
     })
 
-    it.only('Should return currentBacking correctly', async () => {
+    it('Should return currentBacking correctly', async () => {
       const [tokens, quantities] = await explorer.currentBacking()
 
       // Get backing ERC20s from collateral

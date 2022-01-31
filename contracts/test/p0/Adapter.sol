@@ -76,7 +76,7 @@ contract AdapterP0 is ProtoAdapter {
         // Deploy oracles
         {
             _compoundOracle = new CompoundOracleMockP0();
-            _compoundOracle.setPrice(ETH, s.ethPrice.inUSD);
+            _compoundOracle.setPrice(ETH, s.ethPrice.inUoA);
 
             IComptroller comptroller = new ComptrollerMockP0(address(_compoundOracle));
             _aaveOracle = new AaveOracleMockP0(address(new ERC20Mock("Wrapped ETH", "WETH")));
@@ -106,7 +106,7 @@ contract AdapterP0 is ProtoAdapter {
                 s.collateral[5].symbol,
                 address(usdc)
             );
-            CTokenMock cUSDT = new CTokenMock(
+            CTokenMock cUoAT = new CTokenMock(
                 s.collateral[6].name,
                 s.collateral[6].symbol,
                 address(usdt)
@@ -121,12 +121,12 @@ contract AdapterP0 is ProtoAdapter {
                 s.collateral[8].symbol,
                 address(usdc)
             );
-            StaticATokenMock aUSDT = new StaticATokenMock(
+            StaticATokenMock aUoAT = new StaticATokenMock(
                 s.collateral[9].name,
                 s.collateral[9].symbol,
                 address(usdt)
             );
-            StaticATokenMock aBUSD = new StaticATokenMock(
+            StaticATokenMock aBUoA = new StaticATokenMock(
                 s.collateral[10].name,
                 s.collateral[10].symbol,
                 address(busd)
@@ -144,12 +144,12 @@ contract AdapterP0 is ProtoAdapter {
             );
             collateral[2] = _deployCollateral(
                 ERC20Mock(address(usdt)),
-                AssetName.USDT,
+                AssetName.UoAT,
                 _ourAaveOracle
             );
             collateral[3] = _deployCollateral(
                 ERC20Mock(address(busd)),
-                AssetName.BUSD,
+                AssetName.BUoA,
                 _ourAaveOracle
             );
             collateral[4] = _deployCollateral(
@@ -163,8 +163,8 @@ contract AdapterP0 is ProtoAdapter {
                 _ourCompoundOracle
             );
             collateral[6] = _deployCollateral(
-                ERC20Mock(address(cUSDT)),
-                AssetName.cUSDT,
+                ERC20Mock(address(cUoAT)),
+                AssetName.cUoAT,
                 _ourCompoundOracle
             );
             collateral[7] = _deployCollateral(
@@ -178,13 +178,13 @@ contract AdapterP0 is ProtoAdapter {
                 _ourAaveOracle
             );
             collateral[9] = _deployCollateral(
-                ERC20Mock(address(aUSDT)),
-                AssetName.aUSDT,
+                ERC20Mock(address(aUoAT)),
+                AssetName.aUoAT,
                 _ourAaveOracle
             );
             collateral[10] = _deployCollateral(
-                ERC20Mock(address(aBUSD)),
-                AssetName.aBUSD,
+                ERC20Mock(address(aBUoA)),
+                AssetName.aBUoA,
                 _ourAaveOracle
             );
 
@@ -335,8 +335,8 @@ contract AdapterP0 is ProtoAdapter {
         s.defiCollateralRates = new Fix[](NUM_COLLATERAL);
         s.defiCollateralRates[uint256(AssetName.DAI)] = FIX_ZERO;
         s.defiCollateralRates[uint256(AssetName.USDC)] = FIX_ZERO;
-        s.defiCollateralRates[uint256(AssetName.USDT)] = FIX_ZERO;
-        s.defiCollateralRates[uint256(AssetName.BUSD)] = FIX_ZERO;
+        s.defiCollateralRates[uint256(AssetName.UoAT)] = FIX_ZERO;
+        s.defiCollateralRates[uint256(AssetName.BUoA)] = FIX_ZERO;
         for (uint256 i = NUM_FIATCOINS; i < NUM_COLLATERAL; i++) {
             s.defiCollateralRates[i] = ICollateral(address(_assets[AssetName(i)])).refPerTok();
         }
@@ -357,7 +357,7 @@ contract AdapterP0 is ProtoAdapter {
         _stRSR.assertInvariants();
     }
 
-    /// @param baseAssets One-of DAI/USDC/USDT/BUSD/RSR/COMP/AAVE
+    /// @param baseAssets One-of DAI/USDC/UoAT/BUoA/RSR/COMP/AAVE
     function setBaseAssetPrices(AssetName[] memory baseAssets, Price[] memory prices)
         external
         override
@@ -366,7 +366,7 @@ contract AdapterP0 is ProtoAdapter {
             _aaveOracle.setPrice(address(_assets[baseAssets[i]].erc20()), prices[i].inETH);
             _compoundOracle.setPrice(
                 IERC20Metadata(address(_assets[baseAssets[i]].erc20())).symbol(),
-                prices[i].inUSD
+                prices[i].inUoA
             );
         }
     }
@@ -537,10 +537,10 @@ contract AdapterP0 is ProtoAdapter {
         AssetName asset = _reverseAssets[erc20];
         if (uint256(asset) < NUM_FIATCOINS || uint256(asset) >= NUM_COLLATERAL) {
             _aaveOracle.setPrice(address(erc20), tokenState.price.inETH); // {qETH/tok}
-            _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUSD); // {microUSD/tok}
+            _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUoA); // {microUoA/tok}
 
-            Fix found = _assets[asset].price(); // {USD/tok}
-            Fix expected = toFix(tokenState.price.inUSD);
+            Fix found = _assets[asset].price(); // {UoA/tok}
+            Fix expected = toFix(tokenState.price.inUoA);
             assert(found.eq(expected));
         }
     }

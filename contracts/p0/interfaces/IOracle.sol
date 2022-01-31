@@ -12,7 +12,7 @@ interface IComptroller {
 }
 
 interface ICompoundOracle {
-    /// @return {microUSD/tok} The USD price of the corresponding token with 6 decimals.
+    /// @return {microUoA/tok} The UoA price of the corresponding token with 6 decimals.
     function price(string memory symbol) external view returns (uint256);
 }
 
@@ -33,7 +33,7 @@ interface IAaveOracle {
 }
 
 interface IOracle {
-    /// @return p {USD/tok} The USD price of a whole token
+    /// @return p {UoA/tok} The UoA price of a whole token
     function consult(IERC20Metadata erc20) external view returns (Fix p);
 
     function comptroller() external view returns (IComptroller);

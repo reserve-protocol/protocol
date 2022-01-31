@@ -214,19 +214,23 @@ $ npx hardhat --network ropsten console
 
 # Code/Documentation Style
 
+## Assets/Collateral
+
+An ERC20 exists in our system wrapped in either an *Asset* or *Collateral* contract. The definition of an asset is very broad. Any ERC20 that can have a price in the unit of account (most likely USD) can be an asset. A collateral is a specific type of asset that enables an ERC20 to act as backing for an RToken. 
+
 ## Units
 
-The units of variables is tracked in comments in the implementation. Curly braces are used to denote units, e.g. `{attoUSD/qTok}`.
+The units of variables is tracked in comments in the implementation. Curly braces are used to denote units, e.g. `{UoA/qTok}`.
 
 The `q` prefix denotes "quanta", ie the smallest indivisible unit of the token.
 
 The `atto` prefix denotes 1e18.
 
+Otherwise, the unit is assumed to be whole. The meaning of a "whole" token changes depending on how many decimals that token has. 
+
 - {qTok} = token quanta
-- {tok} = whole token = 1e6{qTok} (USDC)
-- {qBU} = BU quanta
-- {BU} = whole BU = 1e18{qBU}
-- {attoUSD} = smallest unit of USD
-- {USD} = largest unit of USD = 1e18{attoUSD}
-- {sec} = seconds
-- {none} = unitless
+- {tok} = whole token = 1e6{qTok} (USDC) = 1e18{qTok} (DAI)
+- {ref} = whole reference token (USDC is cUSDC's reference token)
+- {target} = whole target unit (USD is cUSDC's target unit)
+- {BU} = whole basket unit
+- {UoA} = whole unit of the Unit of Account (which is probably USD)

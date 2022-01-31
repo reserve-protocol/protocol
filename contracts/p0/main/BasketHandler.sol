@@ -136,7 +136,7 @@ contract BasketHandlerP0 is
         }
     }
 
-    /// @return p {USD} An estimate at the net worth of all assets held at this address
+    /// @return p {UoA} An estimate at the net worth of all assets held at this address
     function netWorth() public view override returns (Fix p) {
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
@@ -146,7 +146,7 @@ contract BasketHandlerP0 is
             if (!a.isCollateral() || c.status() != CollateralStatus.DISABLED) {
                 uint256 bal = a.erc20().balanceOf(address(this));
 
-                // {USD} = {USD} + {USD/tok} * {qTok} / {qTok/tok}
+                // {UoA} = {UoA} + {UoA/tok} * {qTok} / {qTok/tok}
                 p = p.plus(a.price().mulu(bal).shiftLeft(-int8(a.erc20().decimals())));
             }
         }

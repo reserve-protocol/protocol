@@ -222,7 +222,7 @@ interface IBasketHandler {
 
     function worstCollateralStatus() external view returns (CollateralStatus status);
 
-    /// @return p {USD} An estimate at the net worth of all assets held
+    /// @return p {UoA} An estimate at the net worth of all assets held
     function netWorth() external view returns (Fix p);
 }
 
@@ -315,7 +315,7 @@ interface IRTokenIssuer {
 
     function maxIssuable(address account) external view returns (uint256);
 
-    // {USD/rTok}
+    // {UoA/rTok}
     function rTokenPrice() external view returns (Fix p);
 }
 

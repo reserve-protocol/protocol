@@ -18,7 +18,7 @@ contract RTokenAssetP0 is AssetP0 {
         IOracle oracle_
     ) AssetP0(erc20_, main_, oracle_) {}
 
-    /// @return {USD/rTok}
+    /// @return {UoA/rTok}
     function price() public view override returns (Fix) {
         return main.rTokenPrice();
     }

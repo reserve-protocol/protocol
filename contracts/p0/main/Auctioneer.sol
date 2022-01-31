@@ -200,21 +200,21 @@ contract AuctioneerP0 is
         )
     {
         // Calculate surplus and deficits relative to basket reference amounts.
-        Fix[] memory prices = new Fix[](_assets.length()); // {USD/tok}
-        Fix[] memory surpluses = new Fix[](_assets.length()); // {USD}
-        Fix[] memory deficits = new Fix[](_assets.length()); // {USD}
+        Fix[] memory prices = new Fix[](_assets.length()); // {UoA/tok}
+        Fix[] memory surpluses = new Fix[](_assets.length()); // {UoA}
+        Fix[] memory deficits = new Fix[](_assets.length()); // {UoA}
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
-            Fix required = FIX_ZERO; // {USD}
+            Fix required = FIX_ZERO; // {UoA}
 
-            // Calculate {USD/tok} price
+            // Calculate {UoA/tok} price
             if (a.isCollateral()) {
                 ICollateral c = ICollateral(_assets.at(i));
 
-                // {USD/tok} = {ref/tok} * {target/ref} * {USD/target}
-                prices[i] = c.refPerTok().mul(c.targetPerRef()).mul(c.usdPerTarget());
+                // {UoA/tok} = {ref/tok} * {target/ref} * {UoA/target}
+                prices[i] = c.refPerTok().mul(c.targetPerRef()).mul(c.pricePerTarget());
 
-                // {USD} = {BU} * {ref/BU} / {ref/tok} * {USD/tok}
+                // {UoA} = {BU} * {ref/BU} / {ref/tok} * {UoA/tok}
                 required = targetBUs.mul(basket.refAmts[c]).div(c.refPerTok()).mul(prices[i]);
             } else {
                 prices[i] = a.price();
@@ -226,7 +226,7 @@ contract AuctioneerP0 is
                 -int8(a.erc20().decimals())
             );
 
-            // {USD} = {tok} * {USD/tok}
+            // {UoA} = {tok} * {UoA/tok}
             Fix actual = tokBal.mul(prices[i]);
             if (actual.gt(required)) {
                 surpluses[i] = actual.minus(required);
@@ -238,8 +238,8 @@ contract AuctioneerP0 is
         // Calculate the maximums.
         uint256 surplusIndex;
         uint256 deficitIndex;
-        Fix surplusMax; // {USD}
-        Fix deficitMax; // {USD}
+        Fix surplusMax; // {UoA}
+        Fix deficitMax; // {UoA}
         for (uint256 i = 0; i < _assets.length(); i++) {
             if (surpluses[i].gt(surplusMax)) {
                 surplusMax = surpluses[i];
@@ -254,10 +254,10 @@ contract AuctioneerP0 is
         IAsset surplusAsset = IAsset(_assets.at(surplusIndex));
         ICollateral deficitCollateral = ICollateral(_assets.at(deficitIndex));
 
-        // {tok} = {USD} / {USD/tok}
+        // {tok} = {UoA} / {UoA/tok}
         Fix sellAmount = surplusMax.div(prices[surplusIndex]);
 
-        // {tok} = {USD} / {USD/tok}
+        // {tok} = {UoA} / {UoA/tok}
         Fix buyAmount = deficitMax.div(prices[deficitIndex]);
         return (surplusAsset, deficitCollateral, sellAmount, buyAmount);
     }

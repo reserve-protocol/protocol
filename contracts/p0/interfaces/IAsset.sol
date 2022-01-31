@@ -9,11 +9,11 @@ import "./IMain.sol";
 /**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,
- * whether it is used as RToken backing, or not. Any token that can report a usd price is eligible
- * to be an asset.
+ * whether it is used as RToken backing, or not. Any token that can report a price in the UoA
+ * is eligible to be an asset.
  */
 interface IAsset {
-    /// @return {USD/tok} Our best guess at the market price of 1 whole token in USD
+    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() external view returns (Fix);
 
     /// @dev Intended to be used via delegatecall, hence the `collateral` duplication
@@ -61,6 +61,6 @@ interface ICollateral is IAsset {
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() external view returns (Fix);
 
-    /// @return {USD/target} The price of the target unit in USD (usually this is {USD/USD} = 1)
-    function usdPerTarget() external view returns (Fix);
+    /// @return {UoA/target} The price of the target unit in UoA (usually this is {UoA/UoA} = 1)
+    function pricePerTarget() external view returns (Fix);
 }

@@ -65,13 +65,13 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
             return (false, auction);
         }
 
-        // {USD} = {USD} * {none}
-        Fix maxSellUSD = main.netWorth().mul(main.maxAuctionSize());
+        // {UoA} = {UoA} * {none}
+        Fix maxSellUoA = main.netWorth().mul(main.maxAuctionSize());
 
         // {sellTok}
-        sellAmount = fixMin(sellAmount, maxSellUSD.div(sell.price()));
+        sellAmount = fixMin(sellAmount, maxSellUoA.div(sell.price()));
 
-        // {buyTok} = {sellTok} * {USD/sellTok} / {USD/buyTok}
+        // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         Fix exactBuyAmount = sellAmount.mul(sell.price()).div(buy.price());
         Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.maxTradeSlippage()));
 
@@ -112,7 +112,7 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
         // Don't buy dust.
         deficitAmount = fixMax(deficitAmount, dustThreshold(buy));
 
-        // {sellTok} = {buyTok} * {USD/buyTok} / {USD/sellTok}
+        // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
         Fix exactSellAmount = deficitAmount.mul(buy.price()).div(sell.price());
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
@@ -125,10 +125,10 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
 
     /// @return {tok} The least amount of whole tokens worth trying to sell
     function dustThreshold(IAsset asset) internal view returns (Fix) {
-        Fix minSellUSD = main.netWorth().mul(main.minAuctionSize());
+        Fix minSellUoA = main.netWorth().mul(main.minAuctionSize());
 
-        // {tok} = {USD} / {USD/tok}
-        return minSellUSD.div(asset.price());
+        // {tok} = {UoA} / {UoA/tok}
+        return minSellUoA.div(asset.price());
     }
 
     /// Launch an auction:

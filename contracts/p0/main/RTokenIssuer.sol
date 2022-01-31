@@ -138,9 +138,9 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         return basket.backingERC20s();
     }
 
-    /// @return p {USD/rTok} The protocol's best guess of the RToken price on markets
+    /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
     function rTokenPrice() public view override returns (Fix p) {
-        // {USD/rTok} = {USD/BU} * {BU/rTok}
+        // {UoA/rTok} = {UoA/BU} * {BU/rTok}
         return basket.price().mul(targetBUsPerRTok());
     }
 
