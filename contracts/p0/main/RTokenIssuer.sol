@@ -180,7 +180,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
                 // Rollback issuance i
                 rToken().burn(address(rToken()), iss.amount);
                 targetBUs = targetBUs.minus(iss.amtBUs);
-                for (uint256 j = 0; j < iss.erc20s.length; i++) {
+                for (uint256 j = 0; j < iss.erc20s.length; j++) {
                     IERC20Metadata(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
                 }
                 iss.processed = true;
