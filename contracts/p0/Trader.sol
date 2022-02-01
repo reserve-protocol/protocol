@@ -46,7 +46,7 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
             Auction storage auction = auctions[i];
             if (auction.status == AuctionStatus.OPEN) {
                 if (block.timestamp >= auction.endTime) {
-                    closeAuction(auction, i);
+                    closeAuction(i);
                 }
             }
         }
@@ -127,6 +127,7 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
 
     /// @return {tok} The least amount of whole tokens worth trying to sell
     function dustThreshold(IAsset asset) internal view returns (Fix) {
+        // {UoA} = {UoA} * {1}
         Fix minSellUoA = main.netWorth().mul(main.minAuctionSize());
 
         // {tok} = {UoA} / {UoA/tok}
@@ -169,7 +170,12 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
         );
     }
 
-    function closeAuction(Auction storage auction, uint256 i) private {
+    /// Close auctions[i]:
+    /// - Set the auction status to DONE
+    /// - Settle the auction in the external auction protocl
+    /// - Emit AuctionEnded event
+    function closeAuction(uint256 i) private {
+        Auction storage auction = auctions[i];
         require(auction.status == AuctionStatus.OPEN, "can only close in-progress auctions");
         require(auction.endTime <= block.timestamp, "auction not over");
 
