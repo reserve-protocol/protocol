@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import hre, { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
@@ -532,7 +532,127 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
     })
 
-    // it('Should rollback mintings if Vault changes (2 blocks)', async function () {
+    it.only('Should allow multiple issuances in the same block', async function () {
+      // Provide approvals
+      await token0.connect(addr1).approve(main.address, initialBal)
+      await token1.connect(addr1).approve(main.address, initialBal)
+      await token2.connect(addr1).approve(main.address, initialBal)
+      await token3.connect(addr1).approve(main.address, initialBal)
+
+      // Set automine to false for multiple transactions in one block
+      await hre.network.provider.send('evm_setAutomine', [false])
+
+      // Issuance #1 -  Will be processed in 1 blocks
+      const issueAmount: BigNumber = bn('5000e18')
+      await main.connect(addr1).issue(issueAmount)
+
+      // Issuance #2 - Should be processed in the same block
+      await main.connect(addr1).issue(issueAmount)
+
+      // Mine block
+      await hre.network.provider.send('evm_mine', [])
+
+      // Check mintings
+      // First minting
+      let currentBlockNumber = await getLatestBlockNumber()
+      let [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
+        await main.issuances(0)
+      const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
+      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_amt).to.equal(issueAmount)
+      expect(sm_amt_bus).to.equal(issueAmount)
+      expect(sm_minter).to.equal(addr1.address)
+      expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
+      expect(sm_proc).to.equal(false)
+
+      // Second minting
+      ;[sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
+        await main.issuances(1)
+      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_amt).to.equal(issueAmount)
+      expect(sm_amt_bus).to.equal(issueAmount)
+      expect(sm_minter).to.equal(addr1.address)
+      expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(fp('1')))
+      expect(sm_proc).to.equal(false)
+
+      // Set automine to true again
+      await hre.network.provider.send('evm_setAutomine', [true])
+
+      // Process issuances
+      await main.poke()
+
+      // Check both slow mintings are confirmed
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.mul(2))
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+    })
+
+    it('Should move issuances to next block if exceeds issuance limit', async function () {
+      // Provide approvals
+      await token0.connect(addr1).approve(main.address, initialBal)
+      await token1.connect(addr1).approve(main.address, initialBal)
+      await token2.connect(addr1).approve(main.address, initialBal)
+      await token3.connect(addr1).approve(main.address, initialBal)
+
+      // Set automine to false for multiple transactions in one block
+      await hre.network.provider.send('evm_setAutomine', [false])
+
+      // Issuance #1 -  Will be processed in 1 blocks
+      const issueAmount: BigNumber = bn('5000e18')
+      await main.connect(addr1).issue(issueAmount)
+
+      // Issuance #2 - Should be processed in the same block
+      const newIssueAmount: BigNumber = bn('5001e18')
+      await main.connect(addr1).issue(newIssueAmount)
+
+      // Mine block
+      await hre.network.provider.send('evm_mine', [])
+
+      // Check mintings
+      // First minting
+      let currentBlockNumber = await getLatestBlockNumber()
+      let [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
+        await main.issuances(0)
+
+      let blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
+      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_amt).to.equal(issueAmount)
+      expect(sm_amt_bus).to.equal(issueAmount)
+      expect(sm_minter).to.equal(addr1.address)
+      expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
+      expect(sm_proc).to.equal(false)
+
+      // Second minting
+      ;[sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
+        await main.issuances(1)
+
+      blockAddPct = newIssueAmount.sub(issueAmount).mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
+      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_amt).to.equal(newIssueAmount)
+      expect(sm_amt_bus).to.equal(newIssueAmount)
+      expect(sm_minter).to.equal(addr1.address)
+      // Because it exceeds limit it will be moved to 2 blocks from now
+      expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(fp('1')).add(blockAddPct))
+      expect(sm_proc).to.equal(false)
+
+      // Set automine to true again
+      await hre.network.provider.send('evm_setAutomine', [true])
+
+      // Process issuance 1
+      await main.poke()
+
+      // Check first slow mintings is confirmed
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(newIssueAmount)
+
+      // Process issuance 2
+      await main.poke()
+
+      // Check second mintings is confirmed
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+    })
+
+    // it('Should rollback mintings if Basket changes (2 blocks)', async function () {
     // const issueAmount: BigNumber = bn('50000e18')
 
     // const expectedTkn0: BigNumber = issueAmount
