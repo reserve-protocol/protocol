@@ -176,10 +176,7 @@ describe('AssetsP0 contracts', () => {
       await compoundOracleInternal.setPrice(await token1.symbol(), bn('1.1e6')) // 10%
 
       // Price of RToken should increase by 10%
-
-      // TODO
-      // Return to this and figure out why it's not increasing by 10%
-      // expect(await rTokenAsset.price()).to.equal(fp('1.1'))
+      expect(await rTokenAsset.price()).to.equal(fp('1.1'))
     })
   })
 
@@ -199,6 +196,10 @@ describe('AssetsP0 contracts', () => {
       // Update with owner
       await rsrAsset.connect(owner).setOracle(compoundOracle.address)
 
+      expect(await rsrAsset.oracle()).to.equal(compoundOracle.address)
+
+      // If Updated again with same oracle nothing changes - No event emitted
+      await rsrAsset.connect(owner).setOracle(compoundOracle.address)
       expect(await rsrAsset.oracle()).to.equal(compoundOracle.address)
     })
   })
