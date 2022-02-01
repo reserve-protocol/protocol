@@ -325,7 +325,7 @@ describe('CollateralP0 contracts', () => {
     })
   })
 
-  describe('Rewards', () => {
+  describe.only('Rewards', () => {
     it('Should claim and sweep rewards for ATokens/CTokens', async function () {
       // Set COMP and AAVE rewards for Main
       const rewardAmountCOMP: BigNumber = bn('100e18')
@@ -333,7 +333,7 @@ describe('CollateralP0 contracts', () => {
       await compoundMock.setRewards(main.address, rewardAmountCOMP)
       await aToken.setRewards(main.address, rewardAmountAAVE)
 
-      // Check funds not yet swept available
+      // Check funds not yet swept
       expect(await compToken.balanceOf(main.address)).to.equal(0)
       expect(await aaveToken.balanceOf(main.address)).to.equal(0)
 
@@ -352,6 +352,24 @@ describe('CollateralP0 contracts', () => {
       // Check rewards were transfered to Main
       expect(await compToken.balanceOf(await main.address)).to.equal(rewardAmountCOMP)
       expect(await aaveToken.balanceOf(await main.address)).to.equal(rewardAmountAAVE)
+    })
+
+    it('Should handle failure in the Rewards delegate call', async function () {
+      // Set AAVE rewards for Main
+      const rewardAmountAAVE: BigNumber = bn('20e18')
+      await aToken.setRewards(main.address, rewardAmountAAVE)
+
+      // Check funds not yet swept
+      expect(await aaveToken.balanceOf(main.address)).to.equal(0)
+
+      // Force delegate call to fail, set an invalid AAVE asset
+      await main.connect(owner).setAAVEAsset(tokenAsset.address)
+
+      // Attempt to claim and Sweep rewards - From Main, delegate call
+      await expect(main.poke()).to.be.revertedWith('delegatecall rewards claim failed')
+
+      // Check funds not yet swept
+      expect(await aaveToken.balanceOf(main.address)).to.equal(0)
     })
   })
 })
