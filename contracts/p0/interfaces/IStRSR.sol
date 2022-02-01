@@ -62,7 +62,7 @@ interface IStRSR is IERC20, IERC20Receiver {
     function unstake(uint256 amount) external;
 
     /// @return seizedRSR {qRSR} The actual amount seized. May be dust-larger than `amount`.
-    function seizeRSR(uint256 amount) external returns (uint256 seizedRSR)
+    function seizeRSR(uint256 amount) external returns (uint256 seizedRSR);
 
     /// Sets Main, only by owner
     function setMain(IMain main) external;
