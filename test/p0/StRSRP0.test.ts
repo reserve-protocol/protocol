@@ -654,19 +654,18 @@ describe('StRSRP0 contract', () => {
 
       // Seize RSR
       await mainMock.seizeRSR(amount2)
+      const amtSeized = amount2.add(2) // add(2) because it seizes a little dust more than requested
 
       // Check balances and stakes
-      expect(await rsr.balanceOf(stRSRMock.address)).to.equal(amount.mul(3).sub(amount2))
-      expect(
-        near(await rsr.balanceOf(stRSRMock.address), await stRSRMock.totalSupply(), 1)
-      ).to.equal(true)
+      expect(await rsr.balanceOf(stRSRMock.address)).to.equal(amount.mul(3).sub(amtSeized))
+      expect(await rsr.balanceOf(stRSRMock.address)).to.equal(await stRSRMock.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
 
-      expect(await stRSRMock.balanceOf(addr1.address)).to.equal(amount.sub(amount2.div(3)))
-      expect(await stRSRMock.balanceOf(addr2.address)).to.equal(amount.sub(amount2.div(3)))
-      expect(await stRSRMock.balanceOf(addr3.address)).to.equal(amount.sub(amount2.div(3)))
+      expect(await stRSRMock.balanceOf(addr1.address)).to.equal(amount.sub(amtSeized.div(3)))
+      expect(await stRSRMock.balanceOf(addr2.address)).to.equal(amount.sub(amtSeized.div(3)))
+      expect(await stRSRMock.balanceOf(addr3.address)).to.equal(amount.sub(amtSeized.div(3)))
     })
 
     it('Should remove RSR from Withdrawers', async () => {

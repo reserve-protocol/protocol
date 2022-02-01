@@ -53,5 +53,6 @@ interface IStRSR is IERC20, IERC20Receiver {
 
     /// AssetManager only
     /// @param amount {qRSR}
-    function seizeRSR(uint256 amount) external;
+    /// @return seizedRSR {qRSR} The actual amount seized. May be dust-larger than `amount`.
+    function seizeRSR(uint256 amount) external returns (uint256 seizedRSR);
 }

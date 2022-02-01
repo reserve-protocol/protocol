@@ -36,10 +36,10 @@ contract StRSRP0 is IStRSR, Context {
     mapping(address => uint256) private balances;
     mapping(address => mapping(address => uint256)) private allowances;
 
-    // List of accounts
+    // List of accounts. If balances[user] > 0 then (user is in accounts)
     EnumerableSet.AddressSet internal accounts;
 
-    // Total staked
+    // Total staked == sum(balances[user] for user in accounts)
     uint256 internal totalStaked;
 
     // Delayed Withdrawals
@@ -122,18 +122,21 @@ contract StRSRP0 is IStRSR, Context {
 
         if (overage > 0) {
             for (uint256 index = 0; index < accounts.length(); index++) {
-                // amtToAdd = amount * balances[accounts.at(index)] / snapshotTotalStaked;
-                Fix amtToAdd = toFix(balances[accounts.at(index)]).mulu(overage).divu(totalStaked);
-                balances[accounts.at(index)] += amtToAdd.floor();
-                addedAmount += amtToAdd.floor();
+                address user = accounts.at(index);
+                // amtToAdd == overage * (balance[user] / totalStaked);
+                uint256 amtToAdd = toFix(balances[user]).mulu(overage).divu(totalStaked).floor();
+                balances[user] += amtToAdd;
+                addedAmount += amtToAdd;
             }
+            // overage - addedAmount may be nonzero; if so, that dust will wait for the next time.
             totalStaked += addedAmount;
             emit RSRAdded(_msgSender(), addedAmount);
         }
     }
 
     /// @param amount {qRSR}
-    function seizeRSR(uint256 amount) external override {
+    /// @return seizedRSR {qRSR} The actual amount seized. May be dust-larger than `amount`.
+    function seizeRSR(uint256 amount) external override returns (uint256 seizedRSR) {
         require(_msgSender() == address(main), "not main");
         require(amount > 0, "Amount cannot be zero");
 
@@ -141,30 +144,34 @@ contract StRSRP0 is IStRSR, Context {
         processWithdrawals();
 
         uint256 snapshotTotalStakedPlus = totalStaked + amountBeingWithdrawn();
-
         // Remove RSR for stakers and from withdrawals too
         if (snapshotTotalStakedPlus > 0) {
             uint256 removedStake = 0;
             for (uint256 index = 0; index < accounts.length(); index++) {
-                Fix amtToRemove = toFix(balances[accounts.at(index)]).mulu(amount).divu(
-                    snapshotTotalStakedPlus
-                );
-                balances[accounts.at(index)] -= amtToRemove.floor();
-                removedStake += amtToRemove.floor();
+                uint256 amtToRemove = toFix(balances[accounts.at(index)])
+                    .mulu(amount)
+                    .divu(snapshotTotalStakedPlus)
+                    .ceil();
+                balances[accounts.at(index)] -= amtToRemove;
+                removedStake += amtToRemove;
             }
             totalStaked -= removedStake;
+            seizedRSR = removedStake;
 
             for (uint256 index = 0; index < withdrawals.length; index++) {
-                Fix amtToRemove = toFix(withdrawals[index].amount).mulu(amount).divu(
-                    snapshotTotalStakedPlus
-                );
-                withdrawals[index].amount -= amtToRemove.floor();
+                uint256 amtToRemove = toFix(withdrawals[index].amount)
+                    .mulu(amount)
+                    .divu(snapshotTotalStakedPlus)
+                    .ceil();
+                withdrawals[index].amount -= amtToRemove;
+                seizedRSR += amtToRemove;
             }
         }
 
         // Transfer RSR to caller
-        main.rsr().safeTransfer(_msgSender(), amount);
-        emit RSRSeized(_msgSender(), amount);
+        require(amount <= seizedRSR, "Could not seize requested RSR");
+        main.rsr().safeTransfer(_msgSender(), seizedRSR);
+        emit RSRSeized(_msgSender(), seizedRSR);
     }
 
     // ERC20 Interface
