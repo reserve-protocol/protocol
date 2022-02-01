@@ -532,7 +532,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
     })
 
-    it.only('Should allow multiple issuances in the same block', async function () {
+    it('Should allow multiple issuances in the same block', async function () {
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)
       await token1.connect(addr1).approve(main.address, initialBal)
@@ -652,89 +652,76 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
     })
 
-    // it('Should rollback mintings if Basket changes (2 blocks)', async function () {
-    // const issueAmount: BigNumber = bn('50000e18')
+    it.skip('Should rollback mintings if Basket changes (2 blocks)', async function () {
+      const issueAmount: BigNumber = bn('50000e18')
 
-    // const expectedTkn0: BigNumber = issueAmount
-    // .mul(await vault.quantity(collateral0.address))
-    // .div(BN_SCALE_FACTOR)
-    // const expectedTkn1: BigNumber = issueAmount
-    // .mul(await vault.quantity(collateral1.address))
-    // .div(BN_SCALE_FACTOR)
-    // const expectedTkn2: BigNumber = issueAmount
-    // .mul(await vault.quantity(collateral2.address))
-    // .div(BN_SCALE_FACTOR)
-    // const expectedTkn3: BigNumber = issueAmount
-    // .mul(await vault.quantity(collateral3.address))
-    // .div(BN_SCALE_FACTOR)
+      const quotes: BigNumber[] = await main.quote(issueAmount)
 
-    // // Provide approvals
-    // await token0.connect(addr1).approve(main.address, initialBal)
-    // await token1.connect(addr1).approve(main.address, initialBal)
-    // await token2.connect(addr1).approve(main.address, initialBal)
-    // await token3.connect(addr1).approve(main.address, initialBal)
+      // Provide approvals
+      await token0.connect(addr1).approve(main.address, initialBal)
+      await token1.connect(addr1).approve(main.address, initialBal)
+      await token2.connect(addr1).approve(main.address, initialBal)
+      await token3.connect(addr1).approve(main.address, initialBal)
 
-    // // Issue rTokens
-    // await main.connect(addr1).issue(issueAmount)
+      // Issue rTokens
+      await main.connect(addr1).issue(issueAmount)
 
-    // // Check Balances - Before vault switch
-    // expect(await token0.balanceOf(vault.address)).to.equal(expectedTkn0)
-    // expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
+      // Check Balances - Before vault switch
+      const expectedTkn0: BigNumber = quotes[0]
+      expect(await token0.balanceOf(main.address)).to.equal(expectedTkn0)
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
 
-    // expect(await token1.balanceOf(vault.address)).to.equal(expectedTkn1)
-    // expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
+      const expectedTkn1: BigNumber = quotes[1]
+      expect(await token1.balanceOf(main.address)).to.equal(expectedTkn1)
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
 
-    // expect(await token2.balanceOf(vault.address)).to.equal(expectedTkn2)
-    // expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
+      const expectedTkn2: BigNumber = quotes[2]
+      expect(await token2.balanceOf(main.address)).to.equal(expectedTkn2)
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
 
-    // expect(await token3.balanceOf(vault.address)).to.equal(expectedTkn3)
-    // expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
+      const expectedTkn3: BigNumber = quotes[3]
+      expect(await token3.balanceOf(main.address)).to.equal(expectedTkn3)
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
 
-    // expect(await rToken.balanceOf(main.address)).to.equal(issueAmount)
-    // expect(await vault.basketUnits(main.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
-    // // Process slow issuances
-    // await main.poke()
+      // Process slow issuances
+      await main.poke()
 
-    // // Check previous minting was not processed
-    // let [, , , , , sm_proc] = await main.issuances(0)
-    // expect(sm_proc).to.equal(false)
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      // Check previous minting was not processed
+      let [, , , , , sm_proc] = await main.issuances(0)
+      expect(sm_proc).to.equal(false)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
-    // // Process slow mintings 1 time (still more pending).
-    // await main.poke()
+      // Process slow mintings 1 time (still more pending).
+      await main.poke()
 
-    // // Change Vault
-    // const newVault: VaultP0 = <VaultP0>(
-    // await VaultFactory.deploy([collateral[1].address], [bn('1e18')], [])
-    // )
-    // expect(await main.connect(owner).switchVault(newVault.address))
-    // .to.emit(main, 'IssuanceCanceled')
-    // .withArgs(0)
+      // Change Basket
+      await main.connect(owner).setPrimeBasket([collateral[0].address], [fp('1')])
+      await main.connect(owner).switchBasket()
 
-    // // Check Balances after - Funds returned to minter
-    // expect(await token0.balanceOf(vault.address)).to.equal(0)
-    // expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+      // Process slow issuances
+      await expect(main.connect(owner).poke()).to.emit(main, 'IssuanceCanceled').withArgs(0)
 
-    // expect(await token1.balanceOf(vault.address)).to.equal(0)
-    // expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+      // Check Balances after - Funds returned to minter
+      expect(await token0.balanceOf(main.address)).to.equal(0)
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
 
-    // expect(await token2.balanceOf(vault.address)).to.equal(0)
-    // expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token1.balanceOf(main.address)).to.equal(0)
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
 
-    // expect(await token3.balanceOf(vault.address)).to.equal(0)
-    // expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token2.balanceOf(main.address)).to.equal(0)
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
 
-    // expect(await rToken.balanceOf(main.address)).to.equal(0)
-    // expect(await vault.basketUnits(main.address)).to.equal(0)
-    // ;[, , , , , sm_proc] = await main.issuances(0)
-    // expect(sm_proc).to.equal(true)
-    // expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      expect(await token3.balanceOf(main.address)).to.equal(0)
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
-    // // Nothing sent to the AssetManager
-    // expect(await vault.basketUnits(main.address)).to.equal(0)
-    // expect(await newVault.basketUnits(main.address)).to.equal(0)
-    // })
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+      ;[, , , , , sm_proc] = await main.issuances(0)
+      expect(sm_proc).to.equal(true)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+    })
   })
 
   describe('Redeem', function () {
