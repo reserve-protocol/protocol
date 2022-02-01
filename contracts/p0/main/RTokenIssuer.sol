@@ -26,7 +26,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     /// Tracks data for a SlowIssuance
     /// @param blockStartedAt The block number the issuance was started in, non-fractional
     /// @param amount {qTok} The quantity of RToken the issuance is for
-    /// @param amtBUs {qBU} The number of BUs that corresponded to `amount` at time of issuance
+    /// @param baskets {qBU} The number of BUs that corresponded to `amount` at time of issuance
     /// @param deposits {qTok} The collateral token quantities that paid for the issuance
     /// @param issuer The account issuing RToken
     /// @param blockAvailableAt {blockNumber} The block number when the issuance completes
@@ -35,7 +35,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     struct SlowIssuance {
         uint256 blockStartedAt;
         uint256 amount; // {qRTok}
-        Fix amtBUs; // {BU}
+        Fix baskets; // {BU}
         address[] erc20s;
         uint256[] deposits; // {qTok}, same index as vault basket assets
         address issuer;
@@ -69,15 +69,17 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         tryEnsureValidBasket();
         require(worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
-        Fix amtBUs = toBUs(amount);
-        uint256[] memory deposits = basket.deposit(_msgSender(), amtBUs);
-        targetBUs = targetBUs.plus(amtBUs); // TODO Double-check the ordering with .deposit()
+        // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
+        Fix baskets = basketsPerRTok().mulu(amount).shiftLeft(-int8(rToken().decimals()));
+        emit BasketsNeededSet(basketsNeeded, basketsNeeded.plus(baskets));
+
+        uint256[] memory deposits = basket.deposit(_msgSender(), baskets);
 
         // During SlowIssuance, RTokens are minted and held by RToken until vesting completes
         SlowIssuance memory iss = SlowIssuance({
             blockStartedAt: block.number,
             amount: amount,
-            amtBUs: amtBUs,
+            baskets: baskets,
             erc20s: basket.backingERC20s(),
             deposits: deposits,
             issuer: _msgSender(),
@@ -85,16 +87,18 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
             processed: false
         });
         issuances.push(iss);
-        rToken().mint(address(rToken()), amount);
+
         emit IssuanceStarted(
             issuances.length - 1,
             iss.issuer,
             iss.amount,
-            iss.amtBUs,
+            iss.baskets,
             iss.erc20s,
             iss.deposits,
             iss.blockAvailableAt
         );
+        basketsNeeded = basketsNeeded.plus(baskets);
+        rToken().mint(address(rToken()), amount);
     }
 
     /// Redeem RToken for basket collateral
@@ -103,35 +107,17 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         require(amount > 0, "Cannot redeem zero");
         revenueFurnace().melt();
 
-        Fix amtBUs = toBUs(amount);
-        uint256[] memory compensation = fullyCapitalized()
-            ? basket.withdraw(_msgSender(), amtBUs)
-            : basket.withdrawProrata(
-                _msgSender(),
-                amtBUs,
-                divFix(amount, toFix(rToken().totalSupply()))
-            );
+        // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
+        Fix baskets = basketsPerRTok().mulu(amount).shiftLeft(-int8(rToken().decimals()));
+        emit BasketsNeededSet(basketsNeeded, basketsNeeded.minus(baskets));
+
         rToken().burn(_msgSender(), amount);
 
-        // TODO Double-check the order with .withdraw
-        targetBUs = targetBUs.minus(amtBUs);
+        uint256[] memory compensation = basket.withdraw(_msgSender(), baskets);
+        emit Redemption(_msgSender(), amount, baskets, basket.backingERC20s(), compensation);
 
-        emit Redemption(_msgSender(), amount, amtBUs, basket.backingERC20s(), compensation);
-    }
-
-    /// @return quantities {qTok} The token quantities required to issue `amount` RToken.
-    function quote(uint256 amount) public view override returns (uint256[] memory quantities) {
-        Fix amtBUs = toBUs(amount);
-        quantities = new uint256[](basket.size);
-        for (uint256 i = 0; i < basket.size; i++) {
-            // {qTok} = {BU} * {qTok/BU}
-            quantities[i] = amtBUs.mul(basket.quantity(basket.collateral[i])).ceil();
-        }
-    }
-
-    /// @return How much RToken `account` can issue given current holdings
-    function maxIssuable(address account) external view override returns (uint256) {
-        return fromBUs(basket.virtualBUs(account));
+        basketsNeeded = basketsNeeded.minus(baskets);
+        assert(basketsNeeded.gte(FIX_ZERO));
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken
@@ -139,10 +125,31 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         return basket.backingERC20s();
     }
 
+    /// @return quantities {qTok} The token quantities required to issue `amount` RToken.
+    function quote(uint256 amount) public view override returns (uint256[] memory quantities) {
+        Fix amtBUs = basketsPerRTok().mulu(amount).shiftLeft(-int8(rToken().decimals()));
+        quantities = new uint256[](basket.size);
+        for (uint256 i = 0; i < basket.size; i++) {
+            // {qTok} = {BU} * {qTok/BU}
+            quantities[i] = amtBUs.mul(basket.quantity(basket.collateral[i])).ceil();
+        }
+    }
+
+    /// @return {qTok} How much RToken `account` can issue given current holdings
+    function maxIssuable(address account) external view override returns (uint256) {
+        // {qTok} = {BU} / {BU/rTok} * {qRTok/rTok}
+        return
+            basket
+                .balanceOf(account)
+                .div(basketsPerRTok())
+                .shiftLeft(int8(rToken().decimals()))
+                .floor();
+    }
+
     /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
     function rTokenPrice() public view override returns (Fix p) {
         // {UoA/rTok} = {UoA/BU} * {BU/rTok}
-        return basket.price().mul(targetBUsPerRTok());
+        return basket.price().mul(basketsPerRTok());
     }
 
     // Returns the future block number at which an issuance for *amount* now can complete
@@ -179,7 +186,11 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
             if (iss.blockStartedAt <= blockBasketLastUpdated) {
                 // Rollback issuance i
                 rToken().burn(address(rToken()), iss.amount);
-                targetBUs = targetBUs.minus(iss.amtBUs);
+                emit BasketsNeededSet(basketsNeeded, basketsNeeded.minus(iss.baskets));
+
+                basketsNeeded = basketsNeeded.minus(iss.baskets);
+                assert(basketsNeeded.gte(FIX_ZERO));
+
                 for (uint256 j = 0; j < iss.erc20s.length; j++) {
                     IERC20Metadata(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
                 }

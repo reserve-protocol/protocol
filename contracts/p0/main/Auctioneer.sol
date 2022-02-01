@@ -72,7 +72,7 @@ contract AuctioneerP0 is
         /*
          * Recapitalization logic:
          *   1. Sell all surplus assets at Main for deficit collateral
-         *   2. When there is no more surplus, seize RSR and sell that for RToken
+         *   2. When there is no more surplus, seize RSR and sell that for collateral
          *   3. When there is no more RSR, give RToken holders a haircut
          */
 
@@ -81,35 +81,37 @@ contract AuctioneerP0 is
 
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
+        Fix held = basketsHeld();
+
         // First mint RToken
-        Fix actual = actualBUHoldings();
-        if (actual.gt(targetBUs)) {
-            uint256 toMint = fromBUs(actual.minus(targetBUs));
-            rToken().mint(address(this), toMint);
+        if (held.gt(basketsNeeded)) {
+            // {rTok} = {BU} / {BU/rTok}
+            Fix rTok = held.minus(basketsNeeded).div(basketsPerRTok());
+            rToken().mint(address(this), rTok.shiftLeft(int8(rToken().decimals())).floor());
         }
 
         // Handout excess assets, including RToken
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
             uint256 bal = a.erc20().balanceOf(address(this));
-            uint256 required = 0;
+            uint256 needed = 0;
             if (a.isCollateral()) {
                 ICollateral c = ICollateral(_assets.at(i));
 
                 // {tok} = {BU} * {ref/BU} / {ref/tok}
-                Fix tokRequired = targetBUs.mul(basket.refAmts[c]).div(c.refPerTok());
+                Fix tokNeeded = basketsNeeded.mul(basket.refAmts[c]).div(c.refPerTok());
 
                 // {qTok} = {tok} * {qTok/tok}
-                required = tokRequired.shiftLeft(int8(c.erc20().decimals())).ceil();
+                needed = tokNeeded.shiftLeft(int8(c.erc20().decimals())).ceil();
             }
 
-            if (bal > required) {
-                uint256 amtToRSR = rsrCut().mulu(bal - required).round();
-                if (amtToRSR > 0) {
-                    a.erc20().safeTransfer(address(rsrTrader), amtToRSR);
+            if (bal > needed) {
+                uint256 amtRSR = rsrCut().mulu(bal - needed).round();
+                if (amtRSR > 0) {
+                    a.erc20().safeTransfer(address(rsrTrader), amtRSR);
                 }
-                if (bal - required - amtToRSR > 0) {
-                    a.erc20().safeTransfer(address(rTokenTrader), bal - required - amtToRSR);
+                if (bal - needed - amtRSR > 0) {
+                    a.erc20().safeTransfer(address(rTokenTrader), bal - needed - amtRSR);
                 }
             }
         }
@@ -177,7 +179,11 @@ contract AuctioneerP0 is
     /// Compromise on the BU target in order to become recapitalized again
     function giveRTokenHoldersAHaircut() private returns (bool) {
         assert(!hasOpenAuctions() && !fullyCapitalized());
-        targetBUs = actualBUHoldings();
+
+        Fix held = basketsHeld();
+        emit BasketsNeededSet(basketsNeeded, held);
+        basketsNeeded = held;
+
         assert(fullyCapitalized());
         return true;
     }
@@ -199,13 +205,14 @@ contract AuctioneerP0 is
             Fix
         )
     {
-        // Calculate surplus and deficits relative to basket reference amounts.
+        // Calculate surplus and deficits relative to the reference basket
+
         Fix[] memory prices = new Fix[](_assets.length()); // {UoA/tok}
         Fix[] memory surpluses = new Fix[](_assets.length()); // {UoA}
         Fix[] memory deficits = new Fix[](_assets.length()); // {UoA}
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
-            Fix required = FIX_ZERO; // {UoA}
+            Fix needed = FIX_ZERO; // {UoA}
 
             // Calculate {UoA/tok} price
             if (a.isCollateral()) {
@@ -215,7 +222,7 @@ contract AuctioneerP0 is
                 prices[i] = c.refPerTok().mul(c.targetPerRef()).mul(c.pricePerTarget());
 
                 // {UoA} = {BU} * {ref/BU} / {ref/tok} * {UoA/tok}
-                required = targetBUs.mul(basket.refAmts[c]).div(c.refPerTok()).mul(prices[i]);
+                needed = basketsNeeded.mul(basket.refAmts[c]).div(c.refPerTok()).mul(prices[i]);
             } else {
                 prices[i] = a.price();
             }
@@ -228,10 +235,12 @@ contract AuctioneerP0 is
 
             // {UoA} = {tok} * {UoA/tok}
             Fix actual = tokBal.mul(prices[i]);
-            if (actual.gt(required)) {
-                surpluses[i] = actual.minus(required);
-            } else if (actual.lt(required)) {
-                deficits[i] = required.minus(actual);
+            if (actual.gt(needed)) {
+                surpluses[i] = actual.minus(needed);
+                assert(surpluses[i].gte(FIX_ZERO));
+            } else if (actual.lt(needed)) {
+                deficits[i] = needed.minus(actual);
+                assert(deficits[i].gte(FIX_ZERO));
             }
         }
 

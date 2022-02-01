@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
+
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
@@ -733,7 +734,7 @@ describe('MainP0 contract', () => {
       const redeemAmount: BigNumber = bn('1000e18')
 
       await expect(main.connect(addr1).redeem(redeemAmount)).to.be.revertedWith(
-        'ERC20: transfer amount exceeds balance'
+        'ERC20: burn amount exceeds balance'
       )
     })
 

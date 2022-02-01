@@ -277,6 +277,11 @@ interface IBasketHandler {
     /// @param refAmts {ref/BU} The reference amounts of the basket
     event BasketSet(ICollateral[] collateral, Fix[] refAmts);
 
+    /// Emitted when the liablity in terms of BUs is changed
+    /// @param oldLiability {BU} The old number of basket units the protocol was liable for
+    /// @param oldLiability {BU} The new number of basket units the protocol is liable for
+    event BasketsNeededSet(Fix oldLiability, Fix newLiability);
+
     /// Set the prime basket in the basket configuration.
     /// @param collateral The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
@@ -349,7 +354,7 @@ interface IRTokenIssuer {
     /// @param issuanceId The index off the issuance, a globally unique identifier
     /// @param issuer The account performing the issuance
     /// @param amount The quantity of RToken being issued
-    /// @param amtBUs The corresponding quantity of basket units
+    /// @param baskets The corresponding quantity of basket units
     /// @param tokens The ERC20 contracts of the backing tokens
     /// @param quantities The quantities of tokens paid with
     /// @param blockAvailableAt The (continuous) block at which the issuance vests
@@ -357,7 +362,7 @@ interface IRTokenIssuer {
         uint256 indexed issuanceId,
         address indexed issuer,
         uint256 indexed amount,
-        Fix amtBUs,
+        Fix baskets,
         address[] tokens,
         uint256[] quantities,
         Fix blockAvailableAt
@@ -374,13 +379,13 @@ interface IRTokenIssuer {
     /// Emitted when a redemption of RToken occurs
     /// @param redeemer The address of the account redeeeming RTokens
     /// @param amount The quantity of RToken being redeemed
-    /// @param amtBUs The corresponding quantity of basket units
+    /// @param baskets The corresponding quantity of basket units
     /// @param tokens The ERC20 contracts of the backing tokens
     /// @param quantities The quantities of tokens paid with
     event Redemption(
         address indexed redeemer,
         uint256 indexed amount,
-        Fix amtBUs,
+        Fix baskets,
         address[] tokens,
         uint256[] quantities
     );
@@ -391,9 +396,9 @@ interface IRTokenIssuer {
 
     function backingTokens() external view returns (address[] memory);
 
-    function quote(uint256 amount) external view returns (uint256[] memory);
-
     function maxIssuable(address account) external view returns (uint256);
+
+    function quote(uint256 amount) external view returns (uint256[] memory);
 
     // {UoA/rTok}
     function rTokenPrice() external view returns (Fix p);

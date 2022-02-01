@@ -66,13 +66,9 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         assert(INVARIANTdistributionValid());
         assert(INVARIANT_fullyCapitalized());
         assert(INVARIANT_nextRewardsInFutureOrNow());
-        assert(INVARIANT_quoteMonotonic());
-        assert(INVARIANT_tokensAndQuantitiesSameLength());
         assert(INVARIANT_pricesDefined());
         assert(INVARIANT_issuancesAreValid());
-        assert(INVARIANT_targetBUsPerRTokDefined());
-        assert(INVARIANT_toBUInverseFromBU());
-        assert(INVARIANT_fromBUInverseToBU());
+        assert(INVARIANT_basketsPerRTokDefined());
     }
 
     function INVARIANT_stateDefined() internal view returns (bool ok) {
@@ -135,31 +131,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         }
     }
 
-    function INVARIANT_quoteMonotonic() internal view returns (bool ok) {
-        ok = true;
-        uint256[] memory one = quote(1e18);
-        uint256[] memory two = quote(1e18 + 1);
-        uint256[] memory three = quote(2e18);
-        ok = ok && one.length == two.length;
-        ok = ok && two.length == three.length;
-        for (uint256 i = 0; i < one.length; i++) {
-            ok = ok && one[i] <= two[i];
-            ok = ok && two[i] <= three[i];
-        }
-        if (!ok) {
-            console.log("INVARIANT_quoteMonotonic violated");
-        }
-    }
-
-    function INVARIANT_tokensAndQuantitiesSameLength() internal view returns (bool ok) {
-        ok = true;
-        uint256[] memory quantities = quote(1e18);
-        ok = ok && backingTokens().length == quantities.length;
-        if (!ok) {
-            console.log("INVARIANT_tokensAndQuantitiesSameLength violated");
-        }
-    }
-
     function INVARIANT_pricesDefined() internal view returns (bool ok) {
         ok = true;
         for (uint256 i = 0; i < basket.size; i++) {
@@ -187,37 +158,11 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     // Ex-asset manager
 
-    function INVARIANT_targetBUsPerRTokDefined() internal view returns (bool ok) {
-        Fix b = targetBUsPerRTok();
+    function INVARIANT_basketsPerRTokDefined() internal view returns (bool ok) {
+        Fix b = basketsPerRTok();
         ok = b.gt(FIX_ZERO);
         if (!ok) {
-            console.log("INVARIANT_targetBUsPerRTokDefined violated");
-        }
-    }
-
-    function INVARIANT_toBUInverseFromBU() internal view returns (bool ok) {
-        ok = true;
-        Fix converted = toFix(fromBUs(targetBUs));
-        ok = ok && converted.near(toFix(rToken().totalSupply()), toFix(2)); // < 2 away
-        if (!ok) {
-            console.log(
-                "INVARIANT_toBUInverseFromBU violated",
-                converted.floor(),
-                rToken().totalSupply()
-            );
-        }
-    }
-
-    function INVARIANT_fromBUInverseToBU() internal view returns (bool ok) {
-        ok = true;
-        Fix bu_s = actualBUHoldings();
-        ok = ok && toBUs(fromBUs(bu_s)).near(bu_s, toFix(2)); // < 2 away
-        if (!ok) {
-            console.log(
-                "INVARIANT_fromBUInverseToBU violated",
-                toBUs(fromBUs(bu_s)).round(),
-                bu_s.round()
-            );
+            console.log("INVARIANT_basketsPerRTokDefined violated");
         }
     }
 

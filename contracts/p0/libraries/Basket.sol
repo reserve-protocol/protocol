@@ -18,8 +18,10 @@ struct Basket {
 /*
  * @title BasketLib
  * @dev
- *   - deposit(from, amtBUs): Deposit collateral equivalent to amtBUs
- *   - withdraw(to, amtBUs): Withdraw collateral equivalent to amtBUs
+ *   - empty()
+ *   - copy(other: BasketLib)
+ *   - deposit(from: address, amount: BU): Deposit collateral equivalent to some number of BUs
+ *   - withdraw(to: address, amount: BU): Withdraw collateral equivalent to some number of BUs
  */
 library BasketLib {
     using BasketLib for Basket;
@@ -46,63 +48,47 @@ library BasketLib {
         self.size = other.size;
     }
 
-    /// Transfer `amtBUs` worth of collateral into the caller's account
+    /// Transfer collateral worth `quantity` baskets into the caller's account
     /// @param from The address that is sending collateral
-    /// @return amounts The token amounts transferred in
+    /// @param amount {BU} The amount of baskets to deposits
+    /// @return collateralAmounts {qTok} The token amounts transferred in
     function deposit(
         Basket storage self,
         address from,
-        Fix amtBUs
-    ) internal returns (uint256[] memory amounts) {
-        amounts = new uint256[](self.size);
+        Fix amount
+    ) internal returns (uint256[] memory collateralAmounts) {
+        collateralAmounts = new uint256[](self.size);
         for (uint256 i = 0; i < self.size; i++) {
             // {qTok} = {BU} * {qTok/BU}
-            amounts[i] = amtBUs.mul(self.quantity(self.collateral[i])).ceil();
-            self.collateral[i].erc20().safeTransferFrom(from, address(this), amounts[i]);
+            collateralAmounts[i] = amount.mul(self.quantity(self.collateral[i])).ceil();
+            self.collateral[i].erc20().safeTransferFrom(from, address(this), collateralAmounts[i]);
         }
     }
 
-    /// Transfer `amtBUs` worth of collateral out of the caller's account
+    /// Transfer collateral worth `quantity` baskets out of the caller's account,
+    /// never giving more than a prorata share of collateral.
     /// @param to The address that is receiving the collateral
-    /// @return amounts The token amounts transferred out
+    /// @param amount {BU} The amount of BUs being withdrawn
+    /// @return collateralAmounts {qTok} The token amounts transferred out
     function withdraw(
         Basket storage self,
         address to,
-        Fix amtBUs
-    ) internal returns (uint256[] memory amounts) {
-        amounts = new uint256[](self.size);
+        Fix amount
+    ) internal returns (uint256[] memory collateralAmounts) {
+        Fix total = self.balanceOf(address(this)); // {BU}
+        collateralAmounts = new uint256[](self.size);
+
         for (uint256 i = 0; i < self.size; i++) {
             // {qTok} = {BU} * {qTok/BU}
-            amounts[i] = amtBUs.mul(self.quantity(self.collateral[i])).floor();
-            self.collateral[i].erc20().safeTransfer(to, amounts[i]);
-        }
-    }
+            Fix ideal = amount.mul(self.quantity(self.collateral[i]));
 
-    /// Transfer a prorata `slice` of all collateral out of the caller's account
-    /// @param to The address that is receiving the collateral
-    /// @param amtBUs {BU} The amount BUs to withdraw prorata
-    /// @param slice {none} The withdrawers fraction of the RToken supply
-    /// @return amounts The token amounts transferred out
-    function withdrawProrata(
-        Basket storage self,
-        address to,
-        Fix amtBUs,
-        Fix slice
-    ) internal returns (uint256[] memory amounts) {
-        // TODO In this case there is likely to be some collateral out in an auction.
-        // Should we take that into account? On one hand it seems like we don't care that much
-        // about exactly what prices redemption happens at in the event of a default, but on
-        // the other a 1% loss due to the maximum auction size could be pretty painful.
+            // {qTok} = {BU} / {BU} * {qTok}
+            Fix prorata = amount.div(total).mulu(
+                self.collateral[i].erc20().balanceOf(address(this))
+            );
 
-        amounts = new uint256[](self.size);
-        for (uint256 i = 0; i < self.size; i++) {
-            // {qTok} = {BU} * {qTok/BU}
-            Fix perBU = amtBUs.mul(self.quantity(self.collateral[i]));
-
-            // {qTok} = {BU} * {qTok/BU}
-            Fix prorata = slice.mulu(self.collateral[i].erc20().balanceOf(address(this)));
-            amounts[i] = fixMin(prorata, perBU).floor();
-            self.collateral[i].erc20().safeTransfer(to, amounts[i]);
+            collateralAmounts[i] = fixMin(ideal, prorata).floor();
+            self.collateral[i].erc20().safeTransfer(to, collateralAmounts[i]);
         }
     }
 
@@ -114,17 +100,17 @@ library BasketLib {
         return self.refAmts[c].div(c.refPerTok()).shiftLeft(int8(c.erc20().decimals()));
     }
 
-    /// @return max {BU} A virtual BU balance at `account` based on collateral balances
-    function virtualBUs(Basket storage self, address account) internal view returns (Fix max) {
-        max = FIX_MAX;
+    /// @return bal {BU} The balance of basket units held by `account`
+    function balanceOf(Basket storage self, address account) internal view returns (Fix bal) {
+        bal = FIX_MAX;
         for (uint256 i = 0; i < self.size; i++) {
-            Fix bal = toFix(self.collateral[i].erc20().balanceOf(account)); // {qTok}
+            Fix tokBal = toFix(self.collateral[i].erc20().balanceOf(account)); // {qTok}
             Fix q = self.quantity(self.collateral[i]); // {qTok/BU}
             if (q.gt(FIX_ZERO)) {
                 // {BU} = {qTok} / {qTok/BU}
-                Fix amtBUs = bal.div(q);
-                if (amtBUs.lt(max)) {
-                    max = amtBUs;
+                Fix potential = tokBal.div(q);
+                if (potential.lt(bal)) {
+                    bal = potential;
                 }
             }
         }
