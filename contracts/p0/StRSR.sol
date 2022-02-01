@@ -4,8 +4,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IMain.sol";
@@ -20,7 +20,7 @@ import "contracts/libraries/Fixed.sol";
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both
  * balances that are in the process of being withdrawn and those that are not.
  */
-contract StRSRP0 is IStRSR, Context {
+contract StRSRP0 is IStRSR, Ownable {
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Metadata;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -54,11 +54,13 @@ contract StRSRP0 is IStRSR, Context {
     constructor(
         IMain main_,
         string memory name_,
-        string memory symbol_
+        string memory symbol_,
+        address owner_
     ) {
         main = main_;
         _name = name_;
         _symbol = symbol_;
+        _transferOwnership(owner_);
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
@@ -172,6 +174,11 @@ contract StRSRP0 is IStRSR, Context {
         require(amount <= seizedRSR, "Could not seize requested RSR");
         main.rsr().safeTransfer(_msgSender(), seizedRSR);
         emit RSRSeized(_msgSender(), seizedRSR);
+    }
+
+    function setMain(IMain main_) external virtual override onlyOwner {
+        emit MainSet(main, main_);
+        main = main_;
     }
 
     // ERC20 Interface

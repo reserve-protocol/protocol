@@ -27,11 +27,13 @@ contract Pausable is Ownable, IPausable {
 
     function pause() external override {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PausedSet(paused, true);
         paused = true;
     }
 
     function unpause() external override {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PausedSet(paused, false);
         paused = false;
     }
 
@@ -41,6 +43,7 @@ contract Pausable is Ownable, IPausable {
 
     function setPauser(address pauser_) external override {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PauserSet(_pauser, pauser_);
         _pauser = pauser_;
     }
 }

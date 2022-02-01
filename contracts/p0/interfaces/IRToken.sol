@@ -10,6 +10,11 @@ import "contracts/p0/interfaces/IMain.sol";
  * @dev The p0-specific IRToken
  */
 interface IRToken is IERC20Metadata {
+    /// Emitted when Main is set
+    /// @param oldMain The old address of Main
+    /// @param newMain The new address of Main
+    event MainSet(IMain indexed oldMain, IMain indexed newMain);
+
     /// Mints a quantity of RToken to the `recipient`, only callable by AssetManager
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted

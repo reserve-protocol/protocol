@@ -95,6 +95,7 @@ contract BasketHandlerP0 is
                 basketConf.targetNames.push(targetName);
             }
         }
+        emit PrimeBasketSet(collateral, targetAmts);
     }
 
     /// Set the backup configuration for some target name.
@@ -112,6 +113,7 @@ contract BasketHandlerP0 is
         for (uint256 i = 0; i < collateral.length; i++) {
             conf.collateral[i] = collateral[i];
         }
+        emit BackupConfigSet(targetName, maxCollateral, collateral);
     }
 
     /// @return true if we registered a change in the underlying basket
@@ -275,7 +277,17 @@ contract BasketHandlerP0 is
 
         // If we haven't already given up, then commit the new basket!
         basket.copy(newBasket);
+
+        // Do record-keeping
         blockBasketLastUpdated = block.number;
+        ICollateral[] memory collateral = new ICollateral[](basket.size);
+        Fix[] memory refAmts = new Fix[](basket.size);
+        for (uint256 i = 0; i < basket.size; i++) {
+            collateral[i] = basket.collateral[i];
+            refAmts[i] = basket.refAmts[collateral[i]];
+        }
+        emit BasketSet(collateral, refAmts);
+
         return true;
     }
 }

@@ -564,7 +564,7 @@ describe('StRSRP0 contract', () => {
       // Deploy a new StRSR with the Main mock
       const StRSRFactory: ContractFactory = await ethers.getContractFactory('StRSRP0')
       stRSRMock = <StRSRP0>(
-        await StRSRFactory.deploy(mainMock.address, 'stRTKNRSR Token', 'stRTKNRSR')
+        await StRSRFactory.deploy(mainMock.address, 'stRTKNRSR Token', 'stRTKNRSR', owner.address)
       )
 
       // Set mock RSR in Main

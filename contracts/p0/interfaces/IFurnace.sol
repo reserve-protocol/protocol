@@ -17,6 +17,11 @@ interface IFurnace is IERC20Receiver {
     /// @param who The account that created the distribution
     event DistributionCreated(uint256 indexed amount, uint256 indexed timePeriod, address who);
 
+    /// Emitted when the batch duration is changed
+    /// @param oldBatchDuration The old value of `batchDuration`
+    /// @param newBatchDuration The new value of `batchDuration`
+    event BatchDurationSet(uint256 indexed oldBatchDuration, uint256 indexed newBatchDuration);
+
     //
 
     /// Performs any RToken burning that has vested since last call. Idempotent

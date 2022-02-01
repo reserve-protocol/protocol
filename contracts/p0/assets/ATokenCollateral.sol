@@ -52,6 +52,7 @@ contract ATokenCollateralP0 is CollateralP0 {
         if (whenDefault <= block.timestamp) {
             return;
         }
+        uint256 cached = whenDefault;
 
         // Check invariants
         Fix p = refPerTok();
@@ -64,6 +65,10 @@ contract ATokenCollateralP0 is CollateralP0 {
                 : NEVER;
         }
         prevReferencePrice = p;
+
+        if (whenDefault != cached) {
+            emit DefaultStatusChanged(cached, whenDefault, status());
+        }
     }
 
     /// @dev Intended to be used via delegatecall

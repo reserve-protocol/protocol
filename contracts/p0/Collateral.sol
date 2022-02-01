@@ -42,11 +42,17 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
 
     /// Default checks
     function forceUpdates() public virtual override {
+        uint256 cached = whenDefault;
+
         if (whenDefault > block.timestamp) {
             // If the price is below the default-threshold price, default eventually
             whenDefault = isReferenceDepegged()
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
+        }
+
+        if (whenDefault != cached) {
+            emit DefaultStatusChanged(cached, whenDefault, status());
         }
     }
 
@@ -54,12 +60,13 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
     function disable() external virtual override {
         require(_msgSender() == address(main) || _msgSender() == main.owner(), "main or its owner");
         if (whenDefault > block.timestamp) {
+            emit DefaultStatusChanged(whenDefault, block.timestamp, CollateralStatus.DISABLED);
             whenDefault = block.timestamp;
         }
     }
 
-    /// @return The asset's default status
-    function status() external view virtual override returns (CollateralStatus) {
+    /// @return The collateral's status
+    function status() public view virtual override returns (CollateralStatus) {
         if (whenDefault == NEVER) {
             return CollateralStatus.SOUND;
         } else if (whenDefault <= block.timestamp) {

@@ -100,5 +100,6 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
     function _setDistribution(address dest, RevenueShare memory share) internal {
         destinations.add(dest);
         distribution[dest] = share;
+        emit DistributionSet(dest, share.rTokenDist, share.rsrDist);
     }
 }

@@ -13,8 +13,15 @@ import "contracts/p0/interfaces/IRToken.sol";
 contract RTokenP0 is Ownable, ERC20, IRToken {
     IMain public main;
 
-    // solhint-disable no-empty-blocks
-    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
+    constructor(
+        IMain main_,
+        string memory name_,
+        string memory symbol_,
+        address owner_
+    ) ERC20(name_, symbol_) {
+        main = main_;
+        _transferOwnership(owner_);
+    }
 
     /// Mints a quantity of RToken to the `recipient`, only callable by AssetManager
     /// @param recipient The recipient of the newly minted RToken
@@ -45,6 +52,7 @@ contract RTokenP0 is Ownable, ERC20, IRToken {
     }
 
     function setMain(IMain main_) external virtual override onlyOwner {
+        emit MainSet(main, main_);
         main = main_;
     }
 }

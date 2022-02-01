@@ -62,6 +62,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setStRSR(IStRSR stRSR_) external override onlyOwner {
+        emit StRSRSet(_stRSR, stRSR_);
         _stRSR = stRSR_;
     }
 
@@ -71,6 +72,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function setRevenueFurnace(IFurnace revenueFurnace_) external override onlyOwner {
         require(revenueFurnace_.batchDuration() == _rewardPeriod, "does not match rewardPeriod");
+        emit RevenueFurnaceSet(_revenueFurnace, revenueFurnace_);
         _revenueFurnace = revenueFurnace_;
     }
 
@@ -80,6 +82,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function setRTokenAsset(IAsset rTokenAsset_) external override onlyOwner {
         _rTokenAsset = rTokenAsset_;
+        emit RTokenAssetSet(_rTokenAsset, rTokenAsset_);
         _assets.add(address(_rTokenAsset));
     }
 
@@ -89,6 +92,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function setRSRAsset(IAsset rsrAsset_) external override onlyOwner {
         _rsrAsset = rsrAsset_;
+        emit RSRAssetSet(_rsrAsset, rsrAsset_);
         _assets.add(address(_rsrAsset));
     }
 
@@ -96,8 +100,9 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         return _rsrAsset;
     }
 
-    function setCompAsset(IAsset compAsset_) external override onlyOwner {
+    function setCOMPAsset(IAsset compAsset_) external override onlyOwner {
         _compAsset = compAsset_;
+        emit COMPAssetSet(_compAsset, compAsset_);
         _assets.add(address(_compAsset));
     }
 
@@ -105,8 +110,9 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         return _compAsset;
     }
 
-    function setAaveAsset(IAsset aaveAsset_) external override onlyOwner {
+    function setAAVEAsset(IAsset aaveAsset_) external override onlyOwner {
         _aaveAsset = aaveAsset_;
+        emit AAVEAssetSet(_aaveAsset, aaveAsset_);
         _assets.add(address(_aaveAsset));
     }
 
@@ -115,6 +121,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setRewardStart(uint256 rewardStart_) external override onlyOwner {
+        emit RewardStartSet(_rewardStart, rewardStart_);
         _rewardStart = rewardStart_;
     }
 
@@ -123,6 +130,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setRewardPeriod(uint256 rewardPeriod_) external override onlyOwner {
+        emit RewardPeriodSet(_rewardPeriod, rewardPeriod_);
         _rewardPeriod = rewardPeriod_;
     }
 
@@ -131,6 +139,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setAuctionPeriod(uint256 auctionPeriod_) external override onlyOwner {
+        emit AuctionPeriodSet(_auctionPeriod, _auctionPeriod);
         _auctionPeriod = auctionPeriod_;
     }
 
@@ -139,6 +148,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setStRSRWithdrawalDelay(uint256 stRSRWithdrawalDelay_) external override onlyOwner {
+        emit StRSRWithdrawalDelaySet(_stRSRWithdrawalDelay, stRSRWithdrawalDelay_);
         _stRSRWithdrawalDelay = stRSRWithdrawalDelay_;
     }
 
@@ -147,6 +157,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setDefaultDelay(uint256 defaultDelay_) external override onlyOwner {
+        emit DefaultDelaySet(_defaultDelay, defaultDelay_);
         _defaultDelay = defaultDelay_;
     }
 
@@ -155,6 +166,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setMaxTradeSlippage(Fix maxTradeSlippage_) external override onlyOwner {
+        emit MaxTradeSlippageSet(_maxTradeSlippage, maxTradeSlippage_);
         _maxTradeSlippage = maxTradeSlippage_;
     }
 
@@ -163,6 +175,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setMaxAuctionSize(Fix maxAuctionSize_) external override onlyOwner {
+        emit MaxAuctionSizeSet(_maxAuctionSize, maxAuctionSize_);
         _maxAuctionSize = maxAuctionSize_;
     }
 
@@ -171,6 +184,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setMinAuctionSize(Fix minAuctionSize_) external override onlyOwner {
+        emit MinAuctionSizeSet(_minAuctionSize, minAuctionSize_);
         _minAuctionSize = minAuctionSize_;
     }
 
@@ -179,6 +193,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setIssuanceRate(Fix issuanceRate_) external override onlyOwner {
+        emit IssuanceRateSet(_issuanceRate, issuanceRate_);
         _issuanceRate = issuanceRate_;
     }
 
@@ -187,6 +202,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setDefaultThreshold(Fix defaultThreshold_) external override onlyOwner {
+        emit DefaultThresholdSet(_defaultThreshold, defaultThreshold_);
         _defaultThreshold = defaultThreshold_;
     }
 
@@ -195,6 +211,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setMarket(IMarket market_) external override onlyOwner {
+        emit MarketSet(_market, market_);
         _market = market_;
     }
 

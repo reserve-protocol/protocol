@@ -84,6 +84,7 @@ contract FurnaceP0 is Ownable, IFurnace {
     }
 
     function setBatchDuration(uint256 batchDuration_) external override onlyOwner {
+        emit BatchDurationSet(batchDuration, batchDuration_);
         batchDuration = batchDuration_;
     }
 
