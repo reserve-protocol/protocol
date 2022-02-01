@@ -28,7 +28,6 @@ contract FurnaceP0 is Ownable, IFurnace {
     }
 
     Batch[] public batches;
-    uint256 private firstBatch; // Invariant: if i < firstBatch, then batches[i] is fully burnt.
 
     /// @param batchDuration_ {sec} The number of seconds to spread the burn over
     constructor(IRToken rToken_, uint256 batchDuration_) {
@@ -41,7 +40,7 @@ contract FurnaceP0 is Ownable, IFurnace {
     function notifyOfDeposit(IERC20 erc20) external override {
         require(address(erc20) == address(rToken), "RToken only");
 
-        // Compute the previously-unregistered amount as `amount`
+        // Compute the `amount` of tokens the furnace owns that are not already in batches
         uint256 balance = erc20.balanceOf(address(this));
         uint256 batchTotal;
         for (uint256 i = 0; i < batches.length; i++) {
@@ -62,17 +61,13 @@ contract FurnaceP0 is Ownable, IFurnace {
         // and pull that total out of the batches that are here.
 
         uint256 toBurn = 0;
-        for (uint256 i = firstBatch; i < batches.length; i++) {
+        for (uint256 i = 0; i < batches.length; i++) {
             Batch storage batch = batches[i];
             if (batch.burnt < batch.amount) {
                 // Pull the burnable amount out of batch and register it burnt.
                 uint256 amt = vestedAmount(batch, block.timestamp);
                 toBurn += amt - batch.burnt;
                 batch.burnt = amt;
-            }
-
-            if (i == firstBatch && batch.burnt == batch.amount) {
-                firstBatch++;
             }
         }
 
@@ -90,13 +85,11 @@ contract FurnaceP0 is Ownable, IFurnace {
 
     // @return The cumulative amount of tokens from batch that have vested at `timestamp`
     function vestedAmount(Batch storage batch, uint256 timestamp) private view returns (uint256) {
-        if (timestamp <= batch.start) {
-            return 0;
-        } else if (batch.start + batchDuration <= timestamp) {
-            return batch.amount;
-        } else {
-            // (timestamp - batch.start){s} / batch.duration{s} * batch.amount{RTok}
-            return toFix(timestamp - batch.start).divu(batchDuration).mulu(batch.amount).floor();
-        }
+        // Clamp results to the vesting period
+        if (timestamp <= batch.start) return 0;
+        else if (batch.start + batchDuration <= timestamp) return batch.amount;
+
+        // (timestamp - batch.start){s} / batch.duration{s} * batch.amount{RTok}
+        return toFix(timestamp - batch.start).divu(batchDuration).mulu(batch.amount).floor();
     }
 }

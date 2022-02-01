@@ -22,9 +22,7 @@ interface IFurnace is IERC20Receiver {
     /// @param newBatchDuration The new value of `batchDuration`
     event BatchDurationSet(uint256 indexed oldBatchDuration, uint256 indexed newBatchDuration);
 
-    //
-
-    /// Performs any RToken burning that has vested since last call. Idempotent
+    /// Performs any RToken burning that has vested since last call. Idempotent.
     function melt() external;
 
     function setBatchDuration(uint256 batchDuration) external;
