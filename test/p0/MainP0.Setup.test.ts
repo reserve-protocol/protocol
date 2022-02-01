@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet, ContractFactory } from 'ethers'
+import { BigNumber, Wallet, ContractFactory, Contract } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
@@ -213,6 +213,26 @@ describe('MainP0 contract', () => {
       // Basket
       expect(await main.fullyCapitalized()).to.equal(true)
       expect((await main.backingTokens()).length).to.equal(4)
+    })
+  })
+
+  describe('Initialization', () => {
+    it('Should not allow to initialize Main twice', async () => {
+      const ctorArgs = {
+        config: config,
+        dist: dist,
+        furnace: furnace.address,
+        market: market.address,
+      }
+      await expect(main.init(ctorArgs)).to.be.revertedWith('already initialized')
+    })
+
+    it.skip('Should not allow to poke if Main is not initialized', async () => {
+      const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
+      const newMain: MainP0 = <MainP0>await MainFactory.deploy()
+      await newMain.connect(owner).unpause()
+      //await newMain.poke()
+      //await expect(newMain.poke()).to.be.revertedWith('not initialized')
     })
   })
 
@@ -657,4 +677,6 @@ describe('MainP0 contract', () => {
       )
     })
   })
+
+  describe('Basket Handling', () => {})
 })
