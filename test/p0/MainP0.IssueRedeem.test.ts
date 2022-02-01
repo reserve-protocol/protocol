@@ -66,6 +66,7 @@ describe('MainP0 contract', () => {
   let collateral1: CollateralP0
   let collateral2: ATokenCollateralP0
   let collateral3: CTokenCollateralP0
+  let basket: Collateral[]
   let basketTargetAmts: BigNumber[]
 
   // Config values
@@ -89,7 +90,6 @@ describe('MainP0 contract', () => {
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
     let erc20s: ERC20Mock[]
-    let basket: Collateral[]
 
       // Deploy fixture
     ;({
@@ -162,7 +162,6 @@ describe('MainP0 contract', () => {
 
       //Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
-      //expect(await main.issuances(0)).to.be.empty
     })
 
     it('Should not issue RTokens if amount is zero', async function () {
@@ -173,7 +172,6 @@ describe('MainP0 contract', () => {
 
       //Check values
       expect(await rToken.totalSupply()).to.equal(bn('0'))
-      //expect(await vault.basketUnits(main.address)).to.equal(0)
     })
 
     it('Should revert if user did not provide approval for Token transfer', async function () {
@@ -183,7 +181,6 @@ describe('MainP0 contract', () => {
         'ERC20: transfer amount exceeds allowance'
       )
       expect(await rToken.totalSupply()).to.equal(bn(0))
-      //expect(await vault.basketUnits(main.address)).to.equal(0)
     })
 
     it('Should revert if user does not have the required Tokens', async function () {
@@ -193,7 +190,6 @@ describe('MainP0 contract', () => {
         'ERC20: transfer amount exceeds balance'
       )
       expect(await rToken.totalSupply()).to.equal(bn('0'))
-      //expect(await vault.basketUnits(main.address)).to.equal(0)
     })
 
     it('Should quote RTokens correctly', async function () {
@@ -652,7 +648,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
     })
 
-    it.skip('Should rollback mintings if Basket changes (2 blocks)', async function () {
+    it('Should rollback mintings if Basket changes (2 blocks)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
       const quotes: BigNumber[] = await main.quote(issueAmount)
@@ -697,8 +693,11 @@ describe('MainP0 contract', () => {
       // Process slow mintings 1 time (still more pending).
       await main.poke()
 
-      // Change Basket
-      await main.connect(owner).setPrimeBasket([collateral[0].address], [fp('1')])
+      // Update basket to trigger rollbacks (using same one to keep fullyCapitalized = true)
+      await main.connect(owner).setPrimeBasket(
+        basket.map((b) => b.address),
+        basketTargetAmts
+      )
       await main.connect(owner).switchBasket()
 
       // Process slow issuances
