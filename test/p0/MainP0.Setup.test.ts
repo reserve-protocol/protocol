@@ -232,7 +232,6 @@ describe('MainP0 contract', () => {
       const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
       const newMain: MainP0 = <MainP0>await MainFactory.deploy()
       await newMain.connect(owner).unpause()
-      // await newMain.poke()
       await expect(newMain.poke()).to.be.revertedWith('not initialized')
     })
   })
