@@ -325,7 +325,7 @@ describe('CollateralP0 contracts', () => {
     })
   })
 
-  describe.only('Rewards', () => {
+  describe('Rewards', () => {
     it('Should claim and sweep rewards for ATokens/CTokens', async function () {
       // Set COMP and AAVE rewards for Main
       const rewardAmountCOMP: BigNumber = bn('100e18')
