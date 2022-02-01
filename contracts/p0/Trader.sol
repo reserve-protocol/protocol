@@ -30,7 +30,9 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
     /// The driver of each concrete trader. Implementations should call closeDueAuctions(), decide
     /// what to do with auctioned funds, and decide what auctions to run, though not necessarily in
     /// that order.
-    function poke() public virtual override {}
+    function poke() public virtual override {
+        super.poke();
+    }
 
     /// @return true iff this trader now has open auctions.
     function hasOpenAuctions() public view returns (bool) {

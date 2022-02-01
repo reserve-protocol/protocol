@@ -1,7 +1,8 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet, ContractFactory, Contract } from 'ethers'
+import { BigNumber, Contract, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+
 import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
@@ -19,8 +20,8 @@ import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { MarketMock } from '../../typechain/MarketMock'
 import { RevenueTraderP0 } from '../../typechain/RevenueTraderP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
 import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
+import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { USDCMock } from '../../typechain/USDCMock'
@@ -227,12 +228,12 @@ describe('MainP0 contract', () => {
       await expect(main.init(ctorArgs)).to.be.revertedWith('already initialized')
     })
 
-    it.skip('Should not allow to poke if Main is not initialized', async () => {
+    it('Should not allow to poke if Main is not initialized', async () => {
       const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
       const newMain: MainP0 = <MainP0>await MainFactory.deploy()
       await newMain.connect(owner).unpause()
-      //await newMain.poke()
-      //await expect(newMain.poke()).to.be.revertedWith('not initialized')
+      // await newMain.poke()
+      await expect(newMain.poke()).to.be.revertedWith('not initialized')
     })
   })
 
