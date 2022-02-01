@@ -404,6 +404,87 @@ describe('MainP0 contract', () => {
     // TODO: Handle no backup vault found
   })
 
+ describe('Select Next Vault', () => {
+    let backupVault1: VaultP0
+    let backupVault2: VaultP0
+    let backupVault3: VaultP0
+    let backupVault4: VaultP0
+
+    beforeEach(async function () {
+      // Deploy backup vaults
+      backupVault1 = <VaultP0>await VaultFactory.deploy([collateral[0]], [quantities[0]], [])
+      backupVault2 = <VaultP0>(
+        await VaultFactory.deploy(
+          [collateral[0], collateral[1]],
+          [quantities[0], quantities[1]],
+          []
+        )
+      )
+      backupVault3 = <VaultP0>(
+        await VaultFactory.deploy(
+          [collateral[0], collateral[1], collateral[2]],
+          [quantities[0], quantities[1], quantities[2]],
+          []
+        )
+      )
+      backupVault4 = <VaultP0>(
+        await VaultFactory.deploy(
+          [collateral[1], collateral[2]],
+          [quantities[1], quantities[2]],
+          []
+        )
+      )
+
+      await vault
+        .connect(owner)
+        .setBackups([
+          backupVault1.address,
+          backupVault2.address,
+          backupVault3.address,
+          backupVault4.address,
+        ])
+    })
+
+    it('Vault should not change if there is no valid backup vault', async function () {
+      // Get next vault with different token
+      await defaultHandler.connect(owner).unapproveCollateral(assetAToken.address)
+      await defaultHandler.poke()
+      expect(await defaultHandler.vault()).to.equal(vault.address) // no change
+    })
+
+    it('Should change to a valid vault based on accepted collateral after 1 default', async function () {
+      // Get the only valid vault that contains only approved collateral
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[0])
+      await defaultHandler.poke()
+      expect(await defaultHandler.vault()).to.equal(backupVault1.address) // no change
+    })
+
+    it('Should change to a valid vault based on accepted collateral after 2 defaults', async function () {
+      // Get the only valid vault that contains only approved collateral
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[1])
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[2])
+      await defaultHandler.poke()
+      expect(await defaultHandler.vault()).to.equal(backupVault4.address) // no change
+    })
+
+    it('Should change to vault with the highest rate after 3 defaults', async function () {
+      // Return the vault with highest rate (all 3 candidates are valid)
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[0])
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[1])
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[2])
+      await defaultHandler.poke()
+      expect(await defaultHandler.vault()).to.equal(backupVault3.address) // no change
+    })
+
+    it('Should change to vault with the highest rate after 2 defaults', async function () {
+      // Return the vault with highest rate (all 3 candidates are valid)
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[0])
+      await defaultHandler.connect(owner).unapproveCollateral(collateral[1])
+      await defaultHandler.poke()
+      expect(await defaultHandler.vault()).to.equal(backupVault2.address) // no change
+    })
+  })
+
   //  Old Asset Manager
 
   describe('Base Factor', () => {
