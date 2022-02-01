@@ -18,10 +18,12 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
 
     function addAsset(IAsset asset) external onlyOwner {
         _assets.add(address(asset));
+        emit AssetAdded(asset);
     }
 
     function removeAsset(IAsset asset) external onlyOwner {
         _assets.remove(address(asset));
+        emit AssetRemoved(asset);
     }
 
     function disableCollateral(ICollateral collateral) external override onlyOwner {

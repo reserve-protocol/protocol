@@ -47,11 +47,12 @@ contract DeployerExtension is DeployerP0, IExtension {
     }
 
     function deployRToken(
+        IMain main,
         string memory name,
         string memory symbol,
         address owner
     ) internal override returns (IRToken) {
-        return new RTokenExtension(_admin, name, symbol, owner);
+        return new RTokenExtension(_admin, main, name, symbol, owner);
     }
 
     function deployStRSR(

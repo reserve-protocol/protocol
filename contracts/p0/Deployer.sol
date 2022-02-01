@@ -68,7 +68,7 @@ contract DeployerP0 is IDeployer {
         deployments.push(main);
 
         {
-            IRToken rToken = deployRToken(name, symbol, owner);
+            IRToken rToken = deployRToken(main, name, symbol, owner);
             IFurnace revenueFurnace = deployRevenueFurnace(rToken, config.rewardPeriod);
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
@@ -76,9 +76,6 @@ contract DeployerP0 is IDeployer {
 
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main, aaveOracle);
             main.setRTokenAsset(rTokenAsset);
-
-            rToken.setMain(main);
-            Ownable(address(rToken)).transferOwnership(owner);
         }
 
         {
@@ -87,8 +84,8 @@ contract DeployerP0 is IDeployer {
             AssetP0 aaveAsset = new AssetP0(aave, main, aaveOracle);
 
             main.setRSRAsset(rsrAsset);
-            main.setCompAsset(compAsset);
-            main.setAaveAsset(aaveAsset);
+            main.setCOMPAsset(compAsset);
+            main.setAAVEAsset(aaveAsset);
         }
 
         {
@@ -119,11 +116,12 @@ contract DeployerP0 is IDeployer {
     }
 
     function deployRToken(
+        IMain main,
         string memory name,
         string memory symbol,
         address owner
     ) internal virtual returns (IRToken) {
-        return new RTokenP0(name, symbol, owner);
+        return new RTokenP0(main, name, symbol, owner);
     }
 
     function deployRevenueFurnace(IRToken rToken, uint256 batchDuration)

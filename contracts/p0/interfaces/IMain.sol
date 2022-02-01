@@ -75,12 +75,25 @@ struct Auction {
 }
 
 interface IMixin {
+    event Initialized();
+    event Poked();
+
     function init(ConstructorArgs calldata args) external;
 
     function poke() external;
 }
 
 interface IPausable {
+    /// Emitted when the paused status is set
+    /// @param oldPaused The old value of the paused state
+    /// @param newPaused The new value of the paused state
+    event PausedSet(bool oldPaused, bool newPaused);
+
+    /// Emitted when the pauser address is set
+    /// @param oldPauser The address of the old pauser
+    /// @param newPauser The address of the new pauser
+    event PauserSet(address oldPauser, address newPauser);
+
     function pause() external;
 
     function unpause() external;
@@ -93,6 +106,14 @@ interface IPausable {
 }
 
 interface IAssetRegistry {
+    /// Emitted when an asset is added to the registry
+    /// @param asset The asset contract added to the registry
+    event AssetAdded(IAsset indexed asset);
+
+    /// Emitted when an asset is removed from the registry
+    /// @param asset The asset contract removed from the registry
+    event AssetRemoved(IAsset indexed asset);
+
     function addAsset(IAsset asset) external;
 
     function removeAsset(IAsset asset) external;
@@ -103,6 +124,12 @@ interface IAssetRegistry {
 }
 
 interface IRevenueDistributor {
+    /// Emitted when a distribution is set
+    /// @param dest The address set to receive the distribution
+    /// @param rTokenDist The distribution of RToken that should go to `dest`
+    /// @param rsrDist The distribution of RSR that should go to `dest`
+    event DistributionSet(address dest, Fix rTokenDist, Fix rsrDist);
+
     function setDistribution(address dest, RevenueShare memory share) external;
 
     function distribute(
@@ -117,6 +144,41 @@ interface IRevenueDistributor {
 }
 
 interface ISettingsHandler {
+    /// Emitted when RewardStart is set
+    event RewardStartSet(uint256 indexed oldVal, uint256 indexed newVal);
+    /// Emitted when RewardPeriod is set
+    event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
+    /// Emitted when AuctionPeriod is set
+    event AuctionPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
+    /// Emitted when StRSRWithdrawalDelay is set
+    event StRSRWithdrawalDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
+    /// Emitted when DefaultDelay is set
+    event DefaultDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
+    /// Emitted when MaxTradeSlippage is set
+    event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
+    /// Emitted when MaxAuctionSize is set
+    event MaxAuctionSizeSet(Fix indexed oldVal, Fix indexed newVal);
+    /// Emitted when MinAuctionSize is set
+    event MinAuctionSizeSet(Fix indexed oldVal, Fix indexed newVal);
+    /// Emitted when IssuanceRate is set
+    event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
+    /// Emitted when DefaultThreshold is set
+    event DefaultThresholdSet(Fix indexed oldVal, Fix indexed newVal);
+    /// Emitted when StRSR is set
+    event StRSRSet(IStRSR indexed oldVal, IStRSR indexed newVal);
+    /// Emitted when RevenueFurnace is set
+    event RevenueFurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
+    /// Emitted when RTokenAsset is set
+    event RTokenAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
+    /// Emitted when RSRAsset is set
+    event RSRAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
+    /// Emitted when COMPAsset is set
+    event COMPAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
+    /// Emitted when AAVEAsset is set
+    event AAVEAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
+    /// Emitted when Market is set
+    event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
+
     function setRewardStart(uint256 rewardStart) external;
 
     function setRewardPeriod(uint256 rewardPeriod) external;
@@ -145,9 +207,9 @@ interface ISettingsHandler {
 
     function setRSRAsset(IAsset rsrAsset) external;
 
-    function setCompAsset(IAsset compAsset) external;
+    function setCOMPAsset(IAsset compAsset) external;
 
-    function setAaveAsset(IAsset aaveAsset) external;
+    function setAAVEAsset(IAsset aaveAsset) external;
 
     function setMarket(IMarket market) external;
 
@@ -195,11 +257,25 @@ interface ISettingsHandler {
 }
 
 interface IBasketHandler {
-    // // TODO figure out what this event turns into
-    // /// Emitted when the current vault is changed
-    // /// @param oldBasket The address of the old vault
-    // /// @param newBasket The address of the new vault
-    // // event NewBasketSet(address indexed oldBasket, address indexed newBasket);
+    /// Emitted when the current vault is changed
+    /// @param collateral The list of collateral in the prime basket
+    /// @param targetAmts {target/BU} The amounts of target per basket unit
+    event PrimeBasketSet(ICollateral[] collateral, Fix[] targetAmts);
+
+    /// Emitted when a backup config is set for a target unit
+    /// @param targetName The name of the target unit as a bytes32
+    /// @param maxCollateral The max number to use from `collateral`
+    /// @param collateral The set of permissible collateral to use
+    event BackupConfigSet(
+        bytes32 indexed targetName,
+        uint256 indexed maxCollateral,
+        ICollateral[] collateral
+    );
+
+    /// Emitted when the current vault is changed
+    /// @param collateral The list of collateral in the basket
+    /// @param refAmts {ref/BU} The reference amounts of the basket
+    event BasketSet(ICollateral[] collateral, Fix[] refAmts);
 
     /// Set the prime basket in the basket configuration.
     /// @param collateral The collateral for the new prime basket
@@ -273,6 +349,7 @@ interface IRTokenIssuer {
     /// @param issuanceId The index off the issuance, a globally unique identifier
     /// @param issuer The account performing the issuance
     /// @param amount The quantity of RToken being issued
+    /// @param amtBUs The corresponding quantity of basket units
     /// @param tokens The ERC20 contracts of the backing tokens
     /// @param quantities The quantities of tokens paid with
     /// @param blockAvailableAt The (continuous) block at which the issuance vests
@@ -280,6 +357,7 @@ interface IRTokenIssuer {
         uint256 indexed issuanceId,
         address indexed issuer,
         uint256 indexed amount,
+        Fix amtBUs,
         address[] tokens,
         uint256[] quantities,
         Fix blockAvailableAt
@@ -296,11 +374,13 @@ interface IRTokenIssuer {
     /// Emitted when a redemption of RToken occurs
     /// @param redeemer The address of the account redeeeming RTokens
     /// @param amount The quantity of RToken being redeemed
+    /// @param amtBUs The corresponding quantity of basket units
     /// @param tokens The ERC20 contracts of the backing tokens
     /// @param quantities The quantities of tokens paid with
     event Redemption(
         address indexed redeemer,
         uint256 indexed amount,
+        Fix amtBUs,
         address[] tokens,
         uint256[] quantities
     );

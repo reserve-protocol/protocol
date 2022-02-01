@@ -90,6 +90,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
             issuances.length - 1,
             iss.issuer,
             iss.amount,
+            iss.amtBUs,
             iss.erc20s,
             iss.deposits,
             iss.blockAvailableAt
@@ -115,7 +116,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         // TODO Double-check the order with .withdraw
         targetBUs = targetBUs.minus(amtBUs);
 
-        emit Redemption(_msgSender(), amount, basket.backingERC20s(), compensation);
+        emit Redemption(_msgSender(), amount, amtBUs, basket.backingERC20s(), compensation);
     }
 
     /// @return quantities {qTok} The token quantities required to issue `amount` RToken.

@@ -14,10 +14,12 @@ contract RTokenP0 is Ownable, ERC20, IRToken {
     IMain public main;
 
     constructor(
+        IMain main_,
         string memory name_,
         string memory symbol_,
         address owner_
     ) ERC20(name_, symbol_) {
+        main = main_;
         _transferOwnership(owner_);
     }
 
