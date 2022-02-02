@@ -199,42 +199,31 @@ contract AuctioneerP0 is
             Fix
         )
     {
-        // Calculate surplus and deficits relative to the reference basket
-
         Fix[] memory prices = new Fix[](_assets.length()); // {UoA/tok}
         Fix[] memory surpluses = new Fix[](_assets.length()); // {UoA}
         Fix[] memory deficits = new Fix[](_assets.length()); // {UoA}
+
+        // Calculate surplus and deficits relative to the reference basket
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
-            Fix needed = FIX_ZERO; // {UoA}
+            prices[i] = a.price();
 
-            // Calculate {UoA/tok} price
+            // needed: {qTok} that Main must hold to meet obligations
+            uint256 needed;
             if (a.isCollateral()) {
-                ICollateral c = ICollateral(_assets.at(i));
-
-                // {UoA/tok} = {ref/tok} * {target/ref} * {UoA/target}
-                prices[i] = c.refPerTok().mul(c.targetPerRef()).mul(c.pricePerTarget());
-
-                // {UoA} = {BU} * {ref/BU} / {ref/tok} * {UoA/tok}
-                needed = basketsNeeded.mul(basket.refAmts[c]).div(c.refPerTok()).mul(prices[i]);
-            } else {
-                prices[i] = a.price();
+                needed = basketsNeeded.mul(basket.quantity(ICollateral(address(a)))).ceil();
             }
+            // held: {qTok} that Main is already holding
+            uint256 held = a.erc20().balanceOf(address(this));
 
-            // {tok} = {qTok} / {qTok/tok}
-            Fix tokBal = toFixWithShift(
-                a.erc20().balanceOf(address(this)),
-                -int8(a.erc20().decimals())
-            );
-
-            // {UoA} = {tok} * {UoA/tok}
-            Fix actual = tokBal.mul(prices[i]);
-            if (actual.gt(needed)) {
-                surpluses[i] = actual.minus(needed);
-                assert(surpluses[i].gte(FIX_ZERO));
-            } else if (actual.lt(needed)) {
-                deficits[i] = needed.minus(actual);
-                assert(deficits[i].gte(FIX_ZERO));
+            if (needed > held) {
+                // {tok} = {qTok} * {tok/qTok}
+                Fix surplusTok = toFixWithShift(needed - held, -int8(a.erc20().decimals()));
+                surpluses[i] = surplusTok.mul(prices[i]);
+            } else if (needed < held) {
+                // {tok} = {qTok} * {tok/qTok}
+                Fix deficitTok = toFixWithShift(held - needed, -int8(a.erc20().decimals()));
+                deficits[i] = deficitTok.mul(prices[i]);
             }
         }
 
