@@ -163,19 +163,15 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     // - undoes any issuances that was started before the basket was last set
     // - enacts any other issuances that are fully vested
     function processSlowIssuance() internal {
-        if (!fullyCapitalized()) {
-            return;
-        }
-
-        bool backingIsSound = worstCollateralStatus() == CollateralStatus.SOUND;
         for (uint256 i = 0; i < issuances.length; i++) {
             SlowIssuance storage iss = issuances[i];
-            if (iss.processed) {
-                // Ignore processed issuance
-                continue;
-            }
+            if (iss.processed) continue;
 
-            if (iss.blockStartedAt <= blockBasketLastUpdated) {
+            if (
+                !fullyCapitalized() ||
+                worstCollateralStatus() != CollateralStatus.SOUND ||
+                iss.blockStartedAt <= blockBasketLastUpdated
+            ) {
                 // Rollback issuance i
                 rToken().burn(address(rToken()), iss.amount);
                 emit BasketsNeededSet(basketsNeeded, basketsNeeded.minus(iss.baskets));
@@ -188,7 +184,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
                 }
                 iss.processed = true;
                 emit IssuanceCanceled(i);
-            } else if (backingIsSound && iss.blockAvailableAt.lte(toFix(block.number))) {
+            } else if (iss.blockAvailableAt.lte(toFix(block.number))) {
                 // Complete issuance i
                 rToken().withdraw(iss.issuer, iss.amount);
                 iss.processed = true;
