@@ -55,9 +55,7 @@ contract AuctioneerP0 is
         super.poke();
         closeDueAuctions();
 
-        if (!hasOpenAuctions()) {
-            doAuctions();
-        }
+        if (!hasOpenAuctions()) doAuctions();
 
         rsrTrader.poke();
         rTokenTrader.poke();
@@ -94,24 +92,20 @@ contract AuctioneerP0 is
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
             uint256 bal = a.erc20().balanceOf(address(this));
-            uint256 needed = 0;
+            uint256 excess = bal; // {qTok}
             if (a.isCollateral()) {
                 ICollateral c = ICollateral(_assets.at(i));
-
-                // {tok} = {BU} * {ref/BU} / {ref/tok}
-                Fix tokNeeded = basketsNeeded.mul(basket.refAmts[c]).div(c.refPerTok());
-
-                // {qTok} = {tok} * {qTok/tok}
-                needed = tokNeeded.shiftLeft(int8(c.erc20().decimals())).ceil();
+                // {qTok} = {BU} * {qTok/BU}
+                excess -= basketsNeeded.mul(basket.quantity(c)).ceil();
             }
 
-            if (bal > needed) {
-                uint256 amtRSR = rsrCut().mulu(bal - needed).round();
+            if (excess > 0) {
+                uint256 amtRSR = rsrCut().mulu(excess).round();
                 if (amtRSR > 0) {
                     a.erc20().safeTransfer(address(rsrTrader), amtRSR);
                 }
-                if (bal - needed - amtRSR > 0) {
-                    a.erc20().safeTransfer(address(rTokenTrader), bal - needed - amtRSR);
+                if (excess - amtRSR > 0) {
+                    a.erc20().safeTransfer(address(rTokenTrader), excess - amtRSR);
                 }
             }
         }
