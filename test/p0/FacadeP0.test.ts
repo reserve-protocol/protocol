@@ -6,7 +6,7 @@ import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { ExplorerP0 } from '../../typechain/ExplorerP0'
+import { FacadeP0 } from '../../typechain/FacadeP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
@@ -15,7 +15,7 @@ import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('ExplorerP0 contract', () => {
+describe('FacadeP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -40,8 +40,8 @@ describe('ExplorerP0 contract', () => {
   let aTokenAsset: Collateral
   let cTokenAsset: Collateral
 
-  // Explorer
-  let explorer: ExplorerP0
+  // Facade
+  let facade: FacadeP0
 
   // Main
   let main: MainP0
@@ -60,7 +60,7 @@ describe('ExplorerP0 contract', () => {
     let basket: Collateral[]
 
       // Deploy fixture
-    ;({ rsr, compToken, aaveToken, collateral, rToken, basket, explorer, main } = await loadFixture(
+    ;({ rsr, compToken, aaveToken, collateral, rToken, basket, facade, main } = await loadFixture(
       defaultFixture
     ))
 
@@ -78,26 +78,31 @@ describe('ExplorerP0 contract', () => {
   })
 
   describe('Deployment', () => {
-    it('Deployment should setup Explorer correctly', async () => {
-      expect(await explorer.main()).to.equal(main.address)
+    it('Deployment should setup Facade correctly', async () => {
+      expect(await facade.main()).to.equal(main.address)
     })
   })
 
   describe('Views', () => {
     beforeEach(async () => {
-      // Mint backing for users
+      // Mint Tokens
+      await token.connect(owner).mint(addr1.address, bn('1e36'))
+      await usdc.connect(owner).mint(addr1.address, bn('1e36'))
+      await aToken.connect(owner).mint(addr1.address, bn('1e36'))
+      await cToken.connect(owner).mint(addr1.address, bn('1e36'))
+
       // Issue some RTokens
     })
 
     it('Should return maxIssuable correctly', async () => {
       // Check values
-      expect(await explorer.maxIssuable(addr1.address)).to.equal(0)
-      expect(await explorer.maxIssuable(addr2.address)).to.equal(0)
-      expect(await explorer.maxIssuable(other.address)).to.equal(0)
+      expect(await facade.maxIssuable(addr1.address)).to.equal(bn('4e36'))
+      expect(await facade.maxIssuable(addr2.address)).to.equal(0)
+      expect(await facade.maxIssuable(other.address)).to.equal(0)
     })
 
     it('Should return currentBacking correctly', async () => {
-      const [tokens, quantities] = await explorer.currentBacking()
+      const [tokens, quantities] = await facade.currentBacking()
 
       // Get backing ERC20s from collateral
       const backingERC20Addrs: string[] = await Promise.all(

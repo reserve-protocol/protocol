@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn } from '../../common/numbers'
 import { AaveOracle } from '../../typechain/AaveOracle'
@@ -9,7 +10,7 @@ import { AssetP0 } from '../../typechain/AssetP0'
 import { CompoundOracle } from '../../typechain/CompoundOracle'
 import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { ExplorerP0 } from '../../typechain/ExplorerP0'
+import { FacadeP0 } from '../../typechain/FacadeP0'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { MarketMock } from '../../typechain/MarketMock'
@@ -54,7 +55,7 @@ describe('DeployerP0 contract', () => {
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
-  let explorer: ExplorerP0
+  let facade: FacadeP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -87,7 +88,7 @@ describe('DeployerP0 contract', () => {
       furnace,
       stRSR,
       market,
-      explorer,
+      facade,
     } = await loadFixture(defaultFixture))
   })
 
@@ -110,7 +111,7 @@ describe('DeployerP0 contract', () => {
       expect(rTokenAsset.address).to.not.equal(ZERO_ADDRESS)
       expect(furnace.address).to.not.equal(ZERO_ADDRESS)
       expect(stRSR.address).to.not.equal(ZERO_ADDRESS)
-      expect(explorer.address).to.not.equal(ZERO_ADDRESS)
+      expect(facade.address).to.not.equal(ZERO_ADDRESS)
     })
 
     it('Should register deployment', async () => {
@@ -176,8 +177,8 @@ describe('DeployerP0 contract', () => {
       expect(await stRSR.totalSupply()).to.equal(0)
     })
 
-    it('Should setup Explorer correctly', async () => {
-      expect(await explorer.main()).to.equal(main.address)
+    it('Should setup Facade correctly', async () => {
+      expect(await facade.main()).to.equal(main.address)
     })
   })
 })

@@ -7,13 +7,13 @@ import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/Main.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/IExplorer.sol";
+import "contracts/IFacade.sol";
 
 /**
- * @title ExplorerP0
+ * @title FacadeP0
  * @notice A read-only layer on top of the protocol for use from off-chain.
  */
-contract ExplorerP0 is IExplorer {
+contract FacadeP0 is IFacade {
     MainP0 public main;
 
     constructor(address main_) {

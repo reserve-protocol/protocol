@@ -193,26 +193,6 @@ describe('MainP0 contract', () => {
       expect(await rToken.totalSupply()).to.equal(bn('0'))
     })
 
-    it('Should quote RTokens correctly', async function () {
-      // Quote 1 R Token
-      const quotes: BigNumber[] = await main.quote(bn('1e18'))
-
-      // Expected quantities
-      const expectedQuantities = [bn('2.5e17'), bn('2.5e5'), bn('2.5e17'), bn('2.5e7')]
-
-      expect(quotes[0]).to.equal(basketTargetAmts[0])
-      expect(quotes[0]).to.equal(expectedQuantities[0])
-
-      expect(quotes[1]).to.equal(basketTargetAmts[1].div(bn(`1e12`))) // 6 decimals
-      expect(quotes[1]).to.equal(expectedQuantities[1])
-
-      expect(quotes[2]).to.equal(basketTargetAmts[2])
-      expect(quotes[2]).to.equal(expectedQuantities[2])
-
-      expect(quotes[3]).to.equal(basketTargetAmts[3].div(bn('1e10'))) // 8 decimals
-      expect(quotes[3]).to.equal(expectedQuantities[3])
-    })
-
     it('Should issue RTokens with single basket token', async function () {
       const issueAmount: BigNumber = bn('1000e18')
 
@@ -254,13 +234,13 @@ describe('MainP0 contract', () => {
     it('Should issue RTokens correctly for more complex basket multiple users', async function () {
       const issueAmount: BigNumber = bn('1000e18')
 
-      const quotes: BigNumber[] = await main.quote(issueAmount)
-
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)
       await token1.connect(addr1).approve(main.address, initialBal)
       await token2.connect(addr1).approve(main.address, initialBal)
       await token3.connect(addr1).approve(main.address, initialBal)
+
+      const quotes: BigNumber[] = await main.connect(addr1).callStatic.issue(issueAmount)
 
       // check balances before
       expect(await token0.balanceOf(main.address)).to.equal(0)
@@ -360,13 +340,13 @@ describe('MainP0 contract', () => {
     it('Should process issuances in multiple attempts (using minimum issuance)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
-      const quotes: BigNumber[] = await main.quote(issueAmount)
-
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)
       await token1.connect(addr1).approve(main.address, initialBal)
       await token2.connect(addr1).approve(main.address, initialBal)
       await token3.connect(addr1).approve(main.address, initialBal)
+
+      const quotes: BigNumber[] = await main.connect(addr1).callStatic.issue(issueAmount)
 
       // Issue rTokens
       await main.connect(addr1).issue(issueAmount)
@@ -652,14 +632,13 @@ describe('MainP0 contract', () => {
     it('Should rollback mintings if Basket changes (2 blocks)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
-      const quotes: BigNumber[] = await main.quote(issueAmount)
-
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)
       await token1.connect(addr1).approve(main.address, initialBal)
       await token2.connect(addr1).approve(main.address, initialBal)
       await token3.connect(addr1).approve(main.address, initialBal)
 
+      const quotes: BigNumber[] = await main.connect(addr1).callStatic.issue(issueAmount)
       // Issue rTokens
       await main.connect(addr1).issue(issueAmount)
 

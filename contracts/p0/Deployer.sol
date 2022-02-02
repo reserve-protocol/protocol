@@ -12,8 +12,8 @@ import "./interfaces/IMain.sol";
 import "./interfaces/IMarket.sol";
 import "./interfaces/IOracle.sol";
 import "./assets/RTokenAsset.sol";
-import "contracts/IExplorer.sol";
-import "./Explorer.sol";
+import "contracts/IFacade.sol";
+import "./Facade.sol";
 import "./Furnace.sol";
 import "./Main.sol";
 import "./RToken.sol";
@@ -103,8 +103,8 @@ contract DeployerP0 is IDeployer {
         main.setPauser(owner);
         Ownable(address(main)).transferOwnership(owner);
 
-        IExplorer explorer = new ExplorerP0(address(main));
-        emit RTokenCreated(main, main.rToken(), main.stRSR(), address(explorer), owner);
+        IFacade facade = new FacadeP0(address(main));
+        emit RTokenCreated(main, main.rToken(), main.stRSR(), facade, owner);
         return (address(main));
     }
 

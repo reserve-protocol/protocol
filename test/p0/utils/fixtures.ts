@@ -18,7 +18,7 @@ import { CTokenCollateralP0 } from '../../../typechain/CTokenCollateralP0'
 import { CTokenMock } from '../../../typechain/CTokenMock'
 import { DeployerP0 } from '../../../typechain/DeployerP0'
 import { ERC20Mock } from '../../../typechain/ERC20Mock'
-import { ExplorerP0 } from '../../../typechain/ExplorerP0'
+import { FacadeP0 } from '../../../typechain/FacadeP0'
 import { FurnaceP0 } from '../../../typechain/FurnaceP0'
 import { MainP0 } from '../../../typechain/MainP0'
 import { MarketMock } from '../../../typechain/MarketMock'
@@ -316,7 +316,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndMarketFixture {
   rTokenAsset: RTokenAssetP0
   furnace: FurnaceP0
   stRSR: StRSRP0
-  explorer: ExplorerP0
+  facade: FacadeP0
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -375,7 +375,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   ).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
-  const explorerAddr = expectInReceipt(receipt, 'RTokenCreated').args.explorer
+  const facadeAddr = expectInReceipt(receipt, 'RTokenCreated').args.facade
 
   // Get Components
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
@@ -392,7 +392,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
   const stRSR: StRSRP0 = <StRSRP0>await ethers.getContractAt('StRSRP0', await main.stRSR())
 
-  const explorer: ExplorerP0 = <ExplorerP0>await ethers.getContractAt('ExplorerP0', explorerAddr)
+  const facade: FacadeP0 = <FacadeP0>await ethers.getContractAt('FacadeP0', facadeAddr)
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketTargetAmts } = await collateralFixture(
@@ -461,6 +461,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     furnace,
     stRSR,
     market,
-    explorer,
+    facade,
   }
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "contracts/IFacade.sol";
 import "./IMain.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
@@ -14,13 +15,13 @@ interface IDeployer {
     /// @param main The address of `Main`
     /// @param rToken The address of the RToken ERC20
     /// @param stRSR The address of the StRSR ERC20 staking pool/token
-    /// @param explorer The address of the peripheral explorer
+    /// @param facade The address of the view facade
     /// @param owner The owner of the newly deployed system
     event RTokenCreated(
         IMain indexed main,
         IRToken indexed rToken,
         IStRSR stRSR,
-        address explorer,
+        IFacade facade,
         address indexed owner
     );
 

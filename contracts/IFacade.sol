@@ -7,10 +7,10 @@ import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title IExplorer
+ * @title IFacade
  * @notice A read-only layer on top of the protocol for use from off-chain.
  */
-interface IExplorer {
+interface IFacade {
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external view returns (uint256);
 

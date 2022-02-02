@@ -388,15 +388,13 @@ interface IRTokenIssuer {
         uint256[] quantities
     );
 
-    function issue(uint256 amount) external;
+    function issue(uint256 amount) external returns (uint256[] memory deposits);
 
-    function redeem(uint256 amount) external;
+    function redeem(uint256 amount) external returns (uint256[] memory compensation);
 
     function backingTokens() external view returns (address[] memory);
 
     function maxIssuable(address account) external view returns (uint256);
-
-    function quote(uint256 amount) external view returns (uint256[] memory);
 
     // {UoA/rTok}
     function rTokenPrice() external view returns (Fix p);

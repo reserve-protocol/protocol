@@ -63,7 +63,8 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
-    function issue(uint256 amount) public override notPaused {
+    /// @return deposits {qTok} The quantities of collateral tokens transferred in
+    function issue(uint256 amount) public override notPaused returns (uint256[] memory deposits) {
         require(amount > 0, "Cannot issue zero");
         revenueFurnace().melt();
         tryEnsureValidBasket();
@@ -73,7 +74,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         Fix baskets = basketsPerRTok().mulu(amount).shiftLeft(-int8(rToken().decimals()));
         emit BasketsNeededSet(basketsNeeded, basketsNeeded.plus(baskets));
 
-        uint256[] memory deposits = basket.deposit(_msgSender(), baskets);
+        deposits = basket.deposit(_msgSender(), baskets);
 
         // During SlowIssuance, RTokens are minted and held by RToken until vesting completes
         SlowIssuance memory iss = SlowIssuance({
@@ -103,7 +104,8 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    function redeem(uint256 amount) public override {
+    /// @return compensation {qTok} The quantities of collateral tokens transferred out
+    function redeem(uint256 amount) public override returns (uint256[] memory compensation) {
         require(amount > 0, "Cannot redeem zero");
         revenueFurnace().melt();
 
@@ -113,7 +115,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
 
         rToken().burn(_msgSender(), amount);
 
-        uint256[] memory compensation = basket.withdraw(_msgSender(), baskets);
+        compensation = basket.withdraw(_msgSender(), baskets);
         emit Redemption(_msgSender(), amount, baskets, basket.backingERC20s(), compensation);
 
         basketsNeeded = basketsNeeded.minus(baskets);
@@ -123,16 +125,6 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     /// @return erc20s The addresses of the ERC20s backing the RToken
     function backingTokens() public view override returns (address[] memory erc20s) {
         return basket.backingERC20s();
-    }
-
-    /// @return quantities {qTok} The token quantities required to issue `amount` RToken.
-    function quote(uint256 amount) public view override returns (uint256[] memory quantities) {
-        Fix amtBUs = basketsPerRTok().mulu(amount).shiftLeft(-int8(rToken().decimals()));
-        quantities = new uint256[](basket.size);
-        for (uint256 i = 0; i < basket.size; i++) {
-            // {qTok} = {BU} * {qTok/BU}
-            quantities[i] = amtBUs.mul(basket.quantity(basket.collateral[i])).ceil();
-        }
     }
 
     /// @return {qTok} How much RToken `account` can issue given current holdings
