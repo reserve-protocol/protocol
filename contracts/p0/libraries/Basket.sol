@@ -48,6 +48,21 @@ library BasketLib {
         self.size = other.size;
     }
 
+    /// Add `weight` to the refAmount of collateral `coll` in the basket `self`
+    function add(
+        Basket storage self,
+        ICollateral coll,
+        Fix weight
+    ) internal {
+        if (self.refAmts[coll].eq(FIX_ZERO)) {
+            self.collateral[self.size] = coll;
+            self.refAmts[coll] = weight;
+            self.size++;
+        } else {
+            self.refAmts[coll] = self.refAmts[coll].plus(weight);
+        }
+    }
+
     /// Transfer collateral worth `quantity` baskets into the caller's account
     /// @param from The address that is sending collateral
     /// @param amount {BU} The amount of baskets to deposits

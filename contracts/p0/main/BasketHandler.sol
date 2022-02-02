@@ -107,11 +107,9 @@ contract BasketHandlerP0 is
         BackupConfig storage conf = basketConf.backups[targetName];
         conf.maxCollateral = maxCollateral;
 
-        while (conf.collateral.length > collateral.length) {
-            conf.collateral.pop();
-        }
+        delete conf.collateral;
         for (uint256 i = 0; i < collateral.length; i++) {
-            conf.collateral[i] = collateral[i];
+            conf.collateral.push(collateral[i]);
         }
         emit BackupConfigSet(targetName, maxCollateral, collateral);
     }
@@ -217,12 +215,7 @@ contract BasketHandlerP0 is
 
             if (coll.status() != CollateralStatus.DISABLED) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
-                // Add collateral to newBasket
-                newBasket.collateral[newBasket.size] = coll;
-
-                // {ref/BU} = {target/BU} / {target/ref}
-                newBasket.refAmts[coll] = targetWeight.div(coll.targetPerRef());
-                newBasket.size++;
+                newBasket.add(coll, targetWeight.div(coll.targetPerRef()));
             }
         }
 
@@ -242,9 +235,8 @@ contract BasketHandlerP0 is
                 }
             }
 
-            // If we need backup collateral, but there's no good backup collateral, then we're in a
-            // bad case! Do not change the basket; the protocol will remain issuance-paused until
-            // governance acts.
+            // If we need backup collateral, but there's no good backup collateral, it's a bad case!
+            // Do not set the basket; the protocol will stay issuance-paused until governance acts.
             if (size == 0) return false;
 
             // Set backup basket weights
@@ -252,12 +244,7 @@ contract BasketHandlerP0 is
             for (uint256 j = 0; j < backup.collateral.length && assigned < size; j++) {
                 ICollateral coll = backup.collateral[j];
                 if (coll.status() != CollateralStatus.DISABLED) {
-                    // Add backup asset to newBasket
-                    newBasket.collateral[newBasket.size] = coll;
-
-                    // {target/BU} = {target/BU} / {none}
-                    newBasket.refAmts[coll] = totalWeights[i].minus(goodWeights[i]).divu(size);
-                    newBasket.size++;
+                    newBasket.add(coll, totalWeights[i].minus(goodWeights[i]).divu(size));
                     assigned++;
                 }
             }
@@ -266,7 +253,7 @@ contract BasketHandlerP0 is
         // If we haven't already given up, then commit the new basket!
         basket.copy(newBasket);
 
-        // Do record-keeping
+        // Keep records, emit event
         blockBasketLastUpdated = block.number;
         ICollateral[] memory collateral = new ICollateral[](basket.size);
         Fix[] memory refAmts = new Fix[](basket.size);
