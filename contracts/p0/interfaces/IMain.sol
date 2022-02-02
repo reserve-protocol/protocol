@@ -118,8 +118,6 @@ interface IAssetRegistry {
 
     function removeAsset(IAsset asset) external;
 
-    function disableCollateral(ICollateral collateral) external;
-
     function allAssets() external view returns (IAsset[] memory);
 }
 

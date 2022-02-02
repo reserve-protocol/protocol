@@ -26,11 +26,6 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         emit AssetRemoved(asset);
     }
 
-    function disableCollateral(ICollateral collateral) external override onlyOwner {
-        require(collateral.isCollateral(), "can only disable ICollateral assets");
-        collateral.disable();
-    }
-
     function allAssets() external view override returns (IAsset[] memory assets) {
         assets = new IAsset[](_assets.length());
         for (uint256 i = 0; i < _assets.length(); i++) {

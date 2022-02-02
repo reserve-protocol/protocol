@@ -659,22 +659,13 @@ describe('MainP0 contract', () => {
       expect(await collateral2.status()).to.equal(CollateralStatus.SOUND)
 
       // Disable collateral
-      await main.connect(owner).disableCollateral(collateral2.address)
+      await collateral2.connect(owner).disable()
 
       // Check Collateral disabled
       expect(await collateral2.status()).to.equal(CollateralStatus.DISABLED)
 
       // Cannot disable collateral if not owner
-      await expect(main.connect(other).disableCollateral(collateral3.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
-    })
-
-    it('Should not allow to disable non-collateral asset', async () => {
-      // Attempt to disable asset
-      await expect(main.connect(owner).disableCollateral(compAsset.address)).to.be.revertedWith(
-        'can only disable ICollateral assets'
-      )
+      await expect(collateral3.connect(other).disable()).to.be.revertedWith('main or its owner')
     })
   })
 
