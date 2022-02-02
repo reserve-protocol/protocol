@@ -18,6 +18,8 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
     EnumerableSet.AddressSet internal destinations;
     mapping(address => RevenueShare) internal distribution;
     // invariant: distribution values are all nonnegative, and at least one is nonzero.
+    // invariant: distribution[FURNACE].rsrDist == FIX_ZERO
+    // invariant: distribution[ST_RSR].rTokenDist == FIX_ZERO
 
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
@@ -52,9 +54,8 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
             address addrTo = destinations.at(i);
             Fix subshare = isRSR ? distribution[addrTo].rsrDist : distribution[addrTo].rTokenDist;
             uint256 slice = subshare.mulu(amount).div(total).floor();
-            if (slice == 0 || (!isRSR && addrTo == FURNACE) || (isRSR && addrTo == ST_RSR)) {
-                continue;
-            }
+            if (slice == 0) continue;
+
             sliceSum += slice;
 
             if (addrTo == FURNACE) {
@@ -98,6 +99,9 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
 
     /// Sets the distribution values - Internals
     function _setDistribution(address dest, RevenueShare memory share) internal {
+        if (dest == FURNACE) require(share.rsrDist.eq(FIX_ZERO), "Furnace must get 0% of RSR");
+        if (dest == ST_RSR) require(share.rTokenDist.eq(FIX_ZERO), "StRSR must get 0% of RToken");
+
         destinations.add(dest);
         distribution[dest] = share;
         emit DistributionSet(dest, share.rTokenDist, share.rsrDist);
