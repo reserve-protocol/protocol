@@ -163,15 +163,12 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     // - undoes any issuances that was started before the basket was last set
     // - enacts any other issuances that are fully vested
     function processSlowIssuance() internal {
+        bool backingIsSound = worstCollateralStatus() == CollateralStatus.SOUND;
         for (uint256 i = 0; i < issuances.length; i++) {
             SlowIssuance storage iss = issuances[i];
             if (iss.processed) continue;
 
-            if (
-                !fullyCapitalized() ||
-                worstCollateralStatus() != CollateralStatus.SOUND ||
-                iss.blockStartedAt <= blockBasketLastUpdated
-            ) {
+            if (!backingIsSound || iss.blockStartedAt <= blockBasketLastUpdated) {
                 // Rollback issuance i
                 rToken().burn(address(rToken()), iss.amount);
                 emit BasketsNeededSet(basketsNeeded, basketsNeeded.minus(iss.baskets));
