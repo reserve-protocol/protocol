@@ -12,7 +12,7 @@ import "contracts/libraries/Fixed.sol";
 
 /**
  * @title RTokenP0
- * @notice An ERC20 with an elastic supply.
+ * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
 contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     using SafeERC20 for IERC20Metadata;
@@ -83,10 +83,12 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     /// @dev This function assumes `deposits` have already been transferred in
     /// @param issuer The account issuing the RToken
     /// @param amount {qRTok}
+    /// @param baskets {BU}
     /// @param deposits {qTok}
     function issueSlowly(
         address issuer,
         uint256 amount,
+        Fix baskets,
         address[] memory erc20s,
         uint256[] memory deposits
     ) external override onlyMain {
@@ -96,7 +98,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         SlowIssuance memory iss = SlowIssuance({
             blockStartedAt: block.number,
             amount: amount,
-            baskets: basketRate().mulu(amount).shiftLeft(-int8(decimals())),
+            baskets: baskets,
             erc20s: erc20s,
             deposits: deposits,
             issuer: issuer,
@@ -133,11 +135,13 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     /// Redeem a quantity of RToken from an account
     /// @param from The account redeeeming RToken
     /// @param amount {qTok} The amount to be redeemed
-    function redeem(address from, uint256 amount) external override onlyMain {
+    /// @param baskets {BU}
+    function redeem(
+        address from,
+        uint256 amount,
+        Fix baskets
+    ) external override onlyMain {
         Fix initialRate = basketRate();
-
-        // {BU} = {BU/rTok} / {qRTok/rTok} * {qRTok}
-        Fix baskets = initialRate.shiftLeft(-int8(decimals())).mulu(amount); // {BU}
         _burn(from, amount);
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));

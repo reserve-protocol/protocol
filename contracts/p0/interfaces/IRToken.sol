@@ -76,10 +76,12 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// Begins the SlowIssuance process
     /// @param issuer The account issuing the RToken
     /// @param amount {qRTok}
+    /// @param baskets {BU}
     /// @param deposits {qTok}
     function issueSlowly(
         address issuer,
         uint256 amount,
+        Fix baskets,
         address[] memory erc20s,
         uint256[] memory deposits
     ) external;
@@ -87,7 +89,12 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// Burns a quantity of RToken from the callers account
     /// @param from The account from which RToken should be burned
     /// @param amount {qRTok} The amount to be burned
-    function redeem(address from, uint256 amount) external;
+    /// @param baskets {BU}
+    function redeem(
+        address from,
+        uint256 amount,
+        Fix baskets
+    ) external;
 
     /// Mints a quantity of RToken to the `recipient`
     /// @param recipient The recipient of the newly minted RToken

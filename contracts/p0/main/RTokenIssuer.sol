@@ -53,8 +53,8 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         deposits = basket.toCollateral(baskets, RoundingApproach.CEIL);
         basket.transferFrom(_msgSender(), address(rToken()), deposits);
 
-        rToken().issueSlowly(_msgSender(), amount, basket.backingERC20s(), deposits);
-        emit IssuanceStarted(_msgSender(), amount);
+        rToken().issueSlowly(_msgSender(), amount, baskets, basket.backingERC20s(), deposits);
+        emit IssuanceStarted(_msgSender(), amount, baskets);
     }
 
     /// Redeem RToken for basket collateral
@@ -71,7 +71,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
 
         // {none} = {qRTok} / {qRTok}
         Fix prorate = toFix(amount).divu(rToken().totalSupply());
-        rToken().redeem(_msgSender(), amount);
+        rToken().redeem(_msgSender(), amount, baskets);
 
         // Bound the redemption by the prorata share
         for (uint256 i = 0; i < withdrawals.length; i++) {
@@ -84,7 +84,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         }
 
         basket.transfer(_msgSender(), withdrawals);
-        emit Redemption(_msgSender(), amount);
+        emit Redemption(_msgSender(), amount, baskets);
     }
 
     /// @return erc20s The addresses of the ERC20s backing the RToken

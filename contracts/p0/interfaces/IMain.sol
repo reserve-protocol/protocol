@@ -348,12 +348,14 @@ interface IRTokenIssuer {
     /// Emitted when an issuance of RToken begins
     /// @param issuer The address of the account redeeeming RTokens
     /// @param amount The quantity of RToken being issued
-    event IssuanceStarted(address indexed issuer, uint256 indexed amount);
+    /// @param baskets The corresponding number of baskets
+    event IssuanceStarted(address indexed issuer, uint256 indexed amount, Fix indexed baskets);
 
     /// Emitted when a redemption of RToken occurs
     /// @param redeemer The address of the account redeeeming RTokens
     /// @param amount The quantity of RToken being redeemed
-    event Redemption(address indexed redeemer, uint256 indexed amount);
+    /// @param baskets The corresponding number of baskets
+    event Redemption(address indexed redeemer, uint256 indexed amount, Fix indexed baskets);
 
     function issue(uint256 amount) external returns (uint256[] memory deposits);
 
