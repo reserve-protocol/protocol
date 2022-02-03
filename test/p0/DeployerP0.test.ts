@@ -10,7 +10,7 @@ import { AssetP0 } from '../../typechain/AssetP0'
 import { CompoundOracle } from '../../typechain/CompoundOracle'
 import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { FacadeP0 } from '../../typechain/FacadeP0'
+import { ExplorerFacadeP0 } from '../../typechain/ExplorerFacadeP0'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { MarketMock } from '../../typechain/MarketMock'
@@ -55,7 +55,7 @@ describe('DeployerP0 contract', () => {
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
-  let facade: FacadeP0
+  let facade: ExplorerFacadeP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet

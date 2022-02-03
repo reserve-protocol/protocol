@@ -6,7 +6,7 @@ import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { FacadeP0 } from '../../typechain/FacadeP0'
+import { ExplorerFacadeP0 } from '../../typechain/ExplorerFacadeP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
@@ -15,7 +15,7 @@ import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('FacadeP0 contract', () => {
+describe('ExplorerFacadeP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -41,7 +41,7 @@ describe('FacadeP0 contract', () => {
   let cTokenAsset: Collateral
 
   // Facade
-  let facade: FacadeP0
+  let facade: ExplorerFacadeP0
 
   // Main
   let main: MainP0
