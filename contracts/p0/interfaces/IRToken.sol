@@ -14,6 +14,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// Tracks data for a SlowIssuance
     /// @param blockStartedAt {blockNumber} The block number the issuance was started, non-fractional
     /// @param amount {qTok} The quantity of RToken the issuance is for
+    /// @param baskets {BU} The basket unit-equivalent of the collateral deposits
     /// @param erc20s The collateral token addresses corresponding to the deposit
     /// @param deposits {qTok} The collateral token quantities that paid for the issuance
     /// @param issuer The account issuing RToken
@@ -22,6 +23,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     struct SlowIssuance {
         uint256 blockStartedAt;
         uint256 amount; // {qRTok}
+        Fix baskets; // {BU}
         address[] erc20s;
         uint256[] deposits; // {qTok}, same index as vault basket assets
         address issuer;
@@ -33,6 +35,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param issuanceId The index off the issuance, a globally unique identifier
     /// @param issuer The account performing the issuance
     /// @param amount The quantity of RToken being issued
+    /// @param baskets The basket unit-equivalent of the collateral deposits
     /// @param tokens The ERC20 contracts of the backing tokens
     /// @param quantities The quantities of tokens paid with
     /// @param blockAvailableAt The (continuous) block at which the issuance vests
@@ -40,6 +43,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
         uint256 indexed issuanceId,
         address indexed issuer,
         uint256 indexed amount,
+        Fix baskets,
         address[] tokens,
         uint256[] quantities,
         Fix blockAvailableAt
@@ -53,35 +57,51 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param issuanceId The index of the issuance, a globally unique identifier
     event IssuanceCompleted(uint256 indexed issuanceId);
 
+    /// Emitted when the number of baskets needed changes
+    /// @param oldBasketsNeeded Previous number of baskets units needed
+    /// @param newBasketsNeeded New number of basket units needed
+    event BasketsNeededChanged(Fix oldBasketsNeeded, Fix newBasketsNeeded);
+
     /// Emitted when Main is set
     /// @param oldMain The old address of Main
     /// @param newMain The new address of Main
     event MainSet(IMain indexed oldMain, IMain indexed newMain);
 
-    /// Begins the SlowIssuance accounting process
+    function poke() external;
+
+    /// Begins the SlowIssuance process
     /// @param issuer The account issuing the RToken
     /// @param amount {qRTok}
     /// @param deposits {qTok}
-    function beginSlowIssuance(
+    function issueSlowly(
         address issuer,
         uint256 amount,
         address[] memory erc20s,
         uint256[] memory deposits
     ) external;
 
-    /// Mints a quantity of RToken to the `recipient`, only callable by AssetManager
-    /// @param recipient The recipient of the newly minted RToken
-    /// @param amount {qRTok} The amount to be minted
-    /// @return true
-    function mint(address recipient, uint256 amount) external returns (bool);
-
     /// Burns a quantity of RToken from the callers account
     /// @param from The account from which RToken should be burned
     /// @param amount {qRTok} The amount to be burned
-    /// @return true
-    function burn(address from, uint256 amount) external returns (bool);
+    function redeem(address from, uint256 amount) external;
 
-    function poke() external;
+    /// Mints a quantity of RToken to the `recipient`
+    /// @param recipient The recipient of the newly minted RToken
+    /// @param amount {qRTok} The amount to be minted
+    function mint(address recipient, uint256 amount) external;
+
+    /// Melt a quantity of RToken from the caller's account, increasing the basketRate
+    /// @param amount {qTok} The amount to be melted
+    function melt(uint256 amount) external;
+
+    /// An affordance of last resort for Main in order to ensure re-capitalization
+    function setBasketsNeeded(Fix basketsNeeded) external;
 
     function setMain(IMain main) external;
+
+    /// @return {BU} How many baskets are needed to back the RToken supply
+    function basketsNeeded() external view returns (Fix);
+
+    /// @return {BU/rTok} Basket units per whole RToken
+    function basketRate() external view returns (Fix);
 }

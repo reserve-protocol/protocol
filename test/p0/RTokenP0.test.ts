@@ -102,7 +102,7 @@ describe('RTokenP0 contract', () => {
     })
   })
 
-  describe('Burn/Melt/Mint', () => {
+  describe('Redeem/Melt/Mint', () => {
     const issueAmount: BigNumber = bn('100e18')
 
     beforeEach(async () => {
@@ -125,31 +125,26 @@ describe('RTokenP0 contract', () => {
       await main.poke()
     })
 
-    it('Should allow to burn tokens if holder or Main', async () => {
-      // Burn tokens
-      const burnAmount: BigNumber = bn('10e18')
+    it('Should allow to melt tokens if caller or Main', async () => {
+      // Melt tokens
+      const meltAmount: BigNumber = bn('10e18')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-      await rToken.connect(addr1).burn(addr1.address, burnAmount)
+      await rToken.connect(addr1).melt(meltAmount)
 
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(burnAmount))
-      expect(await rToken.totalSupply()).to.equal(issueAmount.sub(burnAmount))
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(meltAmount))
+      expect(await rToken.totalSupply()).to.equal(issueAmount.sub(meltAmount))
 
       // Update Main to mock call - from mainMock
       await rToken.connect(owner).setMain(mainMock.address)
 
-      // Burn another set of tokens
-      await rToken.connect(mainMock).burn(addr1.address, burnAmount)
+      // Melt another set of tokens
+      await rToken.connect(addr1).melt(meltAmount)
 
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(burnAmount.mul(2)))
-      expect(await rToken.totalSupply()).to.equal(issueAmount.sub(burnAmount.mul(2)))
-
-      // Trying to burn with another account will fail
-      await expect(rToken.connect(other).burn(addr1.address, burnAmount)).to.be.revertedWith(
-        'only self or main'
-      )
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(meltAmount.mul(2)))
+      expect(await rToken.totalSupply()).to.equal(issueAmount.sub(meltAmount.mul(2)))
     })
 
     it('Should allow to mint tokens when called by Main', async () => {

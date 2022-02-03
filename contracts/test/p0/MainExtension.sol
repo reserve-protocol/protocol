@@ -66,7 +66,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         assert(INVARIANT_fullyCapitalized());
         assert(INVARIANT_nextRewardsInFutureOrNow());
         assert(INVARIANT_pricesDefined());
-        assert(INVARIANT_basketRateDefined());
     }
 
     function INVARIANT_stateDefined() internal view returns (bool ok) {
@@ -139,15 +138,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && aaveAsset().price().gt(FIX_ZERO);
         if (!ok) {
             console.log("INVARIANT_pricesDefined violated");
-        }
-    }
-
-    // Ex-asset manager
-
-    function INVARIANT_basketRateDefined() internal view returns (bool ok) {
-        ok = basketRate.gt(FIX_ZERO);
-        if (!ok) {
-            console.log("INVARIANT_basketRateDefined violated");
         }
     }
 }

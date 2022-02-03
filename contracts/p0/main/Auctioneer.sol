@@ -80,13 +80,14 @@ contract AuctioneerP0 is
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
         Fix held = basketsHeld();
-        Fix needed = basketsNeeded();
+        Fix needed = rToken().basketsNeeded();
 
-        // First mint RToken
+        // Mint revenue RToken
         if (held.gt(needed)) {
-            // {rTok} = {BU} / {BU/rTok}
-            Fix rTok = held.minus(needed).div(basketRate);
-            rToken().mint(address(this), rTok.shiftLeft(int8(rToken().decimals())).floor());
+            // {rTok} = ({BU} - {BU}) / {BU/rTok}
+            Fix rTok = held.minus(needed).div(rToken().basketRate());
+            uint256 qRTok = rTok.shiftLeft(int8(rToken().decimals())).floor();
+            rToken().mint(address(this), qRTok);
         }
 
         // Handout excess assets, including any RToken that was just minted
@@ -171,15 +172,10 @@ contract AuctioneerP0 is
         return trade;
     }
 
-    /// Compromise on the BU target in order to become recapitalized again
+    /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
     function giveRTokenHoldersAHaircut() private returns (bool) {
         assert(!hasOpenAuctions() && !fullyCapitalized());
-
-        Fix held = basketsHeld();
-        Fix newBasketRate = held.divu(rToken().totalSupply());
-        emit BasketRateSet(basketRate, newBasketRate);
-        basketRate = newBasketRate;
-
+        rToken().setBasketsNeeded(basketsHeld());
         assert(fullyCapitalized());
         return true;
     }
@@ -201,6 +197,7 @@ contract AuctioneerP0 is
             Fix
         )
     {
+        Fix basketsNeeded = rToken().basketsNeeded(); // {BU}
         Fix[] memory prices = new Fix[](_assets.length()); // {UoA/tok}
         Fix[] memory surpluses = new Fix[](_assets.length()); // {UoA}
         Fix[] memory deficits = new Fix[](_assets.length()); // {UoA}
@@ -213,7 +210,7 @@ contract AuctioneerP0 is
             // needed: {qTok} that Main must hold to meet obligations
             uint256 needed;
             if (a.isCollateral()) {
-                needed = basketsNeeded().mul(basket.quantity(ICollateral(address(a)))).ceil();
+                needed = basketsNeeded.mul(basket.quantity(ICollateral(address(a)))).ceil();
             }
             // held: {qTok} that Main is already holding
             uint256 held = a.erc20().balanceOf(address(this));

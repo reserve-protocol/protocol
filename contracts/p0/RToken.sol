@@ -23,8 +23,9 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
     Fix public constant MIN_ISSUANCE_RATE = Fix.wrap(1e40); // {qRTok/block} 10k whole RTok
 
-    // Slow Issuance
     SlowIssuance[] public issuances;
+
+    Fix public override basketsNeeded; //  {BU}
 
     constructor(
         IMain main_,
@@ -38,7 +39,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
     // Process slow issuances:
     // - undoes any issuances that was started before the basket was last set
-    // - enacts any other issuances that are fully vested
+    // - enacts any other issuances that are fully vested, sending deposits back to Main
     function poke() public override {
         Fix currentBlock = toFix(block.number);
         bool backingIsSound = main.worstCollateralStatus() == CollateralStatus.SOUND;
@@ -59,6 +60,9 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
                     IERC20(iss.erc20s[j]).safeTransfer(address(main), iss.deposits[j]);
                 }
 
+                emit BasketsNeededChanged(basketsNeeded, basketsNeeded.plus(iss.baskets));
+                basketsNeeded = basketsNeeded.plus(iss.baskets);
+
                 _mint(iss.issuer, iss.amount);
                 iss.processed = true;
                 emit IssuanceCompleted(i);
@@ -66,23 +70,29 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         }
     }
 
+    modifier onlyMain() {
+        require(_msgSender() == address(main), "only main");
+        _;
+    }
+
     /// Begins the SlowIssuance accounting process
+    /// @dev This function assumes `deposits` have already been transferred in
     /// @param issuer The account issuing the RToken
     /// @param amount {qRTok}
     /// @param deposits {qTok}
-    function beginSlowIssuance(
+    function issueSlowly(
         address issuer,
         uint256 amount,
         address[] memory erc20s,
         uint256[] memory deposits
-    ) external override {
-        require(_msgSender() == address(main), "only main");
-        require(erc20s.length == deposits.length, "must be same length");
+    ) external override onlyMain {
+        assert(erc20s.length == deposits.length);
 
-        // Here we assume Main has already sent in the collateral
+        // Assumption: Main has already deposited the collateral
         SlowIssuance memory iss = SlowIssuance({
             blockStartedAt: block.number,
             amount: amount,
+            baskets: basketRate().mulu(amount).shiftLeft(-int8(decimals())),
             erc20s: erc20s,
             deposits: deposits,
             issuer: issuer,
@@ -95,35 +105,60 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             issuances.length - 1,
             iss.issuer,
             iss.amount,
+            iss.baskets,
             iss.erc20s,
             iss.deposits,
             iss.blockAvailableAt
         );
     }
 
-    /// Mints a quantity of RToken to the `recipient`, only callable by AssetManager
+    /// Mint a quantity of RToken to the `recipient`
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qTok} The amount to be minted
-    /// @return true
-    function mint(address recipient, uint256 amount) external virtual override returns (bool) {
-        require(_msgSender() == address(main), "only main");
+    function mint(address recipient, uint256 amount) external override onlyMain {
         _mint(recipient, amount);
-        return true;
     }
 
-    /// Burns a quantity of RToken from an account, only callable by AssetManager or `from`
-    /// @param from The account from which RToken should be burned
-    /// @param amount {qTok} The amount to be burned
-    /// @return true
-    function burn(address from, uint256 amount) external virtual override returns (bool) {
-        require(_msgSender() == from || _msgSender() == address(main), "only self or main");
+    /// Melt a quantity of RToken from the caller's account, increasing the basketRate
+    /// @param amount {qTok} The amount to be melted
+    function melt(uint256 amount) external override {
+        _burn(_msgSender(), amount);
+    }
+
+    /// Redeem a quantity of RToken from an account
+    /// @param from The account redeeeming RToken
+    /// @param amount {qTok} The amount to be redeemed
+    function redeem(address from, uint256 amount) external override onlyMain {
+        Fix initialRate = basketRate();
+
+        // {BU} = {BU/rTok} / {qRTok/rTok} * {qRTok}
+        Fix baskets = initialRate.shiftLeft(-int8(decimals())).mulu(amount); // {BU}
         _burn(from, amount);
-        return true;
+
+        basketsNeeded = basketsNeeded.minus(baskets);
+        assert(basketsNeeded.gte(FIX_ZERO));
+        assert(basketRate().gte(initialRate));
     }
 
-    function setMain(IMain main_) external virtual override onlyOwner {
+    /// An affordance of last resort for Main in order to ensure re-capitalization
+    function setBasketsNeeded(Fix basketsNeeded_) external override onlyMain {
+        basketsNeeded = basketsNeeded_;
+    }
+
+    function setMain(IMain main_) external override onlyOwner {
         emit MainSet(main, main_);
         main = main_;
+    }
+
+    /// @return {BU/rTok} Basket units per whole RToken
+    function basketRate() public view override returns (Fix) {
+        uint256 supply = totalSupply();
+        if (supply == 0) {
+            return FIX_ONE;
+        }
+
+        // {BU/rTok} = {BU} * {qRTok/rTok} / {qRTok}
+        return basketsNeeded.shiftLeft(int8(decimals())).divu(supply);
     }
 
     // ==== Private ====

@@ -50,10 +50,9 @@ contract BasketHandlerP0 is
     using FixLib for Fix;
 
     BasketConfig private basketConf;
+
     Basket internal basket;
     uint256 public override blockBasketLastChanged; // {block number}
-
-    Fix public basketRate = FIX_ONE; // {BU/rTok}
 
     function init(ConstructorArgs calldata args)
         public
@@ -121,7 +120,7 @@ contract BasketHandlerP0 is
 
     /// @return Whether it holds enough basket units of collateral
     function fullyCapitalized() public view override returns (bool) {
-        return basketsHeld().gte(basketsNeeded());
+        return basketsHeld().gte(rToken().basketsNeeded());
     }
 
     /// @return status The maximum CollateralStatus among basket collateral
@@ -136,8 +135,8 @@ contract BasketHandlerP0 is
         }
     }
 
-    /// @return p {UoA} An estimate at the net worth of all assets held at this address
-    function netWorth() public view override returns (Fix p) {
+    /// @return p {UoA} An estimate at the total value of all assets held, in the unit of account
+    function totalAssetValue() public view override returns (Fix p) {
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
             ICollateral c = ICollateral(_assets.at(i));
@@ -157,12 +156,6 @@ contract BasketHandlerP0 is
     /// @return {BU} The equivalent of the current holdings in BUs without considering trading
     function basketsHeld() internal view returns (Fix) {
         return basket.balanceOf(address(this));
-    }
-
-    /// @return {BU} The required number of baskets based on the basket rate and RToken supply
-    function basketsNeeded() internal view returns (Fix) {
-        // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
-        return basketRate.mulu(rToken().totalSupply()).shiftLeft(-int8(rToken().decimals()));
     }
 
     // Check collateral statuses; Select a new basket if needed.

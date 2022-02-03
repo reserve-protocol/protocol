@@ -31,7 +31,6 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         super.init(args);
     }
 
-    /// Process pending issuances on poke
     function poke() public virtual override(Mixin, BasketHandlerP0) notPaused {
         super.poke();
         revenueFurnace().melt();
@@ -48,11 +47,13 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         require(worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
         // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
-        Fix baskets = basketRate.mulu(amount).shiftLeft(-int8(rToken().decimals()));
+        Fix baskets = rToken().basketRate().mulu(amount).shiftLeft(-int8(rToken().decimals()));
 
+        // Send collateral to RToken
         deposits = basket.toCollateral(baskets, RoundingApproach.CEIL);
         basket.transferFrom(_msgSender(), address(rToken()), deposits);
-        rToken().beginSlowIssuance(_msgSender(), amount, basket.backingERC20s(), deposits);
+
+        rToken().issueSlowly(_msgSender(), amount, basket.backingERC20s(), deposits);
         emit IssuanceStarted(_msgSender(), amount);
     }
 
@@ -61,18 +62,18 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     /// @return withdrawals {qTok} The quantities of collateral tokens transferred out
     function redeem(uint256 amount) public override returns (uint256[] memory withdrawals) {
         require(amount > 0, "Cannot redeem zero");
-        require(rToken().totalSupply() > 0, "No RToken outstanding");
+        require(rToken().balanceOf(_msgSender()) >= amount, "not enough RToken");
         revenueFurnace().melt();
 
         // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
-        Fix baskets = basketRate.mulu(amount).shiftLeft(-int8(rToken().decimals()));
+        Fix baskets = rToken().basketRate().mulu(amount).shiftLeft(-int8(rToken().decimals()));
         withdrawals = basket.toCollateral(baskets, RoundingApproach.FLOOR);
 
         // {none} = {qRTok} / {qRTok}
         Fix prorate = toFix(amount).divu(rToken().totalSupply());
-        rToken().burn(_msgSender(), amount);
+        rToken().redeem(_msgSender(), amount);
 
-        // Apply upper bounds to prevent bank runs
+        // Bound the redemption by the prorata share
         for (uint256 i = 0; i < withdrawals.length; i++) {
             // {qTok} = {none} * {qTok}
             uint256 prorata = prorate
@@ -93,14 +94,18 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
 
     /// @return {qTok} How much RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
-        // {qTok} = {BU} / {BU/rTok} * {qRTok/rTok}
+        // {qTok} = {BU} * {qRTok/rTok} / {BU/rTok}
         return
-            basket.balanceOf(account).div(basketRate).shiftLeft(int8(rToken().decimals())).floor();
+            basket
+                .balanceOf(account)
+                .shiftLeft(int8(rToken().decimals()))
+                .div(rToken().basketRate())
+                .floor();
     }
 
     /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
     function rTokenPrice() public view override returns (Fix p) {
         // {UoA/rTok} = {UoA/BU} * {BU/rTok}
-        return basket.price().mul(basketRate);
+        return basket.price().mul(rToken().basketRate());
     }
 }

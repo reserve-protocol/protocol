@@ -38,6 +38,7 @@ contract RTokenExtension is ContextMixin, RTokenP0, IExtension {
 
     function assertInvariants() external view override {
         assert(INVARIANT_issuancesAreValid());
+        assert(INVARIANT_basketRateDefined());
     }
 
     function INVARIANT_issuancesAreValid() internal view returns (bool ok) {
@@ -49,6 +50,13 @@ contract RTokenExtension is ContextMixin, RTokenP0, IExtension {
         }
         if (!ok) {
             console.log("INVARIANT_issuancesAreValid violated");
+        }
+    }
+
+    function INVARIANT_basketRateDefined() internal view returns (bool ok) {
+        ok = basketRate().gt(FIX_ZERO);
+        if (!ok) {
+            console.log("INVARIANT_basketRateDefined violated");
         }
     }
 }

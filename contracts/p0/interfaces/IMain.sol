@@ -275,11 +275,6 @@ interface IBasketHandler {
     /// @param refAmts {ref/BU} The reference amounts of the basket
     event BasketSet(ICollateral[] collateral, Fix[] refAmts);
 
-    /// Emitted when the liablity in terms of BUs is changed
-    /// @param oldRate {BU/rTok} The old rate of basket units to rToken
-    /// @param newRate {BU/rTok} The new rate of basket units to rToken
-    event BasketRateSet(Fix oldRate, Fix newRate);
-
     /// Set the prime basket in the basket configuration.
     /// @param collateral The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
@@ -303,8 +298,8 @@ interface IBasketHandler {
 
     function blockBasketLastChanged() external view returns (uint256);
 
-    /// @return p {UoA} An estimate at the net worth of all assets held
-    function netWorth() external view returns (Fix p);
+    /// @return p {UoA} An estimate at the total value of all assets held, in the unit of account
+    function totalAssetValue() external view returns (Fix p);
 }
 
 interface IAuctioneerEvents {

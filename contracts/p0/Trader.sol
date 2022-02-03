@@ -68,7 +68,7 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
         }
 
         // {UoA} = {UoA} * {none}
-        Fix maxSellUoA = main.netWorth().mul(main.maxAuctionSize());
+        Fix maxSellUoA = main.totalAssetValue().mul(main.maxAuctionSize());
 
         // {sellTok}
         sellAmount = fixMin(sellAmount, maxSellUoA.div(sell.price()));
@@ -128,7 +128,7 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
     /// @return {tok} The least amount of whole tokens worth trying to sell
     function dustThreshold(IAsset asset) internal view returns (Fix) {
         // {UoA} = {UoA} * {1}
-        Fix minSellUoA = main.netWorth().mul(main.minAuctionSize());
+        Fix minSellUoA = main.totalAssetValue().mul(main.minAuctionSize());
 
         // {tok} = {UoA} / {UoA/tok}
         return minSellUoA.div(asset.price());
