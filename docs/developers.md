@@ -244,4 +244,8 @@ Otherwise, the unit is assumed to be whole. The meaning of a "whole" token chang
 - `stRSR`: holds staked RSR
 - `RevenueTrader`: Holds and trades some asset A for either RSR or RToken for melting
 
-During SlowIssuance, `Main` transfers collateral tokens from the issuer's address to the RToken's address. At the end of SlowIssuance, the `RToken` either mints RToken and transfers this collateral to `Main`, or it rolls back the issuance and simply returns collateral to the issuer. 
+## RToken Lifecycle
+
+1. During SlowIssuance, `Main` transfers collateral tokens from the issuer's address to the `RToken`. 
+2. At the end of SlowIssuance, the `RToken` contract mints new RToken to the issuer and transfers the held collateral to `Main`. If `Main` has updated the basket since issuance began, then the collateral is instead returned to the user and no RToken is minted. 
+3. During redemption, RToken is burnt from the redeemer's account and they are transferred collateral from `Main`.
