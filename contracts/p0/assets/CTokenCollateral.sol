@@ -29,7 +29,6 @@ contract CTokenCollateralP0 is CollateralP0 {
 
     Fix public prevReferencePrice; // {ref/tok} previous rate {collateral/reference}
 
-    // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
         IERC20Metadata referenceERC20_,
@@ -39,8 +38,6 @@ contract CTokenCollateralP0 is CollateralP0 {
     ) CollateralP0(erc20_, referenceERC20_, main_, oracle_, targetName_) {
         prevReferencePrice = refPerTok();
     }
-
-    // solhint-enable no-empty-blocks
 
     /// Update the Compound protocol + default status
     function forceUpdates() public virtual override {

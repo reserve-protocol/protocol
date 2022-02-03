@@ -66,7 +66,7 @@ library BasketLib {
 
     /// Transfer collateral tokens described by `quantities` from `from` to `to`
     /// @param to Recipient of collateral
-    /// @param quantities {qTok} Collateral token quantities
+    /// @param quantities {qTok} Collateral token quantities in the order of the basket
     function transfer(
         Basket storage self,
         address to,
@@ -81,7 +81,7 @@ library BasketLib {
     /// Transfer collateral tokens described by `quantities` from `from` to `to`
     /// @param from Sender of collateral
     /// @param to Recipient of collateral
-    /// @param quantities {qTok} Collateral token quantities
+    /// @param quantities {qTok} Collateral token quantities in the order of the basket
     function transferFrom(
         Basket storage self,
         address from,
