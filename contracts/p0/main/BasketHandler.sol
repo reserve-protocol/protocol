@@ -51,9 +51,9 @@ contract BasketHandlerP0 is
 
     BasketConfig private basketConf;
     Basket internal basket;
-    uint256 internal blockBasketLastUpdated; // {block number} last set
+    uint256 public override blockBasketLastChanged; // {block number}
 
-    Fix internal basketsNeeded; // {BU}
+    Fix public basketRate = FIX_ONE; // {BU/rTok}
 
     function init(ConstructorArgs calldata args)
         public
@@ -121,7 +121,7 @@ contract BasketHandlerP0 is
 
     /// @return Whether it holds enough basket units of collateral
     function fullyCapitalized() public view override returns (bool) {
-        return basketsHeld().gte(basketsNeeded);
+        return basketsHeld().gte(basketsNeeded());
     }
 
     /// @return status The maximum CollateralStatus among basket collateral
@@ -159,12 +159,10 @@ contract BasketHandlerP0 is
         return basket.balanceOf(address(this));
     }
 
-    /// @return {BU/rTok} The exchange rate between BUs and rTok
-    function basketsPerRTok() internal view returns (Fix) {
-        Fix rTok = toFixWithShift(rToken().totalSupply(), -int8(rToken().decimals()));
-
-        // {BU} = {BU} / {rTok}
-        return rTok.eq(FIX_ZERO) ? FIX_ONE : basketsNeeded.div(rTok);
+    /// @return {BU} The required number of baskets based on the basket rate and RToken supply
+    function basketsNeeded() internal view returns (Fix) {
+        // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
+        return basketRate.mulu(rToken().totalSupply()).shiftLeft(-int8(rToken().decimals()));
     }
 
     // Check collateral statuses; Select a new basket if needed.
@@ -254,7 +252,7 @@ contract BasketHandlerP0 is
         basket.copy(newBasket);
 
         // Keep records, emit event
-        blockBasketLastUpdated = block.number;
+        blockBasketLastChanged = block.number;
         ICollateral[] memory collateral = new ICollateral[](basket.size);
         Fix[] memory refAmts = new Fix[](basket.size);
         for (uint256 i = 0; i < basket.size; i++) {

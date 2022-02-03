@@ -20,8 +20,9 @@ struct Basket {
  * @dev
  *   - empty()
  *   - copy(other: BasketLib)
- *   - deposit(from: address, amount: BU): Deposit collateral equivalent to some number of BUs
- *   - withdraw(to: address, amount: BU): Withdraw collateral equivalent to some number of BUs
+ *   - add(coll: ICollateral, weight: Fix): Add weight to coll
+ *   - transfer(to: address, quantities: Fix[]): like ERC20 transfer
+ *   - transferFrom(from: address, to: address, quantities: Fix[]): like ERC20 transferFrom
  */
 library BasketLib {
     using BasketLib for Basket;
@@ -63,47 +64,33 @@ library BasketLib {
         }
     }
 
-    /// Transfer collateral worth `quantity` baskets into the caller's account
-    /// @param from The address that is sending collateral
-    /// @param amount {BU} The amount of baskets to deposits
-    /// @return collateralAmounts {qTok} The token amounts transferred in
-    function deposit(
+    /// Transfer collateral tokens described by `quantities` from `from` to `to`
+    /// @param to Recipient of collateral
+    /// @param quantities {qTok} Collateral token quantities
+    function transfer(
         Basket storage self,
-        address from,
-        Fix amount
-    ) internal returns (uint256[] memory collateralAmounts) {
-        collateralAmounts = new uint256[](self.size);
-        for (uint256 i = 0; i < self.size; i++) {
-            // {qTok} = {BU} * {qTok/BU}
-            collateralAmounts[i] = amount.mul(self.quantity(self.collateral[i])).ceil();
-            self.collateral[i].erc20().safeTransferFrom(from, address(this), collateralAmounts[i]);
+        address to,
+        uint256[] memory quantities
+    ) internal {
+        assert(quantities.length == self.size);
+        for (uint256 i = 0; i < quantities.length; i++) {
+            self.collateral[i].erc20().safeTransfer(to, quantities[i]);
         }
     }
 
-    /// Transfer collateral worth `quantity` baskets out of the caller's account,
-    /// never giving more than a prorata share of collateral.
-    /// @param to The address that is receiving the collateral
-    /// @param amount {BU} The amount of BUs being withdrawn
-    /// @return collateralAmounts {qTok} The token amounts transferred out
-    function withdraw(
+    /// Transfer collateral tokens described by `quantities` from `from` to `to`
+    /// @param from Sender of collateral
+    /// @param to Recipient of collateral
+    /// @param quantities {qTok} Collateral token quantities
+    function transferFrom(
         Basket storage self,
+        address from,
         address to,
-        Fix amount
-    ) internal returns (uint256[] memory collateralAmounts) {
-        Fix total = self.balanceOf(address(this)); // {BU}
-        collateralAmounts = new uint256[](self.size);
-
-        for (uint256 i = 0; i < self.size; i++) {
-            // {qTok} = {BU} * {qTok/BU}
-            Fix ideal = amount.mul(self.quantity(self.collateral[i]));
-
-            // {qTok} = {BU} / {BU} * {qTok}
-            Fix prorata = amount.div(total).mulu(
-                self.collateral[i].erc20().balanceOf(address(this))
-            );
-
-            collateralAmounts[i] = fixMin(ideal, prorata).floor();
-            self.collateral[i].erc20().safeTransfer(to, collateralAmounts[i]);
+        uint256[] memory quantities
+    ) internal {
+        assert(quantities.length == self.size);
+        for (uint256 i = 0; i < quantities.length; i++) {
+            self.collateral[i].erc20().safeTransferFrom(from, to, quantities[i]);
         }
     }
 
@@ -113,6 +100,20 @@ library BasketLib {
     function quantity(Basket storage self, ICollateral c) internal view returns (Fix) {
         // {qTok/BU} = {ref/BU} / {ref/tok} * {qTok/tok}
         return self.refAmts[c].div(c.refPerTok()).shiftLeft(int8(c.erc20().decimals()));
+    }
+
+    /// @param amount {BU}
+    /// @return quantities {qTok} Collateral token quantities equal to `amount` BUs
+    function toCollateral(
+        Basket storage self,
+        Fix amount,
+        RoundingApproach rounding
+    ) internal view returns (uint256[] memory quantities) {
+        quantities = new uint256[](self.size);
+        for (uint256 i = 0; i < self.size; i++) {
+            // {qTok} = {BU} * {qTok/BU}
+            quantities[i] = amount.mul(self.quantity(self.collateral[i])).toUint(rounding);
+        }
     }
 
     /// @return bal {BU} The balance of basket units held by `account`

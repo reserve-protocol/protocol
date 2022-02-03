@@ -80,15 +80,16 @@ contract AuctioneerP0 is
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
         Fix held = basketsHeld();
+        Fix needed = basketsNeeded();
 
         // First mint RToken
-        if (held.gt(basketsNeeded)) {
+        if (held.gt(needed)) {
             // {rTok} = {BU} / {BU/rTok}
-            Fix rTok = held.minus(basketsNeeded).div(basketsPerRTok());
+            Fix rTok = held.minus(needed).div(basketRate);
             rToken().mint(address(this), rTok.shiftLeft(int8(rToken().decimals())).floor());
         }
 
-        // Handout excess assets, including RToken
+        // Handout excess assets, including any RToken that was just minted
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
             uint256 bal = a.erc20().balanceOf(address(this));
@@ -96,7 +97,7 @@ contract AuctioneerP0 is
             if (a.isCollateral()) {
                 ICollateral c = ICollateral(_assets.at(i));
                 // {qTok} = {BU} * {qTok/BU}
-                excess -= basketsNeeded.mul(basket.quantity(c)).ceil();
+                excess -= needed.mul(basket.quantity(c)).ceil();
             }
 
             if (excess > 0) {
@@ -175,8 +176,9 @@ contract AuctioneerP0 is
         assert(!hasOpenAuctions() && !fullyCapitalized());
 
         Fix held = basketsHeld();
-        emit BasketsNeededSet(basketsNeeded, held);
-        basketsNeeded = held;
+        Fix newBasketRate = held.divu(rToken().totalSupply());
+        emit BasketRateSet(basketRate, newBasketRate);
+        basketRate = newBasketRate;
 
         assert(fullyCapitalized());
         return true;
@@ -211,7 +213,7 @@ contract AuctioneerP0 is
             // needed: {qTok} that Main must hold to meet obligations
             uint256 needed;
             if (a.isCollateral()) {
-                needed = basketsNeeded.mul(basket.quantity(ICollateral(address(a)))).ceil();
+                needed = basketsNeeded().mul(basket.quantity(ICollateral(address(a)))).ceil();
             }
             // held: {qTok} that Main is already holding
             uint256 held = a.erc20().balanceOf(address(this));

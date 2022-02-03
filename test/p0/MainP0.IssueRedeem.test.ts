@@ -212,20 +212,19 @@ describe('MainP0 contract', () => {
       await main.connect(addr1).issue(issueAmount)
 
       // Check Balances after
-      expect(await token0.balanceOf(main.address)).to.equal(issueAmount)
+      expect(await token0.balanceOf(main.address)).to.equal(0)
+      expect(await token0.balanceOf(rToken.address)).to.equal(issueAmount)
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount))
-      expect(await rToken.balanceOf(rToken.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(main.address)).to.equal(0)
       expect(await main.fullyCapitalized()).to.equal(true)
 
       // Check if minting was registered
       const currentBlockNumber = await getLatestBlockNumber()
-      const [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
-        await main.issuances(0)
+      const [sm_startedAt, sm_amt, sm_minter, sm_availableAt, sm_proc] = await rToken.issuances(0)
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
       expect(sm_startedAt).to.equal(currentBlockNumber)
       expect(sm_amt).to.equal(issueAmount)
-      expect(sm_amt_bus).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
@@ -264,34 +263,32 @@ describe('MainP0 contract', () => {
 
       // Check Balances after
       const expectedTkn0: BigNumber = quotes[0]
-      expect(await token0.balanceOf(main.address)).to.equal(expectedTkn0)
+      expect(await token0.balanceOf(rToken.address)).to.equal(expectedTkn0)
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
 
       const expectedTkn1: BigNumber = quotes[1]
-      expect(await token1.balanceOf(main.address)).to.equal(expectedTkn1)
+      expect(await token1.balanceOf(rToken.address)).to.equal(expectedTkn1)
       expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
 
       const expectedTkn2: BigNumber = quotes[2]
-      expect(await token2.balanceOf(main.address)).to.equal(expectedTkn2)
+      expect(await token2.balanceOf(rToken.address)).to.equal(expectedTkn2)
       expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
 
       const expectedTkn3: BigNumber = quotes[3]
-      expect(await token3.balanceOf(main.address)).to.equal(expectedTkn3)
+      expect(await token3.balanceOf(rToken.address)).to.equal(expectedTkn3)
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
 
-      expect(await rToken.balanceOf(rToken.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
-        await main.issuances(0)
+      let [sm_startedAt, sm_amt, sm_minter, sm_availableAt, sm_proc] = await rToken.issuances(0)
 
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
       expect(sm_startedAt).to.equal(currentBlockNumber)
       expect(sm_amt).to.equal(issueAmount)
-      expect(sm_amt_bus).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
@@ -306,7 +303,7 @@ describe('MainP0 contract', () => {
       await main.poke()
 
       // Check previous minting was processed and funds sent to minter
-      ;[, , , , , sm_proc] = await main.issuances(0)
+      ;[, , , , sm_proc] = await rToken.issuances(0)
       expect(sm_proc).to.equal(true)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -316,22 +313,24 @@ describe('MainP0 contract', () => {
       await main.connect(addr2).issue(issueAmount)
 
       // Check Balances after
-      expect(await token0.balanceOf(main.address)).to.equal(expectedTkn0.mul(2))
-      expect(await token1.balanceOf(main.address)).to.equal(expectedTkn1.mul(2))
-      expect(await token2.balanceOf(main.address)).to.equal(expectedTkn2.mul(2))
-      expect(await token3.balanceOf(main.address)).to.equal(expectedTkn3.mul(2))
-      expect(await rToken.balanceOf(rToken.address)).to.equal(issueAmount)
+      expect(await token0.balanceOf(main.address)).to.equal(expectedTkn0)
+      expect(await token1.balanceOf(main.address)).to.equal(expectedTkn1)
+      expect(await token2.balanceOf(main.address)).to.equal(expectedTkn2)
+      expect(await token3.balanceOf(main.address)).to.equal(expectedTkn3)
+      expect(await token0.balanceOf(rToken.address)).to.equal(expectedTkn0)
+      expect(await token1.balanceOf(rToken.address)).to.equal(expectedTkn1)
+      expect(await token2.balanceOf(rToken.address)).to.equal(expectedTkn2)
+      expect(await token3.balanceOf(rToken.address)).to.equal(expectedTkn3)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(main.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(addr2.address)).to.equal(0)
 
       // Check new issuances was processed
       currentBlockNumber = await getLatestBlockNumber()
-      ;[sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
-        await main.issuances(1)
+      ;[sm_startedAt, sm_amt, sm_minter, sm_availableAt, sm_proc] = await rToken.issuances(1)
       expect(sm_startedAt).to.equal(currentBlockNumber)
       expect(sm_amt).to.equal(issueAmount)
-      expect(sm_amt_bus).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr2.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
@@ -353,32 +352,34 @@ describe('MainP0 contract', () => {
 
       // Check Balances after
       const expectedTkn0: BigNumber = quotes[0]
-      expect(await token0.balanceOf(main.address)).to.equal(expectedTkn0)
+      expect(await token0.balanceOf(main.address)).to.equal(0)
+      expect(await token0.balanceOf(rToken.address)).to.equal(expectedTkn0)
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
 
       const expectedTkn1: BigNumber = quotes[1]
-      expect(await token1.balanceOf(main.address)).to.equal(expectedTkn1)
+      expect(await token1.balanceOf(main.address)).to.equal(0)
+      expect(await token1.balanceOf(rToken.address)).to.equal(expectedTkn1)
       expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
 
       const expectedTkn2: BigNumber = quotes[2]
-      expect(await token2.balanceOf(main.address)).to.equal(expectedTkn2)
+      expect(await token2.balanceOf(main.address)).to.equal(0)
+      expect(await token2.balanceOf(rToken.address)).to.equal(expectedTkn2)
       expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
 
       const expectedTkn3: BigNumber = quotes[3]
-      expect(await token3.balanceOf(main.address)).to.equal(expectedTkn3)
+      expect(await token3.balanceOf(main.address)).to.equal(0)
+      expect(await token3.balanceOf(rToken.address)).to.equal(expectedTkn3)
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
 
-      expect(await rToken.balanceOf(rToken.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(main.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
-        await main.issuances(0)
+      let [sm_startedAt, sm_amt, sm_minter, sm_availableAt, sm_proc] = await rToken.issuances(0)
       expect(sm_startedAt).to.equal(currentBlockNumber)
       expect(sm_amt).to.equal(issueAmount)
-      expect(sm_amt_bus).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber + 5))
       expect(sm_proc).to.equal(false)
@@ -387,7 +388,7 @@ describe('MainP0 contract', () => {
       await main.poke()
 
       // Check previous minting was not processed
-      ;[, , , , , sm_proc] = await main.issuances(0)
+      ;[, , , , sm_proc] = await rToken.issuances(0)
       expect(sm_proc).to.equal(false)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
@@ -398,7 +399,7 @@ describe('MainP0 contract', () => {
       await main.poke()
 
       // Check previous minting was processed and funds sent to minter
-      ;[, , , , , sm_proc] = await main.issuances(0)
+      ;[, , , , sm_proc] = await rToken.issuances(0)
       expect(sm_proc).to.equal(true)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -442,12 +443,10 @@ describe('MainP0 contract', () => {
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
 
-      let [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
-        await main.issuances(1)
+      let [sm_startedAt, sm_amt, sm_minter, sm_availableAt, sm_proc] = await rToken.issuances(1)
       const blockAddPct: BigNumber = newIssuanceAmt.mul(BN_SCALE_FACTOR).div(ISSUANCE_PER_BLOCK)
       expect(sm_startedAt).to.equal(currentBlockNumber)
       expect(sm_amt).to.equal(newIssuanceAmt)
-      expect(sm_amt_bus).to.equal(newIssuanceAmt)
       expect(sm_minter).to.equal(addr1.address)
       // Using issuance rate of 50% = 2 blocks
       expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
@@ -457,17 +456,17 @@ describe('MainP0 contract', () => {
       await main.poke()
 
       // Check previous minting was not processed
-      ;[, , , , , sm_proc] = await main.issuances(1)
+      ;[, , , , sm_proc] = await rToken.issuances(1)
       expect(sm_proc).to.equal(false)
-      expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
-      expect(await rToken.balanceOf(rToken.address)).to.equal(newIssuanceAmt)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Process slow mintings one more time
       await main.poke()
 
       // Check previous minting was processed and funds sent to minter
-      ;[, , , , , sm_proc] = await main.issuances(1)
+      ;[, , , , sm_proc] = await rToken.issuances(1)
       expect(sm_proc).to.equal(true)
       expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -532,22 +531,18 @@ describe('MainP0 contract', () => {
       // Check mintings
       // First minting
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
-        await main.issuances(0)
+      let [sm_startedAt, sm_amt, sm_minter, sm_availableAt, sm_proc] = await rToken.issuances(0)
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
       expect(sm_startedAt).to.equal(currentBlockNumber)
       expect(sm_amt).to.equal(issueAmount)
-      expect(sm_amt_bus).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
 
       // Second minting
-      ;[sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
-        await main.issuances(1)
+      ;[sm_startedAt, sm_amt, sm_minter, sm_availableAt, sm_proc] = await rToken.issuances(1)
       expect(sm_startedAt).to.equal(currentBlockNumber)
       expect(sm_amt).to.equal(issueAmount)
-      expect(sm_amt_bus).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(fp('1')))
       expect(sm_proc).to.equal(false)
@@ -587,25 +582,21 @@ describe('MainP0 contract', () => {
       // Check mintings
       // First minting
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
-        await main.issuances(0)
+      let [sm_startedAt, sm_amt, sm_minter, sm_availableAt, sm_proc] = await rToken.issuances(0)
 
       let blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
       expect(sm_startedAt).to.equal(currentBlockNumber)
       expect(sm_amt).to.equal(issueAmount)
-      expect(sm_amt_bus).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
 
       // Second minting
-      ;[sm_startedAt, sm_amt, sm_amt_bus, sm_minter, sm_availableAt, sm_proc] =
-        await main.issuances(1)
+      ;[sm_startedAt, sm_amt, sm_minter, sm_availableAt, sm_proc] = await rToken.issuances(1)
 
       blockAddPct = newIssueAmount.sub(issueAmount).mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
       expect(sm_startedAt).to.equal(currentBlockNumber)
       expect(sm_amt).to.equal(newIssueAmount)
-      expect(sm_amt_bus).to.equal(newIssueAmount)
       expect(sm_minter).to.equal(addr1.address)
       // Because it exceeds limit it will be moved to 2 blocks from now
       expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(fp('1')).add(blockAddPct))
@@ -619,7 +610,7 @@ describe('MainP0 contract', () => {
 
       // Check first slow mintings is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-      expect(await rToken.balanceOf(rToken.address)).to.equal(newIssueAmount)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
 
       // Process issuance 2
       await main.poke()
@@ -644,29 +635,33 @@ describe('MainP0 contract', () => {
 
       // Check Balances - Before vault switch
       const expectedTkn0: BigNumber = quotes[0]
-      expect(await token0.balanceOf(main.address)).to.equal(expectedTkn0)
+      expect(await token0.balanceOf(main.address)).to.equal(0)
+      expect(await token0.balanceOf(rToken.address)).to.equal(expectedTkn0)
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
 
       const expectedTkn1: BigNumber = quotes[1]
-      expect(await token1.balanceOf(main.address)).to.equal(expectedTkn1)
+      expect(await token1.balanceOf(main.address)).to.equal(0)
+      expect(await token1.balanceOf(rToken.address)).to.equal(expectedTkn1)
       expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
 
       const expectedTkn2: BigNumber = quotes[2]
-      expect(await token2.balanceOf(main.address)).to.equal(expectedTkn2)
+      expect(await token2.balanceOf(main.address)).to.equal(0)
+      expect(await token2.balanceOf(rToken.address)).to.equal(expectedTkn2)
       expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
 
       const expectedTkn3: BigNumber = quotes[3]
-      expect(await token3.balanceOf(main.address)).to.equal(expectedTkn3)
+      expect(await token3.balanceOf(main.address)).to.equal(0)
+      expect(await token3.balanceOf(rToken.address)).to.equal(expectedTkn3)
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
 
-      expect(await rToken.balanceOf(rToken.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Process slow issuances
       await main.poke()
 
       // Check previous minting was not processed
-      let [, , , , , sm_proc] = await main.issuances(0)
+      let [, , , , sm_proc] = await rToken.issuances(0)
       expect(sm_proc).to.equal(false)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
@@ -681,7 +676,7 @@ describe('MainP0 contract', () => {
       await main.connect(owner).switchBasket()
 
       // Process slow issuances
-      await expect(main.connect(owner).poke()).to.emit(main, 'IssuanceCanceled').withArgs(0)
+      await expect(main.connect(owner).poke()).to.emit(rToken, 'IssuanceCanceled').withArgs(0)
 
       // Check Balances after - Funds returned to minter
       expect(await token0.balanceOf(main.address)).to.equal(0)
@@ -697,7 +692,7 @@ describe('MainP0 contract', () => {
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      ;[, , , , , sm_proc] = await main.issuances(0)
+      ;[, , , , sm_proc] = await rToken.issuances(0)
       expect(sm_proc).to.equal(true)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     })
@@ -713,7 +708,7 @@ describe('MainP0 contract', () => {
       const redeemAmount: BigNumber = bn('1000e18')
 
       await expect(main.connect(addr1).redeem(redeemAmount)).to.be.revertedWith(
-        'ERC20: burn amount exceeds balance'
+        'No RToken outstanding'
       )
     })
 
@@ -740,8 +735,8 @@ describe('MainP0 contract', () => {
         const redeemAmount = bn('100e18')
 
         // Check balances
-        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-        expect(await rToken.totalSupply()).to.equal(issueAmount)
+        expect(await rToken.balanceOf(addr1.address)).to.equal(redeemAmount)
+        expect(await rToken.totalSupply()).to.equal(redeemAmount)
 
         // Redeem rTokens
         await main.connect(addr1).redeem(redeemAmount)

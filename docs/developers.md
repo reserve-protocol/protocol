@@ -234,3 +234,14 @@ Otherwise, the unit is assumed to be whole. The meaning of a "whole" token chang
 - {target} = whole target unit (USD is cUSDC's target unit)
 - {BU} = whole basket unit
 - {UoA} = whole unit of the Unit of Account (which is probably USD)
+
+
+## Token Balances (at least true for P0, pending confirmation it remains the same in P3)
+
+- `Main`: Holds all backing for the RToken
+- `RToken`: Holds collateral tokens during SlowIssuance
+- `Furnace`: holds revenue RToken to be melted
+- `stRSR`: holds staked RSR
+- `RevenueTrader`: Holds and trades some asset A for either RSR or RToken for melting
+
+During SlowIssuance, `Main` transfers collateral tokens from the issuer's address to the RToken's address. At the end of SlowIssuance, the `RToken` either mints RToken and transfers this collateral to `Main`, or it rolls back the issuance and simply returns collateral to the issuer. 

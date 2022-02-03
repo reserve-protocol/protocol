@@ -276,9 +276,9 @@ interface IBasketHandler {
     event BasketSet(ICollateral[] collateral, Fix[] refAmts);
 
     /// Emitted when the liablity in terms of BUs is changed
-    /// @param oldLiability {BU} The old number of basket units the protocol was liable for
-    /// @param oldLiability {BU} The new number of basket units the protocol is liable for
-    event BasketsNeededSet(Fix oldLiability, Fix newLiability);
+    /// @param oldRate {BU/rTok} The old rate of basket units to rToken
+    /// @param newRate {BU/rTok} The new rate of basket units to rToken
+    event BasketRateSet(Fix oldRate, Fix newRate);
 
     /// Set the prime basket in the basket configuration.
     /// @param collateral The collateral for the new prime basket
@@ -300,6 +300,8 @@ interface IBasketHandler {
     function fullyCapitalized() external view returns (bool);
 
     function worstCollateralStatus() external view returns (CollateralStatus status);
+
+    function blockBasketLastChanged() external view returns (uint256);
 
     /// @return p {UoA} An estimate at the net worth of all assets held
     function netWorth() external view returns (Fix p);
@@ -348,45 +350,15 @@ interface IRewardClaimer {
 }
 
 interface IRTokenIssuer {
-    /// Emitted when issuance is started, at the point collateral is taken in
-    /// @param issuanceId The index off the issuance, a globally unique identifier
-    /// @param issuer The account performing the issuance
+    /// Emitted when an issuance of RToken begins
+    /// @param issuer The address of the account redeeeming RTokens
     /// @param amount The quantity of RToken being issued
-    /// @param baskets The corresponding quantity of basket units
-    /// @param tokens The ERC20 contracts of the backing tokens
-    /// @param quantities The quantities of tokens paid with
-    /// @param blockAvailableAt The (continuous) block at which the issuance vests
-    event IssuanceStarted(
-        uint256 indexed issuanceId,
-        address indexed issuer,
-        uint256 indexed amount,
-        Fix baskets,
-        address[] tokens,
-        uint256[] quantities,
-        Fix blockAvailableAt
-    );
-
-    /// Emitted when an RToken issuance is canceled, such as during a default
-    /// @param issuanceId The index of the issuance, a globally unique identifier
-    event IssuanceCanceled(uint256 indexed issuanceId);
-
-    /// Emitted when an RToken issuance is completed successfully
-    /// @param issuanceId The index of the issuance, a globally unique identifier
-    event IssuanceCompleted(uint256 indexed issuanceId);
+    event IssuanceStarted(address indexed issuer, uint256 indexed amount);
 
     /// Emitted when a redemption of RToken occurs
     /// @param redeemer The address of the account redeeeming RTokens
     /// @param amount The quantity of RToken being redeemed
-    /// @param baskets The corresponding quantity of basket units
-    /// @param tokens The ERC20 contracts of the backing tokens
-    /// @param quantities The quantities of tokens paid with
-    event Redemption(
-        address indexed redeemer,
-        uint256 indexed amount,
-        Fix baskets,
-        address[] tokens,
-        uint256[] quantities
-    );
+    event Redemption(address indexed redeemer, uint256 indexed amount);
 
     function issue(uint256 amount) external returns (uint256[] memory deposits);
 
