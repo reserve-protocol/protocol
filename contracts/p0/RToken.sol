@@ -48,6 +48,8 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             SlowIssuance storage iss = issuances[i];
             if (iss.processed) continue;
 
+            Fix prevBasketRate = basketRate();
+
             if (!backingIsSound || iss.blockStartedAt <= main.blockBasketLastChanged()) {
                 // Rollback issuance i
                 for (uint256 j = 0; j < iss.erc20s.length; j++) {
@@ -64,6 +66,8 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
                 basketsNeeded = basketsNeeded.plus(iss.baskets);
 
                 _mint(iss.issuer, iss.amount);
+                assert(basketRate().gte(prevBasketRate));
+
                 iss.processed = true;
                 emit IssuanceCompleted(i);
             }
