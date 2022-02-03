@@ -102,12 +102,20 @@ contract AuctioneerP0 is
             }
 
             if (excess > 0) {
-                uint256 amtRSR = rsrCut().mulu(excess).round();
-                if (amtRSR > 0) {
-                    a.erc20().safeTransfer(address(rsrTrader), amtRSR);
+                Fix rsrSide = rsrCut(); // {none}
+                uint256 toRSR = rsrSide.mulu(excess).round();
+                uint256 toRToken = excess - toRSR;
+
+                // Prevent rounding from resulting in uneven distribution
+                if (rsrSide.lt(FIX_ONE) && rsrSide.gt(FIX_ZERO) && (toRSR == 0 || toRToken == 0)) {
+                    continue;
                 }
-                if (excess - amtRSR > 0) {
-                    a.erc20().safeTransfer(address(rTokenTrader), excess - amtRSR);
+
+                if (toRSR > 0) {
+                    a.erc20().safeTransfer(address(rsrTrader), toRSR);
+                }
+                if (toRToken > 0) {
+                    a.erc20().safeTransfer(address(rTokenTrader), toRToken);
                 }
             }
         }
