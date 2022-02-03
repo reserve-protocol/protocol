@@ -2,19 +2,15 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Basket.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/main/RevenueDistributor.sol";
-import "contracts/libraries/CommonErrors.sol";
+import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
-import "./SettingsHandler.sol";
 
 struct BackupConfig {
     uint256 maxCollateral; // Maximum number of backup collateral elements to use in a basket
@@ -46,7 +42,6 @@ contract BasketHandlerP0 is
     using BasketLib for Basket;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
-    using SafeERC20 for IERC20Metadata;
     using FixLib for Fix;
 
     BasketConfig private basketConf;
@@ -120,7 +115,7 @@ contract BasketHandlerP0 is
 
     /// @return Whether it holds enough basket units of collateral
     function fullyCapitalized() public view override returns (bool) {
-        return basketsHeld().gte(rToken().basketsNeeded());
+        return basketsHeld().gte(rToken().basketTarget());
     }
 
     /// @return status The maximum CollateralStatus among basket collateral

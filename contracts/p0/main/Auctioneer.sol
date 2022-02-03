@@ -80,7 +80,7 @@ contract AuctioneerP0 is
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
         Fix held = basketsHeld();
-        Fix needed = rToken().basketsNeeded();
+        Fix needed = rToken().basketTarget();
 
         // Mint revenue RToken
         if (held.gt(needed)) {
@@ -183,7 +183,7 @@ contract AuctioneerP0 is
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
     function giveRTokenHoldersAHaircut() private returns (bool) {
         assert(!hasOpenAuctions() && !fullyCapitalized());
-        rToken().setBasketsNeeded(basketsHeld());
+        rToken().setBasketTarget(basketsHeld());
         assert(fullyCapitalized());
         return true;
     }
@@ -205,7 +205,7 @@ contract AuctioneerP0 is
             Fix
         )
     {
-        Fix basketsNeeded = rToken().basketsNeeded(); // {BU}
+        Fix basketsNeeded = rToken().basketTarget(); // {BU}
         Fix[] memory prices = new Fix[](_assets.length()); // {UoA/tok}
         Fix[] memory surpluses = new Fix[](_assets.length()); // {UoA}
         Fix[] memory deficits = new Fix[](_assets.length()); // {UoA}

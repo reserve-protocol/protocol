@@ -25,7 +25,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
     SlowIssuance[] public issuances;
 
-    Fix public override basketsNeeded; //  {BU}
+    Fix public override basketTarget; //  {BU}
 
     constructor(
         IMain main_,
@@ -62,8 +62,8 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
                     IERC20(iss.erc20s[j]).safeTransfer(address(main), iss.deposits[j]);
                 }
 
-                emit BasketsNeededChanged(basketsNeeded, basketsNeeded.plus(iss.baskets));
-                basketsNeeded = basketsNeeded.plus(iss.baskets);
+                emit BasketTargetChanged(basketTarget, basketTarget.plus(iss.baskets));
+                basketTarget = basketTarget.plus(iss.baskets);
 
                 _mint(iss.issuer, iss.amount);
                 assert(basketRate().gte(prevBasketRate));
@@ -127,6 +127,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     /// @param amount {qTok} The amount to be melted
     function melt(uint256 amount) external override {
         _burn(_msgSender(), amount);
+        emit Melted(amount);
     }
 
     /// Redeem a quantity of RToken from an account
@@ -139,14 +140,16 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         Fix baskets = initialRate.shiftLeft(-int8(decimals())).mulu(amount); // {BU}
         _burn(from, amount);
 
-        basketsNeeded = basketsNeeded.minus(baskets);
-        assert(basketsNeeded.gte(FIX_ZERO));
+        emit BasketTargetChanged(basketTarget, basketTarget.minus(baskets));
+        basketTarget = basketTarget.minus(baskets);
+        assert(basketTarget.gte(FIX_ZERO));
         assert(basketRate().gte(initialRate));
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(Fix basketsNeeded_) external override onlyMain {
-        basketsNeeded = basketsNeeded_;
+    function setBasketTarget(Fix basketTarget_) external override onlyMain {
+        emit BasketTargetChanged(basketTarget, basketTarget_);
+        basketTarget = basketTarget_;
     }
 
     function setMain(IMain main_) external override onlyOwner {
@@ -162,7 +165,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         }
 
         // {BU/rTok} = {BU} * {qRTok/rTok} / {qRTok}
-        return basketsNeeded.shiftLeft(int8(decimals())).divu(supply);
+        return basketTarget.shiftLeft(int8(decimals())).divu(supply);
     }
 
     // ==== Private ====

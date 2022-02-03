@@ -57,10 +57,14 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param issuanceId The index of the issuance, a globally unique identifier
     event IssuanceCompleted(uint256 indexed issuanceId);
 
-    /// Emitted when the number of baskets needed changes
-    /// @param oldBasketsNeeded Previous number of baskets units needed
-    /// @param newBasketsNeeded New number of basket units needed
-    event BasketsNeededChanged(Fix oldBasketsNeeded, Fix newBasketsNeeded);
+    /// Emitted when the number of baskets targeted changes
+    /// @param oldBasketTarget Previous number of baskets units needed
+    /// @param newBasketTarget New number of basket units needed
+    event BasketTargetChanged(Fix oldBasketTarget, Fix newBasketTarget);
+
+    /// Emitted when RToken is melted, which causes the basketRate to increase
+    /// @param amount {qRTok}
+    event Melted(uint256 amount);
 
     /// Emitted when Main is set
     /// @param oldMain The old address of Main
@@ -94,13 +98,13 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param amount {qTok} The amount to be melted
     function melt(uint256 amount) external;
 
-    /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(Fix basketsNeeded) external;
-
     function setMain(IMain main) external;
 
-    /// @return {BU} How many baskets are needed to back the RToken supply
-    function basketsNeeded() external view returns (Fix);
+    /// An affordance of last resort for Main in order to ensure re-capitalization
+    function setBasketTarget(Fix basketTarget) external;
+
+    /// @return {BU} How many baskets are being targeted by the RToken supply
+    function basketTarget() external view returns (Fix);
 
     /// @return {BU/rTok} Basket units per whole RToken
     function basketRate() external view returns (Fix);
