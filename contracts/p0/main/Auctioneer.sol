@@ -223,13 +223,13 @@ contract AuctioneerP0 is
             // held: {qTok} that Main is already holding
             uint256 held = a.erc20().balanceOf(address(this));
 
-            if (needed > held) {
+            if (held > needed) {
                 // {tok} = {qTok} * {tok/qTok}
-                Fix surplusTok = toFixWithShift(needed - held, -int8(a.erc20().decimals()));
+                Fix surplusTok = toFixWithShift(held - needed, -int8(a.erc20().decimals()));
                 surpluses[i] = surplusTok.mul(prices[i]);
-            } else if (needed < held) {
+            } else if (held < needed) {
                 // {tok} = {qTok} * {tok/qTok}
-                Fix deficitTok = toFixWithShift(held - needed, -int8(a.erc20().decimals()));
+                Fix deficitTok = toFixWithShift(needed - held, -int8(a.erc20().decimals()));
                 deficits[i] = deficitTok.mul(prices[i]);
             }
         }
