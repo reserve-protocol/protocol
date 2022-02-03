@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import "contracts/p0/interfaces/IMain.sol";
 
 /**
@@ -9,7 +10,7 @@ import "contracts/p0/interfaces/IMain.sol";
  * @notice An ERC20 with an elastic supply.
  * @dev The p0-specific IRToken
  */
-interface IRToken is IERC20Metadata {
+interface IRToken is IERC20Metadata, IERC20Permit {
     /// Emitted when Main is set
     /// @param oldMain The old address of Main
     /// @param newMain The new address of Main

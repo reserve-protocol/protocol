@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 
@@ -10,7 +10,7 @@ import "contracts/p0/interfaces/IRToken.sol";
  * @title RTokenP0
  * @notice An ERC20 with an elastic supply.
  */
-contract RTokenP0 is Ownable, ERC20, IRToken {
+contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     IMain public main;
 
     constructor(
@@ -18,7 +18,7 @@ contract RTokenP0 is Ownable, ERC20, IRToken {
         string memory name_,
         string memory symbol_,
         address owner_
-    ) ERC20(name_, symbol_) {
+    ) ERC20(name_, symbol_) ERC20Permit(name_) {
         main = main_;
         _transferOwnership(owner_);
     }
