@@ -2,6 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -20,11 +23,25 @@ import "contracts/libraries/Fixed.sol";
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both
  * balances that are in the process of being withdrawn and those that are not.
  */
-contract StRSRP0 is IStRSR, Ownable {
+contract StRSRP0 is IStRSR, Ownable, EIP712 {
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Metadata;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
+
+    // ==== ERC20Permit ====
+
+    using Counters for Counters.Counter;
+
+    mapping(address => Counters.Counter) private _nonces;
+
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private immutable _PERMIT_TYPEHASH =
+        keccak256(
+            "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+        );
+
+    // ====
 
     IMain public main;
 
@@ -56,7 +73,7 @@ contract StRSRP0 is IStRSR, Ownable {
         string memory name_,
         string memory symbol_,
         address owner_
-    ) {
+    ) EIP712(name_, "1") {
         main = main_;
         _name = name_;
         _symbol = symbol_;
@@ -258,5 +275,47 @@ contract StRSRP0 is IStRSR, Ownable {
         for (uint256 index = 0; index < withdrawals.length; index++) {
             total += withdrawals[index].amount;
         }
+    }
+
+    // === ERC20Permit ====
+
+    // From OZ 4.4 release at commit 6bd6b76
+
+    function permit(
+        address owner_,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public virtual override {
+        require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
+
+        bytes32 structHash = keccak256(
+            abi.encode(_PERMIT_TYPEHASH, owner_, spender, value, _useNonce(owner_), deadline)
+        );
+
+        bytes32 hash = _hashTypedDataV4(structHash);
+
+        address signer = ECDSA.recover(hash, v, r, s);
+        require(signer == owner_, "ERC20Permit: invalid signature");
+
+        _approve(owner_, spender, value);
+    }
+
+    function nonces(address owner_) public view virtual override returns (uint256) {
+        return _nonces[owner_].current();
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function DOMAIN_SEPARATOR() external view override returns (bytes32) {
+        return _domainSeparatorV4();
+    }
+
+    function _useNonce(address owner_) internal virtual returns (uint256 current) {
+        Counters.Counter storage nonce = _nonces[owner_];
+        current = nonce.current();
+        nonce.increment();
     }
 }
