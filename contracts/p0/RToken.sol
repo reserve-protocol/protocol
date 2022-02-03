@@ -25,7 +25,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
     SlowIssuance[] public issuances;
 
-    Fix public override basketTarget; //  {BU}
+    Fix public override basketsNeeded; //  {BU}
 
     constructor(
         IMain main_,
@@ -62,8 +62,8 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
                     IERC20(iss.erc20s[j]).safeTransfer(address(main), iss.deposits[j]);
                 }
 
-                emit BasketTargetChanged(basketTarget, basketTarget.plus(iss.baskets));
-                basketTarget = basketTarget.plus(iss.baskets);
+                emit BasketsNeededChanged(basketsNeeded, basketsNeeded.plus(iss.baskets));
+                basketsNeeded = basketsNeeded.plus(iss.baskets);
 
                 _mint(iss.issuer, iss.amount);
                 assert(basketRate().gte(prevBasketRate));
@@ -140,16 +140,16 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         Fix baskets = initialRate.shiftLeft(-int8(decimals())).mulu(amount); // {BU}
         _burn(from, amount);
 
-        emit BasketTargetChanged(basketTarget, basketTarget.minus(baskets));
-        basketTarget = basketTarget.minus(baskets);
-        assert(basketTarget.gte(FIX_ZERO));
+        emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
+        basketsNeeded = basketsNeeded.minus(baskets);
+        assert(basketsNeeded.gte(FIX_ZERO));
         assert(basketRate().gte(initialRate));
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketTarget(Fix basketTarget_) external override onlyMain {
-        emit BasketTargetChanged(basketTarget, basketTarget_);
-        basketTarget = basketTarget_;
+    function setBasketsNeeded(Fix basketsNeeded_) external override onlyMain {
+        emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
+        basketsNeeded = basketsNeeded_;
     }
 
     function setMain(IMain main_) external override onlyOwner {
@@ -165,7 +165,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         }
 
         // {BU/rTok} = {BU} * {qRTok/rTok} / {qRTok}
-        return basketTarget.shiftLeft(int8(decimals())).divu(supply);
+        return basketsNeeded.shiftLeft(int8(decimals())).divu(supply);
     }
 
     // ==== Private ====

@@ -57,10 +57,10 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param issuanceId The index of the issuance, a globally unique identifier
     event IssuanceCompleted(uint256 indexed issuanceId);
 
-    /// Emitted when the number of baskets targeted changes
-    /// @param oldBasketTarget Previous number of baskets units needed
-    /// @param newBasketTarget New number of basket units needed
-    event BasketTargetChanged(Fix oldBasketTarget, Fix newBasketTarget);
+    /// Emitted when the number of baskets needed changes
+    /// @param oldBasketsNeeded Previous number of baskets units needed
+    /// @param newBasketsNeeded New number of basket units needed
+    event BasketsNeededChanged(Fix oldBasketsNeeded, Fix newBasketsNeeded);
 
     /// Emitted when RToken is melted, which causes the basketRate to increase
     /// @param amount {qRTok}
@@ -101,10 +101,10 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     function setMain(IMain main) external;
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketTarget(Fix basketTarget) external;
+    function setBasketsNeeded(Fix basketsNeeded) external;
 
     /// @return {BU} How many baskets are being targeted by the RToken supply
-    function basketTarget() external view returns (Fix);
+    function basketsNeeded() external view returns (Fix);
 
     /// @return {BU/rTok} Basket units per whole RToken
     function basketRate() external view returns (Fix);

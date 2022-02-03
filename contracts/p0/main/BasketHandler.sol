@@ -115,7 +115,7 @@ contract BasketHandlerP0 is
 
     /// @return Whether it holds enough basket units of collateral
     function fullyCapitalized() public view override returns (bool) {
-        return basketsHeld().gte(rToken().basketTarget());
+        return basketsHeld().gte(rToken().basketsNeeded());
     }
 
     /// @return status The maximum CollateralStatus among basket collateral

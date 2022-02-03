@@ -68,7 +68,7 @@ describe('MainP0 contract', () => {
   let collateral2: ATokenCollateralP0
   let collateral3: CTokenCollateralP0
   let basket: Collateral[]
-  let basketTargetAmts: BigNumber[]
+  let basketsNeededAmts: BigNumber[]
 
   // Config values
   let config: IConfig
@@ -106,7 +106,7 @@ describe('MainP0 contract', () => {
       erc20s,
       collateral,
       basket,
-      basketTargetAmts,
+      basketsNeededAmts,
       config,
       deployer,
       dist,
@@ -671,7 +671,7 @@ describe('MainP0 contract', () => {
       // Update basket to trigger rollbacks (using same one to keep fullyCapitalized = true)
       await main.connect(owner).setPrimeBasket(
         basket.map((b) => b.address),
-        basketTargetAmts
+        basketsNeededAmts
       )
       await main.connect(owner).switchBasket()
 
