@@ -31,14 +31,14 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         override
         returns (address[] memory tokens, uint256[] memory quantities)
     {
-        IAsset[] memory assets = main.allAssets();
-        tokens = new address[](assets.length);
+        ICollateral[] memory collateral = main.basketCollateral();
+        tokens = new address[](collateral.length);
         quantities = new uint256[](tokens.length);
 
-        // Convert IAsset to ERC20 address
-        for (uint256 j = 0; j < assets.length; j++) {
-            tokens[j] = address(assets[j].erc20());
-            quantities[j] += assets[j].erc20().balanceOf(address(main));
+        // Convert Collateral to ERC20
+        for (uint256 j = 0; j < collateral.length; j++) {
+            tokens[j] = address(collateral[j].erc20());
+            quantities[j] += collateral[j].erc20().balanceOf(address(main));
         }
     }
 }

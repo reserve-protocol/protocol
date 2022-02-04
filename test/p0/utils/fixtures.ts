@@ -154,7 +154,7 @@ interface CollateralFixture {
   erc20s: ERC20Mock[] // all erc20 addresses
   collateral: Collateral[] // all collateral
   basket: Collateral[] // only the collateral actively backing the RToken
-  basketTargetAmts: BigNumber[] // reference amounts
+  basketsNeededAmts: BigNumber[] // reference amounts
 }
 
 async function collateralFixture(
@@ -289,13 +289,13 @@ async function collateralFixture(
 
   // Create the initial basket
   const basket = [dai[1], usdc[1], adai[1], cdai[1]]
-  const basketTargetAmts = [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+  const basketsNeededAmts = [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
 
   return {
     erc20s,
     collateral,
     basket,
-    basketTargetAmts,
+    basketsNeededAmts,
   }
 }
 
@@ -397,7 +397,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
 
   // Deploy collateral for Main
-  const { erc20s, collateral, basket, basketTargetAmts } = await collateralFixture(
+  const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
     main,
     compoundOracle,
     aaveOracle,
@@ -429,7 +429,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Set non-empty basket
   await main.connect(owner).setPrimeBasket(
     basket.map((b) => b.address),
-    basketTargetAmts
+    basketsNeededAmts
   )
   await main.connect(owner).switchBasket()
 
@@ -453,7 +453,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     erc20s,
     collateral,
     basket,
-    basketTargetAmts,
+    basketsNeededAmts,
     config,
     dist,
     deployer,

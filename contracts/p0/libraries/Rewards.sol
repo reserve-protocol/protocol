@@ -4,15 +4,16 @@ pragma solidity 0.8.9;
 import "contracts/p0/interfaces/IMain.sol";
 
 library RewardsLib {
+    /// @dev DANGER: delegatecall
     function claimAndSweepRewards(address mainAddr) internal {
         IMain main = IMain(mainAddr);
-        IAsset[] memory assets = main.allAssets();
-        for (uint256 i = 0; i < assets.length; i++) {
+        ICollateral[] memory collateral = main.basketCollateral();
+        for (uint256 i = 0; i < collateral.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = address(assets[i]).delegatecall(
+            (bool success, ) = address(collateral[i]).delegatecall(
                 abi.encodeWithSignature(
                     "claimAndSweepRewards(address,address)",
-                    address(assets[i]),
+                    address(collateral[i]),
                     address(main)
                 )
             );

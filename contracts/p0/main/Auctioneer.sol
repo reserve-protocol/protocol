@@ -80,15 +80,19 @@ contract AuctioneerP0 is
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
         Fix held = basketsHeld();
+        Fix needed = rToken().basketsNeeded();
+        Fix rTokSupply = toFixWithShift(rToken().totalSupply(), -int8(rToken().decimals()));
 
-        // First mint RToken
-        if (held.gt(basketsNeeded)) {
-            // {rTok} = {BU} / {BU/rTok}
-            Fix rTok = held.minus(basketsNeeded).div(basketsPerRTok());
-            rToken().mint(address(this), rTok.shiftLeft(int8(rToken().decimals())).floor());
+        // Mint revenue RToken
+
+        if (held.gt(needed)) {
+            // {rTok} = ({BU} - {BU}) * {rTok} / {BU}
+            Fix rTok = held.minus(needed).mul(rTokSupply).div(needed);
+            uint256 qRTok = rTok.shiftLeft(int8(rToken().decimals())).floor();
+            rToken().mint(address(this), qRTok);
         }
 
-        // Handout excess assets, including RToken
+        // Handout excess assets, including any RToken that was just minted
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
             uint256 bal = a.erc20().balanceOf(address(this));
@@ -96,16 +100,24 @@ contract AuctioneerP0 is
             if (a.isCollateral()) {
                 ICollateral c = ICollateral(_assets.at(i));
                 // {qTok} = {BU} * {qTok/BU}
-                excess -= basketsNeeded.mul(basket.quantity(c)).ceil();
+                excess -= needed.mul(basket.quantity(c)).ceil();
             }
 
             if (excess > 0) {
-                uint256 amtRSR = rsrCut().mulu(excess).round();
-                if (amtRSR > 0) {
-                    a.erc20().safeTransfer(address(rsrTrader), amtRSR);
+                Fix rsrSide = rsrCut(); // {none}
+                uint256 toRSR = rsrSide.mulu(excess).round();
+                uint256 toRToken = excess - toRSR;
+
+                // Prevent rounding from resulting in uneven distribution
+                if (rsrSide.lt(FIX_ONE) && rsrSide.gt(FIX_ZERO) && (toRSR == 0 || toRToken == 0)) {
+                    continue;
                 }
-                if (excess - amtRSR > 0) {
-                    a.erc20().safeTransfer(address(rTokenTrader), excess - amtRSR);
+
+                if (toRSR > 0) {
+                    a.erc20().safeTransfer(address(rsrTrader), toRSR);
+                }
+                if (toRToken > 0) {
+                    a.erc20().safeTransfer(address(rTokenTrader), toRToken);
                 }
             }
         }
@@ -170,14 +182,10 @@ contract AuctioneerP0 is
         return trade;
     }
 
-    /// Compromise on the BU target in order to become recapitalized again
+    /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
     function giveRTokenHoldersAHaircut() private returns (bool) {
         assert(!hasOpenAuctions() && !fullyCapitalized());
-
-        Fix held = basketsHeld();
-        emit BasketsNeededSet(basketsNeeded, held);
-        basketsNeeded = held;
-
+        rToken().setBasketsNeeded(basketsHeld());
         assert(fullyCapitalized());
         return true;
     }
@@ -199,6 +207,7 @@ contract AuctioneerP0 is
             Fix
         )
     {
+        Fix basketsNeeded = rToken().basketsNeeded(); // {BU}
         Fix[] memory prices = new Fix[](_assets.length()); // {UoA/tok}
         Fix[] memory surpluses = new Fix[](_assets.length()); // {UoA}
         Fix[] memory deficits = new Fix[](_assets.length()); // {UoA}
@@ -216,13 +225,13 @@ contract AuctioneerP0 is
             // held: {qTok} that Main is already holding
             uint256 held = a.erc20().balanceOf(address(this));
 
-            if (needed > held) {
+            if (held > needed) {
                 // {tok} = {qTok} * {tok/qTok}
-                Fix surplusTok = toFixWithShift(needed - held, -int8(a.erc20().decimals()));
+                Fix surplusTok = toFixWithShift(held - needed, -int8(a.erc20().decimals()));
                 surpluses[i] = surplusTok.mul(prices[i]);
-            } else if (needed < held) {
+            } else if (held < needed) {
                 // {tok} = {qTok} * {tok/qTok}
-                Fix deficitTok = toFixWithShift(held - needed, -int8(a.erc20().decimals()));
+                Fix deficitTok = toFixWithShift(needed - held, -int8(a.erc20().decimals()));
                 deficits[i] = deficitTok.mul(prices[i]);
             }
         }

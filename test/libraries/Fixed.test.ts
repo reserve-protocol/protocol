@@ -953,6 +953,26 @@ describe('In FixLib,', async () => {
     })
   })
 
+  describe('increment', async () => {
+    it('increments the whole numbers', async () => {
+      const table = [0, 864, 1e15]
+      for (let a of table) {
+        expect(await caller.increment(fp(a)), `increment(${a})`).to.equal(fp(a).add(1))
+      }
+    })
+
+    it('increments the negative numbers', async () => {
+      const table = [-1, -864, -1e15]
+      for (let a of table) {
+        expect(await caller.increment(fp(a)), `increment(${a})`).to.equal(fp(a).add(1))
+      }
+    })
+
+    it('fails at max', async () => {
+      await expect(caller.increment(MAX_INT192), `increment(${MAX_INT192})`).to.be.reverted
+    })
+  })
+
   describe('lt', async () => {
     it('correctly evaluates <', async () => {
       int192s.forEach(async (a) =>

@@ -112,11 +112,10 @@ describe('ExplorerFacadeP0 contract', () => {
       )
 
       // Check token addresses
-      expect(tokens[0]).to.equal(rToken.address)
-      expect(tokens[1]).to.equal(rsr.address)
-      expect(tokens[2]).to.equal(compToken.address)
-      expect(tokens[3]).to.equal(aaveToken.address)
-      expect(tokens.slice(4)).to.eql(backingERC20Addrs)
+      expect(tokens[0]).to.equal(token.address)
+      expect(tokens[1]).to.equal(usdc.address)
+      expect(tokens[2]).to.equal(aToken.address)
+      expect(tokens[3]).to.equal(cToken.address)
 
       // Check quantities
       // TODO

@@ -213,7 +213,7 @@ describe('MainP0 contract', () => {
     it('Should register Basket correctly', async () => {
       // Basket
       expect(await main.fullyCapitalized()).to.equal(true)
-      expect((await main.backingTokens()).length).to.equal(4)
+      expect((await main.basketCollateral()).length).to.equal(4)
     })
   })
 
@@ -540,11 +540,11 @@ describe('MainP0 contract', () => {
     })
 
     it('Should return backing tokens', async () => {
-      expect(await main.backingTokens()).to.eql([
-        await collateral0.erc20(),
-        await collateral1.erc20(),
-        await collateral2.erc20(),
-        await collateral3.erc20(),
+      expect(await main.basketCollateral()).to.eql([
+        collateral0.address,
+        collateral1.address,
+        collateral2.address,
+        collateral3.address,
       ])
     })
 

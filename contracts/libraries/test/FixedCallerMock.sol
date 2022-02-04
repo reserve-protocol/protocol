@@ -114,6 +114,10 @@ contract FixedCallerMock {
         return FixLib.powu(x, y);
     }
 
+    function increment(Fix x) public pure returns (Fix) {
+        return FixLib.increment(x);
+    }
+
     function lt(Fix x, Fix y) public pure returns (bool) {
         return FixLib.lt(x, y);
     }

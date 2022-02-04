@@ -33,8 +33,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         uint256 start = rTokenAsset().erc20().balanceOf(account);
         connect(account);
         issue(amount);
-        issuances[issuances.length - 1].blockAvailableAt = toFix(block.number);
-        processSlowIssuance();
+        RTokenExtension(address(rToken())).forceSlowIssuanceToComplete();
         require(rTokenAsset().erc20().balanceOf(account) - start == amount, "issue failure");
     }
 
@@ -63,12 +62,10 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     function assertInvariants() external view override {
         assert(INVARIANT_stateDefined());
         assert(INVARIANT_configurationValid());
-        assert(INVARIANTdistributionValid());
+        assert(INVARIANT_distributionValid());
         assert(INVARIANT_fullyCapitalized());
         assert(INVARIANT_nextRewardsInFutureOrNow());
         assert(INVARIANT_pricesDefined());
-        assert(INVARIANT_issuancesAreValid());
-        assert(INVARIANT_basketsPerRTokDefined());
     }
 
     function INVARIANT_stateDefined() internal view returns (bool ok) {
@@ -101,7 +98,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         }
     }
 
-    function INVARIANTdistributionValid() internal view returns (bool somethingIsPositive) {
+    function INVARIANT_distributionValid() internal view returns (bool somethingIsPositive) {
         for (uint256 i = 0; i < destinations.length(); i++) {
             Fix rsrDist = distribution[destinations.at(i)].rsrDist;
             Fix rTokenDist = distribution[destinations.at(i)].rTokenDist;
@@ -143,42 +140,4 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
             console.log("INVARIANT_pricesDefined violated");
         }
     }
-
-    function INVARIANT_issuancesAreValid() internal view returns (bool ok) {
-        ok = true;
-        for (uint256 i = 0; i < issuances.length; i++) {
-            if (issuances[i].processed && issuances[i].blockAvailableAt.lt(toFix(block.number))) {
-                ok = false;
-            }
-        }
-        if (!ok) {
-            console.log("INVARIANT_issuancesAreValid violated");
-        }
-    }
-
-    // Ex-asset manager
-
-    function INVARIANT_basketsPerRTokDefined() internal view returns (bool ok) {
-        Fix b = basketsPerRTok();
-        ok = b.gt(FIX_ZERO);
-        if (!ok) {
-            console.log("INVARIANT_basketsPerRTokDefined violated");
-        }
-    }
-
-    // TODO: Farm the work out to TraderExtensions
-    // function INVARIANT_auctionsValid() internal view returns (bool ok) {
-    //     bool foundOpen = false;
-    //     for (uint256 i = 0; i < auctions.length; i++) {
-    //         if (auctions[i].status == AuctionStatus.OPEN) {
-    //             foundOpen = true;
-    //         } else if (
-    //             foundOpen ||
-    //             (auctions[i].status == AuctionStatus.DONE && auctions[i].endTime < block.timestamp)
-    //         ) {
-    //             return false;
-    //         }
-    //     }
-    //     return true;
-    // }
 }

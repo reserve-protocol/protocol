@@ -2,8 +2,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { AuctionStatus, FURNACE_DEST, STRSR_DEST, BN_SCALE_FACTOR } from '../../common/constants'
-import { bn, fp, divCeil } from '../../common/numbers'
+
+import { AuctionStatus, BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST } from '../../common/constants'
+import { bn, divCeil, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AaveOracle } from '../../typechain/AaveOracle'
 import { AssetP0 } from '../../typechain/AssetP0'
@@ -19,8 +20,8 @@ import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { MarketMock } from '../../typechain/MarketMock'
 import { RevenueTraderP0 } from '../../typechain/RevenueTraderP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
 import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
+import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { TraderP0 } from '../../typechain/TraderP0'
@@ -81,7 +82,7 @@ describe('MainP0 contract', () => {
   let collateral1: CollateralP0
   let collateral2: ATokenCollateralP0
   let collateral3: CTokenCollateralP0
-  let basketTargetAmts: BigNumber[]
+  let basketsNeededAmts: BigNumber[]
 
   // Config values
   let config: IConfig
@@ -159,7 +160,7 @@ describe('MainP0 contract', () => {
       erc20s,
       collateral,
       basket,
-      basketTargetAmts,
+      basketsNeededAmts,
       config,
       deployer,
       dist,
