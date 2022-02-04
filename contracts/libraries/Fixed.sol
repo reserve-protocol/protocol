@@ -325,8 +325,9 @@ library FixLib {
         }
     }
 
-    function sqrt(Fix x) internal pure returns (Fix result) {
-        // TODO
+    /// Increment by 1 part in FIX_SCALE
+    function increment(Fix x) internal pure returns (Fix result) {
+        return _safe_wrap(int256(Fix.unwrap(x)) + 1);
     }
 
     /// Comparison operators...
