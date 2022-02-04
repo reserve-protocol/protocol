@@ -620,7 +620,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
     })
 
-    it('Should rollback mintings if Basket changes (2 blocks)', async function () {
+    it.only('Should rollback mintings if Basket changes (2 blocks)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
       // Provide approvals
@@ -669,10 +669,7 @@ describe('MainP0 contract', () => {
       await main.poke()
 
       // Update basket to trigger rollbacks (using same one to keep fullyCapitalized = true)
-      await main.connect(owner).setPrimeBasket(
-        basket.map((b) => b.address),
-        basketsNeededAmts
-      )
+      await main.connect(owner).setPrimeBasket([collateral0.address], [fp('1')])
       await main.connect(owner).switchBasket()
 
       // Process slow issuances
