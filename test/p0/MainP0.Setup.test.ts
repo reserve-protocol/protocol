@@ -6,11 +6,10 @@ import { ethers, waffle } from 'hardhat'
 import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { AaveOracle } from '../../typechain/AaveOracle'
 import { AssetP0 } from '../../typechain/AssetP0'
 import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
 import { CollateralP0 } from '../../typechain/CollateralP0'
-import { CompoundOracle } from '../../typechain/CompoundOracle'
+import { CompoundAssetP0 } from '../../typechain/CompoundAssetP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
 import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
@@ -48,11 +47,9 @@ describe('MainP0 contract', () => {
   let compToken: ERC20Mock
   let compAsset: AssetP0
   let compoundMock: ComptrollerMockP0
-  let compoundOracle: CompoundOracle
   let aaveToken: ERC20Mock
   let aaveAsset: AssetP0
   let aaveMock: AaveLendingPoolMockP0
-  let aaveOracle: AaveOracle
 
   // Trading
   let market: MarketMock
@@ -101,8 +98,6 @@ describe('MainP0 contract', () => {
       aaveToken,
       compAsset,
       aaveAsset,
-      compoundOracle,
-      aaveOracle,
       compoundMock,
       aaveMock,
       erc20s,
@@ -205,15 +200,21 @@ describe('MainP0 contract', () => {
       const allAssets = await main.allAssets()
       expect(allAssets[0]).to.equal(rTokenAsset.address)
       expect(allAssets[1]).to.equal(rsrAsset.address)
-      expect(allAssets[2]).to.equal(compAsset.address)
-      expect(allAssets[3]).to.equal(aaveAsset.address)
+      expect(allAssets[2]).to.equal(aaveAsset.address)
+      expect(allAssets[3]).to.equal(compAsset.address)
       expect(allAssets.slice(4)).to.eql(collateral.map((c) => c.address))
     })
 
     it('Should register Basket correctly', async () => {
       // Basket
       expect(await main.fullyCapitalized()).to.equal(true)
-      expect((await main.basketCollateral()).length).to.equal(4)
+      const backing = await main.basketCollateral()
+      expect(backing[0]).to.equal(collateral0.address)
+      expect(backing[1]).to.equal(collateral1.address)
+      expect(backing[2]).to.equal(collateral2.address)
+      expect(backing[3]).to.equal(collateral3.address)
+
+      expect(backing.length).to.equal(4)
     })
   })
 
@@ -604,10 +605,10 @@ describe('MainP0 contract', () => {
   describe('Asset Registry', () => {
     it('Should allow to add Asset if Owner', async () => {
       // Setup new Asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('AssetP0')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundAssetP0')
 
-      const newAsset: AssetP0 = <AssetP0>(
-        await AssetFactory.deploy(token0.address, main.address, aaveOracle.address)
+      const newAsset: CompoundAssetP0 = <CompoundAssetP0>(
+        await AssetFactory.deploy(token0.address, compoundMock.address)
       )
 
       // Get previous length for assets

@@ -4,8 +4,6 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/p0/interfaces/IOracle.sol";
-import "contracts/libraries/Fixed.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IFurnace.sol";
 import "contracts/p0/interfaces/IMain.sol";
@@ -14,6 +12,7 @@ import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/main/AssetRegistry.sol";
 import "contracts/p0/main/Mixin.sol";
+import "contracts/libraries/Fixed.sol";
 
 /// Settings mixin for Main
 // solhint-disable max-states-count

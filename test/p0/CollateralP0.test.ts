@@ -2,12 +2,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+
 import { CollateralStatus, MAX_UINT256 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
-import { AaveOracle } from '../../typechain/AaveOracle'
 import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
 import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
-import { CompoundOracle } from '../../typechain/CompoundOracle'
 import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
 import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
@@ -41,9 +40,7 @@ describe('CollateralP0 contracts', () => {
 
   // Oracles
   let compoundMock: ComptrollerMockP0
-  let compoundOracle: CompoundOracle
   let compoundOracleInternal: CompoundOracleMockP0
-  let aaveOracle: AaveOracle
   let aaveOracleInternal: AaveOracleMockP0
 
   // Main
@@ -67,10 +64,8 @@ describe('CollateralP0 contracts', () => {
       compToken,
       compoundMock,
       compoundOracleInternal,
-      compoundOracle,
       aaveToken,
       aaveOracleInternal,
-      aaveOracle,
       basket,
       main,
     } = await loadFixture(defaultFixture))
@@ -92,7 +87,6 @@ describe('CollateralP0 contracts', () => {
     it('Deployment should setup collateral correctly', async () => {
       // Fiat Token Asset
       expect(await tokenAsset.main()).to.equal(main.address)
-      expect(await tokenAsset.oracle()).to.equal(aaveOracle.address)
       expect(await tokenAsset.isCollateral()).to.equal(true)
       expect(await tokenAsset.erc20()).to.equal(token.address)
       expect(await token.decimals()).to.equal(18)
@@ -103,7 +97,6 @@ describe('CollateralP0 contracts', () => {
 
       // USDC Fiat Token
       expect(await usdcAsset.main()).to.equal(main.address)
-      expect(await usdcAsset.oracle()).to.equal(aaveOracle.address)
       expect(await usdcAsset.isCollateral()).to.equal(true)
       expect(await usdcAsset.erc20()).to.equal(usdc.address)
       expect(await usdc.decimals()).to.equal(6)
@@ -114,7 +107,6 @@ describe('CollateralP0 contracts', () => {
 
       // AToken
       expect(await aTokenAsset.main()).to.equal(main.address)
-      expect(await aTokenAsset.oracle()).to.equal(aaveOracle.address)
       expect(await aTokenAsset.isCollateral()).to.equal(true)
       expect(await aTokenAsset.erc20()).to.equal(aToken.address)
       expect(await aToken.decimals()).to.equal(18)
@@ -126,7 +118,6 @@ describe('CollateralP0 contracts', () => {
 
       // CToken
       expect(await cTokenAsset.main()).to.equal(main.address)
-      expect(await cTokenAsset.oracle()).to.equal(compoundOracle.address)
       expect(await cTokenAsset.isCollateral()).to.equal(true)
       expect(await cTokenAsset.erc20()).to.equal(cToken.address)
       expect(await cToken.decimals()).to.equal(8)

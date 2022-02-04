@@ -37,45 +37,13 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         _transferOwnership(owner_);
     }
 
-    // Process slow issuances:
-    // - undoes any issuances that was started before the basket was last set
-    // - enacts any other issuances that are fully vested, sending deposits back to Main
-    function poke() public override {
-        Fix currentBlock = toFix(block.number);
-        bool backingIsSound = main.worstCollateralStatus() == CollateralStatus.SOUND;
-
-        for (uint256 i = 0; i < issuances.length; i++) {
-            SlowIssuance storage iss = issuances[i];
-            if (iss.processed) continue;
-
-            if (!backingIsSound || iss.blockStartedAt <= main.blockBasketLastChanged()) {
-                // Rollback issuance i
-
-                for (uint256 j = 0; j < iss.erc20s.length; j++) {
-                    IERC20(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
-                }
-
-                iss.processed = true;
-                emit IssuanceCanceled(i);
-            } else if (iss.blockAvailableAt.lte(currentBlock)) {
-                // Process issuance i
-
-                for (uint256 j = 0; j < iss.erc20s.length; j++) {
-                    IERC20(iss.erc20s[j]).safeTransfer(address(main), iss.deposits[j]);
-                }
-
-                emit BasketsNeededChanged(basketsNeeded, basketsNeeded.plus(iss.baskets));
-                basketsNeeded = basketsNeeded.plus(iss.baskets);
-                _mint(iss.issuer, iss.amount);
-                iss.processed = true;
-                emit IssuanceCompleted(i);
-            }
-        }
-    }
-
     modifier onlyMain() {
         require(_msgSender() == address(main), "only main");
         _;
+    }
+
+    function poke() public override onlyMain {
+        processSlowIssuance();
     }
 
     /// Begins the SlowIssuance accounting process, keeping a roughly constant basket rate
@@ -160,6 +128,42 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     }
 
     // ==== Private ====
+
+    // Process slow issuances:
+    // - undoes any issuances that was started before the basket was last set
+    // - enacts any other issuances that are fully vested, sending deposits back to Main
+    function processSlowIssuance() private {
+        Fix currentBlock = toFix(block.number);
+        bool backingIsSound = main.worstCollateralStatus() == CollateralStatus.SOUND;
+
+        for (uint256 i = 0; i < issuances.length; i++) {
+            SlowIssuance storage iss = issuances[i];
+            if (iss.processed) continue;
+
+            if (!backingIsSound || iss.blockStartedAt <= main.blockBasketLastChanged()) {
+                // Rollback issuance i
+
+                for (uint256 j = 0; j < iss.erc20s.length; j++) {
+                    IERC20(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
+                }
+
+                iss.processed = true;
+                emit IssuanceCanceled(i);
+            } else if (iss.blockAvailableAt.lte(currentBlock)) {
+                // Process issuance i
+
+                for (uint256 j = 0; j < iss.erc20s.length; j++) {
+                    IERC20(iss.erc20s[j]).safeTransfer(address(main), iss.deposits[j]);
+                }
+
+                emit BasketsNeededChanged(basketsNeeded, basketsNeeded.plus(iss.baskets));
+                basketsNeeded = basketsNeeded.plus(iss.baskets);
+                _mint(iss.issuer, iss.amount);
+                iss.processed = true;
+                emit IssuanceCompleted(i);
+            }
+        }
+    }
 
     // Returns the future block number at which an issuance for *amount* now can complete
     function nextIssuanceBlockAvailable(uint256 amount) private view returns (Fix) {

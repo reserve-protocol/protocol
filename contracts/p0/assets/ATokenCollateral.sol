@@ -3,12 +3,14 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import "contracts/p0/assets/abstract/AaveOracleMixin.sol";
+import "contracts/p0/assets/abstract/Collateral.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/Collateral.sol";
 
-// Interfaces to contracts from: https://git.io/JX7iJ
+// ==== External ====
+
+// External interfaces from: https://git.io/JX7iJ
 interface IStaticAToken is IERC20Metadata {
     function claimRewardsToSelf(bool forceUpdate) external;
 
@@ -26,9 +28,9 @@ interface AToken {
     function UNDERLYING_ASSET_ADDRESS() external view returns (address);
 }
 
-/// @dev In Aave the number of decimals of the staticAToken is always 18, but the
-/// underlying rebasing AToken will have the same number of decimals as its fiatcoin.
-contract ATokenCollateralP0 is CollateralP0 {
+// ==== End External ====
+
+contract ATokenCollateralP0 is AaveOracleMixinP0, CollateralP0 {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
@@ -38,13 +40,22 @@ contract ATokenCollateralP0 is CollateralP0 {
         IERC20Metadata erc20_,
         IERC20Metadata referenceERC20_,
         IMain main_,
-        IOracle oracle_,
-        bytes32 targetName_
-    ) CollateralP0(erc20_, referenceERC20_, main_, oracle_, targetName_) {
+        IComptroller comptroller_,
+        IAaveLendingPool aaveLendingPool_
+    )
+        CollateralP0(erc20_, referenceERC20_, main_, bytes32(bytes("USD")))
+        AaveOracleMixinP0(comptroller_, aaveLendingPool_)
+    {
         prevReferencePrice = refPerTok();
     }
 
-    /// Update default status
+    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
+    function price() public view virtual override returns (Fix) {
+        // {UoA/tok} = {UoA/ref} * {ref/tok}
+        return consultOracle(referenceERC20).mul(refPerTok());
+    }
+
+    /// Default checks
     function forceUpdates() public virtual override {
         if (whenDefault <= block.timestamp) {
             return;
@@ -70,10 +81,7 @@ contract ATokenCollateralP0 is CollateralP0 {
 
     /// @dev Intended to be used via delegatecall
     function claimAndSweepRewards(ICollateral collateral, IMain main_) external virtual override {
-        // TODO: We need to ensure that calling this function directly,
-        // without delegatecall, does not allow anyone to extract value.
-        // This should already be the case because the Collateral
-        // contract itself should never earn rewards.
+        // Invariant: This function does not perform reads from current context storage
 
         IStaticAToken aToken = IStaticAToken(address(collateral.erc20()));
         uint256 amount = aToken.getClaimableRewards(address(this));
@@ -87,5 +95,13 @@ contract ATokenCollateralP0 is CollateralP0 {
     function refPerTok() public view override returns (Fix) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray ref/tok}
         return toFixWithShift(rateInRAYs, -27);
+    }
+
+    function isReferenceDepegged() private view returns (bool) {
+        // {UoA/ref} = {UoA/target} * {target/ref}
+        Fix peg = pricePerTarget().mul(targetPerRef());
+        Fix delta = peg.mul(main.defaultThreshold());
+        Fix p = consultOracle(referenceERC20);
+        return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }
 }

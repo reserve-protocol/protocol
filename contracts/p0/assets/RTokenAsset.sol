@@ -2,26 +2,18 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/p0/interfaces/IAsset.sol";
+import "contracts/p0/assets/abstract/Asset.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IOracle.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/p0/Asset.sol";
 
 contract RTokenAssetP0 is AssetP0 {
-    using FixLib for Fix;
+    IMain public immutable main;
 
-    // solhint-disable no-empty-blocks
-    constructor(
-        IERC20Metadata erc20_,
-        IMain main_,
-        IOracle oracle_
-    ) AssetP0(erc20_, main_, oracle_) {}
-
-    // solhint-enable no-empty-blocks
+    constructor(IERC20Metadata erc20_, IMain main_) AssetP0(erc20_) {
+        main = main_;
+    }
 
     /// @return {UoA/rTok}
-    function price() public view override returns (Fix) {
+    function price() public view virtual override returns (Fix) {
         return main.rTokenPrice();
     }
 }

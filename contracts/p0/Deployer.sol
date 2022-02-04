@@ -3,21 +3,24 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./assets/RTokenAsset.sol";
-import "../libraries/CommonErrors.sol";
-import "./interfaces/IAsset.sol";
-import "./interfaces/IDeployer.sol";
-import "./interfaces/IFurnace.sol";
-import "./interfaces/IMain.sol";
-import "./interfaces/IMarket.sol";
-import "./interfaces/IOracle.sol";
-import "./assets/RTokenAsset.sol";
+import "contracts/p0/assets/AaveAsset.sol";
+import "contracts/p0/assets/CompoundAsset.sol";
+import "contracts/p0/assets/RTokenAsset.sol";
+import "contracts/p0/assets/abstract/AaveOracleMixin.sol";
+import "contracts/p0/assets/abstract/CompoundOracleMixin.sol";
+import "contracts/p0/interfaces/IAsset.sol";
+import "contracts/p0/interfaces/IDeployer.sol";
+import "contracts/p0/interfaces/IFurnace.sol";
+import "contracts/p0/interfaces/IMain.sol";
+import "contracts/p0/interfaces/IMarket.sol";
+import "contracts/p0/assets/RTokenAsset.sol";
+import "contracts/p0/ExplorerFacade.sol";
+import "contracts/p0/Furnace.sol";
+import "contracts/p0/Main.sol";
+import "contracts/p0/RToken.sol";
+import "contracts/p0/StRSR.sol";
 import "contracts/IExplorerFacade.sol";
-import "./ExplorerFacade.sol";
-import "./Furnace.sol";
-import "./Main.sol";
-import "./RToken.sol";
-import "./StRSR.sol";
+import "contracts/libraries/CommonErrors.sol";
 
 /**
  * @title DeployerP0
@@ -28,24 +31,24 @@ contract DeployerP0 is IDeployer {
     IERC20Metadata public comp;
     IERC20Metadata public aave;
     IMarket public market;
-    IOracle public compoundOracle;
-    IOracle public aaveOracle;
     IMain[] public deployments;
+    IComptroller public comptroller;
+    IAaveLendingPool public aaveLendingPool;
 
     constructor(
         IERC20Metadata rsr_,
         IERC20Metadata comp_,
         IERC20Metadata aave_,
         IMarket market_,
-        IOracle compoundOracle_,
-        IOracle aaveOracle_
+        IComptroller comptroller_,
+        IAaveLendingPool aaveLendingPool_
     ) {
         rsr = rsr_;
         comp = comp_;
         aave = aave_;
         market = market_;
-        compoundOracle = compoundOracle_;
-        aaveOracle = aaveOracle_;
+        comptroller = comptroller_;
+        aaveLendingPool = aaveLendingPool_;
     }
 
     /// Deploys an instance of the entire system
@@ -74,18 +77,18 @@ contract DeployerP0 is IDeployer {
 
             ctorArgs = ConstructorArgs(config, dist, revenueFurnace, market);
 
-            RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main, aaveOracle);
+            RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main);
             main.setRTokenAsset(rTokenAsset);
         }
 
         {
-            AssetP0 rsrAsset = new AssetP0(rsr, main, aaveOracle);
-            AssetP0 compAsset = new AssetP0(comp, main, compoundOracle);
-            AssetP0 aaveAsset = new AssetP0(aave, main, aaveOracle);
+            AssetP0 rsrAsset = new AaveAssetP0(rsr, comptroller, aaveLendingPool);
+            AssetP0 aaveAsset = new AaveAssetP0(aave, comptroller, aaveLendingPool);
+            AssetP0 compAsset = new CompoundAssetP0(comp, comptroller);
 
             main.setRSRAsset(rsrAsset);
-            main.setCOMPAsset(compAsset);
             main.setAAVEAsset(aaveAsset);
+            main.setCOMPAsset(compAsset);
         }
 
         {

@@ -26,10 +26,10 @@ import "./BasketHandler.sol";
 contract AuctioneerP0 is
     Pausable,
     Mixin,
-    TraderP0,
     AssetRegistryP0,
     SettingsHandlerP0,
     BasketHandlerP0,
+    TraderP0,
     IAuctioneer
 {
     using BasketLib for Basket;
@@ -51,7 +51,7 @@ contract AuctioneerP0 is
         rTokenTrader = new RevenueTraderP0(address(this), rTokenAsset());
     }
 
-    function poke() public virtual override(Mixin, TraderP0, BasketHandlerP0) notPaused {
+    function poke() public virtual override(Mixin, BasketHandlerP0) notPaused {
         super.poke();
         closeDueAuctions();
 

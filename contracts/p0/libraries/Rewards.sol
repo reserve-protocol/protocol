@@ -4,8 +4,8 @@ pragma solidity 0.8.9;
 import "contracts/p0/interfaces/IMain.sol";
 
 library RewardsLib {
-    /// @dev DANGER: delegatecall
-    function claimAndSweepRewards(address mainAddr) internal {
+    /// @dev DANGER: delegatecall usage
+    function claimAndSweepRewardsAllCollateral(address mainAddr) internal {
         IMain main = IMain(mainAddr);
         ICollateral[] memory collateral = main.basketCollateral();
         for (uint256 i = 0; i < collateral.length; i++) {

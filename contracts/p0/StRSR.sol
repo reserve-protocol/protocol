@@ -40,7 +40,6 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         keccak256(
             "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
         );
-    // NOTE: _PERMIT_TYPEHASH is subtly atypical due to the naming conflict with "owner"
 
     // ====
 

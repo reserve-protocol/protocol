@@ -3,12 +3,13 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import "contracts/p0/assets/abstract/CompoundOracleMixin.sol";
+import "contracts/p0/assets/abstract/Collateral.sol";
+import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/Collateral.sol";
 
-// cToken initial exchange rate is 0.02
+// ==== External ====
 
 // https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 interface ICToken {
@@ -20,33 +21,45 @@ interface ICToken {
     function exchangeRateStored() external view returns (uint256);
 }
 
-contract CTokenCollateralP0 is CollateralP0 {
+// ==== End External ====
+
+contract CTokenCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
+
+    // cToken initial exchange rate is 0.02
+    Fix public constant COMPOUND_BASE = Fix.wrap(2e16);
+
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
-    Fix public constant COMPOUND_BASE = Fix.wrap(2e16); // 0.02
-
-    Fix public prevReferencePrice; // {ref/tok} previous rate {collateral/reference}
+    Fix public prevReferencePrice; // previous rate, {collateral/reference}
 
     constructor(
         IERC20Metadata erc20_,
         IERC20Metadata referenceERC20_,
         IMain main_,
-        IOracle oracle_,
-        bytes32 targetName_
-    ) CollateralP0(erc20_, referenceERC20_, main_, oracle_, targetName_) {
+        IComptroller comptroller_
+    )
+        CollateralP0(erc20_, referenceERC20_, main_, bytes32(bytes("USD")))
+        CompoundOracleMixinP0(comptroller_)
+    {
         prevReferencePrice = refPerTok();
     }
 
-    /// Update the Compound protocol + default status
+    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
+    function price() public view virtual override returns (Fix) {
+        // {UoA/tok} = {UoA/ref} * {ref/tok}
+        return consultOracle(referenceERC20).mul(refPerTok());
+    }
+
+    /// Default checks
     function forceUpdates() public virtual override {
         if (whenDefault <= block.timestamp) {
             return;
         }
         uint256 cached = whenDefault;
 
-        // Update Compound
+        // Update the Compound Protocol
         ICToken(address(erc20)).exchangeRateCurrent();
 
         // Check invariants
@@ -68,14 +81,9 @@ contract CTokenCollateralP0 is CollateralP0 {
 
     /// @dev Intended to be used via delegatecall
     function claimAndSweepRewards(ICollateral collateral, IMain main_) external virtual override {
-        // TODO: We need to ensure that calling this function directly,
-        // without delegatecall, does not allow anyone to extract value.
-        // This should already be the case because the Collateral
-        // contract itself should never earn rewards.
+        // Invariant: This function does not perform reads from current context storage
 
-        // compound groups all rewards automatically
-        // we still need to use `collateral` to avoid storage reads in the delegateCall
-        collateral.oracle().comptroller().claimComp(address(this));
+        CTokenCollateralP0(address(collateral)).comptroller().claimComp(address(this));
         uint256 amount = main_.compAsset().erc20().balanceOf(address(this));
         if (amount > 0) {
             main_.compAsset().erc20().safeTransfer(address(main_), amount);
@@ -88,5 +96,13 @@ contract CTokenCollateralP0 is CollateralP0 {
         int8 shiftLeft = 8 - int8(referenceERC20.decimals()) - 18;
         Fix rateNow = toFixWithShift(rate, shiftLeft);
         return rateNow.div(COMPOUND_BASE);
+    }
+
+    function isReferenceDepegged() private view returns (bool) {
+        // {UoA/ref} = {UoA/target} * {target/ref}
+        Fix peg = pricePerTarget().mul(targetPerRef());
+        Fix delta = peg.mul(main.defaultThreshold());
+        Fix p = consultOracle(referenceERC20);
+        return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }
 }
