@@ -193,13 +193,6 @@ describe('MainP0 contract', () => {
       expect(await rToken.totalSupply()).to.equal(bn('0'))
     })
 
-    it('Should return maxIssuable correctly with no issued tokens', async () => {
-      // Check values
-      expect(await main.maxIssuable(addr1.address)).to.equal(bn('4000000e18'))
-      expect(await main.maxIssuable(addr2.address)).to.equal(bn('4000000e18'))
-      expect(await main.maxIssuable(other.address)).to.equal(0)
-    })
-
     it('Should issue RTokens with single basket token', async function () {
       const issueAmount: BigNumber = bn('1000e18')
 
@@ -341,6 +334,32 @@ describe('MainP0 contract', () => {
       expect(sm_minter).to.equal(addr2.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
+    })
+
+    it('Should return maxIssuable correctly', async () => {
+      const issueAmount: BigNumber = bn('1000000e18')
+
+      // Check values, with no issued tokens
+      expect(await main.maxIssuable(addr1.address)).to.equal(bn('4000000e18'))
+      expect(await main.maxIssuable(addr2.address)).to.equal(bn('4000000e18'))
+      expect(await main.maxIssuable(other.address)).to.equal(0)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(main.address, initialBal)
+      await token1.connect(addr1).approve(main.address, initialBal)
+      await token2.connect(addr1).approve(main.address, initialBal)
+      await token3.connect(addr1).approve(main.address, initialBal)
+
+      // Issue rTokens
+      await main.connect(addr1).issue(issueAmount)
+
+      // Process slow issuances
+      await main.poke()
+
+      // Check values, with issued tokens
+      expect(await main.maxIssuable(addr1.address)).to.equal(bn('3000000e18'))
+      expect(await main.maxIssuable(addr2.address)).to.equal(bn('4000000e18'))
+      expect(await main.maxIssuable(other.address)).to.equal(0)
     })
 
     it('Should process issuances in multiple attempts (using minimum issuance)', async function () {
