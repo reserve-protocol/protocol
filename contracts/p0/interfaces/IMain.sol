@@ -10,6 +10,7 @@ import "./IFurnace.sol";
 import "./IMarket.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
+import "./ITrader.sol";
 
 /// Configuration of the system
 struct Config {
@@ -141,39 +142,22 @@ interface IRevenueDistributor {
 }
 
 interface ISettingsHandler {
-    /// Emitted when RewardStart is set
     event RewardStartSet(uint256 indexed oldVal, uint256 indexed newVal);
-    /// Emitted when RewardPeriod is set
     event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
-    /// Emitted when AuctionPeriod is set
     event AuctionPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
-    /// Emitted when StRSRWithdrawalDelay is set
     event StRSRWithdrawalDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
-    /// Emitted when DefaultDelay is set
     event DefaultDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
-    /// Emitted when MaxTradeSlippage is set
     event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
-    /// Emitted when MaxAuctionSize is set
     event MaxAuctionSizeSet(Fix indexed oldVal, Fix indexed newVal);
-    /// Emitted when MinAuctionSize is set
     event MinAuctionSizeSet(Fix indexed oldVal, Fix indexed newVal);
-    /// Emitted when IssuanceRate is set
     event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
-    /// Emitted when DefaultThreshold is set
     event DefaultThresholdSet(Fix indexed oldVal, Fix indexed newVal);
-    /// Emitted when StRSR is set
     event StRSRSet(IStRSR indexed oldVal, IStRSR indexed newVal);
-    /// Emitted when RevenueFurnace is set
     event RevenueFurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
-    /// Emitted when RTokenAsset is set
     event RTokenAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
-    /// Emitted when RSRAsset is set
     event RSRAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
-    /// Emitted when COMPAsset is set
     event COMPAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
-    /// Emitted when AAVEAsset is set
     event AAVEAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
-    /// Emitted when Market is set
     event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
 
     function setRewardStart(uint256 rewardStart) external;
@@ -288,7 +272,6 @@ interface IBasketHandler {
         ICollateral[] memory collateral
     ) external;
 
-    /// Actually switch the current basket, based on the configuration. Is onlyOwner.
     function switchBasket() external returns (bool);
 
     function fullyCapitalized() external view returns (bool);
@@ -301,36 +284,8 @@ interface IBasketHandler {
     function totalAssetValue() external view returns (Fix p);
 }
 
-interface IAuctioneerEvents {
-    /// Emitted when an auction is started
-    /// @param auctionId The index of the AssetManager.auctions array
-    /// @param sell The token to sell
-    /// @param buy The token to buy
-    /// @param sellAmount {qSellTok} The quantity of the selling token
-    /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
-    event AuctionStarted(
-        uint256 indexed auctionId,
-        address indexed sell,
-        address indexed buy,
-        uint256 sellAmount,
-        uint256 minBuyAmount
-    );
-
-    /// Emitted after an auction ends
-    /// @param auctionId The index of the AssetManager.auctions array
-    /// @param sellAmount {qSellTok} The quantity of the token sold
-    /// @param buyAmount {qBuyTok} The quantity of the token bought
-    event AuctionEnded(
-        uint256 indexed auctionId,
-        address indexed sell,
-        address indexed buy,
-        uint256 sellAmount,
-        uint256 buyAmount
-    );
-}
-
 // solhint-disable-next-line no-empty-blocks
-interface IAuctioneer {
+interface IAuctioneer is ITraderEvents {
 
 }
 
@@ -373,7 +328,6 @@ interface IRTokenIssuer {
  * @notice The central coordinator for the entire system, as well as the external interface.
  * @dev The p0-specific IMain
  */
-// solhint-disable-next-line no-empty-blocks
 interface IMain is
     IPausable,
     IMixin,

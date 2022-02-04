@@ -4,14 +4,12 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/libraries/Rewards.sol";
-import "contracts/p0/main/BasketHandler.sol";
 import "contracts/libraries/Fixed.sol";
 
-abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
+abstract contract TraderP0 is ITraderEvents {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
@@ -23,15 +21,6 @@ abstract contract TraderP0 is Ownable, Mixin, IAuctioneerEvents {
 
     function initTrader(address main_) public virtual {
         main = IMain(main_);
-    }
-
-    // solhint-disable no-empty-blocks
-
-    /// The driver of each concrete trader. Implementations should call closeDueAuctions(), decide
-    /// what to do with auctioned funds, and decide what auctions to run, though not necessarily in
-    /// that order.
-    function poke() public virtual override {
-        super.poke();
     }
 
     /// @return true iff this trader now has open auctions.

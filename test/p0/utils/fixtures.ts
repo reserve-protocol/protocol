@@ -4,12 +4,14 @@ import { ethers } from 'hardhat'
 
 import { expectInReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
+import { AaveAssetP0 } from '../../../typechain/AaveAssetP0'
 import { AaveLendingAddrProviderMockP0 } from '../../../typechain/AaveLendingAddrProviderMockP0'
 import { AaveLendingPoolMockP0 } from '../../../typechain/AaveLendingPoolMockP0'
 import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
 import { AssetP0 } from '../../../typechain/AssetP0'
 import { ATokenCollateralP0 } from '../../../typechain/ATokenCollateralP0'
 import { CollateralP0 } from '../../../typechain/CollateralP0'
+import { CompoundAssetP0 } from '../../../typechain/CompoundAssetP0'
 import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
 import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
 import { CTokenCollateralP0 } from '../../../typechain/CTokenCollateralP0'
@@ -357,9 +359,15 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Get Components
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
-  const rsrAsset: AssetP0 = <AssetP0>await ethers.getContractAt('AssetP0', await main.rsrAsset())
-  const compAsset: AssetP0 = <AssetP0>await ethers.getContractAt('AssetP0', await main.compAsset())
-  const aaveAsset: AssetP0 = <AssetP0>await ethers.getContractAt('AssetP0', await main.aaveAsset())
+  const rsrAsset: AssetP0 = <AssetP0>(
+    await ethers.getContractAt('AaveAssetP0', await main.rsrAsset())
+  )
+  const compAsset: AssetP0 = <AssetP0>(
+    await ethers.getContractAt('CompoundAssetP0', await main.compAsset())
+  )
+  const aaveAsset: AssetP0 = <AssetP0>(
+    await ethers.getContractAt('AaveAssetP0', await main.aaveAsset())
+  )
   const rToken: RTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', await main.rToken())
   const rTokenAsset: RTokenAssetP0 = <RTokenAssetP0>(
     await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
