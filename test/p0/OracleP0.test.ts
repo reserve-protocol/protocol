@@ -127,16 +127,16 @@ describe('OracleP0 contract', () => {
     })
 
     it('Should revert if price is zero', async () => {
+      const symbol: string = await token.symbol()
+
       // Set price of token to 0 in both oracles
       await aaveOracleInternal.setPrice(token.address, bn('0'))
-      await compoundOracleInternal.setPrice(await token.symbol(), bn('0'))
+      await compoundOracleInternal.setPrice(symbol, bn('0'))
 
       // Check price of token
-      await expect(aaveOracle.consult(token.address)).to.be.revertedWith(
-        `PriceIsZero("${await token.symbol()}")`
-      )
+      await expect(aaveOracle.consult(token.address)).to.be.revertedWith(`PriceIsZero("${symbol}")`)
       await expect(compoundOracle.consult(token.address)).to.be.revertedWith(
-        `PriceIsZero("${await token.symbol()}")`
+        `PriceIsZero("${symbol}")`
       )
     })
   })
