@@ -137,7 +137,7 @@ describe('MainP0 contract', () => {
     )
 
     // Mint initial balances
-    initialBal = bn('1000000e18')
+    initialBal = bn('1e36') //bn('1000000e18')
     await token0.connect(owner).mint(addr1.address, initialBal)
     await token1.connect(owner).mint(addr1.address, initialBal)
     await token2.connect(owner).mint(addr1.address, initialBal)
@@ -191,6 +191,13 @@ describe('MainP0 contract', () => {
         'ERC20: transfer amount exceeds balance'
       )
       expect(await rToken.totalSupply()).to.equal(bn('0'))
+    })
+
+    it('Should return maxIssuable correctly with no issued tokens', async () => {
+      // Check values
+      expect(await main.maxIssuable(addr1.address)).to.equal(bn('4000000e18'))
+      expect(await main.maxIssuable(addr2.address)).to.equal(bn('4000000e18'))
+      expect(await main.maxIssuable(other.address)).to.equal(0)
     })
 
     it('Should issue RTokens with single basket token', async function () {
@@ -620,7 +627,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
     })
 
-    it.only('Should rollback mintings if Basket changes (2 blocks)', async function () {
+    it('Should rollback mintings if Basket changes (2 blocks)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
       // Provide approvals
