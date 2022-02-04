@@ -87,7 +87,7 @@ describe('ExplorerFacadeP0 contract', () => {
   describe('Views', () => {
     beforeEach(async () => {
       // Mint Tokens
-      initialBal = bn('1e36')
+      initialBal = bn('1e33')
       await token.connect(owner).mint(addr1.address, initialBal)
       await usdc.connect(owner).mint(addr1.address, initialBal)
       await aToken.connect(owner).mint(addr1.address, initialBal)
@@ -99,7 +99,7 @@ describe('ExplorerFacadeP0 contract', () => {
       await cToken.connect(owner).mint(addr2.address, initialBal)
 
       // Issue some RTokens
-      const issueAmount: BigNumber = bn('1000e18')
+      const issueAmount: BigNumber = bn('1e33')
 
       // Provide approvals
       await token.connect(addr1).approve(main.address, initialBal)
@@ -114,10 +114,10 @@ describe('ExplorerFacadeP0 contract', () => {
       await main.poke()
     })
 
-    it.skip('Should return maxIssuable correctly', async () => {
+    it('Should return maxIssuable correctly', async () => {
       // Check values
-      //expect(await facade.maxIssuable(addr1.address)).to.equal(bn('4e36'))
-      expect(await facade.maxIssuable(addr2.address)).to.equal(bn('4e36'))
+      expect(await facade.maxIssuable(addr1.address)).to.equal(bn('3e33'))
+      expect(await facade.maxIssuable(addr2.address)).to.equal(bn('4e33'))
       expect(await facade.maxIssuable(other.address)).to.equal(0)
     })
 
