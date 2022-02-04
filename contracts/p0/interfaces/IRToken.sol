@@ -78,7 +78,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param amount {qRTok}
     /// @param baskets {BU}
     /// @param deposits {qTok}
-    function issueSlowly(
+    function issue(
         address issuer,
         uint256 amount,
         Fix baskets,
@@ -112,7 +112,4 @@ interface IRToken is IERC20Metadata, IERC20Permit {
 
     /// @return {BU} How many baskets are being targeted by the RToken supply
     function basketsNeeded() external view returns (Fix);
-
-    /// @return {BU/rTok} Basket units per whole RToken
-    function basketRate() external view returns (Fix);
 }

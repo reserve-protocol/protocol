@@ -103,14 +103,18 @@ library BasketLib {
     }
 
     /// @param amount {BU}
+    /// @return collateral The backing collateral
     /// @return quantities {qTok} Collateral token quantities equal to `amount` BUs
-    function toCollateral(
+    function quote(
         Basket storage self,
         Fix amount,
         RoundingApproach rounding
-    ) internal view returns (uint256[] memory quantities) {
+    ) internal view returns (ICollateral[] memory collateral, uint256[] memory quantities) {
+        collateral = new ICollateral[](self.size);
         quantities = new uint256[](self.size);
         for (uint256 i = 0; i < self.size; i++) {
+            collateral[i] = self.collateral[i];
+
             // {qTok} = {BU} * {qTok/BU}
             quantities[i] = amount.mul(self.quantity(self.collateral[i])).toUint(rounding);
         }
@@ -129,14 +133,6 @@ library BasketLib {
                     bal = potential;
                 }
             }
-        }
-    }
-
-    /// @return erc20s The addresses of the ERC20 tokens of the backing collateral tokens
-    function backingERC20s(Basket storage self) internal view returns (address[] memory erc20s) {
-        erc20s = new address[](self.size);
-        for (uint256 i = 0; i < self.size; i++) {
-            erc20s[i] = address(self.collateral[i].erc20());
         }
     }
 

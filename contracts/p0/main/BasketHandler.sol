@@ -155,11 +155,10 @@ contract BasketHandlerP0 is
 
     // Check collateral statuses; Select a new basket if needed.
     function tryEnsureValidBasket() internal {
-        for (uint256 i = 0; i < _assets.length(); i++) {
-            if (IAsset(_assets.at(i)).isCollateral()) {
-                ICollateral(_assets.at(i)).forceUpdates();
-            }
+        for (uint256 i = 0; i < basket.size; i++) {
+            basket.collateral[i].forceUpdates();
         }
+
         if (worstCollateralStatus() == CollateralStatus.DISABLED) {
             _switchBasket();
         }

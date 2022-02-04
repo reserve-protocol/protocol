@@ -361,7 +361,7 @@ interface IRTokenIssuer {
 
     function redeem(uint256 amount) external returns (uint256[] memory compensation);
 
-    function backingTokens() external view returns (address[] memory);
+    function basketCollateral() external view returns (ICollateral[] memory);
 
     function maxIssuable(address account) external view returns (uint256);
 

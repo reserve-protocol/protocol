@@ -21,9 +21,6 @@ interface IAsset {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() external view returns (Fix);
 
-    /// @dev Intended to be used via delegatecall, hence the `collateral` duplication
-    function claimAndSweepRewards(ICollateral collateral, IMain main) external;
-
     /// @return The ERC20 contract of the token with decimals() available
     function erc20() external view returns (IERC20Metadata);
 
@@ -61,6 +58,9 @@ interface ICollateral is IAsset {
 
     /// Disable the collateral so it cannot be used as backing
     function disable() external;
+
+    /// @dev Intended to be used via delegatecall, hence the `collateral` duplication
+    function claimAndSweepRewards(ICollateral collateral, IMain main) external;
 
     /// @return The canonical name of this collateral's target unit.
     function targetName() external view returns (bytes32);

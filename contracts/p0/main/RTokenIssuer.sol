@@ -46,14 +46,32 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         tryEnsureValidBasket();
         require(worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
-        // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
-        Fix baskets = rToken().basketRate().mulu(amount).shiftLeft(-int8(rToken().decimals()));
+        uint256 rTokSupply = rToken().totalSupply(); // {qRTok}
+        Fix baskets = toFixWithShift(amount, -int8(rToken().decimals())); // {BU}
 
-        // Send collateral to RToken
-        deposits = basket.toCollateral(baskets, RoundingApproach.CEIL);
+        if (rTokSupply > 0) {
+            Fix numerator = rToken().basketsNeeded().mulu(amount);
+            Fix denominator = toFix(rTokSupply);
+            baskets = numerator.div(denominator);
+
+            // TODO Double-check with Matt
+            if (Fix.unwrap(denominator) % Fix.unwrap(numerator) != 0) {
+                baskets = numerator.increment().div(denominator);
+            }
+        }
+
+        ICollateral[] memory collateral;
+        (collateral, deposits) = basket.quote(baskets, RoundingApproach.CEIL);
+
+        // Transfer collateral to RToken
         basket.transferFrom(_msgSender(), address(rToken()), deposits);
 
-        rToken().issueSlowly(_msgSender(), amount, baskets, basket.backingERC20s(), deposits);
+        // Begin SlowIssuance
+        address[] memory erc20s = new address[](collateral.length);
+        for (uint256 i = 0; i < collateral.length; i++) {
+            erc20s[i] = address(collateral[i].erc20());
+        }
+        rToken().issue(_msgSender(), amount, baskets, erc20s, deposits);
         emit IssuanceStarted(_msgSender(), amount, baskets);
     }
 
@@ -65,9 +83,9 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         require(rToken().balanceOf(_msgSender()) >= amount, "not enough RToken");
         revenueFurnace().melt();
 
-        // {BU} = {BU/rTok} * {qRTok} / {qRTok/rTok}
-        Fix baskets = rToken().basketRate().mulu(amount).shiftLeft(-int8(rToken().decimals()));
-        withdrawals = basket.toCollateral(baskets, RoundingApproach.FLOOR);
+        // {BU} = {BU} * {qRTok} / {qRTok}
+        Fix baskets = rToken().basketsNeeded().mulu(amount).divu(rToken().totalSupply());
+        (, withdrawals) = basket.quote(baskets, RoundingApproach.FLOOR);
 
         // {none} = {qRTok} / {qRTok}
         Fix prorate = toFix(amount).divu(rToken().totalSupply());
@@ -87,25 +105,28 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         emit Redemption(_msgSender(), amount, baskets);
     }
 
-    /// @return erc20s The addresses of the ERC20s backing the RToken
-    function backingTokens() public view override returns (address[] memory erc20s) {
-        return basket.backingERC20s();
+    /// @return collateral The addresses of the ERC20s backing the RToken
+    function basketCollateral() public view override returns (ICollateral[] memory collateral) {
+        (collateral, ) = basket.quote(FIX_ONE, RoundingApproach.ROUND);
     }
 
-    /// @return {qTok} How much RToken `account` can issue given current holdings
+    /// @return {qRTok} How much RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
-        // {qTok} = {BU} * {qRTok/rTok} / {BU/rTok}
-        return
-            basket
-                .balanceOf(account)
-                .shiftLeft(int8(rToken().decimals()))
-                .div(rToken().basketRate())
-                .floor();
+        Fix needed = rToken().basketsNeeded();
+        if (needed.eq(FIX_ZERO)) {
+            return basket.balanceOf(account).shiftLeft(int8(rToken().decimals())).floor();
+        }
+
+        // {qRTok} = {BU} * {qRTok} / {BU}
+        return basket.balanceOf(account).mulu(rToken().totalSupply()).div(needed).floor();
     }
 
     /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
     function rTokenPrice() public view override returns (Fix p) {
-        // {UoA/rTok} = {UoA/BU} * {BU/rTok}
-        return basket.price().mul(rToken().basketRate());
+        Fix rTokSupply = toFixWithShift(rToken().totalSupply(), -int8(rToken().decimals()));
+        if (rTokSupply.eq(FIX_ZERO)) return basket.price();
+
+        // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
+        return basket.price().mul(rToken().basketsNeeded()).div(rTokSupply);
     }
 }

@@ -275,13 +275,13 @@ contract AdapterP0 is ProtoAdapter {
             // Mint backing collateral and issue RToken
             for (uint256 i = 0; i < s.rToken.balances.length; i++) {
                 if (s.rToken.balances[i] > 0) {
-                    address[] memory tokens = _main.backingTokens();
+                    ICollateral[] memory collat = _main.basketCollateral();
                     // TODO
                     // uint256[] memory quantities = _main.quote(s.rToken.balances[i]);
-                    uint256[] memory quantities = new uint256[](tokens.length);
-                    for (uint256 j = 0; j < tokens.length; j++) {
-                        ERC20Mock(tokens[j]).mint(_address(i), quantities[j]);
-                        ERC20Mock(tokens[j]).adminApprove(
+                    uint256[] memory quantities = new uint256[](collat.length);
+                    for (uint256 j = 0; j < collat.length; j++) {
+                        ERC20Mock(address(collat[j])).mint(_address(i), quantities[j]);
+                        ERC20Mock(address(collat[j])).adminApprove(
                             _address(i),
                             address(_main),
                             quantities[j]
@@ -317,10 +317,10 @@ contract AdapterP0 is ProtoAdapter {
             _main.issuanceRate(),
             _main.defaultThreshold()
         );
-        address[] memory backingTokens = _main.backingTokens();
-        AssetName[] memory backingCollateral = new AssetName[](backingTokens.length);
-        for (uint256 i = 0; i < backingTokens.length; i++) {
-            backingCollateral[i] = _reverseAssets[ERC20Mock(backingTokens[i])];
+        ICollateral[] memory basketCollateral = _main.basketCollateral();
+        AssetName[] memory backingCollateral = new AssetName[](basketCollateral.length);
+        for (uint256 i = 0; i < basketCollateral.length; i++) {
+            backingCollateral[i] = _reverseAssets[ERC20Mock(address(basketCollateral[i].erc20()))];
         }
         s.distribution = _main.STATE_revenueDistribution();
         s.rTokenDefinition = BU(backingCollateral, _main.basketRefTargets());
@@ -396,12 +396,12 @@ contract AdapterP0 is ProtoAdapter {
 
     function CMD_issue(Account account, uint256 amount) external override {
         _main.connect(_address(uint256(account)));
-        address[] memory tokens = _main.backingTokens();
+        ICollateral[] memory collat = _main.basketCollateral();
         // TODO
         // uint256[] memory quantities = _main.quote(amount);
-        uint256[] memory quantities = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            ERC20Mock(tokens[i]).adminApprove(
+        uint256[] memory quantities = new uint256[](collat.length);
+        for (uint256 i = 0; i < collat.length; i++) {
+            ERC20Mock(address(collat[i].erc20())).adminApprove(
                 _address(uint256(account)),
                 address(_main),
                 quantities[i]
@@ -579,14 +579,8 @@ contract AdapterP0 is ProtoAdapter {
 
     /// @return bu_s The Basket Units of the stick DAG
     function _traverseVaults() internal view returns (BU[] memory bu_s) {
-        address[] memory tokens = _main.backingTokens();
-        AssetName[] memory assets = new AssetName[](tokens.length);
-        for (uint256 i = 0; i < assets.length; i++) {
-            assets[i] = _reverseAssets[ERC20Mock(address(tokens[i]))];
-        }
-
+        // TODO This doesn't exist anymore
         bu_s = new BU[](1);
-        bu_s[0] = BU(assets, _main.basketRefTargets());
     }
 
     /// Account index -> address

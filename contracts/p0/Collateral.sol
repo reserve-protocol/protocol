@@ -65,6 +65,12 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         }
     }
 
+    // solhint-disable no-empty-blocks
+    /// @dev Intended to be used via delegatecall
+    function claimAndSweepRewards(ICollateral collateral, IMain main) external virtual override {}
+
+    // solhint-enable no-empty-blocks
+
     /// @return The collateral's status
     function status() public view virtual override returns (CollateralStatus) {
         if (whenDefault == NEVER) {

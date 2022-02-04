@@ -81,11 +81,13 @@ contract AuctioneerP0 is
     function handoutExcessAssets() private {
         Fix held = basketsHeld();
         Fix needed = rToken().basketsNeeded();
+        Fix rTokSupply = toFixWithShift(rToken().totalSupply(), -int8(rToken().decimals()));
 
         // Mint revenue RToken
+
         if (held.gt(needed)) {
-            // {rTok} = ({BU} - {BU}) / {BU/rTok}
-            Fix rTok = held.minus(needed).div(rToken().basketRate());
+            // {rTok} = ({BU} - {BU}) * {rTok} / {BU}
+            Fix rTok = held.minus(needed).mul(rTokSupply).div(needed);
             uint256 qRTok = rTok.shiftLeft(int8(rToken().decimals())).floor();
             rToken().mint(address(this), qRTok);
         }
