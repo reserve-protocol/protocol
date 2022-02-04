@@ -137,7 +137,7 @@ describe('MainP0 contract', () => {
     )
 
     // Mint initial balances
-    initialBal = bn('1e36') //bn('1000000e18')
+    initialBal = bn('1000000e18')
     await token0.connect(owner).mint(addr1.address, initialBal)
     await token1.connect(owner).mint(addr1.address, initialBal)
     await token2.connect(owner).mint(addr1.address, initialBal)
