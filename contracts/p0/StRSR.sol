@@ -38,7 +38,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _PERMIT_TYPEHASH =
         keccak256(
-            "Permit(address owner_,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+            "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
         );
     // NOTE: _PERMIT_TYPEHASH is subtly atypical due to the naming conflict with "owner"
 
@@ -269,6 +269,8 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         require(spender != address(0), "ERC20: approve to the zero address");
 
         allowances[owner_][spender] = amount;
+
+        emit Approval(owner_, spender, amount);
     }
 
     /// @return total {stRSR} Total amount of stRSR being withdrawn

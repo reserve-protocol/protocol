@@ -1,8 +1,8 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { signERC2612Permit } from 'eth-permit'
 import { ethers, waffle } from 'hardhat'
-
 import { bn, fp, near } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
@@ -844,6 +844,33 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(other.address)).to.equal(amount)
       expect(await stRSR.totalSupply()).to.equal(totalSupplyPrev)
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+    })
+
+    it('Should set allowance when using "Permit"', async () => {
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
+
+      const permit = await signERC2612Permit(
+        addr1,
+        stRSR.address,
+        addr1.address,
+        addr2.address,
+        amount.toString()
+      )
+
+      await expect(
+        stRSR.permit(
+          addr1.address,
+          addr2.address,
+          amount,
+          permit.deadline,
+          permit.v,
+          permit.r,
+          permit.s
+        )
+      )
+        .to.emit(stRSR, 'Approval')
+        .withArgs(addr1.address, addr2.address, amount)
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(amount)
     })
 
     it('Should not transferFrom stakes if no allowance', async function () {
