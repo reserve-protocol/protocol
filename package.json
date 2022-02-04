@@ -54,6 +54,7 @@
         "axios": "^0.24.0",
         "chai": "^4.3.4",
         "dotenv": "^10.0.0",
+        "eth-permit": "^0.2.1",
         "ethereum-waffle": "^3.4.0",
         "ethers": "^5.5.2",
         "hardhat": "^2.8.3",

@@ -4712,6 +4712,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"eth-permit@npm:^0.2.1":
+  version: 0.2.1
+  resolution: "eth-permit@npm:0.2.1"
+  dependencies:
+    utf8: ^3.0.0
+  checksum: 8ffd51659cbd33ccf50abccd1e0fd2abd4067de328af0bfe32b251f298b9daea40bafed995dfe40d78a28b9af4863e5d2eb69fd3b91dfe405643e8c7e7da3359
+  languageName: node
+  linkType: hard
+
 "eth-query@npm:^2.0.2, eth-query@npm:^2.1.0, eth-query@npm:^2.1.2":
   version: 2.1.2
   resolution: "eth-query@npm:2.1.2"
@@ -10249,6 +10258,7 @@ fsevents@~2.3.2:
     axios: ^0.24.0
     chai: ^4.3.4
     dotenv: ^10.0.0
+    eth-permit: ^0.2.1
     ethereum-waffle: ^3.4.0
     ethers: ^5.5.2
     hardhat: ^2.8.3
