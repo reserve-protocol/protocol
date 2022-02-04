@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 
@@ -13,19 +12,11 @@ import "./IMain.sol";
  * is eligible to be an asset.
  */
 interface IAsset {
-    /// Emitted when the asset's oracle is changed
-    /// @param oldOracle The old oracle contract
-    /// @param newOracle The new oracle contract
-    event OracleChanged(IOracle indexed oldOracle, IOracle indexed newOracle);
-
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() external view returns (Fix);
 
     /// @return The ERC20 contract of the token with decimals() available
     function erc20() external view returns (IERC20Metadata);
-
-    /// @return The oracle the asset uses to price itself
-    function oracle() external view returns (IOracle);
 
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() external view returns (bool);

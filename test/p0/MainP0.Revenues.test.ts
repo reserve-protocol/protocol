@@ -6,11 +6,9 @@ import { ethers, waffle } from 'hardhat'
 import { AuctionStatus, BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST } from '../../common/constants'
 import { bn, divCeil, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { AaveOracle } from '../../typechain/AaveOracle'
 import { AssetP0 } from '../../typechain/AssetP0'
 import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
 import { CollateralP0 } from '../../typechain/CollateralP0'
-import { CompoundOracle } from '../../typechain/CompoundOracle'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
 import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
@@ -61,11 +59,9 @@ describe('MainP0 contract', () => {
   let rsrAsset: AssetP0
   let compAsset: AssetP0
   let compoundMock: ComptrollerMockP0
-  let compoundOracle: CompoundOracle
   let aaveToken: ERC20Mock
   let aaveAsset: AssetP0
   let aaveMock: AaveLendingPoolMockP0
-  let aaveOracle: AaveOracle
 
   // Trading
   let market: MarketMock
@@ -153,8 +149,6 @@ describe('MainP0 contract', () => {
       aaveToken,
       compAsset,
       aaveAsset,
-      compoundOracle,
-      aaveOracle,
       compoundMock,
       aaveMock,
       erc20s,

@@ -24,9 +24,9 @@ contract DeployerExtension is DeployerP0, IExtension {
         IERC20Metadata comp_,
         IERC20Metadata aave_,
         IMarket market_,
-        IOracle compoundOracle_,
-        IOracle aaveOracle_
-    ) DeployerP0(rsr_, comp_, aave_, market_, compoundOracle_, aaveOracle_) {
+        IComptroller comptroller_,
+        IAaveLendingPool aaveLendingPool_
+    ) DeployerP0(rsr_, comp_, aave_, market_, comptroller_, aaveLendingPool_) {
         _admin = msg.sender;
     }
 

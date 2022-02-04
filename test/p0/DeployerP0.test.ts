@@ -5,9 +5,9 @@ import { ethers, waffle } from 'hardhat'
 
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn } from '../../common/numbers'
-import { AaveOracle } from '../../typechain/AaveOracle'
+import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AssetP0 } from '../../typechain/AssetP0'
-import { CompoundOracle } from '../../typechain/CompoundOracle'
+import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
 import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { ExplorerFacadeP0 } from '../../typechain/ExplorerFacadeP0'
@@ -37,10 +37,10 @@ describe('DeployerP0 contract', () => {
   // AAVE and Compound
   let compToken: ERC20Mock
   let compAsset: AssetP0
-  let compoundOracle: CompoundOracle
+  let compoundMock: ComptrollerMockP0
   let aaveToken: ERC20Mock
   let aaveAsset: AssetP0
-  let aaveOracle: AaveOracle
+  let aaveMock: AaveLendingPoolMockP0
 
   // Market
   let market: MarketMock
@@ -76,8 +76,8 @@ describe('DeployerP0 contract', () => {
       aaveToken,
       compAsset,
       aaveAsset,
-      compoundOracle,
-      aaveOracle,
+      compoundMock,
+      aaveMock,
       collateral,
       config,
       dist,
@@ -98,8 +98,8 @@ describe('DeployerP0 contract', () => {
       expect(await deployer.comp()).to.equal(compToken.address)
       expect(await deployer.aave()).to.equal(aaveToken.address)
       expect(await deployer.market()).to.equal(market.address)
-      expect(await deployer.compoundOracle()).to.equal(compoundOracle.address)
-      expect(await deployer.aaveOracle()).to.equal(aaveOracle.address)
+      expect(await deployer.comptroller()).to.equal(compoundMock.address)
+      expect(await deployer.aaveLendingPool()).to.equal(aaveMock.address)
     })
 
     it('Should deploy required contracts', async () => {
@@ -146,8 +146,8 @@ describe('DeployerP0 contract', () => {
       const allAssets = await main.allAssets()
       expect(allAssets[0]).to.equal(rTokenAsset.address)
       expect(allAssets[1]).to.equal(rsrAsset.address)
-      expect(allAssets[2]).to.equal(compAsset.address)
-      expect(allAssets[3]).to.equal(aaveAsset.address)
+      expect(allAssets[2]).to.equal(aaveAsset.address)
+      expect(allAssets[3]).to.equal(compAsset.address)
       expect(allAssets.slice(4)).to.eql(collateral.map((c) => c.address))
 
       // Other components

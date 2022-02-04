@@ -10,7 +10,6 @@ import "./IFurnace.sol";
 import "./IMarket.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
-import "./IOracle.sol";
 
 /// Configuration of the system
 struct Config {

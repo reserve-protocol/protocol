@@ -6,16 +6,16 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IOracle.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/Asset.sol";
+import "./Asset.sol";
 
 /**
  * @title CollateralP0
  * @notice A general non-appreciating collateral type to be extended.
  */
-contract CollateralP0 is ICollateral, Context, AssetP0 {
+abstract contract CollateralP0 is ICollateral, AssetP0, Context {
     using FixLib for Fix;
+
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
     // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
@@ -29,16 +29,21 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
 
     IERC20Metadata public immutable referenceERC20;
 
+    IMain public immutable main;
+
     constructor(
         IERC20Metadata erc20_,
         IERC20Metadata referenceERC20_,
         IMain main_,
-        IOracle oracle_,
         bytes32 targetName_
-    ) AssetP0(erc20_, main_, oracle_) {
+    ) AssetP0(erc20_) {
         referenceERC20 = referenceERC20_;
+        main = main_;
         targetName = targetName_;
     }
+
+    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
+    function price() public view virtual override(AssetP0, IAsset) returns (Fix);
 
     /// Default checks
     function forceUpdates() public virtual override {
@@ -46,7 +51,7 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
 
         if (whenDefault > block.timestamp) {
             // If the price is below the default-threshold price, default eventually
-            whenDefault = isReferenceDepegged()
+            whenDefault = isDepegged()
                 ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
                 : NEVER;
         }
@@ -67,7 +72,7 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
 
     // solhint-disable no-empty-blocks
     /// @dev Intended to be used via delegatecall
-    function claimAndSweepRewards(ICollateral collateral, IMain main) external virtual override {}
+    function claimAndSweepRewards(ICollateral collateral, IMain main_) external virtual override {}
 
     // solhint-enable no-empty-blocks
 
@@ -87,12 +92,6 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         return true;
     }
 
-    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override(AssetP0, IAsset) returns (Fix) {
-        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target}
-        return oracle.consult(referenceERC20).mul(refPerTok()).mul(pricePerTarget());
-    }
-
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view virtual override returns (Fix) {
         return FIX_ONE;
@@ -108,11 +107,11 @@ contract CollateralP0 is ICollateral, Context, AssetP0 {
         return FIX_ONE;
     }
 
-    function isReferenceDepegged() internal view virtual returns (bool) {
+    function isDepegged() internal view returns (bool) {
         // {UoA/ref} = {UoA/target} * {target/ref}
         Fix peg = pricePerTarget().mul(targetPerRef());
         Fix delta = peg.mul(main.defaultThreshold());
-        Fix p = oracle.consult(referenceERC20);
+        Fix p = price();
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }
 }
