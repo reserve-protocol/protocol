@@ -42,10 +42,7 @@ contract RevenueTraderP0 is TraderP0 {
                 continue;
             }
 
-            if (assets[i] == assetToBuy) {
-                erc20.safeApprove(address(main), bal);
-                main.distribute(erc20, address(this), bal);
-            } else {
+            if (assets[i] != assetToBuy) {
                 // If not dust, trade the non-target asset for the target asset
                 bool launch;
                 Auction memory auction;
@@ -56,6 +53,9 @@ contract RevenueTraderP0 is TraderP0 {
                 if (launch) {
                     launchAuction(auction);
                 }
+            } else {
+                erc20.safeApprove(address(main), bal);
+                main.distribute(erc20, address(this), bal);
             }
         }
     }

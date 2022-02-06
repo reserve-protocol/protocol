@@ -46,6 +46,10 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
     ) public override {
         require(erc20 == rsr() || erc20 == rToken(), "RSR or RToken");
         bool isRSR = erc20 == rsr(); // if false: isRToken
+        if (isRSR && !stRSR().tryProcessWithdrawals()) {
+            return;
+        }
+
         (Fix rTokenTotal, Fix rsrTotal) = totals();
         Fix total = isRSR ? rsrTotal : rTokenTotal;
 
@@ -58,12 +62,10 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
 
             sliceSum += slice;
 
+            if (addrTo == ST_RSR) {}
             if (addrTo == FURNACE) {
                 erc20.safeTransferFrom(from, address(revenueFurnace()), slice);
                 revenueFurnace().notifyOfDeposit(erc20);
-            } else if (addrTo == ST_RSR) {
-                erc20.safeTransferFrom(from, address(stRSR()), slice);
-                stRSR().notifyOfDeposit(erc20);
             } else {
                 erc20.safeTransferFrom(from, addrTo, slice);
             }
