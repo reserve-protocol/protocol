@@ -2,18 +2,19 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "contracts/p0/assets/abstract/AaveOracleMixin.sol";
 import "contracts/p0/assets/abstract/Collateral.sol";
-import "contracts/p0/assets/abstract/CompoundOracleMixin.sol";
 
-contract CompoundFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
+contract AavePricedFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
         IMain main_,
-        IComptroller comptroller_
+        IComptroller comptroller_,
+        IAaveLendingPool aaveLendingPool_
     )
         CollateralP0(erc20_, erc20_, main_, bytes32(bytes("USD")))
-        CompoundOracleMixinP0(comptroller_)
+        AaveOracleMixinP0(comptroller_, aaveLendingPool_)
     {}
 
     // solhint-enable no-empty-blocks

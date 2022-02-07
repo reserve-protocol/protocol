@@ -154,7 +154,7 @@ async function collateralFixture(
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
   const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
   const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'AaveFiatCollateralP0'
+    'AavePricedFiatCollateralP0'
   )
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateralP0')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateralP0')
