@@ -15,13 +15,13 @@ import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
 import { AToken } from '../../typechain/AToken'
-import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
+import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
 import { BackingTraderP0 } from '../../typechain/BackingTraderP0'
 import { CollateralP0 } from '../../typechain/CollateralP0'
 import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
 import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
+import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
@@ -100,8 +100,8 @@ describe('MainP0 contract', () => {
   let token3: CTokenMock
   let collateral0: CollateralP0
   let collateral1: CollateralP0
-  let collateral2: ATokenCollateralP0
-  let collateral3: CTokenCollateralP0
+  let collateral2: ATokenFiatCollateralP0
+  let collateral3: CTokenFiatCollateralP0
 
   // Config values
   let config: IConfig
@@ -195,8 +195,8 @@ describe('MainP0 contract', () => {
 
     collateral0 = basket[0]
     collateral1 = basket[1]
-    collateral2 = <ATokenCollateralP0>basket[2]
-    collateral3 = <CTokenCollateralP0>basket[3]
+    collateral2 = <ATokenFiatCollateralP0>basket[2]
+    collateral3 = <CTokenFiatCollateralP0>basket[3]
 
     rsrTrader = <RevenueTraderP0>(
       await ethers.getContractAt('RevenueTraderP0', await main.rsrTrader())
@@ -351,9 +351,9 @@ describe('MainP0 contract', () => {
       const aToken1 = <StaticATokenMock>(
         await ATokenMockFactory.deploy('AToken 1', 'ATKN1', token1.address)
       )
-      const ATokenAssetFactory = await ethers.getContractFactory('ATokenCollateralP0')
-      const assetAToken0 = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aToken0.address)
-      const assetAToken1 = <ATokenCollateralP0>await ATokenAssetFactory.deploy(aToken1.address)
+      const ATokenAssetFactory = await ethers.getContractFactory('ATokenFiatCollateralP0')
+      const assetAToken0 = <ATokenFiatCollateralP0>await ATokenAssetFactory.deploy(aToken0.address)
+      const assetAToken1 = <ATokenFiatCollateralP0>await ATokenAssetFactory.deploy(aToken1.address)
 
       // Check state
       expect(await main.mood()).to.equal(Mood.CALM)

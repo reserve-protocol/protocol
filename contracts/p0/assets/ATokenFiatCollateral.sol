@@ -30,7 +30,7 @@ interface AToken {
 
 // ==== End External ====
 
-contract ATokenCollateralP0 is AaveOracleMixinP0, CollateralP0 {
+contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 

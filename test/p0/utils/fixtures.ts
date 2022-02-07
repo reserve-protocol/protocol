@@ -4,17 +4,17 @@ import { ethers } from 'hardhat'
 
 import { expectInReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
-import { AaveAssetP0 } from '../../../typechain/AaveAssetP0'
 import { AaveLendingAddrProviderMockP0 } from '../../../typechain/AaveLendingAddrProviderMockP0'
 import { AaveLendingPoolMockP0 } from '../../../typechain/AaveLendingPoolMockP0'
 import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
+import { AavePricedAssetP0 } from '../../../typechain/AavePricedAssetP0'
 import { AssetP0 } from '../../../typechain/AssetP0'
-import { ATokenCollateralP0 } from '../../../typechain/ATokenCollateralP0'
+import { ATokenFiatCollateralP0 } from '../../../typechain/ATokenFiatCollateralP0'
 import { CollateralP0 } from '../../../typechain/CollateralP0'
-import { CompoundAssetP0 } from '../../../typechain/CompoundAssetP0'
 import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
+import { CompoundPricedAssetP0 } from '../../../typechain/CompoundPricedAssetP0'
 import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
-import { CTokenCollateralP0 } from '../../../typechain/CTokenCollateralP0'
+import { CTokenFiatCollateralP0 } from '../../../typechain/CTokenFiatCollateralP0'
 import { CTokenMock } from '../../../typechain/CTokenMock'
 import { DeployerP0 } from '../../../typechain/DeployerP0'
 import { ERC20Mock } from '../../../typechain/ERC20Mock'
@@ -29,7 +29,7 @@ import { StRSRP0 } from '../../../typechain/StRSRP0'
 import { USDCMock } from '../../../typechain/USDCMock'
 import { getLatestBlockTimestamp } from '../../utils/time'
 
-export type Collateral = CollateralP0 | CTokenCollateralP0 | ATokenCollateralP0
+export type Collateral = CollateralP0 | CTokenFiatCollateralP0 | ATokenFiatCollateralP0
 
 export interface IConfig {
   rewardStart: BigNumber
@@ -153,9 +153,11 @@ async function collateralFixture(
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
   const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
-  const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory('AaveCollateralP0')
-  const ATokenCollateralFactory = await ethers.getContractFactory('ATokenCollateralP0')
-  const CTokenCollateralFactory = await ethers.getContractFactory('CTokenCollateralP0')
+  const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
+    'AaveFiatCollateralP0'
+  )
+  const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateralP0')
+  const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateralP0')
 
   // Deploy all potential collateral assets
   const makeVanillaCollateral = async (symbol: string): Promise<[ERC20Mock, CollateralP0]> => {
@@ -189,13 +191,13 @@ async function collateralFixture(
   const makeCTokenCollateral = async (
     symbol: string,
     underlyingAddress: string
-  ): Promise<[CTokenMock, CTokenCollateralP0]> => {
+  ): Promise<[CTokenMock, CTokenFiatCollateralP0]> => {
     const erc20: CTokenMock = <CTokenMock>(
       await CTokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
     )
     return [
       erc20,
-      <CTokenCollateralP0>(
+      <CTokenFiatCollateralP0>(
         await CTokenCollateralFactory.deploy(
           erc20.address,
           underlyingAddress,
@@ -208,7 +210,7 @@ async function collateralFixture(
   const makeATokenCollateral = async (
     symbol: string,
     underlyingAddress: string
-  ): Promise<[StaticATokenMock, ATokenCollateralP0]> => {
+  ): Promise<[StaticATokenMock, ATokenFiatCollateralP0]> => {
     const erc20: StaticATokenMock = <StaticATokenMock>(
       await ATokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
     )
@@ -218,7 +220,7 @@ async function collateralFixture(
 
     return [
       erc20,
-      <ATokenCollateralP0>(
+      <ATokenFiatCollateralP0>(
         await ATokenCollateralFactory.deploy(
           erc20.address,
           underlyingAddress,
@@ -360,13 +362,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Get Components
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
   const rsrAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('AaveAssetP0', await main.rsrAsset())
+    await ethers.getContractAt('AavePricedAssetP0', await main.rsrAsset())
   )
   const compAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('CompoundAssetP0', await main.compAsset())
+    await ethers.getContractAt('CompoundPricedAssetP0', await main.compAsset())
   )
   const aaveAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('AaveAssetP0', await main.aaveAsset())
+    await ethers.getContractAt('AavePricedAssetP0', await main.aaveAsset())
   )
   const rToken: RTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', await main.rToken())
   const rTokenAsset: RTokenAssetP0 = <RTokenAssetP0>(
