@@ -163,6 +163,16 @@ describe('CollateralP0 contracts', () => {
       expect(await aTokenAsset.price()).to.equal(fp('2'))
       expect(await cTokenAsset.price()).to.equal(fp('2'))
     })
+
+    it('Should revert if price is zero', async () => {
+      const symbol: string = await token.symbol()
+
+      // Set price of token to 0 in Aave
+      await aaveOracleInternal.setPrice(token.address, bn('0'))
+
+      // Check price of token
+      await expect(tokenAsset.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
+    })
   })
 
   describe('Status', () => {
@@ -414,6 +424,17 @@ describe('CollateralP0 contracts', () => {
       // Check new prices
       expect(await compoundTokenAsset.price()).to.equal(fp('1.1'))
       expect(await compoundUsdcAsset.price()).to.equal(fp('1.1'))
+
+      // Revert if price is zero - Update Oracles and check prices
+      // Fiat token
+      let symbol: string = await token.symbol()
+      await compoundOracleInternal.setPrice(symbol, bn(0))
+      await expect(compoundTokenAsset.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
+
+      // Usdc (6 decimals)
+      symbol = await usdc.symbol()
+      await compoundOracleInternal.setPrice(symbol, bn(0))
+      await expect(compoundUsdcAsset.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
     })
   })
 })
