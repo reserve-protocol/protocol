@@ -164,5 +164,26 @@ describe('AssetsP0 contracts', () => {
       // Price of RToken should increase by 10%
       expect(await rTokenAsset.price()).to.equal(fp('1.1'))
     })
+
+    it('Should revert if price is zero', async () => {
+      // Update values in Oracles to 0
+      await compoundOracleInternal.setPrice('COMP', bn(0))
+      await aaveOracleInternal.setPrice(aaveToken.address, bn(0))
+      await aaveOracleInternal.setPrice(compToken.address, bn(0))
+      await aaveOracleInternal.setPrice(rsr.address, bn(0))
+
+      // Check new prices
+      // RSR
+      let symbol: string = await rsr.symbol()
+      await expect(rsrAsset.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
+
+      // COMP
+      symbol = await compToken.symbol()
+      await expect(compAsset.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
+
+      // AAVE
+      symbol = await aaveToken.symbol()
+      await expect(aaveAsset.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
+    })
   })
 })
