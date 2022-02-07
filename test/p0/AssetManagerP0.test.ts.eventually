@@ -9,12 +9,12 @@ import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
 import { AssetManagerP0 } from '../../typechain/AssetManagerP0'
-import { ATokenFiatcoinCollateralP0 } from '../../typechain/ATokenFiatcoinCollateralP0'
-import { CollateralP0 } from '../../typechainFiatcoinCollateralP0'
+import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
+import { CollateralP0 } from '../../typechainFiatCollateralP0'
 import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
 import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { CTokenFiatcoinCollateralP0 } from '../../typechain/CTokenFiatcoinCollateralP0'
+import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
 import { DeployerP0 } from '../../typechain/DeployerP0'
@@ -79,11 +79,11 @@ describe('AssetManagerP0 contract', () => {
   let ATokenMockFactory: ContractFactory
   let ATokenAssetFactory: ContractFactory
   let aToken: StaticATokenMock
-  let assetAToken: ATokenFiatcoinCollateralP0
+  let assetAToken: ATokenFiatCollateralP0
   let CTokenMockFactory: ContractFactory
   let CTokenAssetFactory: ContractFactory
   let cToken: CTokenMock
-  let assetCToken: CTokenFiatcoinCollateralP0
+  let assetCToken: CTokenFiatCollateralP0
 
   // Config values
   let config: IConfig
@@ -156,15 +156,15 @@ describe('AssetManagerP0 contract', () => {
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
     aToken = <StaticATokenMock>await ATokenMockFactory.deploy('AToken', 'ATKN0', token0.address)
     await aToken.setAaveToken(aaveToken.address)
-    ATokenAssetFactory = await ethers.getContractFactory('ATokenFiatcoinCollateralP0')
-    assetAToken = <ATokenFiatcoinCollateralP0>(
+    ATokenAssetFactory = await ethers.getContractFactory('ATokenFiatCollateralP0')
+    assetAToken = <ATokenFiatCollateralP0>(
       await ATokenAssetFactory.deploy(aToken.address, aToken.decimals())
     )
 
     CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
     cToken = <CTokenMock>await CTokenMockFactory.deploy('CToken', 'CTKN1', token1.address)
-    CTokenAssetFactory = await ethers.getContractFactory('CTokenFiatcoinCollateralP0')
-    assetCToken = <CTokenFiatcoinCollateralP0>(
+    CTokenAssetFactory = await ethers.getContractFactory('CTokenFiatCollateralP0')
+    assetCToken = <CTokenFiatCollateralP0>(
       await CTokenAssetFactory.deploy(cToken.address, cToken.decimals())
     )
 

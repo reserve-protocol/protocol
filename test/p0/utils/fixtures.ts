@@ -9,12 +9,12 @@ import { AaveLendingPoolMockP0 } from '../../../typechain/AaveLendingPoolMockP0'
 import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
 import { AavePricedAssetP0 } from '../../../typechain/AavePricedAssetP0'
 import { AssetP0 } from '../../../typechain/AssetP0'
-import { ATokenFiatcoinCollateralP0 } from '../../../typechain/ATokenFiatcoinCollateralP0'
+import { ATokenFiatCollateralP0 } from '../../../typechain/ATokenFiatCollateralP0'
 import { CollateralP0 } from '../../../typechain/CollateralP0'
 import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
 import { CompoundPricedAssetP0 } from '../../../typechain/CompoundPricedAssetP0'
 import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
-import { CTokenFiatcoinCollateralP0 } from '../../../typechain/CTokenFiatcoinCollateralP0'
+import { CTokenFiatCollateralP0 } from '../../../typechain/CTokenFiatCollateralP0'
 import { CTokenMock } from '../../../typechain/CTokenMock'
 import { DeployerP0 } from '../../../typechain/DeployerP0'
 import { ERC20Mock } from '../../../typechain/ERC20Mock'
@@ -29,7 +29,7 @@ import { StRSRP0 } from '../../../typechain/StRSRP0'
 import { USDCMock } from '../../../typechain/USDCMock'
 import { getLatestBlockTimestamp } from '../../utils/time'
 
-export type Collateral = CollateralP0 | CTokenFiatcoinCollateralP0 | ATokenFiatcoinCollateralP0
+export type Collateral = CollateralP0 | CTokenFiatCollateralP0 | ATokenFiatCollateralP0
 
 export interface IConfig {
   rewardStart: BigNumber
@@ -154,10 +154,10 @@ async function collateralFixture(
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
   const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
   const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'AaveFiatcoinCollateralP0'
+    'AaveFiatCollateralP0'
   )
-  const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatcoinCollateralP0')
-  const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatcoinCollateralP0')
+  const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateralP0')
+  const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateralP0')
 
   // Deploy all potential collateral assets
   const makeVanillaCollateral = async (symbol: string): Promise<[ERC20Mock, CollateralP0]> => {
@@ -191,13 +191,13 @@ async function collateralFixture(
   const makeCTokenCollateral = async (
     symbol: string,
     underlyingAddress: string
-  ): Promise<[CTokenMock, CTokenFiatcoinCollateralP0]> => {
+  ): Promise<[CTokenMock, CTokenFiatCollateralP0]> => {
     const erc20: CTokenMock = <CTokenMock>(
       await CTokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
     )
     return [
       erc20,
-      <CTokenFiatcoinCollateralP0>(
+      <CTokenFiatCollateralP0>(
         await CTokenCollateralFactory.deploy(
           erc20.address,
           underlyingAddress,
@@ -210,7 +210,7 @@ async function collateralFixture(
   const makeATokenCollateral = async (
     symbol: string,
     underlyingAddress: string
-  ): Promise<[StaticATokenMock, ATokenFiatcoinCollateralP0]> => {
+  ): Promise<[StaticATokenMock, ATokenFiatCollateralP0]> => {
     const erc20: StaticATokenMock = <StaticATokenMock>(
       await ATokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
     )
@@ -220,7 +220,7 @@ async function collateralFixture(
 
     return [
       erc20,
-      <ATokenFiatcoinCollateralP0>(
+      <ATokenFiatCollateralP0>(
         await ATokenCollateralFactory.deploy(
           erc20.address,
           underlyingAddress,

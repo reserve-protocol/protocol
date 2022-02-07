@@ -10,8 +10,8 @@
 // import "contracts/mocks/ERC20Mock.sol";
 // import "contracts/mocks/MarketMock.sol";
 // import "contracts/mocks/USDCMock.sol";
-// import "contracts/p0/assets/ATokenFiatcoinCollateral.sol";
-// import "contracts/p0/assets/CTokenFiatcoinCollateral.sol";
+// import "contracts/p0/assets/ATokenFiatCollateral.sol";
+// import "contracts/p0/assets/CTokenFiatCollateral.sol";
 // import "contracts/p0/interfaces/IAsset.sol";
 // import "contracts/p0/interfaces/IDeployer.sol";
 // import "contracts/p0/interfaces/IMain.sol";
@@ -479,7 +479,7 @@
 //             ICollateral underlying = ICollateral(
 //                 address(_assets[_reverseAssets[ERC20Mock(CTokenMock(address(erc20)).underlying())]])
 //             );
-//             _assets[collateralAsset] = new CTokenFiatcoinCollateralP0(
+//             _assets[collateralAsset] = new CTokenFiatCollateralP0(
 //                 erc20,
 //                 underlying.erc20(),
 //                 _main,
@@ -498,7 +498,7 @@
 //                     ]
 //                 )
 //             );
-//             _assets[collateralAsset] = new ATokenFiatcoinCollateralP0(
+//             _assets[collateralAsset] = new ATokenFiatCollateralP0(
 //                 erc20,
 //                 underlying.erc20(),
 //                 _main,

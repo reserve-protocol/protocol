@@ -7,10 +7,10 @@ import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AssetP0 } from '../../typechain/AssetP0'
-import { ATokenFiatcoinCollateralP0 } from '../../typechain/ATokenFiatcoinCollateralP0'
+import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
 import { CollateralP0 } from '../../typechain/CollateralP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { CTokenFiatcoinCollateralP0 } from '../../typechain/CTokenFiatcoinCollateralP0'
+import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
@@ -61,8 +61,8 @@ describe('MainP0 contract', () => {
   let token3: CTokenMock
   let collateral0: CollateralP0
   let collateral1: CollateralP0
-  let collateral2: ATokenFiatcoinCollateralP0
-  let collateral3: CTokenFiatcoinCollateralP0
+  let collateral2: ATokenFiatCollateralP0
+  let collateral3: CTokenFiatCollateralP0
   let basket: Collateral[]
   let basketsNeededAmts: BigNumber[]
 
@@ -120,8 +120,8 @@ describe('MainP0 contract', () => {
 
     collateral0 = basket[0]
     collateral1 = basket[1]
-    collateral2 = <ATokenFiatcoinCollateralP0>basket[2]
-    collateral3 = <CTokenFiatcoinCollateralP0>basket[3]
+    collateral2 = <ATokenFiatCollateralP0>basket[2]
+    collateral3 = <CTokenFiatCollateralP0>basket[3]
 
     rsrTrader = <RevenueTraderP0>(
       await ethers.getContractAt('RevenueTraderP0', await main.rsrTrader())

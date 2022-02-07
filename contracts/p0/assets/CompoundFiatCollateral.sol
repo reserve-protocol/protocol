@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/assets/abstract/Collateral.sol";
 import "contracts/p0/assets/abstract/CompoundOracleMixin.sol";
 
-contract CompoundFiatcoinCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
+contract CompoundFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
