@@ -3,34 +3,36 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/p0/assets/abstract/CompoundOracleMixin.sol";
+import "contracts/p0/assets/abstract/AaveOracleMixin.sol";
 import "contracts/p0/assets/abstract/Collateral.sol";
-import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
 // ==== External ====
 
-// https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
-interface ICToken {
-    /// @dev From Compound Docs:
-    /// The current (up to date) exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
-    function exchangeRateCurrent() external returns (uint256);
+// External interfaces from: https://git.io/JX7iJ
+interface IStaticAToken is IERC20Metadata {
+    function claimRewardsToSelf(bool forceUpdate) external;
 
-    /// @dev From Compound Docs: The stored exchange rate, with 18 - 8 + UnderlyingAsset.Decimals.
-    function exchangeRateStored() external view returns (uint256);
+    // @return RAY{fiatTok/tok}
+    function rate() external view returns (uint256);
+
+    // solhint-disable-next-line func-name-mixedcase
+    function ATOKEN() external view returns (AToken);
+
+    function getClaimableRewards(address user) external view returns (uint256);
+}
+
+interface AToken {
+    // solhint-disable-next-line func-name-mixedcase
+    function UNDERLYING_ASSET_ADDRESS() external view returns (address);
 }
 
 // ==== End External ====
 
-contract CTokenCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
+contract ATokenFiatcoinCollateralP0 is AaveOracleMixinP0, CollateralP0 {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
-
-    // cToken initial exchange rate is 0.02
-    Fix public constant COMPOUND_BASE = Fix.wrap(2e16);
-
-    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     Fix public prevReferencePrice; // previous rate, {collateral/reference}
 
@@ -38,10 +40,11 @@ contract CTokenCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
         IERC20Metadata erc20_,
         IERC20Metadata referenceERC20_,
         IMain main_,
-        IComptroller comptroller_
+        IComptroller comptroller_,
+        IAaveLendingPool aaveLendingPool_
     )
         CollateralP0(erc20_, referenceERC20_, main_, bytes32(bytes("USD")))
-        CompoundOracleMixinP0(comptroller_)
+        AaveOracleMixinP0(comptroller_, aaveLendingPool_)
     {
         prevReferencePrice = refPerTok();
     }
@@ -58,9 +61,6 @@ contract CTokenCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
             return;
         }
         uint256 cached = whenDefault;
-
-        // Update the Compound Protocol
-        ICToken(address(erc20)).exchangeRateCurrent();
 
         // Check invariants
         Fix p = refPerTok();
@@ -83,19 +83,18 @@ contract CTokenCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
     function claimAndSweepRewards(ICollateral collateral, IMain main_) external virtual override {
         // Invariant: This function does not perform reads from current context storage
 
-        CTokenCollateralP0(address(collateral)).comptroller().claimComp(address(this));
-        uint256 amount = main_.compAsset().erc20().balanceOf(address(this));
+        IStaticAToken aToken = IStaticAToken(address(collateral.erc20()));
+        uint256 amount = aToken.getClaimableRewards(address(this));
         if (amount > 0) {
-            main_.compAsset().erc20().safeTransfer(address(main_), amount);
+            aToken.claimRewardsToSelf(true);
+            main_.aaveAsset().erc20().safeTransfer(address(main_), amount);
         }
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (Fix) {
-        uint256 rate = ICToken(address(erc20)).exchangeRateStored();
-        int8 shiftLeft = 8 - int8(referenceERC20.decimals()) - 18;
-        Fix rateNow = toFixWithShift(rate, shiftLeft);
-        return rateNow.div(COMPOUND_BASE);
+        uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray ref/tok}
+        return toFixWithShift(rateInRAYs, -27);
     }
 
     function isReferenceDepegged() private view returns (bool) {

@@ -3,8 +3,8 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "contracts/p0/assets/AaveAsset.sol";
-import "contracts/p0/assets/CompoundAsset.sol";
+import "contracts/p0/assets/AavePricedAsset.sol";
+import "contracts/p0/assets/CompoundPricedAsset.sol";
 import "contracts/p0/assets/RTokenAsset.sol";
 import "contracts/p0/assets/abstract/AaveOracleMixin.sol";
 import "contracts/p0/assets/abstract/CompoundOracleMixin.sol";
@@ -82,9 +82,9 @@ contract DeployerP0 is IDeployer {
         }
 
         {
-            AssetP0 rsrAsset = new AaveAssetP0(rsr, comptroller, aaveLendingPool);
-            AssetP0 aaveAsset = new AaveAssetP0(aave, comptroller, aaveLendingPool);
-            AssetP0 compAsset = new CompoundAssetP0(comp, comptroller);
+            AssetP0 rsrAsset = new AavePricedAssetP0(rsr, comptroller, aaveLendingPool);
+            AssetP0 aaveAsset = new AavePricedAssetP0(aave, comptroller, aaveLendingPool);
+            AssetP0 compAsset = new CompoundPricedAssetP0(comp, comptroller);
 
             main.setRSRAsset(rsrAsset);
             main.setAAVEAsset(aaveAsset);

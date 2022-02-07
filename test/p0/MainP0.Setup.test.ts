@@ -7,11 +7,11 @@ import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AssetP0 } from '../../typechain/AssetP0'
-import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
+import { ATokenFiatcoinCollateralP0 } from '../../typechain/ATokenFiatcoinCollateralP0'
 import { CollateralP0 } from '../../typechain/CollateralP0'
-import { CompoundAssetP0 } from '../../typechain/CompoundAssetP0'
+import { CompoundPricedAssetP0 } from '../../typechain/CompoundPricedAssetP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
+import { CTokenFiatcoinCollateralP0 } from '../../typechain/CTokenFiatcoinCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
@@ -64,8 +64,8 @@ describe('MainP0 contract', () => {
   let token3: CTokenMock
   let collateral0: CollateralP0
   let collateral1: CollateralP0
-  let collateral2: ATokenCollateralP0
-  let collateral3: CTokenCollateralP0
+  let collateral2: ATokenFiatcoinCollateralP0
+  let collateral3: CTokenFiatcoinCollateralP0
 
   // Config values
   let config: IConfig
@@ -123,8 +123,8 @@ describe('MainP0 contract', () => {
 
     collateral0 = basket[0]
     collateral1 = basket[1]
-    collateral2 = <ATokenCollateralP0>basket[2]
-    collateral3 = <CTokenCollateralP0>basket[3]
+    collateral2 = <ATokenFiatcoinCollateralP0>basket[2]
+    collateral3 = <CTokenFiatcoinCollateralP0>basket[3]
 
     rsrTrader = <RevenueTraderP0>(
       await ethers.getContractAt('RevenueTraderP0', await main.rsrTrader())
@@ -605,9 +605,9 @@ describe('MainP0 contract', () => {
   describe('Asset Registry', () => {
     it('Should allow to add Asset if Owner', async () => {
       // Setup new Asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundAssetP0')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
 
-      const newAsset: CompoundAssetP0 = <CompoundAssetP0>(
+      const newAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
         await AssetFactory.deploy(token0.address, compoundMock.address)
       )
 

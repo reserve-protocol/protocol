@@ -6,10 +6,10 @@ import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, MAX_UINT256 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
-import { ATokenCollateralP0 } from '../../typechain/ATokenCollateralP0'
+import { ATokenFiatcoinCollateralP0 } from '../../typechain/ATokenFiatcoinCollateralP0'
 import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { CTokenCollateralP0 } from '../../typechain/CTokenCollateralP0'
+import { CTokenFiatcoinCollateralP0 } from '../../typechain/CTokenFiatcoinCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainP0 } from '../../typechain/MainP0'
@@ -35,8 +35,8 @@ describe('CollateralP0 contracts', () => {
   // Assets
   let tokenAsset: Collateral
   let usdcAsset: Collateral
-  let aTokenAsset: ATokenCollateralP0
-  let cTokenAsset: CTokenCollateralP0
+  let aTokenAsset: ATokenFiatcoinCollateralP0
+  let cTokenAsset: CTokenFiatcoinCollateralP0
 
   // Oracles
   let compoundMock: ComptrollerMockP0
@@ -73,8 +73,8 @@ describe('CollateralP0 contracts', () => {
     // Get assets and tokens
     tokenAsset = basket[0]
     usdcAsset = basket[1]
-    aTokenAsset = basket[2] as ATokenCollateralP0
-    cTokenAsset = basket[3] as CTokenCollateralP0
+    aTokenAsset = basket[2] as ATokenFiatcoinCollateralP0
+    cTokenAsset = basket[3] as CTokenFiatcoinCollateralP0
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
     aToken = <StaticATokenMock>(
