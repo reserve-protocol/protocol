@@ -2,8 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
-import { bn } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainP0 } from '../../typechain/MainP0'
@@ -79,6 +78,7 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.decimals()).to.equal(18)
       expect(await rToken.totalSupply()).to.equal(bn(0))
       expect(await rToken.main()).to.equal(main.address)
+      expect(await rToken.basketsNeeded()).to.equal(0)
     })
   })
 
@@ -99,6 +99,24 @@ describe('RTokenP0 contract', () => {
       await rToken.connect(owner).setMain(other.address)
 
       expect(await rToken.main()).to.equal(other.address)
+    })
+
+    it('Should allow to set basketsNeeded only from Main', async () => {
+      // Check initial status
+      expect(await rToken.basketsNeeded()).to.equal(0)
+
+      // Try to update value if not Main
+      await expect(rToken.connect(owner).setBasketsNeeded(fp('1'))).to.be.revertedWith('only main')
+
+      // Set Main mock as caller
+      await rToken.connect(owner).setMain(mainMock.address)
+
+      await expect(rToken.connect(mainMock).setBasketsNeeded(fp('1')))
+        .to.emit(rToken, 'BasketsNeededChanged')
+        .withArgs(0, fp('1'))
+
+      // Check updated value
+      expect(await rToken.basketsNeeded()).to.equal(fp('1'))
     })
   })
 
