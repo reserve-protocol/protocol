@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
 import { CollateralStatus, MAX_UINT256 } from '../../common/constants'
@@ -8,6 +8,7 @@ import { bn, fp } from '../../common/numbers'
 import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
 import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
 import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
+import { CompoundPricedFiatCollateralP0 } from '../../typechain/CompoundPricedFiatCollateralP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
 import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
@@ -361,6 +362,58 @@ describe('CollateralP0 contracts', () => {
 
       // Check funds not yet swept
       expect(await aaveToken.balanceOf(main.address)).to.equal(0)
+    })
+  })
+
+  // Tests specific to the CompoundFiatCollateral.sol contract, not used by default in fixture
+  describe('Compound Fiat Collateral', () => {
+    let compoundTokenAsset: CompoundPricedFiatCollateralP0
+    let compoundUsdcAsset: CompoundPricedFiatCollateralP0
+
+    beforeEach(async () => {
+      const CompoundFiatCollFactory: ContractFactory = await ethers.getContractFactory(
+        'CompoundPricedFiatCollateralP0'
+      )
+      compoundTokenAsset = <CompoundPricedFiatCollateralP0>(
+        await CompoundFiatCollFactory.deploy(token.address, main.address, compoundMock.address)
+      )
+      compoundUsdcAsset = <CompoundPricedFiatCollateralP0>(
+        await CompoundFiatCollFactory.deploy(usdc.address, main.address, compoundMock.address)
+      )
+    })
+
+    it('Should setup collateral correctly', async function () {
+      // Compound - Fiat Token Asset
+      expect(await compoundTokenAsset.main()).to.equal(main.address)
+      expect(await compoundTokenAsset.isCollateral()).to.equal(true)
+      expect(await compoundTokenAsset.erc20()).to.equal(token.address)
+      expect(await compoundTokenAsset.status()).to.equal(CollateralStatus.SOUND)
+      expect(await compoundTokenAsset.whenDefault()).to.equal(MAX_UINT256)
+      expect(await compoundTokenAsset.refPerTok()).to.equal(fp('1'))
+      expect(await compoundTokenAsset.price()).to.equal(fp('1'))
+
+      // Compound - USDC Fiat Token
+      expect(await compoundUsdcAsset.main()).to.equal(main.address)
+      expect(await compoundUsdcAsset.isCollateral()).to.equal(true)
+      expect(await compoundUsdcAsset.erc20()).to.equal(usdc.address)
+      expect(await compoundUsdcAsset.status()).to.equal(CollateralStatus.SOUND)
+      expect(await compoundUsdcAsset.whenDefault()).to.equal(MAX_UINT256)
+      expect(await compoundUsdcAsset.refPerTok()).to.equal(fp('1'))
+      expect(await compoundUsdcAsset.price()).to.equal(fp('1'))
+    })
+
+    it('Should calculate prices correctly', async function () {
+      // Check initial prices
+      expect(await compoundTokenAsset.price()).to.equal(fp('1'))
+      expect(await compoundUsdcAsset.price()).to.equal(fp('1'))
+
+      // Update values in Oracle increase by 10%
+      await compoundOracleInternal.setPrice(await token.symbol(), bn('1.1e6')) // 10%
+      await compoundOracleInternal.setPrice(await usdc.symbol(), bn('1.1e6')) // 10%
+
+      // Check new prices
+      expect(await compoundTokenAsset.price()).to.equal(fp('1.1'))
+      expect(await compoundUsdcAsset.price()).to.equal(fp('1.1'))
     })
   })
 })
