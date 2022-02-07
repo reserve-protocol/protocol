@@ -555,7 +555,7 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3).add(amount2))
-      expect(near(await rsr.balanceOf(stRSR.address), await stRSR.totalSupply(), 1)).to.equal(true)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
@@ -649,7 +649,7 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3))
-      expect(near(await rsr.balanceOf(stRSR.address), await stRSR.totalSupply(), 1)).to.equal(true)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
@@ -668,8 +668,13 @@ describe('StRSRP0 contract', () => {
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
 
       expect(near(await stRSR.balanceOf(addr1.address), amount.sub(amount2.div(3)), 1))
+      expect((await stRSR.balanceOf(addr1.address)).lte(amount.sub(amount2.div(3))))
+
       expect(near(await stRSR.balanceOf(addr2.address), amount.sub(amount2.div(3)), 1))
+      expect((await stRSR.balanceOf(addr2.address)).lte(amount.sub(amount2.div(3))))
+
       expect(near(await stRSR.balanceOf(addr3.address), amount.sub(amount2.div(3)), 1))
+      expect((await stRSR.balanceOf(addr3.address)).lte(amount.sub(amount2.div(3))))
     })
 
     it('Should remove RSR from Withdrawers', async () => {
@@ -682,7 +687,7 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
-      expect(near(await rsr.balanceOf(stRSR.address), await stRSR.totalSupply(), 1)).to.equal(true)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
 
