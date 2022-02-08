@@ -47,7 +47,8 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     }
 
     /// Begins the SlowIssuance accounting process, keeping a roughly constant basket rate
-    /// @dev This function assumes `deposits` have already been transferred in
+    /// @dev This function assumes that `deposits` are transferred here during this txn.
+    /// @dev This function assumes that `baskets` will be due to issuer after slow issuance.
     /// @param issuer The account issuing the RToken
     /// @param amount {qRTok}
     /// @param baskets {BU}

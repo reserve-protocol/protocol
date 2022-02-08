@@ -87,13 +87,13 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         Fix baskets = rToken().basketsNeeded().mulu(amount).divu(rToken().totalSupply());
         (, withdrawals) = basket.quote(baskets, RoundingApproach.FLOOR);
 
-        // {none} = {qRTok} / {qRTok}
+        // {1} = {qRTok} / {qRTok}
         Fix prorate = toFix(amount).divu(rToken().totalSupply());
         rToken().redeem(_msgSender(), amount, baskets);
 
-        // Bound the redemption by the prorata share
+        // Bound the redemption by the prorata share, in case we're currently under-capitalized
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            // {qTok} = {none} * {qTok}
+            // {qTok} = {1} * {qTok}
             uint256 prorata = prorate
                 .mulu(basket.collateral[i].erc20().balanceOf(address(this)))
                 .floor();
