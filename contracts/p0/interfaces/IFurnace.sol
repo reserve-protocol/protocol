@@ -9,13 +9,10 @@ import "contracts/libraries/Fixed.sol";
  * @notice A helper contract to burn RTokens slowly and permisionlessly.
  */
 interface IFurnace is IERC20Receiver {
-    /// @param amount {qRTok} The amount burnt
-    event Burnt(uint256 indexed amount);
-
-    /// @param amount {qRTok} The total amount to be burnt over the period
-    /// @param timePeriod {sec} The number of seconds the burn occurs over
+    /// @param amount {qRTok} The total amount to be melted over the period
+    /// @param end {sec} The timestamp the melt should end at
     /// @param who The account that created the distribution
-    event DistributionCreated(uint256 indexed amount, uint256 indexed timePeriod, address who);
+    event DistributionCreated(uint256 indexed amount, uint256 indexed end, address who);
 
     /// Emitted when the batch duration is changed
     /// @param oldBatchDuration The old value of `batchDuration`
