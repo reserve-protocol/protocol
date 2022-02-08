@@ -86,6 +86,21 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         );
     }
 
+    /// Cancels a vesting slow issuance
+    /// @param issuanceId The id of the issuance, emitted at issuance start
+    function cancelIssuance(uint256 issuanceId) external override {
+        SlowIssuance storage iss = issuances[issuanceId];
+        require(iss.issuer == _msgSender(), "issuer does not match caller");
+        require(!iss.processed, "issuance already processed");
+
+        for (uint256 i = 0; i < iss.erc20s.length; i++) {
+            IERC20(iss.erc20s[i]).safeTransfer(iss.issuer, iss.deposits[i]);
+        }
+
+        iss.processed = true;
+        emit IssuanceCanceled(issuanceId);
+    }
+
     /// Redeem a quantity of RToken from an account, keeping a roughly constant basket rate
     /// @param from The account redeeeming RToken
     /// @param amount {qTok} The amount to be redeemed
@@ -135,13 +150,13 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     // - enacts any other issuances that are fully vested, sending deposits back to Main
     function processSlowIssuance() private {
         Fix currentBlock = toFix(block.number);
-        bool backingIsSound = main.worstCollateralStatus() == CollateralStatus.SOUND;
+        bool rollback = main.worstCollateralStatus() == CollateralStatus.DISABLED;
 
         for (uint256 i = 0; i < issuances.length; i++) {
             SlowIssuance storage iss = issuances[i];
             if (iss.processed) continue;
 
-            if (!backingIsSound || iss.blockStartedAt <= main.blockBasketLastChanged()) {
+            if (rollback || iss.blockStartedAt <= main.blockBasketLastChanged()) {
                 // Rollback issuance i
 
                 for (uint256 j = 0; j < iss.erc20s.length; j++) {

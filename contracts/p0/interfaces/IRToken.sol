@@ -86,6 +86,10 @@ interface IRToken is IERC20Metadata, IERC20Permit {
         uint256[] memory deposits
     ) external;
 
+    /// Cancels a vesting slow issuance
+    /// @param issuanceId The id of the issuance, emitted at issuance start
+    function cancelIssuance(uint256 issuanceId) external;
+
     /// Burns a quantity of RToken from the callers account
     /// @param from The account from which RToken should be burned
     /// @param amount {qRTok} The amount to be burned
