@@ -215,6 +215,9 @@ describe('MainP0 contract', () => {
       expect(backing[3]).to.equal(collateral3.address)
 
       expect(backing.length).to.equal(4)
+
+      // Check blockBasketLastChanged was setup
+      expect(await main.blockBasketLastChanged()).to.be.gt(bn(0))
     })
   })
 
@@ -670,5 +673,24 @@ describe('MainP0 contract', () => {
     })
   })
 
-  describe('Basket Handling', () => {})
+  describe('Basket Handling', () => {
+    it('Should not allow to set prime Basket if not Owner', async () => {
+      await expect(
+        main.connect(other).setPrimeBasket([collateral0.address], [fp('1')])
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+    })
+
+    it('Should not allow to set prime Basket with invalid length', async () => {
+      await expect(
+        main.connect(owner).setPrimeBasket([collateral0.address], [])
+      ).to.be.revertedWith('must be same length')
+    })
+
+    it('Should allow to set prime Basket if Owner', async () => {
+      // Set basket
+      await expect(main.connect(owner).setPrimeBasket([collateral0.address], [fp('1')]))
+        .to.emit(main, 'PrimeBasketSet')
+        .withArgs([collateral0.address], [fp('1')])
+    })
+  })
 })
