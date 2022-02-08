@@ -216,8 +216,10 @@ describe('MainP0 contract', () => {
 
       expect(backing.length).to.equal(4)
 
-      // Check blockBasketLastChanged was setup
+      // Check other values
       expect(await main.blockBasketLastChanged()).to.be.gt(bn(0))
+      expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+      expect(await main.totalAssetValue()).to.equal(0)
     })
   })
 
