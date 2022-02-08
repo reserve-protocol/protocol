@@ -24,6 +24,7 @@ contract FurnaceP0 is Ownable, IFurnace {
     struct Batch {
         uint256 amount; // {qTok}
         uint256 start; // {timestamp}
+        uint256 end; // {timestamp}
         uint256 melted; // {qTok}
     }
 
@@ -50,8 +51,9 @@ contract FurnaceP0 is Ownable, IFurnace {
         uint256 amount = balance - batchTotal;
 
         if (amount > 0) {
-            batches.push(Batch(amount, block.timestamp, 0));
-            emit DistributionCreated(amount, batchDuration, _msgSender());
+            uint256 end = block.timestamp + batchDuration;
+            batches.push(Batch(amount, block.timestamp, end, 0));
+            emit DistributionCreated(amount, end, _msgSender());
         }
     }
 
@@ -73,7 +75,6 @@ contract FurnaceP0 is Ownable, IFurnace {
 
         if (toMelt > 0) {
             rToken.melt(toMelt);
-            emit Burnt(toMelt);
         }
     }
 
@@ -86,9 +87,10 @@ contract FurnaceP0 is Ownable, IFurnace {
     function vestedAmount(Batch storage batch, uint256 timestamp) private view returns (uint256) {
         // Clamp results to the vesting period
         if (timestamp <= batch.start) return 0;
-        else if (batch.start + batchDuration <= timestamp) return batch.amount;
+        else if (batch.end <= timestamp) return batch.amount;
 
-        // (timestamp - batch.start){s} / batch.duration{s} * batch.amount{RTok}
-        return toFix(timestamp - batch.start).divu(batchDuration).mulu(batch.amount).floor();
+        // (timestamp - batch.start){s} * batch.amount{RTok} / batch.duration{s}
+        return
+            toFix(timestamp - batch.start).mulu(batch.amount).divu(batch.end - batch.start).floor();
     }
 }
