@@ -202,7 +202,7 @@ library FixLib {
         }
         return floor(x);
     }
-    
+
     /// Convert this Fix to an int. Round the fractional part towards zero.
     function toInt(Fix x) internal pure returns (int192) {
         return Fix.unwrap(x) / FIX_SCALE;
@@ -216,7 +216,7 @@ library FixLib {
         int256 coeff = decimals >= 0 ? int256(10**uint8(decimals)) : int256(10**uint8(-decimals));
         return _safe_wrap(decimals >= 0 ? Fix.unwrap(x) * coeff : Fix.unwrap(x) / coeff);
     }
- 
+
     /// Round this Fix to the nearest int. If equidistant to both
     /// adjacent ints, round up, away from zero.
     function intRound(Fix x) internal pure returns (int192) {
@@ -303,6 +303,19 @@ library FixLib {
             return FIX_ZERO;
         }
         return _safe_wrap(Fix.unwrap(x) / int256(y));
+    }
+
+    /// Divide this Fix by a uint; round the fractional part as specified by `rounding`
+    function divu(Fix x, uint256 y_, RoundingApproach rounding) internal pure returns (Fix) {
+        if (y_ > type(uint256).max / 2) return FIX_ZERO;
+        int256 y = int256(y_);
+        int256 rawX = Fix.unwrap(x);
+        int8 sign = (rawX < 0) ? -1 : int8(1);
+        rawX *= sign;
+        // Adjust rawX to cause rounding.
+        if (rounding == RoundingApproach.ROUND) rawX += y/2;
+        else if (rounding == RoundingApproach.CEIL) rawX += y - 1;
+        return _safe_wrap(rawX / y * sign);
     }
 
     /// Compute 1 / (this Fix).
