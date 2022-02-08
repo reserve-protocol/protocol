@@ -19,7 +19,7 @@ abstract contract TraderP0 is ITraderEvents {
 
     IMain public main;
 
-    function initTrader(address main_) public virtual {
+    function initTrader(address main_) internal virtual {
         main = IMain(main_);
     }
 
