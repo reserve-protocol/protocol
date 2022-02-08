@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/assets/abstract/CompoundOracleMixin.sol";
 import "contracts/libraries/Fixed.sol";
 
-// ==== External ====
-
+// ==== External Interfaces ====
+// See: https://github.com/aave/protocol-v2/tree/master/contracts/interfaces
 interface IAaveLendingPool {
     function getAddressesProvider() external view returns (ILendingPoolAddressesProvider);
 }
@@ -23,7 +23,7 @@ interface IAaveOracle {
     function getAssetPrice(address token) external view returns (uint256);
 }
 
-// ==== End External ====
+// ==== End External Interfaces ====
 
 abstract contract AaveOracleMixinP0 is CompoundOracleMixinP0 {
     using FixLib for Fix;

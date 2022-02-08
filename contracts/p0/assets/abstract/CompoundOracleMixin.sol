@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/CommonErrors.sol";
 import "contracts/libraries/Fixed.sol";
 
-// ==== External ====
-
+// ==== External Interfaces  ====
+// see: https://github.com/compound-finance/compound-protocol/tree/master/contracts
 interface IComptroller {
     function oracle() external view returns (ICompoundOracle);
 
@@ -18,7 +18,7 @@ interface ICompoundOracle {
     function price(string memory symbol) external view returns (uint256);
 }
 
-// ==== End External ====
+// ==== End External Interfaces ====
 
 abstract contract CompoundOracleMixinP0 {
     using FixLib for Fix;

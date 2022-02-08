@@ -46,6 +46,9 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
     function price() public view virtual override(AssetP0, IAsset) returns (Fix);
 
     /// Default checks
+    /// @dev This default check assumes that the collateral's price() value is expected
+    /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
+    /// collateral you're defining, you MUST override this function!
     function forceUpdates() public virtual override {
         uint256 cached = whenDefault;
 
@@ -71,7 +74,8 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
     }
 
     // solhint-disable no-empty-blocks
-    /// @dev Intended to be used via delegatecall
+    /// @dev Intended to be used via delegatecall. Override in implementations if holders of the
+    /// collateral have a way to claim rewards from the collateral's protocol.
     function claimAndSweepRewards(ICollateral collateral, IMain main_) external virtual override {}
 
     // solhint-enable no-empty-blocks

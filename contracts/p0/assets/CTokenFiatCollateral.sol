@@ -9,9 +9,8 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
-// ==== External ====
-
-// https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
+// ==== External Interfaces ====
+// See: https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 interface ICToken {
     /// @dev From Compound Docs:
     /// The current (up to date) exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
@@ -21,7 +20,7 @@ interface ICToken {
     function exchangeRateStored() external view returns (uint256);
 }
 
-// ==== End External ====
+// ==== End External Interfaces ====
 
 contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
     using FixLib for Fix;
