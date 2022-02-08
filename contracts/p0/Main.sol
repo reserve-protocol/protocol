@@ -20,6 +20,7 @@ import "contracts/Pausable.sol";
  * @notice Collects all mixins.
  */
 contract MainP0 is
+    Ownable,
     Pausable,
     Mixin,
     AssetRegistryP0,
@@ -49,6 +50,7 @@ contract MainP0 is
             RewardClaimerP0,
             RTokenIssuerP0
         )
+        onlyOwner
     {
         super.init(args);
     }
