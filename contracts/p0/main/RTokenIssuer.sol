@@ -47,18 +47,9 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         require(worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
         uint256 rTokSupply = rToken().totalSupply(); // {qRTok}
-        Fix baskets = toFixWithShift(amount, -int8(rToken().decimals())); // {BU}
-
-        if (rTokSupply > 0) {
-            Fix numerator = rToken().basketsNeeded().mulu(amount);
-            Fix denominator = toFix(rTokSupply);
-            baskets = numerator.div(denominator);
-
-            // TODO Double-check with Matt
-            if (Fix.unwrap(denominator) % Fix.unwrap(numerator) != 0) {
-                baskets = numerator.increment().div(denominator);
-            }
-        }
+        Fix baskets = (rTokSupply > 0) // {BU}
+            ? rToken().basketsNeeded().mulu(amount).divuRound(rTokSupply) // {BU * qRTok / qRTok}
+            : toFixWithShift(amount, -int8(rToken().decimals())); // {qRTok / qRTok}
 
         ICollateral[] memory collateral;
         (collateral, deposits) = basket.quote(baskets, RoundingApproach.CEIL);
@@ -84,7 +75,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         revenueFurnace().melt();
 
         // {BU} = {BU} * {qRTok} / {qRTok}
-        Fix baskets = rToken().basketsNeeded().mulu(amount).divu(rToken().totalSupply());
+        Fix baskets = rToken().basketsNeeded().mulu(amount).divuRound(rToken().totalSupply());
         (, withdrawals) = basket.quote(baskets, RoundingApproach.FLOOR);
 
         // {1} = {qRTok} / {qRTok}

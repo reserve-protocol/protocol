@@ -298,11 +298,11 @@ describe('In FixLib,', async () => {
       const table = [
         [1.1, 1], [1.9, 2], [1, 1], [0.1, 0],
         [705811305.5207, 705811306], [705811305.207, 705811305],
-        [3.4999, 3], [3.50001, 4], 
+        [3.4999, 3], [3.50001, 4],
         [MAX_FIX_INT, MAX_FIX_INT],
-        [9.99999, 10], 
+        [9.99999, 10],
         [6.5, 7], [5.5, 6],
-        [0, 0], [0.5, 1], 
+        [0, 0], [0.5, 1],
       ]
       for (let [input, result] of table) {
         expect(await caller.round(fp(input)), `fp(${input})`).to.equal(result)
@@ -874,6 +874,52 @@ describe('In FixLib,', async () => {
       // prettier-ignore
       [fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
         .forEach(async (x) => await expect(caller.divu(x, bn(0)), `divu(${x}, 0`).to.be.reverted)
+    })
+  })
+  describe('divuRound', async () => {
+    it('correctly divides inside its range', async () => {
+      // prettier-ignore
+      [
+        [fp(100), bn(20), fp(5)],
+        [fp(1.0), bn(25), fp(0.04)],
+        [bn(50), bn(50), bn(1)],
+        [fp(2), bn(2), fp(1)],
+        [fp(3), bn(2), fp(1.5)],
+        [fp(1), bn(1), fp(1)],
+        [bn(1), bn(1), bn(1)],
+      ].forEach(async ([a, b, c]) => expect(await caller.divuRound(a, b), `divuRound((${a}, ${b})`).to.equal(c))
+    })
+    it('correctly divides at the extremes of its range', async () => {
+      // prettier-ignore
+      [
+        [MAX_INT192, bn(1), MAX_INT192],
+        [MIN_INT192, bn(1), MIN_INT192],
+        [MIN_INT192, bn(2), MIN_INT192.div(2)],
+      ].forEach(async ([a, b, c]) => expect(await caller.divuRound(a, b), `divuRound(${a}, ${b})`).to.equal(c))
+    })
+    it('correctly rounds results towards the nearest output fix', async () => {
+      // prettier-ignore
+      [
+        [bn(7), bn(3), bn(2)],
+        [bn(5), bn(3), bn(2)],
+        [bn(-5), bn(3), bn(-2)],
+        [bn(0), bn(1), bn(0)],
+        [bn(25), bn(10), bn(3)],
+        [bn(29), bn(10), bn(3)],
+        [bn(30), bn(10), bn(3)],
+        [bn(31), bn(10), bn(3)],
+        [bn(34), bn(10), bn(3)],
+        [bn(-25), bn(10), bn(-3)],
+        [bn(-29), bn(10), bn(-3)],
+        [bn(-30), bn(10), bn(-3)],
+        [bn(-31), bn(10), bn(-3)],
+        [bn(-34), bn(10), bn(-3)],
+      ].forEach(async ([a, b, c]) => expect(await caller.divuRound(a, b), `divuRound((${a}, ${b})`).to.equal(c))
+    })
+    it('fails to divide by zero', async () => {
+      // prettier-ignore
+      [fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
+        .forEach(async (x) => await expect(caller.divuRound(x, bn(0)), `divuRound(${x}, 0`).to.be.reverted)
     })
   })
   describe('inv', async () => {

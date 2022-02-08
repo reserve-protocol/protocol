@@ -305,17 +305,15 @@ library FixLib {
         return _safe_wrap(Fix.unwrap(x) / int256(y));
     }
 
-    /// Divide this Fix by a uint; round the fractional part as specified by `rounding`
-    function divu(Fix x, uint256 y_, RoundingApproach rounding) internal pure returns (Fix) {
+    /// Divide this Fix by a uint. Round the result to the *nearest* Fix, instead of truncating.
+    /// Values at exactly 0.5 are rounded up.
+    function divuRound(Fix x, uint256 y_) internal pure returns (Fix) {
         if (y_ > type(uint256).max / 2) return FIX_ZERO;
         int256 y = int256(y_);
         int256 rawX = Fix.unwrap(x);
         int8 sign = (rawX < 0) ? -1 : int8(1);
         rawX *= sign;
-        // Adjust rawX to cause rounding.
-        if (rounding == RoundingApproach.ROUND) rawX += y/2;
-        else if (rounding == RoundingApproach.CEIL) rawX += y - 1;
-        return _safe_wrap(rawX / y * sign);
+        return _safe_wrap((rawX + y/2) / y * sign);
     }
 
     /// Compute 1 / (this Fix).
