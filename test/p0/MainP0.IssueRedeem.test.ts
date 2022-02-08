@@ -215,13 +215,22 @@ describe('MainP0 contract', () => {
 
       // Check if minting was registered
       const currentBlockNumber = await getLatestBlockNumber()
-      const [sm_startedAt, sm_amt, , sm_minter, sm_availableAt, sm_proc] = await rToken.issuances(0)
+      let [sm_startedAt, sm_amt, , sm_minter, sm_availableAt, sm_proc] = await rToken.issuances(0)
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
       expect(sm_startedAt).to.equal(currentBlockNumber)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
+
+      // Process issuance
+      await main.poke()
+
+      // Check minting is confirmed
+      ;[, , , , , sm_proc] = await rToken.issuances(0)
+      expect(sm_proc).to.equal(true)
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
     })
 
     it('Should issue RTokens correctly for more complex basket multiple users', async function () {
@@ -320,7 +329,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(addr2.address)).to.equal(0)
 
-      // Check new issuances was processed
+      // Check the new issuance was processed
       currentBlockNumber = await getLatestBlockNumber()
       ;[sm_startedAt, sm_amt, , sm_minter, sm_availableAt, sm_proc] = await rToken.issuances(1)
       expect(sm_startedAt).to.equal(currentBlockNumber)
@@ -328,6 +337,14 @@ describe('MainP0 contract', () => {
       expect(sm_minter).to.equal(addr2.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber).add(blockAddPct))
       expect(sm_proc).to.equal(false)
+
+      // Issue rTokens
+      await main.poke()
+
+      // Check issuance is confirmed
+      ;[, , , , , sm_proc] = await rToken.issuances(1)
+      expect(sm_proc).to.equal(true)
+      expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmount)
     })
 
     it('Should return maxIssuable correctly', async () => {
