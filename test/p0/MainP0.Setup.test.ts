@@ -692,5 +692,24 @@ describe('MainP0 contract', () => {
         .to.emit(main, 'PrimeBasketSet')
         .withArgs([collateral0.address], [fp('1')])
     })
+
+    it('Should not allow to set backup Config if not Owner', async () => {
+      await expect(
+        main
+          .connect(other)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [collateral0.address])
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+    })
+
+    it('Should allow to set backup Config if Owner', async () => {
+      // Set basket
+      await expect(
+        main
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [collateral0.address])
+      )
+        .to.emit(main, 'BackupConfigSet')
+        .withArgs(ethers.utils.formatBytes32String('USD'), bn(1), [collateral0.address])
+    })
   })
 })
