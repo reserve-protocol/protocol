@@ -577,6 +577,25 @@ describe('MainP0 contract', () => {
       expect(await main.market()).to.equal(other.address)
     })
 
+    it('Should allow to set ClaimAdapter if Owner', async () => {
+      // Check existing value
+      expect(await main.claimAdapter()).to.equal(claimAdapter.address)
+
+      // If not owner cannot update - use mock address
+      await expect(main.connect(other).setClaimAdapter(other.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.claimAdapter()).to.equal(claimAdapter.address)
+
+      // Update with owner
+      await main.connect(owner).setClaimAdapter(other.address)
+
+      // Check value was updated
+      expect(await main.claimAdapter()).to.equal(other.address)
+    })
+
     it('Should allow to set RevenueFurnace if Owner and perform validations', async () => {
       // Setup test furnaces
       const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')
