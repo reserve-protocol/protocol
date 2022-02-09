@@ -657,6 +657,62 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
     })
 
+    it('Should allow issuer to rollback minting', async function () {
+      const issueAmount: BigNumber = bn('50000e18')
+
+      // Provide approvals
+      await token0.connect(addr1).approve(main.address, initialBal)
+      await token1.connect(addr1).approve(main.address, initialBal)
+      await token2.connect(addr1).approve(main.address, initialBal)
+      await token3.connect(addr1).approve(main.address, initialBal)
+
+      const quotes: BigNumber[] = await main.connect(addr1).callStatic.issue(issueAmount)
+      const expectedTkn0: BigNumber = quotes[0]
+      const expectedTkn1: BigNumber = quotes[1]
+      const expectedTkn2: BigNumber = quotes[2]
+      const expectedTkn3: BigNumber = quotes[3]
+
+      // Issue rTokens
+      await main.connect(addr1).issue(issueAmount)
+
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
+
+      // Process slow issuances
+      await main.poke()
+
+      // Check previous minting was not processed
+      let [, , , , , sm_proc] = await rToken.issuances(0)
+      expect(sm_proc).to.equal(false)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+
+      // Attempt to cancel issuance with another user
+      await expect(rToken.cancelIssuance(0)).to.be.revertedWith('issuer does not match caller')
+
+      // Cancel with issuer
+      await expect(rToken.connect(addr1).cancelIssuance(0))
+        .to.emit(rToken, 'IssuanceCanceled')
+        .withArgs(0)
+
+      // Check minting was cancelled but not tokens minted
+      ;[, , , , , sm_proc] = await rToken.issuances(0)
+      expect(sm_proc).to.equal(true)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+
+      // Check balances returned to user
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+
+      // Cannot cancel minting once processed
+      await expect(rToken.connect(addr1).cancelIssuance(0)).to.be.revertedWith(
+        'issuance already processed'
+      )
+    })
+
     it('Should rollback mintings if Basket changes (2 blocks)', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
@@ -667,6 +723,7 @@ describe('MainP0 contract', () => {
       await token3.connect(addr1).approve(main.address, initialBal)
 
       const quotes: BigNumber[] = await main.connect(addr1).callStatic.issue(issueAmount)
+
       // Issue rTokens
       await main.connect(addr1).issue(issueAmount)
 
