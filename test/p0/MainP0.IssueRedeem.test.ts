@@ -231,6 +231,9 @@ describe('MainP0 contract', () => {
       expect(sm_proc).to.equal(true)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+      // Check asset value
+      expect(await main.totalAssetValue()).to.equal(issueAmount)
     })
 
     it('Should issue RTokens correctly for more complex basket multiple users', async function () {
@@ -312,6 +315,9 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(main.address)).to.equal(0)
 
+      // Check asset value at this point
+      expect(await main.totalAssetValue()).to.equal(issueAmount)
+
       // Issue rTokens
       await main.connect(addr2).issue(issueAmount)
 
@@ -345,6 +351,9 @@ describe('MainP0 contract', () => {
       ;[, , , , , sm_proc] = await rToken.issuances(1)
       expect(sm_proc).to.equal(true)
       expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmount)
+
+      // Check asset value
+      expect(await main.totalAssetValue()).to.equal(issueAmount.mul(2))
     })
 
     it('Should return maxIssuable correctly', async () => {
@@ -429,6 +438,9 @@ describe('MainP0 contract', () => {
       expect(sm_proc).to.equal(false)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
+      // Check asset value at this point (still nothing issued)
+      expect(await main.totalAssetValue()).to.equal(0)
+
       // Process 4 blocks
       await advanceTime(100)
       await advanceTime(100)
@@ -440,6 +452,9 @@ describe('MainP0 contract', () => {
       expect(sm_proc).to.equal(true)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+
+      // Check asset value
+      expect(await main.totalAssetValue()).to.equal(issueAmount)
     })
 
     it('Should process issuances in multiple attempts (using issuanceRate)', async function () {
@@ -499,6 +514,9 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
+      // Check asset value at this point (still nothing issued beyond initial amount)
+      expect(await main.totalAssetValue()).to.equal(issueAmount)
+
       // Process slow mintings one more time
       await main.poke()
 
@@ -508,6 +526,9 @@ describe('MainP0 contract', () => {
       expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssuanceAmt))
+
+      // Check asset value
+      expect(await main.totalAssetValue()).to.equal(issueAmount.add(newIssuanceAmt))
     })
 
     it('Should process multiple issuances in the correct order', async function () {
@@ -533,16 +554,19 @@ describe('MainP0 contract', () => {
 
       // Check first slow minting is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await main.totalAssetValue()).to.equal(issueAmount)
 
       // Process another block to get the 2nd issuance processed
       await main.poke()
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
+      expect(await main.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount))
 
       // Process another block to get the 3rd issuance processed
       await main.poke()
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
+      expect(await main.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount.mul(2)))
     })
 
     it('Should allow multiple issuances in the same block', async function () {
@@ -593,6 +617,7 @@ describe('MainP0 contract', () => {
       // Check both slow mintings are confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.mul(2))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+      expect(await main.totalAssetValue()).to.equal(issueAmount.mul(2))
     })
 
     it('Should move issuances to next block if exceeds issuance limit', async function () {
@@ -648,6 +673,7 @@ describe('MainP0 contract', () => {
       // Check first slow mintings is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+      expect(await main.totalAssetValue()).to.equal(issueAmount)
 
       // Process issuance 2
       await main.poke()
@@ -655,6 +681,7 @@ describe('MainP0 contract', () => {
       // Check second mintings is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+      expect(await main.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount))
     })
 
     it('Should allow issuer to rollback minting', async function () {
@@ -706,6 +733,9 @@ describe('MainP0 contract', () => {
       expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+
+      // Check total asset value did not change
+      expect(await main.totalAssetValue()).to.equal(0)
 
       // Cannot cancel minting once processed
       await expect(rToken.connect(addr1).cancelIssuance(0)).to.be.revertedWith(
@@ -786,6 +816,9 @@ describe('MainP0 contract', () => {
       ;[, , , , , sm_proc] = await rToken.issuances(0)
       expect(sm_proc).to.equal(true)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+
+      // Check total asset value did not change
+      expect(await main.totalAssetValue()).to.equal(0)
     })
   })
 
@@ -826,6 +859,7 @@ describe('MainP0 contract', () => {
         // Check balances
         expect(await rToken.balanceOf(addr1.address)).to.equal(redeemAmount)
         expect(await rToken.totalSupply()).to.equal(redeemAmount)
+        expect(await main.totalAssetValue()).to.equal(issueAmount)
 
         // Redeem rTokens
         await main.connect(addr1).redeem(redeemAmount)
@@ -838,6 +872,9 @@ describe('MainP0 contract', () => {
         expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
         expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
         expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+
+        // Check asset value
+        expect(await main.totalAssetValue()).to.equal(issueAmount.sub(redeemAmount))
       })
 
       it('Should redeem RTokens correctly for multiple users', async function () {
@@ -849,6 +886,7 @@ describe('MainP0 contract', () => {
         await token1.connect(addr2).approve(main.address, initialBal)
         await token2.connect(addr2).approve(main.address, initialBal)
         await token3.connect(addr2).approve(main.address, initialBal)
+        expect(await main.totalAssetValue()).to.equal(issueAmount)
 
         //Issue rTokens
         await main.connect(addr2).issue(issueAmount)
@@ -856,8 +894,14 @@ describe('MainP0 contract', () => {
         // Process the issuance
         await main.poke()
 
+        // Check asset value
+        expect(await main.totalAssetValue()).to.equal(issueAmount.mul(2))
+
         // Redeem rTokens
         await main.connect(addr1).redeem(redeemAmount)
+
+        // Check asset value
+        expect(await main.totalAssetValue()).to.equal(issueAmount.mul(2).sub(redeemAmount))
 
         // Redeem rTokens with another user
         await main.connect(addr2).redeem(redeemAmount)
@@ -877,6 +921,9 @@ describe('MainP0 contract', () => {
         expect(await token1.balanceOf(addr2.address)).to.equal(initialBal)
         expect(await token2.balanceOf(addr2.address)).to.equal(initialBal)
         expect(await token3.balanceOf(addr2.address)).to.equal(initialBal)
+
+        // Check asset value
+        expect(await main.totalAssetValue()).to.equal(issueAmount.mul(2).sub(redeemAmount.mul(2)))
       })
     })
   })
