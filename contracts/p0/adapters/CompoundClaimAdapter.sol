@@ -14,7 +14,7 @@ contract CompoundClaimAdapterP0 is IClaimAdapter {
 
     /// @return _to The address to send the call to
     /// @return _calldata The calldata to send
-    function getClaimCalldata(ICollateral collateral)
+    function getClaimCalldata(ICollateral)
         external
         view
         override
