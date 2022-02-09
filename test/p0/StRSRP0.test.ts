@@ -1,10 +1,14 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { signERC2612Permit } from 'eth-permit'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import hre from 'hardhat'
 import { ethers, waffle } from 'hardhat'
+
+import { getChainId } from '../../common/blockchain-utils'
 import { bn, fp, near } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
+import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
 import { MainCallerMockP0 } from '../../typechain/MainCallerMockP0'
 import { MainP0 } from '../../typechain/MainP0'
@@ -31,6 +35,9 @@ describe('StRSRP0 contract', () => {
 
   // StRSR
   let stRSR: StRSRP0
+
+  // Deployer
+  let deployer: DeployerP0
 
   // Tokens/Assets
   let token0: ERC20Mock
@@ -62,7 +69,7 @@ describe('StRSRP0 contract', () => {
     ;[owner, addr1, addr2, addr3, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ rsr, stRSR, basket, basketsNeededAmts, main } = await loadFixture(defaultFixture))
+    ;({ rsr, stRSR, basket, basketsNeededAmts, main, deployer } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
     initialBal = bn('100e18')

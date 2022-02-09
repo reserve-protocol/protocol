@@ -10,10 +10,9 @@ contract StRSRExtension is ContextMixin, StRSRP0, IExtension {
     constructor(
         address admin,
         IMain main_,
-        string memory name_,
-        string memory symbol_,
+        string memory domainSeparator_,
         address owner_
-    ) ContextMixin(admin) StRSRP0(main_, name_, symbol_, owner_) {}
+    ) ContextMixin(admin) StRSRP0(main_, domainSeparator_, owner_) {}
 
     function assertInvariants() external pure override {
         assert(true);

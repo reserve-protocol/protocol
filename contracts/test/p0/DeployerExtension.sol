@@ -48,20 +48,18 @@ contract DeployerExtension is DeployerP0, IExtension {
 
     function deployRToken(
         IMain main,
-        string memory name,
-        string memory symbol,
+        string memory domainSeparator,
         address owner
     ) internal override returns (IRToken) {
-        return new RTokenExtension(_admin, main, name, symbol, owner);
+        return new RTokenExtension(_admin, main, domainSeparator, owner);
     }
 
     function deployStRSR(
         IMain main,
-        string memory name,
-        string memory symbol,
+        string memory domainSeparator,
         address owner
     ) internal override returns (IStRSR) {
-        return new StRSRExtension(_admin, main, name, symbol, owner);
+        return new StRSRExtension(_admin, main, domainSeparator, owner);
     }
 
     function INVARIANT_currentDeploymentRegistered() internal view {

@@ -29,12 +29,19 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
     constructor(
         IMain main_,
-        string memory name_,
-        string memory symbol_,
+        string memory domain_,
         address owner_
-    ) ERC20(name_, symbol_) ERC20Permit(name_) {
+    ) ERC20("UNUSED", "UNUSED") ERC20Permit(domain_) {
         main = main_;
         _transferOwnership(owner_);
+    }
+
+    function name() public view override(ERC20, IERC20Metadata) returns (string memory) {
+        return main.rTokenIdentifier().name;
+    }
+
+    function symbol() public view override(ERC20, IERC20Metadata) returns (string memory) {
+        return main.rTokenIdentifier().symbol;
     }
 
     modifier onlyMain() {

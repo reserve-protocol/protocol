@@ -44,6 +44,9 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     IAsset private _compAsset;
     IAsset private _aaveAsset;
 
+    TokenIdentifier private _rTokenIdentifier;
+    TokenIdentifier private _stRSRIdentifier;
+
     function init(ConstructorArgs calldata args) public virtual override(Mixin, AssetRegistryP0) {
         super.init(args);
 
@@ -64,6 +67,9 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         _minAuctionSize = args.config.minAuctionSize;
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
+
+        _rTokenIdentifier = args.rTokenIdentifier;
+        _stRSRIdentifier = args.stRSRIdentifier;
     }
 
     function setStRSR(IStRSR stRSR_) external override onlyOwner {
@@ -252,5 +258,28 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     /// @return The RSR deployment
     function rsr() public view override returns (IERC20Metadata) {
         return IERC20Metadata(address(_rsrAsset.erc20()));
+    }
+
+    function setStRSRIdentifier(TokenIdentifier calldata id) external override onlyOwner {
+        emit StRSRIdentifierSet(_stRSRIdentifier.name, id.name, _stRSRIdentifier.symbol, id.symbol);
+        _stRSRIdentifier = id;
+    }
+
+    function stRSRIdentifier() public view override returns (TokenIdentifier memory) {
+        return _stRSRIdentifier;
+    }
+
+    function setRTokenIdentifier(TokenIdentifier calldata id) external override onlyOwner {
+        emit RTokenIdentifierSet(
+            _rTokenIdentifier.name,
+            id.name,
+            _rTokenIdentifier.symbol,
+            id.symbol
+        );
+        _rTokenIdentifier = id;
+    }
+
+    function rTokenIdentifier() public view override returns (TokenIdentifier memory) {
+        return _rTokenIdentifier;
     }
 }

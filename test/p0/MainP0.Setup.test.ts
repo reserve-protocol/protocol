@@ -239,6 +239,8 @@ describe('MainP0 contract', () => {
         furnace: furnace.address,
         market: market.address,
         claimAdapters: [compoundClaimer.address, aaveClaimer.address],
+        rTokenIdentifier: { name: 'rToken name', symbol: 'rToken symbol' },
+        stRSRIdentifier: { name: 'stRSR name', symbol: 'stRSR symbol' },
       }
       await expect(main.init(ctorArgs)).to.be.revertedWith('already initialized')
     })

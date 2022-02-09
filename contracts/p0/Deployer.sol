@@ -80,7 +80,7 @@ contract DeployerP0 is IDeployer {
         deployments.push(main);
 
         {
-            IRToken rToken = deployRToken(main, name, symbol, owner);
+            IRToken rToken = deployRToken(main, name, owner);
             IFurnace revenueFurnace = deployRevenueFurnace(rToken, config.rewardPeriod);
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
@@ -88,10 +88,27 @@ contract DeployerP0 is IDeployer {
             claimAdapters[0] = compoundClaimer;
             claimAdapters[1] = aaveClaimer;
 
-            ctorArgs = ConstructorArgs(config, dist, revenueFurnace, market, claimAdapters);
+            TokenIdentifier memory rTokenIdentifier = TokenIdentifier(name, symbol);
+            TokenIdentifier memory stRSRIdentifier = TokenIdentifier(
+                string(abi.encodePacked("st", symbol, "RSR Token")),
+                string(abi.encodePacked("st", symbol, "RSR"))
+            );
+
+            ctorArgs = ConstructorArgs(
+                config,
+                dist,
+                revenueFurnace,
+                market,
+                claimAdapters,
+                rTokenIdentifier,
+                stRSRIdentifier
+            );
 
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main);
             main.setRTokenAsset(rTokenAsset);
+
+            IStRSR stRSR = deployStRSR(main, stRSRIdentifier.name, owner);
+            main.setStRSR(stRSR);
         }
 
         {
@@ -102,16 +119,6 @@ contract DeployerP0 is IDeployer {
             main.setRSRAsset(rsrAsset);
             main.setAAVEAsset(aaveAsset);
             main.setCOMPAsset(compAsset);
-        }
-
-        {
-            IStRSR stRSR = deployStRSR(
-                main,
-                string(abi.encodePacked("st", symbol, "RSR Token")),
-                string(abi.encodePacked("st", symbol, "RSR")),
-                owner
-            );
-            main.setStRSR(stRSR);
         }
 
         main.init(ctorArgs);
@@ -133,11 +140,10 @@ contract DeployerP0 is IDeployer {
 
     function deployRToken(
         IMain main,
-        string memory name,
-        string memory symbol,
+        string memory domain,
         address owner
     ) internal virtual returns (IRToken) {
-        return new RTokenP0(main, name, symbol, owner);
+        return new RTokenP0(main, domain, owner);
     }
 
     function deployRevenueFurnace(IRToken rToken, uint256 batchDuration)
@@ -150,10 +156,9 @@ contract DeployerP0 is IDeployer {
 
     function deployStRSR(
         IMain main,
-        string memory name,
-        string memory symbol,
+        string memory domain,
         address owner
     ) internal virtual returns (IStRSR) {
-        return new StRSRP0(main, name, symbol, owner);
+        return new StRSRP0(main, domain, owner);
     }
 }

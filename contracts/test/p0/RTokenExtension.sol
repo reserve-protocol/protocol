@@ -15,10 +15,9 @@ contract RTokenExtension is ContextMixin, RTokenP0, IExtension {
     constructor(
         address admin,
         IMain main,
-        string memory name_,
-        string memory symbol_,
+        string memory domainSeparator_,
         address owner_
-    ) ContextMixin(admin) RTokenP0(main, name_, symbol_, owner_) {}
+    ) ContextMixin(admin) RTokenP0(main, domainSeparator_, owner_) {}
 
     function forceSlowIssuanceToComplete() external returns (bool) {
         for (uint256 i = 0; i < issuances.length; i++) {

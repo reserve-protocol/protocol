@@ -45,10 +45,6 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
 
     IMain public main;
 
-    // Staking Token Name and Symbol
-    string private _name;
-    string private _symbol;
-
     // Amount of RSR staked per account
     mapping(address => uint256) private balances;
     mapping(address => mapping(address => uint256)) private allowances;
@@ -70,13 +66,10 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
 
     constructor(
         IMain main_,
-        string memory name_,
-        string memory symbol_,
+        string memory domain_,
         address owner_
-    ) EIP712(name_, "1") {
+    ) EIP712(domain_, "1") {
         main = main_;
-        _name = name_;
-        _symbol = symbol_;
         _transferOwnership(owner_);
     }
 
@@ -199,12 +192,13 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     }
 
     // ERC20 Interface
+
     function name() public view returns (string memory) {
-        return _name;
+        return main.stRSRIdentifier().name;
     }
 
     function symbol() public view returns (string memory) {
-        return _symbol;
+        return main.stRSRIdentifier().symbol;
     }
 
     function decimals() public pure returns (uint8) {

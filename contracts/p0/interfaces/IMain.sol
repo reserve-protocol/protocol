@@ -44,6 +44,11 @@ struct Config {
     // defaultThreshold = 0.05 (5% deviation, either above or below)
 }
 
+struct TokenIdentifier {
+    string name;
+    string symbol;
+}
+
 struct RevenueShare {
     Fix rTokenDist;
     Fix rsrDist;
@@ -55,6 +60,8 @@ struct ConstructorArgs {
     IFurnace furnace;
     IMarket market;
     IClaimAdapter[] claimAdapters;
+    TokenIdentifier rTokenIdentifier;
+    TokenIdentifier stRSRIdentifier;
 }
 
 enum AuctionStatus {
@@ -163,6 +170,18 @@ interface ISettingsHandler {
     event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
     event ClaimAdapterAdded(IClaimAdapter indexed adapter);
     event ClaimAdapterRemoved(IClaimAdapter indexed adapter);
+    event RTokenIdentifierSet(
+        string indexed oldName,
+        string newName,
+        string indexed oldSymbol,
+        string newSymbol
+    );
+    event StRSRIdentifierSet(
+        string indexed oldName,
+        string newName,
+        string indexed oldSymbol,
+        string newSymbol
+    );
 
     function setRewardStart(uint256 rewardStart) external;
 
@@ -201,6 +220,10 @@ interface ISettingsHandler {
     function addClaimAdapter(IClaimAdapter claimAdapter) external;
 
     function removeClaimAdapter(IClaimAdapter claimAdapter) external;
+
+    function setRTokenIdentifier(TokenIdentifier calldata) external;
+
+    function setStRSRIdentifier(TokenIdentifier calldata) external;
 
     //
 
@@ -245,6 +268,10 @@ interface ISettingsHandler {
 
     /// @return The RSR deployment
     function rsr() external view returns (IERC20Metadata);
+
+    function rTokenIdentifier() external view returns (TokenIdentifier memory);
+
+    function stRSRIdentifier() external view returns (TokenIdentifier memory);
 }
 
 interface IBasketHandler {
