@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/p0/assets/abstract/CompoundOracleMixin.sol";
 import "contracts/p0/interfaces/IClaimAdapter.sol";
 
-/// Supports composing calldata to claim rewards in a small number of defi protocols
+/// Claim adapter for the Compound protocol
 contract CompoundClaimAdapterP0 is IClaimAdapter {
     IComptroller public immutable comptroller;
 
