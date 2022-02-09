@@ -348,7 +348,7 @@ describe('MainP0 contract', () => {
     })
 
     it('Should return maxIssuable correctly', async () => {
-      const issueAmount: BigNumber = bn('1000000e18')
+      const issueAmount: BigNumber = bn('10000e18')
 
       // Check values, with no issued tokens
       expect(await main.maxIssuable(addr1.address)).to.equal(bn('4000000e18'))
@@ -368,7 +368,7 @@ describe('MainP0 contract', () => {
       await main.poke()
 
       // Check values, with issued tokens
-      expect(await main.maxIssuable(addr1.address)).to.equal(bn('3000000e18'))
+      expect(await main.maxIssuable(addr1.address)).to.equal(bn('3990000e18'))
       expect(await main.maxIssuable(addr2.address)).to.equal(bn('4000000e18'))
       expect(await main.maxIssuable(other.address)).to.equal(0)
     })
