@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/p0/assets/abstract/CompoundOracleMixin.sol";
 import "contracts/p0/assets/abstract/Collateral.sol";
+import "contracts/p0/adapters/CompoundClaimAdapter.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
@@ -37,11 +38,13 @@ contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
         IERC20Metadata erc20_,
         IERC20Metadata referenceERC20_,
         IMain main_,
-        IComptroller comptroller_
+        IComptroller comptroller_,
+        CompoundClaimAdapterP0 claimAdapter_
     )
         CollateralP0(erc20_, referenceERC20_, main_, bytes32(bytes("USD")))
         CompoundOracleMixinP0(comptroller_)
     {
+        claimAdapter = claimAdapter_;
         prevReferencePrice = refPerTok();
     }
 
@@ -76,10 +79,6 @@ contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
         if (whenDefault != cached) {
             emit DefaultStatusChanged(cached, whenDefault, status());
         }
-    }
-
-    function defiProtocol() external view override returns (address) {
-        return address(comptroller);
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

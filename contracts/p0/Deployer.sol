@@ -3,6 +3,8 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "contracts/p0/adapters/AaveClaimAdapter.sol";
+import "contracts/p0/adapters/CompoundClaimAdapter.sol";
 import "contracts/p0/assets/AavePricedAsset.sol";
 import "contracts/p0/assets/CompoundPricedAsset.sol";
 import "contracts/p0/assets/RTokenAsset.sol";
@@ -15,7 +17,6 @@ import "contracts/p0/interfaces/IFurnace.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/assets/RTokenAsset.sol";
-import "contracts/p0/ClaimAdapter.sol";
 import "contracts/p0/ExplorerFacade.sol";
 import "contracts/p0/Furnace.sol";
 import "contracts/p0/Main.sol";
@@ -29,12 +30,15 @@ import "contracts/libraries/CommonErrors.sol";
  * @notice The deployer for the entire system.
  */
 contract DeployerP0 is IDeployer {
-    IERC20Metadata public rsr;
-    IERC20Metadata public comp;
-    IERC20Metadata public aave;
-    IMarket public market;
-    IComptroller public comptroller;
-    IAaveLendingPool public aaveLendingPool;
+    IERC20Metadata public immutable rsr;
+    IERC20Metadata public immutable comp;
+    IERC20Metadata public immutable aave;
+    IMarket public immutable market;
+    IComptroller public immutable comptroller;
+    IAaveLendingPool public immutable aaveLendingPool;
+
+    IClaimAdapter public immutable compoundClaimer;
+    IClaimAdapter public immutable aaveClaimer;
 
     IMain[] public deployments;
 
@@ -52,6 +56,8 @@ contract DeployerP0 is IDeployer {
         market = market_;
         comptroller = comptroller_;
         aaveLendingPool = aaveLendingPool_;
+        compoundClaimer = new CompoundClaimAdapterP0(comptroller);
+        aaveClaimer = new AaveClaimAdapterP0();
     }
 
     /// Deploys an instance of the entire system
@@ -78,9 +84,11 @@ contract DeployerP0 is IDeployer {
             IFurnace revenueFurnace = deployRevenueFurnace(rToken, config.rewardPeriod);
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
-            IClaimAdapter claimAdapter = new ClaimAdapterP0(comptroller, aaveLendingPool);
+            IClaimAdapter[] memory claimAdapters = new IClaimAdapter[](2);
+            claimAdapters[0] = compoundClaimer;
+            claimAdapters[1] = aaveClaimer;
 
-            ctorArgs = ConstructorArgs(config, dist, revenueFurnace, market, claimAdapter);
+            ctorArgs = ConstructorArgs(config, dist, revenueFurnace, market, claimAdapters);
 
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main);
             main.setRTokenAsset(rTokenAsset);

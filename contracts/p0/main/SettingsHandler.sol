@@ -21,7 +21,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
-    IClaimAdapter private _claimAdapter;
+    EnumerableSet.AddressSet private _claimAdapters;
     IMarket private _market;
 
     uint256 private _rewardStart;
@@ -46,7 +46,10 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function init(ConstructorArgs calldata args) public virtual override(Mixin, AssetRegistryP0) {
         super.init(args);
-        _claimAdapter = args.claimAdapter;
+
+        for (uint256 i = 0; i < args.claimAdapters.length; i++) {
+            _claimAdapters.add(address(args.claimAdapters[i]));
+        }
         _market = args.market;
         _revenueFurnace = args.furnace;
 
@@ -221,13 +224,23 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         return _market;
     }
 
-    function setClaimAdapter(IClaimAdapter claimAdapter_) external override onlyOwner {
-        emit ClaimAdapterSet(_claimAdapter, claimAdapter_);
-        _claimAdapter = claimAdapter_;
+    function addClaimAdapter(IClaimAdapter claimAdapter_) external override onlyOwner {
+        emit ClaimAdapterAdded(claimAdapter_);
+        _claimAdapters.add(address(claimAdapter_));
     }
 
-    function claimAdapter() external view override returns (IClaimAdapter) {
-        return _claimAdapter;
+    function removeClaimAdapter(IClaimAdapter claimAdapter_) external override onlyOwner {
+        emit ClaimAdapterAdded(claimAdapter_);
+        _claimAdapters.remove(address(claimAdapter_));
+    }
+
+    function isTrustedClaimAdapter(IClaimAdapter claimAdapter_)
+        external
+        view
+        override
+        returns (bool)
+    {
+        return _claimAdapters.contains(address(claimAdapter_));
     }
 
     // Useful view functions for reading refAmts of the state

@@ -54,7 +54,7 @@ struct ConstructorArgs {
     RevenueShare dist;
     IFurnace furnace;
     IMarket market;
-    IClaimAdapter claimAdapter;
+    IClaimAdapter[] claimAdapters;
 }
 
 enum AuctionStatus {
@@ -161,7 +161,8 @@ interface ISettingsHandler {
     event COMPAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
     event AAVEAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
     event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
-    event ClaimAdapterSet(IClaimAdapter indexed oldVal, IClaimAdapter indexed newVal);
+    event ClaimAdapterAdded(IClaimAdapter indexed adapter);
+    event ClaimAdapterRemoved(IClaimAdapter indexed adapter);
 
     function setRewardStart(uint256 rewardStart) external;
 
@@ -197,7 +198,9 @@ interface ISettingsHandler {
 
     function setMarket(IMarket market) external;
 
-    function setClaimAdapter(IClaimAdapter claimAdapter) external;
+    function addClaimAdapter(IClaimAdapter claimAdapter) external;
+
+    function removeClaimAdapter(IClaimAdapter claimAdapter) external;
 
     //
 
@@ -235,7 +238,7 @@ interface ISettingsHandler {
 
     function market() external view returns (IMarket);
 
-    function claimAdapter() external view returns (IClaimAdapter);
+    function isTrustedClaimAdapter(IClaimAdapter claimAdapter_) external view returns (bool);
 
     /// @return The RToken deployment
     function rToken() external view returns (IRToken);

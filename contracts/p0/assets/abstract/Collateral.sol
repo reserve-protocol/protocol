@@ -31,6 +31,8 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
 
     IMain public immutable main;
 
+    IClaimAdapter public override claimAdapter;
+
     constructor(
         IERC20Metadata erc20_,
         IERC20Metadata referenceERC20_,
@@ -82,11 +84,6 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
         } else {
             return CollateralStatus.IFFY;
         }
-    }
-
-    /// @return The address of the defi protocol the token is from, if any
-    function defiProtocol() external view virtual override returns (address) {
-        return address(0);
     }
 
     /// @return If the asset is an instance of ICollateral or not

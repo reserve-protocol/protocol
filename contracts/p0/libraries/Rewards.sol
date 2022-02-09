@@ -8,18 +8,23 @@ import "contracts/p0/interfaces/IClaimAdapter.sol";
 import "contracts/p0/interfaces/IMain.sol";
 
 library RewardsLib {
+    using Address for address;
     using SafeERC20 for IERC20Metadata;
 
     function claimRewards(address mainAddr) internal {
         IMain main = IMain(mainAddr);
         ICollateral[] memory collateral = main.basketCollateral();
         for (uint256 i = 0; i < collateral.length; i++) {
-            IClaimAdapter claimAdapter = main.claimAdapter();
+            IClaimAdapter claimAdapter = collateral[i].claimAdapter();
+
+            if (address(claimAdapter) == address(0)) continue;
+
+            require(main.isTrustedClaimAdapter(claimAdapter), "claim adapter is not trusted");
 
             (address _to, bytes memory _calldata) = claimAdapter.getClaimCalldata(collateral[i]);
 
             if (_to != address(0)) {
-                Address.functionCall(_to, _calldata, "rewards claim failed");
+                _to.functionCall(_calldata, "rewards claim failed");
             }
         }
     }

@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
+import "./IClaimAdapter.sol";
 
 /**
  * @title IAsset
@@ -50,8 +51,8 @@ interface ICollateral is IAsset {
     /// Disable the collateral so it cannot be used as backing
     function disable() external;
 
-    /// @return The address of the Defi protocol e.g Comptroller / AaveLendingPool
-    function defiProtocol() external view returns (address);
+    /// @return The claim adapter that should be used with this asset, or the zero address
+    function claimAdapter() external view returns (IClaimAdapter);
 
     /// @return The canonical name of this collateral's target unit.
     function targetName() external view returns (bytes32);

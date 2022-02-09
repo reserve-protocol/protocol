@@ -4,14 +4,15 @@ import { ethers } from 'hardhat'
 
 import { expectInReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
+import { AaveClaimAdapterP0 } from '../../../typechain/AaveClaimAdapterP0'
 import { AaveLendingAddrProviderMockP0 } from '../../../typechain/AaveLendingAddrProviderMockP0'
 import { AaveLendingPoolMockP0 } from '../../../typechain/AaveLendingPoolMockP0'
 import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
 import { AavePricedAssetP0 } from '../../../typechain/AavePricedAssetP0'
 import { AssetP0 } from '../../../typechain/AssetP0'
 import { ATokenFiatCollateralP0 } from '../../../typechain/ATokenFiatCollateralP0'
-import { ClaimAdapterP0 } from '../../../typechain/ClaimAdapterP0'
 import { CollateralP0 } from '../../../typechain/CollateralP0'
+import { CompoundClaimAdapterP0 } from '../../../typechain/CompoundClaimAdapterP0'
 import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
 import { CompoundPricedAssetP0 } from '../../../typechain/CompoundPricedAssetP0'
 import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
@@ -145,6 +146,7 @@ interface CollateralFixture {
 }
 
 async function collateralFixture(
+  deployer: DeployerP0,
   main: MainP0,
   comptroller: ComptrollerMockP0,
   aaveLendingPool: AaveLendingPoolMockP0,
@@ -196,6 +198,7 @@ async function collateralFixture(
     const erc20: CTokenMock = <CTokenMock>(
       await CTokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
     )
+    const compoundClaimer = await deployer.compoundClaimer()
     return [
       erc20,
       <CTokenFiatCollateralP0>(
@@ -203,7 +206,8 @@ async function collateralFixture(
           erc20.address,
           underlyingAddress,
           main.address,
-          comptroller.address
+          comptroller.address,
+          compoundClaimer
         )
       ),
     ]
@@ -219,6 +223,8 @@ async function collateralFixture(
     // Set reward token
     await erc20.setAaveToken(aaveToken.address)
 
+    const aaveClaimer = await deployer.aaveClaimer()
+
     return [
       erc20,
       <ATokenFiatCollateralP0>(
@@ -227,7 +233,8 @@ async function collateralFixture(
           underlyingAddress,
           main.address,
           comptroller.address,
-          aaveLendingPool.address
+          aaveLendingPool.address,
+          aaveClaimer
         )
       ),
     ]
@@ -302,7 +309,8 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   furnace: FurnaceP0
   stRSR: StRSRP0
   facade: ExplorerFacadeP0
-  claimAdapter: ClaimAdapterP0
+  compoundClaimer: CompoundClaimAdapterP0
+  aaveClaimer: AaveClaimAdapterP0
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -388,6 +396,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
+    deployer,
     main,
     compoundMock,
     aaveMock,
@@ -426,8 +435,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Unpause
   await main.connect(owner).unpause()
 
-  const claimAdapter = <ClaimAdapterP0>(
-    await ethers.getContractAt('ClaimAdapterP0', await main.claimAdapter())
+  const compoundClaimer = <CompoundClaimAdapterP0>(
+    await ethers.getContractAt('CompoundClaimAdapterP0', await deployer.compoundClaimer())
+  )
+  const aaveClaimer = <AaveClaimAdapterP0>(
+    await ethers.getContractAt('AaveClaimAdapterP0', await deployer.aaveClaimer())
   )
 
   return {
@@ -455,7 +467,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     furnace,
     stRSR,
     market,
-    claimAdapter,
     facade,
+    compoundClaimer,
+    aaveClaimer,
   }
 }

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/p0/assets/abstract/AaveOracleMixin.sol";
 import "contracts/p0/assets/abstract/Collateral.sol";
+import "contracts/p0/adapters/AaveClaimAdapter.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -41,11 +42,13 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
         IERC20Metadata referenceERC20_,
         IMain main_,
         IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_
+        IAaveLendingPool aaveLendingPool_,
+        AaveClaimAdapterP0 claimAdapter_
     )
         CollateralP0(erc20_, referenceERC20_, main_, bytes32(bytes("USD")))
         AaveOracleMixinP0(comptroller_, aaveLendingPool_)
     {
+        claimAdapter = claimAdapter_;
         prevReferencePrice = refPerTok();
     }
 
@@ -77,10 +80,6 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
         if (whenDefault != cached) {
             emit DefaultStatusChanged(cached, whenDefault, status());
         }
-    }
-
-    function defiProtocol() external view override returns (address) {
-        return address(aaveLendingPool);
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

@@ -5,11 +5,12 @@ import { ethers, waffle } from 'hardhat'
 
 import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
+import { AaveClaimAdapterP0 } from '../../typechain/AaveClaimAdapterP0'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AssetP0 } from '../../typechain/AssetP0'
 import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
-import { ClaimAdapterP0 } from '../../typechain/ClaimAdapterP0'
 import { CollateralP0 } from '../../typechain/CollateralP0'
+import { CompoundClaimAdapterP0 } from '../../typechain/CompoundClaimAdapterP0'
 import { CompoundPricedAssetP0 } from '../../typechain/CompoundPricedAssetP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
 import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
@@ -39,9 +40,12 @@ describe('MainP0 contract', () => {
   // Deployer contract
   let deployer: DeployerP0
 
+  // Claim Adapters
+  let compoundClaimer: CompoundClaimAdapterP0
+  let aaveClaimer: AaveClaimAdapterP0
+
   // Assets
   let collateral: Collateral[]
-  let claimAdapter: ClaimAdapterP0
 
   // Non-backing assets
   let rsr: ERC20Mock
@@ -114,7 +118,8 @@ describe('MainP0 contract', () => {
       furnace,
       stRSR,
       market,
-      claimAdapter,
+      compoundClaimer,
+      aaveClaimer,
     } = await loadFixture(defaultFixture))
     token0 = erc20s[collateral.indexOf(basket[0])]
     token1 = erc20s[collateral.indexOf(basket[1])]
@@ -233,7 +238,7 @@ describe('MainP0 contract', () => {
         dist: dist,
         furnace: furnace.address,
         market: market.address,
-        claimAdapter: claimAdapter.address,
+        claimAdapters: [compoundClaimer.address, aaveClaimer.address],
       }
       await expect(main.init(ctorArgs)).to.be.revertedWith('already initialized')
     })
@@ -577,23 +582,42 @@ describe('MainP0 contract', () => {
       expect(await main.market()).to.equal(other.address)
     })
 
-    it('Should allow to set ClaimAdapter if Owner', async () => {
+    it('Should allow to add ClaimAdapter if Owner', async () => {
       // Check existing value
-      expect(await main.claimAdapter()).to.equal(claimAdapter.address)
+      expect(await main.isTrustedClaimAdapter(other.address)).to.equal(false)
 
       // If not owner cannot update - use mock address
-      await expect(main.connect(other).setClaimAdapter(other.address)).to.be.revertedWith(
+      await expect(main.connect(other).addClaimAdapter(other.address)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
 
       // Check value did not change
-      expect(await main.claimAdapter()).to.equal(claimAdapter.address)
+      expect(await main.isTrustedClaimAdapter(other.address)).to.equal(false)
 
       // Update with owner
-      await main.connect(owner).setClaimAdapter(other.address)
+      await main.connect(owner).addClaimAdapter(other.address)
 
       // Check value was updated
-      expect(await main.claimAdapter()).to.equal(other.address)
+      expect(await main.isTrustedClaimAdapter(other.address)).to.equal(true)
+    })
+
+    it('Should allow to remove ClaimAdapter if Owner', async () => {
+      // Check existing value
+      expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
+
+      // If not owner cannot update - use mock address
+      await expect(
+        main.connect(other).removeClaimAdapter(compoundClaimer.address)
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+
+      // Check value did not change
+      expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
+
+      // Update with owner
+      await main.connect(owner).removeClaimAdapter(compoundClaimer.address)
+
+      // Check value was updated
+      expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(false)
     })
 
     it('Should allow to set RevenueFurnace if Owner and perform validations', async () => {
