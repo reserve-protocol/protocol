@@ -78,15 +78,8 @@ contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
         }
     }
 
-    /// @dev Intended to be used via delegatecall
-    function claimAndSweepRewards(ICollateral collateral, IMain main_) external virtual override {
-        // Invariant: This function does not perform reads from current context storage
-
-        CTokenFiatCollateralP0(address(collateral)).comptroller().claimComp(address(this));
-        uint256 amount = main_.compAsset().erc20().balanceOf(address(this));
-        if (amount > 0) {
-            main_.compAsset().erc20().safeTransfer(address(main_), amount);
-        }
+    function defiProtocol() external view override returns (address) {
+        return address(comptroller);
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

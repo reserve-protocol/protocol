@@ -73,13 +73,6 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
         }
     }
 
-    // solhint-disable no-empty-blocks
-    /// @dev Intended to be used via delegatecall. Override in implementations if holders of the
-    /// collateral have a way to claim rewards from the collateral's protocol.
-    function claimAndSweepRewards(ICollateral collateral, IMain main_) external virtual override {}
-
-    // solhint-enable no-empty-blocks
-
     /// @return The collateral's status
     function status() public view virtual override returns (CollateralStatus) {
         if (whenDefault == NEVER) {
@@ -89,6 +82,11 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
         } else {
             return CollateralStatus.IFFY;
         }
+    }
+
+    /// @return The address of the defi protocol the token is from, if any
+    function defiProtocol() external view virtual override returns (address) {
+        return address(0);
     }
 
     /// @return If the asset is an instance of ICollateral or not

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IAsset.sol";
+import "contracts/p0/interfaces/IClaimAdapter.sol";
 import "contracts/p0/interfaces/IFurnace.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
@@ -20,6 +21,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
+    IClaimAdapter private _claimAdapter;
     IMarket private _market;
 
     uint256 private _rewardStart;
@@ -44,6 +46,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function init(ConstructorArgs calldata args) public virtual override(Mixin, AssetRegistryP0) {
         super.init(args);
+        _claimAdapter = args.claimAdapter;
         _market = args.market;
         _revenueFurnace = args.furnace;
 
@@ -216,6 +219,15 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function market() external view override returns (IMarket) {
         return _market;
+    }
+
+    function setClaimAdapter(IClaimAdapter claimAdapter_) external override onlyOwner {
+        emit ClaimAdapterSet(_claimAdapter, claimAdapter_);
+        _claimAdapter = claimAdapter_;
+    }
+
+    function claimAdapter() external view override returns (IClaimAdapter) {
+        return _claimAdapter;
     }
 
     // Useful view functions for reading refAmts of the state

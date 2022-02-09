@@ -9,11 +9,13 @@ import "contracts/p0/assets/RTokenAsset.sol";
 import "contracts/p0/assets/abstract/AaveOracleMixin.sol";
 import "contracts/p0/assets/abstract/CompoundOracleMixin.sol";
 import "contracts/p0/interfaces/IAsset.sol";
+import "contracts/p0/interfaces/IClaimAdapter.sol";
 import "contracts/p0/interfaces/IDeployer.sol";
 import "contracts/p0/interfaces/IFurnace.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/assets/RTokenAsset.sol";
+import "contracts/p0/ClaimAdapter.sol";
 import "contracts/p0/ExplorerFacade.sol";
 import "contracts/p0/Furnace.sol";
 import "contracts/p0/Main.sol";
@@ -31,9 +33,10 @@ contract DeployerP0 is IDeployer {
     IERC20Metadata public comp;
     IERC20Metadata public aave;
     IMarket public market;
-    IMain[] public deployments;
     IComptroller public comptroller;
     IAaveLendingPool public aaveLendingPool;
+
+    IMain[] public deployments;
 
     constructor(
         IERC20Metadata rsr_,
@@ -75,7 +78,9 @@ contract DeployerP0 is IDeployer {
             IFurnace revenueFurnace = deployRevenueFurnace(rToken, config.rewardPeriod);
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
-            ctorArgs = ConstructorArgs(config, dist, revenueFurnace, market);
+            IClaimAdapter claimAdapter = new ClaimAdapterP0(comptroller, aaveLendingPool);
+
+            ctorArgs = ConstructorArgs(config, dist, revenueFurnace, market, claimAdapter);
 
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main);
             main.setRTokenAsset(rTokenAsset);

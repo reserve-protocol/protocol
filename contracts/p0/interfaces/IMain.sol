@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/libraries/Basket.sol";
 import "./IAsset.sol";
+import "./IClaimAdapter.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
 import "./IRToken.sol";
@@ -53,6 +54,7 @@ struct ConstructorArgs {
     RevenueShare dist;
     IFurnace furnace;
     IMarket market;
+    IClaimAdapter claimAdapter;
 }
 
 enum AuctionStatus {
@@ -159,6 +161,7 @@ interface ISettingsHandler {
     event COMPAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
     event AAVEAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
     event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
+    event ClaimAdapterSet(IClaimAdapter indexed oldVal, IClaimAdapter indexed newVal);
 
     function setRewardStart(uint256 rewardStart) external;
 
@@ -193,6 +196,8 @@ interface ISettingsHandler {
     function setAAVEAsset(IAsset aaveAsset) external;
 
     function setMarket(IMarket market) external;
+
+    function setClaimAdapter(IClaimAdapter claimAdapter) external;
 
     //
 
@@ -229,6 +234,8 @@ interface ISettingsHandler {
     function aaveAsset() external view returns (IAsset);
 
     function market() external view returns (IMarket);
+
+    function claimAdapter() external view returns (IClaimAdapter);
 
     /// @return The RToken deployment
     function rToken() external view returns (IRToken);

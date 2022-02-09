@@ -79,16 +79,8 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
         }
     }
 
-    /// @dev Intended to be used via delegatecall
-    function claimAndSweepRewards(ICollateral collateral, IMain main_) external virtual override {
-        // Invariant: This function does not perform reads from current context storage
-
-        IStaticAToken aToken = IStaticAToken(address(collateral.erc20()));
-        uint256 amount = aToken.getClaimableRewards(address(this));
-        if (amount > 0) {
-            aToken.claimRewardsToSelf(true);
-            main_.aaveAsset().erc20().safeTransfer(address(main_), amount);
-        }
+    function defiProtocol() external view override returns (address) {
+        return address(aaveLendingPool);
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

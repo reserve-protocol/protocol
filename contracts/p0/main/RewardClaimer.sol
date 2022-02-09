@@ -43,7 +43,7 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
             // Claim + Sweep COMP/AAVE from self + traders
             rsrTrader.claimAndSweepRewardsToMain();
             rTokenTrader.claimAndSweepRewardsToMain();
-            RewardsLib.claimAndSweepRewardsAllCollateral(address(this));
+            RewardsLib.claimRewards(address(this));
             uint256 compDelta = compAsset().erc20().balanceOf(address(this)) - compBalStart;
             uint256 aaveDelta = aaveAsset().erc20().balanceOf(address(this)) - aaveBalStart;
             emit RewardsClaimed(compDelta, aaveDelta);

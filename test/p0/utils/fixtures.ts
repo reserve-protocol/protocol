@@ -10,6 +10,7 @@ import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
 import { AavePricedAssetP0 } from '../../../typechain/AavePricedAssetP0'
 import { AssetP0 } from '../../../typechain/AssetP0'
 import { ATokenFiatCollateralP0 } from '../../../typechain/ATokenFiatCollateralP0'
+import { ClaimAdapterP0 } from '../../../typechain/ClaimAdapterP0'
 import { CollateralP0 } from '../../../typechain/CollateralP0'
 import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
 import { CompoundPricedAssetP0 } from '../../../typechain/CompoundPricedAssetP0'
@@ -126,11 +127,11 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
   }
 }
 
-interface MarketFixture {
+interface ModuleFixture {
   market: MarketMock
 }
 
-async function marketFixture(): Promise<MarketFixture> {
+async function marketFixture(): Promise<ModuleFixture> {
   const MarketMockFactory: ContractFactory = await ethers.getContractFactory('MarketMock')
   const marketMock: MarketMock = <MarketMock>await MarketMockFactory.deploy()
   return { market: marketMock }
@@ -283,12 +284,12 @@ async function collateralFixture(
   }
 }
 
-type RSRAndCompAaveAndCollateralAndMarketFixture = RSRFixture &
+type RSRAndCompAaveAndCollateralAndModuleFixture = RSRFixture &
   COMPAAVEFixture &
   CollateralFixture &
-  MarketFixture
+  ModuleFixture
 
-interface DefaultFixture extends RSRAndCompAaveAndCollateralAndMarketFixture {
+interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   config: IConfig
   dist: IRevenueShare
   deployer: DeployerP0
@@ -301,6 +302,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndMarketFixture {
   furnace: FurnaceP0
   stRSR: StRSRP0
   facade: ExplorerFacadeP0
+  claimAdapter: ClaimAdapterP0
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -424,6 +426,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Unpause
   await main.connect(owner).unpause()
 
+  const claimAdapter = <ClaimAdapterP0>(
+    await ethers.getContractAt('ClaimAdapterP0', await main.claimAdapter())
+  )
+
   return {
     rsr,
     rsrAsset,
@@ -449,6 +455,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     furnace,
     stRSR,
     market,
+    claimAdapter,
     facade,
   }
 }

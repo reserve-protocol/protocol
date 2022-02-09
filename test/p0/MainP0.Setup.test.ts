@@ -8,6 +8,7 @@ import { bn, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AssetP0 } from '../../typechain/AssetP0'
 import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
+import { ClaimAdapterP0 } from '../../typechain/ClaimAdapterP0'
 import { CollateralP0 } from '../../typechain/CollateralP0'
 import { CompoundPricedAssetP0 } from '../../typechain/CompoundPricedAssetP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
@@ -40,6 +41,7 @@ describe('MainP0 contract', () => {
 
   // Assets
   let collateral: Collateral[]
+  let claimAdapter: ClaimAdapterP0
 
   // Non-backing assets
   let rsr: ERC20Mock
@@ -112,6 +114,7 @@ describe('MainP0 contract', () => {
       furnace,
       stRSR,
       market,
+      claimAdapter,
     } = await loadFixture(defaultFixture))
     token0 = erc20s[collateral.indexOf(basket[0])]
     token1 = erc20s[collateral.indexOf(basket[1])]
@@ -230,6 +233,7 @@ describe('MainP0 contract', () => {
         dist: dist,
         furnace: furnace.address,
         market: market.address,
+        claimAdapter: claimAdapter.address,
       }
       await expect(main.init(ctorArgs)).to.be.revertedWith('already initialized')
     })

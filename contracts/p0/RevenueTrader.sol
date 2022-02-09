@@ -27,7 +27,11 @@ contract RevenueTraderP0 is TraderP0 {
 
     /// Claims and sweeps all COMP/AAVE rewards
     function claimAndSweepRewardsToMain() external {
-        RewardsLib.claimAndSweepRewardsAllCollateral(address(main));
+        RewardsLib.claimRewards(address(main));
+        uint256 compBal = main.compAsset().erc20().balanceOf(address(this));
+        uint256 aaveBal = main.aaveAsset().erc20().balanceOf(address(this));
+        main.compAsset().erc20().safeTransfer(address(main), compBal);
+        main.aaveAsset().erc20().safeTransfer(address(main), aaveBal);
     }
 
     /// Iterate through all asset types, and perform the appropriate action with each:

@@ -50,8 +50,8 @@ interface ICollateral is IAsset {
     /// Disable the collateral so it cannot be used as backing
     function disable() external;
 
-    /// @dev Intended to be used via delegatecall, hence the `collateral` duplication
-    function claimAndSweepRewards(ICollateral collateral, IMain main) external;
+    /// @return The address of the Defi protocol e.g Comptroller / AaveLendingPool
+    function defiProtocol() external view returns (address);
 
     /// @return The canonical name of this collateral's target unit.
     function targetName() external view returns (bytes32);
