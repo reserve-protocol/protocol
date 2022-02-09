@@ -736,5 +736,16 @@ describe('MainP0 contract', () => {
         .to.emit(main, 'BackupConfigSet')
         .withArgs(ethers.utils.formatBytes32String('USD'), bn(1), [collateral0.address])
     })
+
+    it('Should not allow to switch basket if not Owner', async () => {
+      await expect(main.connect(other).switchBasket()).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+    })
+
+    it('Should allow to switch Basket if Owner', async () => {
+      // Switch basket
+      await expect(main.connect(owner).switchBasket()).to.emit(main, 'BasketSet')
+    })
   })
 })
