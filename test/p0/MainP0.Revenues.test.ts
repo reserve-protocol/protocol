@@ -1,9 +1,17 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { CompoundClaimAdapterP0 } from '@typechain/CompoundClaimAdapterP0'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { mainModule } from 'process'
 
-import { AuctionStatus, BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST } from '../../common/constants'
+import {
+  AuctionStatus,
+  BN_SCALE_FACTOR,
+  FURNACE_DEST,
+  STRSR_DEST,
+  ZERO_ADDRESS,
+} from '../../common/constants'
 import { bn, divCeil, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AssetP0 } from '../../typechain/AssetP0'
@@ -782,6 +790,95 @@ describe('MainP0 contract', () => {
         await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
         await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
         await expectAuctionStatus(rsrTrader, 1, AuctionStatus.DONE)
+      })
+    })
+
+    context('With non-valid Claim Adapters', async function () {
+      let issueAmount: BigNumber
+      let newATokenCollateral: ATokenFiatCollateralP0
+      let newCTokenCollateral: CTokenFiatCollateralP0
+      let nonTrustedClaimer: CompoundClaimAdapterP0
+
+      beforeEach(async function () {
+        issueAmount = bn('100e18')
+
+        // Deploy new AToken with no claim adapter
+        const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateralP0')
+        newATokenCollateral = <ATokenFiatCollateralP0>(
+          await ATokenCollateralFactory.deploy(
+            token2.address,
+            token0.address,
+            main.address,
+            compoundMock.address,
+            aaveMock.address,
+            ZERO_ADDRESS
+          )
+        )
+
+        // Deploy non trusted Compound claimer - with invalid Comptroller address
+        const CompoundClaimAdapterFactory = await ethers.getContractFactory(
+          'CompoundClaimAdapterP0'
+        )
+        nonTrustedClaimer = <CompoundClaimAdapterP0>(
+          await CompoundClaimAdapterFactory.deploy(other.address)
+        )
+
+        // Deploy new CToken with non-trusted claim adapter
+        const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateralP0')
+        newCTokenCollateral = <CTokenFiatCollateralP0>(
+          await CTokenCollateralFactory.deploy(
+            token3.address,
+            token0.address,
+            main.address,
+            compoundMock.address,
+            nonTrustedClaimer.address
+          )
+        )
+
+        // Mark these assets as valid collateral, remove old ones
+        await main.removeAsset(collateral2.address)
+        await main.removeAsset(collateral3.address)
+        await main.addAsset(newATokenCollateral.address)
+        await main.addAsset(newCTokenCollateral.address)
+      })
+
+      it('Should ignore claiming if no adapter defined', async () => {
+        // Setup new basket with AToken with no claim adapter
+        await main.connect(owner).setPrimeBasket([newATokenCollateral.address], [fp('1')])
+        await main.connect(owner).switchBasket()
+
+        // Provide approvals
+        await token2.connect(addr1).approve(main.address, initialBal)
+
+        // Issue rTokens
+        await main.connect(addr1).issue(issueAmount)
+
+        // Process the issuance
+        await main.poke()
+
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        // Set AAVE Rewards
+        await token2.setRewards(main.address, bn('0.5e18'))
+
+        // Attempt to claim, no rewards claimed (0 amount)
+        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(0, 0)
+      })
+
+      it('Should revert for non-trusted adapters', async () => {
+        // Setup new basket with CToken with untrusted adapter
+        await main.connect(owner).setPrimeBasket([newCTokenCollateral.address], [fp('1')])
+        await main.connect(owner).switchBasket()
+
+        // Provide approvals
+        await token3.connect(addr1).approve(main.address, initialBal)
+
+        // Issue rTokens
+        await main.connect(addr1).issue(issueAmount)
+
+        // Process the issuance - Will revert when attempting to get rewards
+        await expect(main.poke()).to.be.revertedWith('claim adapter is not trusted')
       })
     })
 
