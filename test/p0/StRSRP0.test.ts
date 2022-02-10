@@ -2,7 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { signERC2612Permit } from 'eth-permit'
-import { ethers, waffle } from 'hardhat'
+import hre, { ethers, waffle } from 'hardhat'
+import { getChainId } from '../../common/blockchain-utils'
 import { bn, fp, near } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
@@ -85,7 +86,7 @@ describe('StRSRP0 contract', () => {
   })
 
   describe('Deployment', () => {
-    it('Deployment should setup initial addresses and values correctly', async () => {
+    it('Should setup initial addresses and values correctly', async () => {
       expect(await stRSR.main()).to.equal(main.address)
       expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
       expect(await stRSR.balanceOf(owner.address)).to.equal(0)
@@ -97,6 +98,21 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.symbol()).to.equal('stRTKNRSR')
       expect(await stRSR.decimals()).to.equal(18)
       expect(await stRSR.totalSupply()).to.equal(0)
+    })
+
+    it('Should setup the DomainSeparator for Permit correctly', async () => {
+      const chainId = await getChainId(hre)
+      const _name = await stRSR.name()
+      const version = '1'
+      const verifyingContract = stRSR.address
+      expect(await stRSR.DOMAIN_SEPARATOR()).to.equal(
+        await ethers.utils._TypedDataEncoder.hashDomain({
+          name: _name,
+          version,
+          chainId,
+          verifyingContract,
+        })
+      )
     })
   })
 
