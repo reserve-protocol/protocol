@@ -79,6 +79,9 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.totalSupply()).to.equal(bn(0))
       expect(await rToken.main()).to.equal(main.address)
       expect(await rToken.basketsNeeded()).to.equal(0)
+
+      // Check RToken price
+      expect(await main.rTokenPrice()).to.equal(fp('1'))
     })
   })
 
