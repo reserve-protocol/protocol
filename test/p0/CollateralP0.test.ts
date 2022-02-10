@@ -148,6 +148,9 @@ describe('CollateralP0 contracts', () => {
       expect(await usdcAsset.price()).to.equal(fp('1.1'))
       expect(await aTokenAsset.price()).to.equal(fp('1.1'))
       expect(await cTokenAsset.price()).to.equal(fp('1.1'))
+
+      // Check RToken price
+      expect(await main.rTokenPrice()).to.equal(fp('1.1'))
     })
 
     it('Should calculate price correctly when ATokens and CTokens appreciate', async () => {
@@ -162,6 +165,9 @@ describe('CollateralP0 contracts', () => {
       // Check prices doubled
       expect(await aTokenAsset.price()).to.equal(fp('2'))
       expect(await cTokenAsset.price()).to.equal(fp('2'))
+
+      // Check RToken price - Remains the same until Revenues are processed
+      expect(await main.rTokenPrice()).to.equal(fp('1'))
     })
 
     it('Should revert if price is zero', async () => {
