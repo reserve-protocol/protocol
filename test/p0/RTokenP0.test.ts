@@ -72,7 +72,7 @@ describe('RTokenP0 contract', () => {
   })
 
   describe('Deployment', () => {
-    it('Deployment should RToken correctly', async () => {
+    it('Deployment should setup RToken correctly', async () => {
       expect(await rToken.name()).to.equal('RTKN RToken')
       expect(await rToken.symbol()).to.equal('RTKN')
       expect(await rToken.decimals()).to.equal(18)
