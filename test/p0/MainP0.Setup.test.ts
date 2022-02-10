@@ -767,9 +767,24 @@ describe('MainP0 contract', () => {
       )
     })
 
-    it('Should allow to switch Basket if Owner', async () => {
-      // Switch basket
+    it('Should allow to call switch Basket if Owner - No changes', async () => {
+      // Switch basket - No backup nor default
       await expect(main.connect(owner).switchBasket()).to.emit(main, 'BasketSet')
+
+      // Basket remains the same in this case
+      expect(await main.fullyCapitalized()).to.equal(true)
+      const backing = await main.basketCollateral()
+      expect(backing[0]).to.equal(collateral0.address)
+      expect(backing[1]).to.equal(collateral1.address)
+      expect(backing[2]).to.equal(collateral2.address)
+      expect(backing[3]).to.equal(collateral3.address)
+
+      expect(backing.length).to.equal(4)
+
+      // Not updated so basket last changed is not set
+      expect(await main.blockBasketLastChanged()).to.be.gt(bn(0))
+      expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+      expect(await main.totalAssetValue()).to.equal(0)
     })
   })
 })
