@@ -62,6 +62,6 @@ export default <HardhatUserConfig>{
     sources: src_dir,
   },
   mocha: {
-    timeout: 90000,
+    timeout: 200000,
   },
 }
