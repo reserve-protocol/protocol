@@ -194,6 +194,9 @@ describe('MainP0 contract', () => {
       await main.connect(owner).setPrimeBasket([collateral[0].address], [fp('1')])
       await main.connect(owner).switchBasket()
 
+      // Check RToken price
+      expect(await main.rTokenPrice()).to.equal(fp('1'))
+
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)
 

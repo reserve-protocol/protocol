@@ -228,6 +228,9 @@ describe('MainP0 contract', () => {
       expect(await main.blockBasketLastChanged()).to.be.gt(bn(0))
       expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
       expect(await main.totalAssetValue()).to.equal(0)
+      
+      // Check RToken price
+      expect(await main.rTokenPrice()).to.equal(fp('1'))
     })
   })
 
