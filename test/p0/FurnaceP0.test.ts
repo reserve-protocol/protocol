@@ -1,5 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
+import { timeEnd } from 'console'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre from 'hardhat'
 import { ethers, waffle } from 'hardhat'
@@ -19,6 +20,7 @@ import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 interface IBatchInfo {
   amount: BigNumber
   start: number
+  end: number
   melted: BigNumber
 }
 
@@ -56,10 +58,11 @@ describe('FurnaceP0 contract', () => {
   let wallet: Wallet
 
   const expectBatchInfo = async (index: number, hdnOutInfo: Partial<IBatchInfo>) => {
-    const { amount, start, melted } = await furnace.batches(index)
+    const { amount, start, end, melted } = await furnace.batches(index)
 
     expect(amount).to.equal(hdnOutInfo.amount)
     expect(start).to.equal(hdnOutInfo.start)
+    expect(end).to.equal(hdnOutInfo.end)
     expect(melted).to.equal(hdnOutInfo.melted)
   }
 
@@ -180,10 +183,13 @@ describe('FurnaceP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
+      const latestTimestamp: number = await getLatestBlockTimestamp()
+
       // Check melt registered
       await expectBatchInfo(0, {
         amount: hndAmt,
-        start: await getLatestBlockTimestamp(),
+        start: latestTimestamp,
+        end: latestTimestamp + timePeriod,
         melted: bn('0'),
       })
     })
@@ -199,10 +205,13 @@ describe('FurnaceP0 contract', () => {
       // Batch melt
       await furnace.connect(addr1).notifyOfDeposit(rToken.address)
 
+      let latestTimestamp: number = await getLatestBlockTimestamp()
+
       // Check melt registered
       await expectBatchInfo(0, {
         amount: hndAmt1.add(hndAmt2),
-        start: await getLatestBlockTimestamp(),
+        start: latestTimestamp,
+        end: latestTimestamp + timePeriod,
         melted: bn('0'),
       })
 
@@ -214,10 +223,13 @@ describe('FurnaceP0 contract', () => {
       await rToken.connect(addr1).transfer(furnace.address, hndAmt1)
       await furnace.connect(addr1).notifyOfDeposit(rToken.address)
 
+      latestTimestamp = await getLatestBlockTimestamp()
+
       // Check melt registered
       await expectBatchInfo(1, {
         amount: hndAmt1,
-        start: await getLatestBlockTimestamp(),
+        start: latestTimestamp,
+        end: latestTimestamp + timePeriod,
         melted: bn('0'),
       })
     })
@@ -269,6 +281,7 @@ describe('FurnaceP0 contract', () => {
       await expectBatchInfo(0, {
         amount: hndAmt,
         start: hndTimestamp,
+        end: hndTimestamp,
         melted: hndAmt,
       })
 
@@ -304,6 +317,7 @@ describe('FurnaceP0 contract', () => {
       await expectBatchInfo(0, {
         amount: hndAmt,
         start: hndTimestamp,
+        end: hndTimestamp + timePeriod,
         melted: hndAmt,
       })
 
@@ -342,6 +356,7 @@ describe('FurnaceP0 contract', () => {
       await expectBatchInfo(0, {
         amount: hndAmt,
         start: hndTimestamp,
+        end: hndTimestamp + timePeriod,
         melted: hndAmt,
       })
 
@@ -378,6 +393,7 @@ describe('FurnaceP0 contract', () => {
       await expectBatchInfo(0, {
         amount: hndAmt,
         start: hndTimestamp,
+        end: hndTimestamp + timePeriod,
         melted: hndAmt.div(2),
       })
 
@@ -394,6 +410,7 @@ describe('FurnaceP0 contract', () => {
       await expectBatchInfo(0, {
         amount: hndAmt,
         start: hndTimestamp,
+        end: hndTimestamp + timePeriod,
         melted: hndAmt,
       })
 
@@ -418,9 +435,6 @@ describe('FurnaceP0 contract', () => {
 
       const hndAmt2: BigNumber = bn('20e18')
 
-      // Set time period for batches
-      await furnace.connect(owner).setBatchDuration(timePeriod)
-
       // Approval
       await rToken.connect(addr1).transfer(furnace.address, hndAmt2)
 
@@ -440,6 +454,7 @@ describe('FurnaceP0 contract', () => {
       await expectBatchInfo(0, {
         amount: hndAmt,
         start: hndTimestamp,
+        end: hndTimestamp + timePeriod,
         melted: hndAmt,
       })
 
@@ -447,6 +462,95 @@ describe('FurnaceP0 contract', () => {
       await expectBatchInfo(1, {
         amount: hndAmt2,
         start: hndTimestamp1,
+        end: hndTimestamp1 + timePeriod,
+        melted: hndAmt2,
+      })
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt).sub(hndAmt2))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+    })
+
+    it('Should handle changes in batchDuration during melting', async () => {
+      const hndAmt: BigNumber = bn('10e18')
+
+      const timePeriod: number = 60 * 60 * 24 // 1 day
+
+      // Set time period for batches
+      await furnace.connect(owner).setBatchDuration(timePeriod)
+
+      // Approval
+      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      // Batch melt
+      await furnace.connect(addr1).notifyOfDeposit(rToken.address)
+
+      const hndTimestamp = await getLatestBlockTimestamp()
+
+      // Check batch registered with correct time period
+      await expectBatchInfo(0, {
+        amount: hndAmt,
+        start: hndTimestamp,
+        end: hndTimestamp + timePeriod,
+        melted: bn('0'),
+      })
+
+      // Set different time period for batches
+      const timePeriod2: number = 60 * 60 * 24 * 2 // 2 days
+
+      await furnace.connect(owner).setBatchDuration(timePeriod2)
+
+      const hndAmt2: BigNumber = bn('20e18')
+
+      // Approval
+      await rToken.connect(addr1).transfer(furnace.address, hndAmt2)
+
+      // Batch melt
+      await furnace.connect(addr1).notifyOfDeposit(rToken.address)
+
+      const hndTimestamp1 = await getLatestBlockTimestamp()
+
+      // Check batch registered with the new time period
+      await expectBatchInfo(1, {
+        amount: hndAmt2,
+        start: hndTimestamp1,
+        end: hndTimestamp1 + timePeriod2,
+        melted: bn('0'),
+      })
+
+      // Advance to the half of second period
+      // The first bach should be fully processed at this point
+      await advanceToTimestamp(hndTimestamp1 + timePeriod2 / 2 - 1)
+
+      // Melt with any account
+      await furnace.connect(addr2).melt()
+
+      // Check melt fully registered in first batch
+      await expectBatchInfo(0, {
+        amount: hndAmt,
+        start: hndTimestamp,
+        end: hndTimestamp + timePeriod,
+        melted: hndAmt,
+      })
+
+      // No melt registered in second batch
+      await expectBatchInfo(1, {
+        amount: hndAmt2,
+        start: hndTimestamp1,
+        end: hndTimestamp1 + timePeriod2,
+        melted: hndAmt2.div(2),
+      })
+
+      // Advance to the end of second period - Should fully process second batch as well
+      await advanceToTimestamp(hndTimestamp1 + timePeriod2 + 100)
+
+      // Melt with any account
+      await furnace.connect(addr1).melt()
+
+      // Check melt registered in second batch
+      await expectBatchInfo(1, {
+        amount: hndAmt2,
+        start: hndTimestamp1,
+        end: hndTimestamp1 + timePeriod2,
         melted: hndAmt2,
       })
 
@@ -472,13 +576,16 @@ describe('FurnaceP0 contract', () => {
       // Mine block
       await hre.network.provider.send('evm_mine', [])
 
+      const latestTimestamp = await getLatestBlockTimestamp()
+
       // Check melt was registered but not processed
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
       await expectBatchInfo(0, {
         amount: hndAmt,
-        start: await getLatestBlockTimestamp(),
+        start: latestTimestamp,
+        end: latestTimestamp + Number(config.rewardPeriod),
         melted: bn('0'),
       })
 
