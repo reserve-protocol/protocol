@@ -318,7 +318,7 @@ describe('MainP0 contract', () => {
           status: AuctionStatus.OPEN,
         })
 
-        // Check funds already in Market
+        // Check funds in Market
         expect(await compToken.balanceOf(market.address)).to.equal(rewardAmountCOMP)
   
         // Advance time till auctioo ended
@@ -405,6 +405,11 @@ describe('MainP0 contract', () => {
 
         await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(0, rewardAmountAAVE)
 
+           // Check status of destinations at this point
+           expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+           expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+     
+           
         await expect(main.poke())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, aaveAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
@@ -440,6 +445,9 @@ describe('MainP0 contract', () => {
           status: AuctionStatus.OPEN,
         })
 
+        // Check funds in Market
+        expect(await aaveToken.balanceOf(market.address)).to.equal(rewardAmountAAVE)
+  
         // Advance time till auctioo ended
         await advanceTime(config.auctionPeriod.add(100).toString())
 
@@ -468,6 +476,15 @@ describe('MainP0 contract', () => {
 
         await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
         await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
+
+        // Check balances sent to corresponding destinations
+        // StRSR
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
+        // Furnace
+        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+        const { amount, start } = await furnace.batches(0)
+        expect(amount).to.equal(minBuyAmtRToken)
+        expect(start).to.equal(await getLatestBlockTimestamp()) 
       })
 
       it('Should handle large auctions for using maxAuctionSize with f=1 (RSR only)', async () => {
