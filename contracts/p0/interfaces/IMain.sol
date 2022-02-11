@@ -124,7 +124,7 @@ interface IAssetRegistry {
     function activateAsset(IAsset asset) external;
 
     /// Deactive `asset`; fails if its erc20 is not in the current basket
-    function deactivateAsset(IAsset asset) external onlyOwner;
+    function deactivateAsset(IAsset asset) external;
 
     function activeAssets() external view returns (IAsset[] memory);
 }

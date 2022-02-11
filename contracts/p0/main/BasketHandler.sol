@@ -77,6 +77,7 @@ contract BasketHandlerP0 is
 
         for (uint256 i = 0; i < collateral.length; i++) {
             ICollateral coll = collateral[i];
+            require(_assets.contains(address(coll)), "unapproved asset in basket config");
             basketConf.collateral.push(coll);
             basketConf.targetAmts[coll] = targetAmts[i];
 
@@ -107,6 +108,7 @@ contract BasketHandlerP0 is
 
         delete conf.collateral;
         for (uint256 i = 0; i < collateral.length; i++) {
+            require(_assets.contains(address(collateral[i])), "unapproved asset in backup config");
             conf.collateral.push(collateral[i]);
         }
         // Revert if we introduced a token-collateral conflict!
@@ -171,15 +173,15 @@ contract BasketHandlerP0 is
     }
 
     /// Return an array list (with possible duplicates) of a
-    function collateralInConfig() private view returns (ICollateral[] memory collaterals) {
+    function collateralInConfig() private view returns (ICollateral[] memory collateral) {
         uint256 arrSize = basketConf.collateral.length;
         for (uint256 i = 0; i < basketConf.targetNames.length; i++) {
             arrSize += basketConf.backups[basketConf.targetNames[i]].collateral.length;
         }
-        collaterals = new ICollateral[](arrSize);
+        collateral = new ICollateral[](arrSize);
         uint256 length = 0;
         for (uint256 i = 0; i < basketConf.collateral.length; i++) {
-            collaterals[i] = basketConf.collateral[i];
+            collateral[i] = basketConf.collateral[i];
             length++;
         }
         for (uint256 i = 0; i < basketConf.targetNames.length; i++) {
@@ -191,22 +193,22 @@ contract BasketHandlerP0 is
                 length++;
             }
         }
-        return collaterals;
+        return collateral;
     }
 
     /// Require that each token pointed to by all assets in the entire basket configuration is
     /// pointed to by only one Collateral. (erc20 addresses may recur in the basket configuration if
     /// and only if they're all pointed to by the same Collateral contract)
     function requireUniqueTokens() private view {
-        ICollateral[] collaterals = collateralsInConfig();
+        ICollateral[] memory collateral = collateralInConfig();
         uint256 length = 0;
 
         for (uint256 i = 0; i < basketConf.collateral.length; i++) {
             for (uint256 searchI = 0; searchI < length; searchI++) {
-                if (collaterals[searchI] == collaterals[i]) break;
+                if (collateral[searchI] == collateral[i]) break;
                 require(
-                    collaterals[searchI].erc20() != collaterals[i].erc20(),
-                    "Different Collaterals in the basket config refer to the same erc20."
+                    collateral[searchI].erc20() != collateral[i].erc20(),
+                    "Different Collaterals refer to the same token"
                 );
             }
         }
