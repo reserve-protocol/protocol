@@ -200,6 +200,30 @@ describe('MainP0 contract', () => {
     await token3.connect(owner).mint(addr2.address, initialBal)
   })
 
+  describe('Config/Setup', function () {
+    it('Should setup initial distribution correctly', async () => {
+      // Configuration
+      expect(await main.rsrCut()).to.equal(fp('0.6'))
+      expect(await main.rTokenCut()).to.equal(fp('0.4'))
+    })
+
+    it('Should allow to set distribution if owner', async () => {
+      // Check initial status
+      expect(await main.rsrCut()).to.equal(fp('0.6'))
+      expect(await main.rTokenCut()).to.equal(fp('0.4'))
+    
+      // Attempt to update with another account
+      await expect(main.connect(other).setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })).to.be.revertedWith('Ownable: caller is not the owner')
+ 
+      // Update with owner - Set f = 1
+      await main.connect(owner).setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+
+      // Check updated status
+      expect(await main.rsrCut()).to.equal(fp('1'))
+      expect(await main.rTokenCut()).to.equal(0)
+    })
+  })
+
   describe('Revenues', function () {
     context('With issued Rtokens', async function () {
       let issueAmount: BigNumber
