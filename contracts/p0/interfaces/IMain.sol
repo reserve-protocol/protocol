@@ -169,8 +169,6 @@ interface ISettingsHandler {
     event RevenueFurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
     event RTokenAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
     event RSRAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
-    event COMPAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
-    event AAVEAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
     event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
 
     function setRewardStart(uint256 rewardStart) external;
