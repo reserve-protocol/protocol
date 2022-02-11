@@ -116,15 +116,20 @@ interface IAssetRegistry {
     /// @param asset The asset contract removed from the registry
     event AssetRemoved(IAsset indexed asset);
 
-    function addAsset(IAsset asset) external;
+    event AssetActivated(IAsset indexed asset);
+    event AssetDeactivated(IAsset indexed asset);
 
-    function removeAsset(IAsset asset) external;
+    function addAsset(IAsset asset) external returns (bool);
+
+    function removeAsset(IAsset asset) external returns (bool);
 
     /// Activate `asset`; fails if its erc20 is not in the current basket
-    function activateAsset(IAsset asset) external;
+    function activateAsset(IAsset asset) external returns (bool);
 
     /// Deactive `asset`; fails if its erc20 is not in the current basket
-    function deactivateAsset(IAsset asset) external;
+    function deactivateAsset(IAsset asset) external returns (bool);
+
+    function allAssets() external view returns (IAsset[] memory);
 
     function activeAssets() external view returns (IAsset[] memory);
 }
