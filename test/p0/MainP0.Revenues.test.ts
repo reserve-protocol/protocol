@@ -59,6 +59,7 @@ describe('MainP0 contract', () => {
   // Non-backing assets
   let rsr: ERC20Mock
   let rsrAsset: AssetP0
+  let compToken: ERC20Mock
   let compAsset: AssetP0
   let compoundMock: ComptrollerMockP0
   let aaveToken: ERC20Mock
@@ -148,6 +149,7 @@ describe('MainP0 contract', () => {
     ;({
       rsr,
       rsrAsset,
+      compToken,
       aaveToken,
       compAsset,
       aaveAsset,
@@ -269,6 +271,10 @@ describe('MainP0 contract', () => {
 
         await expect(main.poke()).to.emit(main, 'RewardsClaimed')
 
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+        
         await expect(main.poke())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
@@ -306,6 +312,9 @@ describe('MainP0 contract', () => {
           status: AuctionStatus.OPEN,
         })
 
+        // Check funds already in Market
+        expect(await compToken.balanceOf(market.address)).to.equal(rewardAmountCOMP)
+  
         // Advance time till auctioo ended
         await advanceTime(config.auctionPeriod.add(100).toString())
 
@@ -360,6 +369,15 @@ describe('MainP0 contract', () => {
           externalAuctionId: bn('1'),
           status: AuctionStatus.DONE,
         })
+
+        // Check balances sent to corresponding destinations
+        // StRSR
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
+        // Furnace
+        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+        const { amount, start } = await furnace.batches(0)
+        expect(amount).to.equal(minBuyAmtRToken)
+        expect(start).to.equal(await getLatestBlockTimestamp()) 
       })
 
       it('Should claim AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
