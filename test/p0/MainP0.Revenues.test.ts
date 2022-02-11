@@ -915,6 +915,145 @@ describe('MainP0 contract', () => {
         const { melted } = await furnace.batches(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken.sub(melted))
       })
+
+      it('Should handle custom destinations correctly', async () => {
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        // Set distribution - 50% of each to another account
+        await main
+          .connect(owner)
+          .setDistribution(other.address, { rTokenDist: fp('0.4'), rsrDist: fp('0.6') })
+
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('1e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(main.address, rewardAmountCOMP)
+
+        // Collect revenue - Called via poke
+        // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
+        let sellAmt: BigNumber = rewardAmountCOMP.mul(6).div(10) // due to f = 60%
+        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+
+        let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
+        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+
+        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(rewardAmountCOMP, 0)
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rsr.balanceOf(other.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+        expect(await rToken.balanceOf(other.address)).to.equal(0)
+
+        await expect(main.poke())
+          .to.emit(rsrTrader, 'AuctionStarted')
+          .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
+          .and.to.emit(rTokenTrader, 'AuctionStarted')
+          .withArgs(0, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
+
+        const auctionTimestamp: number = await getLatestBlockTimestamp()
+
+        // Check auctions registered
+        // COMP -> RSR Auction
+        await expectAuctionInfo(rsrTrader, 0, {
+          sell: compAsset.address,
+          buy: rsrAsset.address,
+          sellAmount: sellAmt,
+          minBuyAmount: minBuyAmt,
+          startTime: auctionTimestamp,
+          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          clearingSellAmount: bn('0'),
+          clearingBuyAmount: bn('0'),
+          externalAuctionId: bn('0'),
+          status: AuctionStatus.OPEN,
+        })
+
+        // COMP -> RToken Auction
+        await expectAuctionInfo(rTokenTrader, 0, {
+          sell: compAsset.address,
+          buy: rTokenAsset.address,
+          sellAmount: sellAmtRToken,
+          minBuyAmount: minBuyAmtRToken,
+          startTime: auctionTimestamp,
+          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          clearingSellAmount: bn('0'),
+          clearingBuyAmount: bn('0'),
+          externalAuctionId: bn('1'),
+          status: AuctionStatus.OPEN,
+        })
+
+        // Check funds in Market
+        expect(await compToken.balanceOf(market.address)).to.equal(rewardAmountCOMP)
+
+        // Advance time till auctioo ended
+        await advanceTime(config.auctionPeriod.add(100).toString())
+
+        // Perform Mock Bids for RSR and RToken (addr1 has balance)
+        await rsr.connect(addr1).approve(market.address, minBuyAmt)
+        await rToken.connect(addr1).approve(market.address, minBuyAmtRToken)
+        await market.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
+        await market.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRToken,
+          buyAmount: minBuyAmtRToken,
+        })
+
+        // Close auctions
+        await expect(main.poke())
+          .to.emit(rsrTrader, 'AuctionEnded')
+          .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
+          .and.to.emit(rTokenTrader, 'AuctionEnded')
+          .withArgs(0, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
+          .and.to.not.emit(rsrTrader, 'AuctionStarted')
+          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+
+        // Check previous auctions closed
+        // COMP -> RSR Auction
+        await expectAuctionInfo(rsrTrader, 0, {
+          sell: compAsset.address,
+          buy: rsrAsset.address,
+          sellAmount: sellAmt,
+          minBuyAmount: minBuyAmt,
+          startTime: auctionTimestamp,
+          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          clearingSellAmount: sellAmt,
+          clearingBuyAmount: minBuyAmt,
+          externalAuctionId: bn('0'),
+          status: AuctionStatus.DONE,
+        })
+
+        // COMP -> RToken Auction
+        await expectAuctionInfo(rTokenTrader, 0, {
+          sell: compAsset.address,
+          buy: rTokenAsset.address,
+          sellAmount: sellAmtRToken,
+          minBuyAmount: minBuyAmtRToken,
+          startTime: auctionTimestamp,
+          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          clearingSellAmount: sellAmtRToken,
+          clearingBuyAmount: minBuyAmtRToken,
+          externalAuctionId: bn('1'),
+          status: AuctionStatus.DONE,
+        })
+
+        // Check balances sent to corresponding destinations
+        // StRSR - 50% to StRSR, 50% to other
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.div(2))
+        expect(await rsr.balanceOf(other.address)).to.equal(minBuyAmt.div(2))
+
+        // Furnace - 50% to Furnace, 50% to other
+        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken.div(2))
+        expect(await rToken.balanceOf(other.address)).to.equal(minBuyAmtRToken.div(2))
+        const { amount, start } = await furnace.batches(0)
+        expect(amount).to.equal(minBuyAmtRToken.div(2))
+        expect(start).to.equal(await getLatestBlockTimestamp())
+      })
     })
 
     context('With non-valid Claim Adapters', async function () {
