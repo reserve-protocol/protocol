@@ -3,4 +3,3 @@
 
 yarn lint
 yarn compile
-yarn test:p0
