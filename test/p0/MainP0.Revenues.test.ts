@@ -622,6 +622,10 @@ describe('MainP0 contract', () => {
 
         await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(0, rewardAmountAAVE)
 
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
         await expect(main.poke())
           .to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmt, minBuyAmt)
@@ -643,6 +647,14 @@ describe('MainP0 contract', () => {
           status: AuctionStatus.OPEN,
         })
 
+        // Calculate pending amount
+        let sellAmtRemainder: BigNumber = rewardAmountAAVE.sub(sellAmt)
+        let minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
+
+        // Check funds in Market and still in Trader
+        expect(await aaveToken.balanceOf(market.address)).to.equal(sellAmt)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(sellAmtRemainder)
+
         // Perform Mock Bids for RToken (addr1 has balance)
         await rToken.connect(addr1).approve(market.address, minBuyAmt)
         await market.placeBid(0, {
@@ -653,10 +665,6 @@ describe('MainP0 contract', () => {
 
         // Advance time till auction ended
         await advanceTime(config.auctionPeriod.add(100).toString())
-
-        // Calculate pending amount
-        let sellAmtRemainder: BigNumber = rewardAmountAAVE.sub(sellAmt)
-        let minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
 
         // Another call will create a new auction and close existing
         await expect(main.poke())
@@ -683,6 +691,15 @@ describe('MainP0 contract', () => {
         // Check previous auction is closed
         await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
 
+        // Check destinations at this stage
+        // StRSR
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        // Furnace
+        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmt)
+        let { amount, start } = await furnace.batches(0)
+        expect(amount).to.equal(minBuyAmt)
+        expect(start).to.equal(await getLatestBlockTimestamp())
+
         // Perform Mock Bids for RToken (addr1 has balance)
         await rToken.connect(addr1).approve(market.address, minBuyAmtRemainder)
         await market.placeBid(1, {
@@ -704,6 +721,18 @@ describe('MainP0 contract', () => {
         // Check existing auctions are closed
         await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
         await expectAuctionStatus(rTokenTrader, 1, AuctionStatus.DONE)
+
+        // Check balances in destinations
+        // StRSR
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        // Furnace - some melting occurred already at this point
+        let { melted } = await furnace.batches(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(
+          minBuyAmt.add(minBuyAmtRemainder).sub(melted)
+        )
+        ;({ amount, start } = await furnace.batches(1))
+        expect(amount).to.equal(minBuyAmtRemainder)
+        expect(start).to.equal(await getLatestBlockTimestamp())
       })
 
       it('Should handle large auctions using maxAuctionSize with revenue split RSR/RToken', async () => {
