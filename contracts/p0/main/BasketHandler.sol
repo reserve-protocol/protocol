@@ -238,6 +238,9 @@ contract BasketHandlerP0 is
         // If we haven't already given up, then commit the new basket!
         basket.copy(newBasket);
 
+        // Activate the basket's assets in the AssetRegistry
+        activateBasketAssets(basket);
+
         // Keep records, emit event
         blockBasketLastChanged = block.number;
         ICollateral[] memory collateral = new ICollateral[](basket.size);

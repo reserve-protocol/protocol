@@ -120,7 +120,13 @@ interface IAssetRegistry {
 
     function removeAsset(IAsset asset) external;
 
-    function allAssets() external view returns (IAsset[] memory);
+    /// Activate `asset`; fails if its erc20 is not in the current basket
+    function activateAsset(IAsset asset) external;
+
+    /// Deactive `asset`; fails if its erc20 is not in the current basket
+    function deactivateAsset(IAsset asset) external onlyOwner;
+
+    function activeAssets() external view returns (IAsset[] memory);
 }
 
 interface IRevenueDistributor {

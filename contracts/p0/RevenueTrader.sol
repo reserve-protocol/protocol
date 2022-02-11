@@ -38,7 +38,7 @@ contract RevenueTraderP0 is TraderP0 {
     /// - If we have any of `assetToBuy` (RSR or RToken), distribute it.
     /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
     function manageFunds() private {
-        IAsset[] memory assets = main.allAssets(); // includes RToken/RSR/COMP/AAVE
+        IAsset[] memory assets = main.activeAssets(); // includes RToken/RSR/COMP/AAVE
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata erc20 = assets[i].erc20();
             uint256 bal = erc20.balanceOf(address(this));
