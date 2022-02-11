@@ -112,7 +112,6 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         return setAsset;
     }
 
-
     function _deactivate(IAsset asset) private returns (bool) {
         address token = address(asset.erc20());
         bool unsetAsset = _activeAssets[token] == asset;
