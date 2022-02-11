@@ -939,7 +939,9 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(rewardAmountCOMP, 0)
+        await expect(main.poke())
+          .to.emit(main, 'RewardsClaimed')
+          .withArgs(await compAsset.erc20(), rewardAmountCOMP)
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
