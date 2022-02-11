@@ -300,7 +300,7 @@ interface IRewardClaimer {
     /// Emitted whenever a claim adapter is removed by governance
     event ClaimAdapterRemoved(IClaimAdapter indexed adapter);
     /// Emitted whenever rewards are claimed
-    event RewardsClaimed();
+    event RewardsClaimed(address indexed erc20, uint256 indexed amount);
 
     function addClaimAdapter(IClaimAdapter claimAdapter) external;
 

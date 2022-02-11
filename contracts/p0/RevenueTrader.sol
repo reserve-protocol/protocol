@@ -26,11 +26,12 @@ contract RevenueTraderP0 is TraderP0 {
     }
 
     /// Claims and sweeps all rewards
-    function claimAndSweepRewardsToMain() external {
+    function claimAndSweepRewardsToMain() external returns (uint256[] memory) {
         (address[] memory erc20s, uint256[] memory amts) = RewardsLib.claimRewards(address(main));
         for (uint256 i = 0; i < erc20s.length; i++) {
             IERC20Metadata(erc20s[i]).safeTransfer(address(main), amts[i]);
         }
+        return amts;
     }
 
     /// Iterate through all asset types, and perform the appropriate action with each:

@@ -50,10 +50,13 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
         rewardsLastClaimed = prevRewards;
 
         // Claim rewards and sweep
-        rsrTrader.claimAndSweepRewardsToMain();
-        rTokenTrader.claimAndSweepRewardsToMain();
-        RewardsLib.claimRewards(address(this));
-        emit RewardsClaimed();
+        uint256[] memory rsrTraderAmts = rsrTrader.claimAndSweepRewardsToMain();
+        uint256[] memory rTokenTraderAmts = rTokenTrader.claimAndSweepRewardsToMain();
+        (address[] memory erc20s, uint256[] memory amts) = RewardsLib.claimRewards(address(this));
+
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            emit RewardsClaimed(erc20s[i], amts[i] + rsrTraderAmts[i] + rTokenTraderAmts[i]);
+        }
     }
 
     function addClaimAdapter(IClaimAdapter claimAdapter) external override onlyOwner {
