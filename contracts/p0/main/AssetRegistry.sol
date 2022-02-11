@@ -11,17 +11,17 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // All registered assets
-    EnumerableSet.AddressSet internal _assets;
+    EnumerableSet.AddressSet internal assets;
 
     // The ERC20 tokens for all active assets
-    EnumerableSet.AddressSet internal _tokens;
+    EnumerableSet.AddressSet private activeTokens;
     // The ERC20 tokens in the current basket
-    EnumerableSet.AddressSet internal _basketTokens;
-    // Invariant: _basketTokens is subset of _tokens
+    EnumerableSet.AddressSet private basketTokens;
+    // Invariant: basketTokens is subset of activeTokens
 
     // The active asset that models each erc20 address.
-    // Invariant: _activeAssets[e] != 0 iff _tokens.contains(e)
-    mapping(address => IAsset) internal _activeAssets;
+    // Invariant: activeAssets[e] != 0 iff activeTokens.contains(e)
+    mapping(address => IAsset) internal activeAssets;
 
     function init(ConstructorArgs calldata args) public virtual override {
         super.init(args);
@@ -34,9 +34,9 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
 
     function removeAsset(IAsset asset) external onlyOwner {
         _assets.remove(address(asset));
-        if (_tokens.contains(asset.erc20())) {
+        if (activeTokens.contains(asset.erc20())) {
             delete _activeAssets[asset.erc20()];
-            _tokens.remove(asset.erc20());
+            activeTokens.remove(asset.erc20());
         }
         emit AssetRemoved(asset);
     }
@@ -46,7 +46,7 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     function activateAsset(IAsset asset) external onlyOwner {
         address token = asset.erc20();
         require(!_basketTokens.contains(token), "Token is in current basket");
-        _tokens.add(token);
+        activeTokens.add(token);
         _activeAssets[token] = asset;
         // TODO: emit event
     }
@@ -56,7 +56,7 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     function deactivateAsset(IAsset asset) external onlyOwner {
         address token = asset.erc20();
         require(!_basketTokens.contains(token), "Token is in current basket");
-        _tokens.remove(token);
+        activeTokens.remove(token);
         delete _activeAssets[token];
         // TODO: emit event
     }
@@ -70,14 +70,14 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
             address token = _basketTokens.at(_basketTokens.length() - 1);
             delete _activeAssets[token];
             _basketTokens.remove(token);
-            _tokens.remove(token);
+            activeTokens.remove(token);
         }
 
         // Read basket and write _basketTokens and _assets
         for (uint256 i = 0; i < basket.size; i++) {
             IAsset asset = IAsset(basket.collateral[i]);
             address token = asset.erc20();
-            _tokens.add(token);
+            activeTokens.add(token);
             _basketTokens.add(token);
             _activeAssets[token] = asset;
         }
@@ -85,9 +85,9 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     }
 
     function activeAssets() external view override returns (IAsset[] memory assets) {
-        assets = new IAsset[](_tokens.length());
-        for (uint256 i = 0; i < _tokens.length(); i++) {
-            assets[i] = _activeAssets[_tokens.at(i)];
+        assets = new IAsset[](activeTokens.length());
+        for (uint256 i = 0; i < activeTokens.length(); i++) {
+            assets[i] = _activeAssets[activeTokens.at(i)];
         }
     }
 }
