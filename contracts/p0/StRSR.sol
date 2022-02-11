@@ -38,7 +38,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _PERMIT_TYPEHASH =
         keccak256(
-            "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+            "Permit(address owner,address spender,uint256 valxue,uint256 nonce,uint256 deadline)"
         );
 
     // ====

@@ -24,9 +24,9 @@ contract RTokenExtension is ContextMixin, RTokenP0, IExtension {
         for (uint256 i = 0; i < issuances.length; i++) {
             if (!issuances[i].processed) {
                 issuances[i].blockAvailableAt = toFix(block.number);
+                completeIssuance(i);
             }
         }
-        poke();
         return true;
     }
 

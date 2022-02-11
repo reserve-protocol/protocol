@@ -34,7 +34,6 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     function poke() public virtual override(Mixin, BasketHandlerP0) notPaused {
         super.poke();
         revenueFurnace().melt();
-        rToken().poke();
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral

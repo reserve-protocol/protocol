@@ -42,10 +42,6 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         _;
     }
 
-    function poke() public override onlyMain {
-        processSlowIssuance();
-    }
-
     /// Begins the SlowIssuance accounting process, keeping a roughly constant basket rate
     /// @dev This function assumes that `deposits` are transferred here during this txn.
     /// @dev This function assumes that `baskets` will be due to issuer after slow issuance.
@@ -84,6 +80,11 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             iss.deposits,
             iss.blockAvailableAt
         );
+
+        // Complete issuance instantly if it fits into this block
+        if (iss.blockAvailableAt.lte(toFix(block.number))) {
+            completeIssuance(issuances.length - 1);
+        }
     }
 
     /// Cancels a vesting slow issuance
@@ -99,6 +100,28 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
         iss.processed = true;
         emit IssuanceCanceled(issuanceId);
+    }
+
+    /// Completes a vested slow issuance
+    /// Anyone can complete another's issuance, unlike cancellation
+    /// @param issuanceId The id of the issuance, emitted at issuance start
+    function completeIssuance(uint256 issuanceId) public override {
+        SlowIssuance storage iss = issuances[issuanceId];
+        require(main.worstCollateralStatus() != CollateralStatus.DISABLED, "collateral disabled");
+        require(!iss.processed, "issuance already processed");
+        require(iss.blockStartedAt > main.blockBasketLastChanged(), "stale issuance");
+        require(iss.blockAvailableAt.lte(toFix(block.number)), "issuance not yet ready");
+
+        for (uint256 i = 0; i < iss.erc20s.length; i++) {
+            IERC20(iss.erc20s[i]).safeTransfer(address(main), iss.deposits[i]);
+        }
+        _mint(iss.issuer, iss.amount);
+
+        emit BasketsNeededChanged(basketsNeeded, basketsNeeded.plus(iss.baskets));
+        basketsNeeded = basketsNeeded.plus(iss.baskets);
+
+        iss.processed = true;
+        emit IssuanceCompleted(issuanceId);
     }
 
     /// Redeem a quantity of RToken from an account, keeping a roughly constant basket rate
@@ -145,46 +168,10 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
     // ==== Private ====
 
-    // Process slow issuances:
-    // - undoes any issuances that was started before the basket was last set
-    // - enacts any other issuances that are fully vested, sending deposits back to Main
-    function processSlowIssuance() private {
-        Fix currentBlock = toFix(block.number);
-        bool rollback = main.worstCollateralStatus() == CollateralStatus.DISABLED;
-
-        for (uint256 i = 0; i < issuances.length; i++) {
-            SlowIssuance storage iss = issuances[i];
-            if (iss.processed) continue;
-
-            if (rollback || iss.blockStartedAt <= main.blockBasketLastChanged()) {
-                // Rollback issuance i
-
-                for (uint256 j = 0; j < iss.erc20s.length; j++) {
-                    IERC20(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
-                }
-
-                iss.processed = true;
-                emit IssuanceCanceled(i);
-            } else if (iss.blockAvailableAt.lte(currentBlock)) {
-                // Process issuance i
-
-                for (uint256 j = 0; j < iss.erc20s.length; j++) {
-                    IERC20(iss.erc20s[j]).safeTransfer(address(main), iss.deposits[j]);
-                }
-
-                emit BasketsNeededChanged(basketsNeeded, basketsNeeded.plus(iss.baskets));
-                basketsNeeded = basketsNeeded.plus(iss.baskets);
-                _mint(iss.issuer, iss.amount);
-                iss.processed = true;
-                emit IssuanceCompleted(i);
-            }
-        }
-    }
-
-    // Returns the future block number at which an issuance for *amount* now can complete
+    // Returns the block number at which an issuance for *amount* now can complete
     function nextIssuanceBlockAvailable(uint256 amount) private view returns (Fix) {
         Fix perBlock = fixMax(MIN_ISSUANCE_RATE, main.issuanceRate().mulu(totalSupply()));
-        Fix blockStart = toFix(block.number);
+        Fix blockStart = toFix(block.number - 1);
         if (
             issuances.length > 0 && issuances[issuances.length - 1].blockAvailableAt.gt(blockStart)
         ) {
