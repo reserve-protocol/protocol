@@ -50,7 +50,7 @@ interface IAuctionInfo {
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('MainP0 contract', () => {
+describe.only('MainP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -211,14 +211,24 @@ describe('MainP0 contract', () => {
   describe('Config/Setup', function () {
     it('Should setup initial distribution correctly', async () => {
       // Configuration
-      expect(await main.rsrCut()).to.equal(bn(60))
-      expect(await main.rTokenCut()).to.equal(bn(40))
+      let rsrCut = await main.rsrCut()
+      expect(rsrCut.rsrShares).equal(bn(60))
+      expect(rsrCut.totalShares).equal(bn(100))
+
+      let rtokenCut = await main.rTokenCut()
+      expect(rtokenCut.rTokenShares).equal(bn(40))
+      expect(rtokenCut.totalShares).equal(bn(100))
     })
 
     it('Should allow to set distribution if owner', async () => {
       // Check initial status
-      expect(await main.rsrCut()).to.equal(bn(60))
-      expect(await main.rTokenCut()).to.equal(bn(40))
+      let rsrCut = await main.rsrCut()
+      expect(rsrCut.rsrShares).equal(bn(60))
+      expect(rsrCut.totalShares).equal(bn(100))
+
+      let rtokenCut = await main.rTokenCut()
+      expect(rtokenCut.rTokenShares).equal(bn(40))
+      expect(rtokenCut.totalShares).equal(bn(100))
 
       // Attempt to update with another account
       await expect(
@@ -229,8 +239,13 @@ describe('MainP0 contract', () => {
       await main.connect(owner).setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
 
       // Check updated status
-      expect(await main.rsrCut()).to.equal(fp('1'))
-      expect(await main.rTokenCut()).to.equal(0)
+      rsrCut = await main.rsrCut()
+      expect(rsrCut.rsrShares).equal(bn(60))
+      expect(rsrCut.totalShares).equal(bn(60))
+
+      rtokenCut = await main.rTokenCut()
+      expect(rtokenCut.rTokenShares).equal(bn(0))
+      expect(rtokenCut.totalShares).equal(bn(60))
     })
   })
 
@@ -945,9 +960,7 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke())
-          .to.emit(main, 'RewardsClaimed')
-          .withArgs(await compAsset.erc20(), rewardAmountCOMP)
+        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(rewardAmountCOMP, 0)
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
