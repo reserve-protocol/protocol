@@ -370,15 +370,24 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const facadeAddr = expectInReceipt(receipt, 'RTokenCreated').args.facade
 
   // Get Components
+  const compoundClaimer = <CompoundClaimAdapterP0>(
+    await ethers.getContractAt('CompoundClaimAdapterP0', await deployer.compoundClaimer())
+  )
+  const aaveClaimer = <AaveClaimAdapterP0>(
+    await ethers.getContractAt('AaveClaimAdapterP0', await deployer.aaveClaimer())
+  )
+
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
   const rsrAsset: AssetP0 = <AssetP0>(
     await ethers.getContractAt('AavePricedAssetP0', await main.rsrAsset())
   )
-  const compAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('CompoundPricedAssetP0', await main.compAsset())
-  )
+
+  const activeAssets = await main.activeAssets()
   const aaveAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('AavePricedAssetP0', await main.aaveAsset())
+    await ethers.getContractAt('AavePricedAssetP0', activeAssets[2])
+  )
+  const compAsset: AssetP0 = <AssetP0>(
+    await ethers.getContractAt('CompoundPricedAssetP0', activeAssets[3])
   )
   const rToken: RTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', await main.rToken())
   const rTokenAsset: RTokenAssetP0 = <RTokenAssetP0>(
@@ -434,13 +443,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Unpause
   await main.connect(owner).unpause()
-
-  const compoundClaimer = <CompoundClaimAdapterP0>(
-    await ethers.getContractAt('CompoundClaimAdapterP0', await deployer.compoundClaimer())
-  )
-  const aaveClaimer = <AaveClaimAdapterP0>(
-    await ethers.getContractAt('AaveClaimAdapterP0', await deployer.aaveClaimer())
-  )
 
   return {
     rsr,

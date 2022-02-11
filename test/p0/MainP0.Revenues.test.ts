@@ -5,13 +5,7 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { mainModule } from 'process'
 
-import {
-  AuctionStatus,
-  BN_SCALE_FACTOR,
-  FURNACE_DEST,
-  STRSR_DEST,
-  ZERO_ADDRESS,
-} from '../../common/constants'
+import { AuctionStatus, BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../../common/constants'
 import { bn, divCeil, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AssetP0 } from '../../typechain/AssetP0'
@@ -277,7 +271,7 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(rewardAmountCOMP, 0)
+        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -405,7 +399,7 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(0, rewardAmountAAVE)
+        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -508,7 +502,7 @@ describe('MainP0 contract', () => {
         let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(rewardAmountCOMP, 0)
+        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -620,7 +614,7 @@ describe('MainP0 contract', () => {
         let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(0, rewardAmountAAVE)
+        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -762,7 +756,7 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(rewardAmountCOMP, 0)
+        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -1089,7 +1083,7 @@ describe('MainP0 contract', () => {
           'CompoundClaimAdapterP0'
         )
         nonTrustedClaimer = <CompoundClaimAdapterP0>(
-          await CompoundClaimAdapterFactory.deploy(other.address)
+          await CompoundClaimAdapterFactory.deploy(other.address, await compAsset.erc20())
         )
 
         // Deploy new CToken with non-trusted claim adapter
@@ -1132,7 +1126,7 @@ describe('MainP0 contract', () => {
         await token2.setRewards(main.address, bn('0.5e18'))
 
         // Attempt to claim, no rewards claimed (0 amount)
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(0, 0)
+        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
       })
 
       it('Should revert for non-trusted adapters', async () => {

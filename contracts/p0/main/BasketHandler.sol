@@ -71,11 +71,13 @@ contract BasketHandlerP0 is
         onlyOwner
     {
         require(collateral.length == targetAmts.length, "must be same length");
+        // Ensure collateral all have unique erc20 tokens
         delete basketConf.collateral;
         delete basketConf.targetNames;
 
         for (uint256 i = 0; i < collateral.length; i++) {
             ICollateral coll = collateral[i];
+            require(_assets.contains(address(coll)), "unapproved asset in basket config");
             basketConf.collateral.push(coll);
             basketConf.targetAmts[coll] = targetAmts[i];
 
@@ -89,6 +91,9 @@ contract BasketHandlerP0 is
                 basketConf.targetNames.push(targetName);
             }
         }
+
+        // Revert if we introduced a token-collateral conflict!
+        requireUniqueTokens();
         emit PrimeBasketSet(collateral, targetAmts);
     }
 
@@ -103,8 +108,11 @@ contract BasketHandlerP0 is
 
         delete conf.collateral;
         for (uint256 i = 0; i < collateral.length; i++) {
+            require(_assets.contains(address(collateral[i])), "unapproved asset in backup config");
             conf.collateral.push(collateral[i]);
         }
+        // Revert if we introduced a token-collateral conflict!
+        requireUniqueTokens();
         emit BackupConfigSet(targetName, maxCollateral, collateral);
     }
 
@@ -161,6 +169,48 @@ contract BasketHandlerP0 is
 
         if (worstCollateralStatus() == CollateralStatus.DISABLED) {
             _switchBasket();
+        }
+    }
+
+    /// Return an array list (with possible duplicates) of a
+    function collateralInConfig() private view returns (ICollateral[] memory collateral) {
+        uint256 arrSize = basketConf.collateral.length;
+        for (uint256 i = 0; i < basketConf.targetNames.length; i++) {
+            arrSize += basketConf.backups[basketConf.targetNames[i]].collateral.length;
+        }
+        collateral = new ICollateral[](arrSize);
+        uint256 length = 0;
+        for (uint256 i = 0; i < basketConf.collateral.length; i++) {
+            collateral[i] = basketConf.collateral[i];
+            length++;
+        }
+        for (uint256 i = 0; i < basketConf.targetNames.length; i++) {
+            ICollateral[] storage backupColl = basketConf
+                .backups[basketConf.targetNames[i]]
+                .collateral;
+            for (uint256 j = 0; j < backupColl.length; j++) {
+                collateral[length] = backupColl[j];
+                length++;
+            }
+        }
+        return collateral;
+    }
+
+    /// Require that each token pointed to by all assets in the entire basket configuration is
+    /// pointed to by only one Collateral. (erc20 addresses may recur in the basket configuration if
+    /// and only if they're all pointed to by the same Collateral contract)
+    function requireUniqueTokens() private view {
+        ICollateral[] memory collateral = collateralInConfig();
+        uint256 length = 0;
+
+        for (uint256 i = 0; i < basketConf.collateral.length; i++) {
+            for (uint256 searchI = 0; searchI < length; searchI++) {
+                if (collateral[searchI] == collateral[i]) break;
+                require(
+                    collateral[searchI].erc20() != collateral[i].erc20(),
+                    "Different Collaterals refer to the same token"
+                );
+            }
         }
     }
 
@@ -237,6 +287,9 @@ contract BasketHandlerP0 is
 
         // If we haven't already given up, then commit the new basket!
         basket.copy(newBasket);
+
+        // Activate the basket's assets in the AssetRegistry
+        activateBasketAssets(basket);
 
         // Keep records, emit event
         blockBasketLastChanged = block.number;

@@ -8,8 +8,11 @@ import "contracts/p0/interfaces/IClaimAdapter.sol";
 contract CompoundClaimAdapterP0 is IClaimAdapter {
     IComptroller public immutable comptroller;
 
-    constructor(IComptroller comptroller_) {
+    address public immutable override rewardERC20;
+
+    constructor(IComptroller comptroller_, address rewardERC20_) {
         comptroller = comptroller_;
+        rewardERC20 = rewardERC20_;
     }
 
     /// @return _to The address to send the call to

@@ -12,7 +12,7 @@ import "contracts/p0/Trader.sol";
 contract RevenueTraderP0 is TraderP0 {
     using SafeERC20 for IERC20Metadata;
 
-    IAsset private assetToBuy;
+    IAsset public immutable assetToBuy;
 
     constructor(address main_, IAsset assetToBuy_) TraderP0() {
         initTrader(main_);
@@ -25,20 +25,20 @@ contract RevenueTraderP0 is TraderP0 {
         manageFunds();
     }
 
-    /// Claims and sweeps all COMP/AAVE rewards
-    function claimAndSweepRewardsToMain() external {
-        RewardsLib.claimRewards(address(main));
-        uint256 compBal = main.compAsset().erc20().balanceOf(address(this));
-        uint256 aaveBal = main.aaveAsset().erc20().balanceOf(address(this));
-        main.compAsset().erc20().safeTransfer(address(main), compBal);
-        main.aaveAsset().erc20().safeTransfer(address(main), aaveBal);
+    /// Claims and sweeps all rewards
+    function claimAndSweepRewardsToMain() external returns (uint256[] memory) {
+        (address[] memory erc20s, uint256[] memory amts) = RewardsLib.claimRewards(address(main));
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            IERC20Metadata(erc20s[i]).safeTransfer(address(main), amts[i]);
+        }
+        return amts;
     }
 
     /// Iterate through all asset types, and perform the appropriate action with each:
     /// - If we have any of `assetToBuy` (RSR or RToken), distribute it.
     /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
     function manageFunds() private {
-        IAsset[] memory assets = main.allAssets(); // includes RToken/RSR/COMP/AAVE
+        IAsset[] memory assets = main.activeAssets(); // includes RToken/RSR/COMP/AAVE
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata erc20 = assets[i].erc20();
             uint256 bal = erc20.balanceOf(address(this));

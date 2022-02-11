@@ -116,11 +116,22 @@ interface IAssetRegistry {
     /// @param asset The asset contract removed from the registry
     event AssetRemoved(IAsset indexed asset);
 
-    function addAsset(IAsset asset) external;
+    event AssetActivated(IAsset indexed asset);
+    event AssetDeactivated(IAsset indexed asset);
 
-    function removeAsset(IAsset asset) external;
+    function addAsset(IAsset asset) external returns (bool);
+
+    function removeAsset(IAsset asset) external returns (bool);
+
+    /// Activate `asset`; fails if its erc20 is not in the current basket
+    function activateAsset(IAsset asset) external returns (bool);
+
+    /// Deactive `asset`; fails if its erc20 is not in the current basket
+    function deactivateAsset(IAsset asset) external returns (bool);
 
     function allAssets() external view returns (IAsset[] memory);
+
+    function activeAssets() external view returns (IAsset[] memory);
 }
 
 interface IRevenueDistributor {
@@ -161,8 +172,6 @@ interface ISettingsHandler {
     event COMPAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
     event AAVEAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
     event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
-    event ClaimAdapterAdded(IClaimAdapter indexed adapter);
-    event ClaimAdapterRemoved(IClaimAdapter indexed adapter);
 
     function setRewardStart(uint256 rewardStart) external;
 
@@ -192,15 +201,7 @@ interface ISettingsHandler {
 
     function setRSRAsset(IAsset rsrAsset) external;
 
-    function setCOMPAsset(IAsset compAsset) external;
-
-    function setAAVEAsset(IAsset aaveAsset) external;
-
     function setMarket(IMarket market) external;
-
-    function addClaimAdapter(IClaimAdapter claimAdapter) external;
-
-    function removeClaimAdapter(IClaimAdapter claimAdapter) external;
 
     //
 
@@ -232,13 +233,7 @@ interface ISettingsHandler {
 
     function rsrAsset() external view returns (IAsset);
 
-    function compAsset() external view returns (IAsset);
-
-    function aaveAsset() external view returns (IAsset);
-
     function market() external view returns (IMarket);
-
-    function isTrustedClaimAdapter(IClaimAdapter claimAdapter_) external view returns (bool);
 
     /// @return The RToken deployment
     function rToken() external view returns (IRToken);
@@ -300,10 +295,20 @@ interface IAuctioneer is ITraderEvents {
 }
 
 interface IRewardClaimer {
+    /// Emitted whenever a claim adapter is added by governance
+    event ClaimAdapterAdded(IClaimAdapter indexed adapter);
+    /// Emitted whenever a claim adapter is removed by governance
+    event ClaimAdapterRemoved(IClaimAdapter indexed adapter);
     /// Emitted whenever rewards are claimed
-    /// @param compAmount {qCOMP} The amount of COMP claimed
-    /// @param aaveAmount {qAAVE} The amount of COMP claimed
-    event RewardsClaimed(uint256 indexed compAmount, uint256 indexed aaveAmount);
+    event RewardsClaimed(address indexed erc20, uint256 indexed amount);
+
+    function addClaimAdapter(IClaimAdapter claimAdapter) external;
+
+    function removeClaimAdapter(IClaimAdapter claimAdapter) external;
+
+    function isTrustedClaimAdapter(IClaimAdapter claimAdapter_) external view returns (bool);
+
+    function claimAdapters() external view returns (IClaimAdapter[] memory adapters);
 
     function nextRewards() external view returns (uint256);
 }

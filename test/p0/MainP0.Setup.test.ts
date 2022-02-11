@@ -86,6 +86,7 @@ describe('MainP0 contract', () => {
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
+  let basket: Collateral[]
 
   before('create fixture loader', async () => {
     ;[wallet] = await (ethers as any).getSigners()
@@ -95,7 +96,6 @@ describe('MainP0 contract', () => {
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
     let erc20s: ERC20Mock[]
-    let basket: Collateral[]
       // Deploy fixture
     ;({
       rsr,
@@ -163,8 +163,6 @@ describe('MainP0 contract', () => {
 
       // Assets and other components
       expect(await main.rsrAsset()).to.equal(rsrAsset.address)
-      expect(await main.compAsset()).to.equal(compAsset.address)
-      expect(await main.aaveAsset()).to.equal(aaveAsset.address)
       expect(await main.rTokenAsset()).to.equal(rTokenAsset.address)
       expect(await main.stRSR()).to.equal(stRSR.address)
       expect(await main.revenueFurnace()).to.equal(furnace.address)
@@ -191,26 +189,18 @@ describe('MainP0 contract', () => {
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
       expect(await main.rsr()).to.equal(rsr.address)
 
-      // Comp
-      expect(await main.compAsset()).to.equal(compAsset.address)
-      expect(await compAsset.erc20()).to.equal(compToken.address)
-
-      // Aave
-      expect(await main.aaveAsset()).to.equal(aaveAsset.address)
-      expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
-
       // RToken
       expect(await main.rTokenAsset()).to.equal(rTokenAsset.address)
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await main.rToken()).to.equal(rToken.address)
 
       // Check assets/collateral
-      const allAssets = await main.allAssets()
-      expect(allAssets[0]).to.equal(rTokenAsset.address)
-      expect(allAssets[1]).to.equal(rsrAsset.address)
-      expect(allAssets[2]).to.equal(aaveAsset.address)
-      expect(allAssets[3]).to.equal(compAsset.address)
-      expect(allAssets.slice(4)).to.eql(collateral.map((c) => c.address))
+      const activeAssets = await main.activeAssets()
+      expect(activeAssets[0]).to.equal(rTokenAsset.address)
+      expect(activeAssets[1]).to.equal(rsrAsset.address)
+      expect(activeAssets[2]).to.equal(aaveAsset.address)
+      expect(activeAssets[3]).to.equal(compAsset.address)
+      expect(activeAssets.length).to.eql((await main.basketCollateral()).length + 4)
     })
 
     it('Should register Basket correctly', async () => {
@@ -661,13 +651,12 @@ describe('MainP0 contract', () => {
     it('Should allow to add Asset if Owner', async () => {
       // Setup new Asset
       const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
-
       const newAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
         await AssetFactory.deploy(token0.address, compoundMock.address)
       )
 
       // Get previous length for assets
-      const previousLength = (await main.allAssets()).length
+      const previousLength = (await main.activeAssets()).length
 
       // Cannot add asset if not owner
       await expect(main.connect(other).addAsset(newAsset.address)).to.be.revertedWith(
@@ -675,21 +664,18 @@ describe('MainP0 contract', () => {
       )
 
       // Check nothing changed
-      let allAssets = await main.allAssets()
-      expect(allAssets.length).to.equal(previousLength)
+      let activeAssets = await main.activeAssets()
+      expect(activeAssets.length).to.equal(previousLength)
 
       // Add new asset
-      await main.connect(owner).addAsset(newAsset.address)
-
-      // Check if it was added
-      allAssets = await main.allAssets()
-      expect(allAssets[allAssets.length - 1]).to.equal(newAsset.address)
-      expect(allAssets.length).to.equal(previousLength + 1)
+      await expect(main.connect(owner).addAsset(newAsset.address))
+        .to.emit(main, 'AssetAdded')
+        .withArgs(newAsset.address)
     })
 
     it('Should allow to remove asset if Owner', async () => {
       // Get previous length for assets
-      const previousLength = (await main.allAssets()).length
+      const previousLength = (await main.activeAssets()).length
 
       // Cannot remove asset if not owner
       await expect(main.connect(other).removeAsset(compAsset.address)).to.be.revertedWith(
@@ -697,17 +683,17 @@ describe('MainP0 contract', () => {
       )
 
       // Check nothing changed
-      let allAssets = await main.allAssets()
-      expect(allAssets.length).to.equal(previousLength)
-      expect(allAssets).to.contain(compAsset.address)
+      let activeAssets = await main.activeAssets()
+      expect(activeAssets.length).to.equal(previousLength)
+      expect(activeAssets).to.contain(compAsset.address)
 
       // Remove asset
       await main.connect(owner).removeAsset(compAsset.address)
 
       // Check if it was removed
-      allAssets = await main.allAssets()
-      expect(allAssets).to.not.contain(compAsset.address)
-      expect(allAssets.length).to.equal(previousLength - 1)
+      activeAssets = await main.activeAssets()
+      expect(activeAssets).to.not.contain(compAsset.address)
+      expect(activeAssets.length).to.equal(previousLength - 1)
     })
 
     it('Should allow to disable Collateral if Owner', async () => {
