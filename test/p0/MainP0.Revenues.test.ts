@@ -5,7 +5,13 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { mainModule } from 'process'
 
-import { AuctionStatus, BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../../common/constants'
+import {
+  AuctionStatus,
+  BN_SCALE_FACTOR,
+  FURNACE_DEST,
+  STRSR_DEST,
+  ZERO_ADDRESS,
+} from '../../common/constants'
 import { bn, divCeil, fp } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AssetP0 } from '../../typechain/AssetP0'
@@ -205,14 +211,14 @@ describe('MainP0 contract', () => {
   describe('Config/Setup', function () {
     it('Should setup initial distribution correctly', async () => {
       // Configuration
-      expect(await main.rsrCut()).to.equal(fp('0.6'))
-      expect(await main.rTokenCut()).to.equal(fp('0.4'))
+      expect(await main.rsrCut()).to.equal(bn(60))
+      expect(await main.rTokenCut()).to.equal(bn(40))
     })
 
     it('Should allow to set distribution if owner', async () => {
       // Check initial status
-      expect(await main.rsrCut()).to.equal(fp('0.6'))
-      expect(await main.rTokenCut()).to.equal(fp('0.4'))
+      expect(await main.rsrCut()).to.equal(bn(60))
+      expect(await main.rTokenCut()).to.equal(bn(40))
 
       // Attempt to update with another account
       await expect(
@@ -923,7 +929,7 @@ describe('MainP0 contract', () => {
         // Set distribution - 50% of each to another account
         await main
           .connect(owner)
-          .setDistribution(other.address, { rTokenDist: fp('0.4'), rsrDist: fp('0.6') })
+          .setDistribution(other.address, { rTokenDist: bn(40), rsrDist: bn(60) })
 
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('1e18')

@@ -96,15 +96,11 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function INVARIANT_distributionValid() internal view returns (bool somethingIsPositive) {
         for (uint256 i = 0; i < destinations.length(); i++) {
-            Fix rsrDist = distribution[destinations.at(i)].rsrDist;
-            Fix rTokenDist = distribution[destinations.at(i)].rTokenDist;
-            if (rsrDist.gt(FIX_ZERO) || rTokenDist.gt(FIX_ZERO)) {
-                somethingIsPositive = true;
-            }
-            if (rsrDist.lt(FIX_ZERO) || rTokenDist.lt(FIX_ZERO)) {
-                return false;
-            }
+            uint16 rsrDist = distribution[destinations.at(i)].rsrDist;
+            uint16 rTokenDist = distribution[destinations.at(i)].rTokenDist;
+            if (rsrDist > 0 || rTokenDist > 0) return true;
         }
+        return false;
     }
 
     function INVARIANT_fullyCapitalized() internal view returns (bool ok) {

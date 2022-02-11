@@ -45,8 +45,8 @@ struct Config {
 }
 
 struct RevenueShare {
-    Fix rTokenDist;
-    Fix rsrDist;
+    uint16 rTokenDist;
+    uint16 rsrDist;
 }
 
 struct ConstructorArgs {
@@ -139,7 +139,7 @@ interface IRevenueDistributor {
     /// @param dest The address set to receive the distribution
     /// @param rTokenDist The distribution of RToken that should go to `dest`
     /// @param rsrDist The distribution of RSR that should go to `dest`
-    event DistributionSet(address dest, Fix rTokenDist, Fix rsrDist);
+    event DistributionSet(address dest, uint16 rTokenDist, uint16 rsrDist);
 
     function setDistribution(address dest, RevenueShare memory share) external;
 
@@ -149,9 +149,9 @@ interface IRevenueDistributor {
         uint256 amount
     ) external;
 
-    function rsrCut() external view returns (Fix);
+    function rsrCut() external view returns (uint256 rsrShares, uint256 totalShares);
 
-    function rTokenCut() external view returns (Fix);
+    function rTokenCut() external view returns (uint256 rtokenShares, uint256 totalShares);
 }
 
 interface ISettingsHandler {

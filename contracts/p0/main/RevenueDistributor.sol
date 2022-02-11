@@ -26,8 +26,8 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
 
     function init(ConstructorArgs calldata args) public virtual override(Mixin, SettingsHandlerP0) {
         super.init(args);
-        _setDistribution(FURNACE, RevenueShare(args.dist.rTokenDist, FIX_ZERO));
-        _setDistribution(ST_RSR, RevenueShare(FIX_ZERO, args.dist.rsrDist));
+        _setDistribution(FURNACE, RevenueShare(args.dist.rTokenDist, 0));
+        _setDistribution(ST_RSR, RevenueShare(0, args.dist.rsrDist));
     }
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
@@ -46,61 +46,60 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
     ) public override {
         require(erc20 == rsr() || erc20 == rToken(), "RSR or RToken");
         bool isRSR = erc20 == rsr(); // if false: isRToken
-        (Fix rTokenTotal, Fix rsrTotal) = totals();
-        Fix total = isRSR ? rsrTotal : rTokenTotal;
+        (uint256 rTokenTotal, uint256 rsrTotal) = shareTotals();
+        uint256 totalShares = isRSR ? rsrTotal : rTokenTotal;
 
-        uint256 sliceSum;
+        // Evenly distribute revenue tokens per distribution share.
+        uint256 tokensPerShare = amount / totalShares;
+
         for (uint256 i = 0; i < destinations.length(); i++) {
             address addrTo = destinations.at(i);
-            Fix subshare = isRSR ? distribution[addrTo].rsrDist : distribution[addrTo].rTokenDist;
-            uint256 slice = subshare.mulu(amount).div(total).floor();
-            if (slice == 0) continue;
+            uint256 numberOfShares = isRSR
+                ? distribution[addrTo].rsrDist
+                : distribution[addrTo].rTokenDist;
+            if (numberOfShares == 0) continue;
 
-            sliceSum += slice;
+            uint256 transferAmt = tokensPerShare * numberOfShares;
 
             if (addrTo == FURNACE) {
-                erc20.safeTransferFrom(from, address(revenueFurnace()), slice);
+                erc20.safeTransferFrom(from, address(revenueFurnace()), transferAmt);
                 revenueFurnace().notifyOfDeposit(erc20);
             } else if (addrTo == ST_RSR) {
-                erc20.safeTransferFrom(from, address(stRSR()), slice);
+                erc20.safeTransferFrom(from, address(stRSR()), transferAmt);
                 stRSR().notifyOfDeposit(erc20);
             } else {
-                erc20.safeTransferFrom(from, addrTo, slice);
+                erc20.safeTransferFrom(from, addrTo, transferAmt);
             }
-        }
-
-        uint256 delta = amount - sliceSum;
-        if (delta > 0) {
-            address sinkAddr = isRSR ? address(stRSR()) : address(revenueFurnace());
-            erc20.safeTransferFrom(from, sinkAddr, delta);
-            IERC20Receiver(sinkAddr).notifyOfDeposit(erc20);
         }
     }
 
     /// Returns the sum of all rsr cuts
-    function rsrCut() public view returns (Fix) {
-        (Fix rTokenTotal, Fix rsrTotal) = totals();
-        return rsrTotal.div(rsrTotal.plus(rTokenTotal));
+    function rsrCut() public view returns (uint256 rsrShares, uint256 totalShares) {
+        (uint256 rTokenTotal, uint256 rsrTotal) = shareTotals();
+        return (rsrTotal, rsrTotal + rTokenTotal);
     }
 
     /// Returns the sum of all rToken cuts
-    function rTokenCut() public view returns (Fix) {
-        return FIX_ONE.minus(rsrCut());
+    function rTokenCut() public view returns (uint256 rTokenShares, uint256 totalShares) {
+        (uint256 rTokenTotal, uint256 rsrTotal) = shareTotals();
+        return (rTokenTotal, rsrTotal + rTokenTotal);
     }
 
-    /// Returns the rsr + rToken totals
-    function totals() private view returns (Fix rTokenTotal, Fix rsrTotal) {
+    /// Returns the rsr + rToken shareTotals
+    function shareTotals() private view returns (uint256 rTokenTotal, uint256 rsrTotal) {
         for (uint256 i = 0; i < destinations.length(); i++) {
             RevenueShare storage share = distribution[destinations.at(i)];
-            rTokenTotal = rTokenTotal.plus(share.rTokenDist);
-            rsrTotal = rsrTotal.plus(share.rsrDist);
+            rTokenTotal += share.rTokenDist;
+            rsrTotal += share.rsrDist;
         }
     }
 
     /// Sets the distribution values - Internals
     function _setDistribution(address dest, RevenueShare memory share) internal {
-        if (dest == FURNACE) require(share.rsrDist.eq(FIX_ZERO), "Furnace must get 0% of RSR");
-        if (dest == ST_RSR) require(share.rTokenDist.eq(FIX_ZERO), "StRSR must get 0% of RToken");
+        if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
+        if (dest == ST_RSR) require(share.rTokenDist == 0, "StRSR must get 0% of RToken");
+        require(share.rsrDist <= 10000, "RSR distribution too high");
+        require(share.rTokenDist <= 10000, "RSR distribution too high");
 
         destinations.add(dest);
         distribution[dest] = share;
