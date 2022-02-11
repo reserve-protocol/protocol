@@ -72,8 +72,6 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = ok && address(stRSR()) != address(0);
         ok = ok && address(rTokenAsset()) != address(0);
         ok = ok && address(rsrAsset()) != address(0);
-        ok = ok && address(compAsset()) != address(0);
-        ok = ok && address(aaveAsset()) != address(0);
         if (!ok) {
             console.log("INVARIANT_stateDefined violated");
         }
@@ -131,9 +129,8 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         for (uint256 i = 0; i < basket.size; i++) {
             ok = ok && basket.collateral[i].price().gt(FIX_ZERO);
         }
-        ok = ok && compAsset().price().gt(FIX_ZERO);
         ok = ok && rsrAsset().price().gt(FIX_ZERO);
-        ok = ok && aaveAsset().price().gt(FIX_ZERO);
+        ok = ok && rTokenAsset().price().gt(FIX_ZERO);
         if (!ok) {
             console.log("INVARIANT_pricesDefined violated");
         }

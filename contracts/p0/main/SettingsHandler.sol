@@ -21,7 +21,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
-    EnumerableSet.AddressSet private _claimAdapters;
     IMarket private _market;
 
     uint256 private _rewardStart;
@@ -41,15 +40,10 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     IAsset private _rTokenAsset;
     IAsset private _rsrAsset;
-    IAsset private _compAsset;
-    IAsset private _aaveAsset;
 
     function init(ConstructorArgs calldata args) public virtual override(Mixin, AssetRegistryP0) {
         super.init(args);
 
-        for (uint256 i = 0; i < args.claimAdapters.length; i++) {
-            _claimAdapters.add(address(args.claimAdapters[i]));
-        }
         _market = args.market;
         _revenueFurnace = args.furnace;
 
@@ -103,26 +97,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function rsrAsset() public view override returns (IAsset) {
         return _rsrAsset;
-    }
-
-    function setCOMPAsset(IAsset compAsset_) external override onlyOwner {
-        _compAsset = compAsset_;
-        emit COMPAssetSet(_compAsset, compAsset_);
-        activateAsset(_compAsset);
-    }
-
-    function compAsset() public view override returns (IAsset) {
-        return _compAsset;
-    }
-
-    function setAAVEAsset(IAsset aaveAsset_) external override onlyOwner {
-        _aaveAsset = aaveAsset_;
-        emit AAVEAssetSet(_aaveAsset, aaveAsset_);
-        activateAsset(_aaveAsset);
-    }
-
-    function aaveAsset() public view override returns (IAsset) {
-        return _aaveAsset;
     }
 
     function setRewardStart(uint256 rewardStart_) external override onlyOwner {
@@ -222,25 +196,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function market() external view override returns (IMarket) {
         return _market;
-    }
-
-    function addClaimAdapter(IClaimAdapter claimAdapter_) external override onlyOwner {
-        emit ClaimAdapterAdded(claimAdapter_);
-        _claimAdapters.add(address(claimAdapter_));
-    }
-
-    function removeClaimAdapter(IClaimAdapter claimAdapter_) external override onlyOwner {
-        emit ClaimAdapterAdded(claimAdapter_);
-        _claimAdapters.remove(address(claimAdapter_));
-    }
-
-    function isTrustedClaimAdapter(IClaimAdapter claimAdapter_)
-        external
-        view
-        override
-        returns (bool)
-    {
-        return _claimAdapters.contains(address(claimAdapter_));
     }
 
     // Useful view functions for reading refAmts of the state

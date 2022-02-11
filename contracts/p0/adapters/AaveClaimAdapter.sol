@@ -6,6 +6,12 @@ import "contracts/p0/interfaces/IClaimAdapter.sol";
 
 /// Claim adapter for the Compound protocol
 contract AaveClaimAdapterP0 is IClaimAdapter {
+    address public immutable override rewardERC20;
+
+    constructor(address rewardERC20_) {
+        rewardERC20 = rewardERC20_;
+    }
+
     /// @return _to The address to send the call to
     /// @return _calldata The calldata to send
     function getClaimCalldata(ICollateral collateral)
