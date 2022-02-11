@@ -88,7 +88,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     function setRTokenAsset(IAsset rTokenAsset_) external override onlyOwner {
         _rTokenAsset = rTokenAsset_;
         emit RTokenAssetSet(_rTokenAsset, rTokenAsset_);
-        _assets.add(address(_rTokenAsset));
+        activateAsset(_rTokenAsset);
     }
 
     function rTokenAsset() public view override returns (IAsset) {
@@ -98,7 +98,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     function setRSRAsset(IAsset rsrAsset_) external override onlyOwner {
         _rsrAsset = rsrAsset_;
         emit RSRAssetSet(_rsrAsset, rsrAsset_);
-        _assets.add(address(_rsrAsset));
+        activateAsset(_rTokenAsset);
     }
 
     function rsrAsset() public view override returns (IAsset) {
@@ -108,7 +108,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     function setCOMPAsset(IAsset compAsset_) external override onlyOwner {
         _compAsset = compAsset_;
         emit COMPAssetSet(_compAsset, compAsset_);
-        _assets.add(address(_compAsset));
+        activateAsset(_compAsset);
     }
 
     function compAsset() public view override returns (IAsset) {
@@ -118,7 +118,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     function setAAVEAsset(IAsset aaveAsset_) external override onlyOwner {
         _aaveAsset = aaveAsset_;
         emit AAVEAssetSet(_aaveAsset, aaveAsset_);
-        _assets.add(address(_aaveAsset));
+        activateAsset(_aaveAsset);
     }
 
     function aaveAsset() public view override returns (IAsset) {

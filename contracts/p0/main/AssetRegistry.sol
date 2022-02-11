@@ -27,12 +27,12 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         super.init(args);
     }
 
-    function addAsset(IAsset asset) external onlyOwner returns (bool) {
+    function addAsset(IAsset asset) public onlyOwner returns (bool) {
         return _add(asset);
     }
 
     /// Remove `asset`, and deactivate it if needed.
-    function removeAsset(IAsset asset) external onlyOwner returns (bool) {
+    function removeAsset(IAsset asset) public onlyOwner returns (bool) {
         bool removed = _remove(asset);
         if (removed) _deactivate(asset);
         return removed;
@@ -40,7 +40,7 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
 
     /// Activate `asset`, and add it if needed
     /// Fail if its erc20 is in the current basket
-    function activateAsset(IAsset asset) external onlyOwner returns (bool) {
+    function activateAsset(IAsset asset) public onlyOwner returns (bool) {
         address token = address(asset.erc20());
         require(!basketTokens.contains(token), "Token is in current basket");
         _add(asset);
@@ -49,7 +49,7 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
 
     /// Deactivate `asset`, but do not remove it.
     /// Fail if its erc20 is in the current basket
-    function deactivateAsset(IAsset asset) external onlyOwner returns (bool) {
+    function deactivateAsset(IAsset asset) public onlyOwner returns (bool) {
         address token = address(asset.erc20());
         require(!basketTokens.contains(token), "Token is in current basket");
         return _deactivate(asset);
