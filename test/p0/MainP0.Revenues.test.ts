@@ -758,6 +758,10 @@ describe('MainP0 contract', () => {
 
         await expect(main.poke()).to.emit(main, 'RewardsClaimed')
 
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
         await expect(main.poke())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
@@ -816,6 +820,11 @@ describe('MainP0 contract', () => {
         let sellAmtRemainder: BigNumber = rewardAmountCOMP.sub(sellAmt).sub(sellAmtRToken)
         let minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
 
+        // Check funds in Market and still in Trader
+        expect(await compToken.balanceOf(market.address)).to.equal(sellAmt.add(sellAmtRToken))
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(sellAmtRemainder)
+        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
         await expect(main.poke())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
@@ -867,6 +876,15 @@ describe('MainP0 contract', () => {
           status: AuctionStatus.OPEN,
         })
 
+        // Check destinations at this stage
+        // StRSR
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
+        // Furnace
+        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+        let { amount, start } = await furnace.batches(0)
+        expect(amount).to.equal(minBuyAmtRToken)
+        expect(start).to.equal(await getLatestBlockTimestamp())
+
         // Run final auction until all funds are converted
         // Advance time till auction ended
         await advanceTime(config.auctionPeriod.add(100).toString())
@@ -889,6 +907,13 @@ describe('MainP0 contract', () => {
         await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
         await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
         await expectAuctionStatus(rsrTrader, 1, AuctionStatus.DONE)
+
+        // Check balances at destinations
+        // StRSR
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.add(minBuyAmtRemainder))
+        // Furnace - Some melting occurred at this point
+        const { melted } = await furnace.batches(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken.sub(melted))
       })
     })
 
