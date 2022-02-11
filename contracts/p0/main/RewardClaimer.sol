@@ -15,7 +15,7 @@ import "./SettingsHandler.sol";
 
 /**
  * @title RewardClaimer
- * @notice Claims rewards and leaves them in Main for Auctioneer to handle.
+ * @notice Claims rewards every reward cycle and leaves them in Main for Auctioneer to handle.
  */
 contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IRewardClaimer {
     using BasketLib for Basket;
@@ -38,7 +38,7 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
         }
     }
 
-    /// Collect rewards and send any collateral profits to revenue traders
+    /// Collect rewards and leave for Auctioneer
     function poke() public virtual override(Mixin, AuctioneerP0) notPaused {
         super.poke();
 
@@ -49,11 +49,10 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
         }
         rewardsLastClaimed = prevRewards;
 
-        // Claim rewards and sweep
+        // Claim rewards
         uint256[] memory rsrTraderAmts = rsrTrader.claimAndSweepRewardsToMain();
         uint256[] memory rTokenTraderAmts = rTokenTrader.claimAndSweepRewardsToMain();
         (address[] memory erc20s, uint256[] memory amts) = RewardsLib.claimRewards(address(this));
-
         for (uint256 i = 0; i < erc20s.length; i++) {
             emit RewardsClaimed(erc20s[i], amts[i] + rsrTraderAmts[i] + rTokenTraderAmts[i]);
         }
@@ -88,7 +87,7 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
 
     // ==== Private ====
 
-    // Return the reward boundaries on either side of *time* as timestamps.
+    // Return the reward boundaries on either side of `time` as timestamps.
     function whenRewards(uint256 time) private view returns (uint256 left, uint256 right) {
         int256 reps = (int256(time) - int256(rewardStart())) / int256(rewardPeriod());
         left = uint256(reps * int256(rewardPeriod()) + int256(rewardStart()));
