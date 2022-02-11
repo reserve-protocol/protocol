@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/p0/main/Mixin.sol";
@@ -18,10 +19,13 @@ import "./SettingsHandler.sol";
  */
 contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IRewardClaimer {
     using BasketLib for Basket;
-    using SafeERC20 for IERC20Metadata;
+    using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
+    using SafeERC20 for IERC20;
 
     uint256 private rewardsLastClaimed;
+
+    EnumerableSet.AddressSet private _claimAdapters;
 
     function init(ConstructorArgs calldata args)
         public
@@ -29,24 +33,47 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
         override(Mixin, SettingsHandlerP0, AuctioneerP0)
     {
         super.init(args);
+        for (uint256 i = 0; i < args.claimAdapters.length; i++) {
+            _claimAdapters.add(address(args.claimAdapters[i]));
+        }
     }
 
-    /// Collect COMP/AAVE rewards and take collateral profits based on appreciation
+    /// Collect rewards and send any collateral profits to revenue traders
     function poke() public virtual override(Mixin, AuctioneerP0) notPaused {
         super.poke();
-        uint256 compBalStart = compAsset().erc20().balanceOf(address(this));
-        uint256 aaveBalStart = aaveAsset().erc20().balanceOf(address(this));
-        (uint256 prevRewards, ) = whenRewards(block.timestamp);
-        if (prevRewards > rewardsLastClaimed) {
-            rewardsLastClaimed = prevRewards;
 
-            // Claim + Sweep COMP/AAVE from self + traders
-            rsrTrader.claimAndSweepRewardsToMain();
-            rTokenTrader.claimAndSweepRewardsToMain();
-            RewardsLib.claimRewards(address(this));
-            uint256 compDelta = compAsset().erc20().balanceOf(address(this)) - compBalStart;
-            uint256 aaveDelta = aaveAsset().erc20().balanceOf(address(this)) - aaveBalStart;
-            emit RewardsClaimed(compDelta, aaveDelta);
+        // Check if its time to claim
+        (uint256 prevRewards, ) = whenRewards(block.timestamp);
+        if (prevRewards <= rewardsLastClaimed) {
+            return;
+        }
+        rewardsLastClaimed = prevRewards;
+
+        // Claim rewards and sweep
+        rsrTrader.claimAndSweepRewardsToMain();
+        rTokenTrader.claimAndSweepRewardsToMain();
+        RewardsLib.claimRewards(address(this));
+        emit RewardsClaimed();
+    }
+
+    function addClaimAdapter(IClaimAdapter claimAdapter) external override onlyOwner {
+        emit ClaimAdapterAdded(claimAdapter);
+        _claimAdapters.add(address(claimAdapter));
+    }
+
+    function removeClaimAdapter(IClaimAdapter claimAdapter) external override onlyOwner {
+        emit ClaimAdapterRemoved(claimAdapter);
+        _claimAdapters.remove(address(claimAdapter));
+    }
+
+    function isTrustedClaimAdapter(IClaimAdapter claimAdapter) public view override returns (bool) {
+        return _claimAdapters.contains(address(claimAdapter));
+    }
+
+    function claimAdapters() public view override returns (IClaimAdapter[] memory adapters) {
+        adapters = new IClaimAdapter[](_claimAdapters.length());
+        for (uint256 i = 0; i < _claimAdapters.length(); i++) {
+            adapters[i] = IClaimAdapter(_claimAdapters.at(i));
         }
     }
 

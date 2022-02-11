@@ -56,8 +56,8 @@ contract DeployerP0 is IDeployer {
         market = market_;
         comptroller = comptroller_;
         aaveLendingPool = aaveLendingPool_;
-        compoundClaimer = new CompoundClaimAdapterP0(comptroller);
-        aaveClaimer = new AaveClaimAdapterP0();
+        compoundClaimer = new CompoundClaimAdapterP0(comptroller_, address(comp_));
+        aaveClaimer = new AaveClaimAdapterP0(address(aave_));
     }
 
     /// Deploys an instance of the entire system
@@ -92,6 +92,7 @@ contract DeployerP0 is IDeployer {
 
             RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main);
             main.setRTokenAsset(rTokenAsset);
+            main.activateAsset(rTokenAsset);
         }
 
         {
@@ -100,8 +101,11 @@ contract DeployerP0 is IDeployer {
             AssetP0 compAsset = new CompoundPricedAssetP0(comp, comptroller);
 
             main.setRSRAsset(rsrAsset);
-            main.setAAVEAsset(aaveAsset);
-            main.setCOMPAsset(compAsset);
+            main.activateAsset(rsrAsset);
+            main.addAsset(aaveAsset);
+            main.activateAsset(aaveAsset);
+            main.addAsset(compAsset);
+            main.activateAsset(compAsset);
         }
 
         {
