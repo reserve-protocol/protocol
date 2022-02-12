@@ -50,7 +50,7 @@ interface IAuctionInfo {
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe.only('MainP0 contract', () => {
+describe('MainP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress

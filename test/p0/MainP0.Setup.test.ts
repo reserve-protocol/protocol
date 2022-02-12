@@ -169,8 +169,14 @@ describe('MainP0 contract', () => {
       expect(await main.market()).to.equal(market.address)
 
       // Configuration
-      expect(await main.rsrCut()).to.equal(fp('0.6'))
-      expect(await main.rTokenCut()).to.equal(fp('0.4'))
+      let rsrCut = await main.rsrCut()
+      expect(rsrCut[0]).to.equal(bn(60))
+      expect(rsrCut[1]).to.equal(bn(100))
+
+      let rTokenCut = await main.rTokenCut()
+      expect(rTokenCut[0]).to.equal(bn(40))
+      expect(rTokenCut[1]).to.equal(bn(100))
+
       expect(await main.rewardStart()).to.equal(config.rewardStart)
       expect(await main.rewardPeriod()).to.equal(config.rewardPeriod)
       expect(await main.auctionPeriod()).to.equal(config.auctionPeriod)
