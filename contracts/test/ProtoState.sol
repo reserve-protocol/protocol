@@ -41,8 +41,8 @@ enum AssetName {
 /// How revenue is to be distributed
 struct RevenueDestination {
     address dest;
-    Fix rTokenDist;
-    Fix rsrDist;
+    uint256 rTokenDist;
+    uint256 rsrDist;
 }
 
 /// Basket Unit, ie 1e18{qBU}

@@ -5,8 +5,14 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { mainModule } from 'process'
 
-import { AuctionStatus, BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../../common/constants'
-import { bn, divCeil, fp } from '../../common/numbers'
+import {
+  AuctionStatus,
+  BN_SCALE_FACTOR,
+  FURNACE_DEST,
+  STRSR_DEST,
+  ZERO_ADDRESS,
+} from '../../common/constants'
+import { bn, divCeil, fp, near } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AssetP0 } from '../../typechain/AssetP0'
 import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
@@ -205,14 +211,24 @@ describe('MainP0 contract', () => {
   describe('Config/Setup', function () {
     it('Should setup initial distribution correctly', async () => {
       // Configuration
-      expect(await main.rsrCut()).to.equal(fp('0.6'))
-      expect(await main.rTokenCut()).to.equal(fp('0.4'))
+      let rsrCut = await main.rsrCut()
+      expect(rsrCut.rsrShares).equal(bn(60))
+      expect(rsrCut.totalShares).equal(bn(100))
+
+      let rtokenCut = await main.rTokenCut()
+      expect(rtokenCut.rTokenShares).equal(bn(40))
+      expect(rtokenCut.totalShares).equal(bn(100))
     })
 
     it('Should allow to set distribution if owner', async () => {
       // Check initial status
-      expect(await main.rsrCut()).to.equal(fp('0.6'))
-      expect(await main.rTokenCut()).to.equal(fp('0.4'))
+      let rsrCut = await main.rsrCut()
+      expect(rsrCut.rsrShares).equal(bn(60))
+      expect(rsrCut.totalShares).equal(bn(100))
+
+      let rtokenCut = await main.rTokenCut()
+      expect(rtokenCut.rTokenShares).equal(bn(40))
+      expect(rtokenCut.totalShares).equal(bn(100))
 
       // Attempt to update with another account
       await expect(
@@ -223,8 +239,13 @@ describe('MainP0 contract', () => {
       await main.connect(owner).setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
 
       // Check updated status
-      expect(await main.rsrCut()).to.equal(fp('1'))
-      expect(await main.rTokenCut()).to.equal(0)
+      rsrCut = await main.rsrCut()
+      expect(rsrCut.rsrShares).equal(bn(60))
+      expect(rsrCut.totalShares).equal(bn(60))
+
+      rtokenCut = await main.rTokenCut()
+      expect(rtokenCut.rTokenShares).equal(bn(0))
+      expect(rtokenCut.totalShares).equal(bn(60))
     })
   })
 
@@ -490,6 +511,8 @@ describe('MainP0 contract', () => {
         await main
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        await main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
 
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('2e18')
@@ -600,7 +623,10 @@ describe('MainP0 contract', () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
-        // Set f = 0
+        // Set f = 0, avoid dropping tokens
+        await main
+          .connect(owner)
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
         await main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
 
         // Set AAVE tokens as reward
@@ -734,12 +760,10 @@ describe('MainP0 contract', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Set f = 0.8 (0.2 for Rtoken)
+        await main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(4) })
         await main
           .connect(owner)
-          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: fp('0.8') })
-        await main
-          .connect(owner)
-          .setDistribution(FURNACE_DEST, { rTokenDist: fp('0.2'), rsrDist: bn(0) })
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
 
         // Set COMP tokens as reward
         // Based on current f -> 1.6e18 to RSR and 0.4e18 to Rtoken
@@ -923,7 +947,7 @@ describe('MainP0 contract', () => {
         // Set distribution - 50% of each to another account
         await main
           .connect(owner)
-          .setDistribution(other.address, { rTokenDist: fp('0.4'), rsrDist: fp('0.6') })
+          .setDistribution(other.address, { rTokenDist: bn(40), rsrDist: bn(60) })
 
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('1e18')
@@ -941,7 +965,7 @@ describe('MainP0 contract', () => {
 
         await expect(main.poke())
           .to.emit(main, 'RewardsClaimed')
-          .withArgs(await compAsset.erc20(), rewardAmountCOMP)
+          .withArgs(compToken.address, rewardAmountCOMP)
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)

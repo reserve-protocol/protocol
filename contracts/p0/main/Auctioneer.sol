@@ -101,21 +101,13 @@ contract AuctioneerP0 is
             }
 
             if (excess > 0) {
-                Fix rsrSide = rsrCut(); // {none}
-                uint256 toRSR = rsrSide.mulu(excess).round();
-                uint256 toRToken = excess - toRSR;
+                (uint256 rsrShares, uint256 totalShares) = rsrCut();
+                uint256 tokensPerShare = excess / totalShares;
+                uint256 toRSR = tokensPerShare * rsrShares;
+                uint256 toRToken = tokensPerShare * (totalShares - rsrShares);
 
-                // Prevent rounding from resulting in uneven distribution
-                if (rsrSide.lt(FIX_ONE) && rsrSide.gt(FIX_ZERO) && (toRSR == 0 || toRToken == 0)) {
-                    continue;
-                }
-
-                if (toRSR > 0) {
-                    a.erc20().safeTransfer(address(rsrTrader), toRSR);
-                }
-                if (toRToken > 0) {
-                    a.erc20().safeTransfer(address(rTokenTrader), toRToken);
-                }
+                if (toRSR > 0) a.erc20().safeTransfer(address(rsrTrader), toRSR);
+                if (toRToken > 0) a.erc20().safeTransfer(address(rTokenTrader), toRToken);
             }
         }
     }
