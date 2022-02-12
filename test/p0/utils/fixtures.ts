@@ -344,8 +344,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   }
 
   const dist: IRevenueShare = {
-    rTokenDist: fp('0.4'), // 40% RToken
-    rsrDist: fp('0.6'), // 60% RSR
+    rTokenDist: bn(40), // 2/5 RToken
+    rsrDist: bn(60), // 3/5 RSR
   }
 
   // Create Deployer

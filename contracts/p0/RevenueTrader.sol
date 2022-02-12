@@ -42,9 +42,7 @@ contract RevenueTraderP0 is TraderP0 {
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata erc20 = assets[i].erc20();
             uint256 bal = erc20.balanceOf(address(this));
-            if (bal == 0) {
-                continue;
-            }
+            if (bal == 0) continue;
 
             if (assets[i] == assetToBuy) {
                 erc20.safeApprove(address(main), bal);
@@ -57,9 +55,7 @@ contract RevenueTraderP0 is TraderP0 {
                 // {tok} =  {qTok} / {qTok/tok}
                 Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
                 (launch, auction) = prepareAuctionSell(assets[i], assetToBuy, sellAmount);
-                if (launch) {
-                    launchAuction(auction);
-                }
+                if (launch) launchAuction(auction);
             }
         }
     }
