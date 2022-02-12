@@ -12,7 +12,7 @@ import {
   STRSR_DEST,
   ZERO_ADDRESS,
 } from '../../common/constants'
-import { bn, divCeil, fp } from '../../common/numbers'
+import { bn, divCeil, fp, near } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AssetP0 } from '../../typechain/AssetP0'
 import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
@@ -511,6 +511,8 @@ describe.only('MainP0 contract', () => {
         await main
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        await main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
 
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('2e18')
@@ -621,7 +623,10 @@ describe.only('MainP0 contract', () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
-        // Set f = 0
+        // Set f = 0, avoid dropping tokens
+        await main
+          .connect(owner)
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
         await main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
 
         // Set AAVE tokens as reward
@@ -755,12 +760,10 @@ describe.only('MainP0 contract', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Set f = 0.8 (0.2 for Rtoken)
+        await main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(4) })
         await main
           .connect(owner)
-          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: fp('0.8') })
-        await main
-          .connect(owner)
-          .setDistribution(FURNACE_DEST, { rTokenDist: fp('0.2'), rsrDist: bn(0) })
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
 
         // Set COMP tokens as reward
         // Based on current f -> 1.6e18 to RSR and 0.4e18 to Rtoken
@@ -960,7 +963,9 @@ describe.only('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed').withArgs(rewardAmountCOMP, 0)
+        await expect(main.poke())
+          .to.emit(main, 'RewardsClaimed')
+          .withArgs(compToken.address, rewardAmountCOMP)
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
