@@ -1,8 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { signERC2612Permit } from 'eth-permit'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
+
 import { getChainId } from '../../common/blockchain-utils'
 import { bn, fp, near } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
@@ -203,7 +204,7 @@ describe('StRSRP0 contract', () => {
       await stRSR.connect(addr1).unstake(amount)
 
       // Check withdrawal properly registered
-      const [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(0)
+      const [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 0)
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount)
 
@@ -247,7 +248,7 @@ describe('StRSRP0 contract', () => {
 
       // Unstake - Create withdrawal
       await stRSR.connect(addr1).unstake(amount1)
-      let [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(0)
+      let [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 0)
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount1)
 
@@ -256,7 +257,7 @@ describe('StRSRP0 contract', () => {
 
       // Unstake again
       await stRSR.connect(addr1).unstake(amount2)
-      ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(1)
+      ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 1)
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount2)
 
@@ -265,7 +266,7 @@ describe('StRSRP0 contract', () => {
 
       // Unstake again with different user (will process previous stake)
       await stRSR.connect(addr2).unstake(amount3)
-      ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(2)
+      ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr2.address, 0)
       expect(unstakeAcc).to.equal(addr2.address)
       expect(unstakeAmt).to.equal(amount3)
 
@@ -302,7 +303,7 @@ describe('StRSRP0 contract', () => {
         await stRSR.connect(addr1).unstake(amount1)
       })
 
-      it('Should not process withdrawals if Main is paused', async () => {
+      it('Should revert processWithdrawals if Main is paused', async () => {
         // Get current balance for user
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)
 
@@ -313,18 +314,13 @@ describe('StRSRP0 contract', () => {
         await main.connect(owner).pause()
 
         // Process unstakes
-        await stRSR.processWithdrawals()
-
-        // Nothing processed so far
-        expect(await stRSR.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
-        expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
-        expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+        await expect(stRSR.processWithdrawals(addr1.address)).to.be.revertedWith('main paused')
 
         // If unpaused should process OK
         await main.connect(owner).unpause()
 
         // Process unstakes
-        await stRSR.processWithdrawals()
+        await stRSR.processWithdrawals(addr1.address)
 
         // Withdrawal was processed
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
@@ -365,12 +361,9 @@ describe('StRSRP0 contract', () => {
         expect(await main.fullyCapitalized()).to.equal(false)
 
         // Process unstakes
-        await stRSR.processWithdrawals()
-
-        // Nothing processed so far
-        expect(await stRSR.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
-        expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
-        expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+        await expect(stRSR.processWithdrawals(addr1.address)).to.be.revertedWith(
+          'RToken uncapitalized'
+        )
 
         // If fully capitalized should process OK  - Set back original basket
         await main.connect(owner).setPrimeBasket(
@@ -382,7 +375,7 @@ describe('StRSRP0 contract', () => {
         expect(await main.fullyCapitalized()).to.equal(true)
 
         // Process unstakes
-        await stRSR.processWithdrawals()
+        await stRSR.processWithdrawals(addr1.address)
 
         // Withdrawal was processed
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
@@ -394,7 +387,7 @@ describe('StRSRP0 contract', () => {
 
       it('Should not process withdrawals before stakingWithdrawalDelay', async () => {
         // Process unstakes
-        await stRSR.processWithdrawals()
+        await stRSR.processWithdrawals(addr1.address)
 
         // Nothing processed so far
         expect(await stRSR.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
@@ -404,7 +397,7 @@ describe('StRSRP0 contract', () => {
         // Process unstakes after certain time (still before stakingWithdrawalDelay)
         await advanceTime(15000)
 
-        await stRSR.processWithdrawals()
+        await stRSR.processWithdrawals(addr1.address)
 
         // Nothing processed still
         expect(await stRSR.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
@@ -421,7 +414,7 @@ describe('StRSRP0 contract', () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Process unstakes
-        await stRSR.processWithdrawals()
+        await stRSR.processWithdrawals(addr1.address)
 
         // Withdrawal was processed
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
@@ -443,7 +436,8 @@ describe('StRSRP0 contract', () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Process unstakes
-        await stRSR.processWithdrawals()
+        await stRSR.processWithdrawals(addr1.address)
+        await stRSR.processWithdrawals(addr2.address)
 
         // Withdrawals were processed
         expect(await stRSR.totalSupply()).to.equal(amount3)
@@ -460,7 +454,7 @@ describe('StRSRP0 contract', () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Process unstakes
-        await stRSR.processWithdrawals()
+        await stRSR.processWithdrawals(addr2.address)
 
         // Withdrawals processed
         expect(await stRSR.totalSupply()).to.equal(0)
@@ -715,7 +709,7 @@ describe('StRSRP0 contract', () => {
       await stRSR.connect(addr1).unstake(amount)
 
       // Check withdrawal properly registered
-      let [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(0)
+      let [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 0)
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount)
 
@@ -735,7 +729,7 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
 
       // Check impacted withdrawal
-      ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(0)
+      ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 0)
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount.sub(amount2))
     })
@@ -767,7 +761,7 @@ describe('StRSRP0 contract', () => {
       await stRSR.connect(addr1).unstake(amount)
 
       // Check withdrawal properly registered
-      let [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(0)
+      let [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 0)
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount)
 
@@ -793,7 +787,7 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount.sub(proportionalAmountToSeize))
 
       // // Check impacted withdrawal
-      ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(0)
+      ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 0)
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount.sub(proportionalAmountToSeize))
     })

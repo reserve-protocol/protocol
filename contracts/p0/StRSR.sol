@@ -5,9 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
@@ -66,7 +66,8 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         uint256 availableAt;
     }
 
-    Withdrawal[] public withdrawals;
+    // Withdrawal queues by account
+    mapping(address => Withdrawal[]) public withdrawals;
 
     constructor(
         IMain main_,
@@ -83,53 +84,50 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param amount {qRSR}
     function stake(uint256 amount) external override {
-        // Process pending withdrawals
-        processWithdrawals();
-
+        address account = _msgSender();
         require(amount > 0, "Cannot stake zero");
+        require(!main.paused(), "main paused");
 
-        main.rsr().safeTransferFrom(_msgSender(), address(this), amount);
-        accounts.add(_msgSender());
-        balances[_msgSender()] += amount;
+        if (main.fullyCapitalized() && main.worstCollateralStatus() == CollateralStatus.SOUND) {
+            // Process pending withdrawals
+            _processWithdrawals(account);
+        }
+
+        main.rsr().safeTransferFrom(account, address(this), amount);
+        accounts.add(account);
+        balances[account] += amount;
         totalStaked += amount;
-        emit Staked(_msgSender(), amount);
+        emit Staked(account, amount);
     }
 
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param amount {qRSR}
     function unstake(uint256 amount) external override {
-        // Process pending withdrawals
-        processWithdrawals();
-
+        address account = _msgSender();
         require(amount > 0, "Cannot withdraw zero");
-        require(balances[_msgSender()] >= amount, "Not enough balance");
+        require(balances[account] >= amount, "Not enough balance");
+        require(!main.paused(), "main paused");
+        require(main.fullyCapitalized(), "RToken uncapitalized");
+        require(main.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+
+        // Process pending withdrawals
+        _processWithdrawals(account);
 
         // Take it out up front
-        balances[_msgSender()] -= amount;
+        balances[account] -= amount;
         totalStaked -= amount;
 
         // Submit delayed withdrawal
         uint256 availableAt = block.timestamp + main.stRSRWithdrawalDelay();
-        withdrawals.push(Withdrawal(_msgSender(), amount, availableAt));
-        emit UnstakingStarted(withdrawals.length - 1, _msgSender(), amount, availableAt);
+        withdrawals[account].push(Withdrawal(account, amount, availableAt));
+        emit UnstakingStarted(withdrawals[account].length - 1, account, amount, availableAt);
     }
 
-    function balanceOf(address account) external view override returns (uint256) {
-        return balances[account];
-    }
-
-    function processWithdrawals() public {
-        if (main.paused() || !main.fullyCapitalized()) {
-            return;
-        }
-        // Process all pending withdrawals
-        for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (block.timestamp >= withdrawals[i].availableAt && withdrawals[i].amount > 0) {
-                main.rsr().safeTransfer(withdrawals[i].account, withdrawals[i].amount);
-                emit UnstakingCompleted(i, withdrawals[i].account, withdrawals[i].amount);
-                withdrawals[i].amount = 0;
-            }
-        }
+    function processWithdrawals(address account) public {
+        require(!main.paused(), "main paused");
+        require(main.fullyCapitalized(), "RToken uncapitalized");
+        require(main.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+        _processWithdrawals(account);
     }
 
     function notifyOfDeposit(IERC20 erc20) external override {
@@ -140,8 +138,8 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         uint256 addedAmount = 0;
 
         if (overage > 0) {
-            for (uint256 index = 0; index < accounts.length(); index++) {
-                address user = accounts.at(index);
+            for (uint256 i = 0; i < accounts.length(); i++) {
+                address user = accounts.at(i);
                 // amtToAdd == overage * (balance[user] / totalStaked);
                 uint256 amtToAdd = toFix(balances[user]).mulu(overage).divu(totalStaked).floor();
                 balances[user] += amtToAdd;
@@ -159,31 +157,31 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         require(_msgSender() == address(main), "not main");
         require(amount > 0, "Amount cannot be zero");
 
-        // Process pending withdrawals
-        processWithdrawals();
-
         uint256 snapshotTotalStakedPlus = totalStaked + amountBeingWithdrawn();
         // Remove RSR for stakers and from withdrawals too
         if (snapshotTotalStakedPlus > 0) {
             uint256 removedStake = 0;
-            for (uint256 index = 0; index < accounts.length(); index++) {
-                uint256 amtToRemove = toFix(balances[accounts.at(index)])
+            for (uint256 i = 0; i < accounts.length(); i++) {
+                uint256 amtToRemove = toFix(balances[accounts.at(i)])
                     .mulu(amount)
                     .divu(snapshotTotalStakedPlus)
                     .ceil();
-                balances[accounts.at(index)] -= amtToRemove;
+                balances[accounts.at(i)] -= amtToRemove;
                 removedStake += amtToRemove;
             }
             totalStaked -= removedStake;
             seizedRSR = removedStake;
 
-            for (uint256 index = 0; index < withdrawals.length; index++) {
-                uint256 amtToRemove = toFix(withdrawals[index].amount)
-                    .mulu(amount)
-                    .divu(snapshotTotalStakedPlus)
-                    .ceil();
-                withdrawals[index].amount -= amtToRemove;
-                seizedRSR += amtToRemove;
+            for (uint256 i = 0; i < accounts.length(); i++) {
+                Withdrawal[] storage withdrawalQ = withdrawals[accounts.at(i)];
+                for (uint256 j = 0; j < withdrawalQ.length; j++) {
+                    uint256 amtToRemove = toFix(withdrawalQ[j].amount)
+                        .mulu(amount)
+                        .divu(snapshotTotalStakedPlus)
+                        .ceil();
+                    withdrawalQ[j].amount -= amtToRemove;
+                    seizedRSR += amtToRemove;
+                }
             }
         }
 
@@ -215,6 +213,10 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         return totalStaked + amountBeingWithdrawn();
     }
 
+    function balanceOf(address account) external view override returns (uint256) {
+        return balances[account];
+    }
+
     function transfer(address recipient, uint256 amount) external override returns (bool) {
         _transfer(_msgSender(), recipient, amount);
         return true;
@@ -227,10 +229,6 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     ) private {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
-
-        // Process pending withdrawals
-        processWithdrawals();
-
         require(balances[sender] >= amount, "ERC20: transfer amount exceeds balance");
         balances[sender] -= amount;
         balances[recipient] += amount;
@@ -274,8 +272,22 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
 
     /// @return total {stRSR} Total amount of stRSR being withdrawn
     function amountBeingWithdrawn() internal view returns (uint256 total) {
-        for (uint256 index = 0; index < withdrawals.length; index++) {
-            total += withdrawals[index].amount;
+        for (uint256 i = 0; i < accounts.length(); i++) {
+            for (uint256 j = 0; j < withdrawals[accounts.at(i)].length; j++) {
+                total += withdrawals[accounts.at(i)][j].amount;
+            }
+        }
+    }
+
+    function _processWithdrawals(address account) private {
+        // Process all pending withdrawals for the account
+        for (uint256 i = 0; i < withdrawals[account].length; i++) {
+            Withdrawal[] storage withdrawalQ = withdrawals[account];
+            if (block.timestamp >= withdrawalQ[i].availableAt && withdrawalQ[i].amount > 0) {
+                main.rsr().safeTransfer(withdrawalQ[i].account, withdrawalQ[i].amount);
+                emit UnstakingCompleted(i, withdrawalQ[i].account, withdrawalQ[i].amount);
+                withdrawalQ[i].amount = 0;
+            }
         }
     }
 
