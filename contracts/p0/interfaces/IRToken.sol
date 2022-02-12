@@ -71,8 +71,6 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param newMain The new address of Main
     event MainSet(IMain indexed oldMain, IMain indexed newMain);
 
-    function poke() external;
-
     /// Begins the SlowIssuance process
     /// @param issuer The account issuing the RToken
     /// @param amount {qRTok}
@@ -89,6 +87,10 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// Cancels a vesting slow issuance
     /// @param issuanceId The id of the issuance, emitted at issuance start
     function cancelIssuance(uint256 issuanceId) external;
+
+    /// Completes a vested slow issuance
+    /// @param issuanceId The id of the issuance, emitted at issuance start
+    function completeIssuance(uint256 issuanceId) external;
 
     /// Burns a quantity of RToken from the callers account
     /// @param from The account from which RToken should be burned

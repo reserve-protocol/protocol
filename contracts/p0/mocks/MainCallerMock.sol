@@ -24,6 +24,10 @@ contract MainCallerMockP0 {
         return main.fullyCapitalized();
     }
 
+    function worstCollateralStatus() external view returns (CollateralStatus) {
+        return main.worstCollateralStatus();
+    }
+
     function rsr() external view returns (IERC20) {
         return main.rsr();
     }
