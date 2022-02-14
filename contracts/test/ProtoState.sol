@@ -22,38 +22,48 @@ enum Account {
 /// Only the first 11 are collateral-eligible
 enum AssetName {
     DAI, // 0
-    USDC,
-    USDT,
-    BUSD,
-    cDAI,
-    cUSDC,
-    cUSDT,
-    aDAI,
-    aUSDC,
-    aUSDT,
-    aBUSD,
+    USDC, // 1
+    USDT, // 2
+    BUSD, // 3
+    cDAI, // 4
+    cUSDC, // 5
+    cUSDT, // 6
+    aDAI, // 7
+    aUSDC, // 8
+    aUSDT, // 9
+    aBUSD, // 10
     // Below: not collateral eligible
-    RSR,
-    COMP,
+    RSR, // 11
+    COMP, // 12
     AAVE // 13
-}
-
-/// How revenue is to be distributed
-struct RevenueDestination {
-    address dest;
-    uint256 rTokenDist;
-    uint256 rsrDist;
-}
-
-/// Basket Unit, ie 1e18{qBU}
-struct BU {
-    AssetName[] assets;
-    Fix[] refAmts; // {qRef/BU}
 }
 
 struct Price {
     uint256 inETH; // {qETH/tok}
     uint256 inUoA; // {microUoA/tok}
+}
+
+/// How revenue is to be distributed
+struct RevenueDestination {
+    address dest;
+    uint16 rTokenDist;
+    uint16 rsrDist;
+}
+
+struct BasketConfig {
+    uint256 maxCollateral; // Maximum number of backup collateral elements to use in a basket
+    AssetName[] collateral; // Ordered list of backup collateral
+    Fix[] targetAmts; // {target/BU}
+}
+
+struct RToken {
+    AssetName[] collateral;
+    uint256[] amts; // {qTok/rTok}
+    TokenState erc20;
+}
+
+struct StRSR {
+    TokenState erc20;
 }
 
 struct TokenState {
@@ -65,20 +75,22 @@ struct TokenState {
     Price price;
 }
 
-/// Top-level state struct
-struct ProtoState {
-    // System-internal state
+struct Protocol {
     Config config;
     RevenueDestination[] distribution;
-    BU rTokenDefinition;
-    TokenState rToken;
-    TokenState rsr;
-    TokenState stRSR;
-    BU[] bu_s; // The definition of 1e18{qBU} basket units for all vaults in the vault stick-DAG
-    // System-external state
-    TokenState comp;
-    TokenState aave;
-    TokenState[] collateral; // AssetName.DAI - AssetName.aBUSD
-    Fix[] defiCollateralRates; // AssetName.DAI - AssetName.aBUSD, fiatcoins are ignored
+    RToken rToken;
+    StRSR stRSR;
+    BasketConfig basketConfig;
+}
+
+struct Environment {
+    TokenState[] assets; // AssetName.DAI - AssetName.AAVE
+    Fix[] rateToRef; // AssetName.DAI - AssetName.BUSD only
     Price ethPrice;
+}
+
+/// Top-level state struct
+struct ProtoState {
+    Protocol protocol;
+    Environment environ;
 }
