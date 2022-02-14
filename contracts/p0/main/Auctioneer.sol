@@ -87,6 +87,8 @@ contract AuctioneerP0 is
             // {qRTok} = {(BU - BU) * qRTok / BU}
             uint256 qRTok = held.minus(needed).mulu(rToken().totalSupply()).div(needed).floor();
             rToken().mint(address(this), qRTok);
+            rToken().setBasketsNeeded(held);
+            needed = held;
         }
 
         // Handout excess assets, including any RToken that was just minted
