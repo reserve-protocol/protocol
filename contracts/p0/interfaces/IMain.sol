@@ -16,9 +16,10 @@ import "./ITrader.sol";
 /// Configuration of the system
 struct Config {
     // Time (seconds)
-    uint256 rewardStart; // the timestamp of the very first weekly reward handout
-    uint256 rewardPeriod; // the duration of time between reward events
+    uint256 rewardStart; // the timestamp of the very first reward claim event
+    uint256 rewardPeriod; // the duration between reward-claim events
     uint256 auctionPeriod; // the length of an auction
+    uint256 stRSRPayPeriod; // the duration between stRSR payment events
     uint256 stRSRWithdrawalDelay; // the "thawing time" of staked RSR before withdrawal
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Ratios
@@ -27,12 +28,14 @@ struct Config {
     Fix maxAuctionSize; // max size of an auction / (RToken supply)
     Fix issuanceRate; // number of RToken to issue per block / (RToken supply)
     Fix defaultThreshold; // multiplier beyond which a token is marked as in-default
+    Fix stRSRPayRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
 
     // Sample values
     //
     // rewardStart = timestamp of first weekly handout
     // rewardPeriod = 604800 (1 week)
     // auctionPeriod = 1800 (30 minutes)
+    // stRSRPayPeriod = 86400 (1 day)
     // stRSRWithdrawalDelay = 1209600 (2 weeks)
     // defaultDelay = 86400 (24 hours)
 
@@ -42,6 +45,7 @@ struct Config {
     // maxAuctionSize = 0.01 (1%)
     // issuanceRate = 0.00025 (0.025% per block, or ~0.1% per minute)
     // defaultThreshold = 0.05 (5% deviation, either above or below)
+    // stRSRPayRatio = 0.022840031565754093 (half-life of 30 days)
 }
 
 struct RevenueShare {
@@ -163,6 +167,7 @@ interface ISettingsHandler {
     event RewardStartSet(uint256 indexed oldVal, uint256 indexed newVal);
     event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
     event AuctionPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
+    event StRSRPayPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
     event StRSRWithdrawalDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
     event DefaultDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
     event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
@@ -170,6 +175,7 @@ interface ISettingsHandler {
     event MaxAuctionSizeSet(Fix indexed oldVal, Fix indexed newVal);
     event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
     event DefaultThresholdSet(Fix indexed oldVal, Fix indexed newVal);
+    event StRSRPayRatioSet(Fix indexed oldVal, Fix indexed newVal);
     event StRSRSet(IStRSR indexed oldVal, IStRSR indexed newVal);
     event RevenueFurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
     event RTokenAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
@@ -181,6 +187,8 @@ interface ISettingsHandler {
     function setRewardPeriod(uint256 rewardPeriod) external;
 
     function setAuctionPeriod(uint256 auctionPeriod) external;
+
+    function setStRSRPayPeriod(uint256 stRSRPayPeriod) external;
 
     function setStRSRWithdrawalDelay(uint256 stRSRWithdrawalDelay) external;
 
@@ -195,6 +203,8 @@ interface ISettingsHandler {
     function setIssuanceRate(Fix issuanceRate) external;
 
     function setDefaultThreshold(Fix defaultThreshold) external;
+
+    function setStRSRPayRatio(Fix stRSRPayRatio) external;
 
     function setStRSR(IStRSR stRSR) external;
 
@@ -214,6 +224,8 @@ interface ISettingsHandler {
 
     function auctionPeriod() external view returns (uint256);
 
+    function stRSRPayPeriod() external view returns (uint256);
+
     function stRSRWithdrawalDelay() external view returns (uint256);
 
     function defaultDelay() external view returns (uint256);
@@ -227,6 +239,8 @@ interface ISettingsHandler {
     function issuanceRate() external view returns (Fix);
 
     function defaultThreshold() external view returns (Fix);
+
+    function stRSRPayRatio() external view returns (Fix);
 
     function stRSR() external view returns (IStRSR);
 

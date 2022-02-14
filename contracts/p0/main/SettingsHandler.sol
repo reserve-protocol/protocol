@@ -26,6 +26,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     uint256 private _rewardStart;
     uint256 private _rewardPeriod;
     uint256 private _auctionPeriod;
+    uint256 private _stRSRPayPeriod;
     uint256 private _stRSRWithdrawalDelay;
     uint256 private _defaultDelay;
 
@@ -34,6 +35,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     Fix private _maxAuctionSize;
     Fix private _issuanceRate;
     Fix private _defaultThreshold;
+    Fix private _stRSRPayRatio;
 
     IStRSR private _stRSR;
     IFurnace private _revenueFurnace;
@@ -50,6 +52,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         _rewardStart = args.config.rewardStart;
         _rewardPeriod = args.config.rewardPeriod;
         _auctionPeriod = args.config.auctionPeriod;
+        _stRSRPayPeriod = args.config.stRSRPayPeriod;
         _stRSRWithdrawalDelay = args.config.stRSRWithdrawalDelay;
         _defaultDelay = args.config.defaultDelay;
 
@@ -58,6 +61,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         _maxAuctionSize = args.config.maxAuctionSize;
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
+        _stRSRPayRatio = args.config.stRSRPayRatio;
     }
 
     function setStRSR(IStRSR stRSR_) external override onlyOwner {
@@ -118,12 +122,21 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setAuctionPeriod(uint256 auctionPeriod_) external override onlyOwner {
-        emit AuctionPeriodSet(_auctionPeriod, _auctionPeriod);
+        emit AuctionPeriodSet(_auctionPeriod, auctionPeriod_);
         _auctionPeriod = auctionPeriod_;
     }
 
     function auctionPeriod() public view override returns (uint256) {
         return _auctionPeriod;
+    }
+
+    function setStRSRPayPeriod(uint256 stRSRPayPeriod_) external {
+        emit StRSRPayPeriodSet(_stRSRPayPeriod, stRSRPayPeriod_);
+        _stRSRPayPeriod = stRSRPayPeriod_;
+    }
+
+    function stRSRPayPeriod() public view returns (uint256) {
+        return _stRSRPayPeriod;
     }
 
     function setStRSRWithdrawalDelay(uint256 stRSRWithdrawalDelay_) external override onlyOwner {
@@ -187,6 +200,15 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function defaultThreshold() public view override returns (Fix) {
         return _defaultThreshold;
+    }
+
+    function setStRSRPayRatio(Fix stRSRPayRatio_) external {
+        emit StRSRPayRatioSet(_stRSRPayRatio, stRSRPayRatio_);
+        _stRSRPayRatio = stRSRPayRatio_;
+    }
+
+    function stRSRPayRatio() public view returns (Fix) {
+        return _stRSRPayRatio;
     }
 
     function setMarket(IMarket market_) external override onlyOwner {
