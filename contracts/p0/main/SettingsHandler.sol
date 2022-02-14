@@ -62,6 +62,8 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
         _stRSRPayRatio = args.config.stRSRPayRatio;
+
+        require(_stRSRPayPeriod * 2 < _stRSRWithdrawalDelay, "RSR pay period too long");
     }
 
     function setStRSR(IStRSR stRSR_) external override onlyOwner {
@@ -133,6 +135,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     function setStRSRPayPeriod(uint256 stRSRPayPeriod_) external {
         emit StRSRPayPeriodSet(_stRSRPayPeriod, stRSRPayPeriod_);
         _stRSRPayPeriod = stRSRPayPeriod_;
+        require(_stRSRPayPeriod * 2 < _stRSRWithdrawalDelay, "RSR pay period too long");
     }
 
     function stRSRPayPeriod() public view returns (uint256) {
@@ -142,6 +145,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     function setStRSRWithdrawalDelay(uint256 stRSRWithdrawalDelay_) external override onlyOwner {
         emit StRSRWithdrawalDelaySet(_stRSRWithdrawalDelay, stRSRWithdrawalDelay_);
         _stRSRWithdrawalDelay = stRSRWithdrawalDelay_;
+        require(_stRSRPayPeriod * 2 < _stRSRWithdrawalDelay, "RSR withdrawal delay too short");
     }
 
     function stRSRWithdrawalDelay() public view override returns (uint256) {
