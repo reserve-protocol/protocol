@@ -93,15 +93,11 @@ library Lib {
                 _rawFix(b.maxTradeSlippage),
                 "Config.maxTradeSlippage"
             ) &&
+            assertEq(_rawFix(a.dustAmount), _rawFix(b.dustAmount), "Config.dustAmount") &&
             assertEq(
                 _rawFix(a.maxAuctionSize),
                 _rawFix(b.maxAuctionSize),
                 "Config.maxAuctionSize"
-            ) &&
-            assertEq(
-                _rawFix(a.minAuctionSize),
-                _rawFix(b.minAuctionSize),
-                "Config.minAuctionSize"
             ) &&
             assertEq(_rawFix(a.issuanceRate), _rawFix(b.issuanceRate), "Config.issuanceRate") &&
             assertEq(

@@ -46,6 +46,11 @@ contract RevenueTraderP0 is TraderP0 {
             return false;
         }
 
+        // Don't open a second auction if there's already one running.
+        for (uint256 i = 0; i < auctions.length; i++) {
+            if (auctions[i].sell == asset && auctions[i].status != AuctionStatus.DONE) return false;
+        }
+
         // {tok} =  {qTok} / {qTok/tok}
         Fix sellAmt = toFixWithShift(bal, -int8(token.decimals()));
         (bool launch, Auction memory auction) = prepareAuctionSell(asset, assetToBuy, sellAmt);

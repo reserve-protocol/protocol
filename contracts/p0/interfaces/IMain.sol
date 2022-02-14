@@ -23,8 +23,8 @@ struct Config {
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Ratios
     Fix maxTradeSlippage; // max slippage acceptable in a trade
+    Fix dustAmount; // value below which we don't bother handling some tokens {UoA}
     Fix maxAuctionSize; // max size of an auction / (RToken supply)
-    Fix minAuctionSize; // min size of an auction / (RToken supply)
     Fix issuanceRate; // number of RToken to issue per block / (RToken supply)
     Fix defaultThreshold; // multiplier beyond which a token is marked as in-default
 
@@ -37,9 +37,9 @@ struct Config {
     // defaultDelay = 86400 (24 hours)
 
     // maxTradeSlippage = 0.01 (1%)
+    // dustAmount = 1 (1 USD)
     // auctionClearingTolerance = 0.1 (10%)
     // maxAuctionSize = 0.01 (1%)
-    // minAuctionSize = 0.001 (0.1%)
     // issuanceRate = 0.00025 (0.025% per block, or ~0.1% per minute)
     // defaultThreshold = 0.05 (5% deviation, either above or below)
 }
@@ -166,8 +166,8 @@ interface ISettingsHandler {
     event StRSRWithdrawalDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
     event DefaultDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
     event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
+    event DustAmountSet(Fix indexed oldVal, Fix indexed newVal);
     event MaxAuctionSizeSet(Fix indexed oldVal, Fix indexed newVal);
-    event MinAuctionSizeSet(Fix indexed oldVal, Fix indexed newVal);
     event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
     event DefaultThresholdSet(Fix indexed oldVal, Fix indexed newVal);
     event StRSRSet(IStRSR indexed oldVal, IStRSR indexed newVal);
@@ -188,9 +188,9 @@ interface ISettingsHandler {
 
     function setMaxTradeSlippage(Fix maxTradeSlippage) external;
 
-    function setMaxAuctionSize(Fix maxAuctionSize) external;
+    function setDustAmount(Fix dustAMount) external;
 
-    function setMinAuctionSize(Fix minAuctionSize) external;
+    function setMaxAuctionSize(Fix maxAuctionSize) external;
 
     function setIssuanceRate(Fix issuanceRate) external;
 
@@ -220,9 +220,9 @@ interface ISettingsHandler {
 
     function maxTradeSlippage() external view returns (Fix);
 
-    function maxAuctionSize() external view returns (Fix);
+    function dustAmount() external view returns (Fix);
 
-    function minAuctionSize() external view returns (Fix);
+    function maxAuctionSize() external view returns (Fix);
 
     function issuanceRate() external view returns (Fix);
 

@@ -30,8 +30,8 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     uint256 private _defaultDelay;
 
     Fix private _maxTradeSlippage;
+    Fix private _dustAmount;
     Fix private _maxAuctionSize;
-    Fix private _minAuctionSize;
     Fix private _issuanceRate;
     Fix private _defaultThreshold;
 
@@ -54,8 +54,8 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         _defaultDelay = args.config.defaultDelay;
 
         _maxTradeSlippage = args.config.maxTradeSlippage;
+        _dustAmount = args.config.dustAmount;
         _maxAuctionSize = args.config.maxAuctionSize;
-        _minAuctionSize = args.config.minAuctionSize;
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
     }
@@ -153,6 +153,15 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         return _maxTradeSlippage;
     }
 
+    function setDustAmount(Fix dustAmount_) external override onlyOwner {
+        emit DustAmountSet(_dustAmount, dustAmount_);
+        _dustAmount = dustAmount_;
+    }
+
+    function dustAmount() public view override returns (Fix) {
+        return _dustAmount;
+    }
+
     function setMaxAuctionSize(Fix maxAuctionSize_) external override onlyOwner {
         emit MaxAuctionSizeSet(_maxAuctionSize, maxAuctionSize_);
         _maxAuctionSize = maxAuctionSize_;
@@ -160,15 +169,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function maxAuctionSize() public view override returns (Fix) {
         return _maxAuctionSize;
-    }
-
-    function setMinAuctionSize(Fix minAuctionSize_) external override onlyOwner {
-        emit MinAuctionSizeSet(_minAuctionSize, minAuctionSize_);
-        _minAuctionSize = minAuctionSize_;
-    }
-
-    function minAuctionSize() public view override returns (Fix) {
-        return _minAuctionSize;
     }
 
     function setIssuanceRate(Fix issuanceRate_) external override onlyOwner {
