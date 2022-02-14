@@ -1194,7 +1194,7 @@ describe('MainP0 contract', () => {
         await rsr.connect(owner).mint(addr1.address, initialBal)
       })
 
-      it.only('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
+      it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
