@@ -31,7 +31,7 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         uint256 start = rTokenAsset().erc20().balanceOf(account);
         connect(account);
         issue(amount);
-        RTokenExtension(address(rToken())).forceSlowIssuanceToComplete();
+        RTokenExtension(address(rToken())).forceSlowIssuanceToComplete(account);
         require(rTokenAsset().erc20().balanceOf(account) - start == amount, "issue failure");
     }
 

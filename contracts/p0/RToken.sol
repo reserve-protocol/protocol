@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
@@ -15,17 +16,22 @@ import "contracts/libraries/Fixed.sol";
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
 contract RTokenP0 is Ownable, ERC20Permit, IRToken {
+    using EnumerableSet for EnumerableSet.AddressSet;
+    using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
     using SafeERC20 for IERC20;
-    using FixLib for Fix;
 
     IMain public main;
 
+    // To enforce a fixed issuanceRate throughout the entire block
     mapping(uint256 => Fix) private issuanceRate; // block.number => {qRTok/block}
 
     Fix public constant MIN_ISSUANCE_RATE = Fix.wrap(1e40); // {qRTok/block} 10k whole RTok
 
-    SlowIssuance[] public issuances;
+    // List of accounts. If issuances[user].length > 0 then (user is in accounts)
+    EnumerableSet.AddressSet internal accounts;
+
+    mapping(address => SlowIssuance[]) public issuances;
 
     Fix public override basketsNeeded; //  {BU}
 
@@ -70,20 +76,21 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
         // Assumption: Main has already deposited the collateral
         SlowIssuance memory iss = SlowIssuance({
-            blockStartedAt: block.number,
+            issuer: issuer,
             amount: amount,
             baskets: baskets,
             erc20s: erc20s,
             deposits: deposits,
-            issuer: issuer,
+            blockStartedAt: block.number,
             blockAvailableAt: nextIssuanceBlockAvailable(amount, issuanceRate[block.number]),
             processed: false
         });
-        issuances.push(iss);
+        issuances[issuer].push(iss);
 
+        accounts.add(issuer);
         emit IssuanceStarted(
-            issuances.length - 1,
             iss.issuer,
+            issuances[issuer].length - 1,
             iss.amount,
             iss.baskets,
             iss.erc20s,
@@ -93,16 +100,17 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
         // Complete issuance instantly if it fits into this block
         if (iss.blockAvailableAt.lte(toFix(block.number))) {
-            // it's okay for completeIssuance to re-check requires here, safe even
-            completeIssuance(issuances.length - 1);
+            // At this point all checks have been done to ensure the issuance should vest
+            assert(tryVestIssuance(issuer, issuances[issuer].length - 1) > 0);
         }
     }
 
     /// Cancels a vesting slow issuance
-    /// @param issuanceId The id of the issuance, emitted at issuance start
-    function cancelIssuance(uint256 issuanceId) external override {
-        SlowIssuance storage iss = issuances[issuanceId];
-        require(iss.issuer == _msgSender(), "issuer does not match caller");
+    /// @param account The account of the issuer, and caller
+    /// @param index The index of the issuance in the issuer's queue
+    function cancelIssuance(address account, uint256 index) external override {
+        require(account == _msgSender(), "issuer does not match caller");
+        SlowIssuance storage iss = issuances[_msgSender()][index];
         require(!iss.processed, "issuance already processed");
 
         for (uint256 i = 0; i < iss.erc20s.length; i++) {
@@ -110,30 +118,19 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         }
 
         iss.processed = true;
-        emit IssuanceCanceled(issuanceId);
+        emit IssuanceCanceled(iss.issuer, index);
     }
 
-    /// Completes a vested slow issuance
-    /// Anyone can complete another's issuance, unlike cancellation
-    /// @param issuanceId The id of the issuance, emitted at issuance start
-    function completeIssuance(uint256 issuanceId) public override {
-        SlowIssuance storage iss = issuances[issuanceId];
+    /// Completes all vested slow issuances for the account, callable by anyone
+    /// @param account The address of the account to vest issuances for
+    /// @return vested {qRTok} The total amount of RToken quanta vested
+    function vestIssuances(address account) external override returns (uint256 vested) {
         require(!main.paused(), "main is paused");
-        require(main.worstCollateralStatus() != CollateralStatus.DISABLED, "collateral disabled");
-        require(!iss.processed, "issuance already processed");
-        require(iss.blockStartedAt > main.blockBasketLastChanged(), "stale issuance");
-        require(iss.blockAvailableAt.lte(toFix(block.number)), "issuance not yet ready");
+        require(main.worstCollateralStatus() == CollateralStatus.SOUND, "collateral default");
 
-        for (uint256 i = 0; i < iss.erc20s.length; i++) {
-            IERC20(iss.erc20s[i]).safeTransfer(address(main), iss.deposits[i]);
+        for (uint256 i = 0; i < issuances[account].length; i++) {
+            vested += tryVestIssuance(account, i);
         }
-        _mint(iss.issuer, iss.amount);
-
-        emit BasketsNeededChanged(basketsNeeded, basketsNeeded.plus(iss.baskets));
-        basketsNeeded = basketsNeeded.plus(iss.baskets);
-
-        iss.processed = true;
-        emit IssuanceCompleted(issuanceId);
     }
 
     /// Redeem a quantity of RToken from an account, keeping a roughly constant basket rate
@@ -180,13 +177,39 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
     // ==== Private ====
 
-    // Returns the block number at which an issuance for *amount* now can complete
-    // @param perBlock {qRTok/block} The uniform rate limit across the block
+    /// Returns the block number at which an issuance for *amount* now can complete
+    /// @param perBlock {qRTok/block} The uniform rate limit across the block
     function nextIssuanceBlockAvailable(uint256 amount, Fix perBlock) private returns (Fix) {
         Fix before = toFix(block.number - 1);
-        if (issuances.length > 0 && issuances[issuances.length - 1].blockAvailableAt.gt(before)) {
-            before = issuances[issuances.length - 1].blockAvailableAt;
+        for (uint256 i = 0; i < accounts.length(); i++) {
+            SlowIssuance[] storage queue = issuances[accounts.at(i)];
+            if (queue.length > 0 && queue[queue.length - 1].blockAvailableAt.gt(before)) {
+                before = queue[queue.length - 1].blockAvailableAt;
+            }
         }
         return before.plus(divFix(amount, perBlock));
+    }
+
+    /// Tries to vest an issuance
+    /// @return issued The total amount of RToken minted
+    function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
+        SlowIssuance storage iss = issuances[issuer][index];
+        if (
+            !iss.processed &&
+            iss.blockStartedAt > main.blockBasketLastChanged() &&
+            iss.blockAvailableAt.lte(toFix(block.number))
+        ) {
+            for (uint256 i = 0; i < iss.erc20s.length; i++) {
+                IERC20(iss.erc20s[i]).safeTransfer(address(main), iss.deposits[i]);
+            }
+            _mint(iss.issuer, iss.amount);
+            issued = iss.amount;
+
+            emit BasketsNeededChanged(basketsNeeded, basketsNeeded.plus(iss.baskets));
+            basketsNeeded = basketsNeeded.plus(iss.baskets);
+
+            iss.processed = true;
+            emit IssuanceCompleted(issuer, index);
+        }
     }
 }

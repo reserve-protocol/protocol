@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/test/Mixins.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/RToken.sol";
@@ -10,6 +11,7 @@ import "hardhat/console.sol";
 
 /// Enables generic testing harness to set _msgSender() for RToken.
 contract RTokenExtension is ContextMixin, RTokenP0, IExtension {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
     constructor(
@@ -20,14 +22,13 @@ contract RTokenExtension is ContextMixin, RTokenP0, IExtension {
         address owner_
     ) ContextMixin(admin) RTokenP0(main, name_, symbol_, owner_) {}
 
-    function forceSlowIssuanceToComplete() external returns (bool) {
-        for (uint256 i = 0; i < issuances.length; i++) {
-            if (!issuances[i].processed) {
-                issuances[i].blockAvailableAt = toFix(block.number);
-                completeIssuance(i);
+    function forceSlowIssuanceToComplete(address account) external {
+        for (uint256 i = 0; i < issuances[account].length; i++) {
+            if (!issuances[account][i].processed) {
+                issuances[account][i].blockAvailableAt = toFix(block.number);
+                assert(tryVestIssuance(account, i) == issuances[account][i].amount);
             }
         }
-        return true;
     }
 
     function _msgSender() internal view override returns (address) {
@@ -42,9 +43,12 @@ contract RTokenExtension is ContextMixin, RTokenP0, IExtension {
 
     function INVARIANT_issuancesAreValid() internal view returns (bool ok) {
         ok = true;
-        for (uint256 i = 0; i < issuances.length; i++) {
-            if (issuances[i].processed && issuances[i].blockAvailableAt.lt(toFix(block.number))) {
-                ok = false;
+        for (uint256 i = 0; i < accounts.length(); i++) {
+            SlowIssuance[] storage queue = issuances[accounts.at(i)];
+            for (uint256 j = 0; j < queue.length; j++) {
+                if (queue[j].processed && queue[j].blockAvailableAt.lt(toFix(block.number))) {
+                    ok = false;
+                }
             }
         }
         if (!ok) {
