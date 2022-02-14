@@ -533,19 +533,19 @@ describe('MainP0 contract', () => {
       expect(await main.totalAssetValue()).to.equal(issueAmount.add(newIssuanceAmt))
     })
 
-    it.skip('Should process multiple issuances in the correct order', async function () {
+    it('Should process multiple issuances in the correct order', async function () {
       // Provide approvals
       await token0.connect(addr1).approve(main.address, initialBal)
       await token1.connect(addr1).approve(main.address, initialBal)
       await token2.connect(addr1).approve(main.address, initialBal)
       await token3.connect(addr1).approve(main.address, initialBal)
 
-      // Issuance #1 - Will be processed in 4 blocks
+      // Issuance #1 - Will be processed in 5 blocks
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(5)
       await main.connect(addr1).issue(issueAmount)
 
       // Issuance #2 and #3 - Will be processed in one additional block each
-      const newIssueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
+      const newIssueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
       await main.connect(addr1).issue(newIssueAmount)
       await main.connect(addr1).issue(newIssueAmount)
 
@@ -559,13 +559,13 @@ describe('MainP0 contract', () => {
       expect(await main.totalAssetValue()).to.equal(issueAmount)
 
       // Process another block to get the 2nd issuance processed
-      await rToken.completeIssuance(0)
+      await rToken.completeIssuance(1)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
       expect(await main.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount))
 
       // Process another block to get the 3rd issuance processed
-      await rToken.completeIssuance(0)
+      await rToken.completeIssuance(2)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
       expect(await main.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount.mul(2)))
