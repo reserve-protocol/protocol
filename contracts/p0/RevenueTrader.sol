@@ -22,7 +22,6 @@ contract RevenueTraderP0 is TraderP0 {
     function poke() public {
         // Always process auctions *and* do funds management; don't short-circuit here.
         closeDueAuctions();
-        manageFunds();
     }
 
     /// Claims and sweeps all rewards
@@ -34,29 +33,23 @@ contract RevenueTraderP0 is TraderP0 {
         return amts;
     }
 
-    /// Iterate through all asset types, and perform the appropriate action with each:
-    /// - If we have any of `assetToBuy` (RSR or RToken), distribute it.
-    /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
-    function manageFunds() private {
-        IAsset[] memory assets = main.activeAssets(); // includes RToken/RSR/COMP/AAVE
-        for (uint256 i = 0; i < assets.length; i++) {
-            IERC20Metadata erc20 = assets[i].erc20();
-            uint256 bal = erc20.balanceOf(address(this));
-            if (bal == 0) continue;
+    /// Trigger auction of token for assetToBuy.
+    /// @return whether an auction was triggered
+    function triggerAuction(IERC20Metadata token) external returns (bool) {
+        IAsset asset = main.activeAsset(address(token));
+        uint256 bal = token.balanceOf(address(this));
+        if (bal == 0) return false;
 
-            if (assets[i] == assetToBuy) {
-                erc20.safeApprove(address(main), bal);
-                main.distribute(erc20, address(this), bal);
-            } else {
-                // If not dust, trade the non-target asset for the target asset
-                bool launch;
-                Auction memory auction;
-
-                // {tok} =  {qTok} / {qTok/tok}
-                Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
-                (launch, auction) = prepareAuctionSell(assets[i], assetToBuy, sellAmount);
-                if (launch) launchAuction(auction);
-            }
+        if (asset == assetToBuy) {
+            token.safeApprove(address(main), bal);
+            main.distribute(token, address(this), bal);
+            return false;
         }
+
+        // {tok} =  {qTok} / {qTok/tok}
+        Fix sellAmt = toFixWithShift(bal, -int8(token.decimals()));
+        (bool launch, Auction memory auction) = prepareAuctionSell(asset, assetToBuy, sellAmt);
+        if (launch) launchAuction(auction);
+        return launch;
     }
 }

@@ -129,9 +129,14 @@ interface IAssetRegistry {
     /// Deactive `asset`; fails if its erc20 is not in the current basket
     function deactivateAsset(IAsset asset) external returns (bool);
 
+    /// Return an array of all assets
     function allAssets() external view returns (IAsset[] memory);
 
+    /// Return an array of all active assets
     function activeAssets() external view returns (IAsset[] memory);
+
+    /// Return the active asset modelling the erc20 `token`.
+    function activeAsset(address token) external view returns (IAsset);
 }
 
 interface IRevenueDistributor {

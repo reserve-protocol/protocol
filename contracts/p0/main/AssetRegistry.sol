@@ -71,6 +71,7 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         }
     }
 
+    /// Return an array of all assets
     function allAssets() external view override returns (IAsset[] memory assets) {
         assets = new IAsset[](_assets.length());
         for (uint256 i = 0; i < _assets.length(); i++) {
@@ -78,11 +79,18 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         }
     }
 
+    /// Return an array of all active assets
     function activeAssets() external view override returns (IAsset[] memory assets) {
         assets = new IAsset[](activeTokens.length());
         for (uint256 i = 0; i < activeTokens.length(); i++) {
             assets[i] = _activeAssets[activeTokens.at(i)];
         }
+    }
+
+    /// Return the active asset that models the erc20 `token`.
+    function activeAsset(address token) public view override returns (IAsset) {
+        require(activeTokens.contains(token), "Token not active");
+        return _activeAssets[token];
     }
 
     // === private, permissionless, event-emitting mutators ====
