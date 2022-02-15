@@ -50,20 +50,13 @@ struct RevenueDestination {
     uint16 rsrDist;
 }
 
-struct BasketConfig {
-    uint256 maxCollateral; // Maximum number of backup collateral elements to use in a basket
-    AssetName[] collateral; // Ordered list of backup collateral
+struct BasketState {
+    uint256 maxSize;
+    AssetName[] backing;
+    AssetName[] backupCollateral; // superset of backing
+    uint256[] qTokAmts; // {qTok/rTok}
+    Fix[] refAmts; // {ref/BU}
     Fix[] targetAmts; // {target/BU}
-}
-
-struct RToken {
-    AssetName[] collateral;
-    uint256[] amts; // {qTok/rTok}
-    TokenState erc20;
-}
-
-struct StRSR {
-    TokenState erc20;
 }
 
 struct TokenState {
@@ -71,26 +64,18 @@ struct TokenState {
     string symbol;
     uint256[] balances; // balances[Account] = uint256
     uint256 totalSupply;
-    //
-    Price price;
-}
-
-struct Protocol {
-    Config config;
-    RevenueDestination[] distribution;
-    RToken rToken;
-    StRSR stRSR;
-    BasketConfig basketConfig;
-}
-
-struct Environment {
-    TokenState[] assets; // AssetName.DAI - AssetName.AAVE
-    Fix[] rateToRef; // AssetName.DAI - AssetName.BUSD only
-    Price ethPrice;
 }
 
 /// Top-level state struct
 struct ProtoState {
-    Protocol protocol;
-    Environment environ;
+    Config config;
+    RevenueDestination[] distribution;
+    TokenState rToken;
+    TokenState stRSR;
+    BasketState basket;
+    //
+    TokenState[] assets; // AssetName.DAI - AssetName.AAVE (len 14)
+    Price[] prices; // AssetName.DAI - AssetName.AAVE only (len 14)
+    Fix[] rateToRef; // AssetName.DAI - AssetName.BUSD only (len 11)
+    Price ethPrice;
 }

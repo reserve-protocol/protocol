@@ -44,7 +44,7 @@ contract BasketHandlerP0 is
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using FixLib for Fix;
 
-    BasketConfig private basketConf;
+    BasketConfig internal basketConf;
 
     Basket internal basket;
     uint256 public override blockBasketLastChanged; // {block number}

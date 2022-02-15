@@ -18,6 +18,7 @@ import "hardhat/console.sol";
 /// Enables generic testing harness to set _msgSender() for Main.
 contract MainExtension is ContextMixin, MainP0, IExtension {
     using Address for address;
+    using BasketLib for Basket;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
@@ -35,15 +36,30 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         require(rTokenAsset().erc20().balanceOf(account) - start == amount, "issue failure");
     }
 
-    /// @return targets {ref/BU} The reference targets targeted per BU
-    function basketRefTargets() external view returns (Fix[] memory targets) {
-        targets = new Fix[](basket.size);
+    /// @return refAmts {ref/BU} The reference refs targeted per BU
+    function basketRefAmts() external view returns (Fix[] memory refAmts) {
+        refAmts = new Fix[](basket.size);
         for (uint256 i = 0; i < basket.size; i++) {
-            targets[i] = basket.refAmts[basket.collateral[i]];
+            refAmts[i] = basket.refAmts[basket.collateral[i]];
         }
     }
 
-    function STATE_revenueDistribution() external view returns (RevenueDestination[] memory dist) {
+    function backupConfig() external view returns (BackupConfig memory) {
+        return basketConf.backups[bytes32(bytes("USD"))];
+    }
+
+    /// @param amount {qRTok}
+    /// @return amounts {qRTok}
+    function issuanceQuote(uint256 amount) external view returns (uint256[] memory amounts) {
+        uint256 rTokSupply = rToken().totalSupply(); // {qRTok}
+        Fix baskets = (rTokSupply > 0) // {BU}
+            ? rToken().basketsNeeded().mulu(amount).divuRound(rTokSupply) // {BU * qRTok / qRTok}
+            : toFixWithShift(amount, -int8(rToken().decimals())); // {qRTok / qRTok}
+
+        (, amounts) = basket.quote(baskets, RoundingApproach.CEIL);
+    }
+
+    function distributionState() external view returns (RevenueDestination[] memory dist) {
         dist = new RevenueDestination[](destinations.length());
         for (uint256 i = 0; i < destinations.length(); i++) {
             RevenueShare storage rs = distribution[destinations.at(i)];

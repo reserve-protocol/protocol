@@ -3,10 +3,12 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/libraries/test/strings.sol";
 import "contracts/p0/assets/ATokenFiatCollateral.sol";
 import "contracts/p0/assets/CTokenFiatCollateral.sol";
+import "contracts/p0/assets/CompoundPricedFiatCollateral.sol";
+import "contracts/p0/assets/AavePricedFiatCollateral.sol";
+import "contracts/p0/assets/CompoundPricedAsset.sol";
+import "contracts/p0/assets/AavePricedAsset.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IDeployer.sol";
 import "contracts/p0/interfaces/IMain.sol";
@@ -23,6 +25,7 @@ import "contracts/mocks/CTokenMock.sol";
 import "contracts/mocks/ERC20Mock.sol";
 import "contracts/mocks/MarketMock.sol";
 import "contracts/mocks/USDCMock.sol";
+import "contracts/libraries/Fixed.sol";
 import "contracts/test/Lib.sol";
 import "contracts/test/ProtosDriver.sol";
 import "contracts/test/ProtoState.sol";
@@ -37,523 +40,350 @@ import "hardhat/console.sol";
 contract AdapterP0 is ProtoAdapter {
     using FixLib for Fix;
     using Lib for ProtoState;
-    using strings for string;
-    using strings for strings.slice;
 
     string constant ETH = "ETH";
-    uint256 constant NUM_FIATCOINS = 4;
     uint256 constant NUM_COLLATERAL = 11;
     uint256 constant NUM_ASSETS = 14;
 
     // Deployed system contracts
-    DeployerExtension internal _deployer;
-    ERC20Mock internal _rsr;
-    ERC20Mock internal _comp;
-    ERC20Mock internal _aave;
-    MainExtension internal _main;
-    StRSRExtension internal _stRSR;
-    RTokenExtension internal _rToken;
+    DeployerExtension internal deployer;
+    MainExtension internal main;
+    StRSRExtension internal stRSR;
+    RTokenExtension internal rToken;
+    ERC20Mock internal rsr;
 
     // Trading
-    MarketMock internal _market;
+    MarketMock internal market;
 
     // Mock Oracles for price-setting
-    CompoundOracleMockP0 internal _compoundOracle;
-    AaveOracleMockP0 internal _aaveOracle;
+    CompoundOracleMockP0 internal compoundOracle;
+    AaveOracleMockP0 internal aaveOracle;
 
-    // Collateral
-    mapping(AssetName => IAsset) internal _assets;
-    mapping(ERC20Mock => AssetName) internal _reverseAssets;
+    IComptroller internal comptroller;
+    IAaveLendingPool internal aaveLendingPool;
+
+    mapping(AssetName => IAsset) internal assets;
+
+    // erc20 address -> AssetName
+    mapping(address => AssetName) internal reverseAssets;
 
     function init(ProtoState memory s) external override {
         // Deploy oracles
-        {
-            _compoundOracle = new CompoundOracleMockP0();
-            _compoundOracle.setPrice(ETH, s.ethPrice.inUoA);
+        compoundOracle = new CompoundOracleMockP0();
+        compoundOracle.setPrice(ETH, s.ethPrice.inUoA);
 
-            IComptroller comptroller = new ComptrollerMockP0(address(_compoundOracle));
-            _aaveOracle = new AaveOracleMockP0(address(new ERC20Mock("Wrapped ETH", "WETH")));
-            _aaveOracle.setPrice(_aaveOracle.WETH(), s.ethPrice.inETH);
-            IAaveLendingPool aaveLendingPool = new AaveLendingPoolMockP0(
-                address(new AaveLendingAddrProviderMockP0(address(_aaveOracle)))
-            );
+        comptroller = new ComptrollerMockP0(address(compoundOracle));
+        aaveOracle = new AaveOracleMockP0(address(new ERC20Mock("Wrapped ETH", "WETH")));
+        aaveOracle.setPrice(aaveOracle.WETH(), s.ethPrice.inETH);
+        aaveLendingPool = new AaveLendingPoolMockP0(
+            address(new AaveLendingAddrProviderMockP0(address(aaveOracle)))
+        );
 
-            _ourCompoundOracle = new CompoundOracle(comptroller);
-            _ourAaveOracle = new AaveOracle(comptroller, aaveLendingPool);
+        // Deploy ERC20 + Asset, set oracle prices, initialize balances, set defi
+        for (uint256 i = 0; i < NUM_COLLATERAL; i++) {
+            deployAsset(i, s.assets[i], s.rateToRef[i], s.prices[i]);
         }
 
-        // Deploy assets + deployer
-        ICollateral[] memory collateral = new ICollateral[](NUM_COLLATERAL);
-        {
-            ERC20Mock dai = new ERC20Mock(s.collateral[0].name, s.collateral[0].symbol);
-            USDCMock usdc = new USDCMock(s.collateral[1].name, s.collateral[1].symbol);
-            ERC20Mock usdt = new ERC20Mock(s.collateral[2].name, s.collateral[2].symbol);
-            ERC20Mock busd = new ERC20Mock(s.collateral[3].name, s.collateral[3].symbol);
-            CTokenMock cDAI = new CTokenMock(
-                s.collateral[4].name,
-                s.collateral[4].symbol,
-                address(dai)
-            );
-            CTokenMock cUSDC = new CTokenMock(
-                s.collateral[5].name,
-                s.collateral[5].symbol,
-                address(usdc)
-            );
-            CTokenMock cUSDT = new CTokenMock(
-                s.collateral[6].name,
-                s.collateral[6].symbol,
-                address(usdt)
-            );
-            StaticATokenMock aDAI = new StaticATokenMock(
-                s.collateral[7].name,
-                s.collateral[7].symbol,
-                address(dai)
-            );
-            StaticATokenMock aUSDC = new StaticATokenMock(
-                s.collateral[8].name,
-                s.collateral[8].symbol,
-                address(usdc)
-            );
-            StaticATokenMock aUSDT = new StaticATokenMock(
-                s.collateral[9].name,
-                s.collateral[9].symbol,
-                address(usdt)
-            );
-            StaticATokenMock aBUSD = new StaticATokenMock(
-                s.collateral[10].name,
-                s.collateral[10].symbol,
-                address(busd)
-            );
+        // Deploy Market + Deployer
+        market = new MarketMock();
+        deployer = new DeployerExtension(
+            assets[AssetName.RSR].erc20(),
+            assets[AssetName.COMP].erc20(),
+            assets[AssetName.AAVE].erc20(),
+            market,
+            comptroller,
+            aaveLendingPool
+        );
 
-            collateral[0] = _deployCollateral(
-                ERC20Mock(address(dai)),
-                AssetName.DAI,
-                _ourAaveOracle
-            );
-            collateral[1] = _deployCollateral(
-                ERC20Mock(address(usdc)),
-                AssetName.USDC,
-                _ourAaveOracle
-            );
-            collateral[2] = _deployCollateral(
-                ERC20Mock(address(usdt)),
-                AssetName.USDT,
-                _ourAaveOracle
-            );
-            collateral[3] = _deployCollateral(
-                ERC20Mock(address(busd)),
-                AssetName.BUSD,
-                _ourAaveOracle
-            );
-            collateral[4] = _deployCollateral(
-                ERC20Mock(address(cDAI)),
-                AssetName.cDAI,
-                _ourCompoundOracle
-            );
-            collateral[5] = _deployCollateral(
-                ERC20Mock(address(cUSDC)),
-                AssetName.cUSDC,
-                _ourCompoundOracle
-            );
-            collateral[6] = _deployCollateral(
-                ERC20Mock(address(cUSDT)),
-                AssetName.cUSDT,
-                _ourCompoundOracle
-            );
-            collateral[7] = _deployCollateral(
-                ERC20Mock(address(aDAI)),
-                AssetName.aDAI,
-                _ourAaveOracle
-            );
-            collateral[8] = _deployCollateral(
-                ERC20Mock(address(aUSDC)),
-                AssetName.aUSDC,
-                _ourAaveOracle
-            );
-            collateral[9] = _deployCollateral(
-                ERC20Mock(address(aUSDT)),
-                AssetName.aUSDT,
-                _ourAaveOracle
-            );
-            collateral[10] = _deployCollateral(
-                ERC20Mock(address(aBUSD)),
-                AssetName.aBUSD,
-                _ourAaveOracle
-            );
-
-            _rsr = new ERC20Mock(s.rsr.name, s.rsr.symbol);
-            _comp = new ERC20Mock(s.comp.name, s.comp.symbol);
-            _aave = new ERC20Mock(s.aave.name, s.aave.symbol);
-
-            _market = new MarketMock();
-            _deployer = new DeployerExtension(
-                _rsr,
-                _comp,
-                _aave,
-                _market,
-                _ourCompoundOracle,
-                _ourAaveOracle
-            );
-            _setDefiCollateralRates(s.defiCollateralRates);
+        // Calculate revenue cuts
+        RevenueShare memory initialShare;
+        RevenueDistributorP0 throwawayDistributor = new RevenueDistributorP0(); // just for reading out constants
+        for (uint256 i = 0; i < s.distribution.length; i++) {
+            if (s.distribution[i].dest == throwawayDistributor.FURNACE()) {
+                initialShare.rTokenDist = s.distribution[i].rTokenDist;
+            } else if (s.distribution[i].dest == throwawayDistributor.ST_RSR()) {
+                initialShare.rsrDist = s.distribution[i].rsrDist;
+            }
         }
 
-        // Deploy Main/StRSR/RToken
-        {
-            // compute initial share from ProtoState
-            RevenueShare memory initialShare;
-            RevenueDistributorP0 throwawayDistributor = new RevenueDistributorP0(); // just for reading out constants
-            for (uint256 i = 0; i < s.distribution.length; i++) {
-                if (s.distribution[i].dest == throwawayDistributor.FURNACE()) {
-                    initialShare.rTokenDist = s.distribution[i].rTokenDist;
-                } else if (s.distribution[i].dest == throwawayDistributor.ST_RSR()) {
-                    initialShare.rsrDist = s.distribution[i].rsrDist;
+        // Deploy Main + StRSR + RToken
+        main = MainExtension(
+            deployer.deploy(s.rToken.name, s.rToken.symbol, address(this), s.config, initialShare)
+        );
+        rsr = ERC20Mock(address(main.rsr()));
+        stRSR = StRSRExtension(address(main.stRSR()));
+        rToken = RTokenExtension(address(main.rToken()));
+
+        // Init RToken balances
+        for (uint256 i = 0; i < s.rToken.balances.length; i++) {
+            if (s.rToken.balances[i] > 0) {
+                ICollateral[] memory backing = main.basketCollateral();
+                uint256[] memory quantities = main.issuanceQuote(s.rToken.balances[i]);
+                address acc = toAddress(Account(i));
+                address _main = toAddress(Account.MAIN);
+                for (uint256 j = 0; j < backing.length; j++) {
+                    ERC20Mock(address(backing[j].erc20())).mint(acc, quantities[j]);
+                    ERC20Mock(address(backing[j].erc20())).adminApprove(acc, _main, quantities[j]);
                 }
+                main.issueInstantly(acc, s.rToken.balances[i]);
+                assert(rToken.balanceOf(acc) == s.rToken.balances[i]);
             }
+        }
+        assert(rToken.totalSupply() == s.rToken.totalSupply);
 
-            _main = MainExtension(
-                _deployer.deploy(
-                    s.rToken.name,
-                    s.rToken.symbol,
-                    address(this),
-                    s.config,
-                    initialShare
-                )
-            );
-            _stRSR = StRSRExtension(address(_main.stRSR()));
-            _rToken = RTokenExtension(address(_main.rToken()));
+        // Init StRSR balances
+        // StRSR.balance = RSR.mint + StRSR.stake
+        for (uint256 i = 0; i < s.stRSR.balances.length; i++) {
+            if (s.stRSR.balances[i] > 0) {
+                address acc = toAddress(Account(i));
+                rsr.mint(acc, s.stRSR.balances[i]);
+                rsr.adminApprove(acc, toAddress(Account.STRSR), s.stRSR.balances[i]);
+                stRSR.connect(acc);
+                stRSR.stake(s.stRSR.balances[i]);
+            }
+        }
+        assert(stRSR.totalSupply() == s.stRSR.totalSupply);
 
-            // add remaining distribution from ProtoState
-            _main.connect(address(this));
-            for (uint256 i = 0; i < s.distribution.length; i++) {
-                if (
-                    s.distribution[i].dest != throwawayDistributor.FURNACE() &&
-                    s.distribution[i].dest == throwawayDistributor.ST_RSR()
-                ) {
-                    _main.setDistribution(
-                        s.distribution[i].dest,
-                        RevenueShare(s.distribution[i].rTokenDist, s.distribution[i].rsrDist)
-                    );
-                }
+        // add remaining distribution
+        main.connect(address(this));
+        for (uint256 i = 0; i < s.distribution.length; i++) {
+            if (
+                s.distribution[i].dest != throwawayDistributor.FURNACE() &&
+                s.distribution[i].dest != throwawayDistributor.ST_RSR()
+            ) {
+                main.setDistribution(
+                    s.distribution[i].dest,
+                    RevenueShare(s.distribution[i].rTokenDist, s.distribution[i].rsrDist)
+                );
             }
         }
 
-        // Initialize common assets
-        {
-            _assets[AssetName.RSR] = _main.rsrAsset();
-            _assets[AssetName.COMP] = _main.compAsset();
-            _assets[AssetName.AAVE] = _main.aaveAsset();
-            _reverseAssets[_rsr] = AssetName.RSR;
-            _reverseAssets[_comp] = AssetName.COMP;
-            _reverseAssets[_aave] = AssetName.AAVE;
+        // Set basket configuration + unpause
+        ICollateral[] memory collateral = new ICollateral[](s.basket.backing.length);
+        for (uint256 i = 0; i < collateral.length; i++) {
+            collateral[i] = ICollateral(address(assets[s.basket.backing[i]]));
         }
-
-        // Populate token ledgers + oracle prices
-        {
-            _initERC20(ERC20Mock(address(_rsr)), s.rsr);
-            _initERC20(ERC20Mock(address(_comp)), s.comp);
-            _initERC20(ERC20Mock(address(_aave)), s.aave);
-            for (uint256 i = 0; i < s.collateral.length; i++) {
-                _initERC20(ERC20Mock(address(collateral[i].erc20())), s.collateral[i]);
-            }
-            // StRSR.balance = RSR.mint + StRSR.stake
-            for (uint256 i = 0; i < s.stRSR.balances.length; i++) {
-                if (s.stRSR.balances[i] > 0) {
-                    _rsr.mint(_address(i), s.stRSR.balances[i]);
-                    _rsr.adminApprove(_address(i), address(_stRSR), s.stRSR.balances[i]);
-                    _stRSR.connect(_address(i));
-                    _stRSR.stake(s.stRSR.balances[i]);
-                }
-            }
-
-            // Mint backing collateral and issue RToken
-            for (uint256 i = 0; i < s.rToken.balances.length; i++) {
-                if (s.rToken.balances[i] > 0) {
-                    ICollateral[] memory collat = _main.basketCollateral();
-                    // TODO
-                    // uint256[] memory quantities = _main.quote(s.rToken.balances[i]);
-                    uint256[] memory quantities = new uint256[](collat.length);
-                    for (uint256 j = 0; j < collat.length; j++) {
-                        ERC20Mock(address(collat[j])).mint(_address(i), quantities[j]);
-                        ERC20Mock(address(collat[j])).adminApprove(
-                            _address(i),
-                            address(_main),
-                            quantities[j]
-                        );
-                    }
-                    _main.issueInstantly(_address(i), s.rToken.balances[i]);
-                    assert(_main.rToken().balanceOf(_address(i)) == s.rToken.balances[i]);
-                }
-            }
+        main.setPrimeBasket(collateral, s.basket.targetAmts);
+        ICollateral[] memory backups = new ICollateral[](s.basket.backupCollateral.length);
+        for (uint256 i = 0; i < backups.length; i++) {
+            backups[i] = ICollateral(address(assets[s.basket.backupCollateral[i]]));
         }
-
-        // Set basket + unpause
-        {
-            ICollateral[] memory basketCollateral = new ICollateral[](s.bu_s[0].assets.length);
-            for (uint256 i = 0; i < basketCollateral.length; i++) {
-                basketCollateral[i] = collateral[uint256(s.bu_s[0].assets[i])];
-            }
-            _main.setPrimeBasket(basketCollateral, s.bu_s[0].refAmts);
-            _main.unpause();
-        }
+        main.setBackupConfig(bytes32(bytes("USD")), s.basket.maxSize, backups);
+        main.unpause();
     }
 
     function state() public view override returns (ProtoState memory s) {
         s.config = Config(
-            _main.rewardStart(),
-            _main.rewardPeriod(),
-            _main.auctionPeriod(),
-            _main.stRSRWithdrawalDelay(),
-            _main.defaultDelay(),
-            _main.maxTradeSlippage(),
-            _main.maxAuctionSize(),
-            _main.minAuctionSize(),
-            _main.issuanceRate(),
-            _main.defaultThreshold()
+            main.rewardStart(),
+            main.rewardPeriod(),
+            main.auctionPeriod(),
+            main.stRSRWithdrawalDelay(),
+            main.defaultDelay(),
+            main.maxTradeSlippage(),
+            main.maxAuctionSize(),
+            main.minAuctionSize(),
+            main.issuanceRate(),
+            main.defaultThreshold()
         );
-        ICollateral[] memory basketCollateral = _main.basketCollateral();
-        AssetName[] memory backingCollateral = new AssetName[](basketCollateral.length);
-        for (uint256 i = 0; i < basketCollateral.length; i++) {
-            backingCollateral[i] = _reverseAssets[ERC20Mock(address(basketCollateral[i].erc20()))];
+        s.distribution = main.distributionState();
+        s.rToken = dumpERC20(main.rToken());
+        s.stRSR = dumpERC20(main.stRSR());
+        s.basket = basketState();
+        s.assets = new TokenState[](NUM_ASSETS);
+        s.prices = new Price[](NUM_ASSETS); // empty
+        for (uint256 i = 0; i < NUM_ASSETS; i++) {
+            IERC20Metadata erc20 = IERC20Metadata(address(assets[AssetName(i)].erc20()));
+            s.assets[i] = dumpERC20(erc20);
+            s.prices[i] = Price(
+                aaveOracle.getAssetPrice(address(erc20)),
+                compoundOracle.price(erc20.symbol())
+            );
         }
-        s.distribution = _main.STATE_revenueDistribution();
-        s.rTokenDefinition = BU(backingCollateral, _main.basketRefTargets());
-        s.rToken = _dumpERC20(_main.rToken());
-        s.rsr = _dumpERC20(_main.rsr());
-        s.stRSR = _dumpERC20(_main.stRSR());
-        s.bu_s = _traverseVaults();
-        s.comp = _dumpERC20(_main.compAsset().erc20());
-        s.aave = _dumpERC20(_main.aaveAsset().erc20());
-        s.collateral = new TokenState[](NUM_COLLATERAL);
+        s.rateToRef = new Fix[](NUM_COLLATERAL);
         for (uint256 i = 0; i < NUM_COLLATERAL; i++) {
-            s.collateral[i] = _dumpERC20(_assets[AssetName(i)].erc20());
+            s.rateToRef[i] = ICollateral(address(assets[AssetName(i)])).refPerTok();
         }
-        s.defiCollateralRates = new Fix[](NUM_COLLATERAL);
-        s.defiCollateralRates[uint256(AssetName.DAI)] = FIX_ZERO;
-        s.defiCollateralRates[uint256(AssetName.USDC)] = FIX_ZERO;
-        s.defiCollateralRates[uint256(AssetName.USDT)] = FIX_ZERO;
-        s.defiCollateralRates[uint256(AssetName.BUSD)] = FIX_ZERO;
-        for (uint256 i = NUM_FIATCOINS; i < NUM_COLLATERAL; i++) {
-            s.defiCollateralRates[i] = ICollateral(address(_assets[AssetName(i)])).refPerTok();
-        }
-        s.ethPrice = Price(
-            _aaveOracle.getAssetPrice(_aaveOracle.WETH()),
-            _compoundOracle.price(ETH)
-        );
+        s.ethPrice = Price(aaveOracle.getAssetPrice(aaveOracle.WETH()), compoundOracle.price(ETH));
     }
 
-    function matches(ProtoState memory s) external view override returns (bool) {
-        return state().assertEq(s);
+    function assertEq(ProtoState memory s) external view override {
+        state().assertEq(s);
     }
 
     function assertInvariants() external view override {
-        _deployer.assertInvariants();
-        _main.assertInvariants();
-        _rToken.assertInvariants();
-        _stRSR.assertInvariants();
-    }
-
-    /// @param baseAssets One-of DAI/USDC/USDT/BUSD/RSR/COMP/AAVE
-    function setBaseAssetPrices(AssetName[] memory baseAssets, Price[] memory prices)
-        external
-        override
-    {
-        for (uint256 i = 0; i < baseAssets.length; i++) {
-            _aaveOracle.setPrice(address(_assets[baseAssets[i]].erc20()), prices[i].inETH);
-            _compoundOracle.setPrice(
-                IERC20Metadata(address(_assets[baseAssets[i]].erc20())).symbol(),
-                prices[i].inUoA
-            );
-        }
-    }
-
-    /// @param defiCollateral CTokens and ATokens, not necessarily of length 11
-    function setDefiCollateralRates(
-        AssetName[] memory defiCollateral,
-        Fix[] memory fiatcoinRedemptionRates
-    ) external override {
-        Fix[] memory rates = new Fix[](NUM_COLLATERAL);
-        for (uint256 i = NUM_FIATCOINS; i < NUM_COLLATERAL; i++) {
-            rates[i] = ICollateral(address(_assets[AssetName(i)])).refPerTok();
-        }
-        for (uint256 i = 0; i < defiCollateral.length; i++) {
-            require(
-                uint256(defiCollateral[i]) >= NUM_FIATCOINS,
-                "cannot set defi rate for fiatcoin"
-            );
-            rates[uint256(defiCollateral[i])] = fiatcoinRedemptionRates[i];
-        }
-        _setDefiCollateralRates(rates);
+        deployer.assertInvariants();
+        main.assertInvariants();
+        rToken.assertInvariants();
+        stRSR.assertInvariants();
     }
 
     // === COMMANDS ====
 
     function CMD_issue(Account account, uint256 amount) external override {
-        _main.connect(_address(uint256(account)));
-        ICollateral[] memory collat = _main.basketCollateral();
-        // TODO
-        // uint256[] memory quantities = _main.quote(amount);
-        uint256[] memory quantities = new uint256[](collat.length);
-        for (uint256 i = 0; i < collat.length; i++) {
-            ERC20Mock(address(collat[i].erc20())).adminApprove(
-                _address(uint256(account)),
-                address(_main),
+        main.connect(toAddress(account));
+        ICollateral[] memory collateral = main.basketCollateral();
+        uint256[] memory quantities = main.issuanceQuote(amount);
+        assert(collateral.length == quantities.length);
+        for (uint256 i = 0; i < collateral.length; i++) {
+            ERC20Mock(address(collateral[i].erc20())).adminApprove(
+                toAddress(account),
+                address(main),
                 quantities[i]
             );
         }
-        _main.issue(amount);
+        main.issue(amount);
     }
 
     function CMD_redeem(Account account, uint256 amount) external override {
-        _main.connect(_address(uint256(account)));
-        _main.redeem(amount);
+        main.connect(toAddress(account));
+        main.redeem(amount);
     }
 
     function CMD_poke() external virtual override {
-        _main.poke();
-        _fillAuctions();
+        main.poke();
+        fillAuctions();
     }
 
     function CMD_stakeRSR(Account account, uint256 amount) external override {
-        _rsr.adminApprove(_address(uint256(account)), address(_stRSR), amount);
-        _stRSR.connect(_address(uint256(account)));
-        _stRSR.stake(amount);
+        rsr.adminApprove(toAddress(account), toAddress(Account.STRSR), amount);
+        stRSR.connect(toAddress(account));
+        stRSR.stake(amount);
     }
 
     function CMD_unstakeRSR(Account account, uint256 amount) external override {
-        _stRSR.connect(_address(uint256(account)));
-        _stRSR.unstake(amount);
+        stRSR.connect(toAddress(account));
+        stRSR.unstake(amount);
     }
-
-    function CMD_setRTokenForMelting(uint256 amount) external override {}
 
     function CMD_transferRToken(
         Account from,
-        Account,
-        uint256
+        Account to,
+        uint256 amount
     ) external override {
-        _rToken.connect(_address(uint256(from)));
+        rToken.connect(toAddress(from));
+        rToken.transfer(toAddress(to), amount);
     }
 
     function CMD_transferStRSR(
         Account from,
-        Account,
-        uint256
+        Account to,
+        uint256 amount
     ) external override {
-        _stRSR.connect(_address(uint256(from)));
+        stRSR.connect(toAddress(from));
+        stRSR.transfer(toAddress(to), amount);
     }
 
     // =================================================================
 
-    /// @param rates {fiatTok/tok} A Fix for every collateral. indices 0-3 are ignored for fiatcoins
-    function _setDefiCollateralRates(Fix[] memory rates) internal {
-        for (uint256 i = NUM_FIATCOINS; i < rates.length; i++) {
-            // StaticATokenMock also has `setExchangeRate(Fix)`
-            CTokenMock(address(_assets[AssetName(i)].erc20())).setExchangeRate(rates[i]);
-        }
-    }
-
     /// @param token The ERC20 token
-    function _dumpERC20(IERC20 token) internal view returns (TokenState memory tokenState) {
+    function dumpERC20(IERC20 token) internal view returns (TokenState memory tokenState) {
         IERC20Metadata erc20 = IERC20Metadata(address(token));
         tokenState.name = erc20.name();
         tokenState.symbol = erc20.symbol();
         tokenState.balances = new uint256[](uint256(type(Account).max) + 1);
         for (uint256 i = 0; i < uint256(type(Account).max) + 1; i++) {
-            tokenState.balances[i] = erc20.balanceOf(_address(i));
+            tokenState.balances[i] = erc20.balanceOf(toAddress(Account(i)));
         }
         tokenState.totalSupply = erc20.totalSupply();
-        tokenState.price = Price(
-            _aaveOracle.getAssetPrice(address(erc20)),
-            _compoundOracle.price(erc20.symbol())
-        );
     }
 
-    /// Deploys Collateral contracts and sets up initial balances
-    function _deployCollateral(ERC20Mock erc20, AssetName collateralAsset)
-        internal
-        returns (ICollateral)
-    {
-        string memory c = "c";
-        string memory a = "a";
-        if (erc20.symbol().toSlice().startsWith(c.toSlice())) {
-            ICollateral underlying = ICollateral(
-                address(_assets[_reverseAssets[ERC20Mock(CTokenMock(address(erc20)).underlying())]])
-            );
-            _assets[collateralAsset] = new CTokenFiatCollateralP0(
-                erc20,
-                underlying.erc20(),
-                _main,
-                underlying.oracle(),
-                bytes32(bytes(erc20.symbol()))
-            );
-        } else if (erc20.symbol().toSlice().startsWith(a.toSlice())) {
-            ICollateral underlying = ICollateral(
-                address(
-                    _assets[
-                        _reverseAssets[
-                            ERC20Mock(
-                                StaticATokenMock(address(erc20)).ATOKEN().UNDERLYING_ASSET_ADDRESS()
-                            )
-                        ]
-                    ]
-                )
-            );
-            _assets[collateralAsset] = new ATokenFiatCollateralP0(
-                erc20,
-                underlying.erc20(),
-                _main,
-                underlying.oracle(),
-                bytes32(bytes(erc20.symbol()))
-            );
+    function deployAsset(
+        uint256 i,
+        TokenState memory tokenState,
+        Fix rateToRef,
+        Price memory price
+    ) internal {
+        // ERC20
+        ERC20Mock erc20;
+        if (i == 1) {
+            erc20 = new USDCMock(tokenState.name, tokenState.symbol);
+        } else if (i < 4 || i >= NUM_COLLATERAL) {
+            erc20 = new ERC20Mock(tokenState.name, tokenState.symbol);
+        } else if (i < 7) {
+            address fiatcoin = address(assets[AssetName(i - 4)].erc20());
+            erc20 = new CTokenMock(tokenState.name, tokenState.symbol, fiatcoin);
+            CTokenMock(address(erc20)).setExchangeRate(rateToRef);
         } else {
-            _assets[collateralAsset] = new CollateralP0(
-                erc20,
-                erc20,
-                _main,
-                oracle,
-                bytes32(bytes(erc20.symbol()))
-            );
+            address fiatcoin = address(assets[AssetName(i - 7)].erc20());
+            erc20 = new StaticATokenMock(tokenState.name, tokenState.symbol, fiatcoin);
+            StaticATokenMock(address(erc20)).setExchangeRate(rateToRef);
         }
-        _reverseAssets[ERC20Mock(address(_assets[collateralAsset].erc20()))] = collateralAsset;
-        return ICollateral(address(_assets[collateralAsset]));
-    }
+        reverseAssets[address(erc20)] = AssetName(i);
 
-    /// Populates balances + oracle prices
-    function _initERC20(ERC20Mock erc20, TokenState memory tokenState) internal {
-        assert(keccak256(bytes(erc20.symbol())) == keccak256(bytes(tokenState.symbol)));
-        // Prices
-        for (uint256 i = 0; i < tokenState.balances.length; i++) {
-            if (tokenState.balances[i] > 0) {
-                erc20.mint(_address(i), tokenState.balances[i]);
+        // Balances
+        for (uint256 j = 0; j < tokenState.balances.length; j++) {
+            if (tokenState.balances[j] > 0) {
+                // Use 0x1, 0x2...
+                erc20.mint(toAddress(Account(j)), tokenState.balances[j]);
             }
         }
         assert(erc20.totalSupply() == tokenState.totalSupply);
 
-        // Oracle price information
-        AssetName asset = _reverseAssets[erc20];
-        if (uint256(asset) < NUM_FIATCOINS || uint256(asset) >= NUM_COLLATERAL) {
-            _aaveOracle.setPrice(address(erc20), tokenState.price.inETH); // {qETH/tok}
-            _compoundOracle.setPrice(erc20.symbol(), tokenState.price.inUoA); // {microUoA/tok}
+        // Asset
+        IAsset asset;
+        if (i == 2) {
+            // USDT is the only compound fiatcoin
+            asset = new CompoundPricedFiatCollateralP0(erc20, main, comptroller);
+        } else if (i < 4) {
+            asset = new AavePricedFiatCollateralP0(erc20, main, comptroller, aaveLendingPool);
+        } else if (i < 7) {
+            asset = new CTokenFiatCollateralP0(
+                erc20,
+                assets[AssetName(i - 4)].erc20(),
+                main,
+                comptroller,
+                CompoundClaimAdapterP0(address(deployer.compoundClaimer()))
+            );
+        } else if (i < 11) {
+            asset = new ATokenFiatCollateralP0(
+                erc20,
+                assets[AssetName(i - 7)].erc20(),
+                main,
+                comptroller,
+                aaveLendingPool,
+                AaveClaimAdapterP0(address(deployer.aaveClaimer()))
+            );
+        } else {
+            asset = new AavePricedAssetP0(erc20, comptroller, aaveLendingPool);
+        }
+        assets[AssetName(i)] = asset;
 
-            Fix found = _assets[asset].price(); // {UoA/tok}
-            Fix expected = toFix(tokenState.price.inUoA);
-            assert(found.eq(expected));
+        // Oracle prices
+        if (i < 4 || i >= NUM_COLLATERAL) {
+            aaveOracle.setPrice(address(erc20), price.inETH);
+            compoundOracle.setPrice(erc20.symbol(), price.inUoA);
+            assert(assets[AssetName(i)].price().eq(toFix(price.inUoA)));
         }
     }
 
+    function basketState() internal view returns (BasketState memory basket) {
+        ICollateral[] memory basketCollateral = main.basketCollateral();
+        basket.backing = new AssetName[](basketCollateral.length);
+        for (uint256 i = 0; i < basketCollateral.length; i++) {
+            basket.backing[i] = reverseAssets[address(basketCollateral[i].erc20())];
+        }
+        BackupConfig memory bc = main.backupConfig();
+        basket.backupCollateral = new AssetName[](bc.collateral.length);
+        for (uint256 i = 0; i < bc.collateral.length; i++) {
+            basket.backupCollateral[i] = reverseAssets[address(bc.collateral[i].erc20())];
+        }
+        basket.qTokAmts = main.issuanceQuote(FIX_ONE.round());
+        basket.refAmts = main.basketRefAmts();
+    }
+
     /// Uses Account.TRADER as auction counterparty for all auctions
-    function _fillAuctions() internal {
-        uint256 numAuctions = _market.numAuctions();
+    function fillAuctions() internal {
+        uint256 numAuctions = market.numAuctions();
         for (uint256 i = 0; i < numAuctions; i++) {
-            (, IERC20 sell, IERC20 buy, uint256 sellAmount, , , , AuctionStatus state_) = _market
+            (, IERC20 sell, IERC20 buy, uint256 sellAmount, , , , AuctionStatus status) = market
                 .auctions(i);
-            (address bidder, , ) = _market.bids(i);
-            if (state_ == AuctionStatus.OPEN && bidder == address(0)) {
+            (address bidder, , ) = market.bids(i);
+            if (status == AuctionStatus.OPEN && bidder == address(0)) {
                 Bid memory newBid;
-                newBid.bidder = _address(uint256(Account.TRADER));
+                newBid.bidder = toAddress(Account.TRADER);
                 newBid.sellAmount = sellAmount;
-                IAsset sellAsset = _assets[_reverseAssets[ERC20Mock(address(sell))]];
-                IAsset buyAsset = _assets[_reverseAssets[ERC20Mock(address(buy))]];
+                IAsset sellAsset = assets[reverseAssets[address(sell)]];
+                IAsset buyAsset = assets[reverseAssets[address(buy)]];
                 newBid.buyAmount = toFix(sellAmount)
                     .mul(buyAsset.price())
                     .div(sellAsset.price())
@@ -561,31 +391,25 @@ contract AdapterP0 is ProtoAdapter {
                 ERC20Mock(address(buy)).mint(newBid.bidder, newBid.buyAmount);
                 ERC20Mock(address(buy)).adminApprove(
                     newBid.bidder,
-                    address(_market),
+                    address(market),
                     newBid.buyAmount
                 );
-                _market.placeBid(i, newBid);
+                market.placeBid(i, newBid);
             }
         }
     }
 
-    /// @return bu_s The Basket Units of the stick DAG
-    function _traverseVaults() internal view returns (BU[] memory bu_s) {
-        // TODO This doesn't exist anymore
-        bu_s = new BU[](1);
-    }
-
-    /// Account index -> address
-    function _address(uint256 index) internal view returns (address) {
-        if (index == uint256(Account.RTOKEN)) {
-            return address(_rToken);
-        } else if (index == uint256(Account.STRSR)) {
-            return address(_stRSR);
-        } else if (index == uint256(Account.MAIN)) {
-            return address(_main);
+    /// Account -> address
+    function toAddress(Account account) internal view returns (address) {
+        if (account == Account.RTOKEN) {
+            return address(rToken);
+        } else if (account == Account.STRSR) {
+            return address(stRSR);
+        } else if (account == Account.MAIN) {
+            return address(main);
         }
 
         // EOA: Use 0x1, 0x2, ...
-        return address((uint160(index) + 1));
+        return address((uint160(account) + 1));
     }
 }
