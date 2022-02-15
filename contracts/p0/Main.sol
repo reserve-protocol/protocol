@@ -55,15 +55,6 @@ contract MainP0 is
         super.init(args);
     }
 
-    /// A central mutator that causes all mixins to act
-    function poke()
-        public
-        virtual
-        override(IMixin, Mixin, BasketHandlerP0, AuctioneerP0, RewardClaimerP0, RTokenIssuerP0)
-    {
-        super.poke();
-    }
-
     function owner() public view virtual override(IMain, Ownable) returns (address) {
         return Ownable.owner();
     }

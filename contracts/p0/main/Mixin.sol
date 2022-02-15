@@ -12,9 +12,4 @@ abstract contract Mixin is IMixin {
         _initialized = true;
         emit Initialized();
     }
-
-    function poke() public virtual {
-        require(_initialized, "not initialized");
-        emit Poked();
-    }
 }

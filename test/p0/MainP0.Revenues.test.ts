@@ -21,6 +21,7 @@ import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
+import { ExplorerFacadeP0 } from '../../typechain/ExplorerFacadeP0'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { MarketMock } from '../../typechain/MarketMock'
@@ -98,6 +99,7 @@ describe('MainP0 contract', () => {
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
+  let facade: ExplorerFacadeP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -173,6 +175,7 @@ describe('MainP0 contract', () => {
       furnace,
       stRSR,
       market,
+      facade,
     } = await loadFixture(defaultFixture))
     token0 = erc20s[collateral.indexOf(basket[0])]
     token1 = erc20s[collateral.indexOf(basket[1])]
@@ -288,9 +291,6 @@ describe('MainP0 contract', () => {
         // Issue rTokens
         await main.connect(addr1).issue(issueAmount)
 
-        // Process issuance
-        await main.poke()
-
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
       })
@@ -305,7 +305,7 @@ describe('MainP0 contract', () => {
         // COMP Rewards
         await compoundMock.setRewards(main.address, rewardAmountCOMP)
 
-        // Collect revenue - Called via poke
+        // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
         let sellAmt: BigNumber = rewardAmountCOMP.mul(6).div(10) // due to f = 60%
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
@@ -313,13 +313,13 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
+        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionStarted')
@@ -377,7 +377,7 @@ describe('MainP0 contract', () => {
         })
 
         // Close auctions
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionEnded')
@@ -433,7 +433,7 @@ describe('MainP0 contract', () => {
         // AAVE Rewards
         await token2.setRewards(main.address, rewardAmountAAVE)
 
-        // Collect revenue - Called via poke
+        // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
         let sellAmt: BigNumber = rewardAmountAAVE.mul(6).div(10) // due to f = 60%
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
@@ -441,13 +441,13 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
+        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, aaveAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionStarted')
@@ -503,7 +503,7 @@ describe('MainP0 contract', () => {
         })
 
         // Close auctions
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, aaveAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionEnded')
@@ -541,18 +541,18 @@ describe('MainP0 contract', () => {
         // COMP Rewards
         await compoundMock.setRewards(main.address, rewardAmountCOMP)
 
-        // Collect revenue - Called via poke
+        // Collect revenue
         // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
         let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
+        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
@@ -578,7 +578,7 @@ describe('MainP0 contract', () => {
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(sellAmt)
 
         // Another call will create a new auction
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(1, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rsrTrader, 'AuctionEnded')
@@ -624,7 +624,7 @@ describe('MainP0 contract', () => {
         await advanceTime(config.auctionPeriod.add(100).toString())
 
         // Close auctions
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rsrTrader, 'AuctionEnded')
@@ -656,18 +656,18 @@ describe('MainP0 contract', () => {
         // AAVE Rewards
         await token2.setRewards(main.address, rewardAmountAAVE)
 
-        // Collect revenue - Called via poke
+        // Collect revenue
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
         let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
+        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
@@ -708,7 +708,7 @@ describe('MainP0 contract', () => {
         await advanceTime(config.auctionPeriod.add(100).toString())
 
         // Another call will create a new auction and close existing
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(1, aaveAsset.address, rTokenAsset.address, sellAmtRemainder, minBuyAmtRemainder)
           .and.to.emit(rTokenTrader, 'AuctionEnded')
@@ -753,7 +753,7 @@ describe('MainP0 contract', () => {
         await advanceTime(config.auctionPeriod.add(100).toString())
 
         // Close auction
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rTokenTrader, 'AuctionEnded')
           .withArgs(1, aaveAsset.address, rTokenAsset.address, sellAmtRemainder, minBuyAmtRemainder)
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
@@ -793,7 +793,7 @@ describe('MainP0 contract', () => {
         // COMP Rewards
         await compoundMock.setRewards(main.address, rewardAmountCOMP)
 
-        // Collect revenue - Called via poke
+        // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
         let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
@@ -801,13 +801,13 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
+        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionStarted')
@@ -870,7 +870,7 @@ describe('MainP0 contract', () => {
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(sellAmtRemainder)
         expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
 
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionEnded')
@@ -942,7 +942,7 @@ describe('MainP0 contract', () => {
           buyAmount: minBuyAmtRemainder,
         })
 
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(1, compAsset.address, rsrAsset.address, sellAmtRemainder, minBuyAmtRemainder)
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
@@ -976,7 +976,7 @@ describe('MainP0 contract', () => {
         // COMP Rewards
         await compoundMock.setRewards(main.address, rewardAmountCOMP)
 
-        // Collect revenue - Called via poke
+        // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
         let sellAmt: BigNumber = rewardAmountCOMP.mul(6).div(10) // due to f = 60%
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
@@ -984,7 +984,7 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke())
+        await expect(main.claimRewards())
           .to.emit(main, 'RewardsClaimed')
           .withArgs(compToken.address, rewardAmountCOMP)
 
@@ -994,7 +994,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
         expect(await rToken.balanceOf(other.address)).to.equal(0)
 
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionStarted')
@@ -1052,7 +1052,7 @@ describe('MainP0 contract', () => {
         })
 
         // Close auctions
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionEnded')
@@ -1163,9 +1163,6 @@ describe('MainP0 contract', () => {
         // Issue rTokens
         await main.connect(addr1).issue(issueAmount)
 
-        // Process the issuance
-        await main.poke()
-
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -1173,7 +1170,7 @@ describe('MainP0 contract', () => {
         await token2.setRewards(main.address, bn('0.5e18'))
 
         // Attempt to claim, no rewards claimed (0 amount)
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
+        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
       })
 
       it('Should revert for non-trusted adapters', async () => {
@@ -1188,7 +1185,7 @@ describe('MainP0 contract', () => {
         await main.connect(addr1).issue(issueAmount)
 
         // Will revert when attempting to get rewards
-        await expect(main.poke()).to.be.revertedWith('claim adapter is not trusted')
+        await expect(main.claimRewards()).to.be.revertedWith('claim adapter is not trusted')
       })
     })
 
@@ -1248,7 +1245,7 @@ describe('MainP0 contract', () => {
         let minBuyAmt: BigNumber = sellAmt.mul(2).sub(sellAmt.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken are worth half
 
         // Call Poke to detect excess and launch auction
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, collateral2.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionStarted')
@@ -1319,7 +1316,7 @@ describe('MainP0 contract', () => {
         })
 
         // Close auctions
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, collateral2.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionEnded')
@@ -1422,7 +1419,7 @@ describe('MainP0 contract', () => {
         let minBuyAmtRToken: BigNumber = buyAmtRToken.sub(buyAmtRToken.div(100)) // due to trade slippage 1%
 
         // Call Poke to detect excess and launch auction
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, collateral2.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionStarted')
@@ -1496,7 +1493,7 @@ describe('MainP0 contract', () => {
         })
 
         // Close auctions
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, collateral2.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionEnded')
@@ -1560,7 +1557,7 @@ describe('MainP0 contract', () => {
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         // Call Poke to collect revenue and mint new tokens - Will also launch auction
-        await expect(main.poke())
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rToken, 'Transfer')
           .withArgs(ZERO_ADDRESS, main.address, issueAmount)
           .and.to.emit(rsrTrader, 'AuctionStarted')
@@ -1611,8 +1608,8 @@ describe('MainP0 contract', () => {
         // Advance time till auction ended
         await advanceTime(config.auctionPeriod.add(100).toString())
 
-        //  Call poke to end current auction, should start a new one with same amount
-        await expect(main.poke())
+        //  End current auction, should start a new one with same amount
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, rTokenAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rsrTrader, 'AuctionStarted')
@@ -1663,8 +1660,8 @@ describe('MainP0 contract', () => {
         // Advance time till auction ended
         await advanceTime(config.auctionPeriod.add(100).toString())
 
-        //  Call poke to end current auction, should not start a new one
-        await expect(main.poke())
+        // End current auction, should not start a new one
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(1, rTokenAsset.address, rsrAsset.address, sellAmtRemainder, minBuyAmtRemainder)
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
@@ -1736,8 +1733,8 @@ describe('MainP0 contract', () => {
           .mul(2)
           .sub(sellAmtRTokenFromCollateral.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken is worth half
 
-        //  Call Poke to collect revenue and mint new tokens - Will also launch auctions
-        await expect(main.poke())
+        //  Collect revenue and mint new tokens - Will also launch auctions
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rToken, 'Transfer')
           .withArgs(ZERO_ADDRESS, main.address, excessRToken)
           .and.to.emit(rsrTrader, 'AuctionStarted')
@@ -1860,8 +1857,8 @@ describe('MainP0 contract', () => {
         //  Advance time till auction ended
         await advanceTime(config.auctionPeriod.add(100).toString())
 
-        // Call poke to end current auction, should start a new one with same amount
-        await expect(main.poke())
+        // End current auction, should start a new one with same amount
+        await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(
             0,

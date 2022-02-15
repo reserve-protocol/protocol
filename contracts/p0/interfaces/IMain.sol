@@ -78,11 +78,8 @@ struct Auction {
 
 interface IMixin {
     event Initialized();
-    event Poked();
 
     function init(ConstructorArgs calldata args) external;
-
-    function poke() external;
 }
 
 interface IPausable {
@@ -115,7 +112,6 @@ interface IAssetRegistry {
     /// Emitted when an asset is removed from the registry
     /// @param asset The asset contract removed from the registry
     event AssetRemoved(IAsset indexed asset);
-
     event AssetActivated(IAsset indexed asset);
     event AssetDeactivated(IAsset indexed asset);
 
@@ -275,6 +271,8 @@ interface IBasketHandler {
         ICollateral[] memory collateral
     ) external;
 
+    function ensureValidBasket() external;
+
     function switchBasket() external returns (bool);
 
     function fullyCapitalized() external view returns (bool);
@@ -287,18 +285,22 @@ interface IBasketHandler {
     function totalAssetValue() external view returns (Fix p);
 }
 
-// solhint-disable-next-line no-empty-blocks
 interface IAuctioneer is ITraderEvents {
-
+    function doRecapitalizationAuctions() external;
 }
 
-interface IRewardClaimer {
+interface IRewardClaimerEvents {
+    /// Emitted whenever rewards are claimed
+    event RewardsClaimed(address indexed erc20, uint256 indexed amount);
+}
+
+interface IRewardClaimer is IRewardClaimerEvents {
     /// Emitted whenever a claim adapter is added by governance
     event ClaimAdapterAdded(IClaimAdapter indexed adapter);
     /// Emitted whenever a claim adapter is removed by governance
     event ClaimAdapterRemoved(IClaimAdapter indexed adapter);
-    /// Emitted whenever rewards are claimed
-    event RewardsClaimed(address indexed erc20, uint256 indexed amount);
+
+    function claimRewards() external;
 
     function addClaimAdapter(IClaimAdapter claimAdapter) external;
 

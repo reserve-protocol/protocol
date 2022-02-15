@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+
 import { bn, fp } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
@@ -141,9 +142,6 @@ describe('RTokenP0 contract', () => {
 
       // Issue tokens
       await main.connect(addr1).issue(issueAmount)
-
-      // Process issuance
-      await main.poke()
     })
 
     it('Should allow to melt tokens if caller or Main', async () => {

@@ -241,13 +241,6 @@ describe('MainP0 contract', () => {
       }
       await expect(main.init(ctorArgs)).to.be.revertedWith('already initialized')
     })
-
-    it('Should not allow to poke if Main is not initialized', async () => {
-      const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
-      const newMain: MainP0 = <MainP0>await MainFactory.deploy()
-      await newMain.connect(owner).unpause()
-      await expect(newMain.poke()).to.be.revertedWith('not initialized')
-    })
   })
 
   describe('Pause/Unpause', () => {
