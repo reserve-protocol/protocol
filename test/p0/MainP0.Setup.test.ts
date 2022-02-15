@@ -715,6 +715,23 @@ describe('MainP0 contract', () => {
       // Cannot disable collateral if not owner
       await expect(collateral3.connect(other).disable()).to.be.revertedWith('main or its owner')
     })
+
+    it('Should return all assets', async () => {
+      const allAssets: string[] = await main.allAssets()
+
+      // Get addresses from all collateral
+      const collateralAddrs: string[] = await Promise.all(
+        collateral.map(async (c): Promise<string> => {
+          return await c.address
+        })
+      )
+
+      expect(allAssets[0]).to.equal(rTokenAsset.address)
+      expect(allAssets[1]).to.equal(rsrAsset.address)
+      expect(allAssets[2]).to.equal(aaveAsset.address)
+      expect(allAssets[3]).to.equal(compAsset.address)
+      expect(allAssets.slice(4)).to.eql(collateralAddrs)
+    })
   })
 
   describe('Basket Handling', () => {
