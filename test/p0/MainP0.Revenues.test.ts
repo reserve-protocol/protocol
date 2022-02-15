@@ -280,8 +280,13 @@ describe('MainP0 contract', () => {
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('0.8e18')
 
+        // Make DustAmount low enough that it doesn't interfere with the intended auction.
+        // Otherwise it will (correctly!) consider this small amount dust b/c it's < 1 USD.
+        await main.connect(owner).setDustAmount(bn(0))
+
         // COMP Rewards
         await compoundMock.setRewards(main.address, rewardAmountCOMP)
+        expect(await compoundMock.compToken()).to.equal(compToken.address)
 
         // Collect revenue - Called via poke
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
@@ -291,19 +296,23 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.poke()).to.emit(main, 'RewardsClaimed')
+        await expect(main.poke()).to.emit(main, 'RewardsClaimed') // Claim rewards
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        await expect(main.poke())
+        await main.poke() // Handout excess assets to r*Traders
+
+        await expect(rsrTrader.triggerAuction(compToken.address))
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
-          .withArgs(0, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
-
         const auctionTimestamp: number = await getLatestBlockTimestamp()
+
+        await expect(rTokenTrader.triggerAuction(compToken.address))
+          .to.emit(rTokenTrader, 'AuctionStarted')
+          .withArgs(0, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
+        const auctionTimestamp2: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
         // COMP -> RSR Auction
@@ -326,8 +335,8 @@ describe('MainP0 contract', () => {
           buy: rTokenAsset.address,
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
-          startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          startTime: auctionTimestamp2,
+          endTime: auctionTimestamp2 + Number(config.auctionPeriod),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -384,8 +393,8 @@ describe('MainP0 contract', () => {
           buy: rTokenAsset.address,
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
-          startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          startTime: auctionTimestamp2,
+          endTime: auctionTimestamp2 + Number(config.auctionPeriod),
           clearingSellAmount: sellAmtRToken,
           clearingBuyAmount: minBuyAmtRToken,
           externalAuctionId: bn('1'),
@@ -425,10 +434,12 @@ describe('MainP0 contract', () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        await expect(main.poke())
+        await main.poke()
+        await expect(rsrTrader.triggerAuction(aaveToken.address))
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, aaveAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+        await expect(rTokenTrader.triggerAuction(aaveToken.address))
+          .to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check auctions registered
@@ -531,9 +542,13 @@ describe('MainP0 contract', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         await expect(main.poke())
+        await expect(rsrTrader.triggerAuction(compToken.address))
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+        await expect(rTokenTrader.triggerAuction(compToken.address)).to.not.emit(
+          rTokenTrader,
+          'AuctionStarted'
+        )
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
         // Check auction registered
@@ -557,6 +572,7 @@ describe('MainP0 contract', () => {
 
         // Another call will create a new auction
         await expect(main.poke())
+        await expect(rsrTrader.triggerAuction(compToken.address))
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(1, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rsrTrader, 'AuctionEnded')
@@ -646,6 +662,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         await expect(main.poke())
+        await expect(rTokenTrader.triggerAuction(compToken.address))
           .to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
@@ -687,6 +704,7 @@ describe('MainP0 contract', () => {
 
         // Another call will create a new auction and close existing
         await expect(main.poke())
+        await expect(rTokenTrader.triggerAuction(aaveToken.address))
           .to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(1, aaveAsset.address, rTokenAsset.address, sellAmtRemainder, minBuyAmtRemainder)
           .and.to.emit(rTokenTrader, 'AuctionEnded')
@@ -786,9 +804,11 @@ describe('MainP0 contract', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         await expect(main.poke())
+        await expect(rsrTrader.triggerAuction(compToken.address))
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+        await expect(rTokenTrader.triggerAuction(compToken.address))
+          .to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -973,9 +993,11 @@ describe('MainP0 contract', () => {
         expect(await rToken.balanceOf(other.address)).to.equal(0)
 
         await expect(main.poke())
+        await expect(rsrTrader.triggerAuction(compToken.address))
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+        await expect(rTokenTrader.triggerAuction(compToken.address))
+          .to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(0, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -1126,8 +1148,8 @@ describe('MainP0 contract', () => {
         // Mark these assets as valid collateral, remove old ones
         await main.removeAsset(collateral2.address)
         await main.removeAsset(collateral3.address)
-        await main.addAsset(newATokenCollateral.address)
-        await main.addAsset(newCTokenCollateral.address)
+        await main.activateAsset(newATokenCollateral.address)
+        await main.activateAsset(newCTokenCollateral.address)
       })
 
       it('Should ignore claiming if no adapter defined', async () => {
@@ -1227,8 +1249,10 @@ describe('MainP0 contract', () => {
 
         // Call Poke to detect excess and launch auction
         await expect(main.poke())
+        await expect(rsrTrader.triggerAuction(token2.address))
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, collateral2.address, rsrAsset.address, sellAmt, minBuyAmt)
+        await expect(rTokenTrader.triggerAuction(compToken.address))
           .and.to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(0, collateral2.address, rTokenAsset.address, sellAmt, minBuyAmt)
 
@@ -1302,9 +1326,12 @@ describe('MainP0 contract', () => {
           .withArgs(0, collateral2.address, rsrAsset.address, sellAmt, minBuyAmt)
           .and.to.emit(rTokenTrader, 'AuctionEnded')
           .withArgs(0, collateral2.address, rTokenAsset.address, sellAmt, minBuyAmt)
+
+        await expect(rsrTrader.triggerAuction(token2.address))
           .and.to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(1, collateral2.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+        await expect(rTokenTrader.triggerAuction(token2.address))
+          .to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(1, collateral2.address, rTokenAsset.address, sellAmt, minBuyAmt)
 
         // Check Price (unchanged) and Assets value (unchanged)
@@ -1401,9 +1428,11 @@ describe('MainP0 contract', () => {
 
         // Call Poke to detect excess and launch auction
         await expect(main.poke())
+        await expect(rsrTrader.triggerAuction(token2.address))
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, collateral2.address, rsrAsset.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+        await expect(rTokenTrader.triggerAuction(token2.address))
+          .to.emit(rTokenTrader, 'AuctionStarted')
           .withArgs(0, collateral2.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
@@ -1538,7 +1567,8 @@ describe('MainP0 contract', () => {
         await expect(main.poke())
           .to.emit(rToken, 'Transfer')
           .withArgs(ZERO_ADDRESS, main.address, issueAmount)
-          .and.to.emit(rsrTrader, 'AuctionStarted')
+        await expect(rsrTrader.triggerAuction(rTokenAsset.address))
+          .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, rTokenAsset.address, rsrAsset.address, sellAmt, minBuyAmtRSR)
 
         // Check Price (unchanged) and Assets value - Supply has doubled

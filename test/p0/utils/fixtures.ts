@@ -37,13 +37,15 @@ export interface IConfig {
   rewardStart: BigNumber
   rewardPeriod: BigNumber
   auctionPeriod: BigNumber
+  stRSRPayPeriod: BigNumber
   stRSRWithdrawalDelay: BigNumber
   defaultDelay: BigNumber
   maxTradeSlippage: BigNumber
+  dustAmount: BigNumber
   maxAuctionSize: BigNumber
-  minAuctionSize: BigNumber
   issuanceRate: BigNumber
   defaultThreshold: BigNumber
+  stRSRPayRatio: BigNumber
 }
 
 export interface IRevenueShare {
@@ -334,13 +336,15 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rewardStart: rewardStart,
     rewardPeriod: bn('604800'), // 1 week
     auctionPeriod: bn('1800'), // 30 minutes
+    stRSRPayPeriod: bn('86400'), // 1 day
     stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
     defaultDelay: bn('86400'), // 24 hs
     maxTradeSlippage: fp('0.01'), // 1%
+    dustAmount: fp('1'), // 1 UoA (USD)
     maxAuctionSize: fp('0.01'), // 1%
-    minAuctionSize: fp('0.001'), // 0.1%
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
     defaultThreshold: fp('0.05'), // 5% deviation
+    stRSRPayRatio: fp('0.02284'), // approx. half life of 30 pay periods
   }
 
   const dist: IRevenueShare = {

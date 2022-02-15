@@ -184,7 +184,6 @@ describe('MainP0 contract', () => {
       expect(await main.defaultDelay()).to.equal(config.defaultDelay)
       expect(await main.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
       expect(await main.maxAuctionSize()).to.equal(config.maxAuctionSize)
-      expect(await main.minAuctionSize()).to.equal(config.minAuctionSize)
       expect(await main.issuanceRate()).to.equal(config.issuanceRate)
       expect(await main.defaultThreshold()).to.equal(config.defaultThreshold)
     })
@@ -471,27 +470,6 @@ describe('MainP0 contract', () => {
 
       // Check value was updated
       expect(await main.maxAuctionSize()).to.equal(newValue)
-    })
-
-    it('Should allow to update minAuctionSize if Owner', async () => {
-      const newValue: BigNumber = fp('0.02')
-
-      // Check existing value
-      expect(await main.minAuctionSize()).to.equal(config.minAuctionSize)
-
-      // If not owner cannot update
-      await expect(main.connect(other).setMinAuctionSize(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
-
-      // Check value did not change
-      expect(await main.minAuctionSize()).to.equal(config.minAuctionSize)
-
-      // Update with owner
-      await main.connect(owner).setMinAuctionSize(newValue)
-
-      // Check value was updated
-      expect(await main.minAuctionSize()).to.equal(newValue)
     })
 
     it('Should allow to update issuanceRate if Owner', async () => {
