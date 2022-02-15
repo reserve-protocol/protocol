@@ -246,6 +246,28 @@ describe('MainP0 contract', () => {
       expect(rtokenCut.rTokenShares).equal(bn(0))
       expect(rtokenCut.totalShares).equal(bn(60))
     })
+
+    it('Should perform distribution validations', async () => {
+      // Cannot set RSR > 0 for Furnace
+      await expect(
+        main.connect(owner).setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+      ).to.be.revertedWith('Furnace must get 0% of RSR')
+
+      // Cannot set RToken > 0 for StRSR
+      await expect(
+        main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+      ).to.be.revertedWith('StRSR must get 0% of RToken')
+
+      // Cannot set RSR distribution too high
+      await expect(
+        main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(10001) })
+      ).to.be.revertedWith('RSR distribution too high')
+
+      // Cannot set RToken distribution too high
+      await expect(
+        main.connect(owner).setDistribution(FURNACE_DEST, { rTokenDist: bn(10001), rsrDist: bn(0) })
+      ).to.be.revertedWith('RSR distribution too high')
+    })
   })
 
   describe('Revenues', function () {
