@@ -102,9 +102,7 @@ contract DeployerP0 is IDeployer {
 
             main.setRSRAsset(rsrAsset);
             main.activateAsset(rsrAsset);
-            main.addAsset(aaveAsset);
             main.activateAsset(aaveAsset);
-            main.addAsset(compAsset);
             main.activateAsset(compAsset);
         }
 
