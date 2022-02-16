@@ -68,10 +68,13 @@ describe('MainP0 contract', () => {
   let token1: USDCMock
   let token2: StaticATokenMock
   let token3: CTokenMock
+  let newToken: ERC20Mock
   let collateral0: CollateralP0
   let collateral1: CollateralP0
   let collateral2: ATokenFiatCollateralP0
   let collateral3: CTokenFiatCollateralP0
+  let newAsset: CollateralP0
+  let erc20s: ERC20Mock[]
 
   // Config values
   let config: IConfig
@@ -95,8 +98,7 @@ describe('MainP0 contract', () => {
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
-    let erc20s: ERC20Mock[]
-      // Deploy fixture
+    // Deploy fixture
     ;({
       rsr,
       rsrAsset,
@@ -655,7 +657,7 @@ describe('MainP0 contract', () => {
       )
 
       // Get previous length for assets
-      const previousLength = (await main.activeAssets()).length
+      const previousLength = (await main.allAssets()).length
 
       // Cannot add asset if not owner
       await expect(main.connect(other).addAsset(newAsset.address)).to.be.revertedWith(
@@ -663,13 +665,22 @@ describe('MainP0 contract', () => {
       )
 
       // Check nothing changed
-      let activeAssets = await main.activeAssets()
-      expect(activeAssets.length).to.equal(previousLength)
+      let allAssets = await main.allAssets()
+      expect(allAssets.length).to.equal(previousLength)
 
       // Add new asset
       await expect(main.connect(owner).addAsset(newAsset.address))
         .to.emit(main, 'AssetAdded')
         .withArgs(newAsset.address)
+
+      // Check it was added but not activated
+      allAssets = await main.allAssets()
+      expect(allAssets).to.contain(newAsset.address)
+      expect(allAssets.length).to.equal(previousLength + 1)
+
+      // Not activated
+      let activeAssets = await main.activeAssets()
+      expect(activeAssets).to.not.contain(newAsset.address)
     })
 
     it('Should allow to remove asset if Owner', async () => {
@@ -693,6 +704,85 @@ describe('MainP0 contract', () => {
       activeAssets = await main.activeAssets()
       expect(activeAssets).to.not.contain(compAsset.address)
       expect(activeAssets.length).to.equal(previousLength - 1)
+
+      // Check it was also removed from all assets
+      let allAssets = await main.allAssets()
+      expect(allAssets).to.not.contain(compAsset.address)
+    })
+
+    it('Should allow to activate Asset if Owner and perform validations', async () => {
+      // Get additional tokens and assets
+      newToken = erc20s[2] // usdt
+      newAsset = collateral[2] // usdt
+
+      // Create asset on existing erc20
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
+      const existingAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
+        await AssetFactory.deploy(token0.address, compoundMock.address)
+      )
+
+      // Get previous length for assets
+      const previousLength = (await main.activeAssets()).length
+
+      // Cannot activate asset if not owner
+      await expect(main.connect(other).activateAsset(newAsset.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Cannot activate new asset if the ERC20 already in basket
+      await expect(main.connect(owner).activateAsset(existingAsset.address)).to.be.revertedWith(
+        'Token is in current basket'
+      )
+
+      // Check nothing changed
+      let activeAssets = await main.activeAssets()
+      expect(activeAssets.length).to.equal(previousLength)
+      expect(activeAssets).to.not.contain(newAsset.address)
+      expect(activeAssets).to.not.contain(existingAsset.address)
+
+      // Activate new asset
+      await expect(main.connect(owner).activateAsset(newAsset.address))
+        .to.emit(main, 'AssetActivated')
+        .withArgs(newAsset.address)
+
+      // Check asset was added and activated
+      activeAssets = await main.activeAssets()
+      expect(activeAssets).to.contain(newAsset.address)
+      expect(activeAssets.length).to.equal(previousLength + 1)
+    })
+
+    it('Should allow to deactivate Asset if Owner and perform validations', async () => {
+      // Get previous length for assets
+      const previousLength = (await main.activeAssets()).length
+
+      // Cannot deactivate asset if not owner
+      await expect(main.connect(other).deactivateAsset(compAsset.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Cannot activate asset if the ERC20 is in basket
+      await expect(main.connect(owner).deactivateAsset(collateral0.address)).to.be.revertedWith(
+        'Token is in current basket'
+      )
+
+      // Check nothing changed
+      let activeAssets = await main.activeAssets()
+      expect(activeAssets.length).to.equal(previousLength)
+      expect(activeAssets).to.contain(compAsset.address)
+
+      // Dectivate another asset
+      await expect(main.connect(owner).deactivateAsset(compAsset.address))
+        .to.emit(main, 'AssetDeactivated')
+        .withArgs(compAsset.address)
+
+      //  Check asset was deactivated but not removed
+      activeAssets = await main.activeAssets()
+      expect(activeAssets).to.not.contain(compAsset.address)
+      expect(activeAssets.length).to.equal(previousLength - 1)
+
+      // Check it was not removed from all assets
+      let allAssets = await main.allAssets()
+      expect(allAssets).to.contain(compAsset.address)
     })
 
     it('Should allow to disable Collateral if Owner', async () => {
