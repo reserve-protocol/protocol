@@ -30,7 +30,7 @@ struct BasketConfig {
 
 /**
  * @title BasketHandler
- * @notice Tries to ensure the current vault is valid at all times.
+ * @notice Handles the basket configuration, definition, and transformation over time.
  */
 contract BasketHandlerP0 is
     Pausable,
@@ -57,9 +57,15 @@ contract BasketHandlerP0 is
         super.init(args);
     }
 
-    function poke() public virtual override notPaused {
-        super.poke();
-        tryEnsureValidBasket();
+    // Check collateral statuses; Select a new basket if needed.
+    function ensureValidBasket() public override notPaused {
+        for (uint256 i = 0; i < basket.size; i++) {
+            basket.collateral[i].forceUpdates();
+        }
+
+        if (worstCollateralStatus() == CollateralStatus.DISABLED) {
+            _switchBasket();
+        }
     }
 
     /// Set the prime basket in the basket configuration.
@@ -159,17 +165,6 @@ contract BasketHandlerP0 is
     /// @return {BU} The equivalent of the current holdings in BUs without considering trading
     function basketsHeld() internal view returns (Fix) {
         return basket.balanceOf(address(this));
-    }
-
-    // Check collateral statuses; Select a new basket if needed.
-    function tryEnsureValidBasket() internal {
-        for (uint256 i = 0; i < basket.size; i++) {
-            basket.collateral[i].forceUpdates();
-        }
-
-        if (worstCollateralStatus() == CollateralStatus.DISABLED) {
-            _switchBasket();
-        }
     }
 
     /// Return an array list (with possible duplicates) of a

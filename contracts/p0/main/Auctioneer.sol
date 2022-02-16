@@ -51,17 +51,11 @@ contract AuctioneerP0 is
         rTokenTrader = new RevenueTraderP0(address(this), rTokenAsset());
     }
 
-    function poke() public virtual override(Mixin, BasketHandlerP0) notPaused {
-        super.poke();
+    function doRecapitalizationAuctions() external override notPaused {
         closeDueAuctions();
 
-        if (!hasOpenAuctions()) doAuctions();
+        if (hasOpenAuctions()) return;
 
-        rsrTrader.poke();
-        rTokenTrader.poke();
-    }
-
-    function doAuctions() private {
         if (fullyCapitalized()) {
             handoutExcessAssets();
             return;
@@ -87,6 +81,8 @@ contract AuctioneerP0 is
             // {qRTok} = {(BU - BU) * qRTok / BU}
             uint256 qRTok = held.minus(needed).mulu(rToken().totalSupply()).div(needed).floor();
             rToken().mint(address(this), qRTok);
+            rToken().setBasketsNeeded(held);
+            needed = held;
         }
 
         // Handout excess assets, including any RToken that was just minted

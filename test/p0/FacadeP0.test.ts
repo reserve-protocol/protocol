@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { Wallet, BigNumber } from 'ethers'
+import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
 import { bn, fp } from '../../common/numbers'
@@ -109,9 +109,6 @@ describe('ExplorerFacadeP0 contract', () => {
 
       // Issue rTokens
       await main.connect(addr1).issue(issueAmount)
-
-      // Process issuance
-      await main.poke()
     })
 
     it('Should return maxIssuable correctly', async () => {

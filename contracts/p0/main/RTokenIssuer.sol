@@ -31,18 +31,13 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         super.init(args);
     }
 
-    function poke() public virtual override(Mixin, BasketHandlerP0) notPaused {
-        super.poke();
-        revenueFurnace().melt();
-    }
-
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     /// @return deposits {qTok} The quantities of collateral tokens transferred in
     function issue(uint256 amount) public override notPaused returns (uint256[] memory deposits) {
         require(amount > 0, "Cannot issue zero");
         revenueFurnace().melt();
-        tryEnsureValidBasket();
+        ensureValidBasket();
         require(worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
         uint256 rTokSupply = rToken().totalSupply(); // {qRTok}

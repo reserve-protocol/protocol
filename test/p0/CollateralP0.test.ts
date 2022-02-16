@@ -346,7 +346,7 @@ describe('CollateralP0 contracts', () => {
       expect(await aaveToken.balanceOf(main.address)).to.equal(0)
 
       // Claim and Sweep rewards - From Main
-      await main.poke()
+      await main.claimRewards()
 
       // Check rewards were transfered to Main
       expect(await compToken.balanceOf(await main.address)).to.equal(rewardAmountCOMP)
@@ -363,7 +363,7 @@ describe('CollateralP0 contracts', () => {
 
       // Force call to fail, set an invalid COMP token in Comptroller
       await compoundMock.connect(owner).setCompToken(cTokenAsset.address)
-      await expect(main.poke()).to.be.revertedWith('rewards claim failed')
+      await expect(main.claimRewards()).to.be.revertedWith('rewards claim failed')
 
       // Check funds not yet swept
       expect(await compToken.balanceOf(main.address)).to.equal(0)

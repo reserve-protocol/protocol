@@ -10,6 +10,12 @@ import "contracts/libraries/Fixed.sol";
  * @notice A read-only layer on top of the protocol for use from an off-chain explorer.
  */
 interface IExplorerFacade {
+    function runAuctionsForAllTraders() external;
+
+    function claimAndSweepRewardsForAllTraders() external;
+
+    function doFurnaceMelting() external;
+
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external view returns (uint256);
 

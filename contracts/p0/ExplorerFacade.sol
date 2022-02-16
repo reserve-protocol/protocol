@@ -6,6 +6,7 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/Main.sol";
+import "contracts/p0/RevenueTrader.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/IExplorerFacade.sol";
 
@@ -18,6 +19,22 @@ contract ExplorerFacadeP0 is IExplorerFacade {
 
     constructor(address main_) {
         main = MainP0(main_);
+    }
+
+    function runAuctionsForAllTraders() external override {
+        main.doRecapitalizationAuctions();
+        main.rsrTrader().doAuctions();
+        main.rTokenTrader().doAuctions();
+    }
+
+    function claimAndSweepRewardsForAllTraders() external override {
+        main.claimRewards();
+        main.rsrTrader().claimAndSweepRewardsToMain();
+        main.rTokenTrader().claimAndSweepRewardsToMain();
+    }
+
+    function doFurnaceMelting() external override {
+        main.revenueFurnace().melt();
     }
 
     /// @return How many RToken `account` can issue given current holdings

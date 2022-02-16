@@ -12,36 +12,36 @@ import "contracts/p0/interfaces/IMain.sol";
  */
 interface IRToken is IERC20Metadata, IERC20Permit {
     /// Tracks data for a SlowIssuance
-    /// @param blockStartedAt {blockNumber} The block number when issuance started, not fractional
+    /// @param issuer The account issuing RToken
     /// @param amount {qTok} The quantity of RToken the issuance is for
     /// @param baskets {BU} The basket unit-equivalent of the collateral deposits
     /// @param erc20s The collateral token addresses corresponding to the deposit
     /// @param deposits {qTok} The collateral token quantities that paid for the issuance
-    /// @param issuer The account issuing RToken
+    /// @param blockStartedAt {blockNumber} The block number when issuance started, not fractional
     /// @param blockAvailableAt {blockNumber} The block number when issuance completes, fractional
     /// @param processed false when the issuance is still vesting
     struct SlowIssuance {
-        uint256 blockStartedAt;
+        address issuer;
         uint256 amount; // {qRTok}
         Fix baskets; // {BU}
         address[] erc20s;
         uint256[] deposits; // {qTok}, same index as vault basket assets
-        address issuer;
-        Fix blockAvailableAt; // {blockNumber} fractional
+        uint256 blockStartedAt; // {block.number} not fractional
+        Fix blockAvailableAt; // {block.number} fractional
         bool processed;
     }
 
     /// Emitted when issuance is started, at the point collateral is taken in
-    /// @param issuanceId The index off the issuance, a globally unique identifier
     /// @param issuer The account performing the issuance
+    /// @param index The index off the issuance in the issuer's queue
     /// @param amount The quantity of RToken being issued
     /// @param baskets The basket unit-equivalent of the collateral deposits
     /// @param tokens The ERC20 contracts of the backing tokens
     /// @param quantities The quantities of tokens paid with
     /// @param blockAvailableAt The (continuous) block at which the issuance vests
     event IssuanceStarted(
-        uint256 indexed issuanceId,
         address indexed issuer,
+        uint256 indexed index,
         uint256 indexed amount,
         Fix baskets,
         address[] tokens,
@@ -50,12 +50,14 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     );
 
     /// Emitted when an RToken issuance is canceled, such as during a default
-    /// @param issuanceId The index of the issuance, a globally unique identifier
-    event IssuanceCanceled(uint256 indexed issuanceId);
+    /// @param issuer The account of the issuer
+    /// @param index The index of the issuance in the issuer's queue
+    event IssuanceCanceled(address indexed issuer, uint256 indexed index);
 
     /// Emitted when an RToken issuance is completed successfully
-    /// @param issuanceId The index of the issuance, a globally unique identifier
-    event IssuanceCompleted(uint256 indexed issuanceId);
+    /// @param issuer The account of the issuer
+    /// @param index The index of the issuance in the issuer's queue
+    event IssuanceCompleted(address indexed issuer, uint256 indexed index);
 
     /// Emitted when the number of baskets needed changes
     /// @param oldBasketsNeeded Previous number of baskets units needed
@@ -85,12 +87,14 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     ) external;
 
     /// Cancels a vesting slow issuance
-    /// @param issuanceId The id of the issuance, emitted at issuance start
-    function cancelIssuance(uint256 issuanceId) external;
+    /// @param account The account of the issuer, and caller
+    /// @param index The index of the issuance in the issuer's queue
+    function cancelIssuance(address account, uint256 index) external;
 
-    /// Completes a vested slow issuance
-    /// @param issuanceId The id of the issuance, emitted at issuance start
-    function completeIssuance(uint256 issuanceId) external;
+    /// Completes all vested slow issuances for the account, callable by anyone
+    /// @param account The address of the account to vest issuances for
+    /// @return vested {qRTok} The total amount of RToken quanta vested
+    function vestIssuances(address account) external returns (uint256 vested);
 
     /// Burns a quantity of RToken from the callers account
     /// @param from The account from which RToken should be burned
