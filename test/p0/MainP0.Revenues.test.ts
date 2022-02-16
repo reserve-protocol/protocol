@@ -1123,6 +1123,27 @@ describe('MainP0 contract', () => {
         expect(amount).to.equal(minBuyAmtRToken.div(2))
         expect(start).to.equal(await getLatestBlockTimestamp())
       })
+
+      it('Should claim and sweep rewards to Main from the Revenue Traders', async () => {
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(rsrTrader.address, rewardAmountAAVE)
+
+        // Check balance in main and Traders
+        expect(await aaveToken.balanceOf(main.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+
+        // Collect revenue
+        await expect(rsrTrader.claimAndSweepRewardsToMain()).to.emit(rsrTrader, 'RewardsClaimed')
+
+        // Check rewards sent to Main
+        expect(await aaveToken.balanceOf(main.address)).to.equal(rewardAmountAAVE)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+      })
     })
 
     context('With non-valid Claim Adapters', async function () {
