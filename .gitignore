@@ -10,6 +10,7 @@ crytic-export/
 coverage/
 coverage.json
 .env
+.vscode/
 /local/
 
 .yarn/*
