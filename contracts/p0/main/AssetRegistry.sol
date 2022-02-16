@@ -57,17 +57,23 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
 
     /// Configure basketTokens from a new basket
     /// Anything that changes the _currently active basket_ must call this!
+    /// @dev After this is called:
+    /// - (current basketTokens) == the set of tokens in the current basket
+    /// - (previous basketTokens) is a subset of (current activeTokens)
+    /// - (current activeTokens) == the set of keys of _activeAssets
     /// @param basket The newly-set basket
     function activateBasketAssets(Basket storage basket) internal {
-        // Empty basketTokens
+        // Empty basketTokens, but do _not_ deactivate those tokens
         while (basketTokens.length() > 0) {
             address token = basketTokens.at(basketTokens.length() - 1);
-            _deactivate(_activeAssets[token]);
+            basketTokens.remove(token);
         }
 
-        // Read basket and write basketTokens and _assets
+        // Activate all basket assets, and write them to basketTokens
         for (uint256 i = 0; i < basket.size; i++) {
-            _activate(IAsset(basket.collateral[i]));
+            IAsset asset = IAsset(basket.collateral[i]);
+            _activate(asset);
+            basketTokens.add(address(asset.erc20()));
         }
     }
 
@@ -101,15 +107,15 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
 
     function _activate(IAsset asset) private returns (bool) {
         address token = address(asset.erc20());
-        bool setAsset = _activeAssets[token] != asset;
+        bool needToSetAsset = _activeAssets[token] != asset;
 
         activeTokens.add(token);
 
-        if (setAsset) {
+        if (needToSetAsset) {
             _activeAssets[token] = asset;
             emit AssetActivated(asset);
         }
-        return setAsset;
+        return needToSetAsset;
     }
 
     function _deactivate(IAsset asset) private returns (bool) {
