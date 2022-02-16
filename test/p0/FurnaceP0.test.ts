@@ -1,6 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { timeEnd } from 'console'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre from 'hardhat'
 import { ethers, waffle } from 'hardhat'
@@ -9,6 +8,7 @@ import { ZERO_ADDRESS } from '../../common/constants'
 import { bn } from '../../common/numbers'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
+import { ExplorerFacadeP0 } from '../../typechain/ExplorerFacadeP0'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { RTokenP0 } from '../../typechain/RTokenP0'
@@ -37,6 +37,7 @@ describe('FurnaceP0 contract', () => {
   let main: MainP0
   let rToken: RTokenP0
   let basket: Collateral[]
+  let facade: ExplorerFacadeP0
 
   // Config values
   let config: IConfig
@@ -75,7 +76,7 @@ describe('FurnaceP0 contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, rToken, furnace, config, main } = await loadFixture(defaultFixture))
+    ;({ basket, rToken, furnace, config, main, facade } = await loadFixture(defaultFixture))
 
     // Setup issuance of RTokens for users
     initialBal = bn('100e18')
@@ -380,8 +381,8 @@ describe('FurnaceP0 contract', () => {
       // Advance to the middle of period
       await advanceToTimestamp(hndTimestamp + timePeriod / 2 - 1)
 
-      // Melt
-      await furnace.connect(addr1).melt()
+      // Melt - Can also be done through facade
+      await facade.doFurnaceMelting()
 
       // Check melt registered
       await expectBatchInfo(0, {

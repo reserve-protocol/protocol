@@ -92,7 +92,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     function setRSRAsset(IAsset rsrAsset_) external override onlyOwner {
         _rsrAsset = rsrAsset_;
         emit RSRAssetSet(_rsrAsset, rsrAsset_);
-        activateAsset(_rTokenAsset);
+        activateAsset(_rsrAsset);
     }
 
     function rsrAsset() public view override returns (IAsset) {

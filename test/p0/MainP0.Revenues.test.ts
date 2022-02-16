@@ -48,6 +48,44 @@ interface IAuctionInfo {
   status: AuctionStatus
 }
 
+export const expectAuctionInfo = async (
+  trader: TraderP0,
+  index: number,
+  auctionInfo: Partial<IAuctionInfo>
+) => {
+  const {
+    sell,
+    buy,
+    sellAmount,
+    minBuyAmount,
+    startTime,
+    endTime,
+    clearingSellAmount,
+    clearingBuyAmount,
+    externalAuctionId,
+    status,
+  } = await trader.auctions(index)
+  expect(sell).to.equal(auctionInfo.sell)
+  expect(buy).to.equal(auctionInfo.buy)
+  expect(sellAmount).to.equal(auctionInfo.sellAmount)
+  expect(minBuyAmount).to.equal(auctionInfo.minBuyAmount)
+  expect(startTime).to.equal(auctionInfo.startTime)
+  expect(endTime).to.equal(auctionInfo.endTime)
+  expect(clearingSellAmount).to.equal(auctionInfo.clearingSellAmount)
+  expect(clearingBuyAmount).to.equal(auctionInfo.clearingBuyAmount)
+  expect(externalAuctionId).to.equal(auctionInfo.externalAuctionId)
+  expect(status).to.equal(auctionInfo.status)
+}
+
+export const expectAuctionStatus = async (
+  trader: TraderP0,
+  index: number,
+  expectedStatus: AuctionStatus
+) => {
+  const { status } = await trader.auctions(index)
+  expect(status).to.equal(expectedStatus)
+}
+
 const createFixtureLoader = waffle.createFixtureLoader
 
 describe('MainP0 contract', () => {
@@ -103,44 +141,6 @@ describe('MainP0 contract', () => {
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
-
-  const expectAuctionInfo = async (
-    trader: TraderP0,
-    index: number,
-    auctionInfo: Partial<IAuctionInfo>
-  ) => {
-    const {
-      sell,
-      buy,
-      sellAmount,
-      minBuyAmount,
-      startTime,
-      endTime,
-      clearingSellAmount,
-      clearingBuyAmount,
-      externalAuctionId,
-      status,
-    } = await trader.auctions(index)
-    expect(sell).to.equal(auctionInfo.sell)
-    expect(buy).to.equal(auctionInfo.buy)
-    expect(sellAmount).to.equal(auctionInfo.sellAmount)
-    expect(minBuyAmount).to.equal(auctionInfo.minBuyAmount)
-    expect(startTime).to.equal(auctionInfo.startTime)
-    expect(endTime).to.equal(auctionInfo.endTime)
-    expect(clearingSellAmount).to.equal(auctionInfo.clearingSellAmount)
-    expect(clearingBuyAmount).to.equal(auctionInfo.clearingBuyAmount)
-    expect(externalAuctionId).to.equal(auctionInfo.externalAuctionId)
-    expect(status).to.equal(auctionInfo.status)
-  }
-
-  const expectAuctionStatus = async (
-    trader: TraderP0,
-    index: number,
-    expectedStatus: AuctionStatus
-  ) => {
-    const { status } = await trader.auctions(index)
-    expect(status).to.equal(expectedStatus)
-  }
 
   before('create fixture loader', async () => {
     ;[wallet] = await (ethers as any).getSigners()
@@ -295,6 +295,28 @@ describe('MainP0 contract', () => {
         await rsr.connect(owner).mint(addr1.address, initialBal)
       })
 
+      it('Should not allow to claim more than once for each rewardPeriod', async () => {
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('0.8e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(main.address, rewardAmountCOMP)
+        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+
+        // Set new rewards and attempt to claim again
+        await compoundMock.setRewards(main.address, rewardAmountCOMP)
+        await expect(main.claimRewards()).to.not.emit(main, 'RewardsClaimed')
+
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        // Now should be able to claim rewards again
+        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+      })
+
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
@@ -441,7 +463,8 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+        // Can also claim through Facade
+        await expect(facade.claimAndSweepRewardsForAllTraders()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -1100,6 +1123,27 @@ describe('MainP0 contract', () => {
         const { amount, start } = await furnace.batches(0)
         expect(amount).to.equal(minBuyAmtRToken.div(2))
         expect(start).to.equal(await getLatestBlockTimestamp())
+      })
+
+      it('Should claim and sweep rewards to Main from the Revenue Traders', async () => {
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(rsrTrader.address, rewardAmountAAVE)
+
+        // Check balance in main and Traders
+        expect(await aaveToken.balanceOf(main.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+
+        // Collect revenue
+        await expect(rsrTrader.claimAndSweepRewardsToMain()).to.emit(rsrTrader, 'RewardsClaimed')
+
+        // Check rewards sent to Main
+        expect(await aaveToken.balanceOf(main.address)).to.equal(rewardAmountAAVE)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
       })
     })
 
