@@ -295,6 +295,28 @@ describe('MainP0 contract', () => {
         await rsr.connect(owner).mint(addr1.address, initialBal)
       })
 
+      it('Should not allow to claim more than once for each rewardPeriod', async () => {
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('0.8e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(main.address, rewardAmountCOMP)
+        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+
+        // Set new rewards and attempt to claim again
+        await compoundMock.setRewards(main.address, rewardAmountCOMP)
+        await expect(main.claimRewards()).to.not.emit(main, 'RewardsClaimed')
+
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        // Now should be able to claim rewards again
+        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+      })
+
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
