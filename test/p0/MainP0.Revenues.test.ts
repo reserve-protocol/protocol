@@ -48,6 +48,44 @@ interface IAuctionInfo {
   status: AuctionStatus
 }
 
+export const expectAuctionInfo = async (
+  trader: TraderP0,
+  index: number,
+  auctionInfo: Partial<IAuctionInfo>
+) => {
+  const {
+    sell,
+    buy,
+    sellAmount,
+    minBuyAmount,
+    startTime,
+    endTime,
+    clearingSellAmount,
+    clearingBuyAmount,
+    externalAuctionId,
+    status,
+  } = await trader.auctions(index)
+  expect(sell).to.equal(auctionInfo.sell)
+  expect(buy).to.equal(auctionInfo.buy)
+  expect(sellAmount).to.equal(auctionInfo.sellAmount)
+  expect(minBuyAmount).to.equal(auctionInfo.minBuyAmount)
+  expect(startTime).to.equal(auctionInfo.startTime)
+  expect(endTime).to.equal(auctionInfo.endTime)
+  expect(clearingSellAmount).to.equal(auctionInfo.clearingSellAmount)
+  expect(clearingBuyAmount).to.equal(auctionInfo.clearingBuyAmount)
+  expect(externalAuctionId).to.equal(auctionInfo.externalAuctionId)
+  expect(status).to.equal(auctionInfo.status)
+}
+
+export const expectAuctionStatus = async (
+  trader: TraderP0,
+  index: number,
+  expectedStatus: AuctionStatus
+) => {
+  const { status } = await trader.auctions(index)
+  expect(status).to.equal(expectedStatus)
+}
+
 const createFixtureLoader = waffle.createFixtureLoader
 
 describe('MainP0 contract', () => {
@@ -103,44 +141,6 @@ describe('MainP0 contract', () => {
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
-
-  const expectAuctionInfo = async (
-    trader: TraderP0,
-    index: number,
-    auctionInfo: Partial<IAuctionInfo>
-  ) => {
-    const {
-      sell,
-      buy,
-      sellAmount,
-      minBuyAmount,
-      startTime,
-      endTime,
-      clearingSellAmount,
-      clearingBuyAmount,
-      externalAuctionId,
-      status,
-    } = await trader.auctions(index)
-    expect(sell).to.equal(auctionInfo.sell)
-    expect(buy).to.equal(auctionInfo.buy)
-    expect(sellAmount).to.equal(auctionInfo.sellAmount)
-    expect(minBuyAmount).to.equal(auctionInfo.minBuyAmount)
-    expect(startTime).to.equal(auctionInfo.startTime)
-    expect(endTime).to.equal(auctionInfo.endTime)
-    expect(clearingSellAmount).to.equal(auctionInfo.clearingSellAmount)
-    expect(clearingBuyAmount).to.equal(auctionInfo.clearingBuyAmount)
-    expect(externalAuctionId).to.equal(auctionInfo.externalAuctionId)
-    expect(status).to.equal(auctionInfo.status)
-  }
-
-  const expectAuctionStatus = async (
-    trader: TraderP0,
-    index: number,
-    expectedStatus: AuctionStatus
-  ) => {
-    const { status } = await trader.auctions(index)
-    expect(status).to.equal(expectedStatus)
-  }
 
   before('create fixture loader', async () => {
     ;[wallet] = await (ethers as any).getSigners()
