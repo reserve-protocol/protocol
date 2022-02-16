@@ -33,7 +33,7 @@ interface IStRSR is IERC20Receiver, IERC20Permit, IERC20 {
         uint256 indexed withdrawalId,
         address indexed staker,
         uint256 indexed rsrAmount,
-        uint256 indexed stRSRAmount,
+        uint256 stRSRAmount,
         uint256 availableAt
     );
 

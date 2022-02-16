@@ -57,23 +57,19 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     // TODO: still needed?
     EnumerableSet.AddressSet internal accounts;
 
-    // The sum of all stRSR balances
+    // {qStRSR} Total of all stRSR balances, not including pending withdrawals
     uint256 internal totalStaked;
 
-    // How much RSR is allocated to backing currently-staked balances
+    // {qRSR} How much RSR is allocated to backing currently-staked balances
     uint256 internal rsrBacking;
-
-    // How much RSR is set aside for making future payments ("reward smoothing")
-    uint256 internal rsrUnpaid;
 
     // The momentary stake/unstake rate is rsrBacking/totalStaked {RSR/stRSR}
     // That rate is locked in when slow unstaking *begins*
 
-
     // Delayed Withdrawals
     struct Withdrawal {
         address account;
-        uint256 rsrAmount;  // How much rsr this withdrawal will be redeemed for, if none is seized
+        uint256 rsrAmount; // How much rsr this withdrawal will be redeemed for, if none is seized
         uint256 availableAt;
     }
 
@@ -93,27 +89,33 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
-    /// @param amount {qRSR}
+    /// @param rsrAmount {qRSR}
     function stake(uint256 rsrAmount) external override {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
         require(!main.paused(), "main paused");
 
+        // Process pending withdrawals
         if (main.fullyCapitalized() && main.worstCollateralStatus() == CollateralStatus.SOUND) {
-            // Process pending withdrawals
             _processWithdrawals(account);
         }
 
         main.rsr().safeTransferFrom(account, address(this), rsrAmount);
-        uint256 stakeAmount = rsrAmount * totalStaked / (rsrBacking > 0 ? rsrBacking : 1);
-        accounts.add(account);
+        uint256 stakeAmount = (rsrAmount * totalStaked) / (rsrBacking > 0 ? rsrBacking : 1);
+
+        // Create stRSR balance
+        if (balances[account] == 0) accounts.add(account);
         balances[account] += stakeAmount;
         totalStaked += stakeAmount;
-        emit Staked(account, rsrAmount);
+
+        // Add RSR to backing
+        rsrBacking += rsrAmount;
+
+        emit Staked(account, rsrAmount, stakeAmount);
     }
 
     /// Begins a delayed unstaking for `amount` stRSR
-    /// @param amount {qRSR}
+    /// @param stakeAmount {qRSR}
     function unstake(uint256 stakeAmount) external override {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
@@ -125,16 +127,26 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         // Process pending withdrawals
         _processWithdrawals(account);
 
-        uint256 rsrAmount = stakeAmount * rsrBacking / totalStaked;
+        uint256 rsrAmount = (stakeAmount * rsrBacking) / totalStaked;
 
-        // Eliminate the stRSR balance...
+        // Destroy the stRSR balance
         balances[account] -= stakeAmount;
+        if (balances[account] == 0) accounts.remove(account);
         totalStaked -= stakeAmount;
 
-        // And create the corresponding withdrawal ticket
+        // Remove RSR from backing
+        rsrBacking -= rsrAmount;
+
+        // Create the corresponding withdrawal ticket
         uint256 availableAt = block.timestamp + main.stRSRWithdrawalDelay();
         withdrawals[account].push(Withdrawal(account, rsrAmount, availableAt));
-        emit UnstakingStarted(withdrawals[account].length - 1, account, rsrAmount, stakeAmount, availableAt);
+        emit UnstakingStarted(
+            withdrawals[account].length - 1,
+            account,
+            rsrAmount,
+            stakeAmount,
+            availableAt
+        );
     }
 
     function processWithdrawals(address account) public {
@@ -144,67 +156,67 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         _processWithdrawals(account);
     }
 
-    // TODO: modify for smooth payouts
     function notifyOfDeposit(IERC20 erc20) external override {
         require(erc20 == main.rsr(), "RSR dividends only");
-
         uint256 balance = main.rsr().balanceOf(address(this));
-        uint256 overage = balance - totalStaked - amountBeingWithdrawn();
-        uint256 addedAmount = 0;
-
-        if (overage > 0) {
-            for (uint256 i = 0; i < accounts.length(); i++) {
-                address user = accounts.at(i);
-                // amtToAdd == overage * (balance[user] / totalStaked);
-                uint256 amtToAdd = toFix(balances[user]).mulu(overage).divu(totalStaked).floor();
-                balances[user] += amtToAdd;
-                addedAmount += amtToAdd;
-            }
-            // overage - addedAmount may be nonzero; if so, that dust will wait for the next time.
-            totalStaked += addedAmount;
-            emit RSRAdded(_msgSender(), addedAmount);
-        }
+        uint256 added = balance - rsrBacking - rsrBeingWithdrawn();
+        _payoutRewards();
+        emit RSRAdded(_msgSender(), added);
     }
 
-    // TODO: modify for smooth payouts
+    function _payoutRewards() private {
+        uint256 balance = main.rsr().balanceOf(address(this));
+        // TODO: smooth these rewards
+        rsrBacking = balance - rsrBacking - rsrBeingWithdrawn();
+    }
+
     /// @param rsrAmount {qRSR}
-    /// @return seizedRSR {qRSR} The actual rsrAmount seized. May be dust-larger than `rsrAmount`.
+    /// @return seizedRSR {qRSR} The actual rsrAmount seized.
+    /// seizedRSR might be dust-larger than rsrAmount due to rounding.
+    /// seizedRSR might be smaller than rsrAmount if we're out of RSR.
     function seizeRSR(uint256 rsrAmount) external override returns (uint256 seizedRSR) {
         require(_msgSender() == address(main), "not main");
         require(rsrAmount > 0, "Amount cannot be zero");
 
-        uint256 totalRSR = rsrBacking
+        uint256 rsrBalance = main.rsr().balanceOf(address(this));
+        // Size of pending rewards pool
+        uint256 rsrRewards = rsrBalance - rsrBacking - rsrBeingWithdrawn();
 
-        uint256 snapshotTotalStakedPlus = totalStaked + amountBeingWithdrawn();
-        // Remove RSR for stakers and from withdrawals too
-        if (snapshotTotalStakedPlus > 0) {
-            uint256 removedStake = 0;
+        if (rsrBalance <= rsrAmount) {
+            // Everyone's wiped out! Doom! Mayhem!
+            // Zero all balances and withdrawals
+            seizedRSR = rsrBalance;
+            rsrBacking = 0;
             for (uint256 i = 0; i < accounts.length(); i++) {
-                uint256 amtToRemove = toFix(balances[accounts.at(i)])
-                    .mulu(rsrAmount)
-                    .divu(snapshotTotalStakedPlus)
-                    .ceil();
-                balances[accounts.at(i)] -= amtToRemove;
-                removedStake += amtToRemove;
+                address account = accounts.at(i);
+                delete withdrawals[account];
+                _transfer(account, address(0), balances[account]);
             }
-            totalStaked -= removedStake;
-            seizedRSR = removedStake;
+            totalStaked = 0;
+        } else {
+            // Remove RSR evenly from stakers, withdrawals, and the reward pool
+            uint256 backingToTake = (rsrBacking * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+            rsrBacking -= backingToTake;
+            seizedRSR = backingToTake;
 
             for (uint256 i = 0; i < accounts.length(); i++) {
                 Withdrawal[] storage withdrawalQ = withdrawals[accounts.at(i)];
                 for (uint256 j = 0; j < withdrawalQ.length; j++) {
-                    uint256 amtToRemove = toFix(withdrawalQ[j].rsrAmount)
-                        .mulu(rsrAmount)
-                        .divu(snapshotTotalStakedPlus)
-                        .ceil();
-                    withdrawalQ[j].rsrAmount -= amtToRemove;
-                    seizedRSR += amtToRemove;
+                    uint256 withdrawAmt = withdrawalQ[j].rsrAmount;
+                    uint256 amtToTake = (withdrawAmt * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+                    withdrawalQ[j].rsrAmount -= amtToTake;
+                    seizedRSR += amtToTake;
                 }
             }
+
+            // Removing from unpaid rewards is implicit
+            uint256 rewardsToTake = (rsrRewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+            seizedRSR += rewardsToTake;
+
+            assert(rsrAmount <= seizedRSR);
         }
 
         // Transfer RSR to caller
-        require(rsrAmount <= seizedRSR, "Could not seize requested RSR");
         main.rsr().safeTransfer(_msgSender(), seizedRSR);
         emit RSRSeized(_msgSender(), seizedRSR);
     }
@@ -289,14 +301,13 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     }
 
     /// @return total {qRSR} Total amount of qRSR being withdrawn
-    function amountBeingWithdrawn() internal view returns (uint256 total) {
+    function rsrBeingWithdrawn() internal view returns (uint256 total) {
         for (uint256 i = 0; i < accounts.length(); i++) {
             for (uint256 j = 0; j < withdrawals[accounts.at(i)].length; j++) {
                 total += withdrawals[accounts.at(i)][j].rsrAmount;
             }
         }
     }
-
 
     function _processWithdrawals(address account) private {
         // Process all pending withdrawals for the account
