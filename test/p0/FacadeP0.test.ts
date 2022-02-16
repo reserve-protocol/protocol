@@ -34,6 +34,8 @@ describe('ExplorerFacadeP0 contract', () => {
   let rsr: ERC20Mock
   let compToken: ERC20Mock
   let aaveToken: ERC20Mock
+  let basket: Collateral[]
+  let basketsNeededAmts: BigNumber[]
 
   // Assets
   let tokenAsset: Collateral
@@ -58,12 +60,9 @@ describe('ExplorerFacadeP0 contract', () => {
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
-    let basket: Collateral[]
-
-      // Deploy fixture
-    ;({ rsr, compToken, aaveToken, collateral, rToken, basket, facade, main } = await loadFixture(
-      defaultFixture
-    ))
+    // Deploy fixture
+    ;({ rsr, compToken, aaveToken, collateral, rToken, basket, basketsNeededAmts, facade, main } =
+      await loadFixture(defaultFixture))
 
     // Get assets and tokens
     tokenAsset = basket[0]
@@ -85,9 +84,13 @@ describe('ExplorerFacadeP0 contract', () => {
   })
 
   describe('Views', () => {
+    let issueAmount: BigNumber
+
     beforeEach(async () => {
+      await main.connect(owner).setIssuanceRate(fp('1'))
+
       // Mint Tokens
-      initialBal = bn('1e33')
+      initialBal = bn('1000e18')
       await token.connect(owner).mint(addr1.address, initialBal)
       await usdc.connect(owner).mint(addr1.address, initialBal)
       await aToken.connect(owner).mint(addr1.address, initialBal)
@@ -99,7 +102,7 @@ describe('ExplorerFacadeP0 contract', () => {
       await cToken.connect(owner).mint(addr2.address, initialBal)
 
       // Issue some RTokens
-      const issueAmount: BigNumber = bn('1e33')
+      issueAmount = bn('100e18')
 
       // Provide approvals
       await token.connect(addr1).approve(main.address, initialBal)
@@ -113,20 +116,13 @@ describe('ExplorerFacadeP0 contract', () => {
 
     it('Should return maxIssuable correctly', async () => {
       // Check values
-      expect(await facade.maxIssuable(addr1.address)).to.equal(bn('3e33'))
-      expect(await facade.maxIssuable(addr2.address)).to.equal(bn('4e33'))
+      expect(await facade.maxIssuable(addr1.address)).to.equal(bn('3900e18'))
+      expect(await facade.maxIssuable(addr2.address)).to.equal(bn('4000e18'))
       expect(await facade.maxIssuable(other.address)).to.equal(0)
     })
 
     it('Should return currentBacking correctly', async () => {
       const [tokens, quantities] = await facade.currentBacking()
-
-      // Get backing ERC20s from collateral
-      const backingERC20Addrs: string[] = await Promise.all(
-        collateral.map(async (c): Promise<string> => {
-          return await c.erc20()
-        })
-      )
 
       // Check token addresses
       expect(tokens[0]).to.equal(token.address)
@@ -134,8 +130,8 @@ describe('ExplorerFacadeP0 contract', () => {
       expect(tokens[2]).to.equal(aToken.address)
       expect(tokens[3]).to.equal(cToken.address)
 
-      // Check quantities
-      // TODO
+      // Check quantities - Should be zero with no minted tokens
+      expect(quantities).to.eql([bn('25e18'), bn('25e6'), bn('25e18'), bn('25e8')])
     })
   })
 })
