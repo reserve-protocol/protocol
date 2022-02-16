@@ -664,6 +664,9 @@ describe('MainP0 contract', () => {
         'Ownable: caller is not the owner'
       )
 
+      // Nothing occurs if attempting to add an existing asset
+      await main.connect(owner).addAsset(aaveAsset.address)
+
       // Check nothing changed
       let allAssets = await main.allAssets()
       expect(allAssets.length).to.equal(previousLength)
@@ -684,30 +687,45 @@ describe('MainP0 contract', () => {
     })
 
     it('Should allow to remove asset if Owner', async () => {
+      // Setup new Asset
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
+      const newAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
+        await AssetFactory.deploy(token0.address, compoundMock.address)
+      )
+
       // Get previous length for assets
-      const previousLength = (await main.activeAssets()).length
+      const previousLength = (await main.allAssets()).length
+
+      // Check assets
+      let allAssets = await main.allAssets()
+      expect(allAssets).to.contain(compAsset.address)
+      expect(allAssets).to.not.contain(newAsset.address)
 
       // Cannot remove asset if not owner
       await expect(main.connect(other).removeAsset(compAsset.address)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
 
+      // Nothing occurs if attempting to remove an unexisting asset
+      await main.connect(owner).removeAsset(newAsset.address)
+
       // Check nothing changed
-      let activeAssets = await main.activeAssets()
-      expect(activeAssets.length).to.equal(previousLength)
-      expect(activeAssets).to.contain(compAsset.address)
+      allAssets = await main.allAssets()
+      expect(allAssets.length).to.equal(previousLength)
+      expect(allAssets).to.contain(compAsset.address)
+      expect(allAssets).to.not.contain(newAsset.address)
 
       // Remove asset
       await main.connect(owner).removeAsset(compAsset.address)
 
       // Check if it was removed
-      activeAssets = await main.activeAssets()
-      expect(activeAssets).to.not.contain(compAsset.address)
-      expect(activeAssets.length).to.equal(previousLength - 1)
-
-      // Check it was also removed from all assets
-      let allAssets = await main.allAssets()
+      allAssets = await main.allAssets()
       expect(allAssets).to.not.contain(compAsset.address)
+      expect(allAssets.length).to.equal(previousLength - 1)
+
+      // Check it was also deactivated
+      let activeAssets = await main.activeAssets()
+      expect(activeAssets).to.not.contain(compAsset.address)
     })
 
     it('Should allow to activate Asset if Owner and perform validations', async () => {
@@ -749,6 +767,17 @@ describe('MainP0 contract', () => {
       activeAssets = await main.activeAssets()
       expect(activeAssets).to.contain(newAsset.address)
       expect(activeAssets.length).to.equal(previousLength + 1)
+
+      // Nothing occurs if attempting to activate again
+      await expect(main.connect(owner).activateAsset(newAsset.address)).to.not.emit(
+        main,
+        'AssetActivated'
+      )
+
+      // No changes
+      activeAssets = await main.activeAssets()
+      expect(activeAssets).to.contain(newAsset.address)
+      expect(activeAssets.length).to.equal(previousLength + 1)
     })
 
     it('Should allow to deactivate Asset if Owner and perform validations', async () => {
@@ -783,6 +812,17 @@ describe('MainP0 contract', () => {
       // Check it was not removed from all assets
       let allAssets = await main.allAssets()
       expect(allAssets).to.contain(compAsset.address)
+
+      // Nothing occurs if attempting to deactivate again
+      await expect(main.connect(owner).deactivateAsset(compAsset.address)).to.not.emit(
+        main,
+        'AssetDeactivated'
+      )
+
+      // Nothing changed
+      activeAssets = await main.activeAssets()
+      expect(activeAssets).to.not.contain(compAsset.address)
+      expect(activeAssets.length).to.equal(previousLength - 1)
     })
 
     it('Should allow to disable Collateral if Owner', async () => {
