@@ -39,9 +39,7 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
     }
 
     /// Collect rewards and leave for Auctioneer
-    function poke() public virtual override(Mixin, AuctioneerP0) notPaused {
-        super.poke();
-
+    function claimRewards() external override notPaused {
         // Check if its time to claim
         (uint256 prevRewards, ) = whenRewards(block.timestamp);
         if (prevRewards <= rewardsLastClaimed) {
@@ -50,11 +48,9 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
         rewardsLastClaimed = prevRewards;
 
         // Claim rewards
-        uint256[] memory rsrTraderAmts = rsrTrader.claimAndSweepRewardsToMain();
-        uint256[] memory rTokenTraderAmts = rTokenTrader.claimAndSweepRewardsToMain();
         (address[] memory erc20s, uint256[] memory amts) = RewardsLib.claimRewards(address(this));
         for (uint256 i = 0; i < erc20s.length; i++) {
-            emit RewardsClaimed(erc20s[i], amts[i] + rsrTraderAmts[i] + rTokenTraderAmts[i]);
+            emit RewardsClaimed(erc20s[i], amts[i]);
         }
     }
 

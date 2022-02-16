@@ -34,10 +34,8 @@ abstract contract TraderP0 is ITraderEvents {
         // Closeout open auctions or sleep if they are still ongoing.
         for (uint256 i = 0; i < auctions.length; i++) {
             Auction storage auction = auctions[i];
-            if (auction.status == AuctionStatus.OPEN) {
-                if (block.timestamp >= auction.endTime) {
-                    closeAuction(i);
-                }
+            if (auction.status == AuctionStatus.OPEN && block.timestamp >= auction.endTime) {
+                closeAuction(i);
             }
         }
     }

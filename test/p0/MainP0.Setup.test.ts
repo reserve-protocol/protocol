@@ -240,13 +240,6 @@ describe('MainP0 contract', () => {
       }
       await expect(main.init(ctorArgs)).to.be.revertedWith('already initialized')
     })
-
-    it('Should not allow to poke if Main is not initialized', async () => {
-      const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
-      const newMain: MainP0 = <MainP0>await MainFactory.deploy()
-      await newMain.connect(owner).unpause()
-      await expect(newMain.poke()).to.be.revertedWith('not initialized')
-    })
   })
 
   describe('Pause/Unpause', () => {
@@ -692,6 +685,23 @@ describe('MainP0 contract', () => {
 
       // Cannot disable collateral if not owner
       await expect(collateral3.connect(other).disable()).to.be.revertedWith('main or its owner')
+    })
+
+    it('Should return all assets', async () => {
+      const allAssets: string[] = await main.allAssets()
+
+      // Get addresses from all collateral
+      const collateralAddrs: string[] = await Promise.all(
+        collateral.map(async (c): Promise<string> => {
+          return await c.address
+        })
+      )
+
+      expect(allAssets[0]).to.equal(rTokenAsset.address)
+      expect(allAssets[1]).to.equal(rsrAsset.address)
+      expect(allAssets[2]).to.equal(aaveAsset.address)
+      expect(allAssets[3]).to.equal(compAsset.address)
+      expect(allAssets.slice(4)).to.eql(collateralAddrs)
     })
   })
 

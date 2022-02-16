@@ -9,7 +9,7 @@ import "contracts/p0/Trader.sol";
 
 /// The RevenueTrader converts all asset balances at its address to a single target asset
 /// and sends this asset to the RevenueDistributor at Main.
-contract RevenueTraderP0 is TraderP0 {
+contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents {
     using SafeERC20 for IERC20Metadata;
 
     IAsset public immutable assetToBuy;
@@ -19,42 +19,49 @@ contract RevenueTraderP0 is TraderP0 {
         assetToBuy = assetToBuy_;
     }
 
-    function poke() public {
-        // Always process auctions *and* do funds management; don't short-circuit here.
-        closeDueAuctions();
-    }
-
-    /// Claims and sweeps all rewards
-    function claimAndSweepRewardsToMain() external returns (uint256[] memory) {
-        (address[] memory erc20s, uint256[] memory amts) = RewardsLib.claimRewards(address(main));
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            IERC20Metadata(erc20s[i]).safeTransfer(address(main), amts[i]);
+    /// Close any open auctions and start new ones, for all assets
+    function doAuctions() external {
+        IAsset[] memory assets = main.activeAssets(); // includes RToken/RSR/COMP/AAVE
+        for (uint256 i = 0; i < assets.length; i++) {
+            processAsset(assets[i]);
         }
-        return amts;
     }
 
-    /// Trigger auction of token for assetToBuy.
-    /// @return whether an auction was triggered
-    function triggerAuction(IERC20Metadata token) external returns (bool) {
-        IAsset asset = main.activeAsset(address(token));
-        uint256 bal = token.balanceOf(address(this));
-        if (bal == 0) return false;
+    /// - If we have any of `assetToBuy` (RSR or RToken), distribute it.
+    /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
+    function processAsset(IAsset asset) public {
+        closeDueAuctions();
+
+        IERC20Metadata erc20 = asset.erc20();
+        uint256 bal = erc20.balanceOf(address(this));
+        if (bal == 0) return;
 
         if (asset == assetToBuy) {
-            token.safeApprove(address(main), bal);
-            main.distribute(token, address(this), bal);
-            return false;
+            erc20.safeApprove(address(main), bal);
+            main.distribute(erc20, address(this), bal);
+            return;
         }
 
         // Don't open a second auction if there's already one running.
         for (uint256 i = 0; i < auctions.length; i++) {
-            if (auctions[i].sell == asset && auctions[i].status != AuctionStatus.DONE) return false;
+            if (auctions[i].sell == asset && auctions[i].status != AuctionStatus.DONE) return;
         }
 
+        // If not dust, trade the non-target asset for the target asset
         // {tok} =  {qTok} / {qTok/tok}
-        Fix sellAmt = toFixWithShift(bal, -int8(token.decimals()));
-        (bool launch, Auction memory auction) = prepareAuctionSell(asset, assetToBuy, sellAmt);
+        Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
+        (bool launch, Auction memory auction) = prepareAuctionSell(asset, assetToBuy, sellAmount);
         if (launch) launchAuction(auction);
-        return launch;
+    }
+
+    /// Claims and sweeps all rewards
+    function claimAndSweepRewardsToMain() external {
+        (address[] memory erc20s, uint256[] memory amts) = RewardsLib.claimRewards(address(main));
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            if (amts[i] > 0) {
+                IERC20Metadata(erc20s[i]).safeTransfer(address(main), amts[i]);
+            }
+            emit RewardsClaimed(erc20s[i], amts[i]);
+        }
     }
 }

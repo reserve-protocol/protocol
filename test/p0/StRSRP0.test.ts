@@ -346,9 +346,6 @@ describe('StRSRP0 contract', () => {
         const issueAmount: BigNumber = bn('100e18')
         await main.connect(addr1).issue(issueAmount)
 
-        // Process issuance
-        await main.poke()
-
         // Get current balance for user
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)
 

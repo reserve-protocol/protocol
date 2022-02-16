@@ -166,9 +166,6 @@ describe('FurnaceP0 contract', () => {
       const issueAmount: BigNumber = bn('100e18')
       await main.connect(addr1).issue(issueAmount)
       await main.connect(addr2).issue(issueAmount)
-
-      // Process issuance
-      await main.poke()
     })
 
     it('Should allow batches correctly', async () => {
@@ -252,9 +249,6 @@ describe('FurnaceP0 contract', () => {
       const issueAmount: BigNumber = bn('100e18')
       await main.connect(addr1).issue(issueAmount)
       await main.connect(addr2).issue(issueAmount)
-
-      // Process issuance
-      await main.poke()
     })
 
     it('Should allow melt all funds if period is zero', async () => {
