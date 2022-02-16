@@ -463,7 +463,8 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+        // Can also claim through Facade
+        await expect(facade.claimAndSweepRewardsForAllTraders()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
