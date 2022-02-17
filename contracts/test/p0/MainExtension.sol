@@ -28,19 +28,20 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     }
 
     function issueInstantly(address account, uint256 amount) public {
-        uint256 start = rTokenAsset().erc20().balanceOf(account);
+        uint256 start = rToken().balanceOf(account);
         connect(account);
         issue(amount);
         RTokenExtension(address(rToken())).forceSlowIssuanceToComplete(account);
-        require(rTokenAsset().erc20().balanceOf(account) - start == amount, "issue failure");
+        require(rToken().balanceOf(account) - start == amount, "issue failure");
     }
 
     /// @return targets {ref/BU} The reference targets targeted per BU
     function basketRefTargets() external view returns (Fix[] memory targets) {
-        targets = new Fix[](basket.size);
-        for (uint256 i = 0; i < basket.size; i++) {
-            targets[i] = basket.refAmts[basket.collateral[i]];
-        }
+        // TODO
+        // targets = new Fix[](basket.collateral.length);
+        // for (uint256 i = 0; i < basket.collateral.length; i++) {
+        //     targets[i] = basket.refAmts[basket.collateral[i]];
+        // }
     }
 
     function STATE_revenueDistribution() external view returns (RevenueDestination[] memory dist) {
@@ -70,8 +71,8 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         ok = true;
         ok = ok && address(revenueFurnace()) != address(0);
         ok = ok && address(stRSR()) != address(0);
-        ok = ok && address(rTokenAsset()) != address(0);
-        ok = ok && address(rsrAsset()) != address(0);
+        ok = ok && address(rToken()) != address(0);
+        ok = ok && address(rsr()) != address(0);
         if (!ok) {
             console.log("INVARIANT_stateDefined violated");
         }
@@ -122,11 +123,12 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function INVARIANT_pricesDefined() internal view returns (bool ok) {
         ok = true;
-        for (uint256 i = 0; i < basket.size; i++) {
-            ok = ok && basket.collateral[i].price().gt(FIX_ZERO);
+        IAsset[] memory assets = allAssets();
+        for (uint256 i = 0; i < assets.length; i++) {
+            ok = ok && assets[i].price().gt(FIX_ZERO);
         }
-        ok = ok && rsrAsset().price().gt(FIX_ZERO);
-        ok = ok && rTokenAsset().price().gt(FIX_ZERO);
+        ok = ok && assetFor(rsr()).price().gt(FIX_ZERO);
+        ok = ok && assetFor(rToken()).price().gt(FIX_ZERO);
         if (!ok) {
             console.log("INVARIANT_pricesDefined violated");
         }

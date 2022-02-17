@@ -18,7 +18,6 @@ import "./SettingsHandler.sol";
  * @notice Claims rewards every reward cycle and leaves them in Main for Auctioneer to handle.
  */
 contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IRewardClaimer {
-    using BasketLib for Basket;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20;

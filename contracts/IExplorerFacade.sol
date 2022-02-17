@@ -16,6 +16,8 @@ interface IExplorerFacade {
 
     function doFurnaceMelting() external;
 
+    function checkForDefaultAndEnsureValidBasket() external;
+
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external view returns (uint256);
 

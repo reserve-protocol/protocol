@@ -175,21 +175,6 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         main = main_;
     }
 
-    // ==== Private ====
-
-    /// Returns the block number at which an issuance for *amount* now can complete
-    /// @param perBlock {qRTok/block} The uniform rate limit across the block
-    function nextIssuanceBlockAvailable(uint256 amount, Fix perBlock) private returns (Fix) {
-        Fix before = toFix(block.number - 1);
-        for (uint256 i = 0; i < accounts.length(); i++) {
-            SlowIssuance[] storage queue = issuances[accounts.at(i)];
-            if (queue.length > 0 && queue[queue.length - 1].blockAvailableAt.gt(before)) {
-                before = queue[queue.length - 1].blockAvailableAt;
-            }
-        }
-        return before.plus(divFix(amount, perBlock));
-    }
-
     /// Tries to vest an issuance
     /// @return issued The total amount of RToken minted
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
@@ -211,5 +196,18 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             iss.processed = true;
             emit IssuanceCompleted(issuer, index);
         }
+    }
+
+    /// Returns the block number at which an issuance for *amount* now can complete
+    /// @param perBlock {qRTok/block} The uniform rate limit across the block
+    function nextIssuanceBlockAvailable(uint256 amount, Fix perBlock) private view returns (Fix) {
+        Fix before = toFix(block.number - 1);
+        for (uint256 i = 0; i < accounts.length(); i++) {
+            SlowIssuance[] storage queue = issuances[accounts.at(i)];
+            if (queue.length > 0 && queue[queue.length - 1].blockAvailableAt.gt(before)) {
+                before = queue[queue.length - 1].blockAvailableAt;
+            }
+        }
+        return before.plus(divFix(amount, perBlock));
     }
 }

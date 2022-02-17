@@ -2,9 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/p0/libraries/Basket.sol";
 import "./IAsset.sol";
 import "./IClaimAdapter.sol";
 import "./IFurnace.sol";
@@ -54,7 +54,11 @@ struct ConstructorArgs {
     RevenueShare dist;
     IFurnace furnace;
     IMarket market;
+    IERC20Metadata rsr;
+    IStRSR stRSR;
+    IRToken rToken;
     IClaimAdapter[] claimAdapters;
+    IAsset[] assets;
 }
 
 enum AuctionStatus {
@@ -107,27 +111,21 @@ interface IPausable {
 interface IAssetRegistry {
     /// Emitted when an asset is added to the registry
     /// @param asset The asset contract added to the registry
-    event AssetAdded(IAsset indexed asset);
+    event AssetRegistered(IAsset indexed asset);
 
     /// Emitted when an asset is removed from the registry
     /// @param asset The asset contract removed from the registry
-    event AssetRemoved(IAsset indexed asset);
-    event AssetActivated(IAsset indexed asset);
-    event AssetDeactivated(IAsset indexed asset);
+    event AssetUnregistered(IAsset indexed asset);
 
-    function addAsset(IAsset asset) external returns (bool);
+    function registerAsset(IAsset asset) external returns (bool);
 
-    function removeAsset(IAsset asset) external returns (bool);
+    function swapRegisteredAsset(IAsset asset) external returns (bool swapped);
 
-    /// Activate `asset`; fails if its erc20 is not in the current basket
-    function activateAsset(IAsset asset) external returns (bool);
+    function unregisterAsset(IAsset asset) external returns (bool);
 
-    /// Deactive `asset`; fails if its erc20 is not in the current basket
-    function deactivateAsset(IAsset asset) external returns (bool);
+    function assetFor(IERC20Metadata erc20) external view returns (IAsset);
 
     function allAssets() external view returns (IAsset[] memory);
-
-    function activeAssets() external view returns (IAsset[] memory);
 }
 
 interface IRevenueDistributor {
@@ -163,8 +161,8 @@ interface ISettingsHandler {
     event DefaultThresholdSet(Fix indexed oldVal, Fix indexed newVal);
     event StRSRSet(IStRSR indexed oldVal, IStRSR indexed newVal);
     event RevenueFurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
-    event RTokenAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
-    event RSRAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
+    event RTokenSet(IRToken indexed oldVal, IRToken indexed newVal);
+    event RSRSet(IERC20Metadata indexed oldVal, IERC20Metadata indexed newVal);
     event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
 
     function setRewardStart(uint256 rewardStart) external;
@@ -191,9 +189,9 @@ interface ISettingsHandler {
 
     function setRevenueFurnace(IFurnace furnace) external;
 
-    function setRTokenAsset(IAsset rTokenAsset) external;
+    function setRToken(IRToken rToken) external;
 
-    function setRSRAsset(IAsset rsrAsset) external;
+    function setRSR(IERC20Metadata rsr) external;
 
     function setMarket(IMarket market) external;
 
@@ -223,53 +221,50 @@ interface ISettingsHandler {
 
     function revenueFurnace() external view returns (IFurnace);
 
-    function rTokenAsset() external view returns (IAsset);
-
-    function rsrAsset() external view returns (IAsset);
-
     function market() external view returns (IMarket);
 
-    /// @return The RToken deployment
     function rToken() external view returns (IRToken);
 
-    /// @return The RSR deployment
     function rsr() external view returns (IERC20Metadata);
 }
 
 interface IBasketHandler {
-    /// Emitted when the current vault is changed
-    /// @param collateral The list of collateral in the prime basket
-    /// @param targetAmts {target/BU} The amounts of target per basket unit
-    event PrimeBasketSet(ICollateral[] collateral, Fix[] targetAmts);
+    /// Emitted when the target basket is set
+    /// @param collateral The collateral for the target basket
+    /// @param targetAmts {target/BU} A list of quantities of target unit per basket unit
+    event TargetBasketSet(ICollateral[] collateral, Fix[] targetAmts);
+
+    /// Emitted when the reference basket is changed
+    /// @param collateral The list of collateral in the basket
+    /// @param refAmts {ref/BU} The reference amounts of the basket
+    event ReferenceBasketChanged(ICollateral[] collateral, Fix[] refAmts);
 
     /// Emitted when a backup config is set for a target unit
     /// @param targetName The name of the target unit as a bytes32
     /// @param maxCollateral The max number to use from `collateral`
     /// @param collateral The set of permissible collateral to use
-    event BackupConfigSet(
+    event TargetConfigured(
         bytes32 indexed targetName,
         uint256 indexed maxCollateral,
         ICollateral[] collateral
     );
 
-    /// Emitted when the current vault is changed
-    /// @param collateral The list of collateral in the basket
-    /// @param refAmts {ref/BU} The reference amounts of the basket
-    event BasketSet(ICollateral[] collateral, Fix[] refAmts);
-
-    /// Set the prime basket in the basket configuration.
+    /// Set the basket directly
     /// @param collateral The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    function setPrimeBasket(ICollateral[] memory collateral, Fix[] memory targetAmts) external;
+    function setTargetBasket(ICollateral[] memory collateral, Fix[] memory targetAmts) external;
 
-    /// Set the backup configuration for target unit `targetName`
-    /// @param maxCollateral The maximum number of backup tokens to use at once for `targetName`
-    /// @param collateral The preference-ordered list of collateral to consider backup tokens
-    function setBackupConfig(
+    /// Set a target configuration
+    /// @param targetName The maximum number of backup tokens to use at once for `targetName`
+    /// @param maxCollateral The maximum number of collateral tokens to use from this target
+    /// @param collateral A list of ordered backup collateral, not necessarily registered
+    function setTarget(
         bytes32 targetName,
         uint256 maxCollateral,
-        ICollateral[] memory collateral
+        ICollateral[] calldata collateral
     ) external;
+
+    function forceCollateralUpdates() external;
 
     function ensureValidBasket() external;
 
@@ -281,7 +276,6 @@ interface IBasketHandler {
 
     function blockBasketLastChanged() external view returns (uint256);
 
-    /// @return p {UoA} An estimate at the total value of all assets held, in the unit of account
     function totalAssetValue() external view returns (Fix p);
 }
 
