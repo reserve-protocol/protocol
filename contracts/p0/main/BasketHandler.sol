@@ -12,10 +12,11 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
 
 struct Target {
-    Fix amt; // {target/BU}
+    Fix targetAmt; // {target/BU}
     uint256 maxCollateral; // Maximum number of collateral (from this target) to use in a basket
     ICollateral[] collateral; // Ordered list of potential collateral, not necessarily registered
-    /// Not all backup collateral needs to be registered with the registry. It will be skipped
+    // Not all backup collateral needs to be registered with the registry. It will be skipped
+    mapping(ICollateral => Fix) maxWeights; // {target/BU} Maximum weight per collateral
 }
 
 /// What the RToken is trying to track and strategies for accomplishing that, at a high-level
@@ -29,7 +30,7 @@ struct ReferenceBasket {
     // Invariant: all reference basket collateral must be registered with the registry
     ICollateral[] collateral;
     mapping(ICollateral => Fix) refAmts; // {ref/BU}
-    uint256 blockLastChanged; // block number
+    uint256 blockLastSet; // block number
 }
 
 /**
@@ -74,7 +75,8 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
     }
 
     /// Set the target basket and set the reference basket to the supplied args
-    /// Overrides all Targets
+    /// Overrides all Targets that were previously set
+    /// At the end of this function the reference basket collateral should equal `collateral`
     /// @param collateral The collateral for the new basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new basket
     function setTargetBasket(ICollateral[] memory collateral, Fix[] memory targetAmts)
@@ -94,26 +96,29 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
         // Add collateral to basket and config
         for (uint256 i = 0; i < collateral.length; i++) {
             ICollateral c = collateral[i];
+            c.forceUpdates();
+            require(c.status() == CollateralStatus.SOUND, "only sound collateral");
+
             config.targetNames.add(c.targetName());
             _registerAssetIgnoringCollisions(c);
 
             Target storage target = config.targets[c.targetName()];
-            target.amt = target.amt.plus(targetAmts[i]);
+            target.targetAmt = target.targetAmt.plus(targetAmts[i]);
             target.collateral.push(c);
+            target.maxWeights[c] = targetAmts[i];
             target.maxCollateral = target.collateral.length;
         }
 
         emit TargetBasketSet(collateral, targetAmts);
-        deriveReferenceBasket();
+        require(deriveReferenceBasket(), "cannot derive valid basket");
 
         // Post-checks
         assert(basket.collateral.length == collateral.length);
-        assert(basket.blockLastChanged == block.number);
-        for (uint256 i = 0; i < basket.collateral.length; i++) {
-            assert(basket.collateral[i] == collateral[i]);
-
-            Fix expTargetAmt = basket.refAmts[collateral[i]].mul(collateral[i].targetPerRef());
-            assert(expTargetAmt.eq(targetAmts[i])); // this check may not be correct (rounding)
+        assert(basket.blockLastSet == block.number);
+        for (uint256 i = 0; i < collateral.length; i++) {
+            ICollateral c = collateral[i];
+            assert(basket.collateral[i] == c);
+            assert(config.targets[c.targetName()].maxWeights[c].eq(targetAmts[i]));
         }
     }
 
@@ -121,15 +126,21 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
     /// @param targetName The maximum number of backup tokens to use at once for `targetName`
     /// @param maxCollateral The maximum number of collateral tokens to use from this target
     /// @param collateral A list of ordered backup collateral, not necessarily registered
+    /// @param maxWeights The corresponding maximum weights per basket unit, for each collateral
     function setTarget(
         bytes32 targetName,
         uint256 maxCollateral,
-        ICollateral[] calldata collateral
+        ICollateral[] calldata collateral,
+        Fix[] calldata maxWeights
     ) external override onlyOwner {
+        require(collateral.length == maxWeights.length, "provide weights for each collateral");
         config.targetNames.add(targetName);
         config.targets[targetName].maxCollateral;
         config.targets[targetName].collateral = collateral;
-        emit TargetConfigured(targetName, maxCollateral, collateral);
+        for (uint256 i = 0; i < collateral.length; i++) {
+            config.targets[targetName].maxWeights[collateral[i]] = maxWeights[i];
+        }
+        emit TargetConfigured(targetName, maxCollateral, collateral, maxWeights);
     }
 
     /// @return true if we registered a change in the underlying reference basket
@@ -143,13 +154,13 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
     }
 
     function blockBasketLastChanged() public view override returns (uint256) {
-        return basket.blockLastChanged;
+        return basket.blockLastSet;
     }
 
     /// @return status The maximum CollateralStatus among basket collateral
     function worstCollateralStatus() public view override returns (CollateralStatus status) {
         for (uint256 i = 0; i < basket.collateral.length; i++) {
-            if (!isGoodCollateral(basket.collateral[i])) {
+            if (!isSafeCollateral(basket.collateral[i])) {
                 return CollateralStatus.DISABLED;
             }
             if (uint256(basket.collateral[i].status()) > uint256(status)) {
@@ -234,91 +245,60 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
         }
     }
 
-    // Effectively a local variable to deriveReferenceBasket
-    EnumerableSet.AddressSet private _collateral;
-
     /// Select and save the next reference basket from the target basket
-    /// @return changed If the reference basket was changed
-    function deriveReferenceBasket() private returns (bool changed) {
-        // Clear _collateral set
-        while (_collateral.length() > 0) {
-            _collateral.remove(_collateral.at(0));
-        }
-
-        // Here, "good" collateral is non-defaulted collateral; any status other than DISABLED
-        // goodWeights is in index-correspondence with config.targetNames
+    /// @return If the current reference basket is aligned with the target basket
+    function deriveReferenceBasket() private returns (bool) {
+        delete basket;
 
         // {target/BU} total weights of good collateral
         Fix[] memory goodWeights = new Fix[](config.targetNames.length());
 
-        // For each basket collateral:
-        for (uint256 i = 0; i < basket.collateral.length; i++) {
-            ICollateral coll = basket.collateral[i];
-
-            if (isGoodCollateral(coll)) {
-                // Find coll's targetName index
-                uint256 index;
-                for (index = 0; index < config.targetNames.length(); index++) {
-                    if (config.targetNames.at(index) == coll.targetName()) break;
-                }
-                assert(index < config.targetNames.length());
-
-                Fix equivalentWeight = basket.refAmts[coll].mul(coll.targetPerRef());
-                goodWeights[index] = goodWeights[index].plus(equivalentWeight);
-                _collateral.add(address(coll));
-            }
-        }
-
-        // For each target i, if we still need more weight for target i then try to add the backup
-        // basket for target i to make up that weight:
+        // For each target i, greedily construct baskets by pulling from backup collateral
         for (uint256 i = 0; i < config.targetNames.length(); i++) {
             Target storage target = config.targets[config.targetNames.at(i)];
-            if (target.amt.lte(goodWeights[i])) continue; // Don't need backup weight
-            changed = true;
 
             uint256 size = 0; // backup basket size
-            // Find the backup basket size: max(1, maxCollateral, # of good backup collateral)
-            for (uint256 j = 0; j < target.collateral.length; j++) {
-                if (isGoodCollateral(target.collateral[j])) {
+            for (uint256 j = 0; j < target.collateral.length && size < target.maxCollateral; j++) {
+                ICollateral c = target.collateral[j];
+
+                // Populate basket greedily from backup collateral
+                if (isSafeCollateral(c) && target.maxWeights[c].gt(FIX_ZERO)) {
+                    Fix weightMissing = target.targetAmt.minus(goodWeights[i]);
+                    Fix weightToUse = fixMin(target.maxWeights[c], weightMissing);
+                    goodWeights[i] = goodWeights[i].plus(weightToUse);
+
+                    basket.collateral.push(c);
+                    basket.refAmts[c] = weightToUse.div(c.targetPerRef());
                     size++;
-                    if (size >= target.maxCollateral) break;
                 }
             }
+
+            if (target.targetAmt.lte(goodWeights[i])) continue; // Target met
 
             // If there's no good target collateral left, do not set the basket
             // The protocol will stay issuance-paused until governance acts
             if (size == 0) return false;
 
-            // Set target basket weights
-            uint256 assigned = 0;
-            for (uint256 j = 0; j < target.collateral.length && assigned < size; j++) {
-                ICollateral coll = target.collateral[j];
-                if (isGoodCollateral(coll)) {
-                    _collateral.add(address(coll));
-
-                    Fix refToAdd = target.amt.minus(goodWeights[i]).divu(size);
-                    basket.refAmts[coll] = basket.refAmts[coll].plus(refToAdd);
-                    assigned++;
-                }
+            // Otherwise, multiply the already-included collateral weights by a scalar
+            Fix scalar = target.targetAmt.div(goodWeights[i]);
+            for (uint256 j = 0; j < size; j++) {
+                ICollateral c = basket.collateral[j];
+                basket.refAmts[c] = basket.refAmts[c].mul(scalar);
             }
         }
 
-        if (changed) {
-            // Keep records, emit event
-            address[] memory collateralAddrs = _collateral.values();
-            ICollateral[] memory collateral = new ICollateral[](collateralAddrs.length);
-            Fix[] memory refAmts = new Fix[](collateral.length);
-            for (uint256 i = 0; i < collateral.length; i++) {
-                collateral[i] = ICollateral(collateralAddrs[i]);
-                refAmts[i] = basket.refAmts[collateral[i]];
-            }
-            emit ReferenceBasketChanged(collateral, refAmts);
-            basket.blockLastChanged = block.number;
+        // Keep records, emit event
+        Fix[] memory refAmts = new Fix[](basket.collateral.length);
+        for (uint256 i = 0; i < refAmts.length; i++) {
+            refAmts[i] = basket.refAmts[basket.collateral[i]];
         }
-        return changed;
+        emit ReferenceBasketSet(basket.collateral, refAmts);
+        basket.blockLastSet = block.number;
+        return true;
     }
 
-    function isGoodCollateral(ICollateral coll) private view returns (bool) {
+    /// A collateral is "good" if it is both registered and not defaulted
+    function isSafeCollateral(ICollateral coll) private view returns (bool) {
         return isRegistered(coll) && coll.status() != CollateralStatus.DISABLED;
     }
 }

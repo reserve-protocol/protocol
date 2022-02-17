@@ -234,19 +234,21 @@ interface IBasketHandler {
     /// @param targetAmts {target/BU} A list of quantities of target unit per basket unit
     event TargetBasketSet(ICollateral[] collateral, Fix[] targetAmts);
 
-    /// Emitted when the reference basket is changed
+    /// Emitted when the reference basket is freshly derived from the target basket
     /// @param collateral The list of collateral in the basket
     /// @param refAmts {ref/BU} The reference amounts of the basket
-    event ReferenceBasketChanged(ICollateral[] collateral, Fix[] refAmts);
+    event ReferenceBasketSet(ICollateral[] collateral, Fix[] refAmts);
 
     /// Emitted when a backup config is set for a target unit
     /// @param targetName The name of the target unit as a bytes32
     /// @param maxCollateral The max number to use from `collateral`
     /// @param collateral The set of permissible collateral to use
+    /// @param maxWeights The max weights for each collateral
     event TargetConfigured(
         bytes32 indexed targetName,
         uint256 indexed maxCollateral,
-        ICollateral[] collateral
+        ICollateral[] collateral,
+        Fix[] maxWeights
     );
 
     /// Set the basket directly
@@ -258,10 +260,12 @@ interface IBasketHandler {
     /// @param targetName The maximum number of backup tokens to use at once for `targetName`
     /// @param maxCollateral The maximum number of collateral tokens to use from this target
     /// @param collateral A list of ordered backup collateral, not necessarily registered
+    /// @param maxWeights The corresponding maximum weights per basket unit, for each collateral
     function setTarget(
         bytes32 targetName,
         uint256 maxCollateral,
-        ICollateral[] calldata collateral
+        ICollateral[] calldata collateral,
+        Fix[] calldata maxWeights
     ) external;
 
     function forceCollateralUpdates() external;
