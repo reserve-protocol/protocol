@@ -47,10 +47,10 @@ interface IStRSR is IERC20Receiver, IERC20Permit, IERC20 {
         uint256 indexed rsrAmount
     );
 
-    /// Emitted when dividend RSR is added to the pool
-    /// @param from The address that sent the dividend RSR
-    /// @param amount {qRSR} The quantity of RSR added
-    event RSRAdded(address indexed from, uint256 indexed amount);
+    /// Emitted when dividend RSR is applied to the staking pool
+    /// @param amount {qRSR} The amount of RSR rewarded to the staking pool
+    /// @param numPeriods How many reward periods were paid out at once
+    event RSRRewarded(uint256 indexed amount, uint256 indexed numPeriods);
 
     /// Emitted when insurance RSR is seized from the pool
     /// @param from The address that seized the staked RSR (should only be the AssetManager)

@@ -19,7 +19,7 @@ import "contracts/libraries/Fixed.sol";
  * @notice The StRSR is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken.
  *
- * There's an important assymetry in the StRSR. When RSR is added, it must be split only
+ * There's an important assymetry in the StRSR. When RSR is 3added, it must be split only
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both
  * balances that are in the process of being withdrawn and those that are not.
  */
@@ -63,6 +63,9 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     // {qRSR} How much RSR is allocated to backing currently-staked balances
     uint256 internal rsrBacking;
 
+    // {seconds} The last time stRSR paid out rewards to stakers
+    uint256 internal payoutLastPaid;
+
     // The momentary stake/unstake rate is rsrBacking/totalStaked {RSR/stRSR}
     // That rate is locked in when slow unstaking *begins*
 
@@ -86,6 +89,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         _name = name_;
         _symbol = symbol_;
         _transferOwnership(owner_);
+        payoutLastPaid = main.rewardStart();
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
@@ -99,6 +103,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         if (main.fullyCapitalized() && main.worstCollateralStatus() == CollateralStatus.SOUND) {
             _processWithdrawals(account);
         }
+        _payoutRewards();
 
         main.rsr().safeTransferFrom(account, address(this), rsrAmount);
         uint256 stakeAmount = (rsrAmount * totalStaked) / (rsrBacking > 0 ? rsrBacking : 1);
@@ -108,7 +113,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         balances[account] += stakeAmount;
         totalStaked += stakeAmount;
 
-        // Add RSR to backing
+        // Move deposited RSR to backing
         rsrBacking += rsrAmount;
 
         emit Staked(account, rsrAmount, stakeAmount);
@@ -126,6 +131,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
 
         // Process pending withdrawals
         _processWithdrawals(account);
+        _payoutRewards();
 
         uint256 rsrAmount = (stakeAmount * rsrBacking) / totalStaked;
 
@@ -134,7 +140,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         if (balances[account] == 0) accounts.remove(account);
         totalStaked -= stakeAmount;
 
-        // Remove RSR from backing
+        // Move RSR from backing to withdrawal-queue balance
         rsrBacking -= rsrAmount;
 
         // Create the corresponding withdrawal ticket
@@ -158,16 +164,8 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
 
     function notifyOfDeposit(IERC20 erc20) external override {
         require(erc20 == main.rsr(), "RSR dividends only");
-        uint256 balance = main.rsr().balanceOf(address(this));
-        uint256 added = balance - rsrBacking - rsrBeingWithdrawn();
+        // TODO: this is pretty optional here; maybe this function's just a no-op
         _payoutRewards();
-        emit RSRAdded(_msgSender(), added);
-    }
-
-    function _payoutRewards() private {
-        uint256 balance = main.rsr().balanceOf(address(this));
-        // TODO: smooth these rewards
-        rsrBacking = balance - rsrBacking - rsrBeingWithdrawn();
     }
 
     /// @param rsrAmount {qRSR}
@@ -179,8 +177,6 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         require(rsrAmount > 0, "Amount cannot be zero");
 
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
-        // Size of pending rewards pool
-        uint256 rsrRewards = rsrBalance - rsrBacking - rsrBeingWithdrawn();
 
         if (rsrBalance <= rsrAmount) {
             // Everyone's wiped out! Doom! Mayhem!
@@ -210,7 +206,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
             }
 
             // Removing from unpaid rewards is implicit
-            uint256 rewardsToTake = (rsrRewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+            uint256 rewardsToTake = (rsrRewards() * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             seizedRSR += rewardsToTake;
 
             assert(rsrAmount <= seizedRSR);
@@ -226,7 +222,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         main = main_;
     }
 
-    // ERC20 Interface
+    // ==== ERC20 Interface ====
     function name() public view returns (string memory) {
         return _name;
     }
@@ -300,6 +296,9 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         emit Approval(owner_, spender, amount);
     }
 
+    // ==== end ERC20 Interface ====
+
+    // ==== Internal Functions ====
     /// @return total {qRSR} Total amount of qRSR being withdrawn
     function rsrBeingWithdrawn() internal view returns (uint256 total) {
         for (uint256 i = 0; i < accounts.length(); i++) {
@@ -309,7 +308,32 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         }
     }
 
-    function _processWithdrawals(address account) private {
+    /// @return {qRSR} The balance of RSR that this contract owns dedicated to future RSR rewards.
+    function rsrRewards() internal view returns (uint256) {
+        return main.rsr().balanceOf(address(this)) - rsrBacking - rsrBeingWithdrawn();
+    }
+
+    /// Assign reward payouts to the staker pool
+    /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
+    /// value of rsrRewards()
+    function _payoutRewards() internal {
+        uint256 period = main.stRSRPayPeriod();
+        if (block.timestamp < payoutLastPaid + period) return;
+
+        uint256 numPeriods = (block.timestamp - payoutLastPaid) / period;
+
+        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
+        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(main.stRSRPayRatio()).powu(numPeriods));
+        uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
+
+        // Apply payout to RSR backing
+        rsrBacking += payout;
+        payoutLastPaid += numPeriods * period;
+
+        emit RSRRewarded(payout, numPeriods);
+    }
+
+    function _processWithdrawals(address account) internal {
         // Process all pending withdrawals for the account
         Withdrawal[] storage withdrawalQ = withdrawals[account];
 
@@ -321,6 +345,8 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
             }
         }
     }
+
+    // ==== end Internal Functions ====
 
     // === ERC20Permit ====
 
@@ -363,4 +389,6 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         current = nonce.current();
         nonce.increment();
     }
+
+    // ==== End ERC20Permit ====
 }

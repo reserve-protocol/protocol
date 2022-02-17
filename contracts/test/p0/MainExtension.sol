@@ -78,17 +78,23 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     }
 
     function INVARIANT_configurationValid() internal view returns (bool ok) {
-        ok = rewardStart() > 0
-            && rewardPeriod() > 0
-            && auctionPeriod() > 0
-            && stRSRPayPeriod() > 0
-            && stRSRWithdrawalDelay() > 0
-            && defaultDelay() > 0
-            && maxTradeSlippage().gte(FIX_ZERO) && maxTradeSlippage().lte(FIX_ONE)
-            && maxAuctionSize().gte(FIX_ZERO) && maxAuctionSize().lte(FIX_ONE)
-            && issuanceRate().gte(FIX_ZERO) && issuanceRate().lte(FIX_ONE)
-            && defaultThreshold().gte(FIX_ZERO) && defaultThreshold().lte(FIX_ONE)
-            && stRSRPayRatio().gte(FIX_ZERO) && stRSRPayRatio().lte(FIX_ONE);
+        ok =
+            rewardStart() > 0 &&
+            rewardPeriod() > 0 &&
+            auctionPeriod() > 0 &&
+            stRSRPayPeriod() > 0 &&
+            stRSRWithdrawalDelay() > 0 &&
+            defaultDelay() > 0 &&
+            maxTradeSlippage().gte(FIX_ZERO) &&
+            maxTradeSlippage().lte(FIX_ONE) &&
+            maxAuctionSize().gte(FIX_ZERO) &&
+            maxAuctionSize().lte(FIX_ONE) &&
+            issuanceRate().gte(FIX_ZERO) &&
+            issuanceRate().lte(FIX_ONE) &&
+            defaultThreshold().gte(FIX_ZERO) &&
+            defaultThreshold().lte(FIX_ONE) &&
+            stRSRPayRatio().gte(FIX_ZERO) &&
+            stRSRPayRatio().lte(FIX_ONE);
         if (!ok) console.log("INVARIANT_configurationValid violated");
     }
 
