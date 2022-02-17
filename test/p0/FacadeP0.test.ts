@@ -2,15 +2,15 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
 import { bn, fp } from '../../common/numbers'
-import { CTokenMock } from '../../typechain/CTokenMock'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { ExplorerFacadeP0 } from '../../typechain/ExplorerFacadeP0'
-import { MainP0 } from '../../typechain/MainP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { USDCMock } from '../../typechain/USDCMock'
+import {
+  CTokenMock,
+  ERC20Mock,
+  ExplorerFacadeP0,
+  MainP0,
+  StaticATokenMock,
+  USDCMock,
+} from '../../typechain'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -21,21 +21,13 @@ describe('ExplorerFacadeP0 contract', () => {
   let addr2: SignerWithAddress
   let other: SignerWithAddress
 
-  //  Collateral
-  let collateral: Collateral[]
-
   // Tokens
   let initialBal: BigNumber
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
   let cToken: CTokenMock
-  let rToken: RTokenP0
-  let rsr: ERC20Mock
-  let compToken: ERC20Mock
-  let aaveToken: ERC20Mock
   let basket: Collateral[]
-  let basketsNeededAmts: BigNumber[]
 
   // Assets
   let tokenAsset: Collateral
@@ -61,14 +53,11 @@ describe('ExplorerFacadeP0 contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ rsr, compToken, aaveToken, collateral, rToken, basket, basketsNeededAmts, facade, main } =
-      await loadFixture(defaultFixture))
+    ;({ basket, facade, main } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
-    tokenAsset = basket[0]
-    usdcAsset = basket[1]
-    aTokenAsset = basket[2]
-    cTokenAsset = basket[3]
+    ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
+
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
     aToken = <StaticATokenMock>(

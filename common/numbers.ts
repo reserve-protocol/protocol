@@ -1,7 +1,5 @@
 import { BigNumber, BigNumberish } from 'ethers'
-import { ethers } from 'hardhat'
-
-import { BN_SCALE_FACTOR, SCALE_DECIMALS } from './constants'
+import { SCALE_DECIMALS } from './constants'
 
 export const ZERO = BigNumber.from(0)
 
