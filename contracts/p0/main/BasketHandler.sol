@@ -7,7 +7,6 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/main/AssetRegistry.sol";
-import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
@@ -37,14 +36,7 @@ struct ReferenceBasket {
  * @title BasketHandler
  * @notice Handles the basket configuration, definition, and evolution over time.
  */
-contract BasketHandlerP0 is
-    Pausable,
-    Mixin,
-    AssetRegistryP0,
-    SettingsHandlerP0,
-    RevenueDistributorP0,
-    IBasketHandler
-{
+contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0, IBasketHandler {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using FixLib for Fix;
@@ -59,7 +51,7 @@ contract BasketHandlerP0 is
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, AssetRegistryP0, SettingsHandlerP0, RevenueDistributorP0)
+        override(Mixin, SettingsHandlerP0, AssetRegistryP0)
     {
         super.init(args);
     }

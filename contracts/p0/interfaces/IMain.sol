@@ -108,46 +108,6 @@ interface IPausable {
     function setPauser(address pauser_) external;
 }
 
-interface IAssetRegistry {
-    /// Emitted when an asset is added to the registry
-    /// @param asset The asset contract added to the registry
-    event AssetRegistered(IAsset indexed asset);
-
-    /// Emitted when an asset is removed from the registry
-    /// @param asset The asset contract removed from the registry
-    event AssetUnregistered(IAsset indexed asset);
-
-    function registerAsset(IAsset asset) external returns (bool);
-
-    function swapRegisteredAsset(IAsset asset) external returns (bool swapped);
-
-    function unregisterAsset(IAsset asset) external returns (bool);
-
-    function assetFor(IERC20Metadata erc20) external view returns (IAsset);
-
-    function allAssets() external view returns (IAsset[] memory);
-}
-
-interface IRevenueDistributor {
-    /// Emitted when a distribution is set
-    /// @param dest The address set to receive the distribution
-    /// @param rTokenDist The distribution of RToken that should go to `dest`
-    /// @param rsrDist The distribution of RSR that should go to `dest`
-    event DistributionSet(address dest, uint16 rTokenDist, uint16 rsrDist);
-
-    function setDistribution(address dest, RevenueShare memory share) external;
-
-    function distribute(
-        IERC20 erc20,
-        address from,
-        uint256 amount
-    ) external;
-
-    function rsrCut() external view returns (uint256 rsrShares, uint256 totalShares);
-
-    function rTokenCut() external view returns (uint256 rtokenShares, uint256 totalShares);
-}
-
 interface ISettingsHandler {
     event RewardStartSet(uint256 indexed oldVal, uint256 indexed newVal);
     event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
@@ -226,6 +186,46 @@ interface ISettingsHandler {
     function rToken() external view returns (IRToken);
 
     function rsr() external view returns (IERC20Metadata);
+}
+
+interface IRevenueDistributor {
+    /// Emitted when a distribution is set
+    /// @param dest The address set to receive the distribution
+    /// @param rTokenDist The distribution of RToken that should go to `dest`
+    /// @param rsrDist The distribution of RSR that should go to `dest`
+    event DistributionSet(address dest, uint16 rTokenDist, uint16 rsrDist);
+
+    function setDistribution(address dest, RevenueShare memory share) external;
+
+    function distribute(
+        IERC20 erc20,
+        address from,
+        uint256 amount
+    ) external;
+
+    function rsrCut() external view returns (uint256 rsrShares, uint256 totalShares);
+
+    function rTokenCut() external view returns (uint256 rtokenShares, uint256 totalShares);
+}
+
+interface IAssetRegistry {
+    /// Emitted when an asset is added to the registry
+    /// @param asset The asset contract added to the registry
+    event AssetRegistered(IAsset indexed asset);
+
+    /// Emitted when an asset is removed from the registry
+    /// @param asset The asset contract removed from the registry
+    event AssetUnregistered(IAsset indexed asset);
+
+    function registerAsset(IAsset asset) external returns (bool);
+
+    function swapRegisteredAsset(IAsset asset) external returns (bool swapped);
+
+    function unregisterAsset(IAsset asset) external returns (bool);
+
+    function assetFor(IERC20Metadata erc20) external view returns (IAsset);
+
+    function allAssets() external view returns (IAsset[] memory);
 }
 
 interface IBasketHandler {
@@ -340,9 +340,9 @@ interface IRTokenIssuer {
 interface IMain is
     IPausable,
     IMixin,
-    IAssetRegistry,
     ISettingsHandler,
     IRevenueDistributor,
+    IAssetRegistry,
     IBasketHandler,
     IAuctioneer,
     IRewardClaimer,

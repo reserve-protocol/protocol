@@ -9,6 +9,7 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/main/AssetRegistry.sol";
 import "contracts/p0/main/BasketHandler.sol";
+import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/Trader.sol";
 import "contracts/p0/RevenueTrader.sol";
@@ -26,8 +27,9 @@ import "./BasketHandler.sol";
 contract AuctioneerP0 is
     Pausable,
     Mixin,
-    AssetRegistryP0,
     SettingsHandlerP0,
+    RevenueDistributorP0,
+    AssetRegistryP0,
     BasketHandlerP0,
     TraderP0,
     IAuctioneer
@@ -42,7 +44,7 @@ contract AuctioneerP0 is
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, AssetRegistryP0, SettingsHandlerP0, BasketHandlerP0)
+        override(Mixin, SettingsHandlerP0, RevenueDistributorP0, AssetRegistryP0, BasketHandlerP0)
     {
         super.init(args);
         initTrader(address(this));
