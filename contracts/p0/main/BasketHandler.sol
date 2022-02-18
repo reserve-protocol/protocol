@@ -258,7 +258,13 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
             Target storage target = targetBasket.targets[targetBasket.names.at(i)];
 
             uint256 size = 0; // backup basket size
-            for (uint256 j = 0; j < target.collateral.length && size < target.maxCollateral; j++) {
+            for (
+                uint256 j = 0;
+                j < target.collateral.length &&
+                    size < target.maxCollateral &&
+                    target.amt.gt(goodWeights[i]);
+                j++
+            ) {
                 ICollateral c = target.collateral[j];
 
                 // Populate basket greedily from backup collateral
