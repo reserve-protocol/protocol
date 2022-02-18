@@ -31,7 +31,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     Fix private _maxTradeSlippage;
     Fix private _maxAuctionSize;
-    Fix private _minAuctionSize;
+    Fix private _minRevenueAuctionSize;
     Fix private _issuanceRate;
     Fix private _defaultThreshold;
 
@@ -55,7 +55,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
         _maxTradeSlippage = args.config.maxTradeSlippage;
         _maxAuctionSize = args.config.maxAuctionSize;
-        _minAuctionSize = args.config.minAuctionSize;
+        _minRevenueAuctionSize = args.config.minRevenueAuctionSize;
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
     }
@@ -162,13 +162,13 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         return _maxAuctionSize;
     }
 
-    function setMinAuctionSize(Fix minAuctionSize_) external override onlyOwner {
-        emit MinAuctionSizeSet(_minAuctionSize, minAuctionSize_);
-        _minAuctionSize = minAuctionSize_;
+    function setMinRevenueAuctionSize(Fix minRevenueAuctionSize_) external override onlyOwner {
+        emit MinRevenueAuctionSizeSet(_minRevenueAuctionSize, minRevenueAuctionSize_);
+        _minRevenueAuctionSize = minRevenueAuctionSize_;
     }
 
-    function minAuctionSize() public view override returns (Fix) {
-        return _minAuctionSize;
+    function minRevenueAuctionSize() public view override returns (Fix) {
+        return _minRevenueAuctionSize;
     }
 
     function setIssuanceRate(Fix issuanceRate_) external override onlyOwner {

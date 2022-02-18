@@ -179,7 +179,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
     /// Returns the block number at which an issuance for *amount* now can complete
     /// @param perBlock {qRTok/block} The uniform rate limit across the block
-    function nextIssuanceBlockAvailable(uint256 amount, Fix perBlock) private returns (Fix) {
+    function nextIssuanceBlockAvailable(uint256 amount, Fix perBlock) private view returns (Fix) {
         Fix before = toFix(block.number - 1);
         for (uint256 i = 0; i < accounts.length(); i++) {
             SlowIssuance[] storage queue = issuances[accounts.at(i)];

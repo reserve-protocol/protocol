@@ -561,7 +561,7 @@ describe('MainP0 contract', () => {
         // Advance time till auction ended
         await advanceTime(config.auctionPeriod.add(100).toString())
 
-        // End current auction, should  not start a new one to sell RSR for collateral
+        // End current auction, should start a new one to sell RSR for collateral
         // Only 1e18 Tokens left to buy - Sets Buy amount as independent value
         let buyAmtBidRSR: BigNumber = sellAmt.sub(minBuyAmt)
         let sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')) // Due to trade slippage 1% - Calculation to match Solidity

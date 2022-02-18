@@ -51,7 +51,7 @@ contract AuctioneerP0 is
         rTokenTrader = new RevenueTraderP0(address(this), rTokenAsset());
     }
 
-    function doRecapitalizationAuctions() external override notPaused {
+    function manageFunds() external override notPaused {
         closeDueAuctions();
 
         if (hasOpenAuctions()) return;
@@ -85,7 +85,10 @@ contract AuctioneerP0 is
             needed = held;
         }
 
-        // Handout excess assets, including any RToken that was just minted
+        // Keep a small surplus of individual collateral
+        needed = needed.mul(FIX_ONE.plus(main.minRevenueAuctionSize()));
+
+        // Handout excess assets above what is needed, including any newly minted RToken
         for (uint256 i = 0; i < _assets.length(); i++) {
             IAsset a = IAsset(_assets.at(i));
             uint256 bal = a.erc20().balanceOf(address(this));
@@ -93,7 +96,7 @@ contract AuctioneerP0 is
             if (a.isCollateral()) {
                 ICollateral c = ICollateral(_assets.at(i));
                 // {qTok} = {BU} * {qTok/BU}
-                excess -= needed.mul(basket.quantity(c)).ceil();
+                excess -= Math.min(excess, needed.mul(basket.quantity(c)).ceil());
             }
 
             if (excess > 0) {

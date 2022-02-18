@@ -22,9 +22,9 @@ contract ExplorerFacadeP0 is IExplorerFacade {
     }
 
     function runAuctionsForAllTraders() external override {
-        main.doRecapitalizationAuctions();
-        main.rsrTrader().doAuctions();
-        main.rTokenTrader().doAuctions();
+        main.manageFunds();
+        main.rsrTrader().manageFunds();
+        main.rTokenTrader().manageFunds();
     }
 
     function claimAndSweepRewardsForAllTraders() external override {
