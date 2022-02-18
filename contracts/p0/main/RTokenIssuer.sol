@@ -36,6 +36,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
     function issue(uint256 amount) public override notPaused returns (uint256[] memory deposits) {
         require(amount > 0, "Cannot issue zero");
         revenueFurnace().melt();
+        forceCollateralUpdates();
         ensureValidBasket();
         require(worstCollateralStatus() == CollateralStatus.SOUND, "collateral not sound");
 
@@ -68,6 +69,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         require(amount > 0, "Cannot redeem zero");
         require(rToken().balanceOf(_msgSender()) >= amount, "not enough RToken");
         revenueFurnace().melt();
+        // intentional: no forceCollateralUpdates() or ensureValidBasket()
 
         // {BU} = {BU} * {qRTok} / {qRTok}
         Fix baskets = rToken().basketsNeeded().mulu(amount).divuRound(rToken().totalSupply());

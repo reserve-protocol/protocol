@@ -75,7 +75,7 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
     }
 
     /// @return The timestamp of the next rewards event
-    function nextRewards() public view override returns (uint256) {
+    function nextRewards() public view returns (uint256) {
         (, uint256 next) = whenRewards(block.timestamp);
         return next;
     }

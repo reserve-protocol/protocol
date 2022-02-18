@@ -20,7 +20,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
-    // Dependencies
+    // Contracts
     IFurnace private _revenueFurnace;
     IMarket private _market;
     IERC20Metadata private _rsr;
@@ -97,6 +97,15 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     function rsr() public view override returns (IERC20Metadata) {
         return _rsr;
+    }
+
+    function setMarket(IMarket market_) external override onlyOwner {
+        emit MarketSet(_market, market_);
+        _market = market_;
+    }
+
+    function market() external view override returns (IMarket) {
+        return _market;
     }
 
     function setRewardStart(uint256 rewardStart_) external override onlyOwner {
@@ -187,14 +196,5 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     function defaultThreshold() public view override returns (Fix) {
         return _defaultThreshold;
-    }
-
-    function setMarket(IMarket market_) external override onlyOwner {
-        emit MarketSet(_market, market_);
-        _market = market_;
-    }
-
-    function market() external view override returns (IMarket) {
-        return _market;
     }
 }

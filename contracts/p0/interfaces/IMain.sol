@@ -307,8 +307,6 @@ interface IRewardClaimer is IRewardClaimerEvents {
     function isTrustedClaimAdapter(IClaimAdapter claimAdapter_) external view returns (bool);
 
     function claimAdapters() external view returns (IClaimAdapter[] memory adapters);
-
-    function nextRewards() external view returns (uint256);
 }
 
 interface IRTokenIssuer {
