@@ -11,26 +11,6 @@ import "contracts/p0/interfaces/IMain.sol";
  * @dev The p0-specific IRToken
  */
 interface IRToken is IERC20Metadata, IERC20Permit {
-    /// Tracks data for a SlowIssuance
-    /// @param issuer The account issuing RToken
-    /// @param amount {qTok} The quantity of RToken the issuance is for
-    /// @param baskets {BU} The basket unit-equivalent of the collateral deposits
-    /// @param erc20s The collateral token addresses corresponding to the deposit
-    /// @param deposits {qTok} The collateral token quantities that paid for the issuance
-    /// @param blockStartedAt {blockNumber} The block number when issuance started, not fractional
-    /// @param blockAvailableAt {blockNumber} The block number when issuance completes, fractional
-    /// @param processed false when the issuance is still vesting
-    struct SlowIssuance {
-        address issuer;
-        uint256 amount; // {qRTok}
-        Fix baskets; // {BU}
-        address[] erc20s;
-        uint256[] deposits; // {qTok}, same index as vault basket assets
-        uint256 blockStartedAt; // {block.number} not fractional
-        Fix blockAvailableAt; // {block.number} fractional
-        bool processed;
-    }
-
     /// Emitted when issuance is started, at the point collateral is taken in
     /// @param issuer The account performing the issuance
     /// @param index The index off the issuance in the issuer's queue
