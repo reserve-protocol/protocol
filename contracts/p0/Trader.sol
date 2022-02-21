@@ -116,7 +116,7 @@ abstract contract TraderP0 is ITraderEvents {
     /// @return {tok} The least amount of whole tokens worth trying to sell
     function dustThreshold(IAsset asset) internal view returns (Fix) {
         // {UoA} = {UoA} * {1}
-        Fix minSellUoA = main.totalAssetValue().mul(main.minAuctionSize());
+        Fix minSellUoA = main.totalAssetValue().mul(main.minRevenueAuctionSize());
 
         // {tok} = {UoA} / {UoA/tok}
         return minSellUoA.div(asset.price());

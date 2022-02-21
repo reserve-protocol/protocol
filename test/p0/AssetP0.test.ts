@@ -2,18 +2,19 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
 import { bn, fp } from '../../common/numbers'
-import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
-import { AssetP0 } from '../../typechain/AssetP0'
-import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
-import { CTokenMock } from '../../typechain/CTokenMock'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { MainP0 } from '../../typechain/MainP0'
-import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { USDCMock } from '../../typechain/USDCMock'
+import {
+  AaveOracleMockP0,
+  AssetP0,
+  CompoundOracleMockP0,
+  CTokenMock,
+  ERC20Mock,
+  MainP0,
+  RTokenAssetP0,
+  RTokenP0,
+  StaticATokenMock,
+  USDCMock,
+} from '../../typechain'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -39,8 +40,6 @@ describe('AssetsP0 contracts', () => {
   let compAsset: AssetP0
   let aaveAsset: AssetP0
   let rTokenAsset: RTokenAssetP0
-  let tokenAsset: Collateral
-  let usdcAsset: Collateral
 
   // Oracles
   let compoundOracleInternal: CompoundOracleMockP0

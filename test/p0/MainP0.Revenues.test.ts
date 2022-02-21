@@ -3,7 +3,6 @@ import { CompoundClaimAdapterP0 } from '@typechain/CompoundClaimAdapterP0'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
 import {
   AuctionStatus,
   BN_SCALE_FACTOR,
@@ -12,26 +11,28 @@ import {
   ZERO_ADDRESS,
 } from '../../common/constants'
 import { bn, divCeil, fp, near } from '../../common/numbers'
-import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { AssetP0 } from '../../typechain/AssetP0'
-import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
-import { CollateralP0 } from '../../typechain/CollateralP0'
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
-import { CTokenMock } from '../../typechain/CTokenMock'
-import { DeployerP0 } from '../../typechain/DeployerP0'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { ExplorerFacadeP0 } from '../../typechain/ExplorerFacadeP0'
-import { FurnaceP0 } from '../../typechain/FurnaceP0'
-import { MainP0 } from '../../typechain/MainP0'
-import { MarketMock } from '../../typechain/MarketMock'
-import { RevenueTraderP0 } from '../../typechain/RevenueTraderP0'
-import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { StRSRP0 } from '../../typechain/StRSRP0'
-import { TraderP0 } from '../../typechain/TraderP0'
-import { USDCMock } from '../../typechain/USDCMock'
+import {
+  AaveLendingPoolMockP0,
+  AssetP0,
+  ATokenFiatCollateralP0,
+  CollateralP0,
+  ComptrollerMockP0,
+  CTokenFiatCollateralP0,
+  CTokenMock,
+  DeployerP0,
+  ERC20Mock,
+  ExplorerFacadeP0,
+  FurnaceP0,
+  MainP0,
+  MarketMock,
+  RevenueTraderP0,
+  RTokenAssetP0,
+  RTokenP0,
+  StaticATokenMock,
+  StRSRP0,
+  TraderP0,
+  USDCMock,
+} from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
@@ -181,6 +182,9 @@ describe('MainP0 contract', () => {
     token1 = erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
     token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
+
+    // Set minRevenueAuctionSize to 0 to make math easy
+    await main.connect(owner).setMinRevenueAuctionSize(0)
 
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)

@@ -1,31 +1,32 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Contract, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
 import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
-import { AaveClaimAdapterP0 } from '../../typechain/AaveClaimAdapterP0'
-import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { AssetP0 } from '../../typechain/AssetP0'
-import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
-import { CollateralP0 } from '../../typechain/CollateralP0'
-import { CompoundClaimAdapterP0 } from '../../typechain/CompoundClaimAdapterP0'
-import { CompoundPricedAssetP0 } from '../../typechain/CompoundPricedAssetP0'
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
-import { CTokenMock } from '../../typechain/CTokenMock'
-import { DeployerP0 } from '../../typechain/DeployerP0'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { FurnaceP0 } from '../../typechain/FurnaceP0'
-import { MainP0 } from '../../typechain/MainP0'
-import { MarketMock } from '../../typechain/MarketMock'
-import { RevenueTraderP0 } from '../../typechain/RevenueTraderP0'
-import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { StRSRP0 } from '../../typechain/StRSRP0'
-import { USDCMock } from '../../typechain/USDCMock'
+import {
+  AaveClaimAdapterP0,
+  AaveLendingPoolMockP0,
+  AssetP0,
+  ATokenFiatCollateralP0,
+  CollateralP0,
+  CompoundClaimAdapterP0,
+  CompoundPricedAssetP0,
+  ComptrollerMockP0,
+  CTokenFiatCollateralP0,
+  CTokenMock,
+  DeployerP0,
+  ERC20Mock,
+  FurnaceP0,
+  MainP0,
+  MarketMock,
+  RevenueTraderP0,
+  RTokenAssetP0,
+  RTokenP0,
+  StaticATokenMock,
+  StRSRP0,
+  USDCMock,
+} from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
@@ -186,7 +187,7 @@ describe('MainP0 contract', () => {
       expect(await main.defaultDelay()).to.equal(config.defaultDelay)
       expect(await main.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
       expect(await main.maxAuctionSize()).to.equal(config.maxAuctionSize)
-      expect(await main.minAuctionSize()).to.equal(config.minAuctionSize)
+      expect(await main.minRevenueAuctionSize()).to.equal(config.minRevenueAuctionSize)
       expect(await main.issuanceRate()).to.equal(config.issuanceRate)
       expect(await main.defaultThreshold()).to.equal(config.defaultThreshold)
     })
@@ -468,25 +469,25 @@ describe('MainP0 contract', () => {
       expect(await main.maxAuctionSize()).to.equal(newValue)
     })
 
-    it('Should allow to update minAuctionSize if Owner', async () => {
+    it('Should allow to update minRevenueAuctionSize if Owner', async () => {
       const newValue: BigNumber = fp('0.02')
 
       // Check existing value
-      expect(await main.minAuctionSize()).to.equal(config.minAuctionSize)
+      expect(await main.minRevenueAuctionSize()).to.equal(config.minRevenueAuctionSize)
 
       // If not owner cannot update
-      await expect(main.connect(other).setMinAuctionSize(newValue)).to.be.revertedWith(
+      await expect(main.connect(other).setMinRevenueAuctionSize(newValue)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
 
       // Check value did not change
-      expect(await main.minAuctionSize()).to.equal(config.minAuctionSize)
+      expect(await main.minRevenueAuctionSize()).to.equal(config.minRevenueAuctionSize)
 
       // Update with owner
-      await main.connect(owner).setMinAuctionSize(newValue)
+      await main.connect(owner).setMinRevenueAuctionSize(newValue)
 
       // Check value was updated
-      expect(await main.minAuctionSize()).to.equal(newValue)
+      expect(await main.minRevenueAuctionSize()).to.equal(newValue)
     })
 
     it('Should allow to update issuanceRate if Owner', async () => {

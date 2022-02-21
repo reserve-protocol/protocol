@@ -20,7 +20,7 @@ contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents {
     }
 
     /// Close any open auctions and start new ones, for all assets
-    function doAuctions() external {
+    function manageFunds() external {
         IAsset[] memory assets = main.allAssets();
         for (uint256 i = 0; i < assets.length; i++) {
             processAsset(assets[i]);

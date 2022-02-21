@@ -2,22 +2,23 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn } from '../../common/numbers'
-import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { AssetP0 } from '../../typechain/AssetP0'
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { DeployerP0 } from '../../typechain/DeployerP0'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { ExplorerFacadeP0 } from '../../typechain/ExplorerFacadeP0'
-import { FurnaceP0 } from '../../typechain/FurnaceP0'
-import { MainP0 } from '../../typechain/MainP0'
-import { MarketMock } from '../../typechain/MarketMock'
-import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { StRSRP0 } from '../../typechain/StRSRP0'
-import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
+import {
+  AaveLendingPoolMockP0,
+  AssetP0,
+  ComptrollerMockP0,
+  DeployerP0,
+  ERC20Mock,
+  ExplorerFacadeP0,
+  FurnaceP0,
+  MainP0,
+  MarketMock,
+  RTokenAssetP0,
+  RTokenP0,
+  StRSRP0,
+} from '../../typechain'
+import { defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -26,9 +27,6 @@ describe('DeployerP0 contract', () => {
 
   // Deployer contract
   let deployer: DeployerP0
-
-  //  Collateral
-  let collateral: Collateral[]
 
   // RSR
   let rsr: ERC20Mock
@@ -78,7 +76,6 @@ describe('DeployerP0 contract', () => {
       aaveAsset,
       compoundMock,
       aaveMock,
-      collateral,
       config,
       dist,
       deployer,
