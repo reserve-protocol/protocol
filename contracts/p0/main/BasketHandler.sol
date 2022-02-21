@@ -47,7 +47,7 @@ contract BasketHandlerP0 is
     BasketConfig private basketConf;
 
     Basket internal basket;
-    uint256 public override blockBasketLastChanged; // {block number}
+    uint256 public override basketNonce;
 
     function init(ConstructorArgs calldata args)
         public
@@ -287,7 +287,7 @@ contract BasketHandlerP0 is
         activateBasketAssets(basket);
 
         // Keep records, emit event
-        blockBasketLastChanged = block.number;
+        basketNonce++;
         ICollateral[] memory collateral = new ICollateral[](basket.size);
         Fix[] memory refAmts = new Fix[](basket.size);
         for (uint256 i = 0; i < basket.size; i++) {

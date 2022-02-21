@@ -224,7 +224,7 @@ describe('MainP0 contract', () => {
       expect(backing.length).to.equal(4)
 
       // Check other values
-      expect(await main.blockBasketLastChanged()).to.be.gt(bn(0))
+      expect(await main.blockNonce()).to.equal(1)
       expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
       expect(await main.totalAssetValue()).to.equal(0)
 
@@ -918,7 +918,7 @@ describe('MainP0 contract', () => {
       expect(backing.length).to.equal(4)
 
       // Not updated so basket last changed is not set
-      expect(await main.blockBasketLastChanged()).to.be.gt(bn(0))
+      expect(await main.basketNonce()).to.equal(1)
       expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
       expect(await main.totalAssetValue()).to.equal(0)
     })

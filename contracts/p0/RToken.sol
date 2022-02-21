@@ -11,6 +11,17 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
 
+struct SlowIssuance {
+    address issuer;
+    uint256 amount; // {qRTok}
+    Fix baskets; // {BU}
+    address[] erc20s;
+    uint256[] deposits; // {qTok}, same index as vault basket assets
+    uint256 basketNonce;
+    Fix blockAvailableAt; // {block.number} fractional
+    bool processed;
+}
+
 /**
  * @title RTokenP0
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
@@ -81,7 +92,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             baskets: baskets,
             erc20s: erc20s,
             deposits: deposits,
-            blockStartedAt: block.number,
+            basketNonce: main.basketNonce(),
             blockAvailableAt: nextIssuanceBlockAvailable(amount, issuanceRate[block.number]),
             processed: false
         });
@@ -196,7 +207,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         SlowIssuance storage iss = issuances[issuer][index];
         if (
             !iss.processed &&
-            iss.blockStartedAt > main.blockBasketLastChanged() &&
+            iss.basketNonce == main.basketNonce() &&
             iss.blockAvailableAt.lte(toFix(block.number))
         ) {
             for (uint256 i = 0; i < iss.erc20s.length; i++) {

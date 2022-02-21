@@ -279,7 +279,7 @@ interface IBasketHandler {
 
     function worstCollateralStatus() external view returns (CollateralStatus status);
 
-    function blockBasketLastChanged() external view returns (uint256);
+    function basketNonce() external view returns (uint256);
 
     /// @return p {UoA} An estimate at the total value of all assets held, in the unit of account
     function totalAssetValue() external view returns (Fix p);
