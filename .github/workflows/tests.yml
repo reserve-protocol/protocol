@@ -33,5 +33,8 @@ jobs:
       - name: Compile
         run: yarn compile
 
+      - name: Lint
+        run: yarn lint
+
       - name: Run unit tests
         run: yarn test

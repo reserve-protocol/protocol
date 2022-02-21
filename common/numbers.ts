@@ -1,6 +1,5 @@
-import { BigNumberish, BigNumber } from 'ethers'
-import { ethers } from 'hardhat'
-import { BN_SCALE_FACTOR, SCALE_DECIMALS } from './constants'
+import { BigNumber, BigNumberish } from 'ethers'
+import { SCALE_DECIMALS } from './constants'
 
 export const ZERO = BigNumber.from(0)
 
@@ -14,6 +13,12 @@ export const pow10 = (exponent: BigNumberish): BigNumber => {
   return BigNumber.from(10).pow(exponent)
 }
 
+// Convert `x` to a new BigNumber with decimals = `decimals`.
+// Input should have SCALE_DECIMALS (18) decimal places, and `decimals` should be less than 18.
+export const toBNDecimals = (x: BigNumberish, decimals: number): BigNumber => {
+  return BigNumber.from(x).div(pow10(SCALE_DECIMALS - decimals))
+}
+
 // Convert to the BigNumber representing a Fix from a BigNumberish.
 // Try to handle fractional values intelligently. In particular:
 //     If the arg is a fractional JS number, it will be rounded to 9 decimal places (!) and used that way
@@ -21,13 +26,22 @@ export const pow10 = (exponent: BigNumberish): BigNumber => {
 
 export const fp = (x: BigNumberish): BigNumber => {
   if (typeof x === 'string') return _parseScientific(x, SCALE_DECIMALS)
-  if (typeof x === 'number' && !Number.isInteger(x)) return _parseScientific(x.toFixed(9), SCALE_DECIMALS)
+  if (typeof x === 'number' && !Number.isInteger(x))
+    return _parseScientific(x.toFixed(9), SCALE_DECIMALS)
   return BigNumber.from(x).mul(pow10(SCALE_DECIMALS))
 }
 
 export const divCeil = (x: BigNumber, y: BigNumber): BigNumber =>
   // ceil(x/y) == (x + y - 1) / y
   x.add(y).sub(1).div(y)
+
+// Wheter the absolute difference between x and y is less than z
+export const near = (x: BigNumber, y: BigNumber, z: BigNumberish): boolean => {
+  if (x.lt(y)) {
+    return y.sub(x).lte(z)
+  }
+  return x.sub(y).lte(z)
+}
 
 // _parseScientific(s, scale) returns a BigNumber with value (s * 10**scale),
 // where s is a string in decimal or scientific notation,
@@ -44,7 +58,9 @@ function _parseScientific(s: string, scale: BigNumberish = 0): BigNumber {
   // Scientific Notation: <INT>(.<DIGITS>)?(e<INT>)?
   // INT: [+-]?DIGITS
   // DIGITS: \d+
-  const match = s.match(/^(?<sign>[+-]?)(?<int_part>\d+)(\.(?<frac_part>\d+))?(e(?<exponent>[+-]?\d+))?$/)
+  const match = s.match(
+    /^(?<sign>[+-]?)(?<int_part>\d+)(\.(?<frac_part>\d+))?(e(?<exponent>[+-]?\d+))?$/
+  )
   if (!match || !match.groups) throw new Error(`Illegal decimal string ${s}`)
 
   let sign = match.groups.sign === '-' ? -1 : 1

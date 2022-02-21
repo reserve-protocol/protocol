@@ -6,12 +6,18 @@ const contains = (args: { [key: string]: any | undefined }, key: string, value: 
   expect(key in args).to.equal(true, `Event argument '${key}' not found`)
 
   if (value === null) {
-    expect(args[key]).to.equal(null, `expected event argument '${key}' to be null but got ${args[key]}`)
+    expect(args[key]).to.equal(
+      null,
+      `expected event argument '${key}' to be null but got ${args[key]}`
+    )
   } else if (BigNumber.isBigNumber(args[key]) || BigNumber.isBigNumber(value)) {
     const actual = BigNumber.isBigNumber(args[key]) ? args[key].toString() : args[key]
     const expected = BigNumber.isBigNumber(value) ? value.toString() : value
 
-    expect(args[key]).to.equal(value, `expected event argument '${key}' to have value ${expected} but got ${actual}`)
+    expect(args[key]).to.equal(
+      value,
+      `expected event argument '${key}' to have value ${expected} but got ${actual}`
+    )
   } else {
     expect(args[key]).to.be.deep.equal(
       value,
@@ -21,7 +27,11 @@ const contains = (args: { [key: string]: any | undefined }, key: string, value: 
 }
 
 // TODO: Proper typing for "eventArgs"
-export const expectInReceipt = (receipt: ContractReceipt, eventName: string, eventArgs = {}): any => {
+export const expectInReceipt = (
+  receipt: ContractReceipt,
+  eventName: string,
+  eventArgs = {}
+): any => {
   if (receipt.events == undefined) {
     throw new Error('No events found in receipt')
   }

@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "contracts/p0/assets/ATokenFiatCollateral.sol";
 import "contracts/libraries/Fixed.sol";
 import "./ERC20Mock.sol";
 
@@ -72,16 +73,19 @@ contract StaticATokenMock is ERC20Mock {
         aaveBalances[recipient] = amount;
     }
 
-    function claimRewardsToSelf(bool forceUpdate) external {
+    function claimRewardsToSelf(bool) external {
         // Mint amount and update internal balances
-        if (address(aaveToken) != address(0)) {
-            uint256 amount = aaveBalances[msg.sender];
+        if (address(aaveToken) != address(0) && aaveBalances[msg.sender] > 0) {
+            aaveToken.mint(msg.sender, aaveBalances[msg.sender]);
             aaveBalances[msg.sender] = 0;
-            aaveToken.mint(msg.sender, amount);
         }
     }
 
+    function getClaimableRewards(address user) external view returns (uint256) {
+        return aaveBalances[user];
+    }
+
     function _toExchangeRate(Fix fiatcoinRedemptionRate) internal pure returns (uint256) {
-        return fiatcoinRedemptionRate.mulu(1e27).toUint();
+        return fiatcoinRedemptionRate.mulu(1e27).round();
     }
 }

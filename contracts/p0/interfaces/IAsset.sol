@@ -1,26 +1,32 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import "contracts/p0/interfaces/IAsset.sol";
-import "contracts/p0/interfaces/IMain.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
-
-// Assets + Collateral are read-only and immutable
+import "./IMain.sol";
+import "./IClaimAdapter.sol";
 
 /**
  * @title IAsset
- * @notice The top-level Asset interface. Any token that our system handles must be wrapped in an asset.
+ * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,
+ * whether it is used as RToken backing, or not. Any token that can report a price in the UoA
+ * is eligible to be an asset.
  */
 interface IAsset {
-    /// @return {attoUSD/qTok} The price in USD of the asset as a function of DeFi redemption rates + oracle data
-    function priceUSD(IMain main) external view returns (Fix);
+    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
+    function price() external view returns (Fix);
 
-    /// @return The ERC20 contract of the central token
-    function erc20() external view returns (IERC20);
+    /// @return The ERC20 contract of the token with decimals() available
+    function erc20() external view returns (IERC20Metadata);
 
-    /// @return The number of decimals in the central token
-    function decimals() external view returns (uint8);
+    /// @return If the asset is an instance of ICollateral or not
+    function isCollateral() external view returns (bool);
+}
+
+enum CollateralStatus {
+    SOUND,
+    IFFY,
+    DISABLED
 }
 
 /**
@@ -28,24 +34,40 @@ interface IAsset {
  * @notice A subtype of Asset that consists of the tokens eligible to back the RToken.
  */
 interface ICollateral is IAsset {
-    /// @return {qFiatTok/qTok} Conversion rate between token and its fiatcoin. Incomparable across assets.
-    function rateFiatcoin() external view returns (Fix);
+    /// Emitted whenever `whenDefault` is changed
+    /// @param oldWhenDefault The old value of `whenDefault`
+    /// @param newWhenDefault The new value of `whenDefault`
+    /// @param status The updated CollateralStatus
+    event DefaultStatusChanged(
+        uint256 indexed oldWhenDefault,
+        uint256 indexed newWhenDefault,
+        CollateralStatus indexed status
+    );
 
-    /// @return {attoUSD/qTok} Without using oracles, returns the expected attoUSD value of one qTok.
-    function rateUSD() external view returns (Fix);
+    /// Force any updates such as updating the default status or poking the defi protocol.
+    /// Block-idempotent.
+    function forceUpdates() external;
 
-    /// @return The number of decimals in the nested fiatcoin contract (or for the erc20 itself if it is a fiatcoin)
-    function fiatcoinDecimals() external view returns (uint8);
+    /// Disable the collateral so it cannot be used as backing
+    function disable() external;
 
-    /// @return The fiatcoin underlying the ERC20, or the erc20 itself if it is a fiatcoin
-    function fiatcoin() external view returns (IERC20);
+    /// @return The claim adapter that should be used with this asset, or the zero address
+    function claimAdapter() external view returns (IClaimAdapter);
 
-    /// @return {attoUSD/qTok} The price in USD of the fiatcoin underlying the ERC20 (or the price of the ERC20 itself)
-    function fiatcoinPriceUSD(IMain main) external view returns (Fix);
+    /// @return The canonical name of this collateral's target unit.
+    function targetName() external view returns (bytes32);
 
-    /// @return Whether the asset is (directly) a fiatcoin
-    function isFiatcoin() external view returns (bool);
+    /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
+    function status() external view returns (CollateralStatus);
 
-    /// @return Whether the asset is an AToken
-    function isAToken() external view returns (bool);
+    // ==== Exchange Rates ====
+
+    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
+    function refPerTok() external view returns (Fix);
+
+    /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
+    function targetPerRef() external view returns (Fix);
+
+    /// @return {UoA/target} The price of the target unit in UoA (usually this is {UoA/UoA} = 1)
+    function pricePerTarget() external view returns (Fix);
 }

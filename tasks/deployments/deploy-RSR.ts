@@ -17,7 +17,9 @@ task('deploy-RSR', 'Deploy RSR contract')
 
     await rsr.deployed()
 
-    console.log(`RSR deployed at address: ${rsr.address} on network ${hre.network.name} (${chainId}).`)
+    console.log(
+      `RSR deployed at address: ${rsr.address} on network ${hre.network.name} (${chainId}).`
+    )
     console.log(`Tx: ${rsr.deployTransaction.hash}\n`)
 
     // Return deployed address

@@ -2,25 +2,23 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
-import { MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
+import { ZERO_ADDRESS } from '../../common/constants'
 import { bn } from '../../common/numbers'
-import { AAVEAssetP0 } from '../../typechain/AAVEAssetP0'
-import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { AssetManagerP0 } from '../../typechain/AssetManagerP0'
-import { COMPAssetP0 } from '../../typechain/COMPAssetP0'
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { DefaultMonitorP0 } from '../../typechain/DefaultMonitorP0'
-import { DeployerP0 } from '../../typechain/DeployerP0'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { FurnaceP0 } from '../../typechain/FurnaceP0'
-import { MainP0 } from '../../typechain/MainP0'
-import { RSRAssetP0 } from '../../typechain/RSRAssetP0'
-import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { StRSRP0 } from '../../typechain/StRSRP0'
-import { VaultP0 } from '../../typechain/VaultP0'
-import { defaultFixture, IManagerConfig } from './utils/fixtures'
+import {
+  AaveLendingPoolMockP0,
+  AssetP0,
+  ComptrollerMockP0,
+  DeployerP0,
+  ERC20Mock,
+  ExplorerFacadeP0,
+  FurnaceP0,
+  MainP0,
+  MarketMock,
+  RTokenAssetP0,
+  RTokenP0,
+  StRSRP0,
+} from '../../typechain'
+import { defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -30,30 +28,32 @@ describe('DeployerP0 contract', () => {
   // Deployer contract
   let deployer: DeployerP0
 
-  // Vault and Collateral
-  let vault: VaultP0
-  let collateral: string[]
-
   // RSR
   let rsr: ERC20Mock
-  let rsrAsset: RSRAssetP0
+  let rsrAsset: AssetP0
 
   // AAVE and Compound
-  let compAsset: COMPAssetP0
+  let compToken: ERC20Mock
+  let compAsset: AssetP0
   let compoundMock: ComptrollerMockP0
-  let aaveAsset: AAVEAssetP0
+  let aaveToken: ERC20Mock
+  let aaveAsset: AssetP0
   let aaveMock: AaveLendingPoolMockP0
 
+  // Market
+  let market: MarketMock
+
   // Config values
-  let config: IManagerConfig
+  let config: IConfig
+  let dist: IRevenueShare
 
   // Contracts to retrieve after deploy
   let rToken: RTokenP0
+  let rTokenAsset: RTokenAssetP0
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
-  let assetManager: AssetManagerP0
-  let defaultMonitor: DefaultMonitorP0
+  let facade: ExplorerFacadeP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -70,39 +70,78 @@ describe('DeployerP0 contract', () => {
     ;({
       rsr,
       rsrAsset,
+      compToken,
+      aaveToken,
       compAsset,
       aaveAsset,
       compoundMock,
       aaveMock,
-      collateral,
-      vault,
       config,
+      dist,
       deployer,
       main,
       rToken,
+      rTokenAsset,
       furnace,
       stRSR,
-      assetManager,
-      defaultMonitor,
+      market,
+      facade,
     } = await loadFixture(defaultFixture))
   })
 
   describe('Deployment', () => {
-    it('Should deploy contracts', async () => {
-      // Contracts deployed
-      expect(main.address).not.to.equal(ZERO_ADDRESS)
-      expect(rToken.address).not.to.equal(ZERO_ADDRESS)
-      expect(furnace.address).not.to.equal(ZERO_ADDRESS)
-      expect(stRSR.address).not.to.equal(ZERO_ADDRESS)
-      expect(assetManager.address).not.to.equal(ZERO_ADDRESS)
-      expect(defaultMonitor.address).not.to.equal(ZERO_ADDRESS)
+    it('Should setup values correctly', async () => {
+      expect(await deployer.rsr()).to.equal(rsr.address)
+      expect(await deployer.comp()).to.equal(compToken.address)
+      expect(await deployer.aave()).to.equal(aaveToken.address)
+      expect(await deployer.market()).to.equal(market.address)
+      expect(await deployer.comptroller()).to.equal(compoundMock.address)
+      expect(await deployer.aaveLendingPool()).to.equal(aaveMock.address)
+    })
+
+    it('Should deploy required contracts', async () => {
+      expect(main.address).to.not.equal(ZERO_ADDRESS)
+      expect(rsrAsset.address).to.not.equal(ZERO_ADDRESS)
+      expect(compAsset.address).to.not.equal(ZERO_ADDRESS)
+      expect(aaveAsset.address).to.not.equal(ZERO_ADDRESS)
+      expect(rToken.address).to.not.equal(ZERO_ADDRESS)
+      expect(rTokenAsset.address).to.not.equal(ZERO_ADDRESS)
+      expect(furnace.address).to.not.equal(ZERO_ADDRESS)
+      expect(stRSR.address).to.not.equal(ZERO_ADDRESS)
+      expect(facade.address).to.not.equal(ZERO_ADDRESS)
+    })
+
+    it('Should register deployment', async () => {
+      expect(await deployer.deployments(0)).to.equal(main.address)
     })
 
     it('Should setup Main correctly', async () => {
+      // Owner/Pauser
+      expect(await main.owner()).to.equal(owner.address)
+      expect(await main.pauser()).to.equal(owner.address)
+
+      // Assets
+      // RSR
+      expect(await main.rsrAsset()).to.equal(rsrAsset.address)
+      expect(await rsrAsset.erc20()).to.equal(rsr.address)
       expect(await main.rsr()).to.equal(rsr.address)
-      expect(await main.comptroller()).to.equal(compoundMock.address)
-      const rTokenAsset = <RTokenAssetP0>await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+
+      // RToken
+      expect(await main.rTokenAsset()).to.equal(rTokenAsset.address)
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
+      expect(await main.rToken()).to.equal(rToken.address)
+
+      // Check assets/collateral
+      const activeAssets = await main.activeAssets()
+      expect(activeAssets[0]).to.equal(rTokenAsset.address)
+      expect(activeAssets[1]).to.equal(rsrAsset.address)
+      expect(activeAssets[2]).to.equal(aaveAsset.address)
+      expect(activeAssets[3]).to.equal(compAsset.address)
+      expect(activeAssets.length).to.eql((await main.basketCollateral()).length + 4)
+
+      // Other components
+      expect(await main.stRSR()).to.equal(stRSR.address)
+      expect(await main.revenueFurnace()).to.equal(furnace.address)
     })
 
     it('Should setup RToken correctly', async () => {
@@ -113,12 +152,10 @@ describe('DeployerP0 contract', () => {
       expect(await rToken.main()).to.equal(main.address)
     })
 
-    it('Should setup DefaultMonitor correctly', async () => {
-      expect(await defaultMonitor.main()).to.equal(main.address)
-    })
-
     it('Should setup Furnace correctly', async () => {
       expect(await furnace.rToken()).to.equal(rToken.address)
+      expect(await furnace.batchDuration()).to.equal(config.rewardPeriod)
+      expect(await furnace.owner()).to.equal(owner.address)
     })
 
     it('Should setup stRSR correctly', async () => {
@@ -129,28 +166,8 @@ describe('DeployerP0 contract', () => {
       expect(await stRSR.totalSupply()).to.equal(0)
     })
 
-    it('Should setup AssetManager correctly', async () => {
-      expect(await assetManager.main()).to.equal(main.address)
-      expect(await assetManager.vault()).to.equal(vault.address)
-      expect(await assetManager.owner()).to.equal(owner.address)
-      expect(await rsr.allowance(assetManager.address, stRSR.address)).to.equal(MAX_UINT256)
-    })
-
-    it('Should revert if Vault has unapproved collateral', async () => {
-      const approvedCollateral = [collateral[0]]
-
-      await expect(
-        deployer.deploy(
-          'RTKN RToken',
-          'RTKN',
-          owner.address,
-          vault.address,
-          config,
-          compoundMock.address,
-          aaveMock.address,
-          approvedCollateral
-        )
-      ).to.be.revertedWith('UnapprovedCollateral()')
+    it('Should setup Facade correctly', async () => {
+      expect(await facade.main()).to.equal(main.address)
     })
   })
 })

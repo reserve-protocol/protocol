@@ -26,7 +26,6 @@ library CommonErrors {
     error BasketTooBig();
     error UninitializedTokens();
     error InvalidTokenIndex();
-    error UnapprovedCollateral();
 
     // Circuit Breaker
     error CircuitPaused();
@@ -49,5 +48,4 @@ library CommonErrors {
 
     // Oracle
     error PriceIsZero(string);
-    error UnsupportedProtocol();
 }

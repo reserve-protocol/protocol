@@ -45,6 +45,13 @@ Fix constant FIX_ONE = Fix.wrap(FIX_SCALE); // The Fix representation of one.
 Fix constant FIX_MAX = Fix.wrap(type(int192).max); // The largest Fix. (Not an integer!)
 Fix constant FIX_MIN = Fix.wrap(type(int192).min); // The smallest Fix.
 
+/// An enum that describes a rounding approach for converting to Uints
+enum RoundingApproach {
+    FLOOR,
+    ROUND,
+    CEIL
+}
+
 /* @dev To understand the tedious-looking double conversions (e.g, uint256(uint192(foo))) herein:
    Solidity 0.8.x only allows you to type-convert _one_ of type or size per conversion.
    See: https://docs.soliditylang.org/en/v0.8.9/080-breaking-changes.html#new-restrictions
@@ -161,19 +168,46 @@ function fixMax(Fix x, Fix y) pure returns (Fix) {
 library FixLib {
     /// All arithmetic functions fail if and only if the result is out of bounds.
 
-    /// Convert this Fix to an int. Round the fractional part towards zero.
-    function toInt(Fix x) internal pure returns (int192) {
-        return Fix.unwrap(x) / FIX_SCALE;
-    }
-
     /// Convert this Fix to a uint. Fail if x is negative. Round the fractional part towards zero.
-    function toUint(Fix x) internal pure returns (uint192) {
+    function floor(Fix x) internal pure returns (uint192) {
         int192 n = Fix.unwrap(x);
         if (n < 0) {
             revert IntOutOfBounds(n);
         }
         return uint192(n) / FIX_SCALE_U;
     }
+
+    /// Convert this Fix to a uint with standard rounding to the nearest integer.
+    function round(Fix x) internal pure returns (uint192) {
+        int192 n = Fix.unwrap(x);
+        if (n < 0) {
+            revert IntOutOfBounds(n);
+        }
+        return uint192(intRound(x));
+    }
+
+    /// Convert this Fix to a uint. Round the fractional part towards one.
+    function ceil(Fix x) internal pure returns (uint192) {
+        uint192 u = floor(x);
+        if (uint192(Fix.unwrap(x)) == u * FIX_SCALE_U) { return u;}
+        return u+1;
+    }
+
+    /// Convert this Fix to a uint, applying the rounding approach described by the enum
+    function toUint(Fix x, RoundingApproach rounding) internal pure returns (uint192) {
+        if (rounding == RoundingApproach.ROUND) {
+            return round(x);
+        } else if (rounding == RoundingApproach.CEIL) {
+            return ceil(x);
+        }
+        return floor(x);
+    }
+
+    /// Convert this Fix to an int. Round the fractional part towards zero.
+    function toInt(Fix x) internal pure returns (int192) {
+        return Fix.unwrap(x) / FIX_SCALE;
+    }
+
 
     /// Return the Fix shifted to the left by `decimal` digits
     /// Similar to a bitshift but in base 10
@@ -185,7 +219,7 @@ library FixLib {
 
     /// Round this Fix to the nearest int. If equidistant to both
     /// adjacent ints, round up, away from zero.
-    function round(Fix x) internal pure returns (int192) {
+    function intRound(Fix x) internal pure returns (int192) {
         int256 x_ = Fix.unwrap(x);
         int256 adjustment = x_ >= 0 ? FIX_SCALE / 2 : -FIX_SCALE / 2;
         int256 rounded = (x_ + adjustment) / FIX_SCALE;
@@ -271,6 +305,17 @@ library FixLib {
         return _safe_wrap(Fix.unwrap(x) / int256(y));
     }
 
+    /// Divide this Fix by a uint. Round the result to the *nearest* Fix, instead of truncating.
+    /// Values at exactly 0.5 are rounded up.
+    function divuRound(Fix x, uint256 y_) internal pure returns (Fix) {
+        if (y_ > type(uint256).max / 2) return FIX_ZERO;
+        int256 y = int256(y_);
+        int256 rawX = Fix.unwrap(x);
+        int8 sign = (rawX < 0) ? -1 : int8(1);
+        rawX *= sign;
+        return _safe_wrap((rawX + y/2) / y * sign);
+    }
+
     /// Compute 1 / (this Fix).
     function inv(Fix x) internal pure returns (Fix) {
         return div(FIX_ONE, x);
@@ -289,6 +334,11 @@ library FixLib {
             y = y >> 1;
             x = mul(x, x);
         }
+    }
+
+    /// Increment by 1 part in FIX_SCALE
+    function increment(Fix x) internal pure returns (Fix result) {
+        return _safe_wrap(int256(Fix.unwrap(x)) + 1);
     }
 
     /// Comparison operators...

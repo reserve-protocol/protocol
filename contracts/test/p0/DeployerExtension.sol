@@ -1,69 +1,67 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/p0/DeployerP0.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "contracts/p0/Deployer.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/test/Mixins.sol";
-import "./AssetManagerExtension.sol";
 import "./FurnaceExtension.sol";
 import "./MainExtension.sol";
 import "./RTokenExtension.sol";
 import "./StRSRExtension.sol";
 
 /// Inject wrapper contracts into Deployer
-contract DeployerExtension is IExtension, DeployerP0 {
+contract DeployerExtension is DeployerP0, IExtension {
     address internal _admin;
     IMain internal _main;
 
     constructor(
-        IAsset rsr_,
-        IAsset comp_,
-        IAsset aave_,
-        IMarket market_
-    ) DeployerP0(rsr_, comp_, aave_, market_) {
+        IERC20Metadata rsr_,
+        IERC20Metadata comp_,
+        IERC20Metadata aave_,
+        IMarket market_,
+        IComptroller comptroller_,
+        IAaveLendingPool aaveLendingPool_
+    ) DeployerP0(rsr_, comp_, aave_, market_, comptroller_, aaveLendingPool_) {
         _admin = msg.sender;
     }
 
-    function assertInvariants() external override {
+    function assertInvariants() external view override {
         INVARIANT_currentDeploymentRegistered();
     }
 
-    function _deployMain(Oracle.Info memory oracle, Config memory config) internal override returns (IMain) {
-        _main = new MainExtension(_admin, oracle, config);
-        return _main;
+    function deployMain() internal view override returns (IMain) {
+        return MainExtension(_admin);
     }
 
-    function _deployFurnace(address rToken) internal override returns (IFurnace) {
-        return new FurnaceExtension(_admin, address(rToken));
+    function deployRevenueFurnace(IRToken rToken, uint256 batchDuration)
+        internal
+        override
+        returns (IFurnace)
+    {
+        return new FurnaceExtension(_admin, rToken, batchDuration);
     }
 
-    function _deployRToken(
+    function deployRToken(
         IMain main,
         string memory name,
-        string memory symbol
+        string memory symbol,
+        address owner
     ) internal override returns (IRToken) {
-        return new RTokenExtension(_admin, main, name, symbol);
+        return new RTokenExtension(_admin, main, name, symbol, owner);
     }
 
-    function _deployStRSR(
+    function deployStRSR(
         IMain main,
         string memory name,
-        string memory symbol
+        string memory symbol,
+        address owner
     ) internal override returns (IStRSR) {
-        return new StRSRExtension(_admin, main, name, symbol);
-    }
-
-    function _deployAssetManager(
-        IMain main,
-        IVault vault,
-        address owner,
-        ICollateral[] memory approvedCollateral
-    ) internal override returns (IAssetManager) {
-        return new AssetManagerExtension(_admin, main, vault, market, owner, approvedCollateral);
+        return new StRSRExtension(_admin, main, name, symbol, owner);
     }
 
     function INVARIANT_currentDeploymentRegistered() internal view {

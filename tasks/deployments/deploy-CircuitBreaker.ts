@@ -14,7 +14,9 @@ task('deploy-CircuitBreaker', 'Deploys a circuit breaker contract')
 
     await cb.deployed()
 
-    console.log(`Circuit Breaker deployed at address: ${cb.address} on network ${hre.network.name} (${chainId}).`)
+    console.log(
+      `Circuit Breaker deployed at address: ${cb.address} on network ${hre.network.name} (${chainId}).`
+    )
     console.log(`Tx: ${cb.deployTransaction.hash}\n`)
 
     return { cbAddr: cb.address }

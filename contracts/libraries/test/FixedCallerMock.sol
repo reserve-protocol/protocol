@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 
 import "../Fixed.sol" as FixGlobals;
-import { Fix, FixLib } from "../Fixed.sol";
+import { Fix, FixLib, RoundingApproach } from "../Fixed.sol";
 
 // Simple mock for Fixed library.
 contract FixedCallerMock {
@@ -34,16 +34,28 @@ contract FixedCallerMock {
         return FixLib.toInt(x);
     }
 
-    function toUint(Fix x) public pure returns (uint192) {
-        return FixLib.toUint(x);
+    function toUint(Fix x, RoundingApproach rounding) public pure returns (uint192) {
+        return FixLib.toUint(x, rounding);
+    }
+
+    function floor(Fix x) public pure returns (uint192) {
+        return FixLib.floor(x);
+    }
+
+    function round(Fix x) public pure returns (uint192) {
+        return FixLib.round(x);
+    }
+
+    function ceil(Fix x) public pure returns (uint192) {
+        return FixLib.ceil(x);
     }
 
     function shiftLeft(Fix x, int8 shiftLeft_) public pure returns (Fix) {
         return FixLib.shiftLeft(x, shiftLeft_);
     }
 
-    function round(Fix x) public pure returns (int192) {
-        return FixLib.round(x);
+    function intRound(Fix x) public pure returns (int192) {
+        return FixLib.intRound(x);
     }
 
     function plus(Fix x, Fix y) public pure returns (Fix) {
@@ -94,12 +106,20 @@ contract FixedCallerMock {
         return FixLib.divu(x, y);
     }
 
+    function divuRound(Fix x, uint256 y) public pure returns (Fix) {
+        return FixLib.divuRound(x, y);
+    }
+
     function inv(Fix x) public pure returns (Fix) {
         return FixLib.inv(x);
     }
 
     function powu(Fix x, uint256 y) public pure returns (Fix) {
         return FixLib.powu(x, y);
+    }
+
+    function increment(Fix x) public pure returns (Fix) {
+        return FixLib.increment(x);
     }
 
     function lt(Fix x, Fix y) public pure returns (bool) {
@@ -136,7 +156,7 @@ contract FixedCallerMock {
     }
 
     // Nonview version for gas estimation in test framework
-    function powu_nonview(Fix x, uint256 y) public {
+    function powu_nonview(Fix x, uint256 y) public pure {
         FixLib.powu(x, y);
     }
 }

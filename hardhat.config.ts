@@ -1,26 +1,24 @@
-// TODO: import ./tasks selectively based on env var
-import './tasks'
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
-import 'hardhat-gas-reporter'
+//import 'hardhat-gas-reporter'
 import 'solidity-coverage'
 
 import dotenv from 'dotenv'
 import { HardhatUserConfig } from 'hardhat/types'
 
-// import '@openzeppelin/hardhat-upgrades'
 dotenv.config()
 
-const PATHS: { [x: string]: string } = {
-  p0: './contracts/p0',
-  default: './contracts',
+if (process.env.TASKS === 'true') {
+  require('./tasks')
 }
 
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || process.env.ALCHEMY_MAINNET_RPC_URL || ''
 const ROPSTEN_RPC_URL = process.env.ROPSTEN_RPC_URL || ''
 const MNEMONIC = process.env.MNEMONIC || ''
 
+const src_dir = process.env.PROTO ? './contracts/' + process.env.PROTO : './contracts'
+const settings = process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 2000 } }
 export default <HardhatUserConfig>{
   defaultNetwork: 'hardhat',
   networks: {
@@ -48,17 +46,22 @@ export default <HardhatUserConfig>{
   },
   solidity: {
     version: '0.8.9',
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 2000,
-      },
+    settings,
+    debug: {
+      // How to treat revert (and require) reason strings. Settings are
+      // "default", "strip", "debug" and "verboseDebug".
+      // "default" does not inject compiler-generated revert strings and keeps user-supplied ones.
+      // "strip" removes all revert strings (if possible, i.e. if literals are used) keeping side-effects
+      // "debug" injects strings for compiler-generated internal reverts, implemented for ABI encoders V1 and V2 for now.
+      // "verboseDebug" even appends further information to user-supplied revert strings (not yet implemented)
+      revertStrings: 'default',
+      // revertStrings: 'debug',
     },
   },
   paths: {
-    sources: process.env.NODE_ENV_PROTO ? PATHS[process.env.NODE_ENV_PROTO] : PATHS.default,
+    sources: src_dir,
   },
   mocha: {
-    timeout: 50000,
+    timeout: 200000,
   },
 }

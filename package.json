@@ -5,85 +5,72 @@
     "directories": {
         "test": "tests"
     },
+    "engines": {
+        "node": ">=10"
+    },
     "scripts": {
-        "compile": "TS_NODE_TRANSPILE_ONLY=1 npx hardhat typechain && npx hardhat compile",
-        "coverage": "npx hardhat coverage --temp artifacts",
-        "deploy:p0": "npx hardhat run scripts/proto0/deploy_all.ts --network localhost",
+        "compile": "TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile",
+        "deploy:p0": "TASKS=true npx hardhat run scripts/proto0/deploy_all.ts --network localhost",
         "devchain": "npx hardhat node",
         "test": "npx hardhat test",
-        "test:generic": "npx hardhat test test/generic/*.test.ts",
         "test:p0": "NODE_ENV_PROTO=p0 npx hardhat test test/p0/*.test.ts",
+        "test:coverage": "npx hardhat coverage --temp artifacts",
+        "test:generic": "npx hardhat test test/generic/*.test.ts",
         "test:parallel": "mocha --require hardhat/register --recursive --parallel --exit",
         "test:recompile": "npx hardhat compile --force && mocha --require hardhat/register --recursive --exit",
-        "lint:sol": "npx solhint 'contracts/**/*.sol'",
-        "prettier": "prettier --write 'contracts/**/*.sol' 'contracts/**/**/*.sol' '{test,common,scripts,tasks,types,}/**/{*.ts,*.json}' '*.ts' '*.json'",
+        "lint": "npx solhint 'contracts/**/*.sol'",
+        "prettier": "npx prettier --write 'contracts/**/*.sol' '{test,common,scripts,tasks,types,}/**/{*.ts,*.json}' '*.ts' '*.json'",
         "mythril": "./mythril.sh",
         "echidna": "rm -rf crytic-export && ./echidna.sh",
         "flatten": "waffle flatten",
-        "postinstall": "husky install"
+        "prepare": "husky install"
     },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/reserve-protocol/protocol.git"
     },
-    "author": "",
+    "author": "Reserve Team",
     "license": "BlueOak-1.0.0",
     "bugs": {
         "url": "https://github.com/reserve-protocol/protocol/issues"
     },
     "homepage": "https://github.com/reserve-protocol/protocol#readme",
     "devDependencies": {
-        "@nomiclabs/hardhat-ethers": "^2.0.2",
+        "@nomiclabs/hardhat-ethers": "^2.0.3",
         "@nomiclabs/hardhat-waffle": "^2.0.1",
+        "@openzeppelin/contracts": "^4.4.1",
+        "@openzeppelin/contracts-upgradeable": "^4.4.0",
         "@openzeppelin/hardhat-upgrades": "^1.9.0",
-        "@typechain/ethers-v5": "^7.0.1",
-        "@typechain/hardhat": "^2.3.0",
-        "@types/chai": "^4.2.21",
+        "@typechain/ethers-v5": "^7.2.0",
+        "@typechain/hardhat": "^2.3.1",
+        "@types/chai": "^4.3.0",
         "@types/lodash": "^4.14.177",
         "@types/mocha": "^9.0.0",
-        "axios": "^0.24.0",
-        "chai": "^4.3.4",
-        "ethereum-waffle": "^3.4.0",
-        "ethers": "^5.4.1",
-        "hardhat": "^2.6.8",
-        "hardhat-gas-reporter": "^1.0.4",
-        "husky": "^7.0.2",
-        "mocha": "^9.0.2",
-        "prettier": "2.3.2",
-        "prettier-plugin-solidity": "1.0.0-beta.13",
-        "solhint": "^3.3.6",
-        "solhint-plugin-prettier": "^0.0.5",
-        "solidity-coverage": "^0.7.16",
-        "ts-generator": "^0.1.1",
-        "ts-node": "^10.2.1",
-        "typechain": "^5.1.2",
-        "typescript": "^4.4.2"
-    },
-    "dependencies": {
-        "@openzeppelin/contracts": "^4.4.0",
-        "@openzeppelin/contracts-upgradeable": "^4.4.0",
+        "@types/node": "^12.20.37",
+        "@typescript-eslint/eslint-plugin": "^4.33.0",
+        "@typescript-eslint/parser": "^4.33.0",
         "@uniswap/v3-core": "1.0.0",
         "@uniswap/v3-periphery": "^1.1.1",
-        "dotenv": "^10.0.0"
+        "axios": "^0.24.0",
+        "chai": "^4.3.4",
+        "dotenv": "^10.0.0",
+        "eth-permit": "^0.2.1",
+        "ethereum-waffle": "^3.4.0",
+        "ethers": "^5.5.2",
+        "hardhat": "^2.8.3",
+        "hardhat-gas-reporter": "^1.0.6",
+        "husky": "^7.0.0",
+        "prettier": "2.5.1",
+        "prettier-plugin-solidity": "^1.0.0-beta.13",
+        "solhint": "^3.3.6",
+        "solhint-plugin-prettier": "^0.0.5",
+        "solidity-coverage": "^0.7.17",
+        "ts-node": "^10.4.0",
+        "typechain": "^5.2.0",
+        "typescript": "^4.4.2"
     },
     "resolutions": {
         "@solidity-parser/parser": "^0.13.2"
-    },
-    "mocha": {
-        "require": [
-            "hardhat/register"
-        ],
-        "recursive": true,
-        "extension": [
-            "ts",
-            "js",
-            "tsx"
-        ]
-    },
-    "husky": {
-        "hooks": {
-            "pre-commit": "yarn prettier"
-        }
     },
     "packageManager": "yarn@3.1.0-rc.2"
 }

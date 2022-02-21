@@ -1,8 +1,10 @@
 module.exports = {
   skipFiles: [
     'mocks',
+    'test',
     'prod/test',
     'libraries/Fixed.sol',
+    'libraries/test',
     'p0/test',
     'p0/mocks',
     'p1/test',

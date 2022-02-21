@@ -3,18 +3,26 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+/// The auction interface, currently mirrors Gnosis EasyAuction
+/// https://github.com/gnosis/ido-contracts/blob/main/contracts/EasyAuction.sol
 interface IMarket {
-    /// @return auctionId
+    /// Mirrors Gnosis EasyAuction
     function initiateAuction(
-        IERC20 sell,
-        IERC20 buy,
-        uint256 sellAmount,
-        uint256 minBuyAmount,
-        uint256 auctionDuration
+        IERC20 auctioningToken,
+        IERC20 biddingToken,
+        uint256 orderCancellationEndDate,
+        uint256 auctionEndDate,
+        uint96 auctionedSellAmount,
+        uint96 minBuyAmount,
+        uint256 minimumBiddingAmountPerOrder,
+        uint256 minFundingThreshold,
+        bool isAtomicClosureAllowed,
+        address accessManagerContract,
+        bytes memory accessManagerContractData
     ) external returns (uint256 auctionId);
 
     /// @param auctionId The external auction id
-    /// @return clearingSellAmount
-    /// @return clearingBuyAmount
-    function clear(uint256 auctionId) external returns (uint256 clearingSellAmount, uint256 clearingBuyAmount);
+    /// @dev See here for decoding: https://git.io/JMang
+    /// @return encodedOrder The order, encoded in a bytes 32
+    function settleAuction(uint256 auctionId) external returns (bytes32 encodedOrder);
 }

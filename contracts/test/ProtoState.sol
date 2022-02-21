@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/IMain.sol";
+import "contracts/p0/interfaces/IMain.sol";
 import "./Lib.sol";
 
 /// Address-abstracted accounts
@@ -20,7 +20,7 @@ enum Account {
 
 /// All assets in the system
 /// Only the first 11 are collateral-eligible
-enum Asset {
+enum AssetName {
     DAI, // 0
     USDC,
     USDT,
@@ -38,33 +38,38 @@ enum Asset {
     AAVE // 13
 }
 
-/// Basket Unit, ie 1e18{qBU}
-struct BU {
-    Asset[] assets;
-    uint256[] quantities; // {qTok/RToken}
+/// How revenue is to be distributed
+struct RevenueDestination {
+    address dest;
+    uint256 rTokenDist;
+    uint256 rsrDist;
 }
 
-/// Only one of these prices below
-struct OraclePrice {
+/// Basket Unit, ie 1e18{qBU}
+struct BU {
+    AssetName[] assets;
+    Fix[] refAmts; // {qRef/BU}
+}
+
+struct Price {
     uint256 inETH; // {qETH/tok}
-    uint256 inUSD; // {microUSD/tok}
+    uint256 inUoA; // {microUoA/tok}
 }
 
 struct TokenState {
     string name;
     string symbol;
-    uint256[][] allowances; // allowances[Account owner][Account spender] = uint256
     uint256[] balances; // balances[Account] = uint256
     uint256 totalSupply;
     //
-    OraclePrice price;
+    Price price;
 }
 
 /// Top-level state struct
 struct ProtoState {
     // System-internal state
-    SystemState state;
     Config config;
+    RevenueDestination[] distribution;
     BU rTokenDefinition;
     TokenState rToken;
     TokenState rsr;
@@ -73,7 +78,7 @@ struct ProtoState {
     // System-external state
     TokenState comp;
     TokenState aave;
-    TokenState[] collateral; // Asset.DAI - Asset.aBUSD
-    Fix[] defiCollateralRates; // Asset.DAI - Asset.aBUSD, fiatcoins are ignored
-    OraclePrice ethPrice;
+    TokenState[] collateral; // AssetName.DAI - AssetName.aBUSD
+    Fix[] defiCollateralRates; // AssetName.DAI - AssetName.aBUSD, fiatcoins are ignored
+    Price ethPrice;
 }

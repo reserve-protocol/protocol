@@ -214,19 +214,38 @@ $ npx hardhat --network ropsten console
 
 # Code/Documentation Style
 
+## Assets/Collateral
+
+An ERC20 exists in our system wrapped in either an *Asset* or *Collateral* contract. The definition of an asset is very broad. Any ERC20 that can have a price in the unit of account (most likely USD) can be an asset. A collateral is a specific type of asset that enables an ERC20 to act as backing for an RToken. 
+
 ## Units
 
-The units of variables is tracked in comments in the implementation. Curly braces are used to denote units, e.g. `{attoUSD/qTok}`.
+The units of variables is tracked in comments in the implementation. Curly braces are used to denote units, e.g. `{UoA/qTok}`.
 
 The `q` prefix denotes "quanta", ie the smallest indivisible unit of the token.
 
 The `atto` prefix denotes 1e18.
 
+Otherwise, the unit is assumed to be whole. The meaning of a "whole" token changes depending on how many decimals that token has. 
+
 - {qTok} = token quanta
-- {tok} = whole token = 1e6{qTok} (USDC)
-- {qBU} = BU quanta
-- {BU} = whole BU = 1e18{qBU}
-- {attoUSD} = smallest unit of USD
-- {USD} = largest unit of USD = 1e18{attoUSD}
-- {sec} = seconds
-- {none} = unitless
+- {tok} = whole token = 1e6{qTok} (USDC) = 1e18{qTok} (DAI)
+- {ref} = whole reference token (USDC is cUSDC's reference token)
+- {target} = whole target unit (USD is cUSDC's target unit)
+- {BU} = whole basket unit
+- {UoA} = whole unit of the Unit of Account (which is probably USD)
+
+
+## Token Balances (at least true for P0, pending confirmation it remains the same in P3)
+
+- `Main`: Holds all backing for the RToken
+- `RToken`: Holds collateral tokens during SlowIssuance
+- `Furnace`: holds revenue RToken to be melted
+- `stRSR`: holds staked RSR
+- `RevenueTrader`: Holds and trades some asset A for either RSR or RToken for melting
+
+## RToken Lifecycle
+
+1. During SlowIssuance, `Main` transfers collateral tokens from the issuer's address to the `RToken`. 
+2. At the end of SlowIssuance, the `RToken` contract mints new RToken to the issuer and transfers the held collateral to `Main`. If `Main` has updated the basket since issuance began, then the collateral is instead returned to the user and no RToken is minted. 
+3. During redemption, RToken is burnt from the redeemer's account and they are transferred collateral from `Main`.

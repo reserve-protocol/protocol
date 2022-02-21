@@ -3,7 +3,7 @@ import { getChainId } from '../../common/blockchain-utils'
 import { networkConfig } from '../../common/configuration'
 
 async function main() {
-  const [deployer, addr1, addr2] = await hre.ethers.getSigners()
+  const [deployer] = await hre.ethers.getSigners()
   const chainId = await getChainId(hre)
 
   // Check if chain is supported

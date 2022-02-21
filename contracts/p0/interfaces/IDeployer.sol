@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/p0/assets/RSRAssetP0.sol";
-import "contracts/p0/assets/COMPAssetP0.sol";
-import "contracts/p0/assets/AAVEAssetP0.sol";
-import "contracts/IMain.sol";
-import "./IAsset.sol";
-import "./IVault.sol";
+import "contracts/IExplorerFacade.sol";
+import "./IMain.sol";
+import "./IRToken.sol";
+import "./IStRSR.sol";
 
 /**
  * @title IDeployer
@@ -16,8 +13,17 @@ import "./IVault.sol";
 interface IDeployer {
     /// Emitted when a new RToken and accompanying system is deployed
     /// @param main The address of `Main`
+    /// @param rToken The address of the RToken ERC20
+    /// @param stRSR The address of the StRSR ERC20 staking pool/token
+    /// @param facade The address of the view facade
     /// @param owner The owner of the newly deployed system
-    event RTokenCreated(address indexed main, address indexed rToken, address explorer, address indexed owner);
+    event RTokenCreated(
+        IMain indexed main,
+        IRToken indexed rToken,
+        IStRSR stRSR,
+        IExplorerFacade facade,
+        address indexed owner
+    );
 
     //
 
@@ -25,20 +31,14 @@ interface IDeployer {
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
     /// @param owner The address that should own the entire system, hopefully a governance contract
-    /// @param vault The initial vault that backs the RToken
     /// @param config Governance param
-    /// @param compound The deployment of the Comptroller on this chain
-    /// @param aave The deployment of the AaveLendingPool on this chain
-    /// @param collateral The collateral assets in the system
+    /// @param dist Shares of revenue initially to RSR pool and RToken melting
     /// @return The address of the newly deployed Main instance.
     function deploy(
-        string memory name,
-        string memory symbol,
+        string calldata name,
+        string calldata symbol,
         address owner,
-        IVault vault,
-        Config memory config,
-        IComptroller compound,
-        IAaveLendingPool aave,
-        ICollateral[] memory collateral
+        Config calldata config,
+        RevenueShare calldata dist
     ) external returns (address);
 }
