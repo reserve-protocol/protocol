@@ -31,13 +31,23 @@ interface IRToken is IERC20Metadata, IERC20Permit {
 
     /// Emitted when an RToken issuance is canceled, such as during a default
     /// @param issuer The account of the issuer
-    /// @param index The index of the issuance in the issuer's queue
-    event IssuanceCanceled(address indexed issuer, uint256 indexed index);
+    /// @param firstIndex The first of the cancelled issuances in the issuer's queue
+    /// @param lastIndex The last of the cancelled issuances in the issuer's queue
+    event IssuancesCanceled(
+        address indexed issuer,
+        uint256 indexed firstIndex,
+        uint256 indexed lastIndex
+    );
 
     /// Emitted when an RToken issuance is completed successfully
     /// @param issuer The account of the issuer
-    /// @param index The index of the issuance in the issuer's queue
-    event IssuanceCompleted(address indexed issuer, uint256 indexed index);
+    /// @param firstIndex The first of the completed issuances in the issuer's queue
+    /// @param lastIndex The first of the completed issuances in the issuer's queue
+    event IssuancesCompleted(
+        address indexed issuer,
+        uint256 indexed firstIndex,
+        uint256 indexed lastIndex
+    );
 
     /// Emitted when the number of baskets needed changes
     /// @param oldBasketsNeeded Previous number of baskets units needed
@@ -68,8 +78,13 @@ interface IRToken is IERC20Metadata, IERC20Permit {
 
     /// Cancels a vesting slow issuance
     /// @param account The account of the issuer, and caller
-    /// @param index The index of the issuance in the issuer's queue
-    function cancelIssuance(address account, uint256 index) external;
+    /// @param throughIndex The index of the issuance in the issuer's queue to cancel through
+    /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
+    function cancelIssuances(
+        address account,
+        uint256 throughIndex,
+        bool earliest
+    ) external returns (uint256[] memory deposits);
 
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for
