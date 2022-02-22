@@ -12,25 +12,26 @@ import "contracts/p0/Trader.sol";
 contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents {
     using SafeERC20 for IERC20Metadata;
 
-    IAsset public immutable assetToBuy;
+    IERC20Metadata public immutable tokenToBuy;
 
-    constructor(address main_, IAsset assetToBuy_) TraderP0() {
+    constructor(address main_, IERC20Metadata tokenToBuy_) TraderP0() {
         initTrader(main_);
-        assetToBuy = assetToBuy_;
+        tokenToBuy = tokenToBuy_;
     }
 
     /// Close any open auctions and start new ones, for all assets
-    function doAuctions() external {
-        IAsset[] memory assets = main.activeAssets(); // includes RToken/RSR/COMP/AAVE
+    function manageFunds() external {
+        IAsset[] memory assets = main.allAssets();
         for (uint256 i = 0; i < assets.length; i++) {
             processAsset(assets[i]);
         }
     }
 
-    /// - If we have any of `assetToBuy` (RSR or RToken), distribute it.
+    /// - If we have any of `tokenToBuy` (RSR or RToken), distribute it.
     /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
     function processAsset(IAsset asset) public {
         closeDueAuctions();
+        IAsset assetToBuy = main.assetFor(tokenToBuy);
 
         IERC20Metadata erc20 = asset.erc20();
         uint256 bal = erc20.balanceOf(address(this));

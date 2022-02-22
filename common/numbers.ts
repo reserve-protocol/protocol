@@ -1,7 +1,5 @@
 import { BigNumber, BigNumberish } from 'ethers'
-import { ethers } from 'hardhat'
-
-import { BN_SCALE_FACTOR, SCALE_DECIMALS } from './constants'
+import { SCALE_DECIMALS } from './constants'
 
 export const ZERO = BigNumber.from(0)
 
@@ -13,6 +11,12 @@ export const bn = (x: BigNumberish): BigNumber => {
 
 export const pow10 = (exponent: BigNumberish): BigNumber => {
   return BigNumber.from(10).pow(exponent)
+}
+
+// Convert `x` to a new BigNumber with decimals = `decimals`.
+// Input should have SCALE_DECIMALS (18) decimal places, and `decimals` should be less than 18.
+export const toBNDecimals = (x: BigNumberish, decimals: number): BigNumber => {
+  return BigNumber.from(x).div(pow10(SCALE_DECIMALS - decimals))
 }
 
 // Convert to the BigNumber representing a Fix from a BigNumberish.

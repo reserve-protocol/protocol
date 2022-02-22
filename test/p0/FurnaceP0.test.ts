@@ -1,19 +1,19 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { timeEnd } from 'console'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre from 'hardhat'
-import { ethers, waffle } from 'hardhat'
-
+import hre, { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn } from '../../common/numbers'
-import { CTokenMock } from '../../typechain/CTokenMock'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { FurnaceP0 } from '../../typechain/FurnaceP0'
-import { MainP0 } from '../../typechain/MainP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { USDCMock } from '../../typechain/USDCMock'
+import {
+  CTokenMock,
+  ERC20Mock,
+  ExplorerFacadeP0,
+  FurnaceP0,
+  MainP0,
+  RTokenP0,
+  StaticATokenMock,
+  USDCMock,
+} from '../../typechain'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 
@@ -37,6 +37,7 @@ describe('FurnaceP0 contract', () => {
   let main: MainP0
   let rToken: RTokenP0
   let basket: Collateral[]
+  let facade: ExplorerFacadeP0
 
   // Config values
   let config: IConfig
@@ -75,16 +76,13 @@ describe('FurnaceP0 contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, rToken, furnace, config, main } = await loadFixture(defaultFixture))
+    ;({ basket, rToken, furnace, config, main, facade } = await loadFixture(defaultFixture))
 
     // Setup issuance of RTokens for users
     initialBal = bn('100e18')
 
     // Get assets and tokens
-    collateral0 = basket[0]
-    collateral1 = basket[1]
-    collateral2 = basket[2]
-    collateral3 = basket[3]
+    ;[collateral0, collateral1, collateral2, collateral3] = basket
 
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
     token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
@@ -380,8 +378,8 @@ describe('FurnaceP0 contract', () => {
       // Advance to the middle of period
       await advanceToTimestamp(hndTimestamp + timePeriod / 2 - 1)
 
-      // Melt
-      await furnace.connect(addr1).melt()
+      // Melt - Can also be done through facade
+      await facade.doFurnaceMelting()
 
       // Check melt registered
       await expectBatchInfo(0, {

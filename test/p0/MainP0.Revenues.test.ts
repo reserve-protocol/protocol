@@ -3,7 +3,6 @@ import { CompoundClaimAdapterP0 } from '@typechain/CompoundClaimAdapterP0'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
 import {
   AuctionStatus,
   BN_SCALE_FACTOR,
@@ -12,26 +11,28 @@ import {
   ZERO_ADDRESS,
 } from '../../common/constants'
 import { bn, divCeil, fp, near } from '../../common/numbers'
-import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { AssetP0 } from '../../typechain/AssetP0'
-import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
-import { CollateralP0 } from '../../typechain/CollateralP0'
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
-import { CTokenMock } from '../../typechain/CTokenMock'
-import { DeployerP0 } from '../../typechain/DeployerP0'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { ExplorerFacadeP0 } from '../../typechain/ExplorerFacadeP0'
-import { FurnaceP0 } from '../../typechain/FurnaceP0'
-import { MainP0 } from '../../typechain/MainP0'
-import { MarketMock } from '../../typechain/MarketMock'
-import { RevenueTraderP0 } from '../../typechain/RevenueTraderP0'
-import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { StRSRP0 } from '../../typechain/StRSRP0'
-import { TraderP0 } from '../../typechain/TraderP0'
-import { USDCMock } from '../../typechain/USDCMock'
+import {
+  AaveLendingPoolMockP0,
+  AssetP0,
+  ATokenFiatCollateralP0,
+  CollateralP0,
+  ComptrollerMockP0,
+  CTokenFiatCollateralP0,
+  CTokenMock,
+  DeployerP0,
+  ERC20Mock,
+  ExplorerFacadeP0,
+  FurnaceP0,
+  MainP0,
+  MarketMock,
+  RevenueTraderP0,
+  RTokenAssetP0,
+  RTokenP0,
+  StaticATokenMock,
+  StRSRP0,
+  TraderP0,
+  USDCMock,
+} from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
@@ -46,6 +47,44 @@ interface IAuctionInfo {
   clearingBuyAmount: BigNumber
   externalAuctionId: BigNumber
   status: AuctionStatus
+}
+
+export const expectAuctionInfo = async (
+  trader: TraderP0,
+  index: number,
+  auctionInfo: Partial<IAuctionInfo>
+) => {
+  const {
+    sell,
+    buy,
+    sellAmount,
+    minBuyAmount,
+    startTime,
+    endTime,
+    clearingSellAmount,
+    clearingBuyAmount,
+    externalAuctionId,
+    status,
+  } = await trader.auctions(index)
+  expect(sell).to.equal(auctionInfo.sell)
+  expect(buy).to.equal(auctionInfo.buy)
+  expect(sellAmount).to.equal(auctionInfo.sellAmount)
+  expect(minBuyAmount).to.equal(auctionInfo.minBuyAmount)
+  expect(startTime).to.equal(auctionInfo.startTime)
+  expect(endTime).to.equal(auctionInfo.endTime)
+  expect(clearingSellAmount).to.equal(auctionInfo.clearingSellAmount)
+  expect(clearingBuyAmount).to.equal(auctionInfo.clearingBuyAmount)
+  expect(externalAuctionId).to.equal(auctionInfo.externalAuctionId)
+  expect(status).to.equal(auctionInfo.status)
+}
+
+export const expectAuctionStatus = async (
+  trader: TraderP0,
+  index: number,
+  expectedStatus: AuctionStatus
+) => {
+  const { status } = await trader.auctions(index)
+  expect(status).to.equal(expectedStatus)
 }
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -104,44 +143,6 @@ describe('MainP0 contract', () => {
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
-  const expectAuctionInfo = async (
-    trader: TraderP0,
-    index: number,
-    auctionInfo: Partial<IAuctionInfo>
-  ) => {
-    const {
-      sell,
-      buy,
-      sellAmount,
-      minBuyAmount,
-      startTime,
-      endTime,
-      clearingSellAmount,
-      clearingBuyAmount,
-      externalAuctionId,
-      status,
-    } = await trader.auctions(index)
-    expect(sell).to.equal(auctionInfo.sell)
-    expect(buy).to.equal(auctionInfo.buy)
-    expect(sellAmount).to.equal(auctionInfo.sellAmount)
-    expect(minBuyAmount).to.equal(auctionInfo.minBuyAmount)
-    expect(startTime).to.equal(auctionInfo.startTime)
-    expect(endTime).to.equal(auctionInfo.endTime)
-    expect(clearingSellAmount).to.equal(auctionInfo.clearingSellAmount)
-    expect(clearingBuyAmount).to.equal(auctionInfo.clearingBuyAmount)
-    expect(externalAuctionId).to.equal(auctionInfo.externalAuctionId)
-    expect(status).to.equal(auctionInfo.status)
-  }
-
-  const expectAuctionStatus = async (
-    trader: TraderP0,
-    index: number,
-    expectedStatus: AuctionStatus
-  ) => {
-    const { status } = await trader.auctions(index)
-    expect(status).to.equal(expectedStatus)
-  }
-
   before('create fixture loader', async () => {
     ;[wallet] = await (ethers as any).getSigners()
     loadFixture = createFixtureLoader([wallet])
@@ -181,6 +182,9 @@ describe('MainP0 contract', () => {
     token1 = erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
     token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
+
+    // Set minRevenueAuctionSize to 0 to make math easy
+    await main.connect(owner).setMinRevenueAuctionSize(0)
 
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
@@ -293,6 +297,28 @@ describe('MainP0 contract', () => {
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
+      })
+
+      it('Should not allow to claim more than once for each rewardPeriod', async () => {
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('0.8e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(main.address, rewardAmountCOMP)
+        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+
+        // Set new rewards and attempt to claim again
+        await compoundMock.setRewards(main.address, rewardAmountCOMP)
+        await expect(main.claimRewards()).to.not.emit(main, 'RewardsClaimed')
+
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        // Now should be able to claim rewards again
+        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
       })
 
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
@@ -448,7 +474,8 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+        // Can also claim through Facade
+        await expect(facade.claimAndSweepRewardsForAllTraders()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -1114,6 +1141,27 @@ describe('MainP0 contract', () => {
         expect(amount).to.equal(minBuyAmtRToken.div(2))
         expect(start).to.equal(await getLatestBlockTimestamp())
       })
+
+      it('Should claim and sweep rewards to Main from the Revenue Traders', async () => {
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(rsrTrader.address, rewardAmountAAVE)
+
+        // Check balance in main and Traders
+        expect(await aaveToken.balanceOf(main.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+
+        // Collect revenue
+        await expect(rsrTrader.claimAndSweepRewardsToMain()).to.emit(rsrTrader, 'RewardsClaimed')
+
+        // Check rewards sent to Main
+        expect(await aaveToken.balanceOf(main.address)).to.equal(rewardAmountAAVE)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+      })
     })
 
     context('With non-valid Claim Adapters', async function () {
@@ -1159,10 +1207,10 @@ describe('MainP0 contract', () => {
         )
 
         // Mark these assets as valid collateral, remove old ones
-        await main.removeAsset(collateral2.address)
-        await main.removeAsset(collateral3.address)
-        await main.activateAsset(newATokenCollateral.address)
-        await main.activateAsset(newCTokenCollateral.address)
+        await main.unregisterAsset(collateral2.address)
+        await main.unregisterAsset(collateral3.address)
+        await main.registerAsset(newATokenCollateral.address)
+        await main.registerAsset(newCTokenCollateral.address)
       })
 
       it('Should ignore claiming if no adapter defined', async () => {

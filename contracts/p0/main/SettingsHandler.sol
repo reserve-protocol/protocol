@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -11,18 +11,23 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
-import "contracts/p0/main/AssetRegistry.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/libraries/Fixed.sol";
 
 /// Settings mixin for Main
 // solhint-disable max-states-count
-contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler {
+contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
+    // Contracts
+    IFurnace private _revenueFurnace;
     IMarket private _market;
+    IERC20Metadata private _rsr;
+    IStRSR private _stRSR;
+    IRToken private _rToken;
 
+    // Simple governance parameters
     uint256 private _rewardStart;
     uint256 private _rewardPeriod;
     uint256 private _auctionPeriod;
@@ -33,21 +38,19 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     Fix private _maxTradeSlippage;
     Fix private _dustAmount;
     Fix private _maxAuctionSize;
+    Fix private _minRevenueAuctionSize;
     Fix private _issuanceRate;
     Fix private _defaultThreshold;
     Fix private _stRSRPayRatio;
 
-    IStRSR private _stRSR;
-    IFurnace private _revenueFurnace;
-
-    IAsset private _rTokenAsset;
-    IAsset private _rsrAsset;
-
-    function init(ConstructorArgs calldata args) public virtual override(Mixin, AssetRegistryP0) {
+    function init(ConstructorArgs calldata args) public virtual override {
         super.init(args);
 
-        _market = args.market;
         _revenueFurnace = args.furnace;
+        _market = args.market;
+        _rsr = args.rsr;
+        _stRSR = args.stRSR;
+        _rToken = args.rToken;
 
         _rewardStart = args.config.rewardStart;
         _rewardPeriod = args.config.rewardPeriod;
@@ -59,6 +62,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         _maxTradeSlippage = args.config.maxTradeSlippage;
         _dustAmount = args.config.dustAmount;
         _maxAuctionSize = args.config.maxAuctionSize;
+        _minRevenueAuctionSize = args.config.minRevenueAuctionSize;
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
         _stRSRPayRatio = args.config.stRSRPayRatio;
@@ -85,24 +89,31 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         return _revenueFurnace;
     }
 
-    function setRTokenAsset(IAsset rTokenAsset_) external override onlyOwner {
-        _rTokenAsset = rTokenAsset_;
-        emit RTokenAssetSet(_rTokenAsset, rTokenAsset_);
-        activateAsset(_rTokenAsset);
+    function setRToken(IRToken rToken_) external override onlyOwner {
+        _rToken = rToken_;
+        emit RTokenSet(_rToken, rToken_);
     }
 
-    function rTokenAsset() public view override returns (IAsset) {
-        return _rTokenAsset;
+    function rToken() public view override returns (IRToken) {
+        return _rToken;
     }
 
-    function setRSRAsset(IAsset rsrAsset_) external override onlyOwner {
-        _rsrAsset = rsrAsset_;
-        emit RSRAssetSet(_rsrAsset, rsrAsset_);
-        activateAsset(_rTokenAsset);
+    function setRSR(IERC20Metadata rsr_) external override onlyOwner {
+        _rsr = rsr_;
+        emit RSRSet(_rsr, rsr_);
     }
 
-    function rsrAsset() public view override returns (IAsset) {
-        return _rsrAsset;
+    function rsr() public view override returns (IERC20Metadata) {
+        return _rsr;
+    }
+
+    function setMarket(IMarket market_) external override onlyOwner {
+        emit MarketSet(_market, market_);
+        _market = market_;
+    }
+
+    function market() external view override returns (IMarket) {
+        return _market;
     }
 
     function setRewardStart(uint256 rewardStart_) external override onlyOwner {
@@ -188,6 +199,15 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
         return _maxAuctionSize;
     }
 
+    function setMinRevenueAuctionSize(Fix minRevenueAuctionSize_) external override onlyOwner {
+        emit MinRevenueAuctionSizeSet(_minRevenueAuctionSize, minRevenueAuctionSize_);
+        _minRevenueAuctionSize = minRevenueAuctionSize_;
+    }
+
+    function minRevenueAuctionSize() public view override returns (Fix) {
+        return _minRevenueAuctionSize;
+    }
+
     function setIssuanceRate(Fix issuanceRate_) external override onlyOwner {
         emit IssuanceRateSet(_issuanceRate, issuanceRate_);
         _issuanceRate = issuanceRate_;
@@ -213,25 +233,5 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
 
     function stRSRPayRatio() public view returns (Fix) {
         return _stRSRPayRatio;
-    }
-
-    function setMarket(IMarket market_) external override onlyOwner {
-        emit MarketSet(_market, market_);
-        _market = market_;
-    }
-
-    function market() external view override returns (IMarket) {
-        return _market;
-    }
-
-    // Useful view functions for reading refAmts of the state
-    /// @return The RToken deployment
-    function rToken() public view override returns (IRToken) {
-        return IRToken(address(_rTokenAsset.erc20()));
-    }
-
-    /// @return The RSR deployment
-    function rsr() public view override returns (IERC20Metadata) {
-        return IERC20Metadata(address(_rsrAsset.erc20()));
     }
 }

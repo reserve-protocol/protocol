@@ -104,6 +104,11 @@ library Lib {
                 _rawFix(b.maxAuctionSize),
                 "Config.maxAuctionSize"
             ) &&
+            assertEq(
+                _rawFix(a.minRevenueAuctionSize),
+                _rawFix(b.minRevenueAuctionSize),
+                "Config.minRevenueAuctionSize"
+            ) &&
             assertEq(_rawFix(a.issuanceRate), _rawFix(b.issuanceRate), "Config.issuanceRate") &&
             assertEq(
                 _rawFix(a.defaultThreshold),

@@ -2,15 +2,15 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
 import { bn, fp } from '../../common/numbers'
-import { CTokenMock } from '../../typechain/CTokenMock'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { ExplorerFacadeP0 } from '../../typechain/ExplorerFacadeP0'
-import { MainP0 } from '../../typechain/MainP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { USDCMock } from '../../typechain/USDCMock'
+import {
+  CTokenMock,
+  ERC20Mock,
+  ExplorerFacadeP0,
+  MainP0,
+  StaticATokenMock,
+  USDCMock,
+} from '../../typechain'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -21,19 +21,13 @@ describe('ExplorerFacadeP0 contract', () => {
   let addr2: SignerWithAddress
   let other: SignerWithAddress
 
-  //  Collateral
-  let collateral: Collateral[]
-
   // Tokens
   let initialBal: BigNumber
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
   let cToken: CTokenMock
-  let rToken: RTokenP0
-  let rsr: ERC20Mock
-  let compToken: ERC20Mock
-  let aaveToken: ERC20Mock
+  let basket: Collateral[]
 
   // Assets
   let tokenAsset: Collateral
@@ -58,18 +52,12 @@ describe('ExplorerFacadeP0 contract', () => {
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
-    let basket: Collateral[]
-
-      // Deploy fixture
-    ;({ rsr, compToken, aaveToken, collateral, rToken, basket, facade, main } = await loadFixture(
-      defaultFixture
-    ))
+    // Deploy fixture
+    ;({ basket, facade, main } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
-    tokenAsset = basket[0]
-    usdcAsset = basket[1]
-    aTokenAsset = basket[2]
-    cTokenAsset = basket[3]
+    ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
+
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
     aToken = <StaticATokenMock>(
@@ -85,9 +73,13 @@ describe('ExplorerFacadeP0 contract', () => {
   })
 
   describe('Views', () => {
+    let issueAmount: BigNumber
+
     beforeEach(async () => {
+      await main.connect(owner).setIssuanceRate(fp('1'))
+
       // Mint Tokens
-      initialBal = bn('1e33')
+      initialBal = bn('1000e18')
       await token.connect(owner).mint(addr1.address, initialBal)
       await usdc.connect(owner).mint(addr1.address, initialBal)
       await aToken.connect(owner).mint(addr1.address, initialBal)
@@ -99,7 +91,7 @@ describe('ExplorerFacadeP0 contract', () => {
       await cToken.connect(owner).mint(addr2.address, initialBal)
 
       // Issue some RTokens
-      const issueAmount: BigNumber = bn('1e33')
+      issueAmount = bn('100e18')
 
       // Provide approvals
       await token.connect(addr1).approve(main.address, initialBal)
@@ -113,20 +105,13 @@ describe('ExplorerFacadeP0 contract', () => {
 
     it('Should return maxIssuable correctly', async () => {
       // Check values
-      expect(await facade.maxIssuable(addr1.address)).to.equal(bn('3e33'))
-      expect(await facade.maxIssuable(addr2.address)).to.equal(bn('4e33'))
+      expect(await facade.maxIssuable(addr1.address)).to.equal(bn('3900e18'))
+      expect(await facade.maxIssuable(addr2.address)).to.equal(bn('4000e18'))
       expect(await facade.maxIssuable(other.address)).to.equal(0)
     })
 
     it('Should return currentBacking correctly', async () => {
       const [tokens, quantities] = await facade.currentBacking()
-
-      // Get backing ERC20s from collateral
-      const backingERC20Addrs: string[] = await Promise.all(
-        collateral.map(async (c): Promise<string> => {
-          return await c.erc20()
-        })
-      )
 
       // Check token addresses
       expect(tokens[0]).to.equal(token.address)
@@ -134,8 +119,8 @@ describe('ExplorerFacadeP0 contract', () => {
       expect(tokens[2]).to.equal(aToken.address)
       expect(tokens[3]).to.equal(cToken.address)
 
-      // Check quantities
-      // TODO
+      // Check quantities - Should be zero with no minted tokens
+      expect(quantities).to.eql([bn('25e18'), bn('25e6'), bn('25e18'), bn('25e8')])
     })
   })
 })

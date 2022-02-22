@@ -12,7 +12,7 @@ import "contracts/IExplorerFacade.sol";
 
 /**
  * @title ExplorerFacadeP0
- * @notice A read-only layer on top of the protocol for use from off-chain.
+ * @notice A UX-friendly layer that for all the non-governance protocol functions
  */
 contract ExplorerFacadeP0 is IExplorerFacade {
     MainP0 public main;
@@ -22,9 +22,9 @@ contract ExplorerFacadeP0 is IExplorerFacade {
     }
 
     function runAuctionsForAllTraders() external override {
-        main.doRecapitalizationAuctions();
-        main.rsrTrader().doAuctions();
-        main.rTokenTrader().doAuctions();
+        main.manageFunds();
+        main.rsrTrader().manageFunds();
+        main.rTokenTrader().manageFunds();
     }
 
     function claimAndSweepRewardsForAllTraders() external override {
@@ -35,6 +35,10 @@ contract ExplorerFacadeP0 is IExplorerFacade {
 
     function doFurnaceMelting() external override {
         main.revenueFurnace().melt();
+    }
+
+    function ensureValidBasket() external override {
+        main.ensureValidBasket();
     }
 
     /// @return How many RToken `account` can issue given current holdings

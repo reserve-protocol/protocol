@@ -2,20 +2,21 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
 import { CollateralStatus, MAX_UINT256 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
-import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
-import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
-import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
-import { CompoundPricedFiatCollateralP0 } from '../../typechain/CompoundPricedFiatCollateralP0'
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
-import { CTokenMock } from '../../typechain/CTokenMock'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { MainP0 } from '../../typechain/MainP0'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { USDCMock } from '../../typechain/USDCMock'
+import {
+  AaveOracleMockP0,
+  ATokenFiatCollateralP0,
+  CompoundOracleMockP0,
+  CompoundPricedFiatCollateralP0,
+  ComptrollerMockP0,
+  CTokenFiatCollateralP0,
+  CTokenMock,
+  ERC20Mock,
+  MainP0,
+  StaticATokenMock,
+  USDCMock,
+} from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture } from './utils/fixtures'
 

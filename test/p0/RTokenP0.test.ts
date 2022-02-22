@@ -2,13 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
 import { bn, fp } from '../../common/numbers'
-import { CTokenMock } from '../../typechain/CTokenMock'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { MainP0 } from '../../typechain/MainP0'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
+import { CTokenMock, ERC20Mock, MainP0, RTokenP0, StaticATokenMock } from '../../typechain'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader

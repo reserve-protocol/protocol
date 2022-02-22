@@ -3,15 +3,16 @@ import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-
 import { getChainId } from '../../common/blockchain-utils'
 import { bn, fp, near } from '../../common/numbers'
-import { CTokenMock } from '../../typechain/CTokenMock'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { MainCallerMockP0 } from '../../typechain/MainCallerMockP0'
-import { MainP0 } from '../../typechain/MainP0'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { StRSRP0 } from '../../typechain/StRSRP0'
+import {
+  CTokenMock,
+  ERC20Mock,
+  MainCallerMockP0,
+  MainP0,
+  StaticATokenMock,
+  StRSRP0,
+} from '../../typechain'
 import { advanceTime } from '../utils/time'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
@@ -25,7 +26,6 @@ describe('StRSRP0 contract', () => {
   let other: SignerWithAddress
 
   // RSR
-  let ERC20: ContractFactory
   let rsr: ERC20Mock
 
   // Main and AssetManager mocks
@@ -74,10 +74,8 @@ describe('StRSRP0 contract', () => {
     await rsr.connect(owner).mint(owner.address, initialBal)
 
     // Get assets and tokens
-    collateral0 = basket[0]
-    collateral1 = basket[1]
-    collateral2 = basket[2]
-    collateral3 = basket[3]
+    ;[collateral0, collateral1, collateral2, collateral3] = basket
+
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
     token1 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral1.erc20())
     token2 = <StaticATokenMock>(
@@ -282,7 +280,6 @@ describe('StRSRP0 contract', () => {
 
       beforeEach(async () => {
         // Set stakingWithdrawalDelay
-
         await main.connect(owner).setStRSRWithdrawalDelay(stkWithdrawalDelay)
 
         // Perform stake
