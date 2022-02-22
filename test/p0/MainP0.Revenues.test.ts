@@ -49,7 +49,7 @@ interface IAuctionInfo {
   status: AuctionStatus
 }
 
-export const expectAuctionInfo = async (
+const expectAuctionInfo = async (
   trader: TraderP0,
   index: number,
   auctionInfo: Partial<IAuctionInfo>
@@ -78,7 +78,7 @@ export const expectAuctionInfo = async (
   expect(status).to.equal(auctionInfo.status)
 }
 
-export const expectAuctionStatus = async (
+const expectAuctionStatus = async (
   trader: TraderP0,
   index: number,
   expectedStatus: AuctionStatus
