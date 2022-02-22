@@ -65,6 +65,7 @@ describe('MainP0 contract', () => {
   let collateral3: CTokenFiatCollateralP0
   let basket: Collateral[]
   let basketsNeededAmts: BigNumber[]
+  let initialBasketNonce: BigNumber
 
   // Config values
   let config: IConfig
@@ -122,6 +123,8 @@ describe('MainP0 contract', () => {
     collateral1 = basket[1]
     collateral2 = <ATokenFiatCollateralP0>basket[2]
     collateral3 = <CTokenFiatCollateralP0>basket[3]
+
+    initialBasketNonce = await main.basketNonce()
 
     rsrTrader = <RevenueTraderP0>(
       await ethers.getContractAt('RevenueTraderP0', await main.rsrTrader())
@@ -218,12 +221,12 @@ describe('MainP0 contract', () => {
 
       // Check if minting was registered
       const currentBlockNumber = await getLatestBlockNumber()
-      let [sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr1.address,
         0
       )
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce.add(2))
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
@@ -296,13 +299,13 @@ describe('MainP0 contract', () => {
 
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr1.address,
         0
       )
 
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
@@ -346,11 +349,11 @@ describe('MainP0 contract', () => {
 
       // Check the new issuance is not processed
       currentBlockNumber = await getLatestBlockNumber()
-      ;[sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      ;[sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr2.address,
         0
       )
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr2.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
@@ -435,11 +438,11 @@ describe('MainP0 contract', () => {
 
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr1.address,
         0
       )
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber + 3))
@@ -509,12 +512,12 @@ describe('MainP0 contract', () => {
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
 
-      let [sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr1.address,
         1
       )
       const blockAddPct: BigNumber = newIssuanceAmt.mul(BN_SCALE_FACTOR).div(ISSUANCE_PER_BLOCK)
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce)
       expect(sm_amt).to.equal(newIssuanceAmt)
       expect(sm_minter).to.equal(addr1.address)
       // Using issuance rate of 50% = 2 blocks
@@ -608,23 +611,23 @@ describe('MainP0 contract', () => {
       // Check mintings
       // First minting
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr1.address,
         0
       )
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
       expect(sm_proc).to.equal(true)
 
       // Second minting
-      ;[sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      ;[sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr1.address,
         1
       )
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(fp('1')))

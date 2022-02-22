@@ -55,7 +55,7 @@ abstract contract TraderP0 is ITraderEvents {
             return (false, auction);
         }
 
-        // {UoA} = {UoA} * {none}
+        // {UoA} = {UoA} * {1}
         Fix maxSellUoA = main.totalAssetValue().mul(main.maxAuctionSize());
 
         // {sellTok}

@@ -18,7 +18,6 @@ import "./SettingsHandler.sol";
  * @notice Claims rewards every reward cycle and leaves them in Main for Auctioneer to handle.
  */
 contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IRewardClaimer {
-    using BasketLib for Basket;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20;
@@ -76,7 +75,7 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
     }
 
     /// @return The timestamp of the next rewards event
-    function nextRewards() public view override returns (uint256) {
+    function nextRewards() public view returns (uint256) {
         (, uint256 next) = whenRewards(block.timestamp);
         return next;
     }

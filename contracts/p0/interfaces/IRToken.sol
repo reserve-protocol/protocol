@@ -17,7 +17,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param baskets {BU} The basket unit-equivalent of the collateral deposits
     /// @param erc20s The collateral token addresses corresponding to the deposit
     /// @param deposits {qTok} The collateral token quantities that paid for the issuance
-    /// @param blockStartedAt {blockNumber} The block number when issuance started, not fractional
+    /// @param basketNonce The basket nonce when the issuance was started
     /// @param blockAvailableAt {blockNumber} The block number when issuance completes, fractional
     /// @param processed false when the issuance is still vesting
     struct SlowIssuance {
@@ -26,7 +26,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
         Fix baskets; // {BU}
         address[] erc20s;
         uint256[] deposits; // {qTok}, same index as vault basket assets
-        uint256 blockStartedAt; // {block.number} not fractional
+        uint256 basketNonce; // basket nonce
         Fix blockAvailableAt; // {block.number} fractional
         bool processed;
     }

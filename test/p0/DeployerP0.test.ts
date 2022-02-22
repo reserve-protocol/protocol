@@ -122,22 +122,22 @@ describe('DeployerP0 contract', () => {
 
       // Assets
       // RSR
-      expect(await main.rsrAsset()).to.equal(rsrAsset.address)
+      expect(await main.assetFor(rsr.address)).to.equal(rsrAsset.address)
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
       expect(await main.rsr()).to.equal(rsr.address)
 
       // RToken
-      expect(await main.rTokenAsset()).to.equal(rTokenAsset.address)
+      expect(await main.assetFor(rToken.address)).to.equal(rTokenAsset.address)
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await main.rToken()).to.equal(rToken.address)
 
       // Check assets/collateral
-      const activeAssets = await main.activeAssets()
-      expect(activeAssets[0]).to.equal(rTokenAsset.address)
-      expect(activeAssets[1]).to.equal(rsrAsset.address)
-      expect(activeAssets[2]).to.equal(aaveAsset.address)
-      expect(activeAssets[3]).to.equal(compAsset.address)
-      expect(activeAssets.length).to.eql((await main.basketCollateral()).length + 4)
+      const assets = await main.allAssets()
+      expect(assets[0]).to.equal(rTokenAsset.address)
+      expect(assets[1]).to.equal(rsrAsset.address)
+      expect(assets[2]).to.equal(aaveAsset.address)
+      expect(assets[3]).to.equal(compAsset.address)
+      expect(assets.length).to.eql((await main.basketCollateral()).length + 4)
 
       // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)

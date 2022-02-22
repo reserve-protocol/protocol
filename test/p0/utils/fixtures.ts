@@ -379,19 +379,15 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
   const rsrAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('AavePricedAssetP0', await main.rsrAsset())
+    await ethers.getContractAt('AavePricedAssetP0', await main.assetFor(rsr.address))
   )
 
-  const activeAssets = await main.activeAssets()
-  const aaveAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('AavePricedAssetP0', activeAssets[2])
-  )
-  const compAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('CompoundPricedAssetP0', activeAssets[3])
-  )
+  const assets = await main.allAssets()
+  const aaveAsset: AssetP0 = <AssetP0>await ethers.getContractAt('AavePricedAssetP0', assets[2])
+  const compAsset: AssetP0 = <AssetP0>await ethers.getContractAt('CompoundPricedAssetP0', assets[3])
   const rToken: RTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', await main.rToken())
   const rTokenAsset: RTokenAssetP0 = <RTokenAssetP0>(
-    await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+    await ethers.getContractAt('RTokenAssetP0', await main.assetFor(rToken.address))
   )
 
   const furnace: FurnaceP0 = <FurnaceP0>(
@@ -429,9 +425,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       await compoundOracleInternal.setPrice(await erc20.symbol(), bn('1e6'))
       await aaveOracleInternal.setPrice(erc20.address, bn('2.5e14'))
     }
-
-    // Add approved Collateral
-    await main.connect(owner).addAsset(collateral[i].address)
   }
 
   // Set non-empty basket
