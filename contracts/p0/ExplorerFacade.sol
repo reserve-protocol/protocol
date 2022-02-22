@@ -37,8 +37,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         main.revenueFurnace().melt();
     }
 
-    function checkForDefaultAndEnsureValidBasket() external override {
-        main.forceCollateralUpdates();
+    function ensureValidBasket() external override {
         main.ensureValidBasket();
     }
 

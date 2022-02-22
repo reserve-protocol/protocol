@@ -1194,10 +1194,10 @@ describe('MainP0 contract', () => {
         )
 
         // Mark these assets as valid collateral, remove old ones
-        await main.removeAsset(collateral2.address)
-        await main.removeAsset(collateral3.address)
-        await main.addAsset(newATokenCollateral.address)
-        await main.addAsset(newCTokenCollateral.address)
+        await main.unregisterAsset(collateral2.address)
+        await main.unregisterAsset(collateral3.address)
+        await main.registerAsset(newATokenCollateral.address)
+        await main.registerAsset(newCTokenCollateral.address)
       })
 
       it('Should ignore claiming if no adapter defined', async () => {

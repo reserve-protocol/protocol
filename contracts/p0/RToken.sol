@@ -81,7 +81,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             baskets: baskets,
             erc20s: erc20s,
             deposits: deposits,
-            blockStartedAt: block.number,
+            basketNonce: main.basketNonce(),
             blockAvailableAt: nextIssuanceBlockAvailable(amount, issuanceRate[block.number]),
             processed: false
         });
@@ -181,7 +181,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         SlowIssuance storage iss = issuances[issuer][index];
         if (
             !iss.processed &&
-            iss.blockStartedAt > main.blockBasketLastChanged() &&
+            iss.basketNonce == main.basketNonce() &&
             iss.blockAvailableAt.lte(toFix(block.number))
         ) {
             for (uint256 i = 0; i < iss.erc20s.length; i++) {

@@ -54,6 +54,7 @@ contract AuctioneerP0 is
     }
 
     function manageFunds() external override notPaused {
+        forceCollateralUpdates();
         closeDueAuctions();
 
         if (hasOpenAuctions()) return;
@@ -92,14 +93,14 @@ contract AuctioneerP0 is
         needed = needed.mul(FIX_ONE.plus(main.minRevenueAuctionSize()));
 
         // Handout excess assets above what is needed, including any newly minted RToken
-        for (uint256 i = 0; i < _assets.length(); i++) {
-            IAsset a = IAsset(_assets.at(i));
+        for (uint256 i = 0; i < assets.length; i++) {
+            IAsset a = assets[i];
             uint256 bal = a.erc20().balanceOf(address(this));
             uint256 excess = bal; // {qTok}
             if (assets[i].isCollateral()) {
                 ICollateral c = ICollateral(address(assets[i]));
                 // {qTok} = {BU} * {qTok/BU}
-                excess -= Math.min(excess, needed.mul(basket.quantity(c)).ceil());
+                excess -= Math.min(excess, needed.mul(basketQuantity(c)).ceil());
             }
 
             if (excess > 0) {

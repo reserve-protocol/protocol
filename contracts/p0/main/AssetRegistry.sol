@@ -20,18 +20,17 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     function init(ConstructorArgs calldata args) public virtual override {
         super.init(args);
         for (uint256 i = 0; i < args.assets.length; i++) {
-            _registerAssetIgnoringCollisions(args.assets[i]);
+            _registerAsset(args.assets[i]);
         }
     }
 
-    /// Forbids registering an asset for an ERC20 that is already registered
+    /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return If the asset was moved from unregistered to registered
     function registerAsset(IAsset asset) external override onlyOwner returns (bool) {
-        require(!erc20s.contains(address(asset.erc20())), "overlapping ERC20s");
-        return _registerAssetIgnoringCollisions(asset);
+        return _registerAsset(asset);
     }
 
-    /// Swap an asset that shares an ERC20 with a presently-registered asset
+    /// Swap an asset that shares an ERC20 with a presently-registered asset, de-registering it
     /// Fails if there is not an asset already registered for the ERC20
     /// @return If the asset was swapped for a previously-registered asset
     function swapRegisteredAsset(IAsset asset) external override onlyOwner returns (bool) {
@@ -42,10 +41,12 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
 
     /// @return unregistered If the asset was moved from registered to unregistered
     function unregisterAsset(IAsset asset) external override onlyOwner returns (bool unregistered) {
-        erc20s.remove(address(asset.erc20()));
         unregistered = assets[asset.erc20()] == asset;
-        assets[asset.erc20()] = IAsset(address(0));
-        if (unregistered) emit AssetUnregistered(asset);
+        if (unregistered) {
+            erc20s.remove(address(asset.erc20()));
+            assets[asset.erc20()] = IAsset(address(0));
+            emit AssetUnregistered(asset);
+        }
     }
 
     function assetFor(IERC20Metadata erc20) public view override returns (IAsset) {
@@ -63,8 +64,18 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
 
     //
 
+    /// Forbids registering a different asset for an ERC20 that is already registered
+    /// @return If the asset was moved from unregistered to registered
+    function _registerAsset(IAsset asset) internal returns (bool) {
+        require(
+            !erc20s.contains(address(asset.erc20())) || assets[asset.erc20()] == asset,
+            "duplicate ERC20 detected"
+        );
+        return _registerAssetIgnoringCollisions(asset);
+    }
+
     /// Register an asset, leaving collision detection up to the caller
-    function _registerAssetIgnoringCollisions(IAsset asset) internal returns (bool swapped) {
+    function _registerAssetIgnoringCollisions(IAsset asset) private returns (bool swapped) {
         if (erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] == asset) return false;
 
         if (erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] != asset) {

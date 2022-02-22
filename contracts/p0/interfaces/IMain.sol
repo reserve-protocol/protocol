@@ -229,43 +229,40 @@ interface IAssetRegistry {
 }
 
 interface IBasketHandler {
-    /// Emitted when the target basket is set
+    /// Emitted when the prime basket is set
     /// @param collateral The collateral for the target basket
     /// @param targetAmts {target/BU} A list of quantities of target unit per basket unit
-    event TargetBasketSet(ICollateral[] collateral, Fix[] targetAmts);
+    event PrimeBasketSet(ICollateral[] collateral, Fix[] targetAmts);
 
-    /// Emitted when the reference basket is freshly derived from the target basket
+    /// Emitted when the reference basket is set
     /// @param collateral The list of collateral in the basket
     /// @param refAmts {ref/BU} The reference amounts of the basket
-    event ReferenceBasketSet(ICollateral[] collateral, Fix[] refAmts);
+    event BasketSet(ICollateral[] collateral, Fix[] refAmts);
 
     /// Emitted when a backup config is set for a target unit
     /// @param targetName The name of the target unit as a bytes32
     /// @param maxCollateral The max number to use from `collateral`
     /// @param collateral The set of permissible collateral to use
-    /// @param maxAmts The max weights for each collateral
-    event TargetConfigured(
+    event BackupConfigSet(
         bytes32 indexed targetName,
         uint256 indexed maxCollateral,
-        ICollateral[] collateral,
-        Fix[] maxAmts
+        ICollateral[] collateral
     );
 
-    /// Set the basket directly
+    /// Set the prime basket
+    /// @dev This may de-register other collateral!
     /// @param collateral The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    function setTargetBasket(ICollateral[] memory collateral, Fix[] memory targetAmts) external;
+    function setPrimeBasket(ICollateral[] memory collateral, Fix[] memory targetAmts) external;
 
-    /// Configure the Target given by targetName
+    /// Set the backup configuration for a given target
     /// @param targetName The name of the target as a bytes32
     /// @param maxCollateral The maximum number of collateral tokens to use from this target
     /// @param collateral A list of ordered backup collateral, not necessarily registered
-    /// @param maxAmts The corresponding maximum weights per basket unit, for each collateral
-    function configureTarget(
+    function setBackupConfig(
         bytes32 targetName,
         uint256 maxCollateral,
-        ICollateral[] calldata collateral,
-        Fix[] calldata maxAmts
+        ICollateral[] calldata collateral
     ) external;
 
     function forceCollateralUpdates() external;
@@ -278,7 +275,7 @@ interface IBasketHandler {
 
     function worstCollateralStatus() external view returns (CollateralStatus status);
 
-    function blockBasketLastChanged() external view returns (uint256);
+    function basketNonce() external view returns (uint256);
 
     function totalAssetValue() external view returns (Fix p);
 }

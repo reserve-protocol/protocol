@@ -81,8 +81,6 @@ contract DeployerP0 is IDeployer {
         ConstructorArgs memory ctorArgs;
         ctorArgs.config = config;
         ctorArgs.dist = dist;
-        ctorArgs.furnace = deployRevenueFurnace(ctorArgs.rToken, config.rewardPeriod);
-        Ownable(address(ctorArgs.furnace)).transferOwnership(owner);
         ctorArgs.market = market;
         ctorArgs.rsr = rsr;
         ctorArgs.stRSR = deployStRSR(
@@ -92,6 +90,8 @@ contract DeployerP0 is IDeployer {
             owner
         );
         ctorArgs.rToken = deployRToken(main, name, symbol, owner);
+        ctorArgs.furnace = deployRevenueFurnace(ctorArgs.rToken, config.rewardPeriod);
+        Ownable(address(ctorArgs.furnace)).transferOwnership(owner);
         ctorArgs.claimAdapters = new IClaimAdapter[](2);
         ctorArgs.claimAdapters[0] = compoundClaimer;
         ctorArgs.claimAdapters[1] = aaveClaimer;
