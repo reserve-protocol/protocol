@@ -19,78 +19,51 @@ contract FurnaceP0 is Ownable, IFurnace {
     using FixLib for Fix;
 
     IRToken public immutable rToken;
-    uint256 public override batchDuration;
+    Fix public override ratio; // {1} What fraction of balance to melt each period
+    uint256 public override period; // {seconds} How often to melt
+    uint256 public override lastPayout; // {seconds} The last time we did a payout
 
-    struct Batch {
-        uint256 amount; // {qTok}
-        uint256 start; // {timestamp}
-        uint256 end; // {timestamp}
-        uint256 melted; // {qTok}
-    }
-
-    Batch[] public batches;
-
-    /// @param batchDuration_ {sec} The number of seconds to spread the melt over
-    constructor(IRToken rToken_, uint256 batchDuration_) {
+    constructor(
+        IRToken rToken_,
+        uint256 period_,
+        Fix ratio_
+    ) {
         require(address(rToken_) != address(0), "rToken is zero address");
         rToken = rToken_;
-        batchDuration = batchDuration_;
+        period = period_;
+        ratio = ratio_;
+        lastPayout = block.timestamp();
+    }
+
+    function setPeriod(uint256 period_) external override onlyOwner {
+        emit PeriodSet(period, period_);
+        period = period_;
+    }
+
+    function setRatio(Fix ratio_) external override onlyOwner {
+        emit RatioSet(ratio, ratio_);
+        ratio = ratio_;
     }
 
     /// Causes the Furnace to re-examine its holdings and create new batches.
     function notifyOfDeposit(IERC20 erc20) external override {
         require(address(erc20) == address(rToken), "RToken only");
-
-        // Compute the `amount` of tokens the furnace owns that are not already in batches
-        uint256 balance = erc20.balanceOf(address(this));
-        uint256 batchTotal;
-        for (uint256 i = 0; i < batches.length; i++) {
-            Batch storage batch = batches[i];
-            batchTotal += batch.amount - batch.melted;
-        }
-        uint256 amount = balance - batchTotal;
-
-        if (amount > 0) {
-            uint256 end = block.timestamp + batchDuration;
-            batches.push(Batch(amount, block.timestamp, end, 0));
-            emit DistributionCreated(amount, end, _msgSender());
-        }
+        melt();
     }
 
     /// Performs any melting that has vested since last call. Idempotent
-    function melt() public override {
-        // Compute the current total to melt across the batches,
-        // and pull that total out of the batches that are here.
+    function melt() public override returns (uint256 meltAmount) {
+        if (block.timestamp() < lastPayout + period) return 0;
 
-        uint256 toMelt = 0;
-        for (uint256 i = 0; i < batches.length; i++) {
-            Batch storage batch = batches[i];
-            if (batch.melted < batch.amount) {
-                // Pull the vested amount out of batch and register it melted.
-                uint256 amt = vestedAmount(batch, block.timestamp);
-                toMelt += amt - batch.melted;
-                batch.melted = amt;
-            }
-        }
+        // # of whole periods that have passed since lastPayout
+        uint256 numPeriods = (block.timestamp() - lastPayout) / period;
 
-        if (toMelt > 0) {
-            rToken.melt(toMelt);
-        }
-    }
+        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
+        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio.powu(numPeriods)));
 
-    function setBatchDuration(uint256 batchDuration_) external override onlyOwner {
-        emit BatchDurationSet(batchDuration, batchDuration_);
-        batchDuration = batchDuration_;
-    }
+        meltAmount = payoutRatio.mulu(rToken.balanceOf(address(this))).floor();
 
-    // @return The cumulative amount of tokens from batch that have vested at `timestamp`
-    function vestedAmount(Batch storage batch, uint256 timestamp) private view returns (uint256) {
-        // Clamp results to the vesting period
-        if (timestamp <= batch.start) return 0;
-        else if (batch.end <= timestamp) return batch.amount;
-
-        // (timestamp - batch.start){s} * batch.amount{RTok} / batch.duration{s}
-        return
-            toFix(timestamp - batch.start).mulu(batch.amount).divu(batch.end - batch.start).floor();
+        if (meltAmount > 0) rToken.melt(meltAmount);
+        lastPayout += numPeriods * period;
     }
 }
