@@ -52,6 +52,7 @@ contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents {
         // {tok} =  {qTok} / {qTok/tok}
         Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
         (bool launch, Auction memory auction) = prepareAuctionSell(asset, assetToBuy, sellAmount);
+
         if (launch) launchAuction(auction);
     }
 

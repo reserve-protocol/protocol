@@ -341,7 +341,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
     defaultDelay: bn('86400'), // 24 hs
     maxTradeSlippage: fp('0.01'), // 1%
-    dustAmount: fp('1'), // 1 UoA (USD)
+    dustAmount: fp('0.01'), // 0.01 UoA (USD)
     maxAuctionSize: fp('0.01'), // 1%
     minRevenueAuctionSize: fp('0.001'), // 0.1%
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute

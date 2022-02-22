@@ -106,7 +106,8 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         _payoutRewards();
 
         main.rsr().safeTransferFrom(account, address(this), rsrAmount);
-        uint256 stakeAmount = (rsrAmount * totalStaked) / (rsrBacking > 0 ? rsrBacking : 1);
+        uint256 stakeAmount = (rsrAmount * (totalStaked > 0 ? totalStaked : 1)) /
+            (rsrBacking > 0 ? rsrBacking : 1);
 
         // Create stRSR balance
         if (balances[account] == 0) accounts.add(account);
