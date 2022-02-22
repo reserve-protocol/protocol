@@ -70,7 +70,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, AssetRegistryP0, ISettingsHandler 
     }
 
     function setRevenueFurnace(IFurnace revenueFurnace_) external override onlyOwner {
-        require(revenueFurnace_.batchDuration() == _rewardPeriod, "does not match rewardPeriod");
         emit RevenueFurnaceSet(_revenueFurnace, revenueFurnace_);
         _revenueFurnace = revenueFurnace_;
     }
