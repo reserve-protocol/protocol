@@ -35,11 +35,13 @@ contract FurnaceP0 is Ownable, IFurnace {
         lastPayout = block.timestamp();
     }
 
+    /// Period setting
     function setPeriod(uint256 period_) external override onlyOwner {
         emit PeriodSet(period, period_);
         period = period_;
     }
 
+    /// Ratio setting
     function setRatio(Fix ratio_) external override onlyOwner {
         emit RatioSet(ratio, ratio_);
         ratio = ratio_;
@@ -52,7 +54,7 @@ contract FurnaceP0 is Ownable, IFurnace {
     }
 
     /// Performs any melting that has vested since last call. Idempotent
-    function melt() public override returns (uint256 meltAmount) {
+    function melt() public override returns (uint256 amount) {
         if (block.timestamp() < lastPayout + period) return 0;
 
         // # of whole periods that have passed since lastPayout
@@ -61,9 +63,9 @@ contract FurnaceP0 is Ownable, IFurnace {
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio.powu(numPeriods)));
 
-        meltAmount = payoutRatio.mulu(rToken.balanceOf(address(this))).floor();
+        amount = payoutRatio.mulu(rToken.balanceOf(address(this))).floor();
 
-        if (meltAmount > 0) rToken.melt(meltAmount);
+        if (amount > 0) rToken.melt(amount);
         lastPayout += numPeriods * period;
     }
 }
