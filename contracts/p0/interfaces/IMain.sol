@@ -24,6 +24,7 @@ struct Config {
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Ratios
     Fix maxTradeSlippage; // max slippage acceptable in a trade
+    Fix dustAmount; // value below which we don't bother handling some tokens {UoA}
     Fix maxAuctionSize; // max size of an auction / (RToken value)
     Fix minRevenueAuctionSize; // min size of a revenue auction and surplus buffer/(RToken value)
     Fix issuanceRate; // number of RToken to issue per block / (RToken value)

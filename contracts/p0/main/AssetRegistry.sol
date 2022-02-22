@@ -64,12 +64,6 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         }
     }
 
-    /// Return the active asset that models the erc20 `token`.
-    function activeAsset(address token) public view override returns (IAsset) {
-        require(activeTokens.contains(token), "Token not active");
-        return _activeAssets[token];
-    }
-
     //
 
     /// Forbids registering a different asset for an ERC20 that is already registered
