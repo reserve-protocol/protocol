@@ -26,12 +26,12 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     IMain public main;
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
-    Fix lastIssRate; // {qRTok/block}
-    uint256 lastIssRateBlock; // {block number}
+    Fix public lastIssRate; // {qRTok/block}
+    uint256 public lastIssRateBlock; // {block number}
 
     // When the all pending issuances will have vested.
     // This is fractional so that we can represent partial progress through a block.
-    Fix allVestAt; // {fractional block number}
+    Fix public allVestAt; // {fractional block number}
 
     // IssueItem: One edge of an issuance
     struct IssueItem {
