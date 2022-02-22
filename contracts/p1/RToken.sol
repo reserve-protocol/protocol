@@ -33,14 +33,8 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     // This is fractional so that we can represent partial progress through a block.
     Fix allVestAt; // {fractional block number}
 
-    /** Issuance ticket.
-     * @param amtRToken {qTok} The amount of RToken that paid for this issuance
-     * @param baskets {BU} The number of future baskets to issue
-     * @param deposits {qTok} The collateral token quantities that paid for the issuance
-     * @param blockAvailableAt {blockNumber} The block number when issuance completes, fractional
-     */
-    // TODO: rename to "IssueItem"
-    struct TotalIssues {
+    // IssueItem: One edge of an issuance
+    struct IssueItem {
         uint256 when; // {block number}
         uint256 amtRToken; // {qRTok} Total amount of RTokens that have vested by `when`
         Fix amtBaskets; // {BU} Total amount of baskets that should back those RTokens
@@ -52,7 +46,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         address[] tokens; // Addresses of the erc20 tokens modelled by deposits in this queue
         uint256 left; // Largest index into items that's already been used
         uint256 right; // Largest index into items that's currently-valid. (Avoid needless deletes)
-        TotalIssues[] items; // The actual items (The issuance "fenceposts")
+        IssueItem[] items; // The actual items (The issuance "fenceposts")
     }
     /* An initialized IssueQueue should start with a zero-value item.
      * If we want to clean up state, it's safe to delete items[x] iff x < left.
@@ -108,6 +102,8 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         uint256[] memory deposits
     ) external override onlyMain {
         assert(erc20s.length == deposits.length);
+        IssueQueue storage queue = issueQueues[account];
+        refundOldBasketIssues(account);
 
         // Calculate the issuance rate if this is the first issue in the block
         if (lastIssRateBlock < block.number) {
@@ -115,23 +111,18 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             lastIssRate = fixMax(MIN_ISS_RATE, main.issuanceRate().mulu(totalSupply()));
         }
 
-        IssueQueue storage queue = issueQueues[account];
-
-        refundOldBasketIssues(account);
-
         // Ensure that the queue is initialized, and models the current basket
-        // TODO revisit
-        if (queue.items.length == 0) {
-            delete queue.tokens;
-            for (uint256 i = 0; i < erc20s.length; i++) queue.tokens.push(erc20s[i]);
+        if (queue.items.length == 0 || queue.basketNonce < main.basketNonce()) {
+            queue.basketNonce = main.basketNonce();
+            queue.tokens = erc20s;
             queue.left = 0;
             queue.right = 0;
 
-            TotalIssues storage zero = queue.items.push();
+            IssueItem storage zero = queue.items.length == 0 ? queue.items.push() : queue.items[0];
             zero.when = block.number;
             zero.amtRToken = 0;
             zero.amtBaskets = FIX_ZERO;
-            for (uint256 i = 0; i < deposits.length; i++) zero.deposits.push(0);
+            zero.deposits = new uint256[](erc20s.length);
         }
 
         assert(queue.items.length > 0);
@@ -141,8 +132,10 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         allVestAt = fixMin(allVestAt, toFix(block.number)).plus(divFix(amtRToken, lastIssRate));
 
         // Push issuance onto queue
-        TotalIssues storage prev = queue.items[queue.right];
-        TotalIssues storage curr = queue.items.push();
+        IssueItem storage prev = queue.items[queue.right];
+        IssueItem storage curr = queue.items.length == queue.right + 1
+            ? queue.items.push()
+            : queue.items[queue.right + 1];
 
         curr.when = allVestAt.floor();
         curr.amtRToken = prev.amtRToken + amtRToken;
@@ -162,7 +155,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             allVestAt
         );
 
-        // Vest immediately if that vesting fit into this block.
+        // Vest immediately if the vesting fits into this block.
         if (allVestAt.floor() <= block.number) vestThrough(account, queue.right);
     }
 
@@ -178,7 +171,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         refundOldBasketIssues(account);
         assert(queue.left == queue.right || queue.basketNonce == main.basketNonce());
 
-        // eliminate edge cases
+        // Handle common edge cases in O(1)
         if (queue.left == queue.right) return 0;
         if (block.timestamp < queue.items[queue.left].when) return 0;
         if (queue.items[queue.right].when <= block.timestamp) {
@@ -266,7 +259,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
     // ==== private ====
     /// Refund all deposits in the given span.
-    /// This does *not* attempt to fixup queue.left and queue.right!
+    /// This does *not* fixup queue.left and queue.right!
     function refundSpan(
         address account,
         uint256 left,
@@ -276,8 +269,8 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         if (left >= right) return deposits;
 
         // refund total deposits
-        TotalIssues storage leftItem = queue.items[queue.left];
-        TotalIssues storage rightItem = queue.items[right];
+        IssueItem storage leftItem = queue.items[queue.left];
+        IssueItem storage rightItem = queue.items[right];
 
         for (uint256 i = 0; i < queue.tokens.length; i++) {
             deposits[i] = rightItem.deposits[i] - leftItem.deposits[i];
@@ -288,16 +281,15 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         emit IssuancesCanceled(account, left + 1, right);
     }
 
-    /// Vest all RToken issuance in queue = queues[account], from queue.left through index `right`.
+    /// Vest all RToken issuance in queue = queues[account], from queue.left through index `through`
     /// This *does* fixup queue.left and queue.right!
-    function vestThrough(address account, uint256 right) private returns (uint256 amtRToken) {
+    function vestThrough(address account, uint256 through) private returns (uint256 amtRToken) {
         IssueQueue storage queue = issueQueues[account];
-        if (right <= queue.left) return 0;
-        assert(right <= queue.right); // TODO: Why one silent return and the other assert?
+        assert(queue.left <= through && through <= queue.right); // out-of-bounds error
 
-        // Vest the span up to index `right`.
-        TotalIssues storage leftItem = queue.items[queue.left];
-        TotalIssues storage rightItem = queue.items[right];
+        // Vest the span up to index `through`.
+        IssueItem storage leftItem = queue.items[queue.left];
+        IssueItem storage rightItem = queue.items[through];
 
         for (uint256 i = 0; i < queue.tokens.length; i++) {
             uint256 amtDeposit = rightItem.deposits[i] - leftItem.deposits[i];
@@ -309,16 +301,13 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         Fix newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets.minus(leftItem.amtBaskets));
         basketsNeeded = newBasketsNeeded;
 
-        emit IssuancesCompleted(account, queue.left + 1, right);
+        emit IssuancesCompleted(account, queue.left + 1, through);
         emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
 
-        queue.left = right;
+        queue.left = through;
     }
 
-    /** Ensure that `account's` issuance queue is initialized, and only models issuances against the
-     * current basket. If it contains issuances against old baskets, cancel them.
-     * @dev This does *not* force possible vesting.
-     */
+    /// If account's queue models an old basket, refund those issuances.
     function refundOldBasketIssues(address account) private {
         IssueQueue storage queue = issueQueues[account];
         // ensure that the queue models issuances against the current basket, not previous baskets
