@@ -20,8 +20,9 @@ contract FurnaceExtension is ContextMixin, FurnaceP0, IExtension {
     constructor(
         address admin,
         IRToken rToken,
-        uint256 batchDuration
-    ) ContextMixin(admin) FurnaceP0(rToken, batchDuration) {}
+        uint256 period_,
+        Fix ratio_
+    ) ContextMixin(admin) FurnaceP0(rToken, period_, ratio_) {}
 
     function assertInvariants() external override {
         _INVARIANT_stateDefined();

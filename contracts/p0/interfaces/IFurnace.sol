@@ -28,6 +28,6 @@ interface IFurnace is IERC20Receiver {
     function setRatio(Fix) external;
 
     /// Performs any RToken melting that has vested since the last payout. Idempotent.
-    /// @returns amount How much RToken was melted
+    /// @return amount How much RToken was melted
     function melt() external returns (uint256 amount);
 }

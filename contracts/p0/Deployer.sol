@@ -81,7 +81,11 @@ contract DeployerP0 is IDeployer {
 
         {
             IRToken rToken = deployRToken(main, name, symbol, owner);
-            IFurnace revenueFurnace = deployRevenueFurnace(rToken, config.rewardPeriod);
+            IFurnace revenueFurnace = deployRevenueFurnace(
+                rToken,
+                config.rewardPeriod,
+                Fix.wrap(0.1591e18) // TODO: Route through a deploy() argument?
+            );
             Ownable(address(revenueFurnace)).transferOwnership(owner);
 
             IClaimAdapter[] memory claimAdapters = new IClaimAdapter[](2);
@@ -144,12 +148,12 @@ contract DeployerP0 is IDeployer {
         return new RTokenP0(main, name, symbol, owner);
     }
 
-    function deployRevenueFurnace(IRToken rToken, uint256 batchDuration)
-        internal
-        virtual
-        returns (IFurnace)
-    {
-        return new FurnaceP0(rToken, batchDuration);
+    function deployRevenueFurnace(
+        IRToken rToken,
+        uint256 period,
+        Fix ratio
+    ) internal virtual returns (IFurnace) {
+        return new FurnaceP0(rToken, period, ratio);
     }
 
     function deployStRSR(
