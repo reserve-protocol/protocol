@@ -67,15 +67,6 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
         }
     }
 
-    /// Disable the collateral directly
-    function disable() external virtual override {
-        require(_msgSender() == address(main) || _msgSender() == main.owner(), "main or its owner");
-        if (whenDefault > block.timestamp) {
-            emit DefaultStatusChanged(whenDefault, block.timestamp, CollateralStatus.DISABLED);
-            whenDefault = block.timestamp;
-        }
-    }
-
     /// @return The collateral's status
     function status() public view virtual override returns (CollateralStatus) {
         if (whenDefault == NEVER) {
