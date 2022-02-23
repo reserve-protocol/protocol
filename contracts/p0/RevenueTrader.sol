@@ -21,43 +21,45 @@ contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents {
 
     /// Close any open auctions and start new ones, for all assets
     function manageFunds() external {
-        IAsset[] memory assets = main.allAssets();
-        for (uint256 i = 0; i < assets.length; i++) {
-            processAsset(assets[i]);
+        IERC20Metadata[] memory erc20s = main.registeredERC20s();
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            manageToken(erc20s[i]);
         }
     }
 
     /// - If we have any of `tokenToBuy` (RSR or RToken), distribute it.
     /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
-    function processAsset(IAsset asset) public {
+    function manageToken(IERC20Metadata tok) public {
         closeDueAuctions();
-        IAsset assetToBuy = main.assetFor(tokenToBuy);
 
-        IERC20Metadata erc20 = asset.erc20();
-        uint256 bal = erc20.balanceOf(address(this));
+        uint256 bal = tok.balanceOf(address(this));
         if (bal == 0) return;
 
-        if (asset == assetToBuy) {
-            erc20.safeApprove(address(main), bal);
-            main.distribute(erc20, address(this), bal);
+        if (tok == tokenToBuy) {
+            tok.safeApprove(address(main), bal);
+            main.distribute(tok, address(this), bal);
         } else {
             // If not dust, trade the non-target asset for the target asset
             bool launch;
             Auction memory auction;
 
             // {tok} =  {qTok} / {qTok/tok}
-            Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
-            (launch, auction) = prepareAuctionSell(asset, assetToBuy, sellAmount);
+            Fix sellAmount = toFixWithShift(bal, -int8(tok.decimals()));
+            (launch, auction) = prepareAuctionSell(
+                main.toAsset(tok),
+                main.toAsset(tokenToBuy),
+                sellAmount
+            );
             if (launch) launchAuction(auction);
         }
     }
 
     /// Claims and sweeps all rewards
     function claimAndSweepRewardsToMain() external {
-        (address[] memory erc20s, uint256[] memory amts) = RewardsLib.claimRewards(address(main));
+        (IERC20Metadata[] memory erc20s, uint256[] memory amts) = RewardsLib.claimRewards(main);
         for (uint256 i = 0; i < erc20s.length; i++) {
             if (amts[i] > 0) {
-                IERC20Metadata(erc20s[i]).safeTransfer(address(main), amts[i]);
+                erc20s[i].safeTransfer(address(main), amts[i]);
             }
             emit RewardsClaimed(erc20s[i], amts[i]);
         }

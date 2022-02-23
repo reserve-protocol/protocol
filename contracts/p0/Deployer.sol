@@ -56,8 +56,8 @@ contract DeployerP0 is IDeployer {
         market = market_;
         comptroller = comptroller_;
         aaveLendingPool = aaveLendingPool_;
-        compoundClaimer = new CompoundClaimAdapterP0(comptroller_, address(comp_));
-        aaveClaimer = new AaveClaimAdapterP0(address(aave_));
+        compoundClaimer = new CompoundClaimAdapterP0(comptroller_, comp_);
+        aaveClaimer = new AaveClaimAdapterP0(aave_);
     }
 
     /// Deploys an instance of the entire system

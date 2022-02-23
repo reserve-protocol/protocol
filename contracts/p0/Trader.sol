@@ -69,8 +69,8 @@ abstract contract TraderP0 is ITraderEvents {
         return (
             true,
             Auction({
-                sell: sell,
-                buy: buy,
+                sell: sell.erc20(),
+                buy: buy.erc20(),
                 sellAmount: sellAmount.shiftLeft(int8(sell.erc20().decimals())).floor(),
                 minBuyAmount: minBuyAmount.shiftLeft(int8(buy.erc20().decimals())).ceil(),
                 clearingSellAmount: 0,
@@ -131,11 +131,11 @@ abstract contract TraderP0 is ITraderEvents {
         auctions.push(auction_);
         Auction storage auction = auctions[auctions.length - 1];
 
-        auction.sell.erc20().safeApprove(address(main.market()), auction.sellAmount);
+        auction.sell.safeApprove(address(main.market()), auction.sellAmount);
 
         auction.externalAuctionId = main.market().initiateAuction(
-            auction.sell.erc20(),
-            auction.buy.erc20(),
+            auction.sell,
+            auction.buy,
             block.timestamp + main.auctionPeriod(),
             block.timestamp + main.auctionPeriod(),
             uint96(auction.sellAmount),
@@ -151,8 +151,8 @@ abstract contract TraderP0 is ITraderEvents {
 
         emit AuctionStarted(
             auctions.length - 1,
-            address(auction.sell),
-            address(auction.buy),
+            auction.sell,
+            auction.buy,
             auction.sellAmount,
             auction.minBuyAmount
         );
@@ -176,8 +176,8 @@ abstract contract TraderP0 is ITraderEvents {
 
         emit AuctionEnded(
             i,
-            address(auction.sell),
-            address(auction.buy),
+            auction.sell,
+            auction.buy,
             auction.clearingSellAmount,
             auction.clearingBuyAmount
         );

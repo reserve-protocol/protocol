@@ -45,19 +45,14 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
             ? rToken().basketsNeeded().mulu(amount).divuRound(rTokSupply) // {BU * qRTok / qRTok}
             : toFixWithShift(amount, -int8(rToken().decimals())); // {qRTok / qRTok}
 
-        ICollateral[] memory collateral;
-        (collateral, deposits) = basketQuote(baskets, RoundingApproach.CEIL);
+        IERC20Metadata[] memory erc20s;
+        (erc20s, deposits) = basketQuote(baskets, RoundingApproach.CEIL);
 
         // Transfer collateral to RToken
-        for (uint256 i = 0; i < collateral.length; i++) {
-            collateral[i].erc20().safeTransferFrom(_msgSender(), address(rToken()), deposits[i]);
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            erc20s[i].safeTransferFrom(_msgSender(), address(rToken()), deposits[i]);
         }
 
-        // Begin SlowIssuance
-        address[] memory erc20s = new address[](collateral.length);
-        for (uint256 i = 0; i < collateral.length; i++) {
-            erc20s[i] = address(collateral[i].erc20());
-        }
         rToken().issue(_msgSender(), amount, baskets, erc20s, deposits);
         emit IssuanceStarted(_msgSender(), amount, baskets);
     }
@@ -74,28 +69,28 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         // {BU} = {BU} * {qRTok} / {qRTok}
         Fix baskets = rToken().basketsNeeded().mulu(amount).divuRound(rToken().totalSupply());
 
-        ICollateral[] memory collateral;
-        (collateral, withdrawals) = basketQuote(baskets, RoundingApproach.FLOOR);
+        IERC20Metadata[] memory erc20s;
+        (erc20s, withdrawals) = basketQuote(baskets, RoundingApproach.FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         Fix prorate = toFix(amount).divu(rToken().totalSupply());
         rToken().redeem(_msgSender(), amount, baskets);
 
         // Bound the redemption by the prorata share, in case we're currently under-capitalized
-        for (uint256 i = 0; i < collateral.length; i++) {
+        for (uint256 i = 0; i < erc20s.length; i++) {
             // {qTok} = {1} * {qTok}
-            uint256 prorata = prorate.mulu(collateral[i].erc20().balanceOf(address(this))).floor();
+            uint256 prorata = prorate.mulu(erc20s[i].balanceOf(address(this))).floor();
 
             withdrawals[i] = Math.min(withdrawals[i], prorata);
-            collateral[i].erc20().safeTransfer(_msgSender(), withdrawals[i]);
+            erc20s[i].safeTransfer(_msgSender(), withdrawals[i]);
         }
 
         emit Redemption(_msgSender(), amount, baskets);
     }
 
-    /// @return collateral The addresses of the ERC20s backing the RToken
-    function basketCollateral() public view override returns (ICollateral[] memory collateral) {
-        (collateral, ) = basketQuote(FIX_ONE, RoundingApproach.ROUND);
+    /// @return tokens The addresses of the ERC20s backing the RToken
+    function basketTokens() public view override returns (IERC20Metadata[] memory tokens) {
+        (tokens, ) = basketQuote(FIX_ONE, RoundingApproach.ROUND);
     }
 
     /// @return {qRTok} How much RToken `account` can issue given current holdings

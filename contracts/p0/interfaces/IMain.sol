@@ -68,8 +68,8 @@ enum AuctionStatus {
 }
 
 struct Auction {
-    IAsset sell;
-    IAsset buy;
+    IERC20Metadata sell;
+    IERC20Metadata buy;
     uint256 sellAmount; // {qSellTok}
     uint256 minBuyAmount; // {qBuyTok}
     uint256 startTime; // {sec}
@@ -210,59 +210,52 @@ interface IRevenueDistributor {
 
 interface IAssetRegistry {
     /// Emitted when an asset is added to the registry
+    /// @param erc20 The ERC20 collateral token
     /// @param asset The asset contract added to the registry
-    event AssetRegistered(IAsset indexed asset);
+    event AssetRegistered(IERC20Metadata indexed erc20, IAsset indexed asset);
 
     /// Emitted when an asset is removed from the registry
+    /// @param erc20 The ERC20 collateral token
     /// @param asset The asset contract removed from the registry
-    event AssetUnregistered(IAsset indexed asset);
+    event AssetUnregistered(IERC20Metadata indexed erc20, IAsset indexed asset);
 
-    function registerAsset(IAsset asset) external returns (bool);
+    function toAsset(IERC20Metadata erc20) external view returns (IAsset);
 
-    function swapRegisteredAsset(IAsset asset) external returns (bool swapped);
+    function toColl(IERC20Metadata erc20) external view returns (ICollateral);
 
-    function unregisterAsset(IAsset asset) external returns (bool);
-
-    function assetFor(IERC20Metadata erc20) external view returns (IAsset);
-
-    function allAssets() external view returns (IAsset[] memory);
+    function registeredERC20s() external view returns (IERC20Metadata[] memory);
 }
 
 interface IBasketHandler {
     /// Emitted when the prime basket is set
-    /// @param collateral The collateral for the target basket
+    /// @param tokens The collateral tokens for the prime basket
     /// @param targetAmts {target/BU} A list of quantities of target unit per basket unit
-    event PrimeBasketSet(ICollateral[] collateral, Fix[] targetAmts);
+    event PrimeBasketSet(IERC20Metadata[] tokens, Fix[] targetAmts);
 
     /// Emitted when the reference basket is set
-    /// @param collateral The list of collateral in the basket
-    /// @param refAmts {ref/BU} The reference amounts of the basket
-    event BasketSet(ICollateral[] collateral, Fix[] refAmts);
+    /// @param tokens The list of collateral tokens in the reference basket
+    /// @param refAmts {ref/BU} The reference amounts of the basket collateral tokens
+    event BasketSet(IERC20Metadata[] tokens, Fix[] refAmts);
 
     /// Emitted when a backup config is set for a target unit
     /// @param targetName The name of the target unit as a bytes32
-    /// @param maxCollateral The max number to use from `collateral`
-    /// @param collateral The set of permissible collateral to use
-    event BackupConfigSet(
-        bytes32 indexed targetName,
-        uint256 indexed maxCollateral,
-        ICollateral[] collateral
-    );
+    /// @param max The max number to use from `tokens`
+    /// @param tokens The set of backup collateral tokens
+    event BackupConfigSet(bytes32 indexed targetName, uint256 indexed max, IERC20Metadata[] tokens);
 
     /// Set the prime basket
-    /// @dev This may de-register other collateral!
-    /// @param collateral The collateral for the new prime basket
+    /// @param tokens The collateral tokens for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    function setPrimeBasket(ICollateral[] memory collateral, Fix[] memory targetAmts) external;
+    function setPrimeBasket(IERC20Metadata[] memory tokens, Fix[] memory targetAmts) external;
 
     /// Set the backup configuration for a given target
     /// @param targetName The name of the target as a bytes32
-    /// @param maxCollateral The maximum number of collateral tokens to use from this target
-    /// @param collateral A list of ordered backup collateral, not necessarily registered
+    /// @param max The maximum number of collateral tokens to use from this target
+    /// @param tokens A list of ordered backup collateral tokens
     function setBackupConfig(
         bytes32 targetName,
-        uint256 maxCollateral,
-        ICollateral[] calldata collateral
+        uint256 max,
+        IERC20Metadata[] calldata tokens
     ) external;
 
     function forceCollateralUpdates() external;
@@ -286,7 +279,7 @@ interface IAuctioneer is ITraderEvents {
 
 interface IRewardClaimerEvents {
     /// Emitted whenever rewards are claimed
-    event RewardsClaimed(address indexed erc20, uint256 indexed amount);
+    event RewardsClaimed(IERC20Metadata indexed erc20, uint256 indexed amount);
 }
 
 interface IRewardClaimer is IRewardClaimerEvents {
@@ -323,7 +316,7 @@ interface IRTokenIssuer {
 
     function redeem(uint256 amount) external returns (uint256[] memory compensation);
 
-    function basketCollateral() external view returns (ICollateral[] memory);
+    function basketTokens() external view returns (IERC20Metadata[] memory);
 
     function maxIssuable(address account) external view returns (uint256);
 

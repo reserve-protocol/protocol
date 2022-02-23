@@ -11,36 +11,35 @@ library RewardsLib {
     using Address for address;
     using SafeERC20 for IERC20Metadata;
 
-    /// @return erc20s The reward ERC20s as addresses
+    /// @return rewardERC20s The reward ERC20s
     /// @return amtsClaimed The amounts claimed for each reward ERC20
-    function claimRewards(address mainAddr)
+    function claimRewards(IMain main)
         internal
-        returns (address[] memory erc20s, uint256[] memory amtsClaimed)
+        returns (IERC20Metadata[] memory rewardERC20s, uint256[] memory amtsClaimed)
     {
-        IMain main = IMain(mainAddr);
         IClaimAdapter[] memory adapters = main.claimAdapters();
 
         // Cache initial reward token balances
-        erc20s = new address[](adapters.length);
+        rewardERC20s = new IERC20Metadata[](adapters.length);
         amtsClaimed = new uint256[](adapters.length);
         for (uint256 i = 0; i < adapters.length; i++) {
-            erc20s[i] = adapters[i].rewardERC20();
-            amtsClaimed[i] = IERC20(adapters[i].rewardERC20()).balanceOf(address(this));
+            rewardERC20s[i] = adapters[i].rewardERC20();
+            amtsClaimed[i] = rewardERC20s[i].balanceOf(address(this));
         }
 
-        // Claim rewards for all collateral
-        ICollateral[] memory collateral = main.basketCollateral();
-        for (uint256 i = 0; i < collateral.length; i++) {
-            if (address(collateral[i].claimAdapter()) == address(0)) continue;
+        // Claim rewards for all registered collateral
+        IERC20Metadata[] memory erc20s = main.registeredERC20s();
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            if (!main.toAsset(erc20s[i]).isCollateral()) continue;
 
-            require(
-                main.isTrustedClaimAdapter(collateral[i].claimAdapter()),
-                "claim adapter is not trusted"
-            );
+            if (address(main.toColl(erc20s[i]).claimAdapter()) == address(0)) continue;
 
-            (address _to, bytes memory _calldata) = collateral[i].claimAdapter().getClaimCalldata(
-                collateral[i]
-            );
+            IClaimAdapter adapter = main.toColl(erc20s[i]).claimAdapter();
+
+            // TODO Confirm require here, as opposed to continue
+            require(main.isTrustedClaimAdapter(adapter), "claim adapter is not trusted");
+
+            (address _to, bytes memory _calldata) = adapter.getClaimCalldata(erc20s[i]);
 
             if (_to != address(0)) {
                 _to.functionCall(_calldata, "rewards claim failed");
@@ -48,8 +47,8 @@ library RewardsLib {
         }
 
         // Subtract initial balances out
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            amtsClaimed[i] = IERC20Metadata(erc20s[i]).balanceOf(address(this)) - amtsClaimed[i];
+        for (uint256 i = 0; i < rewardERC20s.length; i++) {
+            amtsClaimed[i] = rewardERC20s[i].balanceOf(address(this)) - amtsClaimed[i];
         }
     }
 }

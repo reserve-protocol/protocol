@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IMain.sol";
@@ -50,16 +50,13 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         external
         view
         override
-        returns (address[] memory tokens, uint256[] memory quantities)
+        returns (IERC20Metadata[] memory tokens, uint256[] memory quantities)
     {
-        ICollateral[] memory collateral = main.basketCollateral();
-        tokens = new address[](collateral.length);
+        tokens = main.basketTokens();
         quantities = new uint256[](tokens.length);
 
-        // Convert Collateral to ERC20
-        for (uint256 j = 0; j < collateral.length; j++) {
-            tokens[j] = address(collateral[j].erc20());
-            quantities[j] += collateral[j].erc20().balanceOf(address(main));
+        for (uint256 j = 0; j < tokens.length; j++) {
+            quantities[j] += tokens[j].balanceOf(address(main));
         }
     }
 }

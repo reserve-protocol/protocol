@@ -194,7 +194,7 @@ describe('MainP0 contract', () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
 
       // Set basket
-      await main.connect(owner).setPrimeBasket([collateral[0].address], [fp('1')])
+      await main.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await main.connect(owner).switchBasket()
 
       // Check RToken price
@@ -783,7 +783,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Update basket to trigger rollbacks (using same one to keep fullyCapitalized = true)
-      await main.connect(owner).setPrimeBasket([collateral0.address], [fp('1')])
+      await main.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await main.connect(owner).switchBasket()
 
       // Process slow issuances

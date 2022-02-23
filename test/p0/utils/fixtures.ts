@@ -379,15 +379,18 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
   const rsrAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('AavePricedAssetP0', await main.assetFor(rsr.address))
+    await ethers.getContractAt('AavePricedAssetP0', await main.toAsset(rsr.address))
   )
 
-  const assets = await main.allAssets()
-  const aaveAsset: AssetP0 = <AssetP0>await ethers.getContractAt('AavePricedAssetP0', assets[2])
-  const compAsset: AssetP0 = <AssetP0>await ethers.getContractAt('CompoundPricedAssetP0', assets[3])
+  const aaveAsset: AssetP0 = <AssetP0>(
+    await ethers.getContractAt('AavePricedAssetP0', await main.toAsset(aaveToken.address))
+  )
+  const compAsset: AssetP0 = <AssetP0>(
+    await ethers.getContractAt('CompoundPricedAssetP0', await main.toAsset(compToken.address))
+  )
   const rToken: RTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', await main.rToken())
   const rTokenAsset: RTokenAssetP0 = <RTokenAssetP0>(
-    await ethers.getContractAt('RTokenAssetP0', await main.assetFor(rToken.address))
+    await ethers.getContractAt('RTokenAssetP0', await main.toAsset(rToken.address))
   )
 
   const furnace: FurnaceP0 = <FurnaceP0>(
@@ -416,7 +419,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   await aaveOracleInternal.setPrice(compToken.address, bn('2.5e14'))
   await aaveOracleInternal.setPrice(rsr.address, bn('2.5e14'))
   for (let i = 0; i < collateral.length; i++) {
-    // Get erc29 and refERC20
+    // Get erc20 and refERC20
     const erc20 = await ethers.getContractAt('ERC20Mock', await collateral[i].erc20())
     const refERC20 = await ethers.getContractAt('ERC20Mock', await collateral[i].referenceERC20())
 
@@ -427,11 +430,15 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     }
   }
 
+  // Register prime collateral
+  const basketERC20s = []
+  for (let i = 0; i < basket.length; i++) {
+    await main.connect(owner).registerAsset(basket[i].address)
+    basketERC20s.push(await basket[i].erc20())
+  }
+
   // Set non-empty basket
-  await main.connect(owner).setPrimeBasket(
-    basket.map((b) => b.address),
-    basketsNeededAmts
-  )
+  await main.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
   await main.connect(owner).switchBasket()
 
   // Unpause
