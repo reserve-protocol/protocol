@@ -382,10 +382,20 @@ describe('CollateralP0 contracts', () => {
         'CompoundPricedFiatCollateralP0'
       )
       compoundTokenAsset = <CompoundPricedFiatCollateralP0>(
-        await CompoundFiatCollFactory.deploy(token.address, main.address, compoundMock.address)
+        await CompoundFiatCollFactory.deploy(
+          token.address,
+          await tokenAsset.maxAuctionSize(),
+          main.address,
+          compoundMock.address
+        )
       )
       compoundUsdcAsset = <CompoundPricedFiatCollateralP0>(
-        await CompoundFiatCollFactory.deploy(usdc.address, main.address, compoundMock.address)
+        await CompoundFiatCollFactory.deploy(
+          usdc.address,
+          await usdcAsset.maxAuctionSize(),
+          main.address,
+          compoundMock.address
+        )
       )
     })
 

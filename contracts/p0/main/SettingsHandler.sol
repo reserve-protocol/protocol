@@ -37,7 +37,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     Fix private _maxTradeSlippage;
     Fix private _dustAmount;
-    Fix private _maxAuctionSize;
     Fix private _minRevenueAuctionSize;
     Fix private _issuanceRate;
     Fix private _defaultThreshold;
@@ -61,7 +60,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
         _maxTradeSlippage = args.config.maxTradeSlippage;
         _dustAmount = args.config.dustAmount;
-        _maxAuctionSize = args.config.maxAuctionSize;
         _minRevenueAuctionSize = args.config.minRevenueAuctionSize;
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
@@ -188,15 +186,6 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     function dustAmount() public view override returns (Fix) {
         return _dustAmount;
-    }
-
-    function setMaxAuctionSize(Fix maxAuctionSize_) external override onlyOwner {
-        emit MaxAuctionSizeSet(_maxAuctionSize, maxAuctionSize_);
-        _maxAuctionSize = maxAuctionSize_;
-    }
-
-    function maxAuctionSize() public view override returns (Fix) {
-        return _maxAuctionSize;
     }
 
     function setMinRevenueAuctionSize(Fix minRevenueAuctionSize_) external override onlyOwner {

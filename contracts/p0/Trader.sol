@@ -62,11 +62,8 @@ abstract contract TraderP0 is ITraderEvents {
         // Don't buy dust.
         if (sellAmount.lt(dustThreshold(sell))) return (false, auction);
 
-        // {UoA} = {UoA} * {1}
-        Fix maxSellUoA = main.totalAssetValue().mul(main.maxAuctionSize());
-
         // {sellTok}
-        sellAmount = fixMin(sellAmount, maxSellUoA.div(sell.price()));
+        sellAmount = fixMin(sellAmount, sell.maxAuctionSize().div(sell.price()));
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         Fix exactBuyAmount = sellAmount.mul(sell.price()).div(buy.price());

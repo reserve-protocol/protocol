@@ -8,7 +8,11 @@ import "contracts/p0/interfaces/IMain.sol";
 contract RTokenAssetP0 is AssetP0 {
     IMain public immutable main;
 
-    constructor(IERC20Metadata erc20_, IMain main_) AssetP0(erc20_) {
+    constructor(
+        IERC20Metadata erc20_,
+        Fix maxAuctionSize_,
+        IMain main_
+    ) AssetP0(erc20_, maxAuctionSize_) {
         main = main_;
     }
 

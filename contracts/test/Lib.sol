@@ -100,11 +100,6 @@ library Lib {
             ) &&
             assertEq(_rawFix(a.dustAmount), _rawFix(b.dustAmount), "Config.dustAmount") &&
             assertEq(
-                _rawFix(a.maxAuctionSize),
-                _rawFix(b.maxAuctionSize),
-                "Config.maxAuctionSize"
-            ) &&
-            assertEq(
                 _rawFix(a.minRevenueAuctionSize),
                 _rawFix(b.minRevenueAuctionSize),
                 "Config.minRevenueAuctionSize"

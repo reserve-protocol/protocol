@@ -35,10 +35,11 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
 
     constructor(
         IERC20Metadata erc20_,
+        Fix maxAuctionSize_,
         IERC20Metadata referenceERC20_,
         IMain main_,
         bytes32 targetName_
-    ) AssetP0(erc20_) {
+    ) AssetP0(erc20_, maxAuctionSize_) {
         referenceERC20 = referenceERC20_;
         main = main_;
         targetName = targetName_;

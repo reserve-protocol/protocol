@@ -21,6 +21,9 @@ interface IAsset {
 
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() external view returns (bool);
+
+    /// @return {UoA}
+    function maxAuctionSize() external view returns (Fix);
 }
 
 enum CollateralStatus {

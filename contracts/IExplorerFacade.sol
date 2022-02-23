@@ -25,4 +25,6 @@ interface IExplorerFacade {
         external
         view
         returns (IERC20Metadata[] memory tokens, uint256[] memory quantities);
+
+    function totalAssetValue() external view returns (Fix total);
 }

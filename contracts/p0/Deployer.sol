@@ -66,13 +66,15 @@ contract DeployerP0 is IDeployer {
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param config Governance params
     /// @param dist The revenue shares distribution
+    /// @param maxAuctionSize {UoA} The max auction size to use for RToken/RSR/COMP/AAVE
     /// @return The address of the newly deployed Main instance.
     function deploy(
         string memory name,
         string memory symbol,
         address owner,
         Config memory config,
-        RevenueShare memory dist
+        RevenueShare memory dist,
+        Fix maxAuctionSize
     ) external override returns (address) {
         IMain main = deployMain();
         deployments.push(main);
@@ -96,10 +98,20 @@ contract DeployerP0 is IDeployer {
         ctorArgs.claimAdapters[0] = compoundClaimer;
         ctorArgs.claimAdapters[1] = aaveClaimer;
         ctorArgs.assets = new IAsset[](4);
-        ctorArgs.assets[0] = new RTokenAssetP0(ctorArgs.rToken, main);
-        ctorArgs.assets[1] = new AavePricedAssetP0(rsr, comptroller, aaveLendingPool);
-        ctorArgs.assets[2] = new AavePricedAssetP0(aave, comptroller, aaveLendingPool);
-        ctorArgs.assets[3] = new CompoundPricedAssetP0(comp, comptroller);
+        ctorArgs.assets[0] = new RTokenAssetP0(ctorArgs.rToken, maxAuctionSize, main);
+        ctorArgs.assets[1] = new AavePricedAssetP0(
+            rsr,
+            maxAuctionSize,
+            comptroller,
+            aaveLendingPool
+        );
+        ctorArgs.assets[2] = new AavePricedAssetP0(
+            aave,
+            maxAuctionSize,
+            comptroller,
+            aaveLendingPool
+        );
+        ctorArgs.assets[3] = new CompoundPricedAssetP0(comp, maxAuctionSize, comptroller);
 
         // Init
         main.init(ctorArgs);
