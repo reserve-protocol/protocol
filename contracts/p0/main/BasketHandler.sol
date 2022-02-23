@@ -18,7 +18,7 @@ struct BackupConfig {
 }
 
 struct BasketConfig {
-    // The ERC20 collateral erc20s in the prime (explicitly governance-set) basket
+    // The collateral erc20s in the prime (explicitly governance-set) basket
     IERC20Metadata[] erc20s;
     // Amount of target units per basket for each prime collateral token. {target/BU}
     mapping(IERC20Metadata => Fix) targetAmts;
