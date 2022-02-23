@@ -50,14 +50,14 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         }
     }
 
-    /// Return an array of all assets
+    /// Return the Asset modelling this ERC20, or revert
     function toAsset(IERC20Metadata erc20) public view override returns (IAsset) {
         require(erc20s.contains(address(erc20)), "erc20 unregistered");
         require(assets[erc20] != IAsset(address(0)), "asset unregistered");
         return assets[erc20];
     }
 
-    /// Return an array of all active assets
+    /// Return the Collateral modelling this ERC20, or revert
     function toColl(IERC20Metadata erc20) public view override returns (ICollateral) {
         require(erc20s.contains(address(erc20)), "erc20 unrecognized");
         require(assets[erc20] != IAsset(address(0)), "asset unregistered");
@@ -88,7 +88,7 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         return _registerAssetIgnoringCollisions(asset);
     }
 
-    /// Register an asset, leaving collision detection up to the caller
+    /// Register an asset, unregistering any previous asset with the same ERC20.
     function _registerAssetIgnoringCollisions(IAsset asset) private returns (bool swapped) {
         if (erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] == asset) return false;
 
