@@ -726,7 +726,7 @@ describe('StRSRP0 contract', () => {
       expect(unstakeAmt).to.equal(amount.sub(amount2))
     })
 
-    it.only('Should remove RSR proportionally from Stakers and Withdrawers', async () => {
+    it('Should remove RSR proportionally from Stakers and Withdrawers', async () => {
       const amount: BigNumber = bn('10e18')
       const amount2: BigNumber = bn('1e18')
 
