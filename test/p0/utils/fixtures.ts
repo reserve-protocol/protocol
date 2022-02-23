@@ -33,6 +33,8 @@ import { getLatestBlockTimestamp } from '../../utils/time'
 
 export type Collateral = CollateralP0 | CTokenFiatCollateralP0 | ATokenFiatCollateralP0
 
+const maxAuctionSize = fp(1e6) // $1M
+
 export interface IConfig {
   rewardStart: BigNumber
   rewardPeriod: BigNumber
@@ -42,8 +44,7 @@ export interface IConfig {
   defaultDelay: BigNumber
   maxTradeSlippage: BigNumber
   dustAmount: BigNumber
-  maxAuctionSize: BigNumber
-  minRevenueAuctionSize: BigNumber
+  backingBuffer: BigNumber
   issuanceRate: BigNumber
   defaultThreshold: BigNumber
   stRSRPayRatio: BigNumber
@@ -164,7 +165,6 @@ async function collateralFixture(
   )
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateralP0')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateralP0')
-
   // Deploy all potential collateral assets
   const makeVanillaCollateral = async (symbol: string): Promise<[ERC20Mock, CollateralP0]> => {
     const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(symbol + ' Token', symbol)
@@ -173,6 +173,7 @@ async function collateralFixture(
       <CollateralP0>(
         await AaveCollateralFactory.deploy(
           erc20.address,
+          maxAuctionSize,
           main.address,
           comptroller.address,
           aaveLendingPool.address
@@ -187,6 +188,7 @@ async function collateralFixture(
       <CollateralP0>(
         await AaveCollateralFactory.deploy(
           erc20.address,
+          maxAuctionSize,
           main.address,
           comptroller.address,
           aaveLendingPool.address
@@ -207,6 +209,7 @@ async function collateralFixture(
       <CTokenFiatCollateralP0>(
         await CTokenCollateralFactory.deploy(
           erc20.address,
+          maxAuctionSize,
           underlyingAddress,
           main.address,
           comptroller.address,
@@ -233,6 +236,7 @@ async function collateralFixture(
       <ATokenFiatCollateralP0>(
         await ATokenCollateralFactory.deploy(
           erc20.address,
+          maxAuctionSize,
           underlyingAddress,
           main.address,
           comptroller.address,
@@ -342,8 +346,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     defaultDelay: bn('86400'), // 24 hs
     maxTradeSlippage: fp('0.01'), // 1%
     dustAmount: fp('0.01'), // 0.01 UoA (USD)
-    maxAuctionSize: fp('0.01'), // 1%
-    minRevenueAuctionSize: fp('0.001'), // 0.1%
+    backingBuffer: fp('0.0001'), // 0.01%
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
     defaultThreshold: fp('0.05'), // 5% deviation
     stRSRPayRatio: fp('0.02284'), // approx. half life of 30 pay periods
@@ -369,7 +372,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Deploy actual contracts
   const receipt = await (
-    await deployer.deploy('RTKN RToken', 'RTKN', owner.address, config, dist)
+    await deployer.deploy('RTKN RToken', 'RTKN', owner.address, config, dist, maxAuctionSize)
   ).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main

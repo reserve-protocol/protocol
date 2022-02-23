@@ -8,8 +8,11 @@ import "contracts/libraries/Fixed.sol";
 abstract contract AssetP0 is IAsset {
     IERC20Metadata public immutable override erc20;
 
-    constructor(IERC20Metadata erc20_) {
+    Fix public immutable override maxAuctionSize; // {UoA}
+
+    constructor(IERC20Metadata erc20_, Fix maxAuctionSize_) {
         erc20 = erc20_;
+        maxAuctionSize = maxAuctionSize_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA

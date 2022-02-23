@@ -21,6 +21,9 @@ interface IAsset {
 
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() external view returns (bool);
+
+    /// @return {UoA}
+    function maxAuctionSize() external view returns (Fix);
 }
 
 enum CollateralStatus {
@@ -47,9 +50,6 @@ interface ICollateral is IAsset {
     /// Force any updates such as updating the default status or poking the defi protocol.
     /// Block-idempotent.
     function forceUpdates() external;
-
-    /// Disable the collateral so it cannot be used as backing
-    function disable() external;
 
     /// @return The claim adapter that should be used with this asset, or the zero address
     function claimAdapter() external view returns (IClaimAdapter);

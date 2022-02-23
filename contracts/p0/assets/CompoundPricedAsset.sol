@@ -7,10 +7,11 @@ import "contracts/p0/assets/abstract/CompoundOracleMixin.sol";
 
 contract CompoundPricedAssetP0 is CompoundOracleMixinP0, AssetP0 {
     // solhint-disable no-empty-blocks
-    constructor(IERC20Metadata erc20_, IComptroller comptroller_)
-        CompoundOracleMixinP0(comptroller_)
-        AssetP0(erc20_)
-    {}
+    constructor(
+        IERC20Metadata erc20_,
+        Fix maxAuctionSize_,
+        IComptroller comptroller_
+    ) CompoundOracleMixinP0(comptroller_) AssetP0(erc20_, maxAuctionSize_) {}
 
     // solhint-enable no-empty-blocks
 

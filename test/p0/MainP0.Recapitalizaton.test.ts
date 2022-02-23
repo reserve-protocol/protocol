@@ -512,13 +512,10 @@ describe('MainP0 contract', () => {
         // Setup prime basket
         await main.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
-        // Set Max auction to 100% to perform it in one single auction
-        await main.connect(owner).setMaxAuctionSize(fp('1'))
-
         // Check initial state
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(true)
-        expect(await main.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(main.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(main.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -532,7 +529,7 @@ describe('MainP0 contract', () => {
         // Check state remains SOUND
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(false)
-        expect(await main.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(main.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(main.address)).to.equal(0)
 
@@ -568,7 +565,7 @@ describe('MainP0 contract', () => {
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
-        expect(await main.totalAssetValue()).to.equal(0)
+        expect(await facade.totalAssetValue()).to.equal(0)
         expect(await token0.balanceOf(main.address)).to.equal(0)
         expect(await token1.balanceOf(main.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -608,7 +605,7 @@ describe('MainP0 contract', () => {
         // Check state - Order restablished
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(true)
-        expect(await main.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(main.address)).to.equal(0)
         expect(await token1.balanceOf(main.address)).to.equal(toBNDecimals(issueAmount, 6))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -621,13 +618,10 @@ describe('MainP0 contract', () => {
         // Set prime basket
         await main.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
-        // Set Max auction to 100% to perform it in one single auction
-        await main.connect(owner).setMaxAuctionSize(fp('1'))
-
         // Check initial state
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(true)
-        expect(await main.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(main.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(main.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -641,7 +635,7 @@ describe('MainP0 contract', () => {
         // Check state remains SOUND
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(false)
-        expect(await main.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(main.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(main.address)).to.equal(0)
 
@@ -677,7 +671,7 @@ describe('MainP0 contract', () => {
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
-        expect(await main.totalAssetValue()).to.equal(0)
+        expect(await facade.totalAssetValue()).to.equal(0)
         expect(await token0.balanceOf(main.address)).to.equal(0)
         expect(await token1.balanceOf(main.address)).to.equal(0)
 
@@ -714,7 +708,7 @@ describe('MainP0 contract', () => {
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(true)
-        expect(await main.totalAssetValue()).to.equal(minBuyAmt)
+        expect(await facade.totalAssetValue()).to.equal(minBuyAmt)
         expect(await token0.balanceOf(main.address)).to.equal(0)
         expect(await token1.balanceOf(main.address)).to.equal(toBNDecimals(minBuyAmt, 6))
         expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
@@ -727,13 +721,10 @@ describe('MainP0 contract', () => {
         // Set prime basket
         await main.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
-        // Set Max auction to 100% to perform it in one single auction
-        await main.connect(owner).setMaxAuctionSize(fp('1'))
-
         // Check initial state
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(true)
-        expect(await main.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(main.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(main.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -756,7 +747,7 @@ describe('MainP0 contract', () => {
         // Check state remains SOUND
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(false)
-        expect(await main.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(main.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(main.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -793,7 +784,7 @@ describe('MainP0 contract', () => {
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
-        expect(await main.totalAssetValue()).to.equal(0)
+        expect(await facade.totalAssetValue()).to.equal(0)
         expect(await token0.balanceOf(main.address)).to.equal(0)
         expect(await token1.balanceOf(main.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -913,7 +904,7 @@ describe('MainP0 contract', () => {
       //   // Check initial state
       //   expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
       //   expect(await main.fullyCapitalized()).to.equal(true)
-      //   expect(await main.totalAssetValue()).to.equal(issueAmount)
+      //   expect(await facade.totalAssetValue()).to.equal(issueAmount)
       //   expect(await token0.balanceOf(main.address)).to.equal(issueAmount)
       //   expect(await backupToken.balanceOf(main.address)).to.equal(0)
       //   expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -945,7 +936,7 @@ describe('MainP0 contract', () => {
       //   expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
       //   expect(await main.fullyCapitalized()).to.equal(false)
       //   // Asset value is zero, the only collateral held is defaulted
-      //   expect(await main.totalAssetValue()).to.equal(0)
+      //   expect(await facade.totalAssetValue()).to.equal(0)
       //   expect(await token0.balanceOf(main.address)).to.equal(issueAmount)
       //   expect(await backupToken.balanceOf(main.address)).to.equal(0)
       //   expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -986,7 +977,7 @@ describe('MainP0 contract', () => {
       //   expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
       //   expect(await main.fullyCapitalized()).to.equal(false)
       //   // Asset value is zero, the only collateral held is defaulted
-      //   expect(await main.totalAssetValue()).to.equal(0)
+      //   expect(await facade.totalAssetValue()).to.equal(0)
       //   expect(await token0.balanceOf(main.address)).to.equal(issueAmount.div(2))
       //   expect(await backupToken.balanceOf(main.address)).to.equal(0)
       //   expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1100,7 +1091,7 @@ describe('MainP0 contract', () => {
       //     maxTradeSlippage: config.maxTradeSlippage,
       //     maxAuctionSize: fp('0.25'), // 25%
       //     minRecapitalizationAuctionSize: config.minRecapitalizationAuctionSize,
-      //     minRevenueAuctionSize: config.minRevenueAuctionSize,
+      //     backingBuffer: config.backingBuffer,
       //     migrationChunk: fp('1'), // 100% - Migrate all together
       //     issuanceRate: config.issuanceRate,
       //     defaultThreshold: config.defaultThreshold,

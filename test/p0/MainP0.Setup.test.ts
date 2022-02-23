@@ -17,6 +17,7 @@ import {
   CTokenMock,
   DeployerP0,
   ERC20Mock,
+  ExplorerFacadeP0,
   FurnaceP0,
   MainP0,
   MarketMock,
@@ -87,6 +88,7 @@ describe('MainP0 contract', () => {
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
+  let facade: ExplorerFacadeP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -123,6 +125,7 @@ describe('MainP0 contract', () => {
       market,
       compoundClaimer,
       aaveClaimer,
+      facade,
     } = await loadFixture(defaultFixture))
     token0 = erc20s[collateral.indexOf(basket[0])]
     token1 = erc20s[collateral.indexOf(basket[1])]
@@ -184,8 +187,7 @@ describe('MainP0 contract', () => {
       expect(await main.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
       expect(await main.defaultDelay()).to.equal(config.defaultDelay)
       expect(await main.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      expect(await main.maxAuctionSize()).to.equal(config.maxAuctionSize)
-      expect(await main.minRevenueAuctionSize()).to.equal(config.minRevenueAuctionSize)
+      expect(await main.backingBuffer()).to.equal(config.backingBuffer)
       expect(await main.issuanceRate()).to.equal(config.issuanceRate)
       expect(await main.defaultThreshold()).to.equal(config.defaultThreshold)
     })
@@ -224,7 +226,7 @@ describe('MainP0 contract', () => {
       // Check other values
       expect(await main.basketNonce()).to.be.gt(bn(0))
       expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
-      expect(await main.totalAssetValue()).to.equal(0)
+      expect(await facade.totalAssetValue()).to.equal(0)
 
       // Check RToken price
       expect(await main.rTokenPrice()).to.equal(fp('1'))
@@ -450,32 +452,11 @@ describe('MainP0 contract', () => {
       expect(await main.maxTradeSlippage()).to.equal(newValue)
     })
 
-    it('Should allow to update maxAuctionSize if Owner', async () => {
+    it('Should allow to update backingBuffer if Owner', async () => {
       const newValue: BigNumber = fp('0.02')
 
       // Check existing value
-      expect(await main.maxAuctionSize()).to.equal(config.maxAuctionSize)
-
-      // If not owner cannot update
-      await expect(main.connect(other).setMaxAuctionSize(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
-
-      // Check value did not change
-      expect(await main.maxAuctionSize()).to.equal(config.maxAuctionSize)
-
-      // Update with owner
-      await main.connect(owner).setMaxAuctionSize(newValue)
-
-      // Check value was updated
-      expect(await main.maxAuctionSize()).to.equal(newValue)
-    })
-
-    it('Should allow to update minRevenueAuctionSize if Owner', async () => {
-      const newValue: BigNumber = fp('0.02')
-
-      // Check existing value
-      expect(await main.minRevenueAuctionSize()).to.equal(config.minRevenueAuctionSize)
+      expect(await main.backingBuffer()).to.equal(config.backingBuffer)
 
       // If not owner cannot update
       await expect(main.connect(other).setMinRevenueAuctionSize(newValue)).to.be.revertedWith(
@@ -483,13 +464,13 @@ describe('MainP0 contract', () => {
       )
 
       // Check value did not change
-      expect(await main.minRevenueAuctionSize()).to.equal(config.minRevenueAuctionSize)
+      expect(await main.backingBuffer()).to.equal(config.backingBuffer)
 
       // Update with owner
       await main.connect(owner).setMinRevenueAuctionSize(newValue)
 
       // Check value was updated
-      expect(await main.minRevenueAuctionSize()).to.equal(newValue)
+      expect(await main.backingBuffer()).to.equal(newValue)
     })
 
     it('Should allow to update issuanceRate if Owner', async () => {
@@ -656,7 +637,11 @@ describe('MainP0 contract', () => {
       // Setup new Asset
       const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
       const newAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
-        await AssetFactory.deploy(erc20s[5].address, compoundMock.address)
+        await AssetFactory.deploy(
+          erc20s[5].address,
+          await collateral0.maxAuctionSize(),
+          compoundMock.address
+        )
       )
 
       // Get previous length for assets
@@ -689,7 +674,11 @@ describe('MainP0 contract', () => {
       // Setup new Asset
       const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
       const newAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
-        await AssetFactory.deploy(token0.address, compoundMock.address)
+        await AssetFactory.deploy(
+          token0.address,
+          await collateral0.maxAuctionSize(),
+          compoundMock.address
+        )
       )
 
       // Get previous length for assets
@@ -914,7 +903,7 @@ describe('MainP0 contract', () => {
       // Not updated so basket last changed is not set
       expect(await main.basketNonce()).to.be.gt(bn(0))
       expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
-      expect(await main.totalAssetValue()).to.equal(0)
+      expect(await facade.totalAssetValue()).to.equal(0)
     })
   })
 })

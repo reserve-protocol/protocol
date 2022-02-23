@@ -9,9 +9,10 @@ contract AavePricedAssetP0 is AaveOracleMixinP0, AssetP0 {
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
+        Fix maxAuctionSize_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_
-    ) AaveOracleMixinP0(comptroller_, aaveLendingPool_) AssetP0(erc20_) {}
+    ) AaveOracleMixinP0(comptroller_, aaveLendingPool_) AssetP0(erc20_, maxAuctionSize_) {}
 
     // solhint-enable no-empty-blocks
 

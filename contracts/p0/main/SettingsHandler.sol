@@ -37,8 +37,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     Fix private _maxTradeSlippage;
     Fix private _dustAmount;
-    Fix private _maxAuctionSize;
-    Fix private _minRevenueAuctionSize;
+    Fix private _backingBuffer;
     Fix private _issuanceRate;
     Fix private _defaultThreshold;
     Fix private _stRSRPayRatio;
@@ -61,8 +60,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
         _maxTradeSlippage = args.config.maxTradeSlippage;
         _dustAmount = args.config.dustAmount;
-        _maxAuctionSize = args.config.maxAuctionSize;
-        _minRevenueAuctionSize = args.config.minRevenueAuctionSize;
+        _backingBuffer = args.config.backingBuffer;
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
         _stRSRPayRatio = args.config.stRSRPayRatio;
@@ -190,22 +188,13 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
         return _dustAmount;
     }
 
-    function setMaxAuctionSize(Fix maxAuctionSize_) external override onlyOwner {
-        emit MaxAuctionSizeSet(_maxAuctionSize, maxAuctionSize_);
-        _maxAuctionSize = maxAuctionSize_;
+    function setMinRevenueAuctionSize(Fix backingBuffer_) external override onlyOwner {
+        emit MinRevenueAuctionSizeSet(_backingBuffer, backingBuffer_);
+        _backingBuffer = backingBuffer_;
     }
 
-    function maxAuctionSize() public view override returns (Fix) {
-        return _maxAuctionSize;
-    }
-
-    function setMinRevenueAuctionSize(Fix minRevenueAuctionSize_) external override onlyOwner {
-        emit MinRevenueAuctionSizeSet(_minRevenueAuctionSize, minRevenueAuctionSize_);
-        _minRevenueAuctionSize = minRevenueAuctionSize_;
-    }
-
-    function minRevenueAuctionSize() public view override returns (Fix) {
-        return _minRevenueAuctionSize;
+    function backingBuffer() public view override returns (Fix) {
+        return _backingBuffer;
     }
 
     function setIssuanceRate(Fix issuanceRate_) external override onlyOwner {

@@ -39,13 +39,14 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
 
     constructor(
         IERC20Metadata erc20_,
+        Fix maxAuctionSize_,
         IERC20Metadata referenceERC20_,
         IMain main_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_,
         AaveClaimAdapterP0 claimAdapter_
     )
-        CollateralP0(erc20_, referenceERC20_, main_, bytes32(bytes("USD")))
+        CollateralP0(erc20_, maxAuctionSize_, referenceERC20_, main_, bytes32(bytes("USD")))
         AaveOracleMixinP0(comptroller_, aaveLendingPool_)
     {
         claimAdapter = claimAdapter_;

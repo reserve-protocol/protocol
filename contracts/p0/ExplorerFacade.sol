@@ -15,6 +15,8 @@ import "contracts/IExplorerFacade.sol";
  * @notice A UX-friendly layer that for all the non-governance protocol functions
  */
 contract ExplorerFacadeP0 is IExplorerFacade {
+    using FixLib for Fix;
+
     MainP0 public main;
 
     constructor(address main_) {
@@ -57,6 +59,25 @@ contract ExplorerFacadeP0 is IExplorerFacade {
 
         for (uint256 j = 0; j < tokens.length; j++) {
             quantities[j] += tokens[j].balanceOf(address(main));
+        }
+    }
+
+    /// @return total {UoA} An estimate of the total value of all assets held
+    function totalAssetValue() external view override returns (Fix total) {
+        IERC20Metadata[] memory erc20s = main.registeredERC20s();
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            IAsset asset = main.toAsset(erc20s[i]);
+            // Exclude collateral that has defaulted
+            if (
+                !asset.isCollateral() ||
+                main.toColl(erc20s[i]).status() != CollateralStatus.DISABLED
+            ) {
+                uint256 bal = erc20s[i].balanceOf(address(main));
+
+                // {UoA/tok} = {UoA/tok} * {qTok} / {qTok/tok}
+                Fix p = asset.price().mulu(bal).shiftLeft(-int8(erc20s[i].decimals()));
+                total = total.plus(p);
+            }
         }
     }
 }

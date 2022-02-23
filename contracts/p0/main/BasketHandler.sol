@@ -131,22 +131,6 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
         }
     }
 
-    /// @return total {UoA} An estimate of the total value of all assets held
-    function totalAssetValue() public view override returns (Fix total) {
-        IERC20Metadata[] memory erc20s = registeredERC20s();
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            IAsset asset = toAsset(erc20s[i]);
-            // Exclude collateral that has defaulted
-            if (!asset.isCollateral() || toColl(erc20s[i]).status() != CollateralStatus.DISABLED) {
-                uint256 bal = erc20s[i].balanceOf(address(this));
-
-                // {UoA/tok} = {UoA/tok} * {qTok} / {qTok/tok}
-                Fix p = asset.price().mulu(bal).shiftLeft(-int8(erc20s[i].decimals()));
-                total = total.plus(p);
-            }
-        }
-    }
-
     // ==== Internal ====
 
     /// @return {qTok/BU} The quantity of collateral in the basket
