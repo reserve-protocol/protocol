@@ -45,16 +45,16 @@ contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents {
 
         // Don't open a second auction if there's already one running.
         for (uint256 i = 0; i < auctions.length; i++) {
-            if (auctions[i].sell == asset && auctions[i].status != AuctionStatus.DONE) return;
+            if (auctions[i].sell == erc20 && auctions[i].status != AuctionStatus.DONE) return;
         }
 
         // If not dust, trade the non-target asset for the target asset
         // {tok} =  {qTok} / {qTok/tok}
         Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
         (bool launch, Auction memory auction) = prepareAuctionSell(
-                main.toAsset(erc20),
-                main.toAsset(tokenToBuy),
-                sellAmount
+            main.toAsset(erc20),
+            main.toAsset(tokenToBuy),
+            sellAmount
         );
 
         if (launch) launchAuction(auction);
