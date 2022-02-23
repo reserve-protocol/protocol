@@ -184,13 +184,9 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             Fix bal = toFix(basket.erc20s[i].balanceOf(account)); // {qTok}
             Fix q = basketQuantity(basket.erc20s[i]); // {qTok/BU}
-            if (q.gt(FIX_ZERO)) {
-                // {BU} = {qTok} / {qTok/BU}
-                Fix potential = bal.div(q);
-                if (potential.lt(baskets)) {
-                    baskets = potential;
-                }
-            }
+
+            // baskets {BU} = bal {qTok} / q {qTok/BU}
+            if (q.gt(FIX_ZERO)) baskets = fixMin(baskets, bal.div(q));
         }
     }
 
@@ -252,12 +248,11 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
             uint256 size = 0; // backup basket size
             BackupConfig storage backup = config.backups[targetNames.at(i)];
 
-            // Find the backup basket size: min(max, # of good backup collateral)
-            for (uint256 j = 0; j < backup.erc20s.length; j++) {
+            // Find the backup basket size: min(backup.max, # of good backup collateral)
+            for (uint256 j = 0; j < backup.erc20s.length && size < backup.max; j++) {
                 IERC20Metadata erc20 = backup.erc20s[j];
                 if (isRegistered(erc20) && toColl(erc20).status() != CollateralStatus.DISABLED) {
                     size++;
-                    if (size >= backup.max) break;
                 }
             }
 
