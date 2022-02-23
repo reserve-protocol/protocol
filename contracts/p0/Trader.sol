@@ -58,9 +58,9 @@ abstract contract TraderP0 is ITraderEvents {
         Fix sellAmount
     ) internal view returns (bool notDust, Auction memory auction) {
         assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
-        if (sellAmount.lt(dustThreshold(sell))) {
-            return (false, auction);
-        }
+
+        // Don't buy dust.
+        if (sellAmount.lt(dustThreshold(sell))) return (false, auction);
 
         // {UoA} = {UoA} * {1}
         Fix maxSellUoA = main.totalAssetValue().mul(main.maxAuctionSize());
@@ -103,9 +103,8 @@ abstract contract TraderP0 is ITraderEvents {
         Fix deficitAmount
     ) internal view returns (bool notDust, Auction memory auction) {
         // Don't sell dust.
-        if (maxSellAmount.lt(dustThreshold(sell))) {
-            return (false, auction);
-        }
+        if (maxSellAmount.lt(dustThreshold(sell))) return (false, auction);
+
         // Don't buy dust.
         deficitAmount = fixMax(deficitAmount, dustThreshold(buy));
 
@@ -120,13 +119,10 @@ abstract contract TraderP0 is ITraderEvents {
         return prepareAuctionSell(sell, buy, sellAmount);
     }
 
-    /// @return {tok} The least amount of whole tokens worth trying to sell
+    /// @return {tok} The least amount of whole tokens ever worth trying to sell
     function dustThreshold(IAsset asset) internal view returns (Fix) {
-        // {UoA} = {UoA} * {1}
-        Fix minSellUoA = main.totalAssetValue().mul(main.minRevenueAuctionSize());
-
         // {tok} = {UoA} / {UoA/tok}
-        return minSellUoA.div(asset.price());
+        return main.dustAmount().div(asset.price());
     }
 
     /// Launch an auction:

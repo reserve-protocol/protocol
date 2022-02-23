@@ -84,15 +84,21 @@ library Lib {
     function _assertConfigEq(Config memory a, Config memory b) internal pure returns (bool) {
         return
             assertEq(a.rewardStart, b.rewardStart, "Config.rewardStart") &&
-            assertEq(a.rewardPeriod, b.rewardPeriod, "Config.rewardStart") &&
-            assertEq(a.auctionPeriod, b.auctionPeriod, "Config.rewardStart") &&
-            assertEq(a.stRSRWithdrawalDelay, b.stRSRWithdrawalDelay, "Config.rewardStart") &&
+            assertEq(a.rewardPeriod, b.rewardPeriod, "Config.rewardPeriod") &&
+            assertEq(a.auctionPeriod, b.auctionPeriod, "Config.auctionPeriod") &&
+            assertEq(a.stRSRPayPeriod, b.stRSRPayPeriod, "Config.stRSRPayPeriod") &&
+            assertEq(
+                a.stRSRWithdrawalDelay,
+                b.stRSRWithdrawalDelay,
+                "Config.stRSRWithdrawalDelay"
+            ) &&
             assertEq(a.defaultDelay, b.defaultDelay, "Config.rewardStart") &&
             assertEq(
                 _rawFix(a.maxTradeSlippage),
                 _rawFix(b.maxTradeSlippage),
                 "Config.maxTradeSlippage"
             ) &&
+            assertEq(_rawFix(a.dustAmount), _rawFix(b.dustAmount), "Config.dustAmount") &&
             assertEq(
                 _rawFix(a.maxAuctionSize),
                 _rawFix(b.maxAuctionSize),
@@ -108,7 +114,8 @@ library Lib {
                 _rawFix(a.defaultThreshold),
                 _rawFix(b.defaultThreshold),
                 "Config.defaultThreshold"
-            );
+            ) &&
+            assertEq(_rawFix(a.stRSRPayRatio), _rawFix(b.stRSRPayRatio), "Config.stRSRPayRatio");
     }
 
     function _assertDistEq(RevenueDestination[] memory a, RevenueDestination[] memory b)

@@ -31,14 +31,17 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     uint256 private _rewardStart;
     uint256 private _rewardPeriod;
     uint256 private _auctionPeriod;
+    uint256 private _stRSRPayPeriod;
     uint256 private _stRSRWithdrawalDelay;
     uint256 private _defaultDelay;
 
     Fix private _maxTradeSlippage;
+    Fix private _dustAmount;
     Fix private _maxAuctionSize;
     Fix private _minRevenueAuctionSize;
     Fix private _issuanceRate;
     Fix private _defaultThreshold;
+    Fix private _stRSRPayRatio;
 
     function init(ConstructorArgs calldata args) public virtual override {
         super.init(args);
@@ -52,14 +55,19 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
         _rewardStart = args.config.rewardStart;
         _rewardPeriod = args.config.rewardPeriod;
         _auctionPeriod = args.config.auctionPeriod;
+        _stRSRPayPeriod = args.config.stRSRPayPeriod;
         _stRSRWithdrawalDelay = args.config.stRSRWithdrawalDelay;
         _defaultDelay = args.config.defaultDelay;
 
         _maxTradeSlippage = args.config.maxTradeSlippage;
+        _dustAmount = args.config.dustAmount;
         _maxAuctionSize = args.config.maxAuctionSize;
         _minRevenueAuctionSize = args.config.minRevenueAuctionSize;
         _issuanceRate = args.config.issuanceRate;
         _defaultThreshold = args.config.defaultThreshold;
+        _stRSRPayRatio = args.config.stRSRPayRatio;
+
+        require(_stRSRPayPeriod * 2 < _stRSRWithdrawalDelay, "RSR pay period too long");
     }
 
     function setStRSR(IStRSR stRSR_) external override onlyOwner {
@@ -127,7 +135,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     }
 
     function setAuctionPeriod(uint256 auctionPeriod_) external override onlyOwner {
-        emit AuctionPeriodSet(_auctionPeriod, _auctionPeriod);
+        emit AuctionPeriodSet(_auctionPeriod, auctionPeriod_);
         _auctionPeriod = auctionPeriod_;
     }
 
@@ -135,9 +143,20 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
         return _auctionPeriod;
     }
 
+    function setStRSRPayPeriod(uint256 stRSRPayPeriod_) external {
+        emit StRSRPayPeriodSet(_stRSRPayPeriod, stRSRPayPeriod_);
+        _stRSRPayPeriod = stRSRPayPeriod_;
+        require(_stRSRPayPeriod * 2 <= _stRSRWithdrawalDelay, "RSR pay period too long");
+    }
+
+    function stRSRPayPeriod() public view returns (uint256) {
+        return _stRSRPayPeriod;
+    }
+
     function setStRSRWithdrawalDelay(uint256 stRSRWithdrawalDelay_) external override onlyOwner {
         emit StRSRWithdrawalDelaySet(_stRSRWithdrawalDelay, stRSRWithdrawalDelay_);
         _stRSRWithdrawalDelay = stRSRWithdrawalDelay_;
+        require(_stRSRPayPeriod * 2 <= _stRSRWithdrawalDelay, "RSR withdrawal delay too short");
     }
 
     function stRSRWithdrawalDelay() public view override returns (uint256) {
@@ -160,6 +179,15 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     function maxTradeSlippage() public view override returns (Fix) {
         return _maxTradeSlippage;
+    }
+
+    function setDustAmount(Fix dustAmount_) external override onlyOwner {
+        emit DustAmountSet(_dustAmount, dustAmount_);
+        _dustAmount = dustAmount_;
+    }
+
+    function dustAmount() public view override returns (Fix) {
+        return _dustAmount;
     }
 
     function setMaxAuctionSize(Fix maxAuctionSize_) external override onlyOwner {
@@ -196,5 +224,14 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
 
     function defaultThreshold() public view override returns (Fix) {
         return _defaultThreshold;
+    }
+
+    function setStRSRPayRatio(Fix stRSRPayRatio_) external {
+        emit StRSRPayRatioSet(_stRSRPayRatio, stRSRPayRatio_);
+        _stRSRPayRatio = stRSRPayRatio_;
+    }
+
+    function stRSRPayRatio() public view returns (Fix) {
+        return _stRSRPayRatio;
     }
 }

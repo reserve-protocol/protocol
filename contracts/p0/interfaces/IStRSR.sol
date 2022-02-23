@@ -19,35 +19,38 @@ interface IStRSR is IERC20Receiver, IERC20Permit, IERC20 {
 
     /// Emitted when RSR is staked
     /// @param staker The address of the staker
-    /// @param amount {qRSR} The quantity of RSR staked
-    event Staked(address indexed staker, uint256 indexed amount);
+    /// @param rsrAmount {qRSR} How much RSR was staked
+    /// @param stRSRAmount {qStRSR} How much stRSR was minted by this staking
+    event Staked(address indexed staker, uint256 indexed rsrAmount, uint256 indexed stRSRAmount);
 
     /// Emitted when an unstaking is started
     /// @param withdrawalId The id of the withdrawal, globally unique
     /// @param staker The address of the unstaker
-    /// @param amount {qRSR} The quantity of RSR being unstaked
+    /// @param rsrAmount {qRSR} How much RSR this unstaking will be worth, absent seizures
+    /// @param stRSRAmount {qStRSR} How much stRSR was burned by this unstaking
     /// @param availableAt {sec} The timestamp at which the staking is eligible to be completed
     event UnstakingStarted(
         uint256 indexed withdrawalId,
         address indexed staker,
-        uint256 indexed amount,
+        uint256 indexed rsrAmount,
+        uint256 stRSRAmount,
         uint256 availableAt
     );
 
     /// Emitted when RSR is unstaked
     /// @param withdrawalId The id of the withdrawal, globally unique
     /// @param staker The address of the unstaker
-    /// @param amount {qRSR} The quantity of RSR unstaked
+    /// @param rsrAmount {qRSR} How much RSR this unstaking was worth
     event UnstakingCompleted(
         uint256 indexed withdrawalId,
         address indexed staker,
-        uint256 indexed amount
+        uint256 indexed rsrAmount
     );
 
-    /// Emitted when dividend RSR is added to the pool
-    /// @param from The address that sent the dividend RSR
-    /// @param amount {qRSR} The quantity of RSR added
-    event RSRAdded(address indexed from, uint256 indexed amount);
+    /// Emitted when dividend RSR is applied to the staking pool
+    /// @param amount {qRSR} The amount of RSR rewarded to the staking pool
+    /// @param numPeriods How many reward periods were paid out at once
+    event RSRRewarded(uint256 indexed amount, uint256 indexed numPeriods);
 
     /// Emitted when insurance RSR is seized from the pool
     /// @param from The address that seized the staked RSR (should only be the AssetManager)

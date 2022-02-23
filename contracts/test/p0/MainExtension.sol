@@ -79,20 +79,24 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     }
 
     function INVARIANT_configurationValid() internal view returns (bool ok) {
-        ok = true;
-        ok = ok && rewardStart() > 0;
-        ok = ok && rewardPeriod() > 0;
-        ok = ok && auctionPeriod() > 0;
-        ok = ok && stRSRWithdrawalDelay() > 0;
-        ok = ok && defaultDelay() > 0;
-        ok = ok && maxTradeSlippage().gte(FIX_ZERO) && maxTradeSlippage().lte(FIX_ONE);
-        ok = ok && maxAuctionSize().gte(FIX_ZERO) && maxAuctionSize().lte(FIX_ONE);
-        ok = ok && minRevenueAuctionSize().gte(FIX_ZERO) && minRevenueAuctionSize().lte(FIX_ONE);
-        ok = ok && issuanceRate().gte(FIX_ZERO) && issuanceRate().lte(FIX_ONE);
-        ok = ok && defaultThreshold().gte(FIX_ZERO) && defaultThreshold().lte(FIX_ONE);
-        if (!ok) {
-            console.log("INVARIANT_configurationValid violated");
-        }
+        ok =
+            rewardStart() > 0 &&
+            rewardPeriod() > 0 &&
+            auctionPeriod() > 0 &&
+            stRSRPayPeriod() > 0 &&
+            stRSRWithdrawalDelay() > 0 &&
+            defaultDelay() > 0 &&
+            maxTradeSlippage().gte(FIX_ZERO) &&
+            maxTradeSlippage().lte(FIX_ONE) &&
+            maxAuctionSize().gte(FIX_ZERO) &&
+            maxAuctionSize().lte(FIX_ONE) &&
+            issuanceRate().gte(FIX_ZERO) &&
+            issuanceRate().lte(FIX_ONE) &&
+            defaultThreshold().gte(FIX_ZERO) &&
+            defaultThreshold().lte(FIX_ONE) &&
+            stRSRPayRatio().gte(FIX_ZERO) &&
+            stRSRPayRatio().lte(FIX_ONE);
+        if (!ok) console.log("INVARIANT_configurationValid violated");
     }
 
     function INVARIANT_distributionValid() internal view returns (bool somethingIsPositive) {

@@ -526,10 +526,10 @@ describe('MainP0 contract', () => {
         //  Check price in USD of the current RToken
         expect(await main.rTokenPrice()).to.equal(fp('1'))
 
-        // Switch Vault
+        // Switch Basket
         await expect(main.connect(owner).switchBasket()).to.emit(main, 'BasketSet')
 
-        // Check state remains CALM
+        // Check state remains SOUND
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(false)
         expect(await main.totalAssetValue()).to.equal(issueAmount)
@@ -635,10 +635,10 @@ describe('MainP0 contract', () => {
         //  Check price in USD of the current RToken
         expect(await main.rTokenPrice()).to.equal(fp('1'))
 
-        // Switch Vault
+        // Switch Basket
         await expect(main.connect(owner).switchBasket()).to.emit(main, 'BasketSet')
 
-        // Check state remains CALM
+        // Check state remains SOUND
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(false)
         expect(await main.totalAssetValue()).to.equal(issueAmount)
@@ -750,10 +750,10 @@ describe('MainP0 contract', () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount)
         expect(await stRSR.balanceOf(addr1.address)).to.equal(stkAmount)
 
-        // Switch Vault
+        // Switch Basket
         await expect(main.connect(owner).switchBasket()).to.emit(main, 'BasketSet')
 
-        // Check state remains CALM
+        // Check state remains SOUND
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(false)
         expect(await main.totalAssetValue()).to.equal(issueAmount)
@@ -852,8 +852,6 @@ describe('MainP0 contract', () => {
         // Check state
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(false)
-        // Asset value still not reached
-        expect(await main.totalAssetValue()).to.equal(minBuyAmt)
         expect(await token0.balanceOf(main.address)).to.equal(0)
         expect(await token1.balanceOf(main.address)).to.equal(toBNDecimals(minBuyAmt, 6))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -891,7 +889,6 @@ describe('MainP0 contract', () => {
         // Check state - Order restablished
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await main.fullyCapitalized()).to.equal(true)
-        expect(await main.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(main.address)).to.equal(0)
         expect(await token1.balanceOf(main.address)).to.equal(toBNDecimals(issueAmount, 6))
         expect(await rToken.totalSupply()).to.equal(issueAmount)

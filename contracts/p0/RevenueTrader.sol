@@ -40,20 +40,24 @@ contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents {
         if (erc20 == tokenToBuy) {
             erc20.safeApprove(address(main), bal);
             main.distribute(erc20, address(this), bal);
-        } else {
-            // If not dust, trade the non-target asset for the target asset
-            bool launch;
-            Auction memory auction;
-
-            // {tok} =  {qTok} / {qTok/tok}
-            Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
-            (launch, auction) = prepareAuctionSell(
-                main.toAsset(erc20),
-                main.toAsset(tokenToBuy),
-                sellAmount
-            );
-            if (launch) launchAuction(auction);
+            return;
         }
+
+        // Don't open a second auction if there's already one running.
+        for (uint256 i = 0; i < auctions.length; i++) {
+            if (auctions[i].sell == erc20 && auctions[i].status != AuctionStatus.DONE) return;
+        }
+
+        // If not dust, trade the non-target asset for the target asset
+        // {tok} =  {qTok} / {qTok/tok}
+        Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
+        (bool launch, Auction memory auction) = prepareAuctionSell(
+            main.toAsset(erc20),
+            main.toAsset(tokenToBuy),
+            sellAmount
+        );
+
+        if (launch) launchAuction(auction);
     }
 
     /// Claims and sweeps all rewards

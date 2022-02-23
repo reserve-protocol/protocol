@@ -50,12 +50,14 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         }
     }
 
+    /// Return an array of all assets
     function toAsset(IERC20Metadata erc20) public view override returns (IAsset) {
         require(erc20s.contains(address(erc20)), "erc20 unregistered");
         require(assets[erc20] != IAsset(address(0)), "asset unregistered");
         return assets[erc20];
     }
 
+    /// Return an array of all active assets
     function toColl(IERC20Metadata erc20) public view override returns (ICollateral) {
         require(erc20s.contains(address(erc20)), "erc20 unrecognized");
         require(assets[erc20] != IAsset(address(0)), "asset unregistered");
