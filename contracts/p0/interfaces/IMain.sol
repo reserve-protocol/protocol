@@ -210,12 +210,12 @@ interface IRevenueDistributor {
 
 interface IAssetRegistry {
     /// Emitted when an asset is added to the registry
-    /// @param erc20 The ERC20 collateral token
+    /// @param erc20 The ERC20 contract for the asset
     /// @param asset The asset contract added to the registry
     event AssetRegistered(IERC20Metadata indexed erc20, IAsset indexed asset);
 
     /// Emitted when an asset is removed from the registry
-    /// @param erc20 The ERC20 collateral token
+    /// @param erc20 The ERC20 contract for the asset
     /// @param asset The asset contract removed from the registry
     event AssetUnregistered(IERC20Metadata indexed erc20, IAsset indexed asset);
 
