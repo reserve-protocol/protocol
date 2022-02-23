@@ -106,8 +106,8 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         _payoutRewards();
 
         main.rsr().safeTransferFrom(account, address(this), rsrAmount);
-        uint256 stakeAmount = (rsrAmount * (totalStaked > 0 ? totalStaked : 1)) /
-            (rsrBacking > 0 ? rsrBacking : 1);
+        uint256 stakeAmount = rsrAmount;
+        if (totalStaked > 0) stakeAmount = (rsrAmount * totalStaked) / rsrBacking;
 
         // Create stRSR balance
         if (balances[account] == 0) accounts.add(account);
@@ -138,7 +138,6 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
 
         // Destroy the stRSR balance
         balances[account] -= stakeAmount;
-        if (balances[account] == 0) accounts.remove(account);
         totalStaked -= stakeAmount;
 
         // Move RSR from backing to withdrawal-queue balance
@@ -176,7 +175,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     function seizeRSR(uint256 rsrAmount) external override returns (uint256 seizedRSR) {
         require(_msgSender() == address(main), "not main");
         require(rsrAmount > 0, "Amount cannot be zero");
-
+        uint256 rewards = rsrRewards();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
 
         if (rsrBalance <= rsrAmount) {
@@ -202,12 +201,13 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
                     uint256 withdrawAmt = withdrawalQ[j].rsrAmount;
                     uint256 amtToTake = (withdrawAmt * rsrAmount + (rsrBalance - 1)) / rsrBalance;
                     withdrawalQ[j].rsrAmount -= amtToTake;
+
                     seizedRSR += amtToTake;
                 }
             }
 
             // Removing from unpaid rewards is implicit
-            uint256 rewardsToTake = (rsrRewards() * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+            uint256 rewardsToTake = (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             seizedRSR += rewardsToTake;
 
             assert(rsrAmount <= seizedRSR);
