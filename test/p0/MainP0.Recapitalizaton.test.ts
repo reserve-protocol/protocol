@@ -276,9 +276,7 @@ describe('MainP0 contract', () => {
         // Set backup configuration - USDT as backup
         await main
           .connect(owner)
-          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [
-            backupCollateral1.address,
-          ])
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
 
         // Check initial state
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
@@ -346,8 +344,8 @@ describe('MainP0 contract', () => {
         await main
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
-            backupCollateral1.address,
-            backupCollateral2.address,
+            backupToken1.address,
+            backupToken2.address,
           ])
 
         // Check initial state
@@ -402,9 +400,7 @@ describe('MainP0 contract', () => {
         // Set backup configuration - USDT as backup
         await main
           .connect(owner)
-          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [
-            backupCollateral1.address,
-          ])
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
 
         // Check initial state
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
@@ -462,7 +458,7 @@ describe('MainP0 contract', () => {
         issueAmount = bn('100e18')
 
         // Setup new basket with single token
-        await main.connect(owner).setPrimeBasket([collateral0.address], [fp('1')])
+        await main.connect(owner).setPrimeBasket([token0.address], [fp('1')])
         await main.connect(owner).switchBasket()
 
         // Provide approvals
@@ -477,7 +473,7 @@ describe('MainP0 contract', () => {
 
       it('Should recapitalize correctly when switching basket - Full amount covered', async () => {
         // Setup prime basket
-        await main.connect(owner).setPrimeBasket([collateral1.address], [fp('1')])
+        await main.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
         // Set Max auction to 100% to perform it in one single auction
         await main.connect(owner).setMaxAuctionSize(fp('1'))
@@ -512,21 +508,15 @@ describe('MainP0 contract', () => {
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(main, 'AuctionStarted')
-          .withArgs(
-            0,
-            collateral0.address,
-            collateral1.address,
-            sellAmt,
-            toBNDecimals(minBuyAmt, 6)
-          )
+          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // Token0 -> Token1 Auction
         await expectAuctionInfo(main, 0, {
-          sell: collateral0.address,
-          buy: collateral1.address,
+          sell: token0.address,
+          buy: token1.address,
           sellAmount: sellAmt,
           minBuyAmount: toBNDecimals(minBuyAmt, 6),
           startTime: auctionTimestamp,
@@ -572,7 +562,7 @@ describe('MainP0 contract', () => {
         //  End current auction, should  not start any new auctions
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(main, 'AuctionEnded')
-          .withArgs(0, collateral0.address, collateral1.address, sellAmt, toBNDecimals(sellAmt, 6))
+          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6))
           .and.to.not.emit(main, 'AuctionStarted')
 
         // Check previous auction is closed
@@ -592,7 +582,7 @@ describe('MainP0 contract', () => {
 
       it('Should recapitalize correctly when switching basket - Taking Haircut - No RSR', async () => {
         // Set prime basket
-        await main.connect(owner).setPrimeBasket([collateral1.address], [fp('1')])
+        await main.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
         // Set Max auction to 100% to perform it in one single auction
         await main.connect(owner).setMaxAuctionSize(fp('1'))
@@ -627,21 +617,15 @@ describe('MainP0 contract', () => {
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(main, 'AuctionStarted')
-          .withArgs(
-            0,
-            collateral0.address,
-            collateral1.address,
-            sellAmt,
-            toBNDecimals(minBuyAmt, 6)
-          )
+          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // Token0 -> Token1 Auction
         await expectAuctionInfo(main, 0, {
-          sell: collateral0.address,
-          buy: collateral1.address,
+          sell: token0.address,
+          buy: token1.address,
           sellAmount: sellAmt,
           minBuyAmount: toBNDecimals(minBuyAmt, 6),
           startTime: auctionTimestamp,
@@ -684,13 +668,7 @@ describe('MainP0 contract', () => {
         //  End current auction, should  not start any new auctions
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(main, 'AuctionEnded')
-          .withArgs(
-            0,
-            collateral0.address,
-            collateral1.address,
-            sellAmt,
-            toBNDecimals(minBuyAmt, 6)
-          )
+          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
           .and.to.not.emit(main, 'AuctionStarted')
 
         // Check previous auction is closed
@@ -710,7 +688,7 @@ describe('MainP0 contract', () => {
 
       it('Should recapitalize correctly when switching basket - Using RSR for remainder', async () => {
         // Set prime basket
-        await main.connect(owner).setPrimeBasket([collateral1.address], [fp('1')])
+        await main.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
         // Set Max auction to 100% to perform it in one single auction
         await main.connect(owner).setMaxAuctionSize(fp('1'))
@@ -755,21 +733,15 @@ describe('MainP0 contract', () => {
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(main, 'AuctionStarted')
-          .withArgs(
-            0,
-            collateral0.address,
-            collateral1.address,
-            sellAmt,
-            toBNDecimals(minBuyAmt, 6)
-          )
+          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         let auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // Token0 -> Token1 Auction
         await expectAuctionInfo(main, 0, {
-          sell: collateral0.address,
-          buy: collateral1.address,
+          sell: token0.address,
+          buy: token1.address,
           sellAmount: sellAmt,
           minBuyAmount: toBNDecimals(minBuyAmt, 6),
           startTime: auctionTimestamp,
@@ -817,21 +789,9 @@ describe('MainP0 contract', () => {
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(main, 'AuctionEnded')
-          .withArgs(
-            0,
-            collateral0.address,
-            collateral1.address,
-            sellAmt,
-            toBNDecimals(minBuyAmt, 6)
-          )
+          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
           .and.to.emit(main, 'AuctionStarted')
-          .withArgs(
-            1,
-            rsrAsset.address,
-            collateral1.address,
-            sellAmtRSR,
-            toBNDecimals(buyAmtBidRSR, 6)
-          )
+          .withArgs(1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6))
 
         // Check previous auction is closed
         expectAuctionStatus(main, 0, AuctionStatus.DONE)
@@ -840,8 +800,8 @@ describe('MainP0 contract', () => {
 
         // RSR -> Token1 Auction
         await expectAuctionInfo(main, 1, {
-          sell: rsrAsset.address,
-          buy: collateral1.address,
+          sell: rsr.address,
+          buy: token1.address,
           sellAmount: sellAmtRSR,
           minBuyAmount: toBNDecimals(buyAmtBidRSR, 6),
           startTime: auctionTimestamp,
@@ -885,13 +845,7 @@ describe('MainP0 contract', () => {
         //  End current auction, should  not start any new auctions
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(main, 'AuctionEnded')
-          .withArgs(
-            1,
-            rsrAsset.address,
-            collateral1.address,
-            sellAmtRSR,
-            toBNDecimals(buyAmtBidRSR, 6)
-          )
+          .withArgs(1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6))
           .and.to.not.emit(main, 'AuctionStarted')
 
         // Check previous auction is closed
@@ -970,13 +924,13 @@ describe('MainP0 contract', () => {
       //   let sellAmt: BigNumber = (await token0.balanceOf(main.address)).div(2)
 
       //   await expect(facade.runAuctionsForAllTraders()).to.emit(main, 'AuctionStarted')
-      //     .withArgs(0, collateral0.address, backupCollateral.address, sellAmt, bn('0'))
+      //     .withArgs(0, token0.address, backupCollateral.address, sellAmt, bn('0'))
 
       //   let auctionTimestamp = await getLatestBlockTimestamp()
 
       //   // Token0 -> Backup Token Auction
       //   await expectAuctionInfo(main, 0, {
-      //     sell: collateral0.address,
+      //     sell: token0.address,
       //     buy: backupCollateral.address,
       //     sellAmount: sellAmt,
       //     minBuyAmount:  bn(0),
@@ -1017,16 +971,16 @@ describe('MainP0 contract', () => {
 
       //   // Run auctions - will end current one and open new one
       //   await expect(facade.runAuctionsForAllTraders()).to.emit(main, 'AuctionEnded')
-      //     .withArgs(0, collateral0.address, backupCollateral.address, sellAmt, minBuyAmt)
+      //     .withArgs(0, token0.address, backupCollateral.address, sellAmt, minBuyAmt)
       //     .and.to.emit(main, 'AuctionStarted')
-      //     //.withArgs(1, collateral0.address, backupCollateral.address, sellAmt, bn(0))
+      //     //.withArgs(1, token0.address, backupCollateral.address, sellAmt, bn(0))
 
       //   //  Call poke to end current auction, should start a new one with same amount
       //   // await expect(main.poke())
       //   //   .to.emit(assetManager, 'AuctionEnded')
-      //   //   .withArgs(0, collateral0.address, collateral1.address, sellAmt, buyAmtBid, Fate.Stay)
+      //   //   .withArgs(0, token0.address, token1.address, sellAmt, buyAmtBid, Fate.Stay)
       //   //   .and.to.emit(assetManager, 'AuctionStarted')
-      //   //   .withArgs(1, collateral0.address, collateral1.address, sellAmt, bn('0'), Fate.Stay)
+      //   //   .withArgs(1, token0.address, token1.address, sellAmt, bn('0'), Fate.Stay)
 
       //   // // Check previous auction is closed
       //   // expectAuctionOpen(0, false)
@@ -1041,8 +995,8 @@ describe('MainP0 contract', () => {
 
       //   // // Check new auction
       //   // expectAuctionInfo(1, {
-      //   //   sell: collateral0.address,
-      //   //   buy: collateral1.address,
+      //   //   sell: token0.address,
+      //   //   buy: token1.address,
       //   //   sellAmount: sellAmt,
       //   //   minBuyAmount: bn('0'),
       //   //   startTime: await getLatestBlockTimestamp(),
@@ -1064,7 +1018,7 @@ describe('MainP0 contract', () => {
       //   // // Call poke to end current auction, should start a new one with same amount
       //   // await expect(main.poke())
       //   //   .to.emit(assetManager, 'AuctionEnded')
-      //   //   .withArgs(1, collateral0.address, collateral1.address, sellAmt, buyAmtBid, Fate.Stay)
+      //   //   .withArgs(1, token0.address, token1.address, sellAmt, buyAmtBid, Fate.Stay)
       //   //   .and.to.not.emit(assetManager, 'AuctionStarted')
 
       //   // // Check auctions are closed
@@ -1160,12 +1114,12 @@ describe('MainP0 contract', () => {
       //   // Buy amount = 0 when token is defaulted
       //   await expect(main.poke())
       //     .to.emit(assetManager, 'AuctionStarted')
-      //     .withArgs(0, collateral0.address, collateral1.address, sellAmt, bn('0'), Fate.Stay)
+      //     .withArgs(0, token0.address, token1.address, sellAmt, bn('0'), Fate.Stay)
 
       //   // Check new auction created
       //   expectAuctionInfo(0, {
-      //     sell: collateral0.address,
-      //     buy: collateral1.address,
+      //     sell: token0.address,
+      //     buy: token1.address,
       //     sellAmount: sellAmt,
       //     minBuyAmount: bn('0'),
       //     startTime: await getLatestBlockTimestamp(),
@@ -1200,17 +1154,17 @@ describe('MainP0 contract', () => {
       //   // Call poke to end current auction, should start a new one with same amount
       //   await expect(main.poke())
       //     .to.emit(assetManager, 'AuctionEnded')
-      //     .withArgs(0, collateral0.address, collateral1.address, sellAmt, buyAmtBid, Fate.Stay)
+      //     .withArgs(0, token0.address, token1.address, sellAmt, buyAmtBid, Fate.Stay)
       //     .and.to.emit(assetManager, 'AuctionStarted')
-      //     .withArgs(1, collateral0.address, collateral1.address, sellAmt, bn('0'), Fate.Stay)
+      //     .withArgs(1, token0.address, token1.address, sellAmt, bn('0'), Fate.Stay)
 
       //   // Check first auction is closed
       //   expectAuctionOpen(0, false)
 
       //   // Check new auction
       //   expectAuctionInfo(1, {
-      //     sell: collateral0.address,
-      //     buy: collateral1.address,
+      //     sell: token0.address,
+      //     buy: token1.address,
       //     sellAmount: sellAmt,
       //     minBuyAmount: bn('0'),
       //     startTime: await getLatestBlockTimestamp(),
@@ -1251,13 +1205,13 @@ describe('MainP0 contract', () => {
       //   let buyAmtBidRSR: BigNumber = sellAmtRSR.sub(sellAmtRSR.div(100)) // Due to trade slippage 1%
       //   await expect(main.poke())
       //     .to.emit(assetManager, 'AuctionEnded')
-      //     .withArgs(1, collateral0.address, collateral1.address, sellAmt, buyAmtBid, Fate.Stay)
+      //     .withArgs(1, token0.address, token1.address, sellAmt, buyAmtBid, Fate.Stay)
       //     .and.to.emit(assetManager, 'AuctionStarted')
-      //     .withArgs(2, rsrAsset.address, rTokenAsset.address, sellAmtRSR, buyAmtBidRSR, Fate.Burn)
+      //     .withArgs(2, rsr.address, rTokenAsset.address, sellAmtRSR, buyAmtBidRSR, Fate.Burn)
 
       //   // Check new auction
       //   expectAuctionInfo(2, {
-      //     sell: rsrAsset.address,
+      //     sell: rsr.address,
       //     buy: rTokenAsset.address,
       //     sellAmount: sellAmtRSR,
       //     minBuyAmount: buyAmtBidRSR,
@@ -1308,13 +1262,13 @@ describe('MainP0 contract', () => {
 
       //   await expect(main.poke())
       //     .to.emit(assetManager, 'AuctionEnded')
-      //     .withArgs(2, rsrAsset.address, rTokenAsset.address, sellAmtRSR, sellAmtRSR, Fate.Burn)
+      //     .withArgs(2, rsr.address, rTokenAsset.address, sellAmtRSR, sellAmtRSR, Fate.Burn)
       //     .and.to.emit(assetManager, 'AuctionStarted')
-      //     .withArgs(3, rsrAsset.address, rTokenAsset.address, sellAmtRSRRemain, buyAmtBidRSRRemain, Fate.Burn)
+      //     .withArgs(3, rsr.address, rTokenAsset.address, sellAmtRSRRemain, buyAmtBidRSRRemain, Fate.Burn)
 
       //   // Check new auction
       //   expectAuctionInfo(3, {
-      //     sell: rsrAsset.address,
+      //     sell: rsr.address,
       //     buy: rTokenAsset.address,
       //     sellAmount: sellAmtRSRRemain,
       //     minBuyAmount: buyAmtBidRSRRemain,
@@ -1366,13 +1320,13 @@ describe('MainP0 contract', () => {
 
       //   await expect(main.poke())
       //     .to.emit(assetManager, 'AuctionEnded')
-      //     .withArgs(3, rsrAsset.address, rTokenAsset.address, sellAmtRSRRemain, sellAmtRSRRemain, Fate.Burn)
+      //     .withArgs(3, rsr.address, rTokenAsset.address, sellAmtRSRRemain, sellAmtRSRRemain, Fate.Burn)
       //     .and.to.emit(assetManager, 'AuctionStarted')
-      //     .withArgs(4, rsrAsset.address, rTokenAsset.address, sellAmtRSRFinal, buyAmtBidRSRFinal, Fate.Burn)
+      //     .withArgs(4, rsr.address, rTokenAsset.address, sellAmtRSRFinal, buyAmtBidRSRFinal, Fate.Burn)
 
       //   // Check new auction
       //   expectAuctionInfo(4, {
-      //     sell: rsrAsset.address,
+      //     sell: rsr.address,
       //     buy: rTokenAsset.address,
       //     sellAmount: sellAmtRSRFinal,
       //     minBuyAmount: buyAmtBidRSRFinal,
@@ -1425,7 +1379,7 @@ describe('MainP0 contract', () => {
       //   // Call auction to be processed
       //   await expect(main.poke())
       //     .to.emit(assetManager, 'AuctionEnded')
-      //     .withArgs(4, rsrAsset.address, rTokenAsset.address, buyAmtBidRSRFinal, buyAmtBidRSRFinal, Fate.Burn)
+      //     .withArgs(4, rsr.address, rTokenAsset.address, buyAmtBidRSRFinal, buyAmtBidRSRFinal, Fate.Burn)
       //     .and.not.to.emit(assetManager, 'AuctionStarted')
 
       //   // Check previous auctions are closed

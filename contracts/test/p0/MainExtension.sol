@@ -123,12 +123,12 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function INVARIANT_pricesDefined() internal view returns (bool ok) {
         ok = true;
-        IAsset[] memory assets = allAssets();
-        for (uint256 i = 0; i < assets.length; i++) {
-            ok = ok && assets[i].price().gt(FIX_ZERO);
+        IERC20Metadata[] memory erc20s = registeredERC20s();
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            ok = ok && toAsset(erc20s[i]).price().gt(FIX_ZERO);
         }
-        ok = ok && assetFor(rsr()).price().gt(FIX_ZERO);
-        ok = ok && assetFor(rToken()).price().gt(FIX_ZERO);
+        ok = ok && toAsset(rsr()).price().gt(FIX_ZERO);
+        ok = ok && toAsset(rToken()).price().gt(FIX_ZERO);
         if (!ok) {
             console.log("INVARIANT_pricesDefined violated");
         }

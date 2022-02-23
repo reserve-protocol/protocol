@@ -15,7 +15,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param issuer The account issuing RToken
     /// @param amount {qTok} The quantity of RToken the issuance is for
     /// @param baskets {BU} The basket unit-equivalent of the collateral deposits
-    /// @param erc20s The collateral token addresses corresponding to the deposit
+    /// @param erc20s The ERC20 collateral tokens corresponding to the deposit
     /// @param deposits {qTok} The collateral token quantities that paid for the issuance
     /// @param basketNonce The basket nonce when the issuance was started
     /// @param blockAvailableAt {blockNumber} The block number when issuance completes, fractional
@@ -24,7 +24,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
         address issuer;
         uint256 amount; // {qRTok}
         Fix baskets; // {BU}
-        address[] erc20s;
+        IERC20Metadata[] erc20s;
         uint256[] deposits; // {qTok}, same index as vault basket assets
         uint256 basketNonce; // basket nonce
         Fix blockAvailableAt; // {block.number} fractional
@@ -36,7 +36,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param index The index off the issuance in the issuer's queue
     /// @param amount The quantity of RToken being issued
     /// @param baskets The basket unit-equivalent of the collateral deposits
-    /// @param tokens The ERC20 contracts of the backing tokens
+    /// @param erc20s The ERC20 collateral tokens corresponding to the quantities
     /// @param quantities The quantities of tokens paid with
     /// @param blockAvailableAt The (continuous) block at which the issuance vests
     event IssuanceStarted(
@@ -44,7 +44,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
         uint256 indexed index,
         uint256 indexed amount,
         Fix baskets,
-        address[] tokens,
+        IERC20Metadata[] erc20s,
         uint256[] quantities,
         Fix blockAvailableAt
     );
@@ -82,7 +82,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
         address issuer,
         uint256 amount,
         Fix baskets,
-        address[] memory erc20s,
+        IERC20Metadata[] memory erc20s,
         uint256[] memory deposits
     ) external;
 
