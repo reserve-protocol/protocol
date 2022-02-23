@@ -223,6 +223,8 @@ interface IAssetRegistry {
 
     function toColl(IERC20Metadata erc20) external view returns (ICollateral);
 
+    function isRegistered(IERC20Metadata token) external view returns (bool);
+
     function registeredERC20s() external view returns (IERC20Metadata[] memory);
 }
 

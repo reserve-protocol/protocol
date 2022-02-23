@@ -63,6 +63,10 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         return ICollateral(address(assets[erc20]));
     }
 
+    function isRegistered(IERC20Metadata token) public view override returns (bool) {
+        return erc20s.contains(address(token));
+    }
+
     function registeredERC20s() public view override returns (IERC20Metadata[] memory erc20s_) {
         erc20s_ = new IERC20Metadata[](erc20s.length());
         for (uint256 i = 0; i < erc20s.length(); i++) {
@@ -94,9 +98,5 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         swapped = erc20s.add(address(asset.erc20()));
         assets[asset.erc20()] = asset;
         emit AssetRegistered(asset.erc20(), asset);
-    }
-
-    function isRegistered(IERC20Metadata token) internal view returns (bool) {
-        return erc20s.contains(address(token));
     }
 }

@@ -23,30 +23,32 @@ contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents {
     function manageFunds() external {
         IERC20Metadata[] memory erc20s = main.registeredERC20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
-            manageToken(erc20s[i]);
+            manageERC20(erc20s[i]);
         }
     }
 
     /// - If we have any of `tokenToBuy` (RSR or RToken), distribute it.
     /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
-    function manageToken(IERC20Metadata tok) public {
+    function manageERC20(IERC20Metadata erc20) public {
+        require(main.isRegistered(erc20), "erc20 not registered");
+
         closeDueAuctions();
 
-        uint256 bal = tok.balanceOf(address(this));
+        uint256 bal = erc20.balanceOf(address(this));
         if (bal == 0) return;
 
-        if (tok == tokenToBuy) {
-            tok.safeApprove(address(main), bal);
-            main.distribute(tok, address(this), bal);
+        if (erc20 == tokenToBuy) {
+            erc20.safeApprove(address(main), bal);
+            main.distribute(erc20, address(this), bal);
         } else {
             // If not dust, trade the non-target asset for the target asset
             bool launch;
             Auction memory auction;
 
             // {tok} =  {qTok} / {qTok/tok}
-            Fix sellAmount = toFixWithShift(bal, -int8(tok.decimals()));
+            Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
             (launch, auction) = prepareAuctionSell(
-                main.toAsset(tok),
+                main.toAsset(erc20),
                 main.toAsset(tokenToBuy),
                 sellAmount
             );
