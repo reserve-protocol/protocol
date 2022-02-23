@@ -446,6 +446,43 @@ describe('MainP0 contract', () => {
         quotes = await main.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[1], bn('0.75e18')])
       })
+
+      it('Should combine weights if collateral is merged in the new basket', async () => {
+        // Set backup configuration - USDT and cDAI as backup (cDai will be ignored as will be defaulted later)
+        await main
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
+            token0.address,
+            token3.address,
+          ])
+
+        // Check initial state
+        expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await main.fullyCapitalized()).to.equal(true)
+        await expectCurrentBacking(facade, {
+          tokens: initialTokens,
+          quantities: initialQuantities,
+        })
+        quotes = await main.connect(addr1).callStatic.issue(bn('1e18'))
+        expect(quotes).to.eql(initialQuotes)
+
+        // Set Token3 to hard default - Decrease rate (cDai)
+        await token3.setExchangeRate(fp('0.8'))
+
+        // Basket should switch as default is detected immediately
+        await expect(main.ensureValidBasket()).to.emit(main, 'BasketSet')
+
+        // Check state - Basket switch
+        expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await main.fullyCapitalized()).to.equal(false)
+        await expectCurrentBacking(facade, {
+          tokens: [initialTokens[0], initialTokens[1], initialTokens[2]],
+          quantities: [initialQuantities[0], initialQuantities[1], initialQuantities[2]],
+        })
+        quotes = await main.connect(addr1).callStatic.issue(bn('1e18'))
+        // Incremented the weight for token0
+        expect(quotes).to.eql([bn('0.5e18'), initialQuotes[1], initialQuotes[2]])
+      })
     })
   })
 
