@@ -117,6 +117,7 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
         // Process pending withdrawals
         _processWithdrawals(account);
         _payoutRewards();
+        _unstake(account, stakeAmount);
     }
 
     function processWithdrawals(address account) public {
