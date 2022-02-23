@@ -387,7 +387,7 @@ describe('MainP0 contract', () => {
       expect(await main.auctionPeriod()).to.equal(newValue)
     })
 
-    it.only('Should allow to update stRSRWithdrawalDelay if Owner', async () => {
+    it('Should allow to update stRSRWithdrawalDelay if Owner', async () => {
       const newValue: BigNumber = config.stRSRWithdrawalDelay.div(2)
 
       // Check existing value
