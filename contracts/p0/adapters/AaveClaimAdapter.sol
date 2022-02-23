@@ -14,13 +14,13 @@ contract AaveClaimAdapterP0 is IClaimAdapter {
 
     /// @return _to The address to send the call to
     /// @return _calldata The calldata to send
-    function getClaimCalldata(IERC20Metadata tok)
+    function getClaimCalldata(IERC20Metadata erc20)
         external
         pure
         override
         returns (address _to, bytes memory _calldata)
     {
-        _to = address(tok); // this should be a StaticAToken
+        _to = address(erc20); // this should be a StaticAToken
         _calldata = abi.encodeWithSignature("claimRewardsToSelf(bool)", true);
     }
 }

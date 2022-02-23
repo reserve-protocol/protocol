@@ -63,8 +63,8 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         return ICollateral(address(assets[erc20]));
     }
 
-    function isRegistered(IERC20Metadata token) public view override returns (bool) {
-        return erc20s.contains(address(token));
+    function isRegistered(IERC20Metadata erc20) public view override returns (bool) {
+        return erc20s.contains(address(erc20));
     }
 
     function registeredERC20s() public view override returns (IERC20Metadata[] memory erc20s_) {
