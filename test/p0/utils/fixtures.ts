@@ -44,7 +44,7 @@ export interface IConfig {
   defaultDelay: BigNumber
   maxTradeSlippage: BigNumber
   dustAmount: BigNumber
-  minRevenueAuctionSize: BigNumber
+  backingBuffer: BigNumber
   issuanceRate: BigNumber
   defaultThreshold: BigNumber
   stRSRPayRatio: BigNumber
@@ -346,7 +346,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     defaultDelay: bn('86400'), // 24 hs
     maxTradeSlippage: fp('0.01'), // 1%
     dustAmount: fp('0.01'), // 0.01 UoA (USD)
-    minRevenueAuctionSize: fp('0.001'), // 0.1%
+    backingBuffer: fp('0.0001'), // 0.01%
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
     defaultThreshold: fp('0.05'), // 5% deviation
     stRSRPayRatio: fp('0.02284'), // approx. half life of 30 pay periods

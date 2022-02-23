@@ -183,7 +183,7 @@ describe('MainP0 contract', () => {
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
     token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
 
-    // Set minRevenueAuctionSize to 0 to make math easy
+    // Set backingBuffer to 0 to make math easy
     await main.connect(owner).setMinRevenueAuctionSize(0)
 
     // Set Aave revenue token

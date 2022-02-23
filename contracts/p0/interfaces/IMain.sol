@@ -25,7 +25,7 @@ struct Config {
     // Ratios
     Fix maxTradeSlippage; // max slippage acceptable in a trade
     Fix dustAmount; // value below which we don't bother handling some tokens {UoA}
-    Fix minRevenueAuctionSize; // min size of a revenue auction and surplus buffer/(RToken value)
+    Fix backingBuffer; // percentage of the backing to keep as extra
     Fix issuanceRate; // number of RToken to issue per block / (RToken value)
     Fix defaultThreshold; // multiplier beyond which a token is marked as in-default
     Fix stRSRPayRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
@@ -42,7 +42,7 @@ struct Config {
     // maxTradeSlippage = 0.01 (1%)
     // dustAmount = 1 (1 USD)
     // auctionClearingTolerance = 0.1 (10%)
-    // minRevenueAuctionSize = 0.001 (0.1%)
+    // backingBuffer = 0.0001 (0.01% extra collateral)
     // issuanceRate = 0.00025 (0.025% per block, or ~0.1% per minute)
     // defaultThreshold = 0.05 (5% deviation, either above or below)
     // stRSRPayRatio = 0.022840031565754093 (half-life of 30 days)
@@ -147,7 +147,7 @@ interface ISettingsHandler {
 
     function setDustAmount(Fix dustAMount) external;
 
-    function setMinRevenueAuctionSize(Fix minRevenueAuctionSize) external;
+    function setMinRevenueAuctionSize(Fix backingBuffer) external;
 
     function setIssuanceRate(Fix issuanceRate) external;
 
@@ -183,7 +183,7 @@ interface ISettingsHandler {
 
     function dustAmount() external view returns (Fix);
 
-    function minRevenueAuctionSize() external view returns (Fix);
+    function backingBuffer() external view returns (Fix);
 
     function issuanceRate() external view returns (Fix);
 

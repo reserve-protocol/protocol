@@ -1091,7 +1091,7 @@ describe('MainP0 contract', () => {
       //     maxTradeSlippage: config.maxTradeSlippage,
       //     maxAuctionSize: fp('0.25'), // 25%
       //     minRecapitalizationAuctionSize: config.minRecapitalizationAuctionSize,
-      //     minRevenueAuctionSize: config.minRevenueAuctionSize,
+      //     backingBuffer: config.backingBuffer,
       //     migrationChunk: fp('1'), // 100% - Migrate all together
       //     issuanceRate: config.issuanceRate,
       //     defaultThreshold: config.defaultThreshold,

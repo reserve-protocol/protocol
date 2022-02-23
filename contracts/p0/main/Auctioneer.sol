@@ -89,7 +89,7 @@ contract AuctioneerP0 is
         }
 
         // Keep a small surplus of individual collateral
-        needed = needed.mul(FIX_ONE.plus(main.minRevenueAuctionSize()));
+        needed = needed.mul(FIX_ONE.plus(main.backingBuffer()));
 
         IERC20Metadata[] memory erc20s = registeredERC20s();
         // Handout excess assets above what is needed, including any newly minted RToken
