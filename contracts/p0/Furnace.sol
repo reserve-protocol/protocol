@@ -61,7 +61,7 @@ contract FurnaceP0 is Ownable, IFurnace {
         uint256 numPeriods = (block.timestamp - lastPayout) / period;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio.powu(numPeriods)));
+        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
 
         amount = payoutRatio.mulu(rToken.balanceOf(address(this))).floor();
 
