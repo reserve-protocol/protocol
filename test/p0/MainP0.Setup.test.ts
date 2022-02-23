@@ -192,32 +192,32 @@ describe('MainP0 contract', () => {
 
     it('Should register Assets correctly', async () => {
       // RSR
-      expect(await main.assetFor(rsr.address)).to.equal(rsrAsset.address)
+      expect(await main.toAsset(rsr.address)).to.equal(rsrAsset.address)
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
       expect(await main.rsr()).to.equal(rsr.address)
 
       // RToken
-      expect(await main.assetFor(rToken.address)).to.equal(rTokenAsset.address)
+      expect(await main.toAsset(rToken.address)).to.equal(rTokenAsset.address)
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await main.rToken()).to.equal(rToken.address)
 
       // Check assets/collateral
-      const assets = await main.allAssets()
-      expect(assets[0]).to.equal(rTokenAsset.address)
-      expect(assets[1]).to.equal(rsrAsset.address)
-      expect(assets[2]).to.equal(aaveAsset.address)
-      expect(assets[3]).to.equal(compAsset.address)
-      expect(assets.length).to.eql((await main.basketCollateral()).length + 4)
+      const registeredERC20s = await main.registeredERC20s()
+      expect(await main.toAsset(registeredERC20s[0])).to.equal(rTokenAsset.address)
+      expect(await main.toAsset(registeredERC20s[1])).to.equal(rsrAsset.address)
+      expect(await main.toAsset(registeredERC20s[2])).to.equal(aaveAsset.address)
+      expect(await main.toAsset(registeredERC20s[3])).to.equal(compAsset.address)
+      expect(registeredERC20s.length).to.eql((await main.basketTokens()).length + 4)
     })
 
     it('Should register Basket correctly', async () => {
       // Basket
       expect(await main.fullyCapitalized()).to.equal(true)
-      const backing = await main.basketCollateral()
-      expect(backing[0]).to.equal(collateral0.address)
-      expect(backing[1]).to.equal(collateral1.address)
-      expect(backing[2]).to.equal(collateral2.address)
-      expect(backing[3]).to.equal(collateral3.address)
+      const backing = await main.basketTokens()
+      expect(backing[0]).to.equal(token0.address)
+      expect(backing[1]).to.equal(token1.address)
+      expect(backing[2]).to.equal(token2.address)
+      expect(backing[3]).to.equal(token3.address)
 
       expect(backing.length).to.equal(4)
 
@@ -552,11 +552,11 @@ describe('MainP0 contract', () => {
     })
 
     it('Should return backing tokens', async () => {
-      expect(await main.basketCollateral()).to.eql([
-        collateral0.address,
-        collateral1.address,
-        collateral2.address,
-        collateral3.address,
+      expect(await main.basketTokens()).to.eql([
+        token0.address,
+        token1.address,
+        token2.address,
+        token3.address,
       ])
     })
 
@@ -660,7 +660,7 @@ describe('MainP0 contract', () => {
       )
 
       // Get previous length for assets
-      const previousLength = (await main.allAssets()).length
+      const previousLength = (await main.registeredERC20s()).length
 
       // Cannot add asset if not owner
       await expect(main.connect(other).registerAsset(newAsset.address)).to.be.revertedWith(
@@ -671,18 +671,18 @@ describe('MainP0 contract', () => {
       await main.connect(owner).registerAsset(aaveAsset.address)
 
       // Check nothing changed
-      let allAssets = await main.allAssets()
-      expect(allAssets.length).to.equal(previousLength)
+      let allERC20s = await main.registeredERC20s()
+      expect(allERC20s.length).to.equal(previousLength)
 
       // Add new asset
       await expect(main.connect(owner).registerAsset(newAsset.address))
         .to.emit(main, 'AssetRegistered')
-        .withArgs(newAsset.address)
+        .withArgs(erc20s[5].address, newAsset.address)
 
       // Check it was added
-      allAssets = await main.allAssets()
-      expect(allAssets).to.contain(newAsset.address)
-      expect(allAssets.length).to.equal(previousLength + 1)
+      allERC20s = await main.registeredERC20s()
+      expect(allERC20s).to.contain(erc20s[5].address)
+      expect(allERC20s.length).to.equal(previousLength + 1)
     })
 
     it('Should allow to remove asset if Owner', async () => {
@@ -693,12 +693,12 @@ describe('MainP0 contract', () => {
       )
 
       // Get previous length for assets
-      const previousLength = (await main.allAssets()).length
+      const previousLength = (await main.registeredERC20s()).length
 
       // Check assets
-      let allAssets = await main.allAssets()
-      expect(allAssets).to.contain(compAsset.address)
-      expect(allAssets).to.not.contain(newAsset.address)
+      let allERC20s = await main.registeredERC20s()
+      expect(allERC20s).to.contain(compToken.address)
+      expect(allERC20s).to.not.contain(erc20s[5].address)
 
       // Cannot remove asset if not owner
       await expect(main.connect(other).unregisterAsset(compAsset.address)).to.be.revertedWith(
@@ -709,22 +709,18 @@ describe('MainP0 contract', () => {
       await main.connect(owner).unregisterAsset(newAsset.address)
 
       // Check nothing changed
-      allAssets = await main.allAssets()
-      expect(allAssets.length).to.equal(previousLength)
-      expect(allAssets).to.contain(compAsset.address)
-      expect(allAssets).to.not.contain(newAsset.address)
+      allERC20s = await main.registeredERC20s()
+      expect(allERC20s.length).to.equal(previousLength)
+      expect(allERC20s).to.contain(compToken.address)
+      expect(allERC20s).to.not.contain(erc20s[5].address)
 
       // Remove asset
       await main.connect(owner).unregisterAsset(compAsset.address)
 
       // Check if it was removed
-      allAssets = await main.allAssets()
-      expect(allAssets).to.not.contain(compAsset.address)
-      expect(allAssets.length).to.equal(previousLength - 1)
-
-      // Check it was also deactivated
-      let assets = await main.allAssets()
-      expect(assets).to.not.contain(compAsset.address)
+      allERC20s = await main.registeredERC20s()
+      expect(allERC20s).to.not.contain(compToken.address)
+      expect(allERC20s.length).to.equal(previousLength - 1)
     })
 
     //   it('Should allow to activate Asset if Owner and perform validations', async () => {
@@ -739,7 +735,7 @@ describe('MainP0 contract', () => {
     //     )
 
     //     // Get previous length for assets
-    //     const previousLength = (await main.allAssets()).length
+    //     const previousLength = (await main.registeredERC20s()).length
 
     //     // Cannot activate asset if not owner
     //     await expect(main.connect(other).activateAsset(newAsset.address)).to.be.revertedWith(
@@ -752,9 +748,9 @@ describe('MainP0 contract', () => {
     //     )
 
     //     // Check nothing changed
-    //     let assets = await main.allAssets()
+    //     let assets = await main.registeredERC20s()
     //     expect(assets.length).to.equal(previousLength)
-    //     expect(assets).to.not.contain(newAsset.address)
+    //     expect(assets).to.not.contain(erc20s[5].address)
     //     expect(assets).to.not.contain(existingAsset.address)
 
     //     // Activate new asset
@@ -763,8 +759,8 @@ describe('MainP0 contract', () => {
     //       .withArgs(newAsset.address)
 
     //     // Check asset was added and activated
-    //     assets = await main.allAssets()
-    //     expect(assets).to.contain(newAsset.address)
+    //     assets = await main.registeredERC20s()
+    //     expect(assets).to.contain(erc20s[5].address)
     //     expect(assets.length).to.equal(previousLength + 1)
 
     //     // Nothing occurs if attempting to activate again
@@ -774,14 +770,14 @@ describe('MainP0 contract', () => {
     //     )
 
     //     // No changes
-    //     assets = await main.allAssets()
-    //     expect(assets).to.contain(newAsset.address)
+    //     assets = await main.registeredERC20s()
+    //     expect(assets).to.contain(erc20s[5].address)
     //     expect(assets.length).to.equal(previousLength + 1)
     //   })
 
     //   it('Should allow to deactivate Asset if Owner and perform validations', async () => {
     //     // Get previous length for assets
-    //     const previousLength = (await main.allAssets()).length
+    //     const previousLength = (await main.registeredERC20s()).length
 
     //     // Cannot deactivate asset if not owner
     //     await expect(main.connect(other).deactivateAsset(compAsset.address)).to.be.revertedWith(
@@ -794,9 +790,9 @@ describe('MainP0 contract', () => {
     //     )
 
     //     // Check nothing changed
-    //     let assets = await main.allAssets()
+    //     let assets = await main.registeredERC20s()
     //     expect(assets.length).to.equal(previousLength)
-    //     expect(assets).to.contain(compAsset.address)
+    //     expect(assets).to.contain(compToken.address)
 
     //     // Dectivate another asset
     //     await expect(main.connect(owner).deactivateAsset(compAsset.address))
@@ -804,13 +800,13 @@ describe('MainP0 contract', () => {
     //       .withArgs(compAsset.address)
 
     //     //  Check asset was deactivated but not removed
-    //     assets = await main.allAssets()
-    //     expect(assets).to.not.contain(compAsset.address)
+    //     assets = await main.registeredERC20s()
+    //     expect(assets).to.not.contain(compToken.address)
     //     expect(assets.length).to.equal(previousLength - 1)
 
     //     // Check it was not removed from all assets
-    //     let allAssets = await main.allAssets()
-    //     expect(allAssets).to.contain(compAsset.address)
+    //     let erc20s = await main.registeredERC20s()
+    //     expect(erc20s).to.contain(compToken.address)
 
     //     // Nothing occurs if attempting to deactivate again
     //     await expect(main.connect(owner).deactivateAsset(compAsset.address)).to.not.emit(
@@ -819,8 +815,8 @@ describe('MainP0 contract', () => {
     //     )
 
     //     // Nothing changed
-    //     assets = await main.allAssets()
-    //     expect(assets).to.not.contain(compAsset.address)
+    //     assets = await main.registeredERC20s()
+    //     expect(assets).to.not.contain(compToken.address)
     //     expect(assets.length).to.equal(previousLength - 1)
     //   })
 
@@ -839,7 +835,7 @@ describe('MainP0 contract', () => {
     //   })
 
     //   it('Should return all assets', async () => {
-    //     const allAssets: string[] = await main.allAssets()
+    //     const erc20s: string[] = await main.registeredERC20s()
 
     //     // Get addresses from all collateral
     //     const collateralAddrs: string[] = await Promise.all(
@@ -848,11 +844,11 @@ describe('MainP0 contract', () => {
     //       })
     //     )
 
-    //     expect(allAssets[0]).to.equal(rTokenAsset.address)
-    //     expect(allAssets[1]).to.equal(rsrAsset.address)
-    //     expect(allAssets[2]).to.equal(aaveAsset.address)
-    //     expect(allAssets[3]).to.equal(compAsset.address)
-    //     expect(allAssets.slice(4)).to.eql(collateralAddrs)
+    //     expect(erc20s[0]).to.equal(rTokenAsset.address)
+    //     expect(erc20s[1]).to.equal(rsrAsset.address)
+    //     expect(erc20s[2]).to.equal(aaveAsset.address)
+    //     expect(erc20s[3]).to.equal(compAsset.address)
+    //     expect(erc20s.slice(4)).to.eql(collateralAddrs)
     //   })
   })
 
@@ -871,9 +867,9 @@ describe('MainP0 contract', () => {
 
     it('Should allow to set prime Basket if Owner', async () => {
       // Set basket
-      await expect(main.connect(owner).setPrimeBasket([collateral0.address], [fp('1')]))
+      await expect(main.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
         .to.emit(main, 'PrimeBasketSet')
-        .withArgs([collateral0.address], [fp('1')])
+        .withArgs([token0.address], [fp('1')])
     })
 
     it('Should not allow to set backup Config if not Owner', async () => {
@@ -907,11 +903,11 @@ describe('MainP0 contract', () => {
 
       // Basket remains the same in this case
       expect(await main.fullyCapitalized()).to.equal(true)
-      const backing = await main.basketCollateral()
-      expect(backing[0]).to.equal(collateral0.address)
-      expect(backing[1]).to.equal(collateral1.address)
-      expect(backing[2]).to.equal(collateral2.address)
-      expect(backing[3]).to.equal(collateral3.address)
+      const backing = await main.basketTokens()
+      expect(backing[0]).to.equal(token0.address)
+      expect(backing[1]).to.equal(token1.address)
+      expect(backing[2]).to.equal(token2.address)
+      expect(backing[3]).to.equal(token3.address)
 
       expect(backing.length).to.equal(4)
 

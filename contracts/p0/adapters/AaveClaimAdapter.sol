@@ -6,21 +6,21 @@ import "contracts/p0/interfaces/IClaimAdapter.sol";
 
 /// Claim adapter for the Compound protocol
 contract AaveClaimAdapterP0 is IClaimAdapter {
-    address public immutable override rewardERC20;
+    IERC20Metadata public immutable override rewardERC20;
 
-    constructor(address rewardERC20_) {
+    constructor(IERC20Metadata rewardERC20_) {
         rewardERC20 = rewardERC20_;
     }
 
     /// @return _to The address to send the call to
     /// @return _calldata The calldata to send
-    function getClaimCalldata(ICollateral collateral)
+    function getClaimCalldata(IERC20Metadata erc20)
         external
-        view
+        pure
         override
         returns (address _to, bytes memory _calldata)
     {
-        _to = address(collateral.erc20()); // this should be a StaticAToken
+        _to = address(erc20); // this should be a StaticAToken
         _calldata = abi.encodeWithSignature("claimRewardsToSelf(bool)", true);
     }
 }

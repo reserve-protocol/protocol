@@ -47,7 +47,9 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
         rewardsLastClaimed = prevRewards;
 
         // Claim rewards
-        (address[] memory erc20s, uint256[] memory amts) = RewardsLib.claimRewards(address(this));
+        (IERC20Metadata[] memory erc20s, uint256[] memory amts) = RewardsLib.claimRewards(
+            IMain(address(this))
+        );
         for (uint256 i = 0; i < erc20s.length; i++) {
             emit RewardsClaimed(erc20s[i], amts[i]);
         }

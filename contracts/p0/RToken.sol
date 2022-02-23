@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -19,7 +19,6 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
-    using SafeERC20 for IERC20;
 
     IMain public main;
 
@@ -61,7 +60,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         address issuer,
         uint256 amount,
         Fix baskets,
-        address[] memory erc20s,
+        IERC20Metadata[] memory erc20s,
         uint256[] memory deposits
     ) external override onlyMain {
         assert(erc20s.length == deposits.length);
@@ -114,7 +113,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         require(!iss.processed, "issuance already processed");
 
         for (uint256 i = 0; i < iss.erc20s.length; i++) {
-            IERC20(iss.erc20s[i]).safeTransfer(iss.issuer, iss.deposits[i]);
+            iss.erc20s[i].safeTransfer(iss.issuer, iss.deposits[i]);
         }
 
         iss.processed = true;
@@ -185,7 +184,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             iss.blockAvailableAt.lte(toFix(block.number))
         ) {
             for (uint256 i = 0; i < iss.erc20s.length; i++) {
-                IERC20(iss.erc20s[i]).safeTransfer(address(main), iss.deposits[i]);
+                iss.erc20s[i].safeTransfer(address(main), iss.deposits[i]);
             }
             _mint(iss.issuer, iss.amount);
             issued = iss.amount;
