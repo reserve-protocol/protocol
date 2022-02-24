@@ -23,7 +23,8 @@
         "mythril": "./mythril.sh",
         "echidna": "rm -rf crytic-export && ./echidna.sh",
         "flatten": "waffle flatten",
-        "prepare": "husky install"
+        "prepare": "husky install",
+        "size": "npx hardhat size-contracts"
     },
     "repository": {
         "type": "git",
