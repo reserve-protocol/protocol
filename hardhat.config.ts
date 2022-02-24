@@ -1,6 +1,7 @@
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
+import 'hardhat-contract-sizer'
 //import 'hardhat-gas-reporter'
 import 'solidity-coverage'
 
@@ -63,5 +64,13 @@ export default <HardhatUserConfig>{
   },
   mocha: {
     timeout: 200000,
+  },
+  contractSizer: {
+    alphaSort: false,
+    disambiguatePaths: false,
+    runOnCompile: false,
+    strict: false,
+    only: [],
+    except: ['Adapter', 'Extension'],
   },
 }
