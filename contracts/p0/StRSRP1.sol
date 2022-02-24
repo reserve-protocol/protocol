@@ -362,8 +362,8 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
 
     /// Remove and return all current drafts from account's draft queue.
     /// @return draftsFound The amount of current drafts found and removed from the queue
-    /// @return firstId The ID of the first draft removed
-    /// @return lastId The ID of the last draft removed
+    /// @return firstId The ID of the first draft removed, if any
+    /// @return lastId The ID of the last draft removed, if any
     function popDrafts(address account)
         internal
         returns (
@@ -377,28 +377,24 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
 
         // Binary search for the current cumulative draft
         firstId = firstRemainingDraft[era][account];
-        uint256 left = firstId;
-        uint256 right = queue.length;
 
-        // If there are no drafts to be found, return (0, 0)
+        (uint256 left, uint256 right) = (firstId, queue.length);
+        // If there are no drafts to be found, return 0 drafts
         if (left >= right || queue[left].startedAt > time) return (0, 0, 0);
-
-        // Otherwise, there *is* a draft with index >= left and startedAt <= time.
-        // Let's find it:
+        // Otherwise, there *are* drafts with left <= index < right and startedAt <= time.
+        // Binary search, keeping true that (queue[left].startedAt <= time) and
+        //   (right == queue.length or queue[right].startedAt > time)
         while (left < right - 1) {
-            lastId = (left + right) / 2;
-            if (queue[lastId].startedAt <= time) {
-                left = lastId;
-            } else {
-                right = lastId;
-            }
+            uint256 test = (left + right) / 2;
+            if (queue[test].startedAt <= time) left = test;
+            else right = test;
         }
-
+        lastId = left;
         // NOTE: If we expect gas refunds for zeroing values, then here's where we'd do it!
         // (but we don't, and the deletion is expensive, so instead we'll be messy forever)
         uint256 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
-        draftsFound = queue[lastId].drafts - oldDrafts;
-        firstRemainingDraft[era][account] = lastId + 1;
+        draftsFound = queue[left].drafts - oldDrafts;
+        firstRemainingDraft[era][account] = left + 1;
     }
 
     // ==== end Internal Functions ====
