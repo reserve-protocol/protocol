@@ -184,12 +184,15 @@ describe('MainP0 contract', () => {
       expect(await main.rewardStart()).to.equal(config.rewardStart)
       expect(await main.rewardPeriod()).to.equal(config.rewardPeriod)
       expect(await main.auctionPeriod()).to.equal(config.auctionPeriod)
+      expect(await main.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
       expect(await main.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
       expect(await main.defaultDelay()).to.equal(config.defaultDelay)
       expect(await main.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+      expect(await main.dustAmount()).to.equal(config.dustAmount)
       expect(await main.backingBuffer()).to.equal(config.backingBuffer)
       expect(await main.issuanceRate()).to.equal(config.issuanceRate)
       expect(await main.defaultThreshold()).to.equal(config.defaultThreshold)
+      expect(await main.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
     })
 
     it('Should register Assets correctly', async () => {
@@ -389,6 +392,27 @@ describe('MainP0 contract', () => {
       expect(await main.auctionPeriod()).to.equal(newValue)
     })
 
+    it('Should allow to update stRSRPayPeriod if Owner', async () => {
+      const newValue: BigNumber = config.stRSRPayPeriod.div(2)
+
+      // Check existing value
+      expect(await main.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
+
+      // If not owner cannot update
+      await expect(main.connect(other).setStRSRPayPeriod(newValue)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
+
+      // Update with owner
+      await main.connect(owner).setStRSRPayPeriod(newValue)
+
+      // Check value was updated
+      expect(await main.stRSRPayPeriod()).to.equal(newValue)
+    })
+
     it('Should allow to update stRSRWithdrawalDelay if Owner', async () => {
       const newValue: BigNumber = config.stRSRWithdrawalDelay.div(2)
 
@@ -450,6 +474,27 @@ describe('MainP0 contract', () => {
 
       // Check value was updated
       expect(await main.maxTradeSlippage()).to.equal(newValue)
+    })
+
+    it('Should allow to update dustAmount if Owner', async () => {
+      const newValue: BigNumber = fp('0.02')
+
+      // Check existing value
+      expect(await main.dustAmount()).to.equal(config.dustAmount)
+
+      // If not owner cannot update
+      await expect(main.connect(other).setDustAmount(newValue)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.dustAmount()).to.equal(config.dustAmount)
+
+      // Update with owner
+      await main.connect(owner).setDustAmount(newValue)
+
+      // Check value was updated
+      expect(await main.dustAmount()).to.equal(newValue)
     })
 
     it('Should allow to update backingBuffer if Owner', async () => {

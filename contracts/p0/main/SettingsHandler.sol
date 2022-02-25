@@ -141,7 +141,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
         return _auctionPeriod;
     }
 
-    function setStRSRPayPeriod(uint256 stRSRPayPeriod_) external {
+    function setStRSRPayPeriod(uint256 stRSRPayPeriod_) external override onlyOwner {
         emit StRSRPayPeriodSet(_stRSRPayPeriod, stRSRPayPeriod_);
         _stRSRPayPeriod = stRSRPayPeriod_;
         require(_stRSRPayPeriod * 2 <= _stRSRWithdrawalDelay, "RSR pay period too long");
