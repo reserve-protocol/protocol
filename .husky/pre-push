@@ -2,5 +2,5 @@
 . "$(dirname "$0")/_/husky.sh"
 
 yarn lint
-yarn compile
-yarn test:p0
+PROTO=p0 yarn compile
+# yarn test:p0
