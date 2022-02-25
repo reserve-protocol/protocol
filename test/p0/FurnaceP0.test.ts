@@ -115,7 +115,7 @@ describe('FurnaceP0 contract', () => {
 
     it('Deployment does not accept empty token', async () => {
       await expect(FurnaceFactory.deploy(ZERO_ADDRESS, bn('0'))).to.be.revertedWith(
-        'Token is zero address'
+        'rToken is zero address'
       )
     })
   })
