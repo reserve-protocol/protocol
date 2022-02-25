@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IAsset.sol";
+import "./IAuctioneer.sol";
 import "./IClaimAdapter.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
@@ -63,10 +64,11 @@ struct ConstructorArgs {
     IERC20Metadata rsr;
     IStRSR stRSR;
     IRToken rToken;
-    IClaimAdapter[] claimAdapters;
-    IAsset[] assets;
     IRTokenIssuer rTokenIssuer;
     IRewardClaimer rewardClaimer;
+    IAuctioneer auctioneer;
+    IClaimAdapter[] claimAdapters;
+    IAsset[] assets;
 }
 
 enum AuctionStatus {
@@ -288,6 +290,8 @@ interface IBasketHandler {
 
     function worstCollateralStatus() external view returns (CollateralStatus status);
 
+    function basketQuantity(IERC20Metadata erc20) external view returns (Fix);
+
     function basketQuote(Fix amount, RoundingApproach rounding)
         external
         view
@@ -298,10 +302,6 @@ interface IBasketHandler {
     function basketPrice() external view returns (Fix price);
 
     function basketNonce() external view returns (uint256);
-}
-
-interface IAuctioneer is ITraderEvents {
-    function manageFunds() external;
 }
 
 /**
@@ -315,16 +315,25 @@ interface IMain is
     ISettingsHandler,
     IRevenueDistributor,
     IAssetRegistry,
-    IBasketHandler,
-    IAuctioneer
+    IBasketHandler
 {
     event RTokenIssuerSet(IRTokenIssuer indexed oldVal, IRTokenIssuer indexed newVal);
 
     function rTokenIssuer() external view returns (IRTokenIssuer);
 
+    function setRTokenIssuer(IRTokenIssuer val) external;
+
     event RewardClaimerSet(IRewardClaimer indexed oldVal, IRewardClaimer indexed newVal);
 
     function rewardClaimer() external view returns (IRewardClaimer);
+
+    function setRewardClaimer(IRewardClaimer val) external;
+
+    event AuctioneerSet(IAuctioneer indexed oldVal, IAuctioneer indexed newVal);
+
+    function auctioneer() external view returns (IAuctioneer);
+
+    function setAuctioneer(IAuctioneer val) external;
 
     function owner() external view returns (address);
 }

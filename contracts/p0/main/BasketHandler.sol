@@ -134,7 +134,7 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
     // ==== Internal ====
 
     /// @return {qTok/BU} The quantity of collateral in the basket
-    function basketQuantity(IERC20Metadata erc20) internal view returns (Fix) {
+    function basketQuantity(IERC20Metadata erc20) public view returns (Fix) {
         if (!isRegistered(erc20) || !toAsset(erc20).isCollateral()) return FIX_ZERO;
 
         // {qTok/BU} = {ref/BU} / {ref/tok} * {qTok/tok}

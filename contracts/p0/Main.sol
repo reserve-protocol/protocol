@@ -28,7 +28,6 @@ contract MainP0 is
     RevenueDistributorP0,
     AssetRegistryP0,
     BasketHandlerP0,
-    AuctioneerP0,
     IMain
 {
     using FixLib for Fix;
@@ -48,6 +47,13 @@ contract MainP0 is
         rewardClaimer = val;
     }
 
+    IAuctioneer public auctioneer;
+
+    function setAuctioneer(IAuctioneer val) external onlyOwner {
+        emit AuctioneerSet(auctioneer, val);
+        auctioneer = val;
+    }
+
     /// Initializer
     function init(ConstructorArgs calldata args)
         public
@@ -58,8 +64,7 @@ contract MainP0 is
             SettingsHandlerP0,
             RevenueDistributorP0,
             AssetRegistryP0,
-            BasketHandlerP0,
-            AuctioneerP0
+            BasketHandlerP0
         )
         onlyOwner
     {
@@ -72,6 +77,10 @@ contract MainP0 is
         emit RewardClaimerSet(rewardClaimer, args.rewardClaimer);
         rewardClaimer = args.rewardClaimer;
         rewardClaimer.initComponent(this, args);
+
+        emit AuctioneerSet(auctioneer, args.auctioneer);
+        auctioneer = args.auctioneer;
+        auctioneer.initComponent(this, args);
     }
 
     function owner() public view virtual override(IMain, Ownable) returns (address) {

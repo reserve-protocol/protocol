@@ -24,15 +24,15 @@ contract ExplorerFacadeP0 is IExplorerFacade {
     }
 
     function runAuctionsForAllTraders() external override {
-        main.manageFunds();
-        main.rsrTrader().manageFunds();
-        main.rTokenTrader().manageFunds();
+        main.auctioneer().manageFunds();
+        main.auctioneer().rsrTrader().manageFunds();
+        main.auctioneer().rTokenTrader().manageFunds();
     }
 
     function claimAndSweepRewardsForAllTraders() external override {
         main.rewardClaimer().claimRewards();
-        main.rsrTrader().claimAndSweepRewardsToMain();
-        main.rTokenTrader().claimAndSweepRewardsToMain();
+        main.auctioneer().rsrTrader().claimAndSweepRewardsToMain();
+        main.auctioneer().rTokenTrader().claimAndSweepRewardsToMain();
     }
 
     function doFurnaceMelting() external override {

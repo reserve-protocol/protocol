@@ -9,13 +9,12 @@ import "contracts/p0/Trader.sol";
 
 /// The RevenueTrader converts all asset balances at its address to a single target asset
 /// and sends this asset to the RevenueDistributor at Main.
-contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents {
+contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents, IRevenueTrader {
     using SafeERC20 for IERC20Metadata;
 
     IERC20Metadata public immutable tokenToBuy;
 
-    constructor(address main_, IERC20Metadata tokenToBuy_) TraderP0() {
-        initTrader(main_);
+    constructor(IERC20Metadata tokenToBuy_) TraderP0() {
         tokenToBuy = tokenToBuy_;
     }
 

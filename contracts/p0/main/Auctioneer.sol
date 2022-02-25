@@ -11,6 +11,7 @@ import "contracts/p0/main/AssetRegistry.sol";
 import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/p0/main/Mixin.sol";
+import "contracts/p0/Component.sol";
 import "contracts/p0/Trader.sol";
 import "contracts/p0/RevenueTrader.sol";
 import "contracts/libraries/Fixed.sol";
@@ -24,48 +25,34 @@ import "./BasketHandler.sol";
  *   collateral---or in the worst-case---RSR, in order to remain capitalized. Excess assets
  *   are split according to the RSR cuts to RevenueTraders.
  */
-contract AuctioneerP0 is
-    Pausable,
-    Mixin,
-    SettingsHandlerP0,
-    RevenueDistributorP0,
-    AssetRegistryP0,
-    BasketHandlerP0,
-    TraderP0,
-    IAuctioneer
-{
+contract AuctioneerP0 is TraderP0, IAuctioneer {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
-    RevenueTraderP0 public rsrTrader;
-    RevenueTraderP0 public rTokenTrader;
+    IRevenueTrader public rsrTrader;
+    IRevenueTrader public rTokenTrader;
 
-    function init(ConstructorArgs calldata args)
-        public
-        virtual
-        override(Mixin, SettingsHandlerP0, RevenueDistributorP0, AssetRegistryP0, BasketHandlerP0)
-    {
-        super.init(args);
-        initTrader(address(this));
-
-        rsrTrader = new RevenueTraderP0(address(this), args.rsr);
-        rTokenTrader = new RevenueTraderP0(address(this), args.rToken);
+    function init(ConstructorArgs calldata args) internal override {
+        // Deploy and initialize RevenueTraders
+        rsrTrader = new RevenueTraderP0(args.rsr);
+        rsrTrader.initComponent(main, args);
+        rTokenTrader = new RevenueTraderP0(args.rToken);
+        rTokenTrader.initComponent(main, args);
     }
 
     function manageFunds() external override notPaused {
-        forceCollateralUpdates();
+        main.forceCollateralUpdates();
         closeDueAuctions();
 
         if (hasOpenAuctions()) return;
 
-        if (fullyCapitalized()) {
+        if (main.fullyCapitalized()) {
             handoutExcessAssets();
             return;
         }
 
-        /*
-         * Recapitalization logic:
+        /* Recapitalization:
          *   1. Sell all surplus assets at Main for deficit collateral
          *   2. When there is no more surplus, seize RSR and sell that for collateral
          *   3. When there is no more RSR, give RToken holders a haircut
@@ -76,31 +63,32 @@ contract AuctioneerP0 is
 
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
-        Fix held = basketsHeld();
-        Fix needed = rToken().basketsNeeded();
+        IRToken rToken = main.rToken();
+
+        Fix held = main.basketsHeldBy(address(main));
+        Fix needed = rToken.basketsNeeded();
 
         // Mint revenue RToken
         if (held.gt(needed)) {
             // {qRTok} = {(BU - BU) * qRTok / BU}
-            uint256 qRTok = held.minus(needed).mulu(rToken().totalSupply()).div(needed).floor();
-            rToken().mint(address(this), qRTok);
-            rToken().setBasketsNeeded(held);
+            uint256 qRTok = held.minus(needed).mulu(rToken.totalSupply()).div(needed).floor();
+            rToken.mint(address(main), qRTok);
+            rToken.setBasketsNeeded(held);
             needed = held;
         }
 
         // Keep a small surplus of individual collateral
         needed = needed.mul(FIX_ONE.plus(main.backingBuffer()));
 
-        IERC20Metadata[] memory erc20s = registeredERC20s();
+        IERC20Metadata[] memory erc20s = main.registeredERC20s();
         // Handout excess assets above what is needed, including any newly minted RToken
         for (uint256 i = 0; i < erc20s.length; i++) {
-            uint256 bal = erc20s[i].balanceOf(address(this));
-            uint256 excess = bal; // {qTok}
-            excess -= Math.min(excess, needed.mul(basketQuantity(erc20s[i])).ceil());
+            uint256 bal = erc20s[i].balanceOf(address(main));
+            uint256 neededI = needed.mul(main.basketQuantity(erc20s[i])).ceil();
 
-            if (excess > 0) {
-                (uint256 rsrShares, uint256 totalShares) = rsrCut();
-                uint256 tokensPerShare = excess / totalShares;
+            if (bal > neededI) {
+                (uint256 rsrShares, uint256 totalShares) = main.rsrCut();
+                uint256 tokensPerShare = (bal - neededI) / totalShares;
                 uint256 toRSR = tokensPerShare * rsrShares;
                 uint256 toRToken = tokensPerShare * (totalShares - rsrShares);
 
@@ -126,7 +114,8 @@ contract AuctioneerP0 is
         bool trade;
         Auction memory auction;
         if (
-            surplus.isCollateral() && toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
+            surplus.isCollateral() &&
+            main.toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
         ) {
             (trade, auction) = prepareAuctionSell(surplus, deficit, surplusAmount);
             auction.minBuyAmount = 0;
@@ -138,6 +127,7 @@ contract AuctioneerP0 is
                 deficitAmount
             );
         }
+
         if (trade) {
             launchAuction(auction);
         }
@@ -147,21 +137,24 @@ contract AuctioneerP0 is
     /// Try to seize RSR and sell it for missing collateral
     /// @return Whether an auction was launched
     function sellRSRForCollateral() private returns (bool) {
-        assert(!hasOpenAuctions() && !fullyCapitalized());
+        assert(!hasOpenAuctions() && !main.fullyCapitalized());
+
+        IERC20Metadata rsr = main.rsr();
+        IStRSR stRSR = main.stRSR();
 
         (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit();
 
-        uint256 rsrBal = rsr().balanceOf(address(this));
+        uint256 rsrBal = rsr.balanceOf(address(main));
         (bool trade, Auction memory auction) = prepareAuctionToCoverDeficit(
-            toAsset(rsr()),
+            main.toAsset(rsr),
             deficit,
-            toFixWithShift(rsrBal + rsr().balanceOf(address(stRSR())), -int8(rsr().decimals())),
+            toFixWithShift(rsrBal + rsr.balanceOf(address(stRSR)), -int8(rsr.decimals())),
             deficitAmount
         );
 
         if (trade) {
             if (auction.sellAmount > rsrBal) {
-                stRSR().seizeRSR(auction.sellAmount - rsrBal);
+                stRSR.seizeRSR(auction.sellAmount - rsrBal);
             }
             launchAuction(auction);
         }
@@ -170,9 +163,9 @@ contract AuctioneerP0 is
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
     function giveRTokenHoldersAHaircut() private returns (bool) {
-        assert(!hasOpenAuctions() && !fullyCapitalized());
-        rToken().setBasketsNeeded(basketsHeld());
-        assert(fullyCapitalized());
+        assert(!hasOpenAuctions() && !main.fullyCapitalized());
+        main.rToken().setBasketsNeeded(main.basketsHeldBy(address(main)));
+        assert(main.fullyCapitalized());
         return true;
     }
 
@@ -193,23 +186,23 @@ contract AuctioneerP0 is
             Fix buyAmount
         )
     {
-        IERC20Metadata[] memory erc20s = registeredERC20s();
-        Fix basketsNeeded = rToken().basketsNeeded(); // {BU}
+        IERC20Metadata[] memory erc20s = main.registeredERC20s();
+        Fix basketsNeeded = main.rToken().basketsNeeded(); // {BU}
         Fix[] memory prices = new Fix[](erc20s.length); // {UoA/tok}
         Fix[] memory surpluses = new Fix[](erc20s.length); // {UoA}
         Fix[] memory deficits = new Fix[](erc20s.length); // {UoA}
 
         // Calculate surplus and deficits relative to the reference basket
         for (uint256 i = 0; i < erc20s.length; i++) {
-            prices[i] = toAsset(erc20s[i]).price();
+            prices[i] = main.toAsset(erc20s[i]).price();
 
             // needed: {qTok} that Main must hold to meet obligations
             uint256 needed;
-            if (toAsset(erc20s[i]).isCollateral()) {
-                needed = basketsNeeded.mul(basketQuantity(erc20s[i])).ceil();
+            if (main.toAsset(erc20s[i]).isCollateral()) {
+                needed = basketsNeeded.mul(main.basketQuantity(erc20s[i])).ceil();
             }
             // held: {qTok} that Main is already holding
-            uint256 held = erc20s[i].balanceOf(address(this));
+            uint256 held = erc20s[i].balanceOf(address(main));
 
             if (held > needed) {
                 // {tok} = {qTok} * {tok/qTok}
@@ -240,10 +233,10 @@ contract AuctioneerP0 is
 
         // {tok} = {UoA} / {UoA/tok}
         sellAmount = surplusMax.div(prices[surplusIndex]);
-        surplus = toAsset(erc20s[surplusIndex]);
+        surplus = main.toAsset(erc20s[surplusIndex]);
 
         // {tok} = {UoA} / {UoA/tok}
         buyAmount = deficitMax.div(prices[deficitIndex]);
-        deficit = toColl(erc20s[deficitIndex]);
+        deficit = main.toColl(erc20s[deficitIndex]);
     }
 }

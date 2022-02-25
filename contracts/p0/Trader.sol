@@ -5,12 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "contracts/p0/Component.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/libraries/Fixed.sol";
 
-abstract contract TraderP0 is ITraderEvents {
+abstract contract TraderP0 is Component, ITraderEvents {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
@@ -25,12 +26,6 @@ abstract contract TraderP0 is ITraderEvents {
 
     // The latest end time for any auction in `auctions`.
     uint256 private latestAuctionEnd;
-
-    IMain public main;
-
-    function initTrader(address main_) internal virtual {
-        main = IMain(main_);
-    }
 
     /// @return true iff this trader now has open auctions.
     function hasOpenAuctions() public view returns (bool) {
