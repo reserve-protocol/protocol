@@ -78,6 +78,7 @@ contract SettingsHandlerP0 is BaseComponent, Ownable, ISettingsHandler {
         return _addrs[key];
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function Uint(UintKey key) public view override returns (uint256) {
         return _uints[key];
     }

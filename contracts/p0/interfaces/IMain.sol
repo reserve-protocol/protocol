@@ -108,6 +108,7 @@ interface ISettingsHandler {
 
     function addr(AddrKey key) external view returns (address);
 
+    // solhint-disable-next-line func-name-mixedcase
     function Uint(UintKey key) external view returns (uint256);
 
     function fix(FixKey key) external view returns (Fix);
