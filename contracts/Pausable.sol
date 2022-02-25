@@ -25,19 +25,19 @@ contract Pausable is Ownable, IPausable {
         _;
     }
 
-    function pause() external override {
+    function pause() external {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         emit PausedSet(paused, true);
         paused = true;
     }
 
-    function unpause() external override {
+    function unpause() external {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         emit PausedSet(paused, false);
         paused = false;
     }
 
-    function pauser() external view override returns (address) {
+    function pauser() external view returns (address) {
         return _pauser;
     }
 

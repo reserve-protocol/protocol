@@ -6,13 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/main/AssetRegistry.sol";
 import "contracts/p0/main/SettingsHandler.sol";
-import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/main/RewardClaimer.sol";
 import "contracts/p0/main/RTokenIssuer.sol";
 import "contracts/p0/main/Auctioneer.sol";
 import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
+import "contracts/BaseComponent.sol";
 import "contracts/Pausable.sol";
 
 /**
@@ -20,9 +20,9 @@ import "contracts/Pausable.sol";
  * @notice Collects all mixins.
  */
 contract MainP0 is
+    BaseComponent,
     Ownable,
     Pausable,
-    Mixin,
     SettingsHandlerP0,
     RevenueDistributorP0,
     AssetRegistryP0,
@@ -40,22 +40,18 @@ contract MainP0 is
         public
         virtual
         override(
-            IMixin,
-            Mixin,
+            BaseComponent,
             SettingsHandlerP0,
             RevenueDistributorP0,
             AssetRegistryP0,
             BasketHandlerP0,
             AuctioneerP0,
             RewardClaimerP0,
-            RTokenIssuerP0
+            RTokenIssuerP0,
+            IMain
         )
         onlyOwner
     {
         super.init(args);
-    }
-
-    function owner() public view virtual override(IMain, Ownable) returns (address) {
-        return Ownable.owner();
     }
 }

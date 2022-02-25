@@ -10,12 +10,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/BaseComponent.sol";
 
 /**
  * @title RTokenP0
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP0 is Ownable, ERC20Permit, IRToken {
+contract RTokenP0 is Ownable, BaseComponent, ERC20Permit, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
@@ -69,7 +70,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         if (issuanceRate[block.number].eq(FIX_ZERO)) {
             issuanceRate[block.number] = fixMax(
                 MIN_ISSUANCE_RATE,
-                main.issuanceRate().mulu(totalSupply())
+                main.fix(ISSUANCE_RATE).mulu(totalSupply())
             );
         }
 

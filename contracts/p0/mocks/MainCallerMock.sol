@@ -5,8 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IMain.sol";
 import "contracts/p0/Main.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/BaseComponent.sol";
 
-contract MainCallerMockP0 {
+contract MainCallerMockP0 is BaseComponent {
     IMain main;
 
     constructor(IMain main_) {
@@ -14,7 +15,7 @@ contract MainCallerMockP0 {
     }
 
     function seizeRSR(uint256 amount) external {
-        main.stRSR().seizeRSR(amount);
+        IStRSR(main.addr(ST_RSR)).seizeRSR(amount);
     }
 
     function paused() external returns (bool) {
@@ -30,18 +31,18 @@ contract MainCallerMockP0 {
     }
 
     function rsr() external view returns (IERC20) {
-        return main.rsr();
+        return IERC20(main.addr(RSR));
     }
 
     function stRSRWithdrawalDelay() external view returns (uint256) {
-        return main.stRSRWithdrawalDelay();
+        return main.Uint(ST_RSR_WITHDRAWAL_DELAY);
     }
 
     function stRSRPayPeriod() external view returns (uint256) {
-        return main.stRSRPayPeriod();
+        return main.Uint(ST_RSR_PAY_PERIOD);
     }
 
     function stRSRPayRatio() external view returns (Fix) {
-        return main.stRSRPayRatio();
+        return main.fix(ST_RSR_PAY_RATIO);
     }
 }

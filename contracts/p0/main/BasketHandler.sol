@@ -6,10 +6,10 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Basket.sol";
-import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/main/AssetRegistry.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/BaseComponent.sol";
 import "contracts/Pausable.sol";
 
 struct BackupConfig {
@@ -30,7 +30,13 @@ struct BasketConfig {
  * @title BasketHandler
  * @notice Handles the basket configuration, definition, and evolution over time.
  */
-contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0, IBasketHandler {
+contract BasketHandlerP0 is
+    BaseComponent,
+    Pausable,
+    SettingsHandlerP0,
+    AssetRegistryP0,
+    IBasketHandler
+{
     using BasketLib for Basket;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -43,7 +49,7 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, SettingsHandlerP0, AssetRegistryP0)
+        override(BaseComponent, SettingsHandlerP0, AssetRegistryP0)
     {
         super.init(args);
     }
@@ -110,7 +116,7 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
 
     /// @return Whether it holds enough basket units of collateral
     function fullyCapitalized() public view override returns (bool) {
-        return basketsHeld().gte(rToken().basketsNeeded());
+        return basketsHeld().gte(IRToken(addr(RTOKEN)).basketsNeeded());
     }
 
     function basketNonce() public view override returns (uint256) {

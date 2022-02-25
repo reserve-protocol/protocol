@@ -13,6 +13,7 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/BaseComponent.sol";
 
 /*
  * @title StRSRP0
@@ -23,7 +24,7 @@ import "contracts/libraries/Fixed.sol";
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both
  * balances that are in the process of being withdrawn and those that are not.
  */
-contract StRSRP0 is IStRSR, Ownable, EIP712 {
+contract StRSRP0 is IStRSR, Ownable, BaseComponent, EIP712 {
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Metadata;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -89,7 +90,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         _name = name_;
         _symbol = symbol_;
         _transferOwnership(owner_);
-        payoutLastPaid = main.rewardStart();
+        payoutLastPaid = main.Uint(REWARD_START);
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
@@ -105,7 +106,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         }
         _payoutRewards();
 
-        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
+        IERC20(main.addr(RSR)).safeTransferFrom(account, address(this), rsrAmount);
         uint256 stakeAmount = rsrAmount;
         if (totalStaked > 0) stakeAmount = (rsrAmount * totalStaked) / rsrBacking;
 
@@ -144,7 +145,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         rsrBacking -= rsrAmount;
 
         // Create the corresponding withdrawal ticket
-        uint256 availableAt = block.timestamp + main.stRSRWithdrawalDelay();
+        uint256 availableAt = block.timestamp + main.Uint(ST_RSR_WITHDRAWAL_DELAY);
         withdrawals[account].push(Withdrawal(account, rsrAmount, availableAt));
         emit UnstakingStarted(
             withdrawals[account].length - 1,
@@ -163,7 +164,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     }
 
     function notifyOfDeposit(IERC20 erc20) external override {
-        require(erc20 == main.rsr(), "RSR dividends only");
+        require(erc20 == IERC20(main.addr(RSR)), "RSR dividends only");
         // TODO: this is pretty optional here; maybe this function's just a no-op
         _payoutRewards();
     }
@@ -176,7 +177,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         require(_msgSender() == address(main), "not main");
         require(rsrAmount > 0, "Amount cannot be zero");
         uint256 rewards = rsrRewards();
-        uint256 rsrBalance = main.rsr().balanceOf(address(this));
+        uint256 rsrBalance = IERC20(main.addr(RSR)).balanceOf(address(this));
 
         if (rsrBalance <= rsrAmount) {
             // Everyone's wiped out! Doom! Mayhem!
@@ -214,7 +215,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         }
 
         // Transfer RSR to caller
-        main.rsr().safeTransfer(_msgSender(), seizedRSR);
+        IERC20(main.addr(RSR)).safeTransfer(_msgSender(), seizedRSR);
         emit RSRSeized(_msgSender(), seizedRSR);
     }
 
@@ -311,20 +312,21 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
 
     /// @return {qRSR} The balance of RSR that this contract owns dedicated to future RSR rewards.
     function rsrRewards() internal view returns (uint256) {
-        return main.rsr().balanceOf(address(this)) - rsrBacking - rsrBeingWithdrawn();
+        return IERC20(main.addr(RSR)).balanceOf(address(this)) - rsrBacking - rsrBeingWithdrawn();
     }
 
     /// Assign reward payouts to the staker pool
     /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
     function _payoutRewards() internal {
-        uint256 period = main.stRSRPayPeriod();
+        uint256 period = main.Uint(ST_RSR_PAY_PERIOD);
+
         if (block.timestamp < payoutLastPaid + period) return;
 
         uint256 numPeriods = (block.timestamp - payoutLastPaid) / period;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(main.stRSRPayRatio()).powu(numPeriods));
+        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(main.fix(ST_RSR_PAY_RATIO)).powu(numPeriods));
         uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
 
         // Apply payout to RSR backing
@@ -340,7 +342,10 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
 
         for (uint256 i = 0; i < withdrawalQ.length; i++) {
             if (block.timestamp >= withdrawalQ[i].availableAt && withdrawalQ[i].rsrAmount > 0) {
-                main.rsr().safeTransfer(withdrawalQ[i].account, withdrawalQ[i].rsrAmount);
+                IERC20(main.addr(RSR)).safeTransfer(
+                    withdrawalQ[i].account,
+                    withdrawalQ[i].rsrAmount
+                );
                 emit UnstakingCompleted(i, withdrawalQ[i].account, withdrawalQ[i].rsrAmount);
                 withdrawalQ[i].rsrAmount = 0;
             }

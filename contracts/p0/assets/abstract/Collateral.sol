@@ -7,13 +7,14 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/BaseComponent.sol";
 import "./Asset.sol";
 
 /**
  * @title CollateralP0
  * @notice A general non-appreciating collateral type to be extended.
  */
-abstract contract CollateralP0 is ICollateral, AssetP0, Context {
+abstract contract CollateralP0 is ICollateral, BaseComponent, AssetP0, Context {
     using FixLib for Fix;
 
     // Default Status:
@@ -58,7 +59,7 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
         if (whenDefault > block.timestamp) {
             // If the price is below the default-threshold price, default eventually
             whenDefault = isDepegged()
-                ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
+                ? Math.min(whenDefault, block.timestamp + main.Uint(DEFAULT_DELAY))
                 : NEVER;
         }
 
@@ -101,7 +102,7 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
     function isDepegged() internal view returns (bool) {
         // {UoA/ref} = {UoA/target} * {target/ref}
         Fix peg = pricePerTarget().mul(targetPerRef());
-        Fix delta = peg.mul(main.defaultThreshold());
+        Fix delta = peg.mul(main.fix(DEFAULT_THRESHOLD));
         Fix p = price();
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }

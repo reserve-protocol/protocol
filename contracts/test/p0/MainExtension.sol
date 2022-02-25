@@ -28,11 +28,11 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
     }
 
     function issueInstantly(address account, uint256 amount) public {
-        uint256 start = rToken().balanceOf(account);
+        uint256 start = IRToken(addr(RTOKEN)).balanceOf(account);
         connect(account);
         issue(amount);
-        RTokenExtension(address(rToken())).forceSlowIssuanceToComplete(account);
-        require(rToken().balanceOf(account) - start == amount, "issue failure");
+        RTokenExtension(address(IRToken(addr(RTOKEN)))).forceSlowIssuanceToComplete(account);
+        require(IRToken(addr(RTOKEN)).balanceOf(account) - start == amount, "issue failure");
     }
 
     /// @return targets {ref/BU} The reference targets targeted per BU
@@ -69,10 +69,10 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function INVARIANT_stateDefined() internal view returns (bool ok) {
         ok = true;
-        ok = ok && address(revenueFurnace()) != address(0);
-        ok = ok && address(stRSR()) != address(0);
-        ok = ok && address(rToken()) != address(0);
-        ok = ok && address(rsr()) != address(0);
+        ok = ok && addr(REVENUE_FURNACE) != address(0);
+        ok = ok && addr(ST_RSR) != address(0);
+        ok = ok && addr(RTOKEN) != address(0);
+        ok = ok && addr(RSR) != address(0);
         if (!ok) {
             console.log("INVARIANT_stateDefined violated");
         }
@@ -80,20 +80,20 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
 
     function INVARIANT_configurationValid() internal view returns (bool ok) {
         ok =
-            rewardStart() > 0 &&
-            rewardPeriod() > 0 &&
-            auctionPeriod() > 0 &&
-            stRSRPayPeriod() > 0 &&
-            stRSRWithdrawalDelay() > 0 &&
-            defaultDelay() > 0 &&
-            maxTradeSlippage().gte(FIX_ZERO) &&
-            maxTradeSlippage().lte(FIX_ONE) &&
-            issuanceRate().gte(FIX_ZERO) &&
-            issuanceRate().lte(FIX_ONE) &&
-            defaultThreshold().gte(FIX_ZERO) &&
-            defaultThreshold().lte(FIX_ONE) &&
-            stRSRPayRatio().gte(FIX_ZERO) &&
-            stRSRPayRatio().lte(FIX_ONE);
+            Uint(REWARD_START) > 0 &&
+            Uint(REWARD_PERIOD) > 0 &&
+            Uint(AUCTION_PERIOD) > 0 &&
+            Uint(ST_RSR_PAY_PERIOD) > 0 &&
+            Uint(ST_RSR_WITHDRAWAL_DELAY) > 0 &&
+            Uint(DEFAULT_DELAY) > 0 &&
+            fix(MAX_TRADE_SLIPPAGE).gte(FIX_ZERO) &&
+            fix(MAX_TRADE_SLIPPAGE).lte(FIX_ONE) &&
+            fix(ISSUANCE_RATE).gte(FIX_ZERO) &&
+            fix(ISSUANCE_RATE).lte(FIX_ONE) &&
+            fix(DEFAULT_THRESHOLD).gte(FIX_ZERO) &&
+            fix(DEFAULT_THRESHOLD).lte(FIX_ONE) &&
+            fix(ST_RSR_PAY_RATIO).gte(FIX_ZERO) &&
+            fix(ST_RSR_PAY_RATIO).lte(FIX_ONE);
         if (!ok) console.log("INVARIANT_configurationValid violated");
     }
 
@@ -129,8 +129,8 @@ contract MainExtension is ContextMixin, MainP0, IExtension {
         for (uint256 i = 0; i < erc20s.length; i++) {
             ok = ok && toAsset(erc20s[i]).price().gt(FIX_ZERO);
         }
-        ok = ok && toAsset(rsr()).price().gt(FIX_ZERO);
-        ok = ok && toAsset(rToken()).price().gt(FIX_ZERO);
+        ok = ok && toAsset(IERC20Metadata(addr(RSR))).price().gt(FIX_ZERO);
+        ok = ok && toAsset(IRToken(addr(RTOKEN))).price().gt(FIX_ZERO);
         if (!ok) {
             console.log("INVARIANT_pricesDefined violated");
         }

@@ -9,8 +9,9 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/BaseComponent.sol";
 
-abstract contract TraderP0 is ITraderEvents {
+abstract contract TraderP0 is BaseComponent, ITraderEvents {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
@@ -67,7 +68,7 @@ abstract contract TraderP0 is ITraderEvents {
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         Fix exactBuyAmount = sellAmount.mul(sell.price()).div(buy.price());
-        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.maxTradeSlippage()));
+        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.fix(MAX_TRADE_SLIPPAGE)));
 
         // TODO Check floor() and ceil() rounding below
         return (
@@ -81,7 +82,7 @@ abstract contract TraderP0 is ITraderEvents {
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,
                 startTime: block.timestamp,
-                endTime: Math.max(block.timestamp + main.auctionPeriod(), latestAuctionEnd),
+                endTime: Math.max(block.timestamp + main.Uint(AUCTION_PERIOD), latestAuctionEnd),
                 status: AuctionStatus.NOT_YET_OPEN
             })
         );
@@ -110,7 +111,7 @@ abstract contract TraderP0 is ITraderEvents {
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
-        Fix idealSellAmount = exactSellAmount.div(FIX_ONE.minus(main.maxTradeSlippage()));
+        Fix idealSellAmount = exactSellAmount.div(FIX_ONE.minus(main.fix(MAX_TRADE_SLIPPAGE)));
 
         Fix sellAmount = fixMin(idealSellAmount, maxSellAmount);
         return prepareAuctionSell(sell, buy, sellAmount);
@@ -119,7 +120,7 @@ abstract contract TraderP0 is ITraderEvents {
     /// @return {tok} The least amount of whole tokens ever worth trying to sell
     function dustThreshold(IAsset asset) internal view returns (Fix) {
         // {tok} = {UoA} / {UoA/tok}
-        return main.dustAmount().div(asset.price());
+        return main.fix(DUST_AMOUNT).div(asset.price());
     }
 
     /// Launch an auction:
@@ -131,9 +132,9 @@ abstract contract TraderP0 is ITraderEvents {
         auctions.push(auction_);
         Auction storage auction = auctions[auctions.length - 1];
 
-        auction.sell.safeApprove(address(main.market()), auction.sellAmount);
+        auction.sell.safeApprove(main.addr(MARKET), auction.sellAmount);
 
-        auction.externalAuctionId = main.market().initiateAuction(
+        auction.externalAuctionId = IMarket(main.addr(MARKET)).initiateAuction(
             auction.sell,
             auction.buy,
             auction.endTime,
@@ -167,7 +168,7 @@ abstract contract TraderP0 is ITraderEvents {
         assert(auction.status == AuctionStatus.OPEN);
         assert(auction.endTime <= block.timestamp);
 
-        bytes32 encodedOrder = main.market().settleAuction(auction.externalAuctionId);
+        bytes32 encodedOrder = IMarket(main.addr(MARKET)).settleAuction(auction.externalAuctionId);
         (auction.clearingSellAmount, auction.clearingBuyAmount) = decodeOrder(encodedOrder);
 
         auction.status = AuctionStatus.DONE;

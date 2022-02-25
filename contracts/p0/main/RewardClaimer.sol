@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/p0/main/SettingsHandler.sol";
-import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/BaseComponent.sol";
 import "contracts/Pausable.sol";
 import "./Auctioneer.sol";
 import "./SettingsHandler.sol";
@@ -17,7 +17,13 @@ import "./SettingsHandler.sol";
  * @title RewardClaimer
  * @notice Claims rewards every reward cycle and leaves them in Main for Auctioneer to handle.
  */
-contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IRewardClaimer {
+contract RewardClaimerP0 is
+    BaseComponent,
+    Pausable,
+    SettingsHandlerP0,
+    AuctioneerP0,
+    IRewardClaimer
+{
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20;
@@ -29,7 +35,7 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(Mixin, SettingsHandlerP0, AuctioneerP0)
+        override(BaseComponent, SettingsHandlerP0, AuctioneerP0)
     {
         super.init(args);
         for (uint256 i = 0; i < args.claimAdapters.length; i++) {
@@ -86,8 +92,11 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
 
     // Return the reward boundaries on either side of `time` as timestamps.
     function whenRewards(uint256 time) private view returns (uint256 left, uint256 right) {
-        int256 reps = (int256(time) - int256(rewardStart())) / int256(rewardPeriod());
-        left = uint256(reps * int256(rewardPeriod()) + int256(rewardStart()));
-        right = left + rewardPeriod();
+        int256 rewardStart = int256(Uint(REWARD_START));
+        int256 rewardPeriod = int256(Uint(REWARD_PERIOD));
+
+        int256 reps = (int256(time) - rewardStart) / rewardPeriod;
+        left = uint256(reps * rewardPeriod + rewardStart);
+        right = left + uint256(rewardPeriod);
     }
 }
