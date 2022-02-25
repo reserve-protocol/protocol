@@ -560,6 +560,27 @@ describe('MainP0 contract', () => {
       expect(await main.defaultThreshold()).to.equal(newValue)
     })
 
+    it('Should allow to update stRSRPayRatio if Owner', async () => {
+      const newValue: BigNumber = config.stRSRPayRatio.div(2)
+
+      // Check existing value
+      expect(await main.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
+
+      // If not owner cannot update
+      await expect(main.connect(other).setStRSRPayRatio(newValue)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
+
+      // Update with owner
+      await main.connect(owner).setStRSRPayRatio(newValue)
+
+      // Check value was updated
+      expect(await main.stRSRPayRatio()).to.equal(newValue)
+    })
+
     it('Should return nextRewards correctly', async () => {
       // Check next immediate reward
       expect(await main.nextRewards()).to.equal(config.rewardStart.add(config.rewardPeriod))
@@ -603,6 +624,25 @@ describe('MainP0 contract', () => {
 
       // Check value was updated
       expect(await main.market()).to.equal(other.address)
+    })
+
+    it('Should allow to set RSR if Owner', async () => {
+      // Check existing value
+      expect(await main.rsr()).to.equal(rsr.address)
+
+      // If not owner cannot update - use mock address
+      await expect(main.connect(other).setRSR(other.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.rsr()).to.equal(rsr.address)
+
+      // Update with owner
+      await main.connect(owner).setRSR(other.address)
+
+      // Check value was updated
+      expect(await main.rsr()).to.equal(other.address)
     })
 
     it('Should allow to add ClaimAdapter if Owner', async () => {
