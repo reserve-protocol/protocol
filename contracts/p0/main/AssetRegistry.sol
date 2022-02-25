@@ -5,11 +5,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 
 /// The AssetRegistry provides the mapping from ERC20 to Asset, allowing the rest of Main
 /// to think in terms of ERC20 tokens and target/ref units.
-contract AssetRegistryP0 is BaseComponent, Ownable, IAssetRegistry {
+contract AssetRegistryP0 is Component, Ownable, IAssetRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Registered ERC20s

@@ -10,7 +10,7 @@ type FixKey is bytes32;
 
 
 /// An abstract base class for all component contracts to extend
-abstract contract BaseComponent {
+abstract contract Component {
 
     // TODO
     // 1. Write out hashes directly and put expression in comments

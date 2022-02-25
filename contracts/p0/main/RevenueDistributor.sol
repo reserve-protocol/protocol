@@ -8,9 +8,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 
-contract RevenueDistributorP0 is BaseComponent, SettingsHandlerP0, IRevenueDistributor {
+contract RevenueDistributorP0 is Component, SettingsHandlerP0, IRevenueDistributor {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -27,7 +27,7 @@ contract RevenueDistributorP0 is BaseComponent, SettingsHandlerP0, IRevenueDistr
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(BaseComponent, SettingsHandlerP0)
+        override(Component, SettingsHandlerP0)
     {
         super.init(args);
         _setDistribution(FURNACE_ADDR, RevenueShare(args.dist.rTokenDist, 0));

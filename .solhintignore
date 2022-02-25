@@ -9,4 +9,4 @@ contracts/libraries/Fixed.sol
 
 # So do abstract contracts?
 contracts/Pausable.sol
-contracts/BaseComponent.sol
+contracts/Component.sol

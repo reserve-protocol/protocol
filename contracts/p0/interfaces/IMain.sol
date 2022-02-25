@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 import "./IAsset.sol";
 import "./IClaimAdapter.sol";
 import "./IFurnace.sol";

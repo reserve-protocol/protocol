@@ -4,10 +4,10 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 
 /// Settings mixin for Main
-contract SettingsHandlerP0 is BaseComponent, Ownable, ISettingsHandler {
+contract SettingsHandlerP0 is Component, Ownable, ISettingsHandler {
     using FixLib for Fix;
 
     mapping(AddrKey => address) private _addrs;

@@ -12,7 +12,7 @@ import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/p0/Trader.sol";
 import "contracts/p0/RevenueTrader.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 import "contracts/Pausable.sol";
 import "./SettingsHandler.sol";
 import "./BasketHandler.sol";
@@ -24,7 +24,7 @@ import "./BasketHandler.sol";
  *   are split according to the RSR cuts to RevenueTraders.
  */
 contract AuctioneerP0 is
-    BaseComponent,
+    Component,
     Pausable,
     SettingsHandlerP0,
     RevenueDistributorP0,
@@ -43,7 +43,7 @@ contract AuctioneerP0 is
         public
         virtual
         override(
-            BaseComponent,
+            Component,
             SettingsHandlerP0,
             RevenueDistributorP0,
             AssetRegistryP0,

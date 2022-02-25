@@ -9,7 +9,7 @@ import "contracts/p0/libraries/Basket.sol";
 import "contracts/p0/main/AssetRegistry.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 import "contracts/Pausable.sol";
 
 struct BackupConfig {
@@ -31,7 +31,7 @@ struct BasketConfig {
  * @notice Handles the basket configuration, definition, and evolution over time.
  */
 contract BasketHandlerP0 is
-    BaseComponent,
+    Component,
     Pausable,
     SettingsHandlerP0,
     AssetRegistryP0,
@@ -49,7 +49,7 @@ contract BasketHandlerP0 is
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(BaseComponent, SettingsHandlerP0, AssetRegistryP0)
+        override(Component, SettingsHandlerP0, AssetRegistryP0)
     {
         super.init(args);
     }

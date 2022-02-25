@@ -8,7 +8,7 @@ import "contracts/p0/libraries/Rewards.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 import "contracts/Pausable.sol";
 import "./Auctioneer.sol";
 import "./SettingsHandler.sol";
@@ -17,13 +17,7 @@ import "./SettingsHandler.sol";
  * @title RewardClaimer
  * @notice Claims rewards every reward cycle and leaves them in Main for Auctioneer to handle.
  */
-contract RewardClaimerP0 is
-    BaseComponent,
-    Pausable,
-    SettingsHandlerP0,
-    AuctioneerP0,
-    IRewardClaimer
-{
+contract RewardClaimerP0 is Component, Pausable, SettingsHandlerP0, AuctioneerP0, IRewardClaimer {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20;
@@ -35,7 +29,7 @@ contract RewardClaimerP0 is
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(BaseComponent, SettingsHandlerP0, AuctioneerP0)
+        override(Component, SettingsHandlerP0, AuctioneerP0)
     {
         super.init(args);
         for (uint256 i = 0; i < args.claimAdapters.length; i++) {

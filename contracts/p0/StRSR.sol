@@ -13,7 +13,7 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 
 /*
  * @title StRSRP0
@@ -24,7 +24,7 @@ import "contracts/BaseComponent.sol";
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both
  * balances that are in the process of being withdrawn and those that are not.
  */
-contract StRSRP0 is IStRSR, Ownable, BaseComponent, EIP712 {
+contract StRSRP0 is IStRSR, Ownable, Component, EIP712 {
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Metadata;
     using EnumerableSet for EnumerableSet.AddressSet;

@@ -5,9 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IMain.sol";
 import "contracts/p0/Main.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 
-contract MainCallerMockP0 is BaseComponent {
+contract MainCallerMockP0 is Component {
     IMain main;
 
     constructor(IMain main_) {

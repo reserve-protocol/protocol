@@ -9,7 +9,7 @@ import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 import "contracts/Pausable.sol";
 import "./SettingsHandler.sol";
 import "./BasketHandler.sol";
@@ -18,20 +18,14 @@ import "./BasketHandler.sol";
  * @title RTokenIssuer
  * @notice Handles issuance and redemption of RToken.
  */
-contract RTokenIssuerP0 is
-    BaseComponent,
-    Pausable,
-    SettingsHandlerP0,
-    BasketHandlerP0,
-    IRTokenIssuer
-{
+contract RTokenIssuerP0 is Component, Pausable, SettingsHandlerP0, BasketHandlerP0, IRTokenIssuer {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(BaseComponent, SettingsHandlerP0, BasketHandlerP0)
+        override(Component, SettingsHandlerP0, BasketHandlerP0)
     {
         super.init(args);
     }

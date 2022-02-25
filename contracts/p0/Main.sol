@@ -12,7 +12,7 @@ import "contracts/p0/main/Auctioneer.sol";
 import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 import "contracts/Pausable.sol";
 
 /**
@@ -20,7 +20,7 @@ import "contracts/Pausable.sol";
  * @notice Collects all mixins.
  */
 contract MainP0 is
-    BaseComponent,
+    Component,
     Ownable,
     Pausable,
     SettingsHandlerP0,
@@ -40,7 +40,7 @@ contract MainP0 is
         public
         virtual
         override(
-            BaseComponent,
+            Component,
             SettingsHandlerP0,
             RevenueDistributorP0,
             AssetRegistryP0,

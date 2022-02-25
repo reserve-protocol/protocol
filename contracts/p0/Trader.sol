@@ -9,9 +9,9 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/libraries/Rewards.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 
-abstract contract TraderP0 is BaseComponent, ITraderEvents {
+abstract contract TraderP0 is Component, ITraderEvents {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 

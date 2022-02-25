@@ -7,14 +7,14 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 import "./Asset.sol";
 
 /**
  * @title CollateralP0
  * @notice A general non-appreciating collateral type to be extended.
  */
-abstract contract CollateralP0 is ICollateral, BaseComponent, AssetP0, Context {
+abstract contract CollateralP0 is ICollateral, Component, AssetP0, Context {
     using FixLib for Fix;
 
     // Default Status:

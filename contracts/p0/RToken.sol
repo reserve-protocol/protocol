@@ -10,13 +10,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 
 /**
  * @title RTokenP0
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP0 is Ownable, BaseComponent, ERC20Permit, IRToken {
+contract RTokenP0 is Ownable, Component, ERC20Permit, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;

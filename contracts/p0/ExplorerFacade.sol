@@ -8,14 +8,14 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/Main.sol";
 import "contracts/p0/RevenueTrader.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/BaseComponent.sol";
+import "contracts/Component.sol";
 import "contracts/IExplorerFacade.sol";
 
 /**
  * @title ExplorerFacadeP0
  * @notice A UX-friendly layer that for all the non-governance protocol functions
  */
-contract ExplorerFacadeP0 is BaseComponent, IExplorerFacade {
+contract ExplorerFacadeP0 is Component, IExplorerFacade {
     using FixLib for Fix;
 
     MainP0 public main;
