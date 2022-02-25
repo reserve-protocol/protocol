@@ -11,7 +11,7 @@ import "contracts/p0/interfaces/IMain.sol";
  * - Pause and unpause commands, to allow either pauser or owner to set the paused flag.
  * - The `notPaused` modifier.
  */
-contract Pausable is Ownable, IPausable {
+abstract contract Pausable is Ownable, IPausable {
     address private _pauser;
     bool public override paused;
 
