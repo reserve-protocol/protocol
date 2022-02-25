@@ -71,6 +71,6 @@ export default <HardhatUserConfig>{
     runOnCompile: false,
     strict: false,
     only: [],
-    except: ['Adapter', 'Extension'],
+    except: ['Extension'],
   },
 }
