@@ -251,6 +251,30 @@ describe('MainP0 contract', () => {
       }
       await expect(main.init(ctorArgs)).to.be.revertedWith('already initialized')
     })
+
+    it('Should perform validations on init', async () => {
+      const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
+      const newMain: MainP0 = <MainP0>await MainFactory.deploy()
+      await newMain.connect(owner).unpause()
+
+      // Set invalid RSRPayPeriod
+      const newConfig = { ...config }
+      newConfig.stRSRPayPeriod = config.stRSRWithdrawalDelay
+
+      // Deploy new main
+      const ctorArgs = {
+        config: newConfig,
+        dist: dist,
+        furnace: furnace.address,
+        market: market.address,
+        rsr: rsr.address,
+        stRSR: stRSR.address,
+        rToken: rToken.address,
+        claimAdapters: [compoundClaimer.address, aaveClaimer.address],
+        assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
+      }
+      await expect(newMain.init(ctorArgs)).to.be.revertedWith('RSR pay period too long')
+    })
   })
 
   describe('Pause/Unpause', () => {
@@ -398,7 +422,7 @@ describe('MainP0 contract', () => {
       expect(await main.auctionPeriod()).to.equal(newValue)
     })
 
-    it('Should allow to update stRSRPayPeriod if Owner', async () => {
+    it('Should allow to update stRSRPayPeriod if Owner and perform validations', async () => {
       const newValue: BigNumber = config.stRSRPayPeriod.div(2)
 
       // Check existing value
@@ -407,6 +431,12 @@ describe('MainP0 contract', () => {
       // If not owner cannot update
       await expect(main.connect(other).setStRSRPayPeriod(newValue)).to.be.revertedWith(
         'Ownable: caller is not the owner'
+      )
+
+      // Reverts if the value is too long
+      const invalidValue: BigNumber = config.stRSRWithdrawalDelay
+      await expect(main.connect(owner).setStRSRPayPeriod(invalidValue)).to.be.revertedWith(
+        'RSR pay period too long'
       )
 
       // Check value did not change
@@ -421,7 +451,7 @@ describe('MainP0 contract', () => {
       expect(await main.stRSRPayPeriod()).to.equal(newValue)
     })
 
-    it('Should allow to update stRSRWithdrawalDelay if Owner', async () => {
+    it('Should allow to update stRSRWithdrawalDelay if Owner and perform validations', async () => {
       const newValue: BigNumber = config.stRSRWithdrawalDelay.div(2)
 
       // Check existing value
@@ -430,6 +460,12 @@ describe('MainP0 contract', () => {
       // If not owner cannot update
       await expect(main.connect(other).setStRSRWithdrawalDelay(newValue)).to.be.revertedWith(
         'Ownable: caller is not the owner'
+      )
+
+      // Reverts if the value is too short
+      const invalidValue: BigNumber = config.stRSRPayPeriod
+      await expect(main.connect(owner).setStRSRWithdrawalDelay(invalidValue)).to.be.revertedWith(
+        'RSR withdrawal delay too short'
       )
 
       // Check value did not change
