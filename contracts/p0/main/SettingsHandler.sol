@@ -215,7 +215,7 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
         return _defaultThreshold;
     }
 
-    function setStRSRPayRatio(Fix stRSRPayRatio_) external {
+    function setStRSRPayRatio(Fix stRSRPayRatio_) external override onlyOwner {
         emit StRSRPayRatioSet(_stRSRPayRatio, stRSRPayRatio_);
         _stRSRPayRatio = stRSRPayRatio_;
     }
