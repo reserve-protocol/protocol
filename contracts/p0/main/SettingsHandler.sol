@@ -88,8 +88,8 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     }
 
     function setRToken(IRToken rToken_) external override onlyOwner {
-        _rToken = rToken_;
         emit RTokenSet(_rToken, rToken_);
+        _rToken = rToken_;
     }
 
     function rToken() public view override returns (IRToken) {
@@ -97,8 +97,8 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
     }
 
     function setRSR(IERC20Metadata rsr_) external override onlyOwner {
-        _rsr = rsr_;
         emit RSRSet(_rsr, rsr_);
+        _rsr = rsr_;
     }
 
     function rsr() public view override returns (IERC20Metadata) {
@@ -188,8 +188,8 @@ contract SettingsHandlerP0 is Ownable, Mixin, ISettingsHandler {
         return _dustAmount;
     }
 
-    function setMinRevenueAuctionSize(Fix backingBuffer_) external override onlyOwner {
-        emit MinRevenueAuctionSizeSet(_backingBuffer, backingBuffer_);
+    function setBackingBuffer(Fix backingBuffer_) external override onlyOwner {
+        emit BackingBufferSet(_backingBuffer, backingBuffer_);
         _backingBuffer = backingBuffer_;
     }
 

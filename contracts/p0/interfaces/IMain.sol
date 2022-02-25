@@ -121,7 +121,7 @@ interface ISettingsHandler {
     event DefaultDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
     event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
     event DustAmountSet(Fix indexed oldVal, Fix indexed newVal);
-    event MinRevenueAuctionSizeSet(Fix indexed oldVal, Fix indexed newVal);
+    event BackingBufferSet(Fix indexed oldVal, Fix indexed newVal);
     event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
     event DefaultThresholdSet(Fix indexed oldVal, Fix indexed newVal);
     event StRSRPayRatioSet(Fix indexed oldVal, Fix indexed newVal);
@@ -147,7 +147,7 @@ interface ISettingsHandler {
 
     function setDustAmount(Fix dustAMount) external;
 
-    function setMinRevenueAuctionSize(Fix backingBuffer) external;
+    function setBackingBuffer(Fix backingBuffer) external;
 
     function setIssuanceRate(Fix issuanceRate) external;
 
