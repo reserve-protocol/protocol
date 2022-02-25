@@ -33,17 +33,21 @@ import { getLatestBlockTimestamp } from '../../utils/time'
 
 export type Collateral = CollateralP0 | CTokenFiatCollateralP0 | ATokenFiatCollateralP0
 
+const maxAuctionSize = fp(1e6) // $1M
+
 export interface IConfig {
   rewardStart: BigNumber
   rewardPeriod: BigNumber
   auctionPeriod: BigNumber
+  stRSRPayPeriod: BigNumber
   stRSRWithdrawalDelay: BigNumber
   defaultDelay: BigNumber
   maxTradeSlippage: BigNumber
-  maxAuctionSize: BigNumber
-  minAuctionSize: BigNumber
+  dustAmount: BigNumber
+  backingBuffer: BigNumber
   issuanceRate: BigNumber
   defaultThreshold: BigNumber
+  stRSRPayRatio: BigNumber
 }
 
 export interface IRevenueShare {
@@ -161,7 +165,6 @@ async function collateralFixture(
   )
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateralP0')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateralP0')
-
   // Deploy all potential collateral assets
   const makeVanillaCollateral = async (symbol: string): Promise<[ERC20Mock, CollateralP0]> => {
     const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(symbol + ' Token', symbol)
@@ -170,6 +173,7 @@ async function collateralFixture(
       <CollateralP0>(
         await AaveCollateralFactory.deploy(
           erc20.address,
+          maxAuctionSize,
           main.address,
           comptroller.address,
           aaveLendingPool.address
@@ -184,6 +188,7 @@ async function collateralFixture(
       <CollateralP0>(
         await AaveCollateralFactory.deploy(
           erc20.address,
+          maxAuctionSize,
           main.address,
           comptroller.address,
           aaveLendingPool.address
@@ -204,6 +209,7 @@ async function collateralFixture(
       <CTokenFiatCollateralP0>(
         await CTokenCollateralFactory.deploy(
           erc20.address,
+          maxAuctionSize,
           underlyingAddress,
           main.address,
           comptroller.address,
@@ -230,6 +236,7 @@ async function collateralFixture(
       <ATokenFiatCollateralP0>(
         await ATokenCollateralFactory.deploy(
           erc20.address,
+          maxAuctionSize,
           underlyingAddress,
           main.address,
           comptroller.address,
@@ -334,13 +341,15 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rewardStart: rewardStart,
     rewardPeriod: bn('604800'), // 1 week
     auctionPeriod: bn('1800'), // 30 minutes
+    stRSRPayPeriod: bn('86400'), // 1 day
     stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
     defaultDelay: bn('86400'), // 24 hs
     maxTradeSlippage: fp('0.01'), // 1%
-    maxAuctionSize: fp('0.01'), // 1%
-    minAuctionSize: fp('0.001'), // 0.1%
+    dustAmount: fp('0.01'), // 0.01 UoA (USD)
+    backingBuffer: fp('0.0001'), // 0.01%
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
     defaultThreshold: fp('0.05'), // 5% deviation
+    stRSRPayRatio: fp('0.02284'), // approx. half life of 30 pay periods
   }
 
   const dist: IRevenueShare = {
@@ -363,7 +372,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Deploy actual contracts
   const receipt = await (
-    await deployer.deploy('RTKN RToken', 'RTKN', owner.address, config, dist)
+    await deployer.deploy('RTKN RToken', 'RTKN', owner.address, config, dist, maxAuctionSize)
   ).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
@@ -379,19 +388,18 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
   const rsrAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('AavePricedAssetP0', await main.rsrAsset())
+    await ethers.getContractAt('AavePricedAssetP0', await main.toAsset(rsr.address))
   )
 
-  const activeAssets = await main.activeAssets()
   const aaveAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('AavePricedAssetP0', activeAssets[2])
+    await ethers.getContractAt('AavePricedAssetP0', await main.toAsset(aaveToken.address))
   )
   const compAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('CompoundPricedAssetP0', activeAssets[3])
+    await ethers.getContractAt('CompoundPricedAssetP0', await main.toAsset(compToken.address))
   )
   const rToken: RTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', await main.rToken())
   const rTokenAsset: RTokenAssetP0 = <RTokenAssetP0>(
-    await ethers.getContractAt('RTokenAssetP0', await main.rTokenAsset())
+    await ethers.getContractAt('RTokenAssetP0', await main.toAsset(rToken.address))
   )
 
   const furnace: FurnaceP0 = <FurnaceP0>(
@@ -420,7 +428,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   await aaveOracleInternal.setPrice(compToken.address, bn('2.5e14'))
   await aaveOracleInternal.setPrice(rsr.address, bn('2.5e14'))
   for (let i = 0; i < collateral.length; i++) {
-    // Get erc29 and refERC20
+    // Get erc20 and refERC20
     const erc20 = await ethers.getContractAt('ERC20Mock', await collateral[i].erc20())
     const refERC20 = await ethers.getContractAt('ERC20Mock', await collateral[i].referenceERC20())
 
@@ -429,16 +437,17 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       await compoundOracleInternal.setPrice(await erc20.symbol(), bn('1e6'))
       await aaveOracleInternal.setPrice(erc20.address, bn('2.5e14'))
     }
+  }
 
-    // Add approved Collateral
-    await main.connect(owner).addAsset(collateral[i].address)
+  // Register prime collateral
+  const basketERC20s = []
+  for (let i = 0; i < basket.length; i++) {
+    await main.connect(owner).registerAsset(basket[i].address)
+    basketERC20s.push(await basket[i].erc20())
   }
 
   // Set non-empty basket
-  await main.connect(owner).setPrimeBasket(
-    basket.map((b) => b.address),
-    basketsNeededAmts
-  )
+  await main.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
   await main.connect(owner).switchBasket()
 
   // Unpause

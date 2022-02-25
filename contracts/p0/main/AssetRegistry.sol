@@ -7,127 +7,98 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/main/Mixin.sol";
 
+/// The AssetRegistry provides the mapping from ERC20 to Asset, allowing the rest of Main
+/// to think in terms of ERC20 tokens and target/ref units.
 contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // All registered assets
-    EnumerableSet.AddressSet internal _assets;
+    // Registered ERC20s
+    EnumerableSet.AddressSet private erc20s;
 
-    // The ERC20 tokens for all active assets
-    EnumerableSet.AddressSet private activeTokens;
-    // The ERC20 tokens in the current basket
-    EnumerableSet.AddressSet private basketTokens;
-    // Invariant: basketTokens is subset of activeTokens
-
-    // The active asset that models each erc20 address.
-    // Invariant: _activeAssets[e] != 0 iff activeTokens.contains(e)
-    mapping(address => IAsset) private _activeAssets;
+    // Registered Assets
+    mapping(IERC20Metadata => IAsset) private assets;
 
     function init(ConstructorArgs calldata args) public virtual override {
         super.init(args);
-    }
-
-    function addAsset(IAsset asset) public onlyOwner returns (bool) {
-        return _add(asset);
-    }
-
-    /// Remove `asset`, and deactivate it if needed.
-    function removeAsset(IAsset asset) public onlyOwner returns (bool) {
-        bool removed = _remove(asset);
-        if (removed) _deactivate(asset);
-        return removed;
-    }
-
-    /// Activate `asset`, and add it if needed
-    /// Fail if its erc20 is in the current basket
-    function activateAsset(IAsset asset) public onlyOwner returns (bool) {
-        address token = address(asset.erc20());
-        require(!basketTokens.contains(token), "Token is in current basket");
-        _add(asset);
-        return _activate(asset);
-    }
-
-    /// Deactivate `asset`, but do not remove it.
-    /// Fail if its erc20 is in the current basket
-    function deactivateAsset(IAsset asset) public onlyOwner returns (bool) {
-        address token = address(asset.erc20());
-        require(!basketTokens.contains(token), "Token is in current basket");
-        return _deactivate(asset);
-    }
-
-    /// Configure basketTokens from a new basket
-    /// Anything that changes the _currently active basket_ must call this!
-    /// @dev After this is called:
-    /// - (current basketTokens) == the set of tokens in the current basket
-    /// - (previous basketTokens) is a subset of (current activeTokens)
-    /// - (current activeTokens) == the set of keys of _activeAssets
-    /// @param basket The newly-set basket
-    function activateBasketAssets(Basket storage basket) internal {
-        // Empty basketTokens, but do _not_ deactivate those tokens
-        while (basketTokens.length() > 0) {
-            address token = basketTokens.at(basketTokens.length() - 1);
-            basketTokens.remove(token);
-        }
-
-        // Activate all basket assets, and write them to basketTokens
-        for (uint256 i = 0; i < basket.size; i++) {
-            IAsset asset = IAsset(basket.collateral[i]);
-            _activate(asset);
-            basketTokens.add(address(asset.erc20()));
+        for (uint256 i = 0; i < args.assets.length; i++) {
+            _registerAsset(args.assets[i]);
         }
     }
 
-    function allAssets() external view override returns (IAsset[] memory assets) {
-        assets = new IAsset[](_assets.length());
-        for (uint256 i = 0; i < _assets.length(); i++) {
-            assets[i] = IAsset(_assets.at(i));
+    /// Forbids registering a different asset for an ERC20 that is already registered
+    /// @return If the asset was moved from unregistered to registered
+    function registerAsset(IAsset asset) external onlyOwner returns (bool) {
+        return _registerAsset(asset);
+    }
+
+    /// Swap an asset that shares an ERC20 with a presently-registered asset, de-registering it
+    /// Fails if there is not an asset already registered for the ERC20
+    /// @return If the asset was swapped for a previously-registered asset
+    function swapRegisteredAsset(IAsset asset) external onlyOwner returns (bool) {
+        require(erc20s.contains(address(asset.erc20())), "no ERC20 collision");
+        require(address(assets[asset.erc20()]) != address(0), "no asset registered");
+        return _registerAssetIgnoringCollisions(asset);
+    }
+
+    /// @return unregistered If the asset was moved from registered to unregistered
+    function unregisterAsset(IAsset asset) external onlyOwner returns (bool unregistered) {
+        unregistered = assets[asset.erc20()] == asset;
+        if (unregistered) {
+            erc20s.remove(address(asset.erc20()));
+            assets[asset.erc20()] = IAsset(address(0));
+            emit AssetUnregistered(asset.erc20(), asset);
         }
     }
 
-    function activeAssets() external view override returns (IAsset[] memory assets) {
-        assets = new IAsset[](activeTokens.length());
-        for (uint256 i = 0; i < activeTokens.length(); i++) {
-            assets[i] = _activeAssets[activeTokens.at(i)];
+    /// Return the Asset modelling this ERC20, or revert
+    function toAsset(IERC20Metadata erc20) public view override returns (IAsset) {
+        require(erc20s.contains(address(erc20)), "erc20 unregistered");
+        require(assets[erc20] != IAsset(address(0)), "asset unregistered");
+        return assets[erc20];
+    }
+
+    /// Return the Collateral modelling this ERC20, or revert
+    function toColl(IERC20Metadata erc20) public view override returns (ICollateral) {
+        require(erc20s.contains(address(erc20)), "erc20 unrecognized");
+        require(assets[erc20] != IAsset(address(0)), "asset unregistered");
+        require(assets[erc20].isCollateral(), "erc20 is not collateral");
+        return ICollateral(address(assets[erc20]));
+    }
+
+    function isRegistered(IERC20Metadata erc20) public view override returns (bool) {
+        return erc20s.contains(address(erc20));
+    }
+
+    function registeredERC20s() public view override returns (IERC20Metadata[] memory erc20s_) {
+        erc20s_ = new IERC20Metadata[](erc20s.length());
+        for (uint256 i = 0; i < erc20s.length(); i++) {
+            erc20s_[i] = IERC20Metadata(erc20s.at(i));
         }
     }
 
-    // === private, permissionless, event-emitting mutators ====
+    //
 
-    function _add(IAsset asset) private returns (bool) {
-        bool added = _assets.add(address(asset));
-        if (added) emit AssetAdded(asset);
-        return added;
+    /// Forbids registering a different asset for an ERC20 that is already registered
+    /// @return If the asset was moved from unregistered to registered
+    function _registerAsset(IAsset asset) internal returns (bool) {
+        require(
+            !erc20s.contains(address(asset.erc20())) || assets[asset.erc20()] == asset,
+            "duplicate ERC20 detected"
+        );
+        return _registerAssetIgnoringCollisions(asset);
     }
 
-    function _remove(IAsset asset) private returns (bool) {
-        bool removed = _assets.remove(address(asset));
-        if (removed) emit AssetRemoved(asset);
-        return removed;
-    }
+    /// Register an asset, unregistering any previous asset with the same ERC20.
+    function _registerAssetIgnoringCollisions(IAsset asset) private returns (bool swapped) {
+        if (erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] == asset) return false;
 
-    function _activate(IAsset asset) private returns (bool) {
-        address token = address(asset.erc20());
-        bool needToSetAsset = _activeAssets[token] != asset;
-
-        activeTokens.add(token);
-
-        if (needToSetAsset) {
-            _activeAssets[token] = asset;
-            emit AssetActivated(asset);
+        if (erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] != asset) {
+            erc20s.remove(address(asset.erc20()));
+            emit AssetUnregistered(asset.erc20(), assets[asset.erc20()]);
         }
-        return needToSetAsset;
-    }
 
-    function _deactivate(IAsset asset) private returns (bool) {
-        address token = address(asset.erc20());
-        bool unsetAsset = _activeAssets[token] == asset;
-
-        if (unsetAsset) {
-            delete _activeAssets[token];
-            activeTokens.remove(token);
-            basketTokens.remove(token);
-            emit AssetDeactivated(asset);
-        }
-        return unsetAsset;
+        swapped = erc20s.add(address(asset.erc20()));
+        assets[asset.erc20()] = asset;
+        emit AssetRegistered(asset.erc20(), asset);
     }
 }

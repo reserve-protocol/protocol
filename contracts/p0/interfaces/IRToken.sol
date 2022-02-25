@@ -16,7 +16,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param index The index off the issuance in the issuer's queue
     /// @param amount The quantity of RToken being issued
     /// @param baskets The basket unit-equivalent of the collateral deposits
-    /// @param tokens The ERC20 contracts of the backing tokens
+    /// @param erc20s The ERC20 collateral tokens corresponding to the quantities
     /// @param quantities The quantities of tokens paid with
     /// @param blockAvailableAt The (continuous) block at which the issuance vests
     event IssuanceStarted(
@@ -24,7 +24,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
         uint256 indexed index,
         uint256 indexed amount,
         Fix baskets,
-        address[] tokens,
+        IERC20Metadata[] erc20s,
         uint256[] quantities,
         Fix blockAvailableAt
     );
@@ -72,7 +72,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
         address issuer,
         uint256 amount,
         Fix baskets,
-        address[] memory erc20s,
+        IERC20Metadata[] memory erc20s,
         uint256[] memory deposits
     ) external;
 

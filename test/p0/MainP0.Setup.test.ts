@@ -17,6 +17,7 @@ import {
   CTokenMock,
   DeployerP0,
   ERC20Mock,
+  ExplorerFacadeP0,
   FurnaceP0,
   MainP0,
   MarketMock,
@@ -87,6 +88,7 @@ describe('MainP0 contract', () => {
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
+  let facade: ExplorerFacadeP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -123,6 +125,7 @@ describe('MainP0 contract', () => {
       market,
       compoundClaimer,
       aaveClaimer,
+      facade,
     } = await loadFixture(defaultFixture))
     token0 = erc20s[collateral.indexOf(basket[0])]
     token1 = erc20s[collateral.indexOf(basket[1])]
@@ -164,9 +167,7 @@ describe('MainP0 contract', () => {
       expect(await main.owner()).to.equal(owner.address)
       expect(await main.pauser()).to.equal(owner.address)
 
-      // Assets and other components
-      expect(await main.rsrAsset()).to.equal(rsrAsset.address)
-      expect(await main.rTokenAsset()).to.equal(rTokenAsset.address)
+      // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)
       expect(await main.revenueFurnace()).to.equal(furnace.address)
       expect(await main.market()).to.equal(market.address)
@@ -183,50 +184,52 @@ describe('MainP0 contract', () => {
       expect(await main.rewardStart()).to.equal(config.rewardStart)
       expect(await main.rewardPeriod()).to.equal(config.rewardPeriod)
       expect(await main.auctionPeriod()).to.equal(config.auctionPeriod)
+      expect(await main.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
       expect(await main.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
       expect(await main.defaultDelay()).to.equal(config.defaultDelay)
       expect(await main.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      expect(await main.maxAuctionSize()).to.equal(config.maxAuctionSize)
-      expect(await main.minRevenueAuctionSize()).to.equal(config.minRevenueAuctionSize)
+      expect(await main.dustAmount()).to.equal(config.dustAmount)
+      expect(await main.backingBuffer()).to.equal(config.backingBuffer)
       expect(await main.issuanceRate()).to.equal(config.issuanceRate)
       expect(await main.defaultThreshold()).to.equal(config.defaultThreshold)
+      expect(await main.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
     })
 
     it('Should register Assets correctly', async () => {
       // RSR
-      expect(await main.rsrAsset()).to.equal(rsrAsset.address)
+      expect(await main.toAsset(rsr.address)).to.equal(rsrAsset.address)
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
       expect(await main.rsr()).to.equal(rsr.address)
 
       // RToken
-      expect(await main.rTokenAsset()).to.equal(rTokenAsset.address)
+      expect(await main.toAsset(rToken.address)).to.equal(rTokenAsset.address)
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await main.rToken()).to.equal(rToken.address)
 
       // Check assets/collateral
-      const activeAssets = await main.activeAssets()
-      expect(activeAssets[0]).to.equal(rTokenAsset.address)
-      expect(activeAssets[1]).to.equal(rsrAsset.address)
-      expect(activeAssets[2]).to.equal(aaveAsset.address)
-      expect(activeAssets[3]).to.equal(compAsset.address)
-      expect(activeAssets.length).to.eql((await main.basketCollateral()).length + 4)
+      const registeredERC20s = await main.registeredERC20s()
+      expect(await main.toAsset(registeredERC20s[0])).to.equal(rTokenAsset.address)
+      expect(await main.toAsset(registeredERC20s[1])).to.equal(rsrAsset.address)
+      expect(await main.toAsset(registeredERC20s[2])).to.equal(aaveAsset.address)
+      expect(await main.toAsset(registeredERC20s[3])).to.equal(compAsset.address)
+      expect(registeredERC20s.length).to.eql((await main.basketTokens()).length + 4)
     })
 
     it('Should register Basket correctly', async () => {
       // Basket
       expect(await main.fullyCapitalized()).to.equal(true)
-      const backing = await main.basketCollateral()
-      expect(backing[0]).to.equal(collateral0.address)
-      expect(backing[1]).to.equal(collateral1.address)
-      expect(backing[2]).to.equal(collateral2.address)
-      expect(backing[3]).to.equal(collateral3.address)
+      const backing = await main.basketTokens()
+      expect(backing[0]).to.equal(token0.address)
+      expect(backing[1]).to.equal(token1.address)
+      expect(backing[2]).to.equal(token2.address)
+      expect(backing[3]).to.equal(token3.address)
 
       expect(backing.length).to.equal(4)
 
       // Check other values
-      expect(await main.blockNonce()).to.equal(1)
+      expect(await main.basketNonce()).to.be.gt(bn(0))
       expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
-      expect(await main.totalAssetValue()).to.equal(0)
+      expect(await facade.totalAssetValue()).to.equal(0)
 
       // Check RToken price
       expect(await main.rTokenPrice()).to.equal(fp('1'))
@@ -240,9 +243,37 @@ describe('MainP0 contract', () => {
         dist: dist,
         furnace: furnace.address,
         market: market.address,
+        rsr: rsr.address,
+        stRSR: stRSR.address,
+        rToken: rToken.address,
         claimAdapters: [compoundClaimer.address, aaveClaimer.address],
+        assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
       }
       await expect(main.init(ctorArgs)).to.be.revertedWith('already initialized')
+    })
+
+    it('Should perform validations on init', async () => {
+      const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
+      const newMain: MainP0 = <MainP0>await MainFactory.deploy()
+      await newMain.connect(owner).unpause()
+
+      // Set invalid RSRPayPeriod
+      const newConfig = { ...config }
+      newConfig.stRSRPayPeriod = config.stRSRWithdrawalDelay
+
+      // Deploy new main
+      const ctorArgs = {
+        config: newConfig,
+        dist: dist,
+        furnace: furnace.address,
+        market: market.address,
+        rsr: rsr.address,
+        stRSR: stRSR.address,
+        rToken: rToken.address,
+        claimAdapters: [compoundClaimer.address, aaveClaimer.address],
+        assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
+      }
+      await expect(newMain.init(ctorArgs)).to.be.revertedWith('RSR pay period too long')
     })
   })
 
@@ -337,7 +368,9 @@ describe('MainP0 contract', () => {
       expect(await main.rewardStart()).to.equal(config.rewardStart)
 
       // Update with owner
-      await main.connect(owner).setRewardStart(newValue)
+      await expect(main.connect(owner).setRewardStart(newValue))
+        .to.emit(main, 'RewardStartSet')
+        .withArgs(config.rewardStart, newValue)
 
       // Check value was updated
       expect(await main.rewardStart()).to.equal(newValue)
@@ -358,7 +391,9 @@ describe('MainP0 contract', () => {
       expect(await main.rewardPeriod()).to.equal(config.rewardPeriod)
 
       // Update with owner
-      await main.connect(owner).setRewardPeriod(newValue)
+      await expect(main.connect(owner).setRewardPeriod(newValue))
+        .to.emit(main, 'RewardPeriodSet')
+        .withArgs(config.rewardPeriod, newValue)
 
       // Check value was updated
       expect(await main.rewardPeriod()).to.equal(newValue)
@@ -379,14 +414,45 @@ describe('MainP0 contract', () => {
       expect(await main.auctionPeriod()).to.equal(config.auctionPeriod)
 
       // Update with owner
-      await main.connect(owner).setAuctionPeriod(newValue)
+      await expect(main.connect(owner).setAuctionPeriod(newValue))
+        .to.emit(main, 'AuctionPeriodSet')
+        .withArgs(config.auctionPeriod, newValue)
 
       // Check value was updated
       expect(await main.auctionPeriod()).to.equal(newValue)
     })
 
-    it('Should allow to update stRSRWithdrawalDelay if Owner', async () => {
-      const newValue: BigNumber = bn('360')
+    it('Should allow to update stRSRPayPeriod if Owner and perform validations', async () => {
+      const newValue: BigNumber = config.stRSRPayPeriod.div(2)
+
+      // Check existing value
+      expect(await main.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
+
+      // If not owner cannot update
+      await expect(main.connect(other).setStRSRPayPeriod(newValue)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Reverts if the value is too long
+      const invalidValue: BigNumber = config.stRSRWithdrawalDelay
+      await expect(main.connect(owner).setStRSRPayPeriod(invalidValue)).to.be.revertedWith(
+        'RSR pay period too long'
+      )
+
+      // Check value did not change
+      expect(await main.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
+
+      // Update with owner
+      await expect(main.connect(owner).setStRSRPayPeriod(newValue))
+        .to.emit(main, 'StRSRPayPeriodSet')
+        .withArgs(config.stRSRPayPeriod, newValue)
+
+      // Check value was updated
+      expect(await main.stRSRPayPeriod()).to.equal(newValue)
+    })
+
+    it('Should allow to update stRSRWithdrawalDelay if Owner and perform validations', async () => {
+      const newValue: BigNumber = config.stRSRWithdrawalDelay.div(2)
 
       // Check existing value
       expect(await main.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
@@ -396,11 +462,19 @@ describe('MainP0 contract', () => {
         'Ownable: caller is not the owner'
       )
 
+      // Reverts if the value is too short
+      const invalidValue: BigNumber = config.stRSRPayPeriod
+      await expect(main.connect(owner).setStRSRWithdrawalDelay(invalidValue)).to.be.revertedWith(
+        'RSR withdrawal delay too short'
+      )
+
       // Check value did not change
       expect(await main.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
 
       // Update with owner
-      await main.connect(owner).setStRSRWithdrawalDelay(newValue)
+      await expect(main.connect(owner).setStRSRWithdrawalDelay(newValue))
+        .to.emit(main, 'StRSRWithdrawalDelaySet')
+        .withArgs(config.stRSRWithdrawalDelay, newValue)
 
       // Check value was updated
       expect(await main.stRSRWithdrawalDelay()).to.equal(newValue)
@@ -421,7 +495,9 @@ describe('MainP0 contract', () => {
       expect(await main.defaultDelay()).to.equal(config.defaultDelay)
 
       // Update with owner
-      await main.connect(owner).setDefaultDelay(newValue)
+      await expect(main.connect(owner).setDefaultDelay(newValue))
+        .to.emit(main, 'DefaultDelaySet')
+        .withArgs(config.defaultDelay, newValue)
 
       // Check value was updated
       expect(await main.defaultDelay()).to.equal(newValue)
@@ -442,52 +518,58 @@ describe('MainP0 contract', () => {
       expect(await main.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
 
       // Update with owner
-      await main.connect(owner).setMaxTradeSlippage(newValue)
+      await expect(main.connect(owner).setMaxTradeSlippage(newValue))
+        .to.emit(main, 'MaxTradeSlippageSet')
+        .withArgs(config.maxTradeSlippage, newValue)
 
       // Check value was updated
       expect(await main.maxTradeSlippage()).to.equal(newValue)
     })
 
-    it('Should allow to update maxAuctionSize if Owner', async () => {
+    it('Should allow to update dustAmount if Owner', async () => {
       const newValue: BigNumber = fp('0.02')
 
       // Check existing value
-      expect(await main.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await main.dustAmount()).to.equal(config.dustAmount)
 
       // If not owner cannot update
-      await expect(main.connect(other).setMaxAuctionSize(newValue)).to.be.revertedWith(
+      await expect(main.connect(other).setDustAmount(newValue)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
 
       // Check value did not change
-      expect(await main.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await main.dustAmount()).to.equal(config.dustAmount)
 
       // Update with owner
-      await main.connect(owner).setMaxAuctionSize(newValue)
+      await expect(main.connect(owner).setDustAmount(newValue))
+        .to.emit(main, 'DustAmountSet')
+        .withArgs(config.dustAmount, newValue)
 
       // Check value was updated
-      expect(await main.maxAuctionSize()).to.equal(newValue)
+      expect(await main.dustAmount()).to.equal(newValue)
     })
 
-    it('Should allow to update minRevenueAuctionSize if Owner', async () => {
+    it('Should allow to update backingBuffer if Owner', async () => {
       const newValue: BigNumber = fp('0.02')
 
       // Check existing value
-      expect(await main.minRevenueAuctionSize()).to.equal(config.minRevenueAuctionSize)
+      expect(await main.backingBuffer()).to.equal(config.backingBuffer)
 
       // If not owner cannot update
-      await expect(main.connect(other).setMinRevenueAuctionSize(newValue)).to.be.revertedWith(
+      await expect(main.connect(other).setBackingBuffer(newValue)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
 
       // Check value did not change
-      expect(await main.minRevenueAuctionSize()).to.equal(config.minRevenueAuctionSize)
+      expect(await main.backingBuffer()).to.equal(config.backingBuffer)
 
       // Update with owner
-      await main.connect(owner).setMinRevenueAuctionSize(newValue)
+      await expect(main.connect(owner).setBackingBuffer(newValue))
+        .to.emit(main, 'BackingBufferSet')
+        .withArgs(config.backingBuffer, newValue)
 
       // Check value was updated
-      expect(await main.minRevenueAuctionSize()).to.equal(newValue)
+      expect(await main.backingBuffer()).to.equal(newValue)
     })
 
     it('Should allow to update issuanceRate if Owner', async () => {
@@ -505,7 +587,9 @@ describe('MainP0 contract', () => {
       expect(await main.issuanceRate()).to.equal(config.issuanceRate)
 
       // Update with owner
-      await main.connect(owner).setIssuanceRate(newValue)
+      await expect(main.connect(owner).setIssuanceRate(newValue))
+        .to.emit(main, 'IssuanceRateSet')
+        .withArgs(config.issuanceRate, newValue)
 
       // Check value was updated
       expect(await main.issuanceRate()).to.equal(newValue)
@@ -526,10 +610,35 @@ describe('MainP0 contract', () => {
       expect(await main.defaultThreshold()).to.equal(config.defaultThreshold)
 
       // Update with owner
-      await main.connect(owner).setDefaultThreshold(newValue)
+      await expect(main.connect(owner).setDefaultThreshold(newValue))
+        .to.emit(main, 'DefaultThresholdSet')
+        .withArgs(config.defaultThreshold, newValue)
 
       // Check value was updated
       expect(await main.defaultThreshold()).to.equal(newValue)
+    })
+
+    it('Should allow to update stRSRPayRatio if Owner', async () => {
+      const newValue: BigNumber = config.stRSRPayRatio.div(2)
+
+      // Check existing value
+      expect(await main.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
+
+      // If not owner cannot update
+      await expect(main.connect(other).setStRSRPayRatio(newValue)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
+
+      // Update with owner
+      await expect(main.connect(owner).setStRSRPayRatio(newValue))
+        .to.emit(main, 'StRSRPayRatioSet')
+        .withArgs(config.stRSRPayRatio, newValue)
+
+      // Check value was updated
+      expect(await main.stRSRPayRatio()).to.equal(newValue)
     })
 
     it('Should return nextRewards correctly', async () => {
@@ -550,11 +659,11 @@ describe('MainP0 contract', () => {
     })
 
     it('Should return backing tokens', async () => {
-      expect(await main.basketCollateral()).to.eql([
-        collateral0.address,
-        collateral1.address,
-        collateral2.address,
-        collateral3.address,
+      expect(await main.basketTokens()).to.eql([
+        token0.address,
+        token1.address,
+        token2.address,
+        token3.address,
       ])
     })
 
@@ -571,10 +680,75 @@ describe('MainP0 contract', () => {
       expect(await main.market()).to.equal(market.address)
 
       // Update with owner
-      await main.connect(owner).setMarket(other.address)
+      await expect(main.connect(owner).setMarket(other.address))
+        .to.emit(main, 'MarketSet')
+        .withArgs(market.address, other.address)
 
       // Check value was updated
       expect(await main.market()).to.equal(other.address)
+    })
+
+    it('Should allow to set RSR if Owner', async () => {
+      // Check existing value
+      expect(await main.rsr()).to.equal(rsr.address)
+
+      // If not owner cannot update - use mock address
+      await expect(main.connect(other).setRSR(other.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.rsr()).to.equal(rsr.address)
+
+      // Update with owner
+      await expect(main.connect(owner).setRSR(other.address))
+        .to.emit(main, 'RSRSet')
+        .withArgs(rsr.address, other.address)
+
+      // Check value was updated
+      expect(await main.rsr()).to.equal(other.address)
+    })
+
+    it('Should allow to set StRSR if Owner', async () => {
+      // Check existing value
+      expect(await main.stRSR()).to.equal(stRSR.address)
+
+      // If not owner cannot update - use mock address
+      await expect(main.connect(other).setStRSR(other.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.stRSR()).to.equal(stRSR.address)
+
+      // Update with owner
+      await expect(main.connect(owner).setStRSR(other.address))
+        .to.emit(main, 'StRSRSet')
+        .withArgs(stRSR.address, other.address)
+
+      // Check value was updated
+      expect(await main.stRSR()).to.equal(other.address)
+    })
+
+    it('Should allow to set RToken if Owner', async () => {
+      // Check existing value
+      expect(await main.rToken()).to.equal(rToken.address)
+
+      // If not owner cannot update - use mock address
+      await expect(main.connect(other).setRToken(other.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.rToken()).to.equal(rToken.address)
+
+      // Update with owner
+      await expect(main.connect(owner).setRToken(other.address))
+        .to.emit(main, 'RTokenSet')
+        .withArgs(rToken.address, other.address)
+
+      // Check value was updated
+      expect(await main.rToken()).to.equal(other.address)
     })
 
     it('Should allow to add ClaimAdapter if Owner', async () => {
@@ -590,7 +764,9 @@ describe('MainP0 contract', () => {
       expect(await main.isTrustedClaimAdapter(other.address)).to.equal(false)
 
       // Update with owner
-      await main.connect(owner).addClaimAdapter(other.address)
+      await expect(main.connect(owner).addClaimAdapter(other.address))
+        .to.emit(main, 'ClaimAdapterAdded')
+        .withArgs(other.address)
 
       // Check value was updated
       expect(await main.isTrustedClaimAdapter(other.address)).to.equal(true)
@@ -609,7 +785,9 @@ describe('MainP0 contract', () => {
       expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
 
       // Update with owner
-      await main.connect(owner).removeClaimAdapter(compoundClaimer.address)
+      await expect(main.connect(owner).removeClaimAdapter(compoundClaimer.address))
+        .to.emit(main, 'ClaimAdapterRemoved')
+        .withArgs(compoundClaimer.address)
 
       // Check value was updated
       expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(false)
@@ -633,7 +811,9 @@ describe('MainP0 contract', () => {
       expect(await main.revenueFurnace()).to.equal(furnace.address)
 
       // Update with owner
-      await main.connect(owner).setRevenueFurnace(newFurnace.address)
+      await expect(main.connect(owner).setRevenueFurnace(newFurnace.address))
+        .to.emit(main, 'RevenueFurnaceSet')
+        .withArgs(furnace.address, newFurnace.address)
 
       // Check value was updated
       expect(await main.revenueFurnace()).to.equal(newFurnace.address)
@@ -654,208 +834,208 @@ describe('MainP0 contract', () => {
       // Setup new Asset
       const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
       const newAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
-        await AssetFactory.deploy(token0.address, compoundMock.address)
+        await AssetFactory.deploy(
+          erc20s[5].address,
+          await collateral0.maxAuctionSize(),
+          compoundMock.address
+        )
       )
 
       // Get previous length for assets
-      const previousLength = (await main.allAssets()).length
+      const previousLength = (await main.registeredERC20s()).length
 
       // Cannot add asset if not owner
-      await expect(main.connect(other).addAsset(newAsset.address)).to.be.revertedWith(
+      await expect(main.connect(other).registerAsset(newAsset.address)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
 
       // Nothing occurs if attempting to add an existing asset
-      await main.connect(owner).addAsset(aaveAsset.address)
+      await main.connect(owner).registerAsset(aaveAsset.address)
 
       // Check nothing changed
-      let allAssets = await main.allAssets()
-      expect(allAssets.length).to.equal(previousLength)
+      let allERC20s = await main.registeredERC20s()
+      expect(allERC20s.length).to.equal(previousLength)
 
       // Add new asset
-      await expect(main.connect(owner).addAsset(newAsset.address))
-        .to.emit(main, 'AssetAdded')
-        .withArgs(newAsset.address)
+      await expect(main.connect(owner).registerAsset(newAsset.address))
+        .to.emit(main, 'AssetRegistered')
+        .withArgs(erc20s[5].address, newAsset.address)
 
-      // Check it was added but not activated
-      allAssets = await main.allAssets()
-      expect(allAssets).to.contain(newAsset.address)
-      expect(allAssets.length).to.equal(previousLength + 1)
-
-      // Not activated
-      let activeAssets = await main.activeAssets()
-      expect(activeAssets).to.not.contain(newAsset.address)
+      // Check it was added
+      allERC20s = await main.registeredERC20s()
+      expect(allERC20s).to.contain(erc20s[5].address)
+      expect(allERC20s.length).to.equal(previousLength + 1)
     })
 
     it('Should allow to remove asset if Owner', async () => {
       // Setup new Asset
       const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
       const newAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
-        await AssetFactory.deploy(token0.address, compoundMock.address)
+        await AssetFactory.deploy(
+          token0.address,
+          await collateral0.maxAuctionSize(),
+          compoundMock.address
+        )
       )
 
       // Get previous length for assets
-      const previousLength = (await main.allAssets()).length
+      const previousLength = (await main.registeredERC20s()).length
 
       // Check assets
-      let allAssets = await main.allAssets()
-      expect(allAssets).to.contain(compAsset.address)
-      expect(allAssets).to.not.contain(newAsset.address)
+      let allERC20s = await main.registeredERC20s()
+      expect(allERC20s).to.contain(compToken.address)
+      expect(allERC20s).to.not.contain(erc20s[5].address)
 
       // Cannot remove asset if not owner
-      await expect(main.connect(other).removeAsset(compAsset.address)).to.be.revertedWith(
+      await expect(main.connect(other).unregisterAsset(compAsset.address)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
 
       // Nothing occurs if attempting to remove an unexisting asset
-      await main.connect(owner).removeAsset(newAsset.address)
+      await main.connect(owner).unregisterAsset(newAsset.address)
 
       // Check nothing changed
-      allAssets = await main.allAssets()
-      expect(allAssets.length).to.equal(previousLength)
-      expect(allAssets).to.contain(compAsset.address)
-      expect(allAssets).to.not.contain(newAsset.address)
+      allERC20s = await main.registeredERC20s()
+      expect(allERC20s.length).to.equal(previousLength)
+      expect(allERC20s).to.contain(compToken.address)
+      expect(allERC20s).to.not.contain(erc20s[5].address)
 
       // Remove asset
-      await main.connect(owner).removeAsset(compAsset.address)
+      await main.connect(owner).unregisterAsset(compAsset.address)
 
       // Check if it was removed
-      allAssets = await main.allAssets()
-      expect(allAssets).to.not.contain(compAsset.address)
-      expect(allAssets.length).to.equal(previousLength - 1)
-
-      // Check it was also deactivated
-      let activeAssets = await main.activeAssets()
-      expect(activeAssets).to.not.contain(compAsset.address)
+      allERC20s = await main.registeredERC20s()
+      expect(allERC20s).to.not.contain(compToken.address)
+      expect(allERC20s.length).to.equal(previousLength - 1)
     })
 
-    it('Should allow to activate Asset if Owner and perform validations', async () => {
-      // Get additional tokens and assets
-      newToken = erc20s[2] // usdt
-      newAsset = collateral[2] // usdt
+    //   it('Should allow to activate Asset if Owner and perform validations', async () => {
+    //     // Get additional tokens and assets
+    //     newToken = erc20s[2] // usdt
+    //     newAsset = collateral[2] // usdt
 
-      // Create asset on existing erc20
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
-      const existingAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
-        await AssetFactory.deploy(token0.address, compoundMock.address)
-      )
+    //     // Create asset on existing erc20
+    //     const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
+    //     const existingAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
+    //       await AssetFactory.deploy(token0.address, compoundMock.address)
+    //     )
 
-      // Get previous length for assets
-      const previousLength = (await main.activeAssets()).length
+    //     // Get previous length for assets
+    //     const previousLength = (await main.registeredERC20s()).length
 
-      // Cannot activate asset if not owner
-      await expect(main.connect(other).activateAsset(newAsset.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
+    //     // Cannot activate asset if not owner
+    //     await expect(main.connect(other).activateAsset(newAsset.address)).to.be.revertedWith(
+    //       'Ownable: caller is not the owner'
+    //     )
 
-      // Cannot activate new asset if the ERC20 already in basket
-      await expect(main.connect(owner).activateAsset(existingAsset.address)).to.be.revertedWith(
-        'Token is in current basket'
-      )
+    //     // Cannot activate new asset if the ERC20 already in basket
+    //     await expect(main.connect(owner).activateAsset(existingAsset.address)).to.be.revertedWith(
+    //       'Token is in current basket'
+    //     )
 
-      // Check nothing changed
-      let activeAssets = await main.activeAssets()
-      expect(activeAssets.length).to.equal(previousLength)
-      expect(activeAssets).to.not.contain(newAsset.address)
-      expect(activeAssets).to.not.contain(existingAsset.address)
+    //     // Check nothing changed
+    //     let assets = await main.registeredERC20s()
+    //     expect(assets.length).to.equal(previousLength)
+    //     expect(assets).to.not.contain(erc20s[5].address)
+    //     expect(assets).to.not.contain(existingAsset.address)
 
-      // Activate new asset
-      await expect(main.connect(owner).activateAsset(newAsset.address))
-        .to.emit(main, 'AssetActivated')
-        .withArgs(newAsset.address)
+    //     // Activate new asset
+    //     await expect(main.connect(owner).activateAsset(newAsset.address))
+    //       .to.emit(main, 'AssetActivated')
+    //       .withArgs(newAsset.address)
 
-      // Check asset was added and activated
-      activeAssets = await main.activeAssets()
-      expect(activeAssets).to.contain(newAsset.address)
-      expect(activeAssets.length).to.equal(previousLength + 1)
+    //     // Check asset was added and activated
+    //     assets = await main.registeredERC20s()
+    //     expect(assets).to.contain(erc20s[5].address)
+    //     expect(assets.length).to.equal(previousLength + 1)
 
-      // Nothing occurs if attempting to activate again
-      await expect(main.connect(owner).activateAsset(newAsset.address)).to.not.emit(
-        main,
-        'AssetActivated'
-      )
+    //     // Nothing occurs if attempting to activate again
+    //     await expect(main.connect(owner).activateAsset(newAsset.address)).to.not.emit(
+    //       main,
+    //       'AssetActivated'
+    //     )
 
-      // No changes
-      activeAssets = await main.activeAssets()
-      expect(activeAssets).to.contain(newAsset.address)
-      expect(activeAssets.length).to.equal(previousLength + 1)
-    })
+    //     // No changes
+    //     assets = await main.registeredERC20s()
+    //     expect(assets).to.contain(erc20s[5].address)
+    //     expect(assets.length).to.equal(previousLength + 1)
+    //   })
 
-    it('Should allow to deactivate Asset if Owner and perform validations', async () => {
-      // Get previous length for assets
-      const previousLength = (await main.activeAssets()).length
+    //   it('Should allow to deactivate Asset if Owner and perform validations', async () => {
+    //     // Get previous length for assets
+    //     const previousLength = (await main.registeredERC20s()).length
 
-      // Cannot deactivate asset if not owner
-      await expect(main.connect(other).deactivateAsset(compAsset.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
+    //     // Cannot deactivate asset if not owner
+    //     await expect(main.connect(other).deactivateAsset(compAsset.address)).to.be.revertedWith(
+    //       'Ownable: caller is not the owner'
+    //     )
 
-      // Cannot activate asset if the ERC20 is in basket
-      await expect(main.connect(owner).deactivateAsset(collateral0.address)).to.be.revertedWith(
-        'Token is in current basket'
-      )
+    //     // Cannot activate asset if the ERC20 is in basket
+    //     await expect(main.connect(owner).deactivateAsset(collateral0.address)).to.be.revertedWith(
+    //       'Token is in current basket'
+    //     )
 
-      // Check nothing changed
-      let activeAssets = await main.activeAssets()
-      expect(activeAssets.length).to.equal(previousLength)
-      expect(activeAssets).to.contain(compAsset.address)
+    //     // Check nothing changed
+    //     let assets = await main.registeredERC20s()
+    //     expect(assets.length).to.equal(previousLength)
+    //     expect(assets).to.contain(compToken.address)
 
-      // Dectivate another asset
-      await expect(main.connect(owner).deactivateAsset(compAsset.address))
-        .to.emit(main, 'AssetDeactivated')
-        .withArgs(compAsset.address)
+    //     // Dectivate another asset
+    //     await expect(main.connect(owner).deactivateAsset(compAsset.address))
+    //       .to.emit(main, 'AssetDeactivated')
+    //       .withArgs(compAsset.address)
 
-      //  Check asset was deactivated but not removed
-      activeAssets = await main.activeAssets()
-      expect(activeAssets).to.not.contain(compAsset.address)
-      expect(activeAssets.length).to.equal(previousLength - 1)
+    //     //  Check asset was deactivated but not removed
+    //     assets = await main.registeredERC20s()
+    //     expect(assets).to.not.contain(compToken.address)
+    //     expect(assets.length).to.equal(previousLength - 1)
 
-      // Check it was not removed from all assets
-      let allAssets = await main.allAssets()
-      expect(allAssets).to.contain(compAsset.address)
+    //     // Check it was not removed from all assets
+    //     let erc20s = await main.registeredERC20s()
+    //     expect(erc20s).to.contain(compToken.address)
 
-      // Nothing occurs if attempting to deactivate again
-      await expect(main.connect(owner).deactivateAsset(compAsset.address)).to.not.emit(
-        main,
-        'AssetDeactivated'
-      )
+    //     // Nothing occurs if attempting to deactivate again
+    //     await expect(main.connect(owner).deactivateAsset(compAsset.address)).to.not.emit(
+    //       main,
+    //       'AssetDeactivated'
+    //     )
 
-      // Nothing changed
-      activeAssets = await main.activeAssets()
-      expect(activeAssets).to.not.contain(compAsset.address)
-      expect(activeAssets.length).to.equal(previousLength - 1)
-    })
+    //     // Nothing changed
+    //     assets = await main.registeredERC20s()
+    //     expect(assets).to.not.contain(compToken.address)
+    //     expect(assets.length).to.equal(previousLength - 1)
+    //   })
 
-    it('Should allow to disable Collateral if Owner', async () => {
-      // Check collateral is not disabled by default
-      expect(await collateral2.status()).to.equal(CollateralStatus.SOUND)
+    //   it('Should allow to disable Collateral if Owner', async () => {
+    //     // Check collateral is not disabled by default
+    //     expect(await collateral2.status()).to.equal(CollateralStatus.SOUND)
 
-      // Disable collateral
-      await collateral2.connect(owner).disable()
+    //     // Disable collateral
+    //     await collateral2.connect(owner).disable()
 
-      // Check Collateral disabled
-      expect(await collateral2.status()).to.equal(CollateralStatus.DISABLED)
+    //     // Check Collateral disabled
+    //     expect(await collateral2.status()).to.equal(CollateralStatus.DISABLED)
 
-      // Cannot disable collateral if not owner
-      await expect(collateral3.connect(other).disable()).to.be.revertedWith('main or its owner')
-    })
+    //     // Cannot disable collateral if not owner
+    //     await expect(collateral3.connect(other).disable()).to.be.revertedWith('main or its owner')
+    //   })
 
-    it('Should return all assets', async () => {
-      const allAssets: string[] = await main.allAssets()
+    //   it('Should return all assets', async () => {
+    //     const erc20s: string[] = await main.registeredERC20s()
 
-      // Get addresses from all collateral
-      const collateralAddrs: string[] = await Promise.all(
-        collateral.map(async (c): Promise<string> => {
-          return await c.address
-        })
-      )
+    //     // Get addresses from all collateral
+    //     const collateralAddrs: string[] = await Promise.all(
+    //       collateral.map(async (c): Promise<string> => {
+    //         return await c.address
+    //       })
+    //     )
 
-      expect(allAssets[0]).to.equal(rTokenAsset.address)
-      expect(allAssets[1]).to.equal(rsrAsset.address)
-      expect(allAssets[2]).to.equal(aaveAsset.address)
-      expect(allAssets[3]).to.equal(compAsset.address)
-      expect(allAssets.slice(4)).to.eql(collateralAddrs)
-    })
+    //     expect(erc20s[0]).to.equal(rTokenAsset.address)
+    //     expect(erc20s[1]).to.equal(rsrAsset.address)
+    //     expect(erc20s[2]).to.equal(aaveAsset.address)
+    //     expect(erc20s[3]).to.equal(compAsset.address)
+    //     expect(erc20s.slice(4)).to.eql(collateralAddrs)
+    //   })
   })
 
   describe('Basket Handling', () => {
@@ -873,9 +1053,9 @@ describe('MainP0 contract', () => {
 
     it('Should allow to set prime Basket if Owner', async () => {
       // Set basket
-      await expect(main.connect(owner).setPrimeBasket([collateral0.address], [fp('1')]))
+      await expect(main.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
         .to.emit(main, 'PrimeBasketSet')
-        .withArgs([collateral0.address], [fp('1')])
+        .withArgs([token0.address], [fp('1')])
     })
 
     it('Should not allow to set backup Config if not Owner', async () => {
@@ -909,18 +1089,18 @@ describe('MainP0 contract', () => {
 
       // Basket remains the same in this case
       expect(await main.fullyCapitalized()).to.equal(true)
-      const backing = await main.basketCollateral()
-      expect(backing[0]).to.equal(collateral0.address)
-      expect(backing[1]).to.equal(collateral1.address)
-      expect(backing[2]).to.equal(collateral2.address)
-      expect(backing[3]).to.equal(collateral3.address)
+      const backing = await main.basketTokens()
+      expect(backing[0]).to.equal(token0.address)
+      expect(backing[1]).to.equal(token1.address)
+      expect(backing[2]).to.equal(token2.address)
+      expect(backing[3]).to.equal(token3.address)
 
       expect(backing.length).to.equal(4)
 
       // Not updated so basket last changed is not set
-      expect(await main.basketNonce()).to.equal(1)
+(??)      expect(await main.blockBasketLastChanged()).to.be.gt(bn(0))
       expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
-      expect(await main.totalAssetValue()).to.equal(0)
+      expect(await facade.totalAssetValue()).to.equal(0)
     })
   })
 })

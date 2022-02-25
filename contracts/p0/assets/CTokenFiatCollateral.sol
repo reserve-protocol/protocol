@@ -36,12 +36,13 @@ contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
 
     constructor(
         IERC20Metadata erc20_,
+        Fix maxAuctionSize_,
         IERC20Metadata referenceERC20_,
         IMain main_,
         IComptroller comptroller_,
         CompoundClaimAdapterP0 claimAdapter_
     )
-        CollateralP0(erc20_, referenceERC20_, main_, bytes32(bytes("USD")))
+        CollateralP0(erc20_, maxAuctionSize_, referenceERC20_, main_, bytes32(bytes("USD")))
         CompoundOracleMixinP0(comptroller_)
     {
         claimAdapter = claimAdapter_;

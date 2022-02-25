@@ -8,16 +8,16 @@ import "contracts/p0/interfaces/IClaimAdapter.sol";
 contract CompoundClaimAdapterP0 is IClaimAdapter {
     IComptroller public immutable comptroller;
 
-    address public immutable override rewardERC20;
+    IERC20Metadata public immutable override rewardERC20;
 
-    constructor(IComptroller comptroller_, address rewardERC20_) {
+    constructor(IComptroller comptroller_, IERC20Metadata rewardERC20_) {
         comptroller = comptroller_;
         rewardERC20 = rewardERC20_;
     }
 
     /// @return _to The address to send the call to
     /// @return _calldata The calldata to send
-    function getClaimCalldata(ICollateral)
+    function getClaimCalldata(IERC20Metadata)
         external
         view
         override

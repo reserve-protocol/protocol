@@ -306,7 +306,7 @@
 //             _main.defaultDelay(),
 //             _main.maxTradeSlippage(),
 //             _main.maxAuctionSize(),
-//             _main.minRevenueAuctionSize(),
+//             _main.backingBuffer(),
 //             _main.issuanceRate(),
 //             _main.defaultThreshold()
 //         );

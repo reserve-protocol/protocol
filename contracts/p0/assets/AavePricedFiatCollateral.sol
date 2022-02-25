@@ -9,11 +9,12 @@ contract AavePricedFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
+        Fix maxAuctionSize_,
         IMain main_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_
     )
-        CollateralP0(erc20_, erc20_, main_, bytes32(bytes("USD")))
+        CollateralP0(erc20_, maxAuctionSize_, erc20_, main_, bytes32(bytes("USD")))
         AaveOracleMixinP0(comptroller_, aaveLendingPool_)
     {}
 

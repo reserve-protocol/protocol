@@ -308,30 +308,6 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenAsset.status()).to.equal(CollateralStatus.DISABLED)
       expect(await cTokenAsset.whenDefault()).to.equal(bn(await getLatestBlockTimestamp()))
     })
-
-    it('Disables collateral correcly', async () => {
-      // Check initial status
-      expect(await tokenAsset.status()).to.equal(CollateralStatus.SOUND)
-      expect(await tokenAsset.whenDefault()).to.equal(MAX_UINT256)
-
-      // Force update
-      await tokenAsset.forceUpdates()
-
-      //  Check status remains the same
-      expect(await tokenAsset.status()).to.equal(CollateralStatus.SOUND)
-      expect(await tokenAsset.whenDefault()).to.equal(MAX_UINT256)
-
-      // Disable collateral directly with Main.owner
-      await tokenAsset.connect(owner).disable()
-
-      // Check Collateral is disabled
-      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await tokenAsset.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await tokenAsset.whenDefault()).to.equal(expectedDefaultTimestamp)
-
-      // Cannot disable collateral if not main or owner
-      await expect(usdcAsset.connect(other).disable()).to.be.revertedWith('main or its owner')
-    })
   })
 
   describe('Rewards', () => {
@@ -382,10 +358,20 @@ describe('CollateralP0 contracts', () => {
         'CompoundPricedFiatCollateralP0'
       )
       compoundTokenAsset = <CompoundPricedFiatCollateralP0>(
-        await CompoundFiatCollFactory.deploy(token.address, main.address, compoundMock.address)
+        await CompoundFiatCollFactory.deploy(
+          token.address,
+          await tokenAsset.maxAuctionSize(),
+          main.address,
+          compoundMock.address
+        )
       )
       compoundUsdcAsset = <CompoundPricedFiatCollateralP0>(
-        await CompoundFiatCollFactory.deploy(usdc.address, main.address, compoundMock.address)
+        await CompoundFiatCollFactory.deploy(
+          usdc.address,
+          await usdcAsset.maxAuctionSize(),
+          main.address,
+          compoundMock.address
+        )
       )
     })
 
