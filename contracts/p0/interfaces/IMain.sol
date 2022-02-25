@@ -10,6 +10,7 @@ import "./IClaimAdapter.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
 import "./IRToken.sol";
+import "./IRTokenIssuer.sol";
 import "./IStRSR.sol";
 import "./ITrader.sol";
 
@@ -63,6 +64,7 @@ struct ConstructorArgs {
     IRToken rToken;
     IClaimAdapter[] claimAdapters;
     IAsset[] assets;
+    IRTokenIssuer rTokenIssuer;
 }
 
 enum AuctionStatus {
@@ -284,6 +286,15 @@ interface IBasketHandler {
 
     function worstCollateralStatus() external view returns (CollateralStatus status);
 
+    function basketQuote(Fix amount, RoundingApproach rounding)
+        external
+        view
+        returns (IERC20Metadata[] memory erc20s, uint256[] memory quantities);
+
+    function basketsHeldBy(address account) external view returns (Fix baskets);
+
+    function basketPrice() external view returns (Fix price);
+
     function basketNonce() external view returns (uint256);
 }
 
@@ -313,31 +324,6 @@ interface IRewardClaimer is IRewardClaimerEvents {
     function claimAdapters() external view returns (IClaimAdapter[] memory adapters);
 }
 
-interface IRTokenIssuer {
-    /// Emitted when an issuance of RToken begins
-    /// @param issuer The address of the account redeeeming RTokens
-    /// @param amount The quantity of RToken being issued
-    /// @param baskets The corresponding number of baskets
-    event IssuanceStarted(address indexed issuer, uint256 indexed amount, Fix indexed baskets);
-
-    /// Emitted when a redemption of RToken occurs
-    /// @param redeemer The address of the account redeeeming RTokens
-    /// @param amount The quantity of RToken being redeemed
-    /// @param baskets The corresponding number of baskets
-    event Redemption(address indexed redeemer, uint256 indexed amount, Fix indexed baskets);
-
-    function issue(uint256 amount) external returns (uint256[] memory deposits);
-
-    function redeem(uint256 amount) external returns (uint256[] memory compensation);
-
-    function basketTokens() external view returns (IERC20Metadata[] memory);
-
-    function maxIssuable(address account) external view returns (uint256);
-
-    // {UoA/rTok}
-    function rTokenPrice() external view returns (Fix p);
-}
-
 /**
  * @title IMain
  * @notice The central coordinator for the entire system, as well as the external interface.
@@ -351,8 +337,11 @@ interface IMain is
     IAssetRegistry,
     IBasketHandler,
     IAuctioneer,
-    IRewardClaimer,
-    IRTokenIssuer
+    IRewardClaimer
 {
+    event RTokenIssuerSet(IRTokenIssuer indexed oldVal, IRTokenIssuer indexed newVal);
+
+    function rTokenIssuer() external view returns (IRTokenIssuer);
+
     function owner() external view returns (address);
 }

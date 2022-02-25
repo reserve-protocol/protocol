@@ -13,6 +13,7 @@ import "contracts/p0/main/Auctioneer.sol";
 import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
+import "contracts/p0/interfaces/IRTokenIssuer.sol";
 import "contracts/Pausable.sol";
 
 /**
@@ -29,13 +30,19 @@ contract MainP0 is
     BasketHandlerP0,
     AuctioneerP0,
     RewardClaimerP0,
-    RTokenIssuerP0,
     IMain
 {
     using FixLib for Fix;
 
-    /// Constructor-as-function
-    /// Idempotent
+    // === Registered Contracts ===
+    IRTokenIssuer public rTokenIssuer;
+
+    function setRTokenIssuer(IRTokenIssuer val) external onlyOwner {
+        emit RTokenIssuerSet(rTokenIssuer, val);
+        rTokenIssuer = val;
+    }
+
+    /// Initializer
     function init(ConstructorArgs calldata args)
         public
         virtual
@@ -47,12 +54,15 @@ contract MainP0 is
             AssetRegistryP0,
             BasketHandlerP0,
             AuctioneerP0,
-            RewardClaimerP0,
-            RTokenIssuerP0
+            RewardClaimerP0
         )
         onlyOwner
     {
         super.init(args);
+
+        emit RTokenIssuerSet(rTokenIssuer, args.rTokenIssuer);
+        rTokenIssuer = args.rTokenIssuer;
+        rTokenIssuer.initComponent(this, args);
     }
 
     function owner() public view virtual override(IMain, Ownable) returns (address) {

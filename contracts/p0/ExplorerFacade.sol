@@ -45,7 +45,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
 
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
-        return main.maxIssuable(account);
+        return main.rTokenIssuer().maxIssuable(account);
     }
 
     function currentBacking()
@@ -54,7 +54,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         override
         returns (IERC20Metadata[] memory tokens, uint256[] memory quantities)
     {
-        tokens = main.basketTokens();
+        tokens = main.rTokenIssuer().basketTokens();
         quantities = new uint256[](tokens.length);
 
         for (uint256 j = 0; j < tokens.length; j++) {

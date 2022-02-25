@@ -2,13 +2,12 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Context.sol";
-// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p0/interfaces/IMain.sol";
 
 /**
  * Abstract superclass for system contracts registered in Main
  */
-abstract contract Component is Context {
+abstract contract Component is IComponent, Context {
     IMain internal main;
     address private deployer;
 
@@ -16,7 +15,7 @@ abstract contract Component is Context {
         deployer = _msgSender();
     }
 
-    function initComponent(IMain main_, ConstructorArgs calldata args) external {
+    function initComponent(IMain main_, ConstructorArgs calldata args) external override {
         require(deployer == _msgSender(), "Component: caller is not the deployer");
         main = main_;
         init(args);
@@ -24,7 +23,7 @@ abstract contract Component is Context {
     }
 
     modifier notPaused() {
-        require(!main.paused());
+        require(!main.paused(), "Component: system is paused");
         _;
     }
 
@@ -35,7 +34,6 @@ abstract contract Component is Context {
 
     // modifier onlyRegistered or onlyComponent or something -- will need to replace onlyMain()
 
-    // Must be implemented by deriving contract
-    // TODO -- is args here _actually_ calldata, since the function's internal?
-    function init(ConstructorArgs calldata args) internal virtual;
+    // solhint-disable-next-line no-empty-blocks
+    function init(ConstructorArgs calldata args) internal virtual {}
 }

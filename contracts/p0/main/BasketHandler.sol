@@ -143,7 +143,7 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
-    function basketPrice() internal view returns (Fix p) {
+    function basketPrice() public view returns (Fix p) {
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             IERC20Metadata erc20 = basket.erc20s[i];
             ICollateral coll = toColl(erc20);
@@ -161,7 +161,7 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
     function basketQuote(Fix amount, RoundingApproach rounding)
-        internal
+        public
         view
         returns (IERC20Metadata[] memory erc20s, uint256[] memory quantities)
     {
@@ -179,7 +179,7 @@ contract BasketHandlerP0 is Pausable, Mixin, SettingsHandlerP0, AssetRegistryP0,
     }
 
     /// @return baskets {BU} The balance of basket units held by `account`
-    function basketsHeldBy(address account) internal view returns (Fix baskets) {
+    function basketsHeldBy(address account) public view returns (Fix baskets) {
         baskets = FIX_MAX;
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             Fix bal = toFix(basket.erc20s[i].balanceOf(account)); // {qTok}
