@@ -19,7 +19,7 @@ import "contracts/libraries/Fixed.sol";
  * @notice The StRSR is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken.
  *
- * There's an important assymetry in the StRSR. When RSR is 3added, it must be split only
+ * There's an important assymetry in the StRSR. When RSR is added, it must be split only
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both
  * balances that are in the process of being withdrawn and those that are not.
  */
