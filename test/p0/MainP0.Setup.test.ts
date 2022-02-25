@@ -673,6 +673,27 @@ describe('MainP0 contract', () => {
       expect(await main.rsr()).to.equal(other.address)
     })
 
+    it('Should allow to set StRSR if Owner', async () => {
+      // Check existing value
+      expect(await main.stRSR()).to.equal(stRSR.address)
+
+      // If not owner cannot update - use mock address
+      await expect(main.connect(other).setStRSR(other.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.stRSR()).to.equal(stRSR.address)
+
+      // Update with owner
+      await expect(main.connect(owner).setStRSR(other.address))
+        .to.emit(main, 'StRSRSet')
+        .withArgs(stRSR.address, other.address)
+
+      // Check value was updated
+      expect(await main.stRSR()).to.equal(other.address)
+    })
+
     it('Should allow to set RToken if Owner', async () => {
       // Check existing value
       expect(await main.rToken()).to.equal(rToken.address)
