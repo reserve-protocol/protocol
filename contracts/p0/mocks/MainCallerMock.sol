@@ -18,7 +18,7 @@ contract MainCallerMockP0 is BaseComponent {
         IStRSR(main.addr(ST_RSR)).seizeRSR(amount);
     }
 
-    function paused() external returns (bool) {
+    function paused() external view returns (bool) {
         return main.paused();
     }
 
