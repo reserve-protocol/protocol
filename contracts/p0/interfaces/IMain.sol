@@ -9,6 +9,7 @@ import "./IAsset.sol";
 import "./IClaimAdapter.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
+import "./IRewardClaimer.sol";
 import "./IRToken.sol";
 import "./IRTokenIssuer.sol";
 import "./IStRSR.sol";
@@ -65,6 +66,7 @@ struct ConstructorArgs {
     IClaimAdapter[] claimAdapters;
     IAsset[] assets;
     IRTokenIssuer rTokenIssuer;
+    IRewardClaimer rewardClaimer;
 }
 
 enum AuctionStatus {
@@ -302,28 +304,6 @@ interface IAuctioneer is ITraderEvents {
     function manageFunds() external;
 }
 
-interface IRewardClaimerEvents {
-    /// Emitted whenever rewards are claimed
-    event RewardsClaimed(IERC20Metadata indexed erc20, uint256 indexed amount);
-}
-
-interface IRewardClaimer is IRewardClaimerEvents {
-    /// Emitted whenever a claim adapter is added by governance
-    event ClaimAdapterAdded(IClaimAdapter indexed adapter);
-    /// Emitted whenever a claim adapter is removed by governance
-    event ClaimAdapterRemoved(IClaimAdapter indexed adapter);
-
-    function claimRewards() external;
-
-    function addClaimAdapter(IClaimAdapter claimAdapter) external;
-
-    function removeClaimAdapter(IClaimAdapter claimAdapter) external;
-
-    function isTrustedClaimAdapter(IClaimAdapter claimAdapter_) external view returns (bool);
-
-    function claimAdapters() external view returns (IClaimAdapter[] memory adapters);
-}
-
 /**
  * @title IMain
  * @notice The central coordinator for the entire system, as well as the external interface.
@@ -336,12 +316,15 @@ interface IMain is
     IRevenueDistributor,
     IAssetRegistry,
     IBasketHandler,
-    IAuctioneer,
-    IRewardClaimer
+    IAuctioneer
 {
     event RTokenIssuerSet(IRTokenIssuer indexed oldVal, IRTokenIssuer indexed newVal);
 
     function rTokenIssuer() external view returns (IRTokenIssuer);
+
+    event RewardClaimerSet(IRewardClaimer indexed oldVal, IRewardClaimer indexed newVal);
+
+    function rewardClaimer() external view returns (IRewardClaimer);
 
     function owner() external view returns (address);
 }

@@ -30,7 +30,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
     }
 
     function claimAndSweepRewardsForAllTraders() external override {
-        main.claimRewards();
+        main.rewardClaimer().claimRewards();
         main.rsrTrader().claimAndSweepRewardsToMain();
         main.rTokenTrader().claimAndSweepRewardsToMain();
     }

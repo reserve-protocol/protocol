@@ -29,7 +29,6 @@ contract MainP0 is
     AssetRegistryP0,
     BasketHandlerP0,
     AuctioneerP0,
-    RewardClaimerP0,
     IMain
 {
     using FixLib for Fix;
@@ -40,6 +39,13 @@ contract MainP0 is
     function setRTokenIssuer(IRTokenIssuer val) external onlyOwner {
         emit RTokenIssuerSet(rTokenIssuer, val);
         rTokenIssuer = val;
+    }
+
+    IRewardClaimer public rewardClaimer;
+
+    function setRewardClaimer(IRewardClaimer val) external onlyOwner {
+        emit RewardClaimerSet(rewardClaimer, val);
+        rewardClaimer = val;
     }
 
     /// Initializer
@@ -53,8 +59,7 @@ contract MainP0 is
             RevenueDistributorP0,
             AssetRegistryP0,
             BasketHandlerP0,
-            AuctioneerP0,
-            RewardClaimerP0
+            AuctioneerP0
         )
         onlyOwner
     {
@@ -63,6 +68,10 @@ contract MainP0 is
         emit RTokenIssuerSet(rTokenIssuer, args.rTokenIssuer);
         rTokenIssuer = args.rTokenIssuer;
         rTokenIssuer.initComponent(this, args);
+
+        emit RewardClaimerSet(rewardClaimer, args.rewardClaimer);
+        rewardClaimer = args.rewardClaimer;
+        rewardClaimer.initComponent(this, args);
     }
 
     function owner() public view virtual override(IMain, Ownable) returns (address) {

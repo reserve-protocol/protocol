@@ -8,16 +8,16 @@ import "contracts/p0/libraries/Rewards.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/interfaces/IMain.sol";
+import "contracts/p0/interfaces/IRewardClaimer.sol";
+import "contracts/p0/Component.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/Pausable.sol";
-import "./Auctioneer.sol";
-import "./SettingsHandler.sol";
 
 /**
  * @title RewardClaimer
  * @notice Claims rewards every reward cycle and leaves them in Main for Auctioneer to handle.
  */
-contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IRewardClaimer {
+contract RewardClaimerP0 is IRewardClaimer, Component {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20;
@@ -26,12 +26,7 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
 
     EnumerableSet.AddressSet private _claimAdapters;
 
-    function init(ConstructorArgs calldata args)
-        public
-        virtual
-        override(Mixin, SettingsHandlerP0, AuctioneerP0)
-    {
-        super.init(args);
+    function init(ConstructorArgs calldata args) internal override {
         for (uint256 i = 0; i < args.claimAdapters.length; i++) {
             _claimAdapters.add(address(args.claimAdapters[i]));
         }
@@ -41,9 +36,8 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
     function claimRewards() external override notPaused {
         // Check if its time to claim
         (uint256 prevRewards, ) = whenRewards(block.timestamp);
-        if (prevRewards <= rewardsLastClaimed) {
-            return;
-        }
+        if (prevRewards <= rewardsLastClaimed) return;
+
         rewardsLastClaimed = prevRewards;
 
         // Claim rewards
@@ -76,18 +70,18 @@ contract RewardClaimerP0 is Pausable, Mixin, SettingsHandlerP0, AuctioneerP0, IR
         }
     }
 
-    /// @return The timestamp of the next rewards event
-    function nextRewards() public view returns (uint256) {
-        (, uint256 next) = whenRewards(block.timestamp);
-        return next;
+    /// @return next The timestamp of the next rewards event
+    function nextRewards() public view returns (uint256 next) {
+        (, next) = whenRewards(block.timestamp);
     }
 
     // ==== Private ====
 
     // Return the reward boundaries on either side of `time` as timestamps.
     function whenRewards(uint256 time) private view returns (uint256 left, uint256 right) {
-        int256 reps = (int256(time) - int256(rewardStart())) / int256(rewardPeriod());
-        left = uint256(reps * int256(rewardPeriod()) + int256(rewardStart()));
-        right = left + rewardPeriod();
+        (int256 start, int256 period) = (int256(main.rewardStart()), int256(main.rewardPeriod()));
+        int256 reps = (int256(time) - start) / period;
+        left = uint256(reps * period + start);
+        right = left + uint256(period);
     }
 }

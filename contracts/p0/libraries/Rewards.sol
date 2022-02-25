@@ -17,7 +17,8 @@ library RewardsLib {
         internal
         returns (IERC20Metadata[] memory rewardERC20s, uint256[] memory amtsClaimed)
     {
-        IClaimAdapter[] memory adapters = main.claimAdapters();
+        IRewardClaimer rewardClaimer = main.rewardClaimer();
+        IClaimAdapter[] memory adapters = rewardClaimer.claimAdapters();
 
         // Cache initial reward token balances
         rewardERC20s = new IERC20Metadata[](adapters.length);
@@ -37,7 +38,7 @@ library RewardsLib {
             IClaimAdapter adapter = main.toColl(erc20s[i]).claimAdapter();
 
             // TODO Confirm require here, as opposed to continue
-            require(main.isTrustedClaimAdapter(adapter), "claim adapter is not trusted");
+            require(rewardClaimer.isTrustedClaimAdapter(adapter), "claim adapter is not trusted");
 
             (address _to, bytes memory _calldata) = adapter.getClaimCalldata(erc20s[i]);
 
