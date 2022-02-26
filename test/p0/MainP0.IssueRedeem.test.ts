@@ -724,8 +724,8 @@ describe('MainP0 contract', () => {
 
       // Cancel with issuer
       await expect(rToken.connect(addr1).cancelIssuance(addr1.address, 0))
-        .to.emit(rToken, 'IssuanceCanceled')
-        .withArgs(addr1.address, 0)
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 0, 0)
 
       // Check minting was cancelled but not tokens minted
       ;[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
@@ -791,8 +791,8 @@ describe('MainP0 contract', () => {
 
       // Process slow issuances
       await expect(rToken.connect(addr1).cancelIssuance(addr1.address, 0))
-        .to.emit(rToken, 'IssuanceCanceled')
-        .withArgs(addr1.address, 0)
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 0, 0)
 
       // Check Balances after - Funds returned to minter
       expect(await token0.balanceOf(main.address)).to.equal(0)
