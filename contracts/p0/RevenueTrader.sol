@@ -36,12 +36,12 @@ contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents, IRevenueTrader {
 
         closeDueAuctions();
 
-        uint256 bal = erc20.balanceOf(address(this));
+        uint256 bal = erc20.balanceOf(address(main));
         if (bal == 0) return;
 
         if (erc20 == tokenToBuy) {
             erc20.safeApprove(address(main), bal);
-            main.distribute(erc20, address(this), bal);
+            main.revenueDistributor().distribute(erc20, address(main), bal);
             return;
         }
 

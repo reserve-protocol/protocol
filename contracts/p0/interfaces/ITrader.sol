@@ -3,6 +3,25 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+enum AuctionStatus {
+    NOT_YET_OPEN,
+    OPEN,
+    DONE
+}
+
+struct Auction {
+    IERC20Metadata sell;
+    IERC20Metadata buy;
+    uint256 sellAmount; // {qSellTok}
+    uint256 minBuyAmount; // {qBuyTok}
+    uint256 startTime; // {sec}
+    uint256 endTime; // {sec}
+    uint256 clearingSellAmount; // only defined if status == DONE
+    uint256 clearingBuyAmount; // only defined if status == DONE
+    uint256 externalAuctionId; // only defined if status > NOT_YET_OPEN
+    AuctionStatus status;
+}
+
 interface ITraderEvents {
     /// Emitted when an auction is started
     /// @param auctionId The index of the AssetManager.auctions array

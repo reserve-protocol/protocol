@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/main/SettingsHandler.sol";
-import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
@@ -16,7 +15,7 @@ import "contracts/Pausable.sol";
  * @title Main
  * @notice Collects all mixins.
  */
-contract MainP0 is Ownable, Pausable, Mixin, SettingsHandlerP0, RevenueDistributorP0, IMain {
+contract MainP0 is Ownable, Pausable, Mixin, SettingsHandlerP0, IMain {
     using FixLib for Fix;
 
     // === Registered Contracts ===
@@ -55,11 +54,18 @@ contract MainP0 is Ownable, Pausable, Mixin, SettingsHandlerP0, RevenueDistribut
         assetRegistry = val;
     }
 
+    IRevenueDistributor public revenueDistributor;
+
+    function setRevenueDistributor(IRevenueDistributor val) external onlyOwner {
+        emit RevenueDistributorSet(revenueDistributor, val);
+        revenueDistributor = val;
+    }
+
     /// Initializer
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(IMixin, Mixin, SettingsHandlerP0, RevenueDistributorP0)
+        override(IMixin, Mixin, SettingsHandlerP0)
         onlyOwner
     {
         super.init(args);
@@ -83,6 +89,10 @@ contract MainP0 is Ownable, Pausable, Mixin, SettingsHandlerP0, RevenueDistribut
         emit AssetRegistrySet(assetRegistry, args.assetRegistry);
         assetRegistry = args.assetRegistry;
         assetRegistry.initComponent(this, args);
+
+        emit RevenueDistributorSet(revenueDistributor, args.revenueDistributor);
+        revenueDistributor = args.revenueDistributor;
+        revenueDistributor.initComponent(this, args);
     }
 
     function owner() public view virtual override(IMain, Ownable) returns (address) {

@@ -13,6 +13,7 @@ import "./IClaimAdapter.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
 import "./IRewardClaimer.sol";
+import "./IRevenueDistributor.sol";
 import "./IRToken.sol";
 import "./IRTokenIssuer.sol";
 import "./IStRSR.sol";
@@ -53,11 +54,6 @@ struct Config {
     // stRSRPayRatio = 0.022840031565754093 (half-life of 30 days)
 }
 
-struct RevenueShare {
-    uint16 rTokenDist;
-    uint16 rsrDist;
-}
-
 struct ConstructorArgs {
     Config config;
     RevenueShare dist;
@@ -71,27 +67,9 @@ struct ConstructorArgs {
     IAuctioneer auctioneer;
     IBasketHandler basketHandler;
     IAssetRegistry assetRegistry;
+    IRevenueDistributor revenueDistributor;
     IClaimAdapter[] claimAdapters;
     IAsset[] assets;
-}
-
-enum AuctionStatus {
-    NOT_YET_OPEN,
-    OPEN,
-    DONE
-}
-
-struct Auction {
-    IERC20Metadata sell;
-    IERC20Metadata buy;
-    uint256 sellAmount; // {qSellTok}
-    uint256 minBuyAmount; // {qBuyTok}
-    uint256 startTime; // {sec}
-    uint256 endTime; // {sec}
-    uint256 clearingSellAmount; // only defined if status == DONE
-    uint256 clearingBuyAmount; // only defined if status == DONE
-    uint256 externalAuctionId; // only defined if status > NOT_YET_OPEN
-    AuctionStatus status;
 }
 
 interface IMixin {
@@ -212,32 +190,12 @@ interface ISettingsHandler {
     function rsr() external view returns (IERC20Metadata);
 }
 
-interface IRevenueDistributor {
-    /// Emitted when a distribution is set
-    /// @param dest The address set to receive the distribution
-    /// @param rTokenDist The distribution of RToken that should go to `dest`
-    /// @param rsrDist The distribution of RSR that should go to `dest`
-    event DistributionSet(address dest, uint16 rTokenDist, uint16 rsrDist);
-
-    function setDistribution(address dest, RevenueShare memory share) external;
-
-    function distribute(
-        IERC20 erc20,
-        address from,
-        uint256 amount
-    ) external;
-
-    function rsrCut() external view returns (uint256 rsrShares, uint256 totalShares);
-
-    function rTokenCut() external view returns (uint256 rtokenShares, uint256 totalShares);
-}
-
 /**
  * @title IMain
  * @notice The central coordinator for the entire system, as well as the external interface.
  * @dev The p0-specific IMain
  */
-interface IMain is IPausable, IMixin, ISettingsHandler, IRevenueDistributor {
+interface IMain is IPausable, IMixin, ISettingsHandler {
     event RTokenIssuerSet(IRTokenIssuer indexed oldVal, IRTokenIssuer indexed newVal);
 
     function rTokenIssuer() external view returns (IRTokenIssuer);
@@ -267,6 +225,15 @@ interface IMain is IPausable, IMixin, ISettingsHandler, IRevenueDistributor {
     function assetRegistry() external view returns (IAssetRegistry);
 
     function setAssetRegistry(IAssetRegistry val) external;
+
+    event RevenueDistributorSet(
+        IRevenueDistributor indexed oldVal,
+        IRevenueDistributor indexed newVal
+    );
+
+    function revenueDistributor() external view returns (IRevenueDistributor);
+
+    function setRevenueDistributor(IRevenueDistributor val) external;
 
     // ---
 

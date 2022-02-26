@@ -81,7 +81,7 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
             uint256 neededI = needed.mul(main.basketHandler().basketQuantity(erc20s[i])).ceil();
 
             if (bal > neededI) {
-                (uint256 rsrShares, uint256 totalShares) = main.rsrCut();
+                (uint256 rsrShares, uint256 totalShares) = main.revenueDistributor().rsrCut();
                 uint256 tokensPerShare = (bal - neededI) / totalShares;
                 uint256 toRSR = tokensPerShare * rsrShares;
                 uint256 toRToken = tokensPerShare * (totalShares - rsrShares);
