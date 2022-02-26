@@ -24,7 +24,7 @@ interface IRToken is IERC20Metadata, IERC20Permit {
         uint256 indexed index,
         uint256 indexed amount,
         Fix baskets,
-        IERC20Metadata[] erc20s,
+        address[] erc20s,
         uint256[] quantities,
         Fix blockAvailableAt
     );
@@ -64,15 +64,16 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     event MainSet(IMain indexed oldMain, IMain indexed newMain);
 
     /// Begins the SlowIssuance process
-    /// @param issuer The account issuing the RToken
-    /// @param amount {qRTok}
-    /// @param baskets {BU}
-    /// @param deposits {qTok}
+    /// @param account The account issuing the RToken
+    /// @param amtRToken {qRTok}
+    /// @param amtBaskets {BU}
+    /// @param erc20s {address[]}
+    /// @param deposits {qTok[]}
     function issue(
-        address issuer,
-        uint256 amount,
-        Fix baskets,
-        IERC20Metadata[] memory erc20s,
+        address account,
+        uint256 amtRToken,
+        Fix amtBaskets,
+        address[] memory erc20s,
         uint256[] memory deposits
     ) external;
 

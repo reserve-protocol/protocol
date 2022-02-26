@@ -24,7 +24,7 @@ interface IExplorerFacade {
     function currentBacking()
         external
         view
-        returns (IERC20Metadata[] memory tokens, uint256[] memory quantities);
+        returns (address[] memory tokens, uint256[] memory quantities);
 
     function totalAssetValue() external view returns (Fix total);
 }

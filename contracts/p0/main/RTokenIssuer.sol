@@ -21,6 +21,7 @@ import "./BasketHandler.sol";
 contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, IRTokenIssuer {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
+    using SafeERC20 for IERC20;
 
     function init(ConstructorArgs calldata args)
         public
@@ -45,12 +46,12 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
             ? rToken().basketsNeeded().mulu(amount).divuRound(rTokSupply) // {BU * qRTok / qRTok}
             : toFixWithShift(amount, -int8(rToken().decimals())); // {qRTok / qRTok}
 
-        IERC20Metadata[] memory erc20s;
+        address[] memory erc20s;
         (erc20s, deposits) = basketQuote(baskets, RoundingApproach.CEIL);
 
         // Transfer collateral to RToken
         for (uint256 i = 0; i < erc20s.length; i++) {
-            erc20s[i].safeTransferFrom(_msgSender(), address(rToken()), deposits[i]);
+            IERC20(erc20s[i]).safeTransferFrom(_msgSender(), address(rToken()), deposits[i]);
         }
 
         rToken().issue(_msgSender(), amount, baskets, erc20s, deposits);
@@ -69,7 +70,7 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         // {BU} = {BU} * {qRTok} / {qRTok}
         Fix baskets = rToken().basketsNeeded().mulu(amount).divuRound(rToken().totalSupply());
 
-        IERC20Metadata[] memory erc20s;
+        address[] memory erc20s;
         (erc20s, withdrawals) = basketQuote(baskets, RoundingApproach.FLOOR);
 
         // {1} = {qRTok} / {qRTok}
@@ -79,17 +80,17 @@ contract RTokenIssuerP0 is Pausable, Mixin, SettingsHandlerP0, BasketHandlerP0, 
         // Bound the redemption by the prorata share, in case we're currently under-capitalized
         for (uint256 i = 0; i < erc20s.length; i++) {
             // {qTok} = {1} * {qTok}
-            uint256 prorata = prorate.mulu(erc20s[i].balanceOf(address(this))).floor();
+            uint256 prorata = prorate.mulu(IERC20(erc20s[i]).balanceOf(address(this))).floor();
 
             withdrawals[i] = Math.min(withdrawals[i], prorata);
-            erc20s[i].safeTransfer(_msgSender(), withdrawals[i]);
+            IERC20(erc20s[i]).safeTransfer(_msgSender(), withdrawals[i]);
         }
 
         emit Redemption(_msgSender(), amount, baskets);
     }
 
     /// @return tokens The addresses of the ERC20s backing the RToken
-    function basketTokens() public view override returns (IERC20Metadata[] memory tokens) {
+    function basketTokens() public view override returns (address[] memory tokens) {
         (tokens, ) = basketQuote(FIX_ONE, RoundingApproach.ROUND);
     }
 
