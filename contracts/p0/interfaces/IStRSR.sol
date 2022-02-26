@@ -24,27 +24,27 @@ interface IStRSR is IERC20Receiver, IERC20Permit, IERC20 {
     event Staked(address indexed staker, uint256 indexed rsrAmount, uint256 indexed stRSRAmount);
 
     /// Emitted when an unstaking is started
-    /// @param withdrawalId The id of the withdrawal, globally unique
+    /// @param draftId The id of the draft. (staker, draftId) are pairwise unique.
     /// @param staker The address of the unstaker
     /// @param rsrAmount {qRSR} How much RSR this unstaking will be worth, absent seizures
     /// @param stRSRAmount {qStRSR} How much stRSR was burned by this unstaking
-    /// @param availableAt {sec} The timestamp at which the staking is eligible to be completed
     event UnstakingStarted(
-        uint256 indexed withdrawalId,
+        uint256 indexed draftId,
         address indexed staker,
         uint256 indexed rsrAmount,
-        uint256 stRSRAmount,
-        uint256 availableAt
+        uint256 stRSRAmount
     );
 
     /// Emitted when RSR is unstaked
-    /// @param withdrawalId The id of the withdrawal, globally unique
+    /// @param firstId The first draft ID withdrawn in this transaction
+    /// @param lastId The last draft ID withdrawn in this transaction
     /// @param staker The address of the unstaker
     /// @param rsrAmount {qRSR} How much RSR this unstaking was worth
     event UnstakingCompleted(
-        uint256 indexed withdrawalId,
+        uint256 indexed firstId,
+        uint256 indexed lastId,
         address indexed staker,
-        uint256 indexed rsrAmount
+        uint256 rsrAmount
     );
 
     /// Emitted when dividend RSR is applied to the staking pool
@@ -56,6 +56,9 @@ interface IStRSR is IERC20Receiver, IERC20Permit, IERC20 {
     /// @param from The address that seized the staked RSR (should only be the AssetManager)
     /// @param amount {qRSR} The quantity of RSR seized
     event RSRSeized(address indexed from, uint256 indexed amount);
+
+    /// Emitted if all the RSR in the staking pool is seized and all balances are reset to zero.
+    event AllBalancesReset();
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param amount {qRSR}

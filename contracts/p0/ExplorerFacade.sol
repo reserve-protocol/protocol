@@ -53,13 +53,13 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         external
         view
         override
-        returns (IERC20Metadata[] memory tokens, uint256[] memory quantities)
+        returns (address[] memory tokens, uint256[] memory quantities)
     {
         tokens = main.rTokenIssuer().basketTokens();
         quantities = new uint256[](tokens.length);
 
         for (uint256 j = 0; j < tokens.length; j++) {
-            quantities[j] += tokens[j].balanceOf(address(main));
+            quantities[j] += IERC20Metadata(tokens[j]).balanceOf(address(main));
         }
     }
 

@@ -164,13 +164,14 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     function basketQuote(Fix amount, RoundingApproach rounding)
         public
         view
-        returns (IERC20Metadata[] memory erc20s, uint256[] memory quantities)
+        returns (address[] memory erc20s, uint256[] memory quantities)
     {
-        erc20s = basket.erc20s;
+        erc20s = new address[](basket.erc20s.length);
         quantities = new uint256[](basket.erc20s.length);
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             // {qTok} = {BU} * {qTok/BU}
-            quantities[i] = amount.mul(basketQuantity(erc20s[i])).toUint(rounding);
+            quantities[i] = amount.mul(basketQuantity(basket.erc20s[i])).toUint(rounding);
+            erc20s[i] = address(basket.erc20s[i]);
         }
     }
 

@@ -53,9 +53,9 @@ interface ISettings is IComponent {
 
     function dustAmount() external view returns (Fix);
 
-    event MinRevenueAuctionSizeSet(Fix indexed oldVal, Fix indexed newVal);
+    event BackingBufferSet(Fix indexed oldVal, Fix indexed newVal);
 
-    function setMinRevenueAuctionSize(Fix backingBuffer) external;
+    function setBackingBuffer(Fix backingBuffer) external;
 
     function backingBuffer() external view returns (Fix);
 

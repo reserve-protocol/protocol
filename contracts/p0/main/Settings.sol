@@ -68,9 +68,8 @@ contract SettingsP0 is Component, ISettings {
 
     Fix public backingBuffer;
 
-    // TODO: fixup name
-    function setMinRevenueAuctionSize(Fix val) external override onlyOwner {
-        emit MinRevenueAuctionSizeSet(backingBuffer, val);
+    function setBackingBuffer(Fix val) external override onlyOwner {
+        emit BackingBufferSet(backingBuffer, val);
         backingBuffer = val;
     }
 

@@ -184,12 +184,15 @@ describe('MainP0 contract', () => {
       expect(await main.rewardStart()).to.equal(config.rewardStart)
       expect(await main.rewardPeriod()).to.equal(config.rewardPeriod)
       expect(await main.auctionPeriod()).to.equal(config.auctionPeriod)
+      expect(await main.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
       expect(await main.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
       expect(await main.defaultDelay()).to.equal(config.defaultDelay)
       expect(await main.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+      expect(await main.dustAmount()).to.equal(config.dustAmount)
       expect(await main.backingBuffer()).to.equal(config.backingBuffer)
       expect(await main.issuanceRate()).to.equal(config.issuanceRate)
       expect(await main.defaultThreshold()).to.equal(config.defaultThreshold)
+      expect(await main.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
     })
 
     it('Should register Assets correctly', async () => {
@@ -247,6 +250,30 @@ describe('MainP0 contract', () => {
         assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
       }
       await expect(main.init(ctorArgs)).to.be.revertedWith('already initialized')
+    })
+
+    it('Should perform validations on init', async () => {
+      const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
+      const newMain: MainP0 = <MainP0>await MainFactory.deploy()
+      await newMain.connect(owner).unpause()
+
+      // Set invalid RSRPayPeriod
+      const newConfig = { ...config }
+      newConfig.stRSRPayPeriod = config.stRSRWithdrawalDelay
+
+      // Deploy new main
+      const ctorArgs = {
+        config: newConfig,
+        dist: dist,
+        furnace: furnace.address,
+        market: market.address,
+        rsr: rsr.address,
+        stRSR: stRSR.address,
+        rToken: rToken.address,
+        claimAdapters: [compoundClaimer.address, aaveClaimer.address],
+        assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
+      }
+      await expect(newMain.init(ctorArgs)).to.be.revertedWith('RSR pay period too long')
     })
   })
 
@@ -341,7 +368,9 @@ describe('MainP0 contract', () => {
       expect(await main.rewardStart()).to.equal(config.rewardStart)
 
       // Update with owner
-      await main.connect(owner).setRewardStart(newValue)
+      await expect(main.connect(owner).setRewardStart(newValue))
+        .to.emit(main, 'RewardStartSet')
+        .withArgs(config.rewardStart, newValue)
 
       // Check value was updated
       expect(await main.rewardStart()).to.equal(newValue)
@@ -362,7 +391,9 @@ describe('MainP0 contract', () => {
       expect(await main.rewardPeriod()).to.equal(config.rewardPeriod)
 
       // Update with owner
-      await main.connect(owner).setRewardPeriod(newValue)
+      await expect(main.connect(owner).setRewardPeriod(newValue))
+        .to.emit(main, 'RewardPeriodSet')
+        .withArgs(config.rewardPeriod, newValue)
 
       // Check value was updated
       expect(await main.rewardPeriod()).to.equal(newValue)
@@ -383,13 +414,44 @@ describe('MainP0 contract', () => {
       expect(await main.auctionPeriod()).to.equal(config.auctionPeriod)
 
       // Update with owner
-      await main.connect(owner).setAuctionPeriod(newValue)
+      await expect(main.connect(owner).setAuctionPeriod(newValue))
+        .to.emit(main, 'AuctionPeriodSet')
+        .withArgs(config.auctionPeriod, newValue)
 
       // Check value was updated
       expect(await main.auctionPeriod()).to.equal(newValue)
     })
 
-    it('Should allow to update stRSRWithdrawalDelay if Owner', async () => {
+    it('Should allow to update stRSRPayPeriod if Owner and perform validations', async () => {
+      const newValue: BigNumber = config.stRSRPayPeriod.div(2)
+
+      // Check existing value
+      expect(await main.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
+
+      // If not owner cannot update
+      await expect(main.connect(other).setStRSRPayPeriod(newValue)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Reverts if the value is too long
+      const invalidValue: BigNumber = config.stRSRWithdrawalDelay
+      await expect(main.connect(owner).setStRSRPayPeriod(invalidValue)).to.be.revertedWith(
+        'RSR pay period too long'
+      )
+
+      // Check value did not change
+      expect(await main.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
+
+      // Update with owner
+      await expect(main.connect(owner).setStRSRPayPeriod(newValue))
+        .to.emit(main, 'StRSRPayPeriodSet')
+        .withArgs(config.stRSRPayPeriod, newValue)
+
+      // Check value was updated
+      expect(await main.stRSRPayPeriod()).to.equal(newValue)
+    })
+
+    it('Should allow to update stRSRWithdrawalDelay if Owner and perform validations', async () => {
       const newValue: BigNumber = config.stRSRWithdrawalDelay.div(2)
 
       // Check existing value
@@ -400,11 +462,19 @@ describe('MainP0 contract', () => {
         'Ownable: caller is not the owner'
       )
 
+      // Reverts if the value is too short
+      const invalidValue: BigNumber = config.stRSRPayPeriod
+      await expect(main.connect(owner).setStRSRWithdrawalDelay(invalidValue)).to.be.revertedWith(
+        'RSR withdrawal delay too short'
+      )
+
       // Check value did not change
       expect(await main.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
 
       // Update with owner
-      await main.connect(owner).setStRSRWithdrawalDelay(newValue)
+      await expect(main.connect(owner).setStRSRWithdrawalDelay(newValue))
+        .to.emit(main, 'StRSRWithdrawalDelaySet')
+        .withArgs(config.stRSRWithdrawalDelay, newValue)
 
       // Check value was updated
       expect(await main.stRSRWithdrawalDelay()).to.equal(newValue)
@@ -425,7 +495,9 @@ describe('MainP0 contract', () => {
       expect(await main.defaultDelay()).to.equal(config.defaultDelay)
 
       // Update with owner
-      await main.connect(owner).setDefaultDelay(newValue)
+      await expect(main.connect(owner).setDefaultDelay(newValue))
+        .to.emit(main, 'DefaultDelaySet')
+        .withArgs(config.defaultDelay, newValue)
 
       // Check value was updated
       expect(await main.defaultDelay()).to.equal(newValue)
@@ -446,10 +518,35 @@ describe('MainP0 contract', () => {
       expect(await main.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
 
       // Update with owner
-      await main.connect(owner).setMaxTradeSlippage(newValue)
+      await expect(main.connect(owner).setMaxTradeSlippage(newValue))
+        .to.emit(main, 'MaxTradeSlippageSet')
+        .withArgs(config.maxTradeSlippage, newValue)
 
       // Check value was updated
       expect(await main.maxTradeSlippage()).to.equal(newValue)
+    })
+
+    it('Should allow to update dustAmount if Owner', async () => {
+      const newValue: BigNumber = fp('0.02')
+
+      // Check existing value
+      expect(await main.dustAmount()).to.equal(config.dustAmount)
+
+      // If not owner cannot update
+      await expect(main.connect(other).setDustAmount(newValue)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.dustAmount()).to.equal(config.dustAmount)
+
+      // Update with owner
+      await expect(main.connect(owner).setDustAmount(newValue))
+        .to.emit(main, 'DustAmountSet')
+        .withArgs(config.dustAmount, newValue)
+
+      // Check value was updated
+      expect(await main.dustAmount()).to.equal(newValue)
     })
 
     it('Should allow to update backingBuffer if Owner', async () => {
@@ -459,7 +556,7 @@ describe('MainP0 contract', () => {
       expect(await main.backingBuffer()).to.equal(config.backingBuffer)
 
       // If not owner cannot update
-      await expect(main.connect(other).setMinRevenueAuctionSize(newValue)).to.be.revertedWith(
+      await expect(main.connect(other).setBackingBuffer(newValue)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
 
@@ -467,7 +564,9 @@ describe('MainP0 contract', () => {
       expect(await main.backingBuffer()).to.equal(config.backingBuffer)
 
       // Update with owner
-      await main.connect(owner).setMinRevenueAuctionSize(newValue)
+      await expect(main.connect(owner).setBackingBuffer(newValue))
+        .to.emit(main, 'BackingBufferSet')
+        .withArgs(config.backingBuffer, newValue)
 
       // Check value was updated
       expect(await main.backingBuffer()).to.equal(newValue)
@@ -488,7 +587,9 @@ describe('MainP0 contract', () => {
       expect(await main.issuanceRate()).to.equal(config.issuanceRate)
 
       // Update with owner
-      await main.connect(owner).setIssuanceRate(newValue)
+      await expect(main.connect(owner).setIssuanceRate(newValue))
+        .to.emit(main, 'IssuanceRateSet')
+        .withArgs(config.issuanceRate, newValue)
 
       // Check value was updated
       expect(await main.issuanceRate()).to.equal(newValue)
@@ -509,10 +610,35 @@ describe('MainP0 contract', () => {
       expect(await main.defaultThreshold()).to.equal(config.defaultThreshold)
 
       // Update with owner
-      await main.connect(owner).setDefaultThreshold(newValue)
+      await expect(main.connect(owner).setDefaultThreshold(newValue))
+        .to.emit(main, 'DefaultThresholdSet')
+        .withArgs(config.defaultThreshold, newValue)
 
       // Check value was updated
       expect(await main.defaultThreshold()).to.equal(newValue)
+    })
+
+    it('Should allow to update stRSRPayRatio if Owner', async () => {
+      const newValue: BigNumber = config.stRSRPayRatio.div(2)
+
+      // Check existing value
+      expect(await main.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
+
+      // If not owner cannot update
+      await expect(main.connect(other).setStRSRPayRatio(newValue)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
+
+      // Update with owner
+      await expect(main.connect(owner).setStRSRPayRatio(newValue))
+        .to.emit(main, 'StRSRPayRatioSet')
+        .withArgs(config.stRSRPayRatio, newValue)
+
+      // Check value was updated
+      expect(await main.stRSRPayRatio()).to.equal(newValue)
     })
 
     it('Should return nextRewards correctly', async () => {
@@ -554,10 +680,75 @@ describe('MainP0 contract', () => {
       expect(await main.market()).to.equal(market.address)
 
       // Update with owner
-      await main.connect(owner).setMarket(other.address)
+      await expect(main.connect(owner).setMarket(other.address))
+        .to.emit(main, 'MarketSet')
+        .withArgs(market.address, other.address)
 
       // Check value was updated
       expect(await main.market()).to.equal(other.address)
+    })
+
+    it('Should allow to set RSR if Owner', async () => {
+      // Check existing value
+      expect(await main.rsr()).to.equal(rsr.address)
+
+      // If not owner cannot update - use mock address
+      await expect(main.connect(other).setRSR(other.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.rsr()).to.equal(rsr.address)
+
+      // Update with owner
+      await expect(main.connect(owner).setRSR(other.address))
+        .to.emit(main, 'RSRSet')
+        .withArgs(rsr.address, other.address)
+
+      // Check value was updated
+      expect(await main.rsr()).to.equal(other.address)
+    })
+
+    it('Should allow to set StRSR if Owner', async () => {
+      // Check existing value
+      expect(await main.stRSR()).to.equal(stRSR.address)
+
+      // If not owner cannot update - use mock address
+      await expect(main.connect(other).setStRSR(other.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.stRSR()).to.equal(stRSR.address)
+
+      // Update with owner
+      await expect(main.connect(owner).setStRSR(other.address))
+        .to.emit(main, 'StRSRSet')
+        .withArgs(stRSR.address, other.address)
+
+      // Check value was updated
+      expect(await main.stRSR()).to.equal(other.address)
+    })
+
+    it('Should allow to set RToken if Owner', async () => {
+      // Check existing value
+      expect(await main.rToken()).to.equal(rToken.address)
+
+      // If not owner cannot update - use mock address
+      await expect(main.connect(other).setRToken(other.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await main.rToken()).to.equal(rToken.address)
+
+      // Update with owner
+      await expect(main.connect(owner).setRToken(other.address))
+        .to.emit(main, 'RTokenSet')
+        .withArgs(rToken.address, other.address)
+
+      // Check value was updated
+      expect(await main.rToken()).to.equal(other.address)
     })
 
     it('Should allow to add ClaimAdapter if Owner', async () => {
@@ -573,7 +764,9 @@ describe('MainP0 contract', () => {
       expect(await main.isTrustedClaimAdapter(other.address)).to.equal(false)
 
       // Update with owner
-      await main.connect(owner).addClaimAdapter(other.address)
+      await expect(main.connect(owner).addClaimAdapter(other.address))
+        .to.emit(main, 'ClaimAdapterAdded')
+        .withArgs(other.address)
 
       // Check value was updated
       expect(await main.isTrustedClaimAdapter(other.address)).to.equal(true)
@@ -592,7 +785,9 @@ describe('MainP0 contract', () => {
       expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
 
       // Update with owner
-      await main.connect(owner).removeClaimAdapter(compoundClaimer.address)
+      await expect(main.connect(owner).removeClaimAdapter(compoundClaimer.address))
+        .to.emit(main, 'ClaimAdapterRemoved')
+        .withArgs(compoundClaimer.address)
 
       // Check value was updated
       expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(false)
@@ -616,7 +811,9 @@ describe('MainP0 contract', () => {
       expect(await main.revenueFurnace()).to.equal(furnace.address)
 
       // Update with owner
-      await main.connect(owner).setRevenueFurnace(newFurnace.address)
+      await expect(main.connect(owner).setRevenueFurnace(newFurnace.address))
+        .to.emit(main, 'RevenueFurnaceSet')
+        .withArgs(furnace.address, newFurnace.address)
 
       // Check value was updated
       expect(await main.revenueFurnace()).to.equal(newFurnace.address)
@@ -901,7 +1098,7 @@ describe('MainP0 contract', () => {
       expect(backing.length).to.equal(4)
 
       // Not updated so basket last changed is not set
-      expect(await main.basketNonce()).to.be.gt(bn(0))
+      expect(await main.basketNonce()).to.be.gt(bn(1))
       expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
       expect(await facade.totalAssetValue()).to.equal(0)
     })
