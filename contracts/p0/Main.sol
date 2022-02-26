@@ -4,18 +4,16 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/main/SettingsHandler.sol";
+import "contracts/p0/main/Settings.sol";
 import "contracts/p0/main/Mixin.sol";
-import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IMarket.sol";
-import "contracts/p0/interfaces/IRTokenIssuer.sol";
+import "contracts/p0/interfaces/IMain.sol"; //
 import "contracts/Pausable.sol";
 
 /**
  * @title Main
  * @notice Collects all mixins.
  */
-contract MainP0 is Ownable, Pausable, Mixin, SettingsHandlerP0, IMain {
+contract MainP0 is Ownable, Pausable, Mixin, IMain {
     using FixLib for Fix;
 
     // === Registered Contracts ===
@@ -61,13 +59,50 @@ contract MainP0 is Ownable, Pausable, Mixin, SettingsHandlerP0, IMain {
         revenueDistributor = val;
     }
 
+    ISettings public settings;
+
+    function setSettings(ISettings val) external onlyOwner {
+        emit SettingsSet(settings, val);
+        settings = val;
+    }
+
+    IStRSR public stRSR;
+
+    function setStRSR(IStRSR val) external override onlyOwner {
+        emit StRSRSet(stRSR, val);
+        stRSR = val;
+    }
+
+    IFurnace public revenueFurnace;
+
+    function setRevenueFurnace(IFurnace val) external override onlyOwner {
+        emit RevenueFurnaceSet(revenueFurnace, val);
+        revenueFurnace = val;
+    }
+
+    IRToken public rToken;
+
+    function setRToken(IRToken val) external override onlyOwner {
+        emit RTokenSet(rToken, val);
+        rToken = val;
+    }
+
+    IERC20Metadata public rsr;
+
+    function setRSR(IERC20Metadata val) external override onlyOwner {
+        emit RSRSet(rsr, val);
+        rsr = val;
+    }
+
+    IMarket public market;
+
+    function setMarket(IMarket val) external override onlyOwner {
+        emit MarketSet(market, val);
+        market = val;
+    }
+
     /// Initializer
-    function init(ConstructorArgs calldata args)
-        public
-        virtual
-        override(IMixin, Mixin, SettingsHandlerP0)
-        onlyOwner
-    {
+    function init(ConstructorArgs calldata args) public virtual override(IMixin, Mixin) onlyOwner {
         super.init(args);
 
         emit RTokenIssuerSet(rTokenIssuer, args.rTokenIssuer);
@@ -93,6 +128,29 @@ contract MainP0 is Ownable, Pausable, Mixin, SettingsHandlerP0, IMain {
         emit RevenueDistributorSet(revenueDistributor, args.revenueDistributor);
         revenueDistributor = args.revenueDistributor;
         revenueDistributor.initComponent(this, args);
+
+        emit SettingsSet(settings, args.settings);
+        settings = args.settings;
+        settings.initComponent(this, args);
+
+        emit RevenueFurnaceSet(revenueFurnace, args.furnace);
+        revenueFurnace = args.furnace;
+        // initComponent if revenueFurnace becomes a Component
+
+        emit MarketSet(market, args.market);
+        market = args.market;
+        // initComponent if Market becomes a Component
+
+        emit RSRSet(rsr, args.rsr);
+        rsr = args.rsr;
+
+        emit StRSRSet(stRSR, args.stRSR);
+        stRSR = args.stRSR;
+        // TODO: initComponent
+
+        emit RTokenSet(rToken, args.rToken);
+        rToken = args.rToken;
+        // TODO: initComponent
     }
 
     function owner() public view virtual override(IMain, Ownable) returns (address) {

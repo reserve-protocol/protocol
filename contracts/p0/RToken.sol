@@ -70,7 +70,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         if (issuanceRate[block.number].eq(FIX_ZERO)) {
             issuanceRate[block.number] = fixMax(
                 MIN_ISSUANCE_RATE,
-                main.issuanceRate().mulu(totalSupply())
+                main.settings().issuanceRate().mulu(totalSupply())
             );
         }
 

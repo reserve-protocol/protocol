@@ -16,6 +16,7 @@ import "./IRewardClaimer.sol";
 import "./IRevenueDistributor.sol";
 import "./IRToken.sol";
 import "./IRTokenIssuer.sol";
+import "./ISettings.sol";
 import "./IStRSR.sol";
 import "./ITrader.sol";
 
@@ -54,6 +55,8 @@ struct Config {
     // stRSRPayRatio = 0.022840031565754093 (half-life of 30 days)
 }
 
+// TODO: Put all these contract addresses into their own substructure
+
 struct ConstructorArgs {
     Config config;
     RevenueShare dist;
@@ -68,6 +71,7 @@ struct ConstructorArgs {
     IBasketHandler basketHandler;
     IAssetRegistry assetRegistry;
     IRevenueDistributor revenueDistributor;
+    ISettings settings;
     IClaimAdapter[] claimAdapters;
     IAsset[] assets;
 }
@@ -100,102 +104,12 @@ interface IPausable {
     function setPauser(address pauser_) external;
 }
 
-interface ISettingsHandler {
-    event RewardStartSet(uint256 indexed oldVal, uint256 indexed newVal);
-    event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
-    event AuctionPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
-    event StRSRPayPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
-    event StRSRWithdrawalDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
-    event DefaultDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
-    event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
-    event DustAmountSet(Fix indexed oldVal, Fix indexed newVal);
-    event MinRevenueAuctionSizeSet(Fix indexed oldVal, Fix indexed newVal);
-    event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
-    event DefaultThresholdSet(Fix indexed oldVal, Fix indexed newVal);
-    event StRSRPayRatioSet(Fix indexed oldVal, Fix indexed newVal);
-    event StRSRSet(IStRSR indexed oldVal, IStRSR indexed newVal);
-    event RevenueFurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
-    event RTokenSet(IRToken indexed oldVal, IRToken indexed newVal);
-    event RSRSet(IERC20Metadata indexed oldVal, IERC20Metadata indexed newVal);
-    event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
-
-    function setRewardStart(uint256 rewardStart) external;
-
-    function setRewardPeriod(uint256 rewardPeriod) external;
-
-    function setAuctionPeriod(uint256 auctionPeriod) external;
-
-    function setStRSRPayPeriod(uint256 stRSRPayPeriod) external;
-
-    function setStRSRWithdrawalDelay(uint256 stRSRWithdrawalDelay) external;
-
-    function setDefaultDelay(uint256 defaultDelay) external;
-
-    function setMaxTradeSlippage(Fix maxTradeSlippage) external;
-
-    function setDustAmount(Fix dustAMount) external;
-
-    function setMinRevenueAuctionSize(Fix backingBuffer) external;
-
-    function setIssuanceRate(Fix issuanceRate) external;
-
-    function setDefaultThreshold(Fix defaultThreshold) external;
-
-    function setStRSRPayRatio(Fix stRSRPayRatio) external;
-
-    function setStRSR(IStRSR stRSR) external;
-
-    function setRevenueFurnace(IFurnace furnace) external;
-
-    function setRToken(IRToken rToken) external;
-
-    function setRSR(IERC20Metadata rsr) external;
-
-    function setMarket(IMarket market) external;
-
-    //
-
-    function rewardStart() external view returns (uint256);
-
-    function rewardPeriod() external view returns (uint256);
-
-    function auctionPeriod() external view returns (uint256);
-
-    function stRSRPayPeriod() external view returns (uint256);
-
-    function stRSRWithdrawalDelay() external view returns (uint256);
-
-    function defaultDelay() external view returns (uint256);
-
-    function maxTradeSlippage() external view returns (Fix);
-
-    function dustAmount() external view returns (Fix);
-
-    function backingBuffer() external view returns (Fix);
-
-    function issuanceRate() external view returns (Fix);
-
-    function defaultThreshold() external view returns (Fix);
-
-    function stRSRPayRatio() external view returns (Fix);
-
-    function stRSR() external view returns (IStRSR);
-
-    function revenueFurnace() external view returns (IFurnace);
-
-    function market() external view returns (IMarket);
-
-    function rToken() external view returns (IRToken);
-
-    function rsr() external view returns (IERC20Metadata);
-}
-
 /**
  * @title IMain
  * @notice The central coordinator for the entire system, as well as the external interface.
  * @dev The p0-specific IMain
  */
-interface IMain is IPausable, IMixin, ISettingsHandler {
+interface IMain is IPausable, IMixin {
     event RTokenIssuerSet(IRTokenIssuer indexed oldVal, IRTokenIssuer indexed newVal);
 
     function rTokenIssuer() external view returns (IRTokenIssuer);
@@ -234,6 +148,42 @@ interface IMain is IPausable, IMixin, ISettingsHandler {
     function revenueDistributor() external view returns (IRevenueDistributor);
 
     function setRevenueDistributor(IRevenueDistributor val) external;
+
+    event SettingsSet(ISettings indexed oldVal, ISettings indexed newVal);
+
+    function settings() external view returns (ISettings);
+
+    function setSettings(ISettings val) external;
+
+    event RevenueFurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
+
+    function revenueFurnace() external view returns (IFurnace);
+
+    function setRevenueFurnace(IFurnace furnace) external;
+
+    event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
+
+    function market() external view returns (IMarket);
+
+    function setMarket(IMarket market) external;
+
+    event RTokenSet(IRToken indexed oldVal, IRToken indexed newVal);
+
+    function rToken() external view returns (IRToken);
+
+    function setRToken(IRToken rToken) external;
+
+    event RSRSet(IERC20Metadata indexed oldVal, IERC20Metadata indexed newVal);
+
+    function rsr() external view returns (IERC20Metadata);
+
+    function setRSR(IERC20Metadata rsr) external;
+
+    event StRSRSet(IStRSR indexed oldVal, IStRSR indexed newVal);
+
+    function stRSR() external view returns (IStRSR);
+
+    function setStRSR(IStRSR stRSR) external;
 
     // ---
 

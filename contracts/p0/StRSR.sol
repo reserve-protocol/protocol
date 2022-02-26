@@ -90,7 +90,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         _name = name_;
         _symbol = symbol_;
         _transferOwnership(owner_);
-        payoutLastPaid = main.rewardStart();
+        payoutLastPaid = main.settings().rewardStart();
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
@@ -151,7 +151,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         rsrBacking -= rsrAmount;
 
         // Create the corresponding withdrawal ticket
-        uint256 availableAt = block.timestamp + main.stRSRWithdrawalDelay();
+        uint256 availableAt = block.timestamp + main.settings().stRSRWithdrawalDelay();
         withdrawals[account].push(Withdrawal(account, rsrAmount, availableAt));
         emit UnstakingStarted(
             withdrawals[account].length - 1,
@@ -328,13 +328,15 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
     function _payoutRewards() internal {
-        uint256 period = main.stRSRPayPeriod();
+        uint256 period = main.settings().stRSRPayPeriod();
         if (block.timestamp < payoutLastPaid + period) return;
 
         uint256 numPeriods = (block.timestamp - payoutLastPaid) / period;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(main.stRSRPayRatio()).powu(numPeriods));
+        Fix payoutRatio = FIX_ONE.minus(
+            FIX_ONE.minus(main.settings().stRSRPayRatio()).powu(numPeriods)
+        );
         uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
 
         // Apply payout to RSR backing

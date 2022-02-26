@@ -62,7 +62,7 @@ abstract contract TraderP0 is Component, ITraderEvents {
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         Fix exactBuyAmount = sellAmount.mul(sell.price()).div(buy.price());
-        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.maxTradeSlippage()));
+        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.settings().maxTradeSlippage()));
 
         // TODO Check floor() and ceil() rounding below
         return (
@@ -76,7 +76,10 @@ abstract contract TraderP0 is Component, ITraderEvents {
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,
                 startTime: block.timestamp,
-                endTime: Math.max(block.timestamp + main.auctionPeriod(), latestAuctionEnd),
+                endTime: Math.max(
+                    block.timestamp + main.settings().auctionPeriod(),
+                    latestAuctionEnd
+                ),
                 status: AuctionStatus.NOT_YET_OPEN
             })
         );
@@ -105,7 +108,9 @@ abstract contract TraderP0 is Component, ITraderEvents {
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
-        Fix idealSellAmount = exactSellAmount.div(FIX_ONE.minus(main.maxTradeSlippage()));
+        Fix idealSellAmount = exactSellAmount.div(
+            FIX_ONE.minus(main.settings().maxTradeSlippage())
+        );
 
         Fix sellAmount = fixMin(idealSellAmount, maxSellAmount);
         return prepareAuctionSell(sell, buy, sellAmount);
@@ -114,7 +119,7 @@ abstract contract TraderP0 is Component, ITraderEvents {
     /// @return {tok} The least amount of whole tokens ever worth trying to sell
     function dustThreshold(IAsset asset) internal view returns (Fix) {
         // {tok} = {UoA} / {UoA/tok}
-        return main.dustAmount().div(asset.price());
+        return main.settings().dustAmount().div(asset.price());
     }
 
     /// Launch an auction:

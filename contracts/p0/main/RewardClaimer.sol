@@ -76,7 +76,8 @@ contract RewardClaimerP0 is IRewardClaimer, Component {
 
     // Return the reward boundaries on either side of `time` as timestamps.
     function whenRewards(uint256 time) private view returns (uint256 left, uint256 right) {
-        (int256 start, int256 period) = (int256(main.rewardStart()), int256(main.rewardPeriod()));
+        int256 start = int256(main.settings().rewardStart());
+        int256 period = int256(main.settings().rewardPeriod());
         int256 reps = (int256(time) - start) / period;
         left = uint256(reps * period + start);
         right = left + uint256(period);

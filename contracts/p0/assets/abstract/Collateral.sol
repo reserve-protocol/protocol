@@ -58,7 +58,7 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
         if (whenDefault > block.timestamp) {
             // If the price is below the default-threshold price, default eventually
             whenDefault = isDepegged()
-                ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
+                ? Math.min(whenDefault, block.timestamp + main.settings().defaultDelay())
                 : NEVER;
         }
 
@@ -101,7 +101,7 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
     function isDepegged() internal view returns (bool) {
         // {UoA/ref} = {UoA/target} * {target/ref}
         Fix peg = pricePerTarget().mul(targetPerRef());
-        Fix delta = peg.mul(main.defaultThreshold());
+        Fix delta = peg.mul(main.settings().defaultThreshold());
         Fix p = price();
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }
