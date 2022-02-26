@@ -108,12 +108,12 @@ contract RTokenP1 is Ownable, ERC20Permit, IRToken {
         // Calculate the issuance rate if this is the first issue in the block
         if (lastIssRateBlock < block.number) {
             lastIssRateBlock = block.number;
-            lastIssRate = fixMax(MIN_ISS_RATE, main.issuanceRate().mulu(totalSupply()));
+            lastIssRate = fixMax(MIN_ISS_RATE, main.settings().issuanceRate().mulu(totalSupply()));
         }
 
         // Ensure that the queue is initialized, and models the current basket
-        if (queue.items.length == 0 || queue.basketNonce < main.basketNonce()) {
-            queue.basketNonce = main.basketNonce();
+        if (queue.items.length == 0 || queue.basketNonce < main.basketHandler().basketNonce()) {
+            queue.basketNonce = main.basketHandler().basketNonce();
             queue.tokens = erc20s;
             queue.left = 0;
             queue.right = 0;
@@ -126,7 +126,7 @@ contract RTokenP1 is Ownable, ERC20Permit, IRToken {
         }
 
         assert(queue.items.length > 0);
-        assert(queue.basketNonce == main.basketNonce());
+        assert(queue.basketNonce == main.basketHandler().basketNonce());
 
         // Add amtRToken's worth of issuance delay to allVestAt
         allVestAt = fixMin(allVestAt, toFix(block.number)).plus(divFix(amtRToken, lastIssRate));
@@ -165,11 +165,16 @@ contract RTokenP1 is Ownable, ERC20Permit, IRToken {
     /// @return vested {qRTok} The total amtRToken of RToken quanta vested
     function vestIssuances(address account) external override returns (uint256 vested) {
         require(!main.paused(), "main is paused");
-        require(main.worstCollateralStatus() == CollateralStatus.SOUND, "collateral default");
+        require(
+            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
+            "collateral default"
+        );
 
         IssueQueue storage queue = issueQueues[account];
         refundOldBasketIssues(account);
-        assert(queue.left == queue.right || queue.basketNonce == main.basketNonce());
+        assert(
+            queue.left == queue.right || queue.basketNonce == main.basketHandler().basketNonce()
+        );
 
         // Handle common edge cases in O(1)
         if (queue.left == queue.right) return 0;
@@ -311,7 +316,7 @@ contract RTokenP1 is Ownable, ERC20Permit, IRToken {
     function refundOldBasketIssues(address account) private {
         IssueQueue storage queue = issueQueues[account];
         // ensure that the queue models issuances against the current basket, not previous baskets
-        if (queue.basketNonce != main.basketNonce()) {
+        if (queue.basketNonce != main.basketHandler().basketNonce()) {
             refundSpan(account, queue.left, queue.right);
             queue.left = 0;
             queue.right = 0;

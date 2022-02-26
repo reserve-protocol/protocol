@@ -55,7 +55,7 @@ interface IBasketHandler is IComponent {
     function basketQuote(Fix amount, RoundingApproach rounding)
         external
         view
-        returns (IERC20Metadata[] memory erc20s, uint256[] memory quantities);
+        returns (address[] memory erc20s, uint256[] memory quantities);
 
     function basketsHeldBy(address account) external view returns (Fix baskets);
 

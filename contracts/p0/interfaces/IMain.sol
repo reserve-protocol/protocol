@@ -187,7 +187,5 @@ interface IMain is IPausable, IMixin {
 
     // ---
 
-    function basketTokens() external view returns (address[] memory);
-
     function owner() external view returns (address);
 }
