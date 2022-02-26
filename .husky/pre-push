@@ -3,4 +3,4 @@
 
 yarn lint
 yarn compile
-# yarn test:p0  # Tests currently disabled; expected to fail.
+yarn test:p0
