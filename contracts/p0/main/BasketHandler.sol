@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IAsset.sol";
+import "contracts/p0/interfaces/IAssetRegistry.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/libraries/Basket.sol";
 import "contracts/p0/Component.sol";
@@ -39,10 +40,12 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
     /// Force an update for all collateral that could be swapped into the basket
     function forceCollateralUpdates() public override {
-        IERC20Metadata[] memory erc20s = main.registeredERC20s();
+        IAssetRegistry reg = main.assetRegistry();
+        IERC20Metadata[] memory erc20s = reg.registeredERC20s();
+
         for (uint256 i = 0; i < erc20s.length; i++) {
-            if (main.toAsset(erc20s[i]).isCollateral()) {
-                main.toColl(erc20s[i]).forceUpdates();
+            if (reg.toAsset(erc20s[i]).isCollateral()) {
+                reg.toColl(erc20s[i]).forceUpdates();
             }
         }
     }
@@ -65,9 +68,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     {
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
+        IAssetRegistry reg = main.assetRegistry();
 
         for (uint256 i = 0; i < erc20s.length; i++) {
-            require(main.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
@@ -108,11 +112,13 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
     /// @return status The maximum CollateralStatus among basket collateral
     function worstCollateralStatus() public view override returns (CollateralStatus status) {
+        IAssetRegistry reg = main.assetRegistry();
+
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             IERC20Metadata erc20 = basket.erc20s[i];
             CollateralStatus statusI;
-            if (!main.isRegistered(erc20)) statusI = CollateralStatus.DISABLED;
-            else statusI = main.toColl(erc20).status();
+            if (!reg.isRegistered(erc20)) statusI = CollateralStatus.DISABLED;
+            else statusI = reg.toColl(erc20).status();
 
             if (uint256(statusI) > uint256(status)) {
                 status = statusI;
@@ -125,22 +131,25 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
     /// @return {qTok/BU} The quantity of collateral in the basket
     function basketQuantity(IERC20Metadata erc20) public view returns (Fix) {
-        if (!main.isRegistered(erc20) || !main.toAsset(erc20).isCollateral()) return FIX_ZERO;
+        IAssetRegistry reg = main.assetRegistry();
+        if (!reg.isRegistered(erc20) || !reg.toAsset(erc20).isCollateral()) return FIX_ZERO;
 
         // {qTok/BU} = {ref/BU} / {ref/tok} * {qTok/tok}
         return
-            basket.refAmts[erc20].div(main.toColl(erc20).refPerTok()).shiftLeft(
+            basket.refAmts[erc20].div(reg.toColl(erc20).refPerTok()).shiftLeft(
                 int8(erc20.decimals())
             );
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
     function basketPrice() public view returns (Fix p) {
+        IAssetRegistry reg = main.assetRegistry();
+
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             IERC20Metadata erc20 = basket.erc20s[i];
-            ICollateral coll = main.toColl(erc20);
+            ICollateral coll = reg.toColl(erc20);
 
-            if (main.isRegistered(erc20) && coll.status() != CollateralStatus.DISABLED) {
+            if (reg.isRegistered(erc20) && coll.status() != CollateralStatus.DISABLED) {
                 // {UoA/BU} = {UoA/BU} + {UoA/tok} * {qTok/BU} / {qTok/tok}
                 p = p.plus(
                     coll.price().mul(basketQuantity(erc20)).shiftLeft(-int8(erc20.decimals()))
@@ -185,12 +194,14 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     /// Select and save the next basket, based on the BasketConfig and Collateral statuses
     /// @return whether or not a new basket was derived from templates
     function _switchBasket() private returns (bool) {
+        IAssetRegistry reg = main.assetRegistry();
+
         while (targetNames.length() > 0) targetNames.remove(targetNames.at(0));
         newBasket.empty();
 
         // Count unique targets
         for (uint256 i = 0; i < config.erc20s.length; i++) {
-            targetNames.add(main.toColl(config.erc20s[i]).targetName());
+            targetNames.add(reg.toColl(config.erc20s[i]).targetName());
         }
 
         // Here, "good" collateral is non-defaulted collateral; any status other than DISABLED
@@ -205,9 +216,9 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         // For each prime collateral token:
         for (uint256 i = 0; i < config.erc20s.length; i++) {
             IERC20Metadata erc20 = config.erc20s[i];
-            if (!main.isRegistered(erc20)) continue; // skip unregistered collateral erc20s
+            if (!reg.isRegistered(erc20)) continue; // skip unregistered collateral erc20s
 
-            ICollateral coll = main.toColl(erc20);
+            ICollateral coll = reg.toColl(erc20);
 
             // Find coll's targetName index
             uint256 targetIndex;
@@ -239,8 +250,8 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             for (uint256 j = 0; j < backup.erc20s.length && size < backup.max; j++) {
                 IERC20Metadata erc20 = backup.erc20s[j];
                 if (
-                    main.isRegistered(erc20) &&
-                    main.toColl(erc20).status() != CollateralStatus.DISABLED
+                    reg.isRegistered(erc20) &&
+                    reg.toColl(erc20).status() != CollateralStatus.DISABLED
                 ) {
                     size++;
                 }
@@ -255,8 +266,8 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             for (uint256 j = 0; j < backup.erc20s.length && assigned < size; j++) {
                 IERC20Metadata erc20 = backup.erc20s[j];
                 if (
-                    main.isRegistered(erc20) &&
-                    main.toColl(erc20).status() != CollateralStatus.DISABLED
+                    reg.isRegistered(erc20) &&
+                    reg.toColl(erc20).status() != CollateralStatus.DISABLED
                 ) {
                     newBasket.add(erc20, totalWeights[i].minus(goodWeights[i]).divu(size));
                     assigned++;

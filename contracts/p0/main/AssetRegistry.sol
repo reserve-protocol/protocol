@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/p0/interfaces/IAsset.sol";
+import "contracts/p0/Component.sol";
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/main/Mixin.sol";
 
 /// The AssetRegistry provides the mapping from ERC20 to Asset, allowing the rest of Main
 /// to think in terms of ERC20 tokens and target/ref units.
-contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
+contract AssetRegistryP0 is Component, IAssetRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Registered ERC20s
@@ -18,11 +16,8 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     // Registered Assets
     mapping(IERC20Metadata => IAsset) private assets;
 
-    function init(ConstructorArgs calldata args) public virtual override {
-        super.init(args);
-        for (uint256 i = 0; i < args.assets.length; i++) {
-            _registerAsset(args.assets[i]);
-        }
+    function init(ConstructorArgs calldata args) internal virtual override {
+        for (uint256 i = 0; i < args.assets.length; i++) _registerAsset(args.assets[i]);
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered
@@ -51,25 +46,25 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     }
 
     /// Return the Asset modelling this ERC20, or revert
-    function toAsset(IERC20Metadata erc20) public view override returns (IAsset) {
+    function toAsset(IERC20Metadata erc20) external view override returns (IAsset) {
         require(erc20s.contains(address(erc20)), "erc20 unregistered");
         require(assets[erc20] != IAsset(address(0)), "asset unregistered");
         return assets[erc20];
     }
 
     /// Return the Collateral modelling this ERC20, or revert
-    function toColl(IERC20Metadata erc20) public view override returns (ICollateral) {
+    function toColl(IERC20Metadata erc20) external view override returns (ICollateral) {
         require(erc20s.contains(address(erc20)), "erc20 unrecognized");
         require(assets[erc20] != IAsset(address(0)), "asset unregistered");
         require(assets[erc20].isCollateral(), "erc20 is not collateral");
         return ICollateral(address(assets[erc20]));
     }
 
-    function isRegistered(IERC20Metadata erc20) public view override returns (bool) {
+    function isRegistered(IERC20Metadata erc20) external view override returns (bool) {
         return erc20s.contains(address(erc20));
     }
 
-    function registeredERC20s() public view override returns (IERC20Metadata[] memory erc20s_) {
+    function registeredERC20s() external view override returns (IERC20Metadata[] memory erc20s_) {
         erc20s_ = new IERC20Metadata[](erc20s.length());
         for (uint256 i = 0; i < erc20s.length(); i++) {
             erc20s_[i] = IERC20Metadata(erc20s.at(i));

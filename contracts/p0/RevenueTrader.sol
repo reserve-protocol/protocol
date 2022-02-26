@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/p0/interfaces/IERC20Receiver.sol";
 import "contracts/p0/interfaces/IMain.sol";
+import "contracts/p0/interfaces/IAssetRegistry.sol";
 import "contracts/p0/Trader.sol";
 
 /// The RevenueTrader converts all asset balances at its address to a single target asset
@@ -20,7 +21,7 @@ contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents, IRevenueTrader {
 
     /// Close any open auctions and start new ones, for all assets
     function manageFunds() external {
-        IERC20Metadata[] memory erc20s = main.registeredERC20s();
+        IERC20Metadata[] memory erc20s = main.assetRegistry().registeredERC20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
             manageERC20(erc20s[i]);
         }
@@ -29,7 +30,9 @@ contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents, IRevenueTrader {
     /// - If we have any of `tokenToBuy` (RSR or RToken), distribute it.
     /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
     function manageERC20(IERC20Metadata erc20) public {
-        require(main.isRegistered(erc20), "erc20 not registered");
+        IAssetRegistry reg = main.assetRegistry();
+
+        require(reg.isRegistered(erc20), "erc20 not registered");
 
         closeDueAuctions();
 
@@ -51,8 +54,8 @@ contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents, IRevenueTrader {
         // {tok} =  {qTok} / {qTok/tok}
         Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
         (bool launch, Auction memory auction) = prepareAuctionSell(
-            main.toAsset(erc20),
-            main.toAsset(tokenToBuy),
+            reg.toAsset(erc20),
+            reg.toAsset(tokenToBuy),
             sellAmount
         );
 

@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/interfaces/IAsset.sol";
+import "contracts/p0/interfaces/IAssetRegistry.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/Main.sol";
@@ -64,13 +65,14 @@ contract ExplorerFacadeP0 is IExplorerFacade {
 
     /// @return total {UoA} An estimate of the total value of all assets held
     function totalAssetValue() external view override returns (Fix total) {
-        IERC20Metadata[] memory erc20s = main.registeredERC20s();
+        IAssetRegistry reg = main.assetRegistry();
+
+        IERC20Metadata[] memory erc20s = reg.registeredERC20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
-            IAsset asset = main.toAsset(erc20s[i]);
+            IAsset asset = reg.toAsset(erc20s[i]);
             // Exclude collateral that has defaulted
             if (
-                !asset.isCollateral() ||
-                main.toColl(erc20s[i]).status() != CollateralStatus.DISABLED
+                !asset.isCollateral() || reg.toColl(erc20s[i]).status() != CollateralStatus.DISABLED
             ) {
                 uint256 bal = erc20s[i].balanceOf(address(main));
 

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IAsset.sol";
+import "contracts/p0/interfaces/IAssetRegistry.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/Component.sol";
@@ -73,7 +74,7 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
         // Keep a small surplus of individual collateral
         needed = needed.mul(FIX_ONE.plus(main.backingBuffer()));
 
-        IERC20Metadata[] memory erc20s = main.registeredERC20s();
+        IERC20Metadata[] memory erc20s = main.assetRegistry().registeredERC20s();
         // Handout excess assets above what is needed, including any newly minted RToken
         for (uint256 i = 0; i < erc20s.length; i++) {
             uint256 bal = erc20s[i].balanceOf(address(main));
@@ -108,7 +109,7 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
         Auction memory auction;
         if (
             surplus.isCollateral() &&
-            main.toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
+            main.assetRegistry().toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
         ) {
             (trade, auction) = prepareAuctionSell(surplus, deficit, surplusAmount);
             auction.minBuyAmount = 0;
@@ -139,7 +140,7 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
 
         uint256 rsrBal = rsr.balanceOf(address(main));
         (bool trade, Auction memory auction) = prepareAuctionToCoverDeficit(
-            main.toAsset(rsr),
+            main.assetRegistry().toAsset(rsr),
             deficit,
             toFixWithShift(rsrBal + rsr.balanceOf(address(stRSR)), -int8(rsr.decimals())),
             deficitAmount
@@ -179,7 +180,9 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
             Fix buyAmount
         )
     {
-        IERC20Metadata[] memory erc20s = main.registeredERC20s();
+        IAssetRegistry reg = main.assetRegistry();
+        IERC20Metadata[] memory erc20s = reg.registeredERC20s();
+
         Fix basketsNeeded = main.rToken().basketsNeeded(); // {BU}
         Fix[] memory prices = new Fix[](erc20s.length); // {UoA/tok}
         Fix[] memory surpluses = new Fix[](erc20s.length); // {UoA}
@@ -187,11 +190,11 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
 
         // Calculate surplus and deficits relative to the reference basket
         for (uint256 i = 0; i < erc20s.length; i++) {
-            prices[i] = main.toAsset(erc20s[i]).price();
+            prices[i] = reg.toAsset(erc20s[i]).price();
 
             // needed: {qTok} that Main must hold to meet obligations
             uint256 needed;
-            if (main.toAsset(erc20s[i]).isCollateral()) {
+            if (reg.toAsset(erc20s[i]).isCollateral()) {
                 needed = basketsNeeded.mul(main.basketHandler().basketQuantity(erc20s[i])).ceil();
             }
             // held: {qTok} that Main is already holding
@@ -226,10 +229,10 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
 
         // {tok} = {UoA} / {UoA/tok}
         sellAmount = surplusMax.div(prices[surplusIndex]);
-        surplus = main.toAsset(erc20s[surplusIndex]);
+        surplus = reg.toAsset(erc20s[surplusIndex]);
 
         // {tok} = {UoA} / {UoA/tok}
         buyAmount = deficitMax.div(prices[deficitIndex]);
-        deficit = main.toColl(erc20s[deficitIndex]);
+        deficit = reg.toColl(erc20s[deficitIndex]);
     }
 }

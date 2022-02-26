@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./IAsset.sol";
+import "./IAssetRegistry.sol";
 import "./IAuctioneer.sol";
 import "./IBasketHandler.sol";
 import "./IClaimAdapter.sol";
@@ -69,6 +70,7 @@ struct ConstructorArgs {
     IRewardClaimer rewardClaimer;
     IAuctioneer auctioneer;
     IBasketHandler basketHandler;
+    IAssetRegistry assetRegistry;
     IClaimAdapter[] claimAdapters;
     IAsset[] assets;
 }
@@ -230,32 +232,12 @@ interface IRevenueDistributor {
     function rTokenCut() external view returns (uint256 rtokenShares, uint256 totalShares);
 }
 
-interface IAssetRegistry {
-    /// Emitted when an asset is added to the registry
-    /// @param erc20 The ERC20 contract for the asset
-    /// @param asset The asset contract added to the registry
-    event AssetRegistered(IERC20Metadata indexed erc20, IAsset indexed asset);
-
-    /// Emitted when an asset is removed from the registry
-    /// @param erc20 The ERC20 contract for the asset
-    /// @param asset The asset contract removed from the registry
-    event AssetUnregistered(IERC20Metadata indexed erc20, IAsset indexed asset);
-
-    function toAsset(IERC20Metadata erc20) external view returns (IAsset);
-
-    function toColl(IERC20Metadata erc20) external view returns (ICollateral);
-
-    function isRegistered(IERC20Metadata erc20) external view returns (bool);
-
-    function registeredERC20s() external view returns (IERC20Metadata[] memory);
-}
-
 /**
  * @title IMain
  * @notice The central coordinator for the entire system, as well as the external interface.
  * @dev The p0-specific IMain
  */
-interface IMain is IPausable, IMixin, ISettingsHandler, IRevenueDistributor, IAssetRegistry {
+interface IMain is IPausable, IMixin, ISettingsHandler, IRevenueDistributor {
     event RTokenIssuerSet(IRTokenIssuer indexed oldVal, IRTokenIssuer indexed newVal);
 
     function rTokenIssuer() external view returns (IRTokenIssuer);
@@ -279,6 +261,12 @@ interface IMain is IPausable, IMixin, ISettingsHandler, IRevenueDistributor, IAs
     function basketHandler() external view returns (IBasketHandler);
 
     function setBasketHandler(IBasketHandler val) external;
+
+    event AssetRegistrySet(IAssetRegistry indexed oldVal, IAssetRegistry indexed newVal);
+
+    function assetRegistry() external view returns (IAssetRegistry);
+
+    function setAssetRegistry(IAssetRegistry val) external;
 
     // ---
 

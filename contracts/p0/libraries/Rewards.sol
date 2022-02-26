@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "contracts/p0/interfaces/IAssetRegistry.sol";
 import "contracts/p0/interfaces/IClaimAdapter.sol";
 import "contracts/p0/interfaces/IMain.sol";
 
@@ -29,13 +30,14 @@ library RewardsLib {
         }
 
         // Claim rewards for all registered collateral
-        IERC20Metadata[] memory erc20s = main.registeredERC20s();
+        IAssetRegistry reg = main.assetRegistry();
+        IERC20Metadata[] memory erc20s = reg.registeredERC20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
-            if (!main.toAsset(erc20s[i]).isCollateral()) continue;
+            if (!reg.toAsset(erc20s[i]).isCollateral()) continue;
 
-            if (address(main.toColl(erc20s[i]).claimAdapter()) == address(0)) continue;
+            if (address(reg.toColl(erc20s[i]).claimAdapter()) == address(0)) continue;
 
-            IClaimAdapter adapter = main.toColl(erc20s[i]).claimAdapter();
+            IClaimAdapter adapter = reg.toColl(erc20s[i]).claimAdapter();
 
             // TODO Confirm require here, as opposed to continue
             require(rewardClaimer.isTrustedClaimAdapter(adapter), "claim adapter is not trusted");
