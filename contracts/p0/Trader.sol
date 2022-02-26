@@ -14,9 +14,17 @@ abstract contract TraderP0 is ITraderEvents {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
+    // All auctions, OPEN and past.
+    // Invariant: if 0 <= i and i+1 < auctions.length,
+    //            then auctions[i].endTime <= auctions[i+1].endTime
     Auction[] public auctions;
 
-    uint256 private countOpenAuctions;
+    // First auction that is not yet closed (or auctions.length if all auctions have been closed)
+    // invariant: auction[i].status == CLOSED iff i <= auctionsStart
+    uint256 private auctionsStart;
+
+    // The latest end time for any auction in `auctions`.
+    uint256 private latestAuctionEnd;
 
     IMain public main;
 
@@ -26,18 +34,17 @@ abstract contract TraderP0 is ITraderEvents {
 
     /// @return true iff this trader now has open auctions.
     function hasOpenAuctions() public view returns (bool) {
-        return countOpenAuctions > 0;
+        return auctions.length > auctionsStart;
     }
 
     /// Settle any auctions that are due (past their end time)
     function closeDueAuctions() internal {
-        // Closeout open auctions or sleep if they are still ongoing.
-        for (uint256 i = 0; i < auctions.length; i++) {
-            Auction storage auction = auctions[i];
-            if (auction.status == AuctionStatus.OPEN && block.timestamp >= auction.endTime) {
-                closeAuction(i);
-            }
+        // Close open auctions
+        uint256 i = auctionsStart;
+        for (; i < auctions.length && block.timestamp >= auctions[i].endTime; i++) {
+            closeAuction(i);
         }
+        auctionsStart = i;
     }
 
     /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price,
@@ -51,15 +58,12 @@ abstract contract TraderP0 is ITraderEvents {
         Fix sellAmount
     ) internal view returns (bool notDust, Auction memory auction) {
         assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
-        if (sellAmount.lt(dustThreshold(sell))) {
-            return (false, auction);
-        }
 
-        // {UoA} = {UoA} * {none}
-        Fix maxSellUoA = main.totalAssetValue().mul(main.maxAuctionSize());
+        // Don't buy dust.
+        if (sellAmount.lt(dustThreshold(sell))) return (false, auction);
 
         // {sellTok}
-        sellAmount = fixMin(sellAmount, maxSellUoA.div(sell.price()));
+        sellAmount = fixMin(sellAmount, sell.maxAuctionSize().div(sell.price()));
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         Fix exactBuyAmount = sellAmount.mul(sell.price()).div(buy.price());
@@ -69,15 +73,15 @@ abstract contract TraderP0 is ITraderEvents {
         return (
             true,
             Auction({
-                sell: sell,
-                buy: buy,
+                sell: sell.erc20(),
+                buy: buy.erc20(),
                 sellAmount: sellAmount.shiftLeft(int8(sell.erc20().decimals())).floor(),
                 minBuyAmount: minBuyAmount.shiftLeft(int8(buy.erc20().decimals())).ceil(),
                 clearingSellAmount: 0,
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,
                 startTime: block.timestamp,
-                endTime: block.timestamp + main.auctionPeriod(),
+                endTime: Math.max(block.timestamp + main.auctionPeriod(), latestAuctionEnd),
                 status: AuctionStatus.NOT_YET_OPEN
             })
         );
@@ -96,9 +100,8 @@ abstract contract TraderP0 is ITraderEvents {
         Fix deficitAmount
     ) internal view returns (bool notDust, Auction memory auction) {
         // Don't sell dust.
-        if (maxSellAmount.lt(dustThreshold(sell))) {
-            return (false, auction);
-        }
+        if (maxSellAmount.lt(dustThreshold(sell))) return (false, auction);
+
         // Don't buy dust.
         deficitAmount = fixMax(deficitAmount, dustThreshold(buy));
 
@@ -113,13 +116,10 @@ abstract contract TraderP0 is ITraderEvents {
         return prepareAuctionSell(sell, buy, sellAmount);
     }
 
-    /// @return {tok} The least amount of whole tokens worth trying to sell
+    /// @return {tok} The least amount of whole tokens ever worth trying to sell
     function dustThreshold(IAsset asset) internal view returns (Fix) {
-        // {UoA} = {UoA} * {1}
-        Fix minSellUoA = main.totalAssetValue().mul(main.minRevenueAuctionSize());
-
         // {tok} = {UoA} / {UoA/tok}
-        return minSellUoA.div(asset.price());
+        return main.dustAmount().div(asset.price());
     }
 
     /// Launch an auction:
@@ -131,13 +131,13 @@ abstract contract TraderP0 is ITraderEvents {
         auctions.push(auction_);
         Auction storage auction = auctions[auctions.length - 1];
 
-        auction.sell.erc20().safeApprove(address(main.market()), auction.sellAmount);
+        auction.sell.safeApprove(address(main.market()), auction.sellAmount);
 
         auction.externalAuctionId = main.market().initiateAuction(
-            auction.sell.erc20(),
-            auction.buy.erc20(),
-            block.timestamp + main.auctionPeriod(),
-            block.timestamp + main.auctionPeriod(),
+            auction.sell,
+            auction.buy,
+            auction.endTime,
+            auction.endTime,
             uint96(auction.sellAmount),
             uint96(auction.minBuyAmount),
             0,
@@ -147,12 +147,12 @@ abstract contract TraderP0 is ITraderEvents {
             new bytes(0)
         );
         auction.status = AuctionStatus.OPEN;
-        countOpenAuctions += 1;
+        latestAuctionEnd = auction.endTime;
 
         emit AuctionStarted(
             auctions.length - 1,
-            address(auction.sell),
-            address(auction.buy),
+            auction.sell,
+            auction.buy,
             auction.sellAmount,
             auction.minBuyAmount
         );
@@ -164,20 +164,18 @@ abstract contract TraderP0 is ITraderEvents {
     /// - Emit AuctionEnded event
     function closeAuction(uint256 i) private {
         Auction storage auction = auctions[i];
-        require(auction.status == AuctionStatus.OPEN, "can only close in-progress auctions");
-        require(auction.endTime <= block.timestamp, "auction not over");
+        assert(auction.status == AuctionStatus.OPEN);
+        assert(auction.endTime <= block.timestamp);
 
         bytes32 encodedOrder = main.market().settleAuction(auction.externalAuctionId);
         (auction.clearingSellAmount, auction.clearingBuyAmount) = decodeOrder(encodedOrder);
 
         auction.status = AuctionStatus.DONE;
 
-        countOpenAuctions -= 1;
-
         emit AuctionEnded(
             i,
-            address(auction.sell),
-            address(auction.buy),
+            auction.sell,
+            auction.buy,
             auction.clearingSellAmount,
             auction.clearingBuyAmount
         );

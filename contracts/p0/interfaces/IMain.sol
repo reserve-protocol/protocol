@@ -2,9 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/p0/libraries/Basket.sol";
 import "./IAsset.sol";
 import "./IClaimAdapter.sol";
 import "./IFurnace.sol";
@@ -16,32 +16,36 @@ import "./ITrader.sol";
 /// Configuration of the system
 struct Config {
     // Time (seconds)
-    uint256 rewardStart; // the timestamp of the very first weekly reward handout
-    uint256 rewardPeriod; // the duration of time between reward events
+    uint256 rewardStart; // the timestamp of the very first reward claim event
+    uint256 rewardPeriod; // the duration between reward-claim events
     uint256 auctionPeriod; // the length of an auction
+    uint256 stRSRPayPeriod; // the duration between stRSR payment events
     uint256 stRSRWithdrawalDelay; // the "thawing time" of staked RSR before withdrawal
     uint256 defaultDelay; // how long to wait until switching vaults after detecting default
     // Ratios
     Fix maxTradeSlippage; // max slippage acceptable in a trade
-    Fix maxAuctionSize; // max size of an auction / (RToken value)
-    Fix minRevenueAuctionSize; // min size of a revenue auction and surplus buffer/(RToken value)
+    Fix dustAmount; // value below which we don't bother handling some tokens {UoA}
+    Fix backingBuffer; // percentage of the backing to keep as extra
     Fix issuanceRate; // number of RToken to issue per block / (RToken value)
     Fix defaultThreshold; // multiplier beyond which a token is marked as in-default
+    Fix stRSRPayRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
 
     // Sample values
     //
     // rewardStart = timestamp of first weekly handout
     // rewardPeriod = 604800 (1 week)
     // auctionPeriod = 1800 (30 minutes)
+    // stRSRPayPeriod = 86400 (1 day)
     // stRSRWithdrawalDelay = 1209600 (2 weeks)
     // defaultDelay = 86400 (24 hours)
 
     // maxTradeSlippage = 0.01 (1%)
+    // dustAmount = 1 (1 USD)
     // auctionClearingTolerance = 0.1 (10%)
-    // maxAuctionSize = 0.01 (1%)
-    // minRevenueAuctionSize = 0.001 (0.1%)
+    // backingBuffer = 0.0001 (0.01% extra collateral)
     // issuanceRate = 0.00025 (0.025% per block, or ~0.1% per minute)
     // defaultThreshold = 0.05 (5% deviation, either above or below)
+    // stRSRPayRatio = 0.022840031565754093 (half-life of 30 days)
 }
 
 struct RevenueShare {
@@ -54,7 +58,11 @@ struct ConstructorArgs {
     RevenueShare dist;
     IFurnace furnace;
     IMarket market;
+    IERC20Metadata rsr;
+    IStRSR stRSR;
+    IRToken rToken;
     IClaimAdapter[] claimAdapters;
+    IAsset[] assets;
 }
 
 enum AuctionStatus {
@@ -64,8 +72,8 @@ enum AuctionStatus {
 }
 
 struct Auction {
-    IAsset sell;
-    IAsset buy;
+    IERC20Metadata sell;
+    IERC20Metadata buy;
     uint256 sellAmount; // {qSellTok}
     uint256 minBuyAmount; // {qBuyTok}
     uint256 startTime; // {sec}
@@ -104,30 +112,94 @@ interface IPausable {
     function setPauser(address pauser_) external;
 }
 
-interface IAssetRegistry {
-    /// Emitted when an asset is added to the registry
-    /// @param asset The asset contract added to the registry
-    event AssetAdded(IAsset indexed asset);
+interface ISettingsHandler {
+    event RewardStartSet(uint256 indexed oldVal, uint256 indexed newVal);
+    event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
+    event AuctionPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
+    event StRSRPayPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
+    event StRSRWithdrawalDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
+    event DefaultDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
+    event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
+    event DustAmountSet(Fix indexed oldVal, Fix indexed newVal);
+    event BackingBufferSet(Fix indexed oldVal, Fix indexed newVal);
+    event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
+    event DefaultThresholdSet(Fix indexed oldVal, Fix indexed newVal);
+    event StRSRPayRatioSet(Fix indexed oldVal, Fix indexed newVal);
+    event StRSRSet(IStRSR indexed oldVal, IStRSR indexed newVal);
+    event RevenueFurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
+    event RTokenSet(IRToken indexed oldVal, IRToken indexed newVal);
+    event RSRSet(IERC20Metadata indexed oldVal, IERC20Metadata indexed newVal);
+    event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
 
-    /// Emitted when an asset is removed from the registry
-    /// @param asset The asset contract removed from the registry
-    event AssetRemoved(IAsset indexed asset);
-    event AssetActivated(IAsset indexed asset);
-    event AssetDeactivated(IAsset indexed asset);
+    function setRewardStart(uint256 rewardStart) external;
 
-    function addAsset(IAsset asset) external returns (bool);
+    function setRewardPeriod(uint256 rewardPeriod) external;
 
-    function removeAsset(IAsset asset) external returns (bool);
+    function setAuctionPeriod(uint256 auctionPeriod) external;
 
-    /// Activate `asset`; fails if its erc20 is not in the current basket
-    function activateAsset(IAsset asset) external returns (bool);
+    function setStRSRPayPeriod(uint256 stRSRPayPeriod) external;
 
-    /// Deactive `asset`; fails if its erc20 is not in the current basket
-    function deactivateAsset(IAsset asset) external returns (bool);
+    function setStRSRWithdrawalDelay(uint256 stRSRWithdrawalDelay) external;
 
-    function allAssets() external view returns (IAsset[] memory);
+    function setDefaultDelay(uint256 defaultDelay) external;
 
-    function activeAssets() external view returns (IAsset[] memory);
+    function setMaxTradeSlippage(Fix maxTradeSlippage) external;
+
+    function setDustAmount(Fix dustAMount) external;
+
+    function setBackingBuffer(Fix backingBuffer) external;
+
+    function setIssuanceRate(Fix issuanceRate) external;
+
+    function setDefaultThreshold(Fix defaultThreshold) external;
+
+    function setStRSRPayRatio(Fix stRSRPayRatio) external;
+
+    function setStRSR(IStRSR stRSR) external;
+
+    function setRevenueFurnace(IFurnace furnace) external;
+
+    function setRToken(IRToken rToken) external;
+
+    function setRSR(IERC20Metadata rsr) external;
+
+    function setMarket(IMarket market) external;
+
+    //
+
+    function rewardStart() external view returns (uint256);
+
+    function rewardPeriod() external view returns (uint256);
+
+    function auctionPeriod() external view returns (uint256);
+
+    function stRSRPayPeriod() external view returns (uint256);
+
+    function stRSRWithdrawalDelay() external view returns (uint256);
+
+    function defaultDelay() external view returns (uint256);
+
+    function maxTradeSlippage() external view returns (Fix);
+
+    function dustAmount() external view returns (Fix);
+
+    function backingBuffer() external view returns (Fix);
+
+    function issuanceRate() external view returns (Fix);
+
+    function defaultThreshold() external view returns (Fix);
+
+    function stRSRPayRatio() external view returns (Fix);
+
+    function stRSR() external view returns (IStRSR);
+
+    function revenueFurnace() external view returns (IFurnace);
+
+    function market() external view returns (IMarket);
+
+    function rToken() external view returns (IRToken);
+
+    function rsr() external view returns (IERC20Metadata);
 }
 
 interface IRevenueDistributor {
@@ -150,126 +222,59 @@ interface IRevenueDistributor {
     function rTokenCut() external view returns (uint256 rtokenShares, uint256 totalShares);
 }
 
-interface ISettingsHandler {
-    event RewardStartSet(uint256 indexed oldVal, uint256 indexed newVal);
-    event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
-    event AuctionPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
-    event StRSRWithdrawalDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
-    event DefaultDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
-    event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
-    event MaxAuctionSizeSet(Fix indexed oldVal, Fix indexed newVal);
-    event MinRevenueAuctionSizeSet(Fix indexed oldVal, Fix indexed newVal);
-    event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
-    event DefaultThresholdSet(Fix indexed oldVal, Fix indexed newVal);
-    event StRSRSet(IStRSR indexed oldVal, IStRSR indexed newVal);
-    event RevenueFurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
-    event RTokenAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
-    event RSRAssetSet(IAsset indexed oldVal, IAsset indexed newVal);
-    event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
+interface IAssetRegistry {
+    /// Emitted when an asset is added to the registry
+    /// @param erc20 The ERC20 contract for the asset
+    /// @param asset The asset contract added to the registry
+    event AssetRegistered(IERC20Metadata indexed erc20, IAsset indexed asset);
 
-    function setRewardStart(uint256 rewardStart) external;
+    /// Emitted when an asset is removed from the registry
+    /// @param erc20 The ERC20 contract for the asset
+    /// @param asset The asset contract removed from the registry
+    event AssetUnregistered(IERC20Metadata indexed erc20, IAsset indexed asset);
 
-    function setRewardPeriod(uint256 rewardPeriod) external;
+    function toAsset(IERC20Metadata erc20) external view returns (IAsset);
 
-    function setAuctionPeriod(uint256 auctionPeriod) external;
+    function toColl(IERC20Metadata erc20) external view returns (ICollateral);
 
-    function setStRSRWithdrawalDelay(uint256 stRSRWithdrawalDelay) external;
+    function isRegistered(IERC20Metadata erc20) external view returns (bool);
 
-    function setDefaultDelay(uint256 defaultDelay) external;
-
-    function setMaxTradeSlippage(Fix maxTradeSlippage) external;
-
-    function setMaxAuctionSize(Fix maxAuctionSize) external;
-
-    function setMinRevenueAuctionSize(Fix minRevenueAuctionSize) external;
-
-    function setIssuanceRate(Fix issuanceRate) external;
-
-    function setDefaultThreshold(Fix defaultThreshold) external;
-
-    function setStRSR(IStRSR stRSR) external;
-
-    function setRevenueFurnace(IFurnace furnace) external;
-
-    function setRTokenAsset(IAsset rTokenAsset) external;
-
-    function setRSRAsset(IAsset rsrAsset) external;
-
-    function setMarket(IMarket market) external;
-
-    //
-
-    function rewardStart() external view returns (uint256);
-
-    function rewardPeriod() external view returns (uint256);
-
-    function auctionPeriod() external view returns (uint256);
-
-    function stRSRWithdrawalDelay() external view returns (uint256);
-
-    function defaultDelay() external view returns (uint256);
-
-    function maxTradeSlippage() external view returns (Fix);
-
-    function maxAuctionSize() external view returns (Fix);
-
-    function minRevenueAuctionSize() external view returns (Fix);
-
-    function issuanceRate() external view returns (Fix);
-
-    function defaultThreshold() external view returns (Fix);
-
-    function stRSR() external view returns (IStRSR);
-
-    function revenueFurnace() external view returns (IFurnace);
-
-    function rTokenAsset() external view returns (IAsset);
-
-    function rsrAsset() external view returns (IAsset);
-
-    function market() external view returns (IMarket);
-
-    /// @return The RToken deployment
-    function rToken() external view returns (IRToken);
-
-    /// @return The RSR deployment
-    function rsr() external view returns (IERC20Metadata);
+    function registeredERC20s() external view returns (IERC20Metadata[] memory);
 }
 
 interface IBasketHandler {
-    /// Emitted when the current vault is changed
-    /// @param collateral The list of collateral in the prime basket
-    /// @param targetAmts {target/BU} The amounts of target per basket unit
-    event PrimeBasketSet(ICollateral[] collateral, Fix[] targetAmts);
+    /// Emitted when the prime basket is set
+    /// @param erc20s The collateral tokens for the prime basket
+    /// @param targetAmts {target/BU} A list of quantities of target unit per basket unit
+    event PrimeBasketSet(IERC20Metadata[] erc20s, Fix[] targetAmts);
+
+    /// Emitted when the reference basket is set
+    /// @param erc20s The list of collateral tokens in the reference basket
+    /// @param refAmts {ref/BU} The reference amounts of the basket collateral tokens
+    event BasketSet(IERC20Metadata[] erc20s, Fix[] refAmts);
 
     /// Emitted when a backup config is set for a target unit
     /// @param targetName The name of the target unit as a bytes32
-    /// @param maxCollateral The max number to use from `collateral`
-    /// @param collateral The set of permissible collateral to use
-    event BackupConfigSet(
-        bytes32 indexed targetName,
-        uint256 indexed maxCollateral,
-        ICollateral[] collateral
-    );
+    /// @param max The max number to use from `erc20s`
+    /// @param erc20s The set of backup collateral tokens
+    event BackupConfigSet(bytes32 indexed targetName, uint256 indexed max, IERC20Metadata[] erc20s);
 
-    /// Emitted when the current vault is changed
-    /// @param collateral The list of collateral in the basket
-    /// @param refAmts {ref/BU} The reference amounts of the basket
-    event BasketSet(ICollateral[] collateral, Fix[] refAmts);
-
-    /// Set the prime basket in the basket configuration.
-    /// @param collateral The collateral for the new prime basket
+    /// Set the prime basket
+    /// @param erc20s The collateral tokens for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    function setPrimeBasket(ICollateral[] memory collateral, Fix[] memory targetAmts) external;
+    function setPrimeBasket(IERC20Metadata[] memory erc20s, Fix[] memory targetAmts) external;
 
-    /// Set the backup configuration for target unit `targetName`
-    /// @param maxCollateral The maximum number of backup tokens to use at once for `targetName`
-    /// @param collateral The preference-ordered list of collateral to consider backup tokens
+    /// Set the backup configuration for a given target
+    /// @param targetName The name of the target as a bytes32
+    /// @param max The maximum number of collateral tokens to use from this target
+    /// @param erc20s A list of ordered backup collateral tokens
     function setBackupConfig(
         bytes32 targetName,
-        uint256 maxCollateral,
-        ICollateral[] memory collateral
+        uint256 max,
+        IERC20Metadata[] calldata erc20s
     ) external;
+
+    function forceCollateralUpdates() external;
 
     function ensureValidBasket() external;
 
@@ -279,10 +284,7 @@ interface IBasketHandler {
 
     function worstCollateralStatus() external view returns (CollateralStatus status);
 
-    function blockBasketLastChanged() external view returns (uint256);
-
-    /// @return p {UoA} An estimate at the total value of all assets held, in the unit of account
-    function totalAssetValue() external view returns (Fix p);
+    function basketNonce() external view returns (uint256);
 }
 
 interface IAuctioneer is ITraderEvents {
@@ -291,7 +293,7 @@ interface IAuctioneer is ITraderEvents {
 
 interface IRewardClaimerEvents {
     /// Emitted whenever rewards are claimed
-    event RewardsClaimed(address indexed erc20, uint256 indexed amount);
+    event RewardsClaimed(IERC20Metadata indexed erc20, uint256 indexed amount);
 }
 
 interface IRewardClaimer is IRewardClaimerEvents {
@@ -309,8 +311,6 @@ interface IRewardClaimer is IRewardClaimerEvents {
     function isTrustedClaimAdapter(IClaimAdapter claimAdapter_) external view returns (bool);
 
     function claimAdapters() external view returns (IClaimAdapter[] memory adapters);
-
-    function nextRewards() external view returns (uint256);
 }
 
 interface IRTokenIssuer {
@@ -330,7 +330,7 @@ interface IRTokenIssuer {
 
     function redeem(uint256 amount) external returns (uint256[] memory compensation);
 
-    function basketCollateral() external view returns (ICollateral[] memory);
+    function basketTokens() external view returns (address[] memory);
 
     function maxIssuable(address account) external view returns (uint256);
 
@@ -346,9 +346,9 @@ interface IRTokenIssuer {
 interface IMain is
     IPausable,
     IMixin,
-    IAssetRegistry,
     ISettingsHandler,
     IRevenueDistributor,
+    IAssetRegistry,
     IBasketHandler,
     IAuctioneer,
     IRewardClaimer,

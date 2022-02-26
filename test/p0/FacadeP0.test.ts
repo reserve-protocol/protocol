@@ -119,7 +119,7 @@ describe('ExplorerFacadeP0 contract', () => {
       expect(tokens[2]).to.equal(aToken.address)
       expect(tokens[3]).to.equal(cToken.address)
 
-      // Check quantities - Should be zero with no minted tokens
+      // Check quantities
       expect(quantities).to.eql([bn('25e18'), bn('25e6'), bn('25e18'), bn('25e8')])
     })
   })

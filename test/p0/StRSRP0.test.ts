@@ -208,11 +208,11 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
 
       // All staked funds withdrawn upfront
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      expect(await stRSR.totalSupply()).to.equal(0)
     })
 
     it('Should not allow to unstake amount = 0', async () => {
@@ -276,11 +276,10 @@ describe('StRSRP0 contract', () => {
       let amount1: BigNumber
       let amount2: BigNumber
       let amount3: BigNumber
-      const stkWithdrawalDelay = 20000
+      let stkWithdrawalDelay: number
 
       beforeEach(async () => {
-        // Set stakingWithdrawalDelay
-        await main.connect(owner).setStRSRWithdrawalDelay(stkWithdrawalDelay)
+        stkWithdrawalDelay = (await main.stRSRWithdrawalDelay()).toNumber()
 
         // Perform stake
         amount1 = bn('1e18')
@@ -349,8 +348,11 @@ describe('StRSRP0 contract', () => {
         // Move forward past stakingWithdrawalDelay
         await advanceTime(stkWithdrawalDelay + 1)
 
+        // Save backing tokens
+        const erc20s = await main.basketTokens()
+
         // Set not fully capitalized by changing basket
-        await main.connect(owner).setPrimeBasket([basket[0].address], [fp('1e18')])
+        await main.connect(owner).setPrimeBasket([token0.address], [fp('1e18')])
         await main.connect(owner).switchBasket()
         expect(await main.fullyCapitalized()).to.equal(false)
 
@@ -360,10 +362,7 @@ describe('StRSRP0 contract', () => {
         )
 
         // If fully capitalized should process OK  - Set back original basket
-        await main.connect(owner).setPrimeBasket(
-          basket.map((b) => b.address),
-          basketsNeededAmts
-        )
+        await main.connect(owner).setPrimeBasket(erc20s, basketsNeededAmts)
         await main.connect(owner).switchBasket()
 
         expect(await main.fullyCapitalized()).to.equal(true)
@@ -384,18 +383,17 @@ describe('StRSRP0 contract', () => {
         await stRSR.processWithdrawals(addr1.address)
 
         // Nothing processed so far
-        expect(await stRSR.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
+        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
 
         // Process unstakes after certain time (still before stakingWithdrawalDelay)
-        await advanceTime(15000)
+        await advanceTime(stkWithdrawalDelay / 2)
 
         await stRSR.processWithdrawals(addr1.address)
 
         // Nothing processed still
-        expect(await stRSR.totalSupply()).to.equal(amount1.add(amount2).add(amount3))
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
@@ -490,15 +488,16 @@ describe('StRSRP0 contract', () => {
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
 
+      // TODO Smoothing tests
       // Add RSR
-      await rsr.connect(owner).transfer(stRSR.address, amount2)
-      await stRSR.connect(owner).notifyOfDeposit(rsr.address)
+      // await rsr.connect(owner).transfer(stRSR.address, amount2)
+      // await stRSR.connect(owner).notifyOfDeposit(rsr.address)
 
-      // Check balances and stakes
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.add(amount2))
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.add(amount2))
+      // // Check balances and stakes
+      // expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.add(amount2))
+      // expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      // expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      // expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.add(amount2))
     })
 
     it('Should allow to add RSR - Two stakers - Rounded values', async () => {
@@ -520,17 +519,18 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
 
+      // TODO Smoothing tests
       // Add RSR
-      await rsr.connect(owner).transfer(stRSR.address, amount2)
-      await stRSR.connect(owner).notifyOfDeposit(rsr.address)
+      // await rsr.connect(owner).transfer(stRSR.address, amount2)
+      // await stRSR.connect(owner).notifyOfDeposit(rsr.address)
 
-      // Check balances and stakes
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2).add(amount2))
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.add(amount2.div(2)))
-      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount.add(amount2.div(2)))
+      // // Check balances and stakes
+      // expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2).add(amount2))
+      // expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      // expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      // expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      // expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.add(amount2.div(2)))
+      // expect(await stRSR.balanceOf(addr2.address)).to.equal(amount.add(amount2.div(2)))
     })
 
     it('Should allow to add RSR - Three stakers - Check Precision', async () => {
@@ -557,20 +557,21 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr3.address)).to.equal(amount)
 
+      // TODO Smoothing tests
       // Add RSR
-      await rsr.connect(owner).transfer(stRSR.address, amount2)
-      await stRSR.connect(owner).notifyOfDeposit(rsr.address)
+      // await rsr.connect(owner).transfer(stRSR.address, amount2)
+      // await stRSR.connect(owner).notifyOfDeposit(rsr.address)
 
-      // Check balances and stakes
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3).add(amount2))
-      expect(near(await rsr.balanceOf(stRSR.address), await stRSR.totalSupply(), 1)).to.equal(true)
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
-      expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
+      // // Check balances and stakes
+      // expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3).add(amount2))
+      // expect(near(await rsr.balanceOf(stRSR.address), await stRSR.totalSupply(), 1)).to.equal(true)
+      // expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      // expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      // expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
 
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.add(amount2.div(3)))
-      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount.add(amount2.div(3)))
-      expect(await stRSR.balanceOf(addr3.address)).to.equal(amount.add(amount2.div(3)))
+      // expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.add(amount2.div(3)))
+      // expect(await stRSR.balanceOf(addr2.address)).to.equal(amount.add(amount2.div(3)))
+      // expect(await stRSR.balanceOf(addr3.address)).to.equal(amount.add(amount2.div(3)))
     })
   })
 
@@ -605,9 +606,9 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.sub(amount2))
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await stRSR.totalSupply()).to.equal(amount)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.sub(amount2))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
     it('Should allow to remove RSR - Two stakers - Rounded values', async () => {
@@ -634,11 +635,11 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2).sub(amount2))
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await stRSR.totalSupply()).to.equal(amount.mul(2))
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.sub(amount2.div(2)))
-      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount.sub(amount2.div(2)))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
     })
 
     it('Should allow to remove RSR - Three stakers - Check Precision', async () => {
@@ -667,18 +668,17 @@ describe('StRSRP0 contract', () => {
 
       // Seize RSR
       await mainMock.seizeRSR(amount2)
-      const amtSeized = amount2.add(2) // add(2) because it seizes a little dust more than requested
 
       // Check balances and stakes
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3).sub(amtSeized))
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3).sub(amount2))
+      expect(await stRSR.totalSupply()).to.equal(amount.mul(3))
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
 
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.sub(amtSeized.div(3)))
-      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount.sub(amtSeized.div(3)))
-      expect(await stRSR.balanceOf(addr3.address)).to.equal(amount.sub(amtSeized.div(3)))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
+      expect(await stRSR.balanceOf(addr3.address)).to.equal(amount)
     })
 
     it('Should remove RSR from Withdrawers', async () => {
@@ -695,10 +695,6 @@ describe('StRSRP0 contract', () => {
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
 
-      // Unstake with delay
-      const stkWithdrawalDelay = 20000
-      await main.connect(owner).setStRSRWithdrawalDelay(stkWithdrawalDelay)
-
       // Unstake
       await stRSR.connect(addr1).unstake(amount)
 
@@ -709,16 +705,18 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await stRSR.totalSupply()).to.equal(0)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
 
       // Seize RSR
-      await mainMock.seizeRSR(amount2)
+      await expect(mainMock.seizeRSR(amount2))
+        .to.emit(rsr, 'Transfer')
+        .withArgs(stRSR.address, mainMock.address, amount2)
 
       // Check balances, stakes, and withdrawals
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.sub(amount2))
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await stRSR.totalSupply()).to.equal(0)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
 
@@ -747,10 +745,6 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
 
-      // Unstake with delay
-      const stkWithdrawalDelay = 20000
-      await main.connect(owner).setStRSRWithdrawalDelay(stkWithdrawalDelay)
-
       // Unstake
       await stRSR.connect(addr1).unstake(amount)
 
@@ -761,7 +755,7 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2))
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await stRSR.totalSupply()).to.equal(amount)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
@@ -774,11 +768,11 @@ describe('StRSRP0 contract', () => {
       const proportionalAmountToSeize: BigNumber = amount2.div(2)
 
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2).sub(amount2))
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await stRSR.totalSupply()).to.equal(amount)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
-      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount.sub(proportionalAmountToSeize))
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
 
       // // Check impacted withdrawal
       ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 0)

@@ -11,32 +11,12 @@ import "contracts/p0/interfaces/IMain.sol";
  * @dev The p0-specific IRToken
  */
 interface IRToken is IERC20Metadata, IERC20Permit {
-    /// Tracks data for a SlowIssuance
-    /// @param issuer The account issuing RToken
-    /// @param amount {qTok} The quantity of RToken the issuance is for
-    /// @param baskets {BU} The basket unit-equivalent of the collateral deposits
-    /// @param erc20s The collateral token addresses corresponding to the deposit
-    /// @param deposits {qTok} The collateral token quantities that paid for the issuance
-    /// @param blockStartedAt {blockNumber} The block number when issuance started, not fractional
-    /// @param blockAvailableAt {blockNumber} The block number when issuance completes, fractional
-    /// @param processed false when the issuance is still vesting
-    struct SlowIssuance {
-        address issuer;
-        uint256 amount; // {qRTok}
-        Fix baskets; // {BU}
-        address[] erc20s;
-        uint256[] deposits; // {qTok}, same index as vault basket assets
-        uint256 blockStartedAt; // {block.number} not fractional
-        Fix blockAvailableAt; // {block.number} fractional
-        bool processed;
-    }
-
     /// Emitted when issuance is started, at the point collateral is taken in
     /// @param issuer The account performing the issuance
     /// @param index The index off the issuance in the issuer's queue
     /// @param amount The quantity of RToken being issued
     /// @param baskets The basket unit-equivalent of the collateral deposits
-    /// @param tokens The ERC20 contracts of the backing tokens
+    /// @param erc20s The ERC20 collateral tokens corresponding to the quantities
     /// @param quantities The quantities of tokens paid with
     /// @param blockAvailableAt The (continuous) block at which the issuance vests
     event IssuanceStarted(
@@ -44,20 +24,30 @@ interface IRToken is IERC20Metadata, IERC20Permit {
         uint256 indexed index,
         uint256 indexed amount,
         Fix baskets,
-        address[] tokens,
+        address[] erc20s,
         uint256[] quantities,
         Fix blockAvailableAt
     );
 
     /// Emitted when an RToken issuance is canceled, such as during a default
     /// @param issuer The account of the issuer
-    /// @param index The index of the issuance in the issuer's queue
-    event IssuanceCanceled(address indexed issuer, uint256 indexed index);
+    /// @param firstIndex The first of the cancelled issuances in the issuer's queue
+    /// @param lastIndex The last of the cancelled issuances in the issuer's queue
+    event IssuancesCanceled(
+        address indexed issuer,
+        uint256 indexed firstIndex,
+        uint256 indexed lastIndex
+    );
 
     /// Emitted when an RToken issuance is completed successfully
     /// @param issuer The account of the issuer
-    /// @param index The index of the issuance in the issuer's queue
-    event IssuanceCompleted(address indexed issuer, uint256 indexed index);
+    /// @param firstIndex The first of the completed issuances in the issuer's queue
+    /// @param lastIndex The first of the completed issuances in the issuer's queue
+    event IssuancesCompleted(
+        address indexed issuer,
+        uint256 indexed firstIndex,
+        uint256 indexed lastIndex
+    );
 
     /// Emitted when the number of baskets needed changes
     /// @param oldBasketsNeeded Previous number of baskets units needed
@@ -74,22 +64,28 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     event MainSet(IMain indexed oldMain, IMain indexed newMain);
 
     /// Begins the SlowIssuance process
-    /// @param issuer The account issuing the RToken
-    /// @param amount {qRTok}
-    /// @param baskets {BU}
-    /// @param deposits {qTok}
+    /// @param account The account issuing the RToken
+    /// @param amtRToken {qRTok}
+    /// @param amtBaskets {BU}
+    /// @param erc20s {address[]}
+    /// @param deposits {qTok[]}
     function issue(
-        address issuer,
-        uint256 amount,
-        Fix baskets,
+        address account,
+        uint256 amtRToken,
+        Fix amtBaskets,
         address[] memory erc20s,
         uint256[] memory deposits
     ) external;
 
     /// Cancels a vesting slow issuance
     /// @param account The account of the issuer, and caller
-    /// @param index The index of the issuance in the issuer's queue
-    function cancelIssuance(address account, uint256 index) external;
+    /// @param throughIndex The index of the issuance in the issuer's queue to cancel through
+    /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
+    function cancelIssuances(
+        address account,
+        uint256 throughIndex,
+        bool earliest
+    ) external returns (uint256[] memory deposits);
 
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for

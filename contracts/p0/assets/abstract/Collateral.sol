@@ -35,10 +35,11 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
 
     constructor(
         IERC20Metadata erc20_,
+        Fix maxAuctionSize_,
         IERC20Metadata referenceERC20_,
         IMain main_,
         bytes32 targetName_
-    ) AssetP0(erc20_) {
+    ) AssetP0(erc20_, maxAuctionSize_) {
         referenceERC20 = referenceERC20_;
         main = main_;
         targetName = targetName_;
@@ -63,15 +64,6 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
 
         if (whenDefault != cached) {
             emit DefaultStatusChanged(cached, whenDefault, status());
-        }
-    }
-
-    /// Disable the collateral directly
-    function disable() external virtual override {
-        require(_msgSender() == address(main) || _msgSender() == main.owner(), "main or its owner");
-        if (whenDefault > block.timestamp) {
-            emit DefaultStatusChanged(whenDefault, block.timestamp, CollateralStatus.DISABLED);
-            whenDefault = block.timestamp;
         }
     }
 

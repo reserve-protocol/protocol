@@ -10,6 +10,7 @@ import { AssetP0 } from '../../typechain/AssetP0'
 import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
 import { CollateralP0 } from '../../typechain/CollateralP0'
 import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
+import { ExplorerFacadeP0 } from '../../typechain/ExplorerFacadeP0'
 import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { DeployerP0 } from '../../typechain/DeployerP0'
@@ -65,6 +66,7 @@ describe('MainP0 contract', () => {
   let collateral3: CTokenFiatCollateralP0
   let basket: Collateral[]
   let basketsNeededAmts: BigNumber[]
+  let initialBasketNonce: BigNumber
 
   // Config values
   let config: IConfig
@@ -75,6 +77,7 @@ describe('MainP0 contract', () => {
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
+  let facade: ExplorerFacadeP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -109,6 +112,7 @@ describe('MainP0 contract', () => {
       furnace,
       stRSR,
       market,
+      facade,
     } = await loadFixture(defaultFixture))
     token0 = erc20s[collateral.indexOf(basket[0])]
     token1 = erc20s[collateral.indexOf(basket[1])]
@@ -122,6 +126,8 @@ describe('MainP0 contract', () => {
     collateral1 = basket[1]
     collateral2 = <ATokenFiatCollateralP0>basket[2]
     collateral3 = <CTokenFiatCollateralP0>basket[3]
+
+    initialBasketNonce = await main.basketNonce()
 
     rsrTrader = <RevenueTraderP0>(
       await ethers.getContractAt('RevenueTraderP0', await main.rsrTrader())
@@ -191,7 +197,7 @@ describe('MainP0 contract', () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
 
       // Set basket
-      await main.connect(owner).setPrimeBasket([collateral[0].address], [fp('1')])
+      await main.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await main.connect(owner).switchBasket()
 
       // Check RToken price
@@ -218,12 +224,12 @@ describe('MainP0 contract', () => {
 
       // Check if minting was registered
       const currentBlockNumber = await getLatestBlockNumber()
-      let [sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr1.address,
         0
       )
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce.add(2))
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
@@ -239,7 +245,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Check asset value
-      expect(await main.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.totalAssetValue()).to.equal(issueAmount)
     })
 
     it('Should issue RTokens correctly for more complex basket multiple users', async function () {
@@ -296,13 +302,13 @@ describe('MainP0 contract', () => {
 
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr1.address,
         0
       )
 
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
@@ -325,7 +331,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(main.address)).to.equal(0)
 
       // Check asset value at this point
-      expect(await main.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.totalAssetValue()).to.equal(issueAmount)
 
       // Issue rTokens
       await main.connect(addr2).issue(issueAmount)
@@ -346,11 +352,11 @@ describe('MainP0 contract', () => {
 
       // Check the new issuance is not processed
       currentBlockNumber = await getLatestBlockNumber()
-      ;[sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      ;[sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr2.address,
         0
       )
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr2.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
@@ -365,7 +371,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmount)
 
       // Check asset value
-      expect(await main.totalAssetValue()).to.equal(issueAmount.mul(2))
+      expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
     })
 
     it('Should return maxIssuable correctly', async () => {
@@ -435,11 +441,11 @@ describe('MainP0 contract', () => {
 
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr1.address,
         0
       )
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber + 3))
@@ -454,7 +460,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check asset value at this point (still nothing issued)
-      expect(await main.totalAssetValue()).to.equal(0)
+      expect(await facade.totalAssetValue()).to.equal(0)
 
       // Process 4 blocks
       await advanceTime(100)
@@ -469,7 +475,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
 
       // Check asset value
-      expect(await main.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.totalAssetValue()).to.equal(issueAmount)
     })
 
     it('Should process issuances in multiple attempts (using issuanceRate)', async function () {
@@ -509,12 +515,12 @@ describe('MainP0 contract', () => {
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
 
-      let [sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr1.address,
         1
       )
       const blockAddPct: BigNumber = newIssuanceAmt.mul(BN_SCALE_FACTOR).div(ISSUANCE_PER_BLOCK)
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce)
       expect(sm_amt).to.equal(newIssuanceAmt)
       expect(sm_minter).to.equal(addr1.address)
       // Using issuance rate of 50% = 2 blocks
@@ -532,7 +538,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Check asset value at this point (still nothing issued beyond initial amount)
-      expect(await main.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.totalAssetValue()).to.equal(issueAmount)
 
       // Process slow mintings one more time
       await rToken.vestIssuances(addr1.address)
@@ -545,7 +551,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssuanceAmt))
 
       // Check asset value
-      expect(await main.totalAssetValue()).to.equal(issueAmount.add(newIssuanceAmt))
+      expect(await facade.totalAssetValue()).to.equal(issueAmount.add(newIssuanceAmt))
     })
 
     it('Should process multiple issuances in the correct order', async function () {
@@ -570,19 +576,19 @@ describe('MainP0 contract', () => {
 
       // Check first slow minting is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-      expect(await main.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.totalAssetValue()).to.equal(issueAmount)
 
       // Process another block to get the 2nd issuance processed
       await rToken.vestIssuances(addr1.address)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
-      expect(await main.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount))
+      expect(await facade.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount))
 
       // Process another block to get the 3rd issuance processed
       await rToken.vestIssuances(addr1.address)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
-      expect(await main.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount.mul(2)))
+      expect(await facade.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount.mul(2)))
     })
 
     it('Should allow multiple issuances in the same block', async function () {
@@ -608,23 +614,23 @@ describe('MainP0 contract', () => {
       // Check mintings
       // First minting
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr1.address,
         0
       )
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
       expect(sm_proc).to.equal(true)
 
       // Second minting
-      ;[sm_minter, sm_amt, , sm_startedAt, sm_availableAt, sm_proc] = await rToken.issuances(
+      ;[sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
         addr1.address,
         1
       )
-      expect(sm_startedAt).to.equal(currentBlockNumber)
+      expect(sm_basketNonce).to.equal(initialBasketNonce)
       expect(sm_amt).to.equal(issueAmount)
       expect(sm_minter).to.equal(addr1.address)
       expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(fp('1')))
@@ -633,7 +639,7 @@ describe('MainP0 contract', () => {
       // Check both slow mintings are confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.mul(2))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await main.totalAssetValue()).to.equal(issueAmount.mul(2))
+      expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
 
       // Set automine to true again
       await hre.network.provider.send('evm_setAutomine', [true])
@@ -672,7 +678,7 @@ describe('MainP0 contract', () => {
       // Check first slow mintings is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await main.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.totalAssetValue()).to.equal(issueAmount)
 
       // Process issuance 2
       await rToken.vestIssuances(addr1.address)
@@ -680,7 +686,7 @@ describe('MainP0 contract', () => {
       // Check second mintings is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await main.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount))
+      expect(await facade.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount))
     })
 
     it('Should allow issuer to rollback minting', async function () {
@@ -718,8 +724,8 @@ describe('MainP0 contract', () => {
 
       // Cancel with issuer
       await expect(rToken.connect(addr1).cancelIssuance(addr1.address, 0))
-        .to.emit(rToken, 'IssuanceCanceled')
-        .withArgs(addr1.address, 0)
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 0, 0)
 
       // Check minting was cancelled but not tokens minted
       ;[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
@@ -733,7 +739,7 @@ describe('MainP0 contract', () => {
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
       // Check total asset value did not change
-      expect(await main.totalAssetValue()).to.equal(0)
+      expect(await facade.totalAssetValue()).to.equal(0)
 
       // Cannot cancel minting once processed
       await expect(rToken.connect(addr1).cancelIssuance(addr1.address, 0)).to.be.revertedWith(
@@ -780,13 +786,13 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Update basket to trigger rollbacks (using same one to keep fullyCapitalized = true)
-      await main.connect(owner).setPrimeBasket([collateral0.address], [fp('1')])
+      await main.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await main.connect(owner).switchBasket()
 
       // Process slow issuances
       await expect(rToken.connect(addr1).cancelIssuance(addr1.address, 0))
-        .to.emit(rToken, 'IssuanceCanceled')
-        .withArgs(addr1.address, 0)
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 0, 0)
 
       // Check Balances after - Funds returned to minter
       expect(await token0.balanceOf(main.address)).to.equal(0)
@@ -808,7 +814,7 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check total asset value did not change
-      expect(await main.totalAssetValue()).to.equal(0)
+      expect(await facade.totalAssetValue()).to.equal(0)
     })
   })
 
@@ -846,7 +852,7 @@ describe('MainP0 contract', () => {
         // Check balances
         expect(await rToken.balanceOf(addr1.address)).to.equal(redeemAmount)
         expect(await rToken.totalSupply()).to.equal(redeemAmount)
-        expect(await main.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.totalAssetValue()).to.equal(issueAmount)
 
         // Redeem rTokens
         await main.connect(addr1).redeem(redeemAmount)
@@ -861,7 +867,7 @@ describe('MainP0 contract', () => {
         expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
         // Check asset value
-        expect(await main.totalAssetValue()).to.equal(issueAmount.sub(redeemAmount))
+        expect(await facade.totalAssetValue()).to.equal(issueAmount.sub(redeemAmount))
       })
 
       it('Should redeem RTokens correctly for multiple users', async function () {
@@ -873,19 +879,19 @@ describe('MainP0 contract', () => {
         await token1.connect(addr2).approve(main.address, initialBal)
         await token2.connect(addr2).approve(main.address, initialBal)
         await token3.connect(addr2).approve(main.address, initialBal)
-        expect(await main.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.totalAssetValue()).to.equal(issueAmount)
 
         //Issue rTokens
         await main.connect(addr2).issue(issueAmount)
 
         // Check asset value
-        expect(await main.totalAssetValue()).to.equal(issueAmount.mul(2))
+        expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
 
         // Redeem rTokens
         await main.connect(addr1).redeem(redeemAmount)
 
         // Check asset value
-        expect(await main.totalAssetValue()).to.equal(issueAmount.mul(2).sub(redeemAmount))
+        expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2).sub(redeemAmount))
 
         // Redeem rTokens with another user
         await main.connect(addr2).redeem(redeemAmount)
@@ -907,7 +913,7 @@ describe('MainP0 contract', () => {
         expect(await token3.balanceOf(addr2.address)).to.equal(initialBal)
 
         // Check asset value
-        expect(await main.totalAssetValue()).to.equal(issueAmount.mul(2).sub(redeemAmount.mul(2)))
+        expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2).sub(redeemAmount.mul(2)))
       })
     })
   })

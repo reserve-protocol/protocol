@@ -4,12 +4,12 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/main/AssetRegistry.sol";
 import "contracts/p0/main/SettingsHandler.sol";
 import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/main/RewardClaimer.sol";
 import "contracts/p0/main/RTokenIssuer.sol";
 import "contracts/p0/main/Auctioneer.sol";
-import "contracts/p0/main/AssetRegistry.sol";
 import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
@@ -23,9 +23,9 @@ contract MainP0 is
     Ownable,
     Pausable,
     Mixin,
-    AssetRegistryP0,
     SettingsHandlerP0,
     RevenueDistributorP0,
+    AssetRegistryP0,
     BasketHandlerP0,
     AuctioneerP0,
     RewardClaimerP0,
@@ -42,9 +42,9 @@ contract MainP0 is
         override(
             IMixin,
             Mixin,
-            AssetRegistryP0,
             SettingsHandlerP0,
             RevenueDistributorP0,
+            AssetRegistryP0,
             BasketHandlerP0,
             AuctioneerP0,
             RewardClaimerP0,

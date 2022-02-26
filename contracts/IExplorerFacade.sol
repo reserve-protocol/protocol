@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -16,6 +16,8 @@ interface IExplorerFacade {
 
     function doFurnaceMelting() external;
 
+    function ensureValidBasket() external;
+
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external view returns (uint256);
 
@@ -23,4 +25,6 @@ interface IExplorerFacade {
         external
         view
         returns (address[] memory tokens, uint256[] memory quantities);
+
+    function totalAssetValue() external view returns (Fix total);
 }

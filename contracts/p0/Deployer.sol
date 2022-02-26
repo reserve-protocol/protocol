@@ -56,8 +56,8 @@ contract DeployerP0 is IDeployer {
         market = market_;
         comptroller = comptroller_;
         aaveLendingPool = aaveLendingPool_;
-        compoundClaimer = new CompoundClaimAdapterP0(comptroller_, address(comp_));
-        aaveClaimer = new AaveClaimAdapterP0(address(aave_));
+        compoundClaimer = new CompoundClaimAdapterP0(comptroller_, comp_);
+        aaveClaimer = new AaveClaimAdapterP0(aave_);
     }
 
     /// Deploys an instance of the entire system
@@ -66,69 +66,63 @@ contract DeployerP0 is IDeployer {
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param config Governance params
     /// @param dist The revenue shares distribution
+    /// @param maxAuctionSize {UoA} The max auction size to use for RToken/RSR/COMP/AAVE
     /// @return The address of the newly deployed Main instance.
     function deploy(
         string memory name,
         string memory symbol,
         address owner,
         Config memory config,
-        RevenueShare memory dist
+        RevenueShare memory dist,
+        Fix maxAuctionSize
     ) external override returns (address) {
-        ConstructorArgs memory ctorArgs;
-
         IMain main = deployMain();
         deployments.push(main);
 
-        {
-            IRToken rToken = deployRToken(main, name, symbol, owner);
-            IFurnace revenueFurnace = deployRevenueFurnace(
-                rToken,
-                config.rewardPeriod,
-                Fix.wrap(0.1591e18) // TODO: Route through a deploy() argument?
-            );
-            Ownable(address(revenueFurnace)).transferOwnership(owner);
+        // Prepare ConstructorArgs
+        ConstructorArgs memory ctorArgs;
+        ctorArgs.config = config;
+        ctorArgs.dist = dist;
+        ctorArgs.market = market;
+        ctorArgs.rsr = rsr;
+        ctorArgs.stRSR = deployStRSR(
+            main,
+            string(abi.encodePacked("st", symbol, "RSR Token")),
+            string(abi.encodePacked("st", symbol, "RSR")),
+            owner
+        );
+        ctorArgs.rToken = deployRToken(main, name, symbol, owner);
+        ctorArgs.furnace = deployRevenueFurnace(ctorArgs.rToken, config.rewardPeriod);
+        Ownable(address(ctorArgs.furnace)).transferOwnership(owner);
+        ctorArgs.claimAdapters = new IClaimAdapter[](2);
+        ctorArgs.claimAdapters[0] = compoundClaimer;
+        ctorArgs.claimAdapters[1] = aaveClaimer;
+        ctorArgs.assets = new IAsset[](4);
+        ctorArgs.assets[0] = new RTokenAssetP0(ctorArgs.rToken, maxAuctionSize, main);
+        ctorArgs.assets[1] = new AavePricedAssetP0(
+            rsr,
+            maxAuctionSize,
+            comptroller,
+            aaveLendingPool
+        );
+        ctorArgs.assets[2] = new AavePricedAssetP0(
+            aave,
+            maxAuctionSize,
+            comptroller,
+            aaveLendingPool
+        );
+        ctorArgs.assets[3] = new CompoundPricedAssetP0(comp, maxAuctionSize, comptroller);
 
-            IClaimAdapter[] memory claimAdapters = new IClaimAdapter[](2);
-            claimAdapters[0] = compoundClaimer;
-            claimAdapters[1] = aaveClaimer;
-
-            ctorArgs = ConstructorArgs(config, dist, revenueFurnace, market, claimAdapters);
-
-            RTokenAssetP0 rTokenAsset = new RTokenAssetP0(rToken, main);
-            main.setRTokenAsset(rTokenAsset);
-            main.activateAsset(rTokenAsset);
-        }
-
-        {
-            AssetP0 rsrAsset = new AavePricedAssetP0(rsr, comptroller, aaveLendingPool);
-            AssetP0 aaveAsset = new AavePricedAssetP0(aave, comptroller, aaveLendingPool);
-            AssetP0 compAsset = new CompoundPricedAssetP0(comp, comptroller);
-
-            main.setRSRAsset(rsrAsset);
-            main.activateAsset(rsrAsset);
-            main.addAsset(aaveAsset);
-            main.activateAsset(aaveAsset);
-            main.addAsset(compAsset);
-            main.activateAsset(compAsset);
-        }
-
-        {
-            IStRSR stRSR = deployStRSR(
-                main,
-                string(abi.encodePacked("st", symbol, "RSR Token")),
-                string(abi.encodePacked("st", symbol, "RSR")),
-                owner
-            );
-            main.setStRSR(stRSR);
-        }
-
+        // Init
         main.init(ctorArgs);
 
+        // Roles
         main.setPauser(owner);
         Ownable(address(main)).transferOwnership(owner);
 
+        // Facade
         IExplorerFacade facade = new ExplorerFacadeP0(address(main));
-        emit RTokenCreated(main, main.rToken(), main.stRSR(), facade, owner);
+        emit RTokenCreated(main, ctorArgs.rToken, ctorArgs.stRSR, facade, owner);
         return (address(main));
     }
 

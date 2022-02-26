@@ -33,12 +33,14 @@ interface IDeployer {
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param config Governance param
     /// @param dist Shares of revenue initially to RSR pool and RToken melting
+    /// @param maxAuctionSize {UoA} The max auction size to use for RToken/RSR/COMP/AAVE
     /// @return The address of the newly deployed Main instance.
     function deploy(
         string calldata name,
         string calldata symbol,
         address owner,
         Config calldata config,
-        RevenueShare calldata dist
+        RevenueShare calldata dist,
+        Fix maxAuctionSize
     ) external returns (address);
 }

@@ -84,31 +84,29 @@ library Lib {
     function _assertConfigEq(Config memory a, Config memory b) internal pure returns (bool) {
         return
             assertEq(a.rewardStart, b.rewardStart, "Config.rewardStart") &&
-            assertEq(a.rewardPeriod, b.rewardPeriod, "Config.rewardStart") &&
-            assertEq(a.auctionPeriod, b.auctionPeriod, "Config.rewardStart") &&
-            assertEq(a.stRSRWithdrawalDelay, b.stRSRWithdrawalDelay, "Config.rewardStart") &&
+            assertEq(a.rewardPeriod, b.rewardPeriod, "Config.rewardPeriod") &&
+            assertEq(a.auctionPeriod, b.auctionPeriod, "Config.auctionPeriod") &&
+            assertEq(a.stRSRPayPeriod, b.stRSRPayPeriod, "Config.stRSRPayPeriod") &&
+            assertEq(
+                a.stRSRWithdrawalDelay,
+                b.stRSRWithdrawalDelay,
+                "Config.stRSRWithdrawalDelay"
+            ) &&
             assertEq(a.defaultDelay, b.defaultDelay, "Config.rewardStart") &&
             assertEq(
                 _rawFix(a.maxTradeSlippage),
                 _rawFix(b.maxTradeSlippage),
                 "Config.maxTradeSlippage"
             ) &&
-            assertEq(
-                _rawFix(a.maxAuctionSize),
-                _rawFix(b.maxAuctionSize),
-                "Config.maxAuctionSize"
-            ) &&
-            assertEq(
-                _rawFix(a.minRevenueAuctionSize),
-                _rawFix(b.minRevenueAuctionSize),
-                "Config.minRevenueAuctionSize"
-            ) &&
+            assertEq(_rawFix(a.dustAmount), _rawFix(b.dustAmount), "Config.dustAmount") &&
+            assertEq(_rawFix(a.backingBuffer), _rawFix(b.backingBuffer), "Config.backingBuffer") &&
             assertEq(_rawFix(a.issuanceRate), _rawFix(b.issuanceRate), "Config.issuanceRate") &&
             assertEq(
                 _rawFix(a.defaultThreshold),
                 _rawFix(b.defaultThreshold),
                 "Config.defaultThreshold"
-            );
+            ) &&
+            assertEq(_rawFix(a.stRSRPayRatio), _rawFix(b.stRSRPayRatio), "Config.stRSRPayRatio");
     }
 
     function _assertDistEq(RevenueDestination[] memory a, RevenueDestination[] memory b)
