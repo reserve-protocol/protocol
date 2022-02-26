@@ -22,11 +22,11 @@ contract MainCallerMockP0 {
     }
 
     function fullyCapitalized() external view returns (bool) {
-        return main.fullyCapitalized();
+        return main.basketHandler().fullyCapitalized();
     }
 
     function worstCollateralStatus() external view returns (CollateralStatus) {
-        return main.worstCollateralStatus();
+        return main.basketHandler().worstCollateralStatus();
     }
 
     function rsr() external view returns (IERC20) {

@@ -40,7 +40,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
     }
 
     function ensureValidBasket() external override {
-        main.ensureValidBasket();
+        main.basketHandler().ensureValidBasket();
     }
 
     /// @return How many RToken `account` can issue given current holdings

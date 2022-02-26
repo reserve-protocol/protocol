@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IAsset.sol";
+import "contracts/p0/interfaces/IBasketHandler.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
@@ -99,8 +100,10 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         require(rsrAmount > 0, "Cannot stake zero");
         require(!main.paused(), "main paused");
 
+        IBasketHandler bh = main.basketHandler();
+
         // Process pending withdrawals
-        if (main.fullyCapitalized() && main.worstCollateralStatus() == CollateralStatus.SOUND) {
+        if (bh.fullyCapitalized() && bh.worstCollateralStatus() == CollateralStatus.SOUND) {
             _processWithdrawals(account);
         }
         _payoutRewards();
@@ -127,8 +130,12 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
         require(!main.paused(), "main paused");
-        require(main.fullyCapitalized(), "RToken uncapitalized");
-        require(main.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+
+        require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
+        require(
+            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
+            "basket defaulted"
+        );
 
         // Process pending withdrawals
         _processWithdrawals(account);
@@ -157,8 +164,11 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
 
     function processWithdrawals(address account) public {
         require(!main.paused(), "main paused");
-        require(main.fullyCapitalized(), "RToken uncapitalized");
-        require(main.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+        require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
+        require(
+            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
+            "basket defaulted"
+        );
         _processWithdrawals(account);
     }
 

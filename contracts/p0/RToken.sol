@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IMain.sol";
+import "contracts/p0/interfaces/IBasketHandler.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -80,7 +81,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             baskets: baskets,
             erc20s: erc20s,
             deposits: deposits,
-            basketNonce: main.basketNonce(),
+            basketNonce: main.basketHandler().basketNonce(),
             blockAvailableAt: nextIssuanceBlockAvailable(amount, issuanceRate[block.number]),
             processed: false
         });
@@ -125,7 +126,10 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     /// @return vested {qRTok} The total amount of RToken quanta vested
     function vestIssuances(address account) external override returns (uint256 vested) {
         require(!main.paused(), "main is paused");
-        require(main.worstCollateralStatus() == CollateralStatus.SOUND, "collateral default");
+        require(
+            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
+            "collateral default"
+        );
 
         for (uint256 i = 0; i < issuances[account].length; i++) {
             vested += tryVestIssuance(account, i);
@@ -180,7 +184,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         SlowIssuance storage iss = issuances[issuer][index];
         if (
             !iss.processed &&
-            iss.basketNonce == main.basketNonce() &&
+            iss.basketNonce == main.basketHandler().basketNonce() &&
             iss.blockAvailableAt.lte(toFix(block.number))
         ) {
             for (uint256 i = 0; i < iss.erc20s.length; i++) {

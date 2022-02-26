@@ -7,17 +7,10 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
-import "contracts/p0/main/AssetRegistry.sol";
-import "contracts/p0/main/BasketHandler.sol";
-import "contracts/p0/main/RevenueDistributor.sol";
-import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/Component.sol";
 import "contracts/p0/Trader.sol";
 import "contracts/p0/RevenueTrader.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/Pausable.sol";
-import "./SettingsHandler.sol";
-import "./BasketHandler.sol";
 
 /**
  * @title Auctioneer
@@ -42,12 +35,12 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
     }
 
     function manageFunds() external override notPaused {
-        main.forceCollateralUpdates();
+        main.basketHandler().forceCollateralUpdates();
         closeDueAuctions();
 
         if (hasOpenAuctions()) return;
 
-        if (main.fullyCapitalized()) {
+        if (main.basketHandler().fullyCapitalized()) {
             handoutExcessAssets();
             return;
         }
@@ -65,7 +58,7 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
     function handoutExcessAssets() private {
         IRToken rToken = main.rToken();
 
-        Fix held = main.basketsHeldBy(address(main));
+        Fix held = main.basketHandler().basketsHeldBy(address(main));
         Fix needed = rToken.basketsNeeded();
 
         // Mint revenue RToken
@@ -84,7 +77,7 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
         // Handout excess assets above what is needed, including any newly minted RToken
         for (uint256 i = 0; i < erc20s.length; i++) {
             uint256 bal = erc20s[i].balanceOf(address(main));
-            uint256 neededI = needed.mul(main.basketQuantity(erc20s[i])).ceil();
+            uint256 neededI = needed.mul(main.basketHandler().basketQuantity(erc20s[i])).ceil();
 
             if (bal > neededI) {
                 (uint256 rsrShares, uint256 totalShares) = main.rsrCut();
@@ -137,7 +130,7 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
     /// Try to seize RSR and sell it for missing collateral
     /// @return Whether an auction was launched
     function sellRSRForCollateral() private returns (bool) {
-        assert(!hasOpenAuctions() && !main.fullyCapitalized());
+        assert(!hasOpenAuctions() && !main.basketHandler().fullyCapitalized());
 
         IERC20Metadata rsr = main.rsr();
         IStRSR stRSR = main.stRSR();
@@ -163,9 +156,9 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
     function giveRTokenHoldersAHaircut() private returns (bool) {
-        assert(!hasOpenAuctions() && !main.fullyCapitalized());
-        main.rToken().setBasketsNeeded(main.basketsHeldBy(address(main)));
-        assert(main.fullyCapitalized());
+        assert(!hasOpenAuctions() && !main.basketHandler().fullyCapitalized());
+        main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(main)));
+        assert(main.basketHandler().fullyCapitalized());
         return true;
     }
 
@@ -199,7 +192,7 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
             // needed: {qTok} that Main must hold to meet obligations
             uint256 needed;
             if (main.toAsset(erc20s[i]).isCollateral()) {
-                needed = basketsNeeded.mul(main.basketQuantity(erc20s[i])).ceil();
+                needed = basketsNeeded.mul(main.basketHandler().basketQuantity(erc20s[i])).ceil();
             }
             // held: {qTok} that Main is already holding
             uint256 held = erc20s[i].balanceOf(address(main));

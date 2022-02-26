@@ -6,11 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/main/AssetRegistry.sol";
 import "contracts/p0/main/SettingsHandler.sol";
+import "contracts/p0/main/RevenueDistributor.sol";
 import "contracts/p0/main/Mixin.sol";
-import "contracts/p0/main/RewardClaimer.sol";
-import "contracts/p0/main/RTokenIssuer.sol";
-import "contracts/p0/main/Auctioneer.sol";
-import "contracts/p0/main/BasketHandler.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/interfaces/IRTokenIssuer.sol";
@@ -27,7 +24,6 @@ contract MainP0 is
     SettingsHandlerP0,
     RevenueDistributorP0,
     AssetRegistryP0,
-    BasketHandlerP0,
     IMain
 {
     using FixLib for Fix;
@@ -54,18 +50,18 @@ contract MainP0 is
         auctioneer = val;
     }
 
+    IBasketHandler public basketHandler;
+
+    function setBasketHandler(IBasketHandler val) external onlyOwner {
+        emit BasketHandlerSet(basketHandler, val);
+        basketHandler = val;
+    }
+
     /// Initializer
     function init(ConstructorArgs calldata args)
         public
         virtual
-        override(
-            IMixin,
-            Mixin,
-            SettingsHandlerP0,
-            RevenueDistributorP0,
-            AssetRegistryP0,
-            BasketHandlerP0
-        )
+        override(IMixin, Mixin, SettingsHandlerP0, RevenueDistributorP0, AssetRegistryP0)
         onlyOwner
     {
         super.init(args);
@@ -81,6 +77,10 @@ contract MainP0 is
         emit AuctioneerSet(auctioneer, args.auctioneer);
         auctioneer = args.auctioneer;
         auctioneer.initComponent(this, args);
+
+        emit BasketHandlerSet(basketHandler, args.basketHandler);
+        basketHandler = args.basketHandler;
+        basketHandler.initComponent(this, args);
     }
 
     function owner() public view virtual override(IMain, Ownable) returns (address) {
