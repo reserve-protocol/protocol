@@ -316,7 +316,7 @@ describe('MainP0 contract', () => {
         // Check state
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.DISABLED)
         expect(await main.fullyCapitalized()).to.equal(true)
-        expect(await facade.totalAssetValue()).to.equal(bn('75e18'))  // 25% defaulted, value = 0
+        expect(await facade.totalAssetValue()).to.equal(bn('75e18')) // 25% defaulted, value = 0
         await expectCurrentBacking(facade, {
           tokens: initialTokens,
           quantities: initialQuantities,

@@ -13,7 +13,7 @@
         "deploy:p0": "TASKS=true npx hardhat run scripts/proto0/deploy_all.ts --network localhost",
         "devchain": "npx hardhat node",
         "test": "npx hardhat test",
-        "test:p0": "NODE_ENV_PROTO=p0 npx hardhat test test/p0/*.test.ts",
+        "test:p0": "npx hardhat test test/p0/*.test.ts",
         "test:coverage": "npx hardhat coverage --temp artifacts",
         "test:generic": "npx hardhat test test/generic/*.test.ts",
         "test:parallel": "mocha --require hardhat/register --recursive --parallel --exit",
