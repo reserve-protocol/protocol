@@ -241,8 +241,8 @@ describe('FurnaceP0 contract', () => {
       // Advance to the end to withdraw full amount
       await advanceTime(2 * period + 1)
 
-      // Melt
-      await furnace.connect(addr1).melt()
+      // Melt - via facade (same result)
+      await facade.doFurnaceMelting()
 
       const decayFn = makeDecayFn(await furnace.ratio())
       const expAmt = decayFn(hndAmt, 2) // 2 periods
