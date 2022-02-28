@@ -118,39 +118,34 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         }
     }
 
+    /// Cancels a vesting slow issuance
+    /// @param account The account of the issuer, and caller
+    /// @param throughIndex The index of the issuance in the issuer's queue to cancel through
+    /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     function cancelIssuances(
         address account,
         uint256 throughIndex,
         bool earliest
     ) public returns (uint256[] memory deposits) {
-        SlowIssuance[] storage queue = issuances[account];
-        (uint256 first, uint256 last) = earliest ? (0, throughIndex) : (throughIndex, queue.length);
+        require(account == _msgSender(), "issuer does not match caller");
 
-        for (uint256 n = first; n < last; n++) {
+        SlowIssuance[] storage queue = issuances[account];
+        (uint256 first, uint256 last) = earliest
+            ? (0, throughIndex)
+            : (throughIndex, queue.length - 1);
+
+        for (uint256 n = first; n <= last; n++) {
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
+                deposits = new uint256[](iss.erc20s.length);
                 for (uint256 i = 0; i < iss.erc20s.length; i++) {
                     IERC20(iss.erc20s[i]).safeTransfer(iss.issuer, iss.deposits[i]);
                     deposits[i] += iss.deposits[i];
                 }
+                iss.processed = true;
             }
         }
-    }
-
-    /// Cancels a vesting slow issuance
-    /// @param account The account of the issuer, and caller
-    /// @param index The index of the issuance in the issuer's queue
-    function cancelIssuance(address account, uint256 index) public {
-        require(account == _msgSender(), "issuer does not match caller");
-        SlowIssuance storage iss = issuances[_msgSender()][index];
-        require(!iss.processed, "issuance already processed");
-
-        for (uint256 i = 0; i < iss.erc20s.length; i++) {
-            IERC20(iss.erc20s[i]).safeTransfer(iss.issuer, iss.deposits[i]);
-        }
-
-        iss.processed = true;
-        emit IssuancesCanceled(iss.issuer, index, index);
+        emit IssuancesCanceled(account, first, last);
     }
 
     /// Completes all vested slow issuances for the account, callable by anyone
