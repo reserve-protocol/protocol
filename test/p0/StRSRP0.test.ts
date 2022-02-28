@@ -470,10 +470,6 @@ describe('StRSRP0 contract', () => {
       expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
     })
 
-    it('Should only allow to notifyDeposits for the RSR token', async () => {
-      await expect(stRSR.notifyOfDeposit(other.address)).to.be.revertedWith('RSR dividends only')
-    })
-
     it('Should allow to add RSR - Single staker', async () => {
       const amount: BigNumber = bn('1e18')
       const amount2: BigNumber = bn('10e18')

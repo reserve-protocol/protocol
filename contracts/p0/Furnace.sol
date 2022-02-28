@@ -29,6 +29,7 @@ contract FurnaceP0 is Ownable, IFurnace {
         Fix ratio_
     ) {
         require(address(rToken_) != address(0), "rToken is zero address");
+        require(period_ != 0, "period cannot be zero");
         rToken = rToken_;
         period = period_;
         ratio = ratio_;
@@ -37,12 +38,14 @@ contract FurnaceP0 is Ownable, IFurnace {
 
     /// Period setting
     function setPeriod(uint256 period_) external override onlyOwner {
+        require(period_ != 0, "period cannot be zero");
         emit PeriodSet(period, period_);
         period = period_;
     }
 
     /// Ratio setting
     function setRatio(Fix ratio_) external override onlyOwner {
+        // The ratio can safely be set to 0
         emit RatioSet(ratio, ratio_);
         ratio = ratio_;
     }

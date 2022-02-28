@@ -60,6 +60,12 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
             if (numberOfShares == 0) continue;
 
             uint256 transferAmt = tokensPerShare * numberOfShares;
+
+            if (addrTo == FURNACE) {
+                addrTo = address(revenueFurnace());
+            } else if (addrTo == ST_RSR) {
+                addrTo = address(stRSR());
+            }
             erc20.safeTransferFrom(from, addrTo, transferAmt);
         }
     }
