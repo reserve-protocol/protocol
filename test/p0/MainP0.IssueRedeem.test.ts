@@ -718,12 +718,12 @@ describe('MainP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Attempt to cancel issuance with another user
-      await expect(rToken.connect(owner).cancelIssuance(addr1.address, 0)).to.be.revertedWith(
-        'issuer does not match caller'
-      )
+      await expect(
+        rToken.connect(owner).cancelIssuances(addr1.address, 0, true)
+      ).to.be.revertedWith('issuer does not match caller')
 
       // Cancel with issuer
-      await expect(rToken.connect(addr1).cancelIssuance(addr1.address, 0))
+      await expect(rToken.connect(addr1).cancelIssuances(addr1.address, 0, true))
         .to.emit(rToken, 'IssuancesCanceled')
         .withArgs(addr1.address, 0, 0)
 
@@ -741,10 +741,8 @@ describe('MainP0 contract', () => {
       // Check total asset value did not change
       expect(await facade.totalAssetValue()).to.equal(0)
 
-      // Cannot cancel minting once processed
-      await expect(rToken.connect(addr1).cancelIssuance(addr1.address, 0)).to.be.revertedWith(
-        'issuance already processed'
-      )
+      // Another call will not do anything, will not revert
+      await rToken.connect(addr1).cancelIssuances(addr1.address, 0, true)
     })
 
     it('Should rollback mintings if Basket changes (2 blocks)', async function () {
@@ -789,8 +787,8 @@ describe('MainP0 contract', () => {
       await main.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await main.connect(owner).switchBasket()
 
-      // Process slow issuances
-      await expect(rToken.connect(addr1).cancelIssuance(addr1.address, 0))
+      // Cancel slow issuances
+      await expect(rToken.connect(addr1).cancelIssuances(addr1.address, 0, false))
         .to.emit(rToken, 'IssuancesCanceled')
         .withArgs(addr1.address, 0, 0)
 
