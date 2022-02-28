@@ -92,7 +92,8 @@ contract DeployerP0 is IDeployer {
             owner
         );
         ctorArgs.rToken = deployRToken(main, name, symbol, owner);
-        ctorArgs.furnace = deployRevenueFurnace(ctorArgs.rToken, config.rewardPeriod);
+        Fix furnaceRatio = config.stRSRPayRatio;
+        ctorArgs.furnace = deployRevenueFurnace(ctorArgs.rToken, config.rewardPeriod, furnaceRatio);
         Ownable(address(ctorArgs.furnace)).transferOwnership(owner);
         ctorArgs.claimAdapters = new IClaimAdapter[](2);
         ctorArgs.claimAdapters[0] = compoundClaimer;

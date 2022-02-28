@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/p0/interfaces/IERC20Receiver.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
  * @title IFurnace
  * @notice A helper contract to burn RTokens slowly and permisionlessly.
  */
-interface IFurnace is IERC20Receiver {
+interface IFurnace {
     /// Emitted when the melting period is changed
     /// @param oldPeriod The old period
     /// @param newPeriod The new period

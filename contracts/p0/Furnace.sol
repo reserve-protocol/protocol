@@ -47,12 +47,6 @@ contract FurnaceP0 is Ownable, IFurnace {
         ratio = ratio_;
     }
 
-    /// Causes the Furnace to re-examine its holdings and create new batches.
-    function notifyOfDeposit(IERC20 erc20) external override {
-        require(address(erc20) == address(rToken), "RToken only");
-        melt();
-    }
-
     /// Performs any melting that has vested since last call. Idempotent
     function melt() public override returns (uint256 amount) {
         if (block.timestamp < lastPayout + period) return 0;
