@@ -445,9 +445,6 @@ describe('MainP0 contract', () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
         // Furnace
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
-        const { amount, start } = await furnace.batches(0)
-        expect(amount).to.equal(minBuyAmtRToken)
-        expect(start).to.equal(await getLatestBlockTimestamp())
       })
 
       it('Should claim AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
@@ -546,9 +543,6 @@ describe('MainP0 contract', () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
         // Furnace
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
-        const { amount, start } = await furnace.batches(0)
-        expect(amount).to.equal(minBuyAmtRToken)
-        expect(start).to.equal(await getLatestBlockTimestamp())
       })
 
       it.skip('Should handle large auctions using maxAuctionSize with f=1 (RSR only)', async () => {
@@ -727,15 +721,6 @@ describe('MainP0 contract', () => {
         // Check previous auction is closed
         await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
 
-        // Check destinations at this stage
-        // StRSR
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        // Furnace
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmt)
-        let { amount, start } = await furnace.batches(0)
-        expect(amount).to.equal(minBuyAmt)
-        expect(start).to.equal(await getLatestBlockTimestamp())
-
         // Perform Mock Bids for RToken (addr1 has balance)
         await rToken.connect(addr1).approve(market.address, minBuyAmtRemainder)
         await market.placeBid(1, {
@@ -761,14 +746,6 @@ describe('MainP0 contract', () => {
         // Check balances in destinations
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        // Furnace - some melting occurred already at this point
-        let { melted } = await furnace.batches(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(
-          minBuyAmt.add(minBuyAmtRemainder).sub(melted)
-        )
-        ;({ amount, start } = await furnace.batches(1))
-        expect(amount).to.equal(minBuyAmtRemainder)
-        expect(start).to.equal(await getLatestBlockTimestamp())
       })
 
       it.skip('Should handle large auctions using maxAuctionSize with revenue split RSR/RToken', async () => {
@@ -921,9 +898,6 @@ describe('MainP0 contract', () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
         // Furnace
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
-        let { amount, start } = await furnace.batches(0)
-        expect(amount).to.equal(minBuyAmtRToken)
-        expect(start).to.equal(await getLatestBlockTimestamp())
 
         // Run final auction until all funds are converted
         // Advance time till auction ended
@@ -951,9 +925,6 @@ describe('MainP0 contract', () => {
         // Check balances at destinations
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.add(minBuyAmtRemainder))
-        // Furnace - Some melting occurred at this point
-        const { melted } = await furnace.batches(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken.sub(melted))
       })
 
       it('Should handle custom destinations correctly', async () => {
@@ -1092,9 +1063,6 @@ describe('MainP0 contract', () => {
         // Furnace - 50% to Furnace, 50% to other
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken.div(2))
         expect(await rToken.balanceOf(other.address)).to.equal(minBuyAmtRToken.div(2))
-        const { amount, start } = await furnace.batches(0)
-        expect(amount).to.equal(minBuyAmtRToken.div(2))
-        expect(start).to.equal(await getLatestBlockTimestamp())
       })
 
       it('Should claim and sweep rewards to Main from the Revenue Traders', async () => {
@@ -1531,9 +1499,6 @@ describe('MainP0 contract', () => {
         expect(near(await rsr.balanceOf(stRSR.address), minBuyAmt, 1)).to.equal(true)
         // Furnace
         expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 1)).to.equal(true)
-        const { amount, start } = await furnace.batches(0)
-        expect(near(amount, minBuyAmtRToken, 1)).to.equal(true)
-        expect(start).to.equal(await getLatestBlockTimestamp())
       })
 
       it.skip('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
@@ -1634,13 +1599,10 @@ describe('MainP0 contract', () => {
           .div(await rToken.totalSupply())
         expect(await main.rTokenPrice()).to.equal(updatedRTokenPrice)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
-        let { melted } = await furnace.batches(0)
-        expect(await rToken.totalSupply()).to.equal(newTotalSupply.sub(melted))
 
         // Check destinations after newly minted tokens
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
         expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(expectedToFurnace.sub(melted))
 
         // Check funds in Market
         expect(await rToken.balanceOf(market.address)).to.equal(expectedToTrader.sub(sellAmt))
@@ -1683,13 +1645,10 @@ describe('MainP0 contract', () => {
         updatedRTokenPrice = newTotalSupply.mul(BN_SCALE_FACTOR).div(await rToken.totalSupply())
         expect(await main.rTokenPrice()).to.equal(updatedRTokenPrice)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
-        ;({ melted } = await furnace.batches(0))
-        expect(await rToken.totalSupply()).to.equal(newTotalSupply.sub(melted))
 
         // Check destinations
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.add(minBuyAmtRemainder))
         expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(expectedToFurnace.sub(melted))
       })
 
       it('Should mint RTokens and handle remainder when collateral appreciates - Uneven quantity', async () => {
@@ -1899,8 +1858,6 @@ describe('MainP0 contract', () => {
           .div(await rToken.totalSupply())
         expect(await main.rTokenPrice()).to.equal(updatedRTokenPrice)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessRToken))
-        let { melted } = await furnace.batches(0)
-        expect(await rToken.totalSupply()).to.equal(newTotalSupply.sub(melted))
 
         //  Check destinations
         expect(await rsr.balanceOf(stRSR.address)).to.equal(
@@ -1909,9 +1866,6 @@ describe('MainP0 contract', () => {
         expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(
-          expectedToFurnaceFromRToken.add(minBuyAmtRTokenFromCollateral).sub(melted)
-        )
       })
     })
   })

@@ -796,8 +796,9 @@ describe('MainP0 contract', () => {
     it('Should allow to set RevenueFurnace if Owner and perform validations', async () => {
       // Setup test furnaces
       const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')
-      const newFurnace = <FurnaceP0>await FurnaceFactory.deploy(rToken.address, config.rewardPeriod)
-      const invalidFurnace = <FurnaceP0>await FurnaceFactory.deploy(rToken.address, 0)
+      const newFurnace = <FurnaceP0>(
+        await FurnaceFactory.deploy(rToken.address, config.rewardPeriod, config.stRSRPayRatio)
+      )
 
       // Check existing value
       expect(await main.revenueFurnace()).to.equal(furnace.address)
@@ -816,15 +817,6 @@ describe('MainP0 contract', () => {
         .withArgs(furnace.address, newFurnace.address)
 
       // Check value was updated
-      expect(await main.revenueFurnace()).to.equal(newFurnace.address)
-
-      // Ensure validation of reward period is checked
-      // Should not be able to update to a furnace with different rewardPeriod
-      await expect(
-        main.connect(owner).setRevenueFurnace(invalidFurnace.address)
-      ).to.be.revertedWith('does not match rewardPeriod')
-
-      // Check furnace was not updated
       expect(await main.revenueFurnace()).to.equal(newFurnace.address)
     })
   })

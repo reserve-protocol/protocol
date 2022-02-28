@@ -38,12 +38,12 @@ contract DeployerExtension is DeployerP0, IExtension {
         return MainExtension(_admin);
     }
 
-    function deployRevenueFurnace(IRToken rToken, uint256 batchDuration)
-        internal
-        override
-        returns (IFurnace)
-    {
-        return new FurnaceExtension(_admin, rToken, batchDuration);
+    function deployRevenueFurnace(
+        IRToken rToken,
+        uint256 period,
+        Fix ratio
+    ) internal override returns (IFurnace) {
+        return new FurnaceExtension(_admin, rToken, period, ratio);
     }
 
     function deployRToken(

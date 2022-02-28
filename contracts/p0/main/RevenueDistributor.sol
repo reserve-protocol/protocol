@@ -62,14 +62,11 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
             uint256 transferAmt = tokensPerShare * numberOfShares;
 
             if (addrTo == FURNACE) {
-                erc20.safeTransferFrom(from, address(revenueFurnace()), transferAmt);
-                revenueFurnace().notifyOfDeposit(erc20);
+                addrTo = address(revenueFurnace());
             } else if (addrTo == ST_RSR) {
-                erc20.safeTransferFrom(from, address(stRSR()), transferAmt);
-                stRSR().notifyOfDeposit(erc20);
-            } else {
-                erc20.safeTransferFrom(from, addrTo, transferAmt);
+                addrTo = address(stRSR());
             }
+            erc20.safeTransferFrom(from, addrTo, transferAmt);
         }
     }
 
