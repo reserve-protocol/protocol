@@ -916,8 +916,10 @@ describe('MainP0 contract', () => {
         'Ownable: caller is not the owner'
       )
 
-      // Nothing occurs if attempting to remove an unexisting asset
-      await main.connect(owner).unregisterAsset(newAsset.address)
+      // Cannot remove asset that does not exist
+      await expect(main.connect(owner).unregisterAsset(newAsset.address)).to.be.revertedWith(
+        'asset not found'
+      )
 
       // Check nothing changed
       allERC20s = await main.registeredERC20s()

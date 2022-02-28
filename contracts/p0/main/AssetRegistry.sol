@@ -37,25 +37,22 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     function swapRegisteredAsset(IAsset asset) external onlyOwner returns (bool) {
         require(erc20s.contains(address(asset.erc20())), "no ERC20 collision");
         assert(assets[asset.erc20()] != IAsset(address(0)));
-
         return _registerAssetIgnoringCollisions(asset);
     }
 
-    /// @return unregistered If the asset was moved from registered to unregistered
-    function unregisterAsset(IAsset asset) external onlyOwner returns (bool unregistered) {
-        unregistered = assets[asset.erc20()] == asset;
-        if (unregistered) {
-            erc20s.remove(address(asset.erc20()));
-            assets[asset.erc20()] = IAsset(address(0));
-            emit AssetUnregistered(asset.erc20(), asset);
-        }
+    /// Unregister an asset, requiring that it is already registered
+    function unregisterAsset(IAsset asset) external onlyOwner {
+        require(erc20s.contains(address(asset.erc20())), "no asset to unregister");
+        require(assets[asset.erc20()] == asset, "asset not found");
+        erc20s.remove(address(asset.erc20()));
+        assets[asset.erc20()] = IAsset(address(0));
+        emit AssetUnregistered(asset.erc20(), asset);
     }
 
     /// Return the Asset modelling this ERC20, or revert
     function toAsset(IERC20Metadata erc20) public view override returns (IAsset) {
         require(erc20s.contains(address(erc20)), "erc20 unregistered");
         assert(assets[erc20] != IAsset(address(0)));
-
         return assets[erc20];
     }
 
@@ -64,7 +61,6 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
         require(erc20s.contains(address(erc20)), "erc20 unregistered");
         assert(assets[erc20] != IAsset(address(0)));
         require(assets[erc20].isCollateral(), "erc20 is not collateral");
-
         return ICollateral(address(assets[erc20]));
     }
 
