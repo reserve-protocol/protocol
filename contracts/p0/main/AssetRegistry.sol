@@ -36,6 +36,8 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     /// @return If the asset was swapped for a previously-registered asset
     function swapRegisteredAsset(IAsset asset) external onlyOwner returns (bool) {
         require(erc20s.contains(address(asset.erc20())), "no ERC20 collision");
+        assert(assets[asset.erc20()] != IAsset(address(0)));
+
         return _registerAssetIgnoringCollisions(asset);
     }
 
@@ -52,13 +54,17 @@ contract AssetRegistryP0 is Ownable, Mixin, IAssetRegistry {
     /// Return the Asset modelling this ERC20, or revert
     function toAsset(IERC20Metadata erc20) public view override returns (IAsset) {
         require(erc20s.contains(address(erc20)), "erc20 unregistered");
+        assert(assets[erc20] != IAsset(address(0)));
+
         return assets[erc20];
     }
 
     /// Return the Collateral modelling this ERC20, or revert
     function toColl(IERC20Metadata erc20) public view override returns (ICollateral) {
         require(erc20s.contains(address(erc20)), "erc20 unregistered");
+        assert(assets[erc20] != IAsset(address(0)));
         require(assets[erc20].isCollateral(), "erc20 is not collateral");
+
         return ICollateral(address(assets[erc20]));
     }
 
