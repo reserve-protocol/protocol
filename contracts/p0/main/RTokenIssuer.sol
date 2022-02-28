@@ -86,7 +86,7 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
     }
 
     /// @return tokens The addresses of the ERC20s backing the RToken
-    function basketTokens() public view override returns (address[] memory tokens) {
+    function basketTokens() public view returns (address[] memory tokens) {
         (tokens, ) = main.basketHandler().basketQuote(FIX_ONE, RoundingApproach.ROUND);
     }
 

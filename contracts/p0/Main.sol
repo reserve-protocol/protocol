@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/main/Settings.sol";
-import "contracts/p0/main/Mixin.sol";
 import "contracts/p0/interfaces/IMain.sol"; //
 import "contracts/Pausable.sol";
 
@@ -13,8 +12,11 @@ import "contracts/Pausable.sol";
  * @title Main
  * @notice Collects all mixins.
  */
-contract MainP0 is Ownable, Pausable, Mixin, IMain {
+contract MainP0 is Ownable, Pausable, IMain {
     using FixLib for Fix;
+
+    // Already initialized?
+    bool private initialized;
 
     // === Registered Contracts ===
     IRTokenIssuer public rTokenIssuer;
@@ -68,42 +70,43 @@ contract MainP0 is Ownable, Pausable, Mixin, IMain {
 
     IStRSR public stRSR;
 
-    function setStRSR(IStRSR val) external override onlyOwner {
+    function setStRSR(IStRSR val) external onlyOwner {
         emit StRSRSet(stRSR, val);
         stRSR = val;
     }
 
     IFurnace public revenueFurnace;
 
-    function setRevenueFurnace(IFurnace val) external override onlyOwner {
+    function setRevenueFurnace(IFurnace val) external onlyOwner {
         emit RevenueFurnaceSet(revenueFurnace, val);
         revenueFurnace = val;
     }
 
     IRToken public rToken;
 
-    function setRToken(IRToken val) external override onlyOwner {
+    function setRToken(IRToken val) external onlyOwner {
         emit RTokenSet(rToken, val);
         rToken = val;
     }
 
     IERC20Metadata public rsr;
 
-    function setRSR(IERC20Metadata val) external override onlyOwner {
+    function setRSR(IERC20Metadata val) external onlyOwner {
         emit RSRSet(rsr, val);
         rsr = val;
     }
 
     IMarket public market;
 
-    function setMarket(IMarket val) external override onlyOwner {
+    function setMarket(IMarket val) external onlyOwner {
         emit MarketSet(market, val);
         market = val;
     }
 
     /// Initializer
-    function init(ConstructorArgs calldata args) public virtual override(IMixin, Mixin) onlyOwner {
-        super.init(args);
+    function init(ConstructorArgs calldata args) public onlyOwner {
+        require(!initialized, "Already initialized");
+        initialized = true;
 
         emit RTokenIssuerSet(rTokenIssuer, args.rTokenIssuer);
         rTokenIssuer = args.rTokenIssuer;
@@ -151,9 +154,11 @@ contract MainP0 is Ownable, Pausable, Mixin, IMain {
         emit RTokenSet(rToken, args.rToken);
         rToken = args.rToken;
         // TODO: initComponent
+
+        emit Initialized();
     }
 
-    function owner() public view virtual override(IMain, Ownable) returns (address) {
+    function owner() public view override(IMain, Ownable) returns (address) {
         return Ownable.owner();
     }
 }

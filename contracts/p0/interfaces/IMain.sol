@@ -76,12 +76,6 @@ struct ConstructorArgs {
     IAsset[] assets;
 }
 
-interface IMixin {
-    event Initialized();
-
-    function init(ConstructorArgs calldata args) external;
-}
-
 interface IPausable {
     /// Emitted when the paused status is set
     /// @param oldPaused The old value of the paused state
@@ -109,7 +103,7 @@ interface IPausable {
  * @notice The central coordinator for the entire system, as well as the external interface.
  * @dev The p0-specific IMain
  */
-interface IMain is IPausable, IMixin {
+interface IMain is IPausable {
     event RTokenIssuerSet(IRTokenIssuer indexed oldVal, IRTokenIssuer indexed newVal);
 
     function rTokenIssuer() external view returns (IRTokenIssuer);
@@ -186,6 +180,9 @@ interface IMain is IPausable, IMixin {
     function setStRSR(IStRSR stRSR) external;
 
     // ---
+    event Initialized();
+
+    function init(ConstructorArgs calldata args) external;
 
     function owner() external view returns (address);
 }
