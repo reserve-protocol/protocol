@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/p0/interfaces/IERC20Receiver.sol";
 import "./IMain.sol";
 
 /*
@@ -11,7 +10,7 @@ import "./IMain.sol";
  * to seize that staked RSR when needed.
  * @dev The p0-specific IStRSR
  */
-interface IStRSR is IERC20Receiver, IERC20Permit, IERC20 {
+interface IStRSR is IERC20Permit, IERC20 {
     /// Emitted when Main is set
     /// @param oldMain The old address of Main
     /// @param newMain The new address of Main

@@ -1,28 +1,32 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/p0/interfaces/IERC20Receiver.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
  * @title IFurnace
  * @notice A helper contract to burn RTokens slowly and permisionlessly.
  */
-interface IFurnace is IERC20Receiver {
-    /// @param amount {qRTok} The total amount to be melted over the period
-    /// @param end {sec} The timestamp the melt should end at
-    /// @param who The account that created the distribution
-    event DistributionCreated(uint256 indexed amount, uint256 indexed end, address who);
+interface IFurnace {
+    /// Emitted when the melting period is changed
+    /// @param oldPeriod The old period
+    /// @param newPeriod The new period
+    event PeriodSet(uint256 indexed oldPeriod, uint256 indexed newPeriod);
 
-    /// Emitted when the batch duration is changed
-    /// @param oldBatchDuration The old value of `batchDuration`
-    /// @param newBatchDuration The new value of `batchDuration`
-    event BatchDurationSet(uint256 indexed oldBatchDuration, uint256 indexed newBatchDuration);
+    function period() external view returns (uint256);
 
-    /// Performs any RToken burning that has vested since last call. Idempotent.
-    function melt() external;
+    function setPeriod(uint256) external;
 
-    function setBatchDuration(uint256 batchDuration) external;
+    /// Emitted when the melting ratio is changed
+    /// @param oldRatio The old ratio
+    /// @param newRatio The new ratio
+    event RatioSet(Fix indexed oldRatio, Fix indexed newRatio);
 
-    function batchDuration() external view returns (uint256);
+    function ratio() external view returns (Fix);
+
+    function setRatio(Fix) external;
+
+    /// Performs any RToken melting that has vested since the last payout. Idempotent.
+    /// @return amount How much RToken was melted
+    function melt() external returns (uint256 amount);
 }

@@ -68,14 +68,11 @@ contract RevenueDistributorP0 is Component, IRevenueDistributor {
             }
 
             if (addrTo == FURNACE) {
-                erc20.safeTransferFrom(from, address(main.revenueFurnace()), transferAmt);
-                main.revenueFurnace().notifyOfDeposit(erc20);
+                addrTo = address(revenueFurnace());
             } else if (addrTo == ST_RSR) {
-                erc20.safeTransferFrom(from, address(main.stRSR()), transferAmt);
-                main.stRSR().notifyOfDeposit(erc20);
-            } else {
-                erc20.safeTransferFrom(from, addrTo, transferAmt);
+                addrTo = address(stRSR());
             }
+            erc20.safeTransferFrom(from, addrTo, transferAmt);
         }
     }
 

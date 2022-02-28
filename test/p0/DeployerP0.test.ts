@@ -154,7 +154,6 @@ describe('DeployerP0 contract', () => {
 
     it('Should setup Furnace correctly', async () => {
       expect(await furnace.rToken()).to.equal(rToken.address)
-      expect(await furnace.batchDuration()).to.equal(config.rewardPeriod)
       expect(await furnace.owner()).to.equal(owner.address)
     })
 

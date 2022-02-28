@@ -136,12 +136,6 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
         _processWithdrawals(account);
     }
 
-    function notifyOfDeposit(IERC20 erc20) external override {
-        require(erc20 == main.rsr(), "RSR dividends only");
-        // NOTE: This is pretty optional here; maybe this function's just a no-op?
-        _payoutRewards();
-    }
-
     /// @param rsrAmount {qRSR}
     /// @return seizedRSR {qRSR} The actual rsrAmount seized.
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.

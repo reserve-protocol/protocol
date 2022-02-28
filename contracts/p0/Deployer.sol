@@ -92,7 +92,8 @@ contract DeployerP0 is IDeployer {
             owner
         );
         ctorArgs.rToken = deployRToken(main, name, symbol, owner);
-        ctorArgs.furnace = deployRevenueFurnace(ctorArgs.rToken, config.rewardPeriod);
+        Fix furnaceRatio = config.stRSRPayRatio;
+        ctorArgs.furnace = deployRevenueFurnace(ctorArgs.rToken, config.rewardPeriod, furnaceRatio);
         Ownable(address(ctorArgs.furnace)).transferOwnership(owner);
         ctorArgs.claimAdapters = new IClaimAdapter[](2);
         ctorArgs.claimAdapters[0] = compoundClaimer;
@@ -142,12 +143,12 @@ contract DeployerP0 is IDeployer {
         return new RTokenP0(main, name, symbol, owner);
     }
 
-    function deployRevenueFurnace(IRToken rToken, uint256 batchDuration)
-        internal
-        virtual
-        returns (IFurnace)
-    {
-        return new FurnaceP0(rToken, batchDuration);
+    function deployRevenueFurnace(
+        IRToken rToken,
+        uint256 period,
+        Fix ratio
+    ) internal virtual returns (IFurnace) {
+        return new FurnaceP0(rToken, period, ratio);
     }
 
     function deployStRSR(

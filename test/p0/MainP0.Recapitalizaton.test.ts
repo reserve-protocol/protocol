@@ -316,6 +316,7 @@ describe('MainP0 contract', () => {
         // Check state
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.DISABLED)
         expect(await main.fullyCapitalized()).to.equal(true)
+        expect(await facade.totalAssetValue()).to.equal(bn('75e18')) // 25% defaulted, value = 0
         await expectCurrentBacking(facade, {
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -362,7 +363,8 @@ describe('MainP0 contract', () => {
         await token2.setExchangeRate(fp('0.99'))
 
         // Basket should switch as default is detected immediately
-        await expect(main.ensureValidBasket()).to.emit(main, 'BasketSet')
+        // Perform via facade (same result)
+        await expect(facade.ensureValidBasket()).to.emit(main, 'BasketSet')
 
         // Check state - Basket switch
         expect(await main.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
