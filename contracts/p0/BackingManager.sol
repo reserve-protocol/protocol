@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IAssetRegistry.sol";
@@ -14,25 +15,22 @@ import "contracts/p0/RevenueTrader.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title Auctioneer
- * @notice The auctioneer changes the asset balances located at Main using auctions to swap
- *   collateral---or in the worst-case---RSR, in order to remain capitalized. Excess assets
- *   are split according to the RSR cuts to RevenueTraders.
+ * @title BackingManager
+ * @notice The backing manager holds + manages the backing for an RToken
  */
-contract AuctioneerP0 is TraderP0, IAuctioneer {
+contract BackingManagerP0 is TraderP0, IBackingManager {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
+    using SafeERC20 for IERC20;
 
-    IRevenueTrader public rsrTrader;
-    IRevenueTrader public rTokenTrader;
-
-    function init(ConstructorArgs calldata args) internal override {
-        // Deploy and initialize RevenueTraders
-        rsrTrader = new RevenueTraderP0(args.rsr);
-        rsrTrader.initComponent(main, args);
-        rTokenTrader = new RevenueTraderP0(args.rToken);
-        rTokenTrader.initComponent(main, args);
+    function withdraw(
+        IERC20 erc20,
+        address account,
+        uint256 amount
+    ) external override notPaused {
+        require(_msgSender() == address(main.rTokenIssuer()), "rTokenIssuer only");
+        erc20.safeTransfer(account, amount);
     }
 
     function manageFunds() external override notPaused {
@@ -86,8 +84,8 @@ contract AuctioneerP0 is TraderP0, IAuctioneer {
                 uint256 toRSR = tokensPerShare * rsrShares;
                 uint256 toRToken = tokensPerShare * (totalShares - rsrShares);
 
-                if (toRSR > 0) erc20s[i].safeTransfer(address(rsrTrader), toRSR);
-                if (toRToken > 0) erc20s[i].safeTransfer(address(rTokenTrader), toRToken);
+                if (toRSR > 0) erc20s[i].safeTransfer(address(main.rsrTrader()), toRSR);
+                if (toRToken > 0) erc20s[i].safeTransfer(address(main.rTokenTrader()), toRToken);
             }
         }
     }

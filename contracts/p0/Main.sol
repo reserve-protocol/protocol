@@ -22,6 +22,30 @@ contract MainP0 is Ownable, Pausable, IMain {
     bool private initialized;
     EnumerableSet.AddressSet private components;
 
+    // === Claim Adapter Registry ===
+    EnumerableSet.AddressSet private _claimAdapters;
+
+    function addClaimAdapter(IClaimAdapter claimAdapter) external override onlyOwner {
+        emit ClaimAdapterAdded(claimAdapter);
+        _claimAdapters.add(address(claimAdapter));
+    }
+
+    function removeClaimAdapter(IClaimAdapter claimAdapter) external override onlyOwner {
+        emit ClaimAdapterRemoved(claimAdapter);
+        _claimAdapters.remove(address(claimAdapter));
+    }
+
+    function isTrustedClaimAdapter(IClaimAdapter claimAdapter) public view override returns (bool) {
+        return _claimAdapters.contains(address(claimAdapter));
+    }
+
+    function claimAdapters() public view override returns (IClaimAdapter[] memory adapters) {
+        adapters = new IClaimAdapter[](_claimAdapters.length());
+        for (uint256 i = 0; i < _claimAdapters.length(); i++) {
+            adapters[i] = IClaimAdapter(_claimAdapters.at(i));
+        }
+    }
+
     // === Registered Contracts ===
     IRTokenIssuer public rTokenIssuer;
 
@@ -32,22 +56,27 @@ contract MainP0 is Ownable, Pausable, IMain {
         rTokenIssuer = val;
     }
 
-    IRewardClaimer public rewardClaimer;
+    IBackingManager public backingManager;
 
-    function setRewardClaimer(IRewardClaimer val) public onlyOwner {
-        emit RewardClaimerSet(rewardClaimer, val);
-        components.remove(address(rewardClaimer));
+    function setBackingManager(IBackingManager val) public onlyOwner {
+        emit BackingManagerSet(backingManager, val);
+        components.remove(address(backingManager));
         components.add(address(val));
-        rewardClaimer = val;
+        backingManager = val;
     }
 
-    IAuctioneer public auctioneer;
+    IRevenueTrader public rsrTrader;
 
-    function setAuctioneer(IAuctioneer val) public onlyOwner {
-        emit AuctioneerSet(auctioneer, val);
-        components.remove(address(auctioneer));
-        components.add(address(val));
-        auctioneer = val;
+    function setRSRTrader(IRevenueTrader val) public onlyOwner {
+        emit RSRTraderSet(rsrTrader, val);
+        rsrTrader = val;
+    }
+
+    IRevenueTrader public rTokenTrader;
+
+    function setRTokenTrader(IRevenueTrader val) public onlyOwner {
+        emit RTokenTraderSet(rTokenTrader, val);
+        rTokenTrader = val;
     }
 
     IBasketHandler public basketHandler;
@@ -133,14 +162,17 @@ contract MainP0 is Ownable, Pausable, IMain {
         setRTokenIssuer(args.rTokenIssuer);
         rTokenIssuer.initComponent(this, args);
 
-        setRewardClaimer(args.rewardClaimer);
-        rewardClaimer.initComponent(this, args);
-
-        setAuctioneer(args.auctioneer);
-        auctioneer.initComponent(this, args);
+        setBackingManager(args.backingManager);
+        backingManager.initComponent(this, args);
 
         setBasketHandler(args.basketHandler);
         basketHandler.initComponent(this, args);
+
+        setRSRTrader(args.rsrTrader);
+        rsrTrader.initComponent(this, args);
+
+        setRTokenTrader(args.rTokenTrader);
+        rTokenTrader.initComponent(this, args);
 
         setAssetRegistry(args.assetRegistry);
         assetRegistry.initComponent(this, args);
@@ -152,7 +184,6 @@ contract MainP0 is Ownable, Pausable, IMain {
         settings.initComponent(this, args);
 
         setRevenueFurnace(args.furnace);
-        // initComponent if revenueFurnace becomes a Component
 
         setMarket(args.market);
 
@@ -162,7 +193,11 @@ contract MainP0 is Ownable, Pausable, IMain {
         stRSR.initComponent(this, args);
 
         setRToken(args.rToken);
-        // TODO: initComponent, pretty sure
+        // TODO: make Component
+
+        for (uint256 i = 0; i < args.claimAdapters.length; i++) {
+            _claimAdapters.add(address(args.claimAdapters[i]));
+        }
 
         emit Initialized();
     }

@@ -27,11 +27,10 @@ import {
   StaticATokenMock,
   StRSRP0,
   AssetRegistryP0,
-  AuctioneerP0,
+  BackingManagerP0,
   BasketHandlerP0,
   RTokenIssuerP0,
   RevenueDistributorP0,
-  RewardClaimerP0,
   SettingsP0,
   USDCMock,
 } from '../../typechain'
@@ -97,11 +96,10 @@ describe('MainP0 contract', () => {
   let main: MainP0
   let facade: ExplorerFacadeP0
   let assetRegistry: AssetRegistryP0
-  let auctioneer: AuctioneerP0
+  let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
   let revenueDistributor: RevenueDistributorP0
-  let rewardClaimer: RewardClaimerP0
   let settings: SettingsP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -133,11 +131,10 @@ describe('MainP0 contract', () => {
       dist,
       main,
       assetRegistry,
-      auctioneer,
+      backingManager,
       basketHandler,
       rTokenIssuer,
       revenueDistributor,
-      rewardClaimer,
       settings,
       rToken,
       rTokenAsset,
@@ -286,14 +283,15 @@ describe('MainP0 contract', () => {
         stRSR: stRSR.address,
         rToken: rToken.address,
         assetRegistry: assetRegistry.address,
-        auctioneer: auctioneer.address,
+        backingManager: backingManager.address,
         basketHandler: basketHandler.address,
         rTokenIssuer: rTokenIssuer.address,
         revenueDistributor: revenueDistributor.address,
-        rewardClaimer: rewardClaimer.address,
         settings: settings.address,
         claimAdapters: [compoundClaimer.address, aaveClaimer.address],
         assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
+        rsrTrader: rsrTrader.address,
+        rTokenTrader: rTokenTrader.address,
       }
       await expect(main.init(ctorArgs)).to.be.revertedWith('Already initialized')
     })
@@ -674,29 +672,6 @@ describe('MainP0 contract', () => {
       expect(await settings.stRSRPayRatio()).to.equal(newValue)
     })
 
-    it('Should return nextRewards correctly', async () => {
-      // Check next immediate reward
-      expect(await rewardClaimer.nextRewards()).to.equal(
-        config.rewardStart.add(config.rewardPeriod)
-      )
-
-      // Advance time to get next reward
-      await advanceTime(config.rewardPeriod.toString())
-
-      // Check next reward date
-      expect(await rewardClaimer.nextRewards()).to.equal(
-        config.rewardStart.add(config.rewardPeriod.mul(2))
-      )
-
-      // Advance time to get next reward
-      await advanceTime(config.rewardPeriod.mul(2).toString())
-
-      // Check next reward date
-      expect(await rewardClaimer.nextRewards()).to.equal(
-        config.rewardStart.add(config.rewardPeriod.mul(4))
-      )
-    })
-
     it('Should return backing tokens', async () => {
       expect(await rTokenIssuer.basketTokens()).to.eql([
         token0.address,
@@ -792,44 +767,44 @@ describe('MainP0 contract', () => {
 
     it('Should allow to add ClaimAdapter if Owner', async () => {
       // Check existing value
-      expect(await rewardClaimer.isTrustedClaimAdapter(other.address)).to.equal(false)
+      expect(await main.isTrustedClaimAdapter(other.address)).to.equal(false)
 
       // If not owner cannot update - use mock address
-      await expect(rewardClaimer.connect(other).addClaimAdapter(other.address)).to.be.revertedWith(
-        'Component: caller is not the owner'
+      await expect(main.connect(other).addClaimAdapter(other.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
       )
 
       // Check value did not change
-      expect(await rewardClaimer.isTrustedClaimAdapter(other.address)).to.equal(false)
+      expect(await main.isTrustedClaimAdapter(other.address)).to.equal(false)
 
       // Update with owner
-      await expect(rewardClaimer.connect(owner).addClaimAdapter(other.address))
-        .to.emit(rewardClaimer, 'ClaimAdapterAdded')
+      await expect(main.connect(owner).addClaimAdapter(other.address))
+        .to.emit(main, 'ClaimAdapterAdded')
         .withArgs(other.address)
 
       // Check value was updated
-      expect(await rewardClaimer.isTrustedClaimAdapter(other.address)).to.equal(true)
+      expect(await main.isTrustedClaimAdapter(other.address)).to.equal(true)
     })
 
     it('Should allow to remove ClaimAdapter if Owner', async () => {
       // Check existing value
-      expect(await rewardClaimer.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
+      expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
 
       // If not owner cannot update - use mock address
       await expect(
-        rewardClaimer.connect(other).removeClaimAdapter(compoundClaimer.address)
-      ).to.be.revertedWith('Component: caller is not the owner')
+        main.connect(other).removeClaimAdapter(compoundClaimer.address)
+      ).to.be.revertedWith('Ownable: caller is not the owner')
 
       // Check value did not change
-      expect(await rewardClaimer.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
+      expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
 
       // Update with owner
-      await expect(rewardClaimer.connect(owner).removeClaimAdapter(compoundClaimer.address))
-        .to.emit(rewardClaimer, 'ClaimAdapterRemoved')
+      await expect(main.connect(owner).removeClaimAdapter(compoundClaimer.address))
+        .to.emit(main, 'ClaimAdapterRemoved')
         .withArgs(compoundClaimer.address)
 
       // Check value was updated
-      expect(await rewardClaimer.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(false)
+      expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(false)
     })
 
     it('Should allow to set RevenueFurnace if Owner and perform validations', async () => {

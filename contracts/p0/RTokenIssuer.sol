@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/libraries/Fixed.sol";
-
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/Component.sol";
 
@@ -79,7 +78,7 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
             uint256 prorata = prorate.mulu(IERC20(erc20s[i]).balanceOf(address(main))).floor();
 
             withdrawals[i] = Math.min(withdrawals[i], prorata);
-            IERC20(erc20s[i]).safeTransfer(_msgSender(), withdrawals[i]);
+            main.backingManager().withdraw(IERC20(erc20s[i]), _msgSender(), withdrawals[i]);
         }
 
         emit Redemption(_msgSender(), amount, baskets);

@@ -18,11 +18,10 @@ import {
   RTokenP0,
   StRSRP0,
   AssetRegistryP0,
-  AuctioneerP0,
+  BackingManagerP0,
   BasketHandlerP0,
   RTokenIssuerP0,
   RevenueDistributorP0,
-  RewardClaimerP0,
   SettingsP0,
 } from '../../typechain'
 import { defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
@@ -63,11 +62,10 @@ describe('DeployerP0 contract', () => {
 
   let facade: ExplorerFacadeP0
   let assetRegistry: AssetRegistryP0
-  let auctioneer: AuctioneerP0
+  let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
   let revenueDistributor: RevenueDistributorP0
-  let rewardClaimer: RewardClaimerP0
   let settings: SettingsP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -96,11 +94,10 @@ describe('DeployerP0 contract', () => {
       deployer,
       main,
       assetRegistry,
-      auctioneer,
+      backingManager,
       basketHandler,
       rTokenIssuer,
       revenueDistributor,
-      rewardClaimer,
       settings,
       rToken,
       rTokenAsset,

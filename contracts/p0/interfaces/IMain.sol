@@ -7,15 +7,15 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./IAsset.sol";
 import "./IAssetRegistry.sol";
-import "./IAuctioneer.sol";
+import "./IBackingManager.sol";
 import "./IBasketHandler.sol";
 import "./IClaimAdapter.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
-import "./IRewardClaimer.sol";
 import "./IRevenueDistributor.sol";
 import "./IRToken.sol";
 import "./IRTokenIssuer.sol";
+import "./IRevenueTrader.sol";
 import "./ISettings.sol";
 import "./IStRSR.sol";
 import "./ITrader.sol";
@@ -66,14 +66,15 @@ struct ConstructorArgs {
     IStRSR stRSR;
     IRToken rToken;
     IRTokenIssuer rTokenIssuer;
-    IRewardClaimer rewardClaimer;
-    IAuctioneer auctioneer;
+    IBackingManager backingManager;
     IBasketHandler basketHandler;
     IAssetRegistry assetRegistry;
     IRevenueDistributor revenueDistributor;
     ISettings settings;
     IClaimAdapter[] claimAdapters;
     IAsset[] assets;
+    IRevenueTrader rsrTrader;
+    IRevenueTrader rTokenTrader;
 }
 
 interface IPausable {
@@ -110,17 +111,23 @@ interface IMain is IPausable {
 
     function setRTokenIssuer(IRTokenIssuer val) external;
 
-    event RewardClaimerSet(IRewardClaimer indexed oldVal, IRewardClaimer indexed newVal);
+    event BackingManagerSet(IBackingManager indexed oldVal, IBackingManager indexed newVal);
 
-    function rewardClaimer() external view returns (IRewardClaimer);
+    function backingManager() external view returns (IBackingManager);
 
-    function setRewardClaimer(IRewardClaimer val) external;
+    function setBackingManager(IBackingManager val) external;
 
-    event AuctioneerSet(IAuctioneer indexed oldVal, IAuctioneer indexed newVal);
+    event RSRTraderSet(IRevenueTrader indexed oldVal, IRevenueTrader indexed newVal);
 
-    function auctioneer() external view returns (IAuctioneer);
+    function rsrTrader() external view returns (IRevenueTrader);
 
-    function setAuctioneer(IAuctioneer val) external;
+    function setRSRTrader(IRevenueTrader rsrTrader) external;
+
+    event RTokenTraderSet(IRevenueTrader indexed oldVal, IRevenueTrader indexed newVal);
+
+    function rTokenTrader() external view returns (IRevenueTrader);
+
+    function setRTokenTrader(IRevenueTrader rTokenTrader) external;
 
     event BasketHandlerSet(IBasketHandler indexed oldVal, IBasketHandler indexed newVal);
 
@@ -187,4 +194,18 @@ interface IMain is IPausable {
     function hasComponent(address addr) external view returns (bool);
 
     function owner() external view returns (address);
+
+    // --
+    /// Emitted whenever a claim adapter is added by governance
+    event ClaimAdapterAdded(IClaimAdapter indexed adapter);
+    /// Emitted whenever a claim adapter is removed by governance
+    event ClaimAdapterRemoved(IClaimAdapter indexed adapter);
+
+    function addClaimAdapter(IClaimAdapter claimAdapter) external;
+
+    function removeClaimAdapter(IClaimAdapter claimAdapter) external;
+
+    function isTrustedClaimAdapter(IClaimAdapter claimAdapter) external view returns (bool);
+
+    function claimAdapters() external view returns (IClaimAdapter[] memory adapters);
 }

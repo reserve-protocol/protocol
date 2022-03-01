@@ -12,7 +12,7 @@ import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
 import { AavePricedAssetP0 } from '../../../typechain/AavePricedAssetP0'
 import { AssetP0 } from '../../../typechain/AssetP0'
 import { AssetRegistryP0 } from '../../../typechain/AssetRegistryP0'
-import { AuctioneerP0 } from '../../../typechain/AuctioneerP0'
+import { BackingManagerP0 } from '../../../typechain/BackingManagerP0'
 import { BasketHandlerP0 } from '../../../typechain/BasketHandlerP0'
 import { CTokenFiatCollateralP0 } from '../../../typechain/CTokenFiatCollateralP0'
 import { CTokenMock } from '../../../typechain/CTokenMock'
@@ -32,7 +32,6 @@ import { RTokenIssuerP0 } from '../../../typechain/RTokenIssuerP0'
 import { RTokenP0 } from '../../../typechain/RTokenP0'
 import { RevenueDistributorP0 } from '../../../typechain/RevenueDistributorP0'
 import { RevenueTraderP0 } from '../../../typechain/RevenueTraderP0'
-import { RewardClaimerP0 } from '../../../typechain/RewardClaimerP0'
 import { SettingsP0 } from '../../../typechain/SettingsP0'
 import { StRSRP0 } from '../../../typechain/StRSRP0'
 import { StaticATokenMock } from '../../../typechain/StaticATokenMock'
@@ -317,11 +316,10 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   deployer: DeployerP0
   main: MainP0
   assetRegistry: AssetRegistryP0
-  auctioneer: AuctioneerP0
+  backingManager: BackingManagerP0
   basketHandler: BasketHandlerP0
   rTokenIssuer: RTokenIssuerP0
   revenueDistributor: RevenueDistributorP0
-  rewardClaimer: RewardClaimerP0
   settings: SettingsP0
   rsrAsset: AssetP0
   compAsset: AssetP0
@@ -400,8 +398,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const assetRegistry: AssetRegistryP0 = <AssetRegistryP0>(
     await ethers.getContractAt('AssetRegistryP0', await main.assetRegistry())
   )
-  const auctioneer: AuctioneerP0 = <AuctioneerP0>(
-    await ethers.getContractAt('AuctioneerP0', await main.auctioneer())
+  const backingManager: BackingManagerP0 = <BackingManagerP0>(
+    await ethers.getContractAt('BackingManagerP0', await main.backingManager())
   )
   const basketHandler: BasketHandlerP0 = <BasketHandlerP0>(
     await ethers.getContractAt('BasketHandlerP0', await main.basketHandler())
@@ -411,9 +409,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
   const revenueDistributor: RevenueDistributorP0 = <RevenueDistributorP0>(
     await ethers.getContractAt('RevenueDistributorP0', await main.revenueDistributor())
-  )
-  const rewardClaimer: RewardClaimerP0 = <RewardClaimerP0>(
-    await ethers.getContractAt('RewardClaimerP0', await main.rewardClaimer())
   )
   const settings: SettingsP0 = <SettingsP0>(
     await ethers.getContractAt('SettingsP0', await main.settings())
@@ -463,10 +458,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
 
   const rsrTrader = <RevenueTraderP0>(
-    await ethers.getContractAt('RevenueTraderP0', await auctioneer.rsrTrader())
+    await ethers.getContractAt('RevenueTraderP0', await main.rsrTrader())
   )
   const rTokenTrader = <RevenueTraderP0>(
-    await ethers.getContractAt('RevenueTraderP0', await auctioneer.rTokenTrader())
+    await ethers.getContractAt('RevenueTraderP0', await main.rTokenTrader())
   )
 
   // Set Oracle Prices
@@ -523,11 +518,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     deployer,
     main,
     assetRegistry,
-    auctioneer,
+    backingManager,
     basketHandler,
     rTokenIssuer,
     revenueDistributor,
-    rewardClaimer,
     settings,
     rToken,
     rTokenAsset,

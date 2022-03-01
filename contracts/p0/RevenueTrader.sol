@@ -8,8 +8,8 @@ import "contracts/p0/interfaces/IAssetRegistry.sol";
 import "contracts/p0/Trader.sol";
 
 /// The RevenueTrader converts all asset balances at its address to a single target asset
-/// and sends this asset to the RevenueDistributor at Main.
-contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents, IRevenueTrader {
+/// and sends this asset to the RevenueDistributor.
+contract RevenueTraderP0 is TraderP0, IRevenueTrader {
     using SafeERC20 for IERC20Metadata;
 
     IERC20Metadata public immutable tokenToBuy;
@@ -59,16 +59,5 @@ contract RevenueTraderP0 is TraderP0, IRewardClaimerEvents, IRevenueTrader {
         );
 
         if (launch) launchAuction(auction);
-    }
-
-    /// Claims and sweeps all rewards
-    function claimAndSweepRewardsToMain() external {
-        (IERC20Metadata[] memory erc20s, uint256[] memory amts) = RewardsLib.claimRewards(main);
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            if (amts[i] > 0) {
-                erc20s[i].safeTransfer(address(main), amts[i]);
-            }
-            emit RewardsClaimed(erc20s[i], amts[i]);
-        }
     }
 }

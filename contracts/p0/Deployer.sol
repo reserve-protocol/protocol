@@ -18,7 +18,7 @@ import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/assets/RTokenAsset.sol";
 import "contracts/p0/AssetRegistry.sol";
-import "contracts/p0/Auctioneer.sol";
+import "contracts/p0/BackingManager.sol";
 import "contracts/p0/BasketHandler.sol";
 import "contracts/p0/ExplorerFacade.sol";
 import "contracts/p0/Furnace.sol";
@@ -26,7 +26,6 @@ import "contracts/p0/Main.sol";
 import "contracts/p0/RToken.sol";
 import "contracts/p0/RTokenIssuer.sol";
 import "contracts/p0/RevenueDistributor.sol";
-import "contracts/p0/RewardClaimer.sol";
 import "contracts/p0/Settings.sol";
 import "contracts/p0/StRSR.sol";
 import "contracts/IExplorerFacade.sol";
@@ -123,12 +122,13 @@ contract DeployerP0 is IDeployer {
         ctorArgs.assets[3] = new CompoundPricedAssetP0(comp, maxAuctionSize, comptroller);
 
         ctorArgs.assetRegistry = new AssetRegistryP0();
-        ctorArgs.auctioneer = new AuctioneerP0();
+        ctorArgs.backingManager = new BackingManagerP0();
         ctorArgs.basketHandler = new BasketHandlerP0();
         ctorArgs.rTokenIssuer = new RTokenIssuerP0();
         ctorArgs.revenueDistributor = new RevenueDistributorP0();
-        ctorArgs.rewardClaimer = new RewardClaimerP0();
         ctorArgs.settings = new SettingsP0();
+        ctorArgs.rsrTrader = new RevenueTraderP0(ctorArgs.rsr);
+        ctorArgs.rTokenTrader = new RevenueTraderP0(ctorArgs.rToken);
 
         // Init main
         main.init(ctorArgs);

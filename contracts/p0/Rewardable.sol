@@ -3,30 +3,25 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "contracts/p0/interfaces/IAssetRegistry.sol";
-import "contracts/p0/interfaces/IClaimAdapter.sol";
-import "contracts/p0/interfaces/IMain.sol";
+import "contracts/p0/interfaces/IRewardable.sol";
+import "contracts/p0/Component.sol";
 
-library RewardsLib {
+/**
+ * @title Rewardable
+ * @notice A mix-in that makes a contract able to claim rewards
+ */
+abstract contract RewardableP0 is Component, IRewardable {
     using Address for address;
     using SafeERC20 for IERC20Metadata;
 
-    /// @return rewardERC20s The reward ERC20s
-    /// @return amtsClaimed The amounts claimed for each reward ERC20
-    function claimRewards(IMain main)
-        internal
-        returns (IERC20Metadata[] memory rewardERC20s, uint256[] memory amtsClaimed)
-    {
-        IRewardClaimer rewardClaimer = main.rewardClaimer();
-        IClaimAdapter[] memory adapters = rewardClaimer.claimAdapters();
+    /// Claim all rewards and sweep to BackingManager
+    function claimAndSweepRewards() external override {
+        IClaimAdapter[] memory adapters = main.claimAdapters();
 
         // Cache initial reward token balances
-        rewardERC20s = new IERC20Metadata[](adapters.length);
-        amtsClaimed = new uint256[](adapters.length);
+        uint256[] memory initialBals = new uint256[](adapters.length);
         for (uint256 i = 0; i < adapters.length; i++) {
-            rewardERC20s[i] = adapters[i].rewardERC20();
-            amtsClaimed[i] = rewardERC20s[i].balanceOf(address(this));
+            initialBals[i] = adapters[i].rewardERC20().balanceOf(address(this));
         }
 
         // Claim rewards for all registered collateral
@@ -40,7 +35,7 @@ library RewardsLib {
             IClaimAdapter adapter = reg.toColl(erc20s[i]).claimAdapter();
 
             // TODO Confirm require here, as opposed to continue
-            require(rewardClaimer.isTrustedClaimAdapter(adapter), "claim adapter is not trusted");
+            require(main.isTrustedClaimAdapter(adapter), "claim adapter is not trusted");
 
             (address _to, bytes memory _calldata) = adapter.getClaimCalldata(erc20s[i]);
 
@@ -49,9 +44,15 @@ library RewardsLib {
             }
         }
 
-        // Subtract initial balances out
-        for (uint256 i = 0; i < rewardERC20s.length; i++) {
-            amtsClaimed[i] = rewardERC20s[i].balanceOf(address(this)) - amtsClaimed[i];
+        // Sweep + emit events
+        for (uint256 i = 0; i < adapters.length; i++) {
+            IERC20Metadata erc20 = adapters[i].rewardERC20();
+            uint256 bal = erc20.balanceOf(address(this));
+            emit RewardsClaimed(address(erc20), bal - initialBals[i]);
+
+            if (address(this) != address(main.backingManager()) && bal > 0) {
+                erc20.safeTransfer(address(main.backingManager()), bal);
+            }
         }
     }
 }

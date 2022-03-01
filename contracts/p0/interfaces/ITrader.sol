@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "contracts/p0/interfaces/IRewardable.sol";
 
 enum AuctionStatus {
     NOT_YET_OPEN,
@@ -22,7 +23,7 @@ struct Auction {
     AuctionStatus status;
 }
 
-interface ITraderEvents {
+interface ITrader is IRewardable {
     /// Emitted when an auction is started
     /// @param auctionId The index of the AssetManager.auctions array
     /// @param sell The token to sell

@@ -216,7 +216,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             iss.blockAvailableAt.lte(toFix(block.number))
         ) {
             for (uint256 i = 0; i < iss.erc20s.length; i++) {
-                IERC20(iss.erc20s[i]).safeTransfer(address(main), iss.deposits[i]);
+                IERC20(iss.erc20s[i]).safeTransfer(address(main.backingManager()), iss.deposits[i]);
             }
             _mint(iss.issuer, iss.amount);
             issued = iss.amount;
