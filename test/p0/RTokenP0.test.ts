@@ -1,9 +1,23 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import hre, { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
-import { CTokenMock, ERC20Mock, MainP0, RTokenP0, StaticATokenMock } from '../../typechain'
+import {
+  CTokenMock,
+  ERC20Mock,
+  MainP0,
+  RTokenP0,
+  StaticATokenMock,
+  AssetRegistryP0,
+  AuctioneerP0,
+  BasketHandlerP0,
+  RTokenIssuerP0,
+  RevenueDistributorP0,
+  RewardClaimerP0,
+  SettingsP0,
+} from '../../typechain'
+import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -16,6 +30,13 @@ describe('RTokenP0 contract', () => {
 
   // Main
   let main: MainP0
+  let assetRegistry: AssetRegistryP0
+  let auctioneer: AuctioneerP0
+  let basketHandler: BasketHandlerP0
+  let rTokenIssuer: RTokenIssuerP0
+  let revenueDistributor: RevenueDistributorP0
+  let rewardClaimer: RewardClaimerP0
+  let settings: SettingsP0
 
   // Tokens/Assets
   let token0: ERC20Mock
@@ -49,7 +70,18 @@ describe('RTokenP0 contract', () => {
     ;[owner, addr1, mainMock, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, main, rToken } = await loadFixture(defaultFixture))
+    ;({
+      basket,
+      main,
+      rToken,
+      assetRegistry,
+      auctioneer,
+      basketHandler,
+      rTokenIssuer,
+      revenueDistributor,
+      rewardClaimer,
+      settings,
+    } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
     initialBal = bn('100e18')
@@ -77,7 +109,7 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.basketsNeeded()).to.equal(0)
 
       // Check RToken price
-      expect(await main.rTokenPrice()).to.equal(fp('1'))
+      expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
     })
   })
 
@@ -100,19 +132,20 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.main()).to.equal(other.address)
     })
 
-    it('Should allow to set basketsNeeded only from Main', async () => {
+    it('Should allow to set basketsNeeded only from Main components', async () => {
       // Check initial status
       expect(await rToken.basketsNeeded()).to.equal(0)
 
-      // Try to update value if not Main
-      await expect(rToken.connect(owner).setBasketsNeeded(fp('1'))).to.be.revertedWith('only main')
+      // Try to update value if not a Main component
+      await expect(rToken.connect(owner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
+        'only components of main'
+      )
 
-      // Set Main mock as caller
-      await rToken.connect(owner).setMain(mainMock.address)
-
-      await expect(rToken.connect(mainMock).setBasketsNeeded(fp('1')))
-        .to.emit(rToken, 'BasketsNeededChanged')
-        .withArgs(0, fp('1'))
+      await whileImpersonating(basketHandler.address, async (bhSigner) => {
+        await expect(rToken.connect(bhSigner).setBasketsNeeded(fp('1')))
+          .to.emit(rToken, 'BasketsNeededChanged')
+          .withArgs(0, fp('1'))
+      })
 
       // Check updated value
       expect(await rToken.basketsNeeded()).to.equal(fp('1'))
@@ -130,13 +163,13 @@ describe('RTokenP0 contract', () => {
       await token3.connect(owner).mint(addr1.address, initialBal)
 
       // Approvals
-      await token0.connect(addr1).approve(main.address, initialBal)
-      await token1.connect(addr1).approve(main.address, initialBal)
-      await token2.connect(addr1).approve(main.address, initialBal)
-      await token3.connect(addr1).approve(main.address, initialBal)
+      await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
+      await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
+      await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
+      await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
 
       // Issue tokens
-      await main.connect(addr1).issue(issueAmount)
+      await rTokenIssuer.connect(addr1).issue(issueAmount)
     })
 
     it('Should allow to melt tokens if caller or Main', async () => {
