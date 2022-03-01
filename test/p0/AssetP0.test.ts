@@ -14,6 +14,13 @@ import {
   RTokenP0,
   StaticATokenMock,
   USDCMock,
+  AssetRegistryP0,
+  AuctioneerP0,
+  BasketHandlerP0,
+  RTokenIssuerP0,
+  RevenueDistributorP0,
+  RewardClaimerP0,
+  SettingsP0,
 } from '../../typechain'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
@@ -48,6 +55,14 @@ describe('AssetsP0 contracts', () => {
   // Main
   let main: MainP0
 
+  let assetRegistry: AssetRegistryP0
+  let auctioneer: AuctioneerP0
+  let basketHandler: BasketHandlerP0
+  let rTokenIssuer: RTokenIssuerP0
+  let revenueDistributor: RevenueDistributorP0
+  let rewardClaimer: RewardClaimerP0
+  let settings: SettingsP0
+
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
@@ -73,6 +88,13 @@ describe('AssetsP0 contracts', () => {
       aaveOracleInternal,
       basket,
       main,
+      assetRegistry,
+      auctioneer,
+      basketHandler,
+      rTokenIssuer,
+      revenueDistributor,
+      rewardClaimer,
+      settings,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
@@ -93,12 +115,12 @@ describe('AssetsP0 contracts', () => {
     await token2.connect(owner).mint(other.address, amt)
     await token3.connect(owner).mint(other.address, amt)
 
-    await token0.connect(other).approve(main.address, amt)
-    await token1.connect(other).approve(main.address, amt)
-    await token2.connect(other).approve(main.address, amt)
-    await token3.connect(other).approve(main.address, amt)
+    await token0.connect(other).approve(rTokenIssuer.address, amt)
+    await token1.connect(other).approve(rTokenIssuer.address, amt)
+    await token2.connect(other).approve(rTokenIssuer.address, amt)
+    await token3.connect(other).approve(rTokenIssuer.address, amt)
 
-    await main.connect(other).issue(amt)
+    await rTokenIssuer.connect(other).issue(amt)
   })
 
   describe('Deployment', () => {

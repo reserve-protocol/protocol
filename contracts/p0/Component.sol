@@ -28,8 +28,6 @@ abstract contract Component is IComponent, Context {
         _;
     }
 
-    // modifier onlyRegistered or onlyComponent or something -- shouldreplace onlyMain()
-
     // solhint-disable-next-line no-empty-blocks
     function init(ConstructorArgs calldata args) internal virtual {}
 }

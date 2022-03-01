@@ -81,8 +81,8 @@ contract RTokenP1 is Ownable, ERC20Permit, IRToken {
         _transferOwnership(owner_);
     }
 
-    modifier onlyMain() {
-        require(_msgSender() == address(main), "only main");
+    modifier onlyComponent() {
+        require(main.hasComponent(_msgSender()), "only components of main");
         _;
     }
 
@@ -100,7 +100,7 @@ contract RTokenP1 is Ownable, ERC20Permit, IRToken {
         Fix amtBaskets,
         address[] memory erc20s,
         uint256[] memory deposits
-    ) external override onlyMain {
+    ) external override onlyComponent {
         assert(erc20s.length == deposits.length);
         IssueQueue storage queue = issueQueues[account];
         refundOldBasketIssues(account);
@@ -228,7 +228,7 @@ contract RTokenP1 is Ownable, ERC20Permit, IRToken {
         address from,
         uint256 amtRToken,
         Fix amtBaskets
-    ) external override onlyMain {
+    ) external override onlyComponent {
         _burn(from, amtRToken);
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(amtBaskets));
@@ -240,7 +240,7 @@ contract RTokenP1 is Ownable, ERC20Permit, IRToken {
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
-    function mint(address recipient, uint256 amtRToken) external override onlyMain {
+    function mint(address recipient, uint256 amtRToken) external override onlyComponent {
         _mint(recipient, amtRToken);
     }
 
@@ -252,7 +252,7 @@ contract RTokenP1 is Ownable, ERC20Permit, IRToken {
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(Fix basketsNeeded_) external override onlyMain {
+    function setBasketsNeeded(Fix basketsNeeded_) external override onlyComponent {
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }

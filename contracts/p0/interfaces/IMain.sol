@@ -184,5 +184,7 @@ interface IMain is IPausable {
 
     function init(ConstructorArgs calldata args) external;
 
+    function hasComponent(address addr) external view returns (bool);
+
     function owner() external view returns (address);
 }

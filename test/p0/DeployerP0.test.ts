@@ -164,6 +164,9 @@ describe('DeployerP0 contract', () => {
       // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)
       expect(await main.revenueFurnace()).to.equal(furnace.address)
+
+      // TODO: test this for all components
+      expect(await main.hasComponent(assetRegistry.address)).to.equal(true)
     })
 
     it('Should setup RToken correctly', async () => {
