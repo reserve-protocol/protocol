@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { CompoundClaimAdapterP0 } from '@typechain/CompoundClaimAdapterP0'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import {
   AuctionStatus,
@@ -13,9 +13,11 @@ import {
 import { bn, divCeil, fp, near } from '../../common/numbers'
 import {
   AaveLendingPoolMockP0,
+  AavePricedAssetP0,
   AssetP0,
   ATokenFiatCollateralP0,
   CollateralP0,
+  CompoundPricedAssetP0,
   ComptrollerMockP0,
   CTokenFiatCollateralP0,
   CTokenMock,
@@ -545,9 +547,20 @@ describe('MainP0 contract', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
       })
 
-      it.skip('Should handle large auctions using maxAuctionSize with f=1 (RSR only)', async () => {
+      it('Should handle large auctions using maxAuctionSize with f=1 (RSR only)', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
+
+        // Set max auction size for asset
+        const AssetFactory: ContractFactory = await ethers.getContractFactory(
+          'CompoundPricedAssetP0'
+        )
+        const newCompAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
+          await AssetFactory.deploy(compToken.address, bn('1e18'), compoundMock.address)
+        )
+
+        // Perform swap
+        await main.connect(owner).swapRegisteredAsset(newCompAsset.address)
 
         // Set f = 1
         await main
@@ -556,15 +569,15 @@ describe('MainP0 contract', () => {
         // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
         await main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
 
-        // Set COMP tokens as reward - Exceed max auction size
-        rewardAmountCOMP = bn('2000000e18')
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('2e18')
 
         // COMP Rewards
         await compoundMock.setRewards(main.address, rewardAmountCOMP)
 
-        // Collect revenue
+        // Collect revenue - Called via poke
         // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
+        let sellAmt: BigNumber = bn('1e18') // due to max auction size
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
@@ -596,13 +609,15 @@ describe('MainP0 contract', () => {
 
         // Check funds in Market and still in Trader
         expect(await compToken.balanceOf(market.address)).to.equal(sellAmt)
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(sellAmt)
 
-        // Check existing auctions still open
+        // Another call will not create a new auction (only one at a time per pair)
+        await expect(facade.runAuctionsForAllTraders())
+          .to.not.emit(rsrTrader, 'AuctionStarted')
+          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+
+        // Check previous auction is still open
         await expectAuctionStatus(rsrTrader, 0, AuctionStatus.OPEN)
-
-        // Check now all funds in Market
-        expect(await compToken.balanceOf(market.address)).to.equal(rewardAmountCOMP)
 
         // Perform Mock Bids for RSR (addr1 has balance)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -615,23 +630,79 @@ describe('MainP0 contract', () => {
         // Advance time till auction ended
         await advanceTime(config.auctionPeriod.add(100).toString())
 
-        // Close auctions
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
+          .and.to.emit(rsrTrader, 'AuctionStarted')
+          .withArgs(1, compToken.address, rsr.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
-        // Check existing auctions are closed
+        // Check previous auction is now closed
         await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
 
-        // Check balances sent to corresponding destinations
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
+        // Check new auction
+        // COMP -> RSR Auction
+        await expectAuctionInfo(rsrTrader, 1, {
+          sell: compToken.address,
+          buy: rsr.address,
+          sellAmount: sellAmt,
+          minBuyAmount: minBuyAmt,
+          startTime: await getLatestBlockTimestamp(),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          clearingSellAmount: bn('0'),
+          clearingBuyAmount: bn('0'),
+          externalAuctionId: bn('1'),
+          status: AuctionStatus.OPEN,
+        })
+
+        // Check now all funds in Market
+        expect(await compToken.balanceOf(market.address)).to.equal(sellAmt)
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
+
+        // Perform Mock Bids for RSR (addr1 has balance)
+        await rsr.connect(addr1).approve(market.address, minBuyAmt)
+        await market.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
+
+        // Advance time till auction ended
+        await advanceTime(config.auctionPeriod.add(100).toString())
+
+        // Close auctions
+        await expect(facade.runAuctionsForAllTraders())
+          .to.emit(rsrTrader, 'AuctionEnded')
+          .withArgs(1, compToken.address, rsr.address, sellAmt, minBuyAmt)
+          .and.to.not.emit(rsrTrader, 'AuctionStarted')
+          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+
+        //  Check existing auctions are closed
+        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
+        await expectAuctionStatus(rsrTrader, 1, AuctionStatus.DONE)
+
+        //  Check balances sent to corresponding destinations
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.mul(2))
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
-      it.skip('Should handle large auctions using maxAuctionSize with f=0 (RToken only)', async () => {
+      it('Should handle large auctions using maxAuctionSize with f=0 (RToken only)', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
+
+        // Set max auction size for asset
+        const AssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAssetP0')
+        const newAaveAsset: AavePricedAssetP0 = <AavePricedAssetP0>(
+          await AssetFactory.deploy(
+            aaveToken.address,
+            bn('1e18'),
+            compoundMock.address,
+            aaveMock.address
+          )
+        )
+
+        // Perform swap
+        await main.connect(owner).swapRegisteredAsset(newAaveAsset.address)
 
         // Set f = 0, avoid dropping tokens
         await main
@@ -647,10 +718,10 @@ describe('MainP0 contract', () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
-        let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
+        let sellAmt: BigNumber = bn('1e18') // due to max auction size
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+        await expect(facade.claimAndSweepRewardsForAllTraders()).to.emit(main, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -658,7 +729,7 @@ describe('MainP0 contract', () => {
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rTokenTrader, 'AuctionStarted')
-          // .withArgs(0, aaveToken.address, rToken.address, sellAmt, minBuyAmt)
+          .withArgs(0, aaveToken.address, rToken.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -699,9 +770,9 @@ describe('MainP0 contract', () => {
         // Another call will create a new auction and close existing
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rTokenTrader, 'AuctionStarted')
-          //   .withArgs(1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder)
+          .withArgs(1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder)
           .and.to.emit(rTokenTrader, 'AuctionEnded')
-          //   .withArgs(0, aaveToken.address, rToken.address, sellAmt, minBuyAmt)
+          .withArgs(0, aaveToken.address, rToken.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
 
         // AAVE -> RToken Auction
@@ -735,7 +806,7 @@ describe('MainP0 contract', () => {
         // Close auction
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rTokenTrader, 'AuctionEnded')
-          //  .withArgs(1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder)
+          .withArgs(1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder)
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
 
@@ -747,6 +818,142 @@ describe('MainP0 contract', () => {
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
       })
+
+      // it.skip('Should handle large auctions using maxAuctionSize with f=0 (RToken only)', async () => {
+      //   // Advance time to get next reward
+      //   await advanceTime(config.rewardPeriod.toString())
+
+      //   // Set f = 0, avoid dropping tokens
+      //   await main
+      //     .connect(owner)
+      //     .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+      //   await main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+
+      //   // Set AAVE tokens as reward
+      //   rewardAmountAAVE = bn('1.5e18')
+
+      //   // AAVE Rewards
+      //   await token2.setRewards(main.address, rewardAmountAAVE)
+
+      //   // Collect revenue - Called via poke
+      //   // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
+      //   let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
+      //   let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+
+      //   await expect(main.poke()).to.emit(main, 'RewardsClaimed')
+
+      //   // Check status of destinations at this point
+      //   expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+      //   expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+      //   await expect(main.poke())
+      //     .to.emit(rTokenTrader, 'AuctionStarted')
+      //     .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmt, minBuyAmt)
+      //     .and.to.not.emit(rsrTrader, 'AuctionStarted')
+
+      //   const auctionTimestamp: number = await getLatestBlockTimestamp()
+      //   // Check auction registered
+      //   // AAVE -> RToken Auction
+      //   await expectAuctionInfo(rTokenTrader, 0, {
+      //     sell: aaveAsset.address,
+      //     buy: rTokenAsset.address,
+      //     sellAmount: sellAmt,
+      //     minBuyAmount: minBuyAmt,
+      //     startTime: auctionTimestamp,
+      //     endTime: auctionTimestamp + Number(config.auctionPeriod),
+      //     clearingSellAmount: bn('0'),
+      //     clearingBuyAmount: bn('0'),
+      //     externalAuctionId: bn('0'),
+      //     status: AuctionStatus.OPEN,
+      //   })
+
+      //   // Calculate pending amount
+      //   let sellAmtRemainder: BigNumber = rewardAmountAAVE.sub(sellAmt)
+      //   let minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
+
+      //   // Check funds in Market and still in Trader
+      //   expect(await aaveToken.balanceOf(market.address)).to.equal(sellAmt)
+      //   expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(sellAmtRemainder)
+
+      //   // Perform Mock Bids for RToken (addr1 has balance)
+      //   await rToken.connect(addr1).approve(market.address, minBuyAmt)
+      //   await market.placeBid(0, {
+      //     bidder: addr1.address,
+      //     sellAmount: sellAmt,
+      //     buyAmount: minBuyAmt,
+      //   })
+
+      //   // Advance time till auction ended
+      //   await advanceTime(config.auctionPeriod.add(100).toString())
+
+      //   // Another call will create a new auction and close existing
+      //   await expect(main.poke())
+      //     .to.emit(rTokenTrader, 'AuctionStarted')
+      //     .withArgs(1, aaveAsset.address, rTokenAsset.address, sellAmtRemainder, minBuyAmtRemainder)
+      //     .and.to.emit(rTokenTrader, 'AuctionEnded')
+      //     .withArgs(0, aaveAsset.address, rTokenAsset.address, sellAmt, minBuyAmt)
+      //     .and.to.not.emit(rsrTrader, 'AuctionStarted')
+
+      //   // AAVE -> RToken Auction
+      //   await expectAuctionInfo(rTokenTrader, 1, {
+      //     sell: aaveAsset.address,
+      //     buy: rTokenAsset.address,
+      //     sellAmount: sellAmtRemainder,
+      //     minBuyAmount: minBuyAmtRemainder,
+      //     startTime: await getLatestBlockTimestamp(),
+      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+      //     clearingSellAmount: bn('0'),
+      //     clearingBuyAmount: bn('0'),
+      //     externalAuctionId: bn('1'),
+      //     status: AuctionStatus.OPEN,
+      //   })
+
+      //   // Check previous auction is closed
+      //   await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
+
+      //   // Check destinations at this stage
+      //   // StRSR
+      //   expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+      //   // Furnace
+      //   expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmt)
+      //   let { amount, start } = await furnace.batches(0)
+      //   expect(amount).to.equal(minBuyAmt)
+      //   expect(start).to.equal(await getLatestBlockTimestamp())
+
+      //   // Perform Mock Bids for RToken (addr1 has balance)
+      //   await rToken.connect(addr1).approve(market.address, minBuyAmtRemainder)
+      //   await market.placeBid(1, {
+      //     bidder: addr1.address,
+      //     sellAmount: sellAmtRemainder,
+      //     buyAmount: minBuyAmtRemainder,
+      //   })
+
+      //   // Advance time till auction ended
+      //   await advanceTime(config.auctionPeriod.add(100).toString())
+
+      //   // Close auction
+      //   await expect(main.poke())
+      //     .to.emit(rTokenTrader, 'AuctionEnded')
+      //     .withArgs(1, aaveAsset.address, rTokenAsset.address, sellAmtRemainder, minBuyAmtRemainder)
+      //     .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+      //     .and.to.not.emit(rsrTrader, 'AuctionStarted')
+
+      //   // Check existing auctions are closed
+      //   await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
+      //   await expectAuctionStatus(rTokenTrader, 1, AuctionStatus.DONE)
+
+      //   // Check balances in destinations
+      //   // StRSR
+      //   expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+      //   // Furnace - some melting occurred already at this point
+      //   let { melted } = await furnace.batches(0)
+      //   expect(await rToken.balanceOf(furnace.address)).to.equal(
+      //     minBuyAmt.add(minBuyAmtRemainder).sub(melted)
+      //   )
+      //   ;({ amount, start } = await furnace.batches(1))
+      //   expect(amount).to.equal(minBuyAmtRemainder)
+      //   expect(start).to.equal(await getLatestBlockTimestamp())
+      // })
 
       it.skip('Should handle large auctions using maxAuctionSize with revenue split RSR/RToken', async () => {
         // Advance time to get next reward
@@ -926,6 +1133,191 @@ describe('MainP0 contract', () => {
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.add(minBuyAmtRemainder))
       })
+
+      // it.skip('Should handle large auctions using maxAuctionSize with revenue split RSR/RToken', async () => {
+      //   // Advance time to get next reward
+      //   await advanceTime(config.rewardPeriod.toString())
+
+      //   // Set f = 0.8 (0.2 for Rtoken)
+      //   await main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(4) })
+      //   await main
+      //     .connect(owner)
+      //     .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+
+      //   // Set COMP tokens as reward
+      //   // Based on current f -> 1.6e18 to RSR and 0.4e18 to Rtoken
+      //   rewardAmountCOMP = bn('2e18')
+
+      //   // COMP Rewards
+      //   await compoundMock.setRewards(main.address, rewardAmountCOMP)
+
+      //   // Collect revenue - Called via poke
+      //   // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
+      //   let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
+      //   let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+
+      //   let sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
+      //   let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+
+      //   await expect(main.poke()).to.emit(main, 'RewardsClaimed')
+
+      //   // Check status of destinations at this point
+      //   expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+      //   expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+      //   await expect(main.poke())
+      //     .to.emit(rsrTrader, 'AuctionStarted')
+      //     .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
+      //     .and.to.emit(rTokenTrader, 'AuctionStarted')
+      //     .withArgs(0, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
+
+      //   const auctionTimestamp: number = await getLatestBlockTimestamp()
+      //   // Check auctions registered
+      //   // COMP -> RSR Auction
+      //   await expectAuctionInfo(rsrTrader, 0, {
+      //     sell: compAsset.address,
+      //     buy: rsrAsset.address,
+      //     sellAmount: sellAmt,
+      //     minBuyAmount: minBuyAmt,
+      //     startTime: auctionTimestamp,
+      //     endTime: auctionTimestamp + Number(config.auctionPeriod),
+      //     clearingSellAmount: bn('0'),
+      //     clearingBuyAmount: bn('0'),
+      //     externalAuctionId: bn('0'),
+      //     status: AuctionStatus.OPEN,
+      //   })
+
+      //   // COMP -> RToken Auction
+      //   await expectAuctionInfo(rTokenTrader, 0, {
+      //     sell: compAsset.address,
+      //     buy: rTokenAsset.address,
+      //     sellAmount: sellAmtRToken,
+      //     minBuyAmount: minBuyAmtRToken,
+      //     startTime: auctionTimestamp,
+      //     endTime: auctionTimestamp + Number(config.auctionPeriod),
+      //     clearingSellAmount: bn('0'),
+      //     clearingBuyAmount: bn('0'),
+      //     externalAuctionId: bn('1'),
+      //     status: AuctionStatus.OPEN,
+      //   })
+
+      //   // Advance time till auction ended
+      //   await advanceTime(config.auctionPeriod.add(100).toString())
+
+      //   // Perform Mock Bids for RSR and RToken (addr1 has balance)
+      //   await rsr.connect(addr1).approve(market.address, minBuyAmt)
+      //   await rToken.connect(addr1).approve(market.address, minBuyAmtRToken)
+      //   await market.placeBid(0, {
+      //     bidder: addr1.address,
+      //     sellAmount: sellAmt,
+      //     buyAmount: minBuyAmt,
+      //   })
+      //   await market.placeBid(1, {
+      //     bidder: addr1.address,
+      //     sellAmount: sellAmtRToken,
+      //     buyAmount: minBuyAmtRToken,
+      //   })
+
+      //   // Close auctions
+      //   // Calculate pending amount
+      //   let sellAmtRemainder: BigNumber = rewardAmountCOMP.sub(sellAmt).sub(sellAmtRToken)
+      //   let minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
+
+      //   // Check funds in Market and still in Trader
+      //   expect(await compToken.balanceOf(market.address)).to.equal(sellAmt.add(sellAmtRToken))
+      //   expect(await compToken.balanceOf(rsrTrader.address)).to.equal(sellAmtRemainder)
+      //   expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+      //   await expect(main.poke())
+      //     .to.emit(rsrTrader, 'AuctionEnded')
+      //     .withArgs(0, compAsset.address, rsrAsset.address, sellAmt, minBuyAmt)
+      //     .and.to.emit(rTokenTrader, 'AuctionEnded')
+      //     .withArgs(0, compAsset.address, rTokenAsset.address, sellAmtRToken, minBuyAmtRToken)
+      //     .and.to.emit(rsrTrader, 'AuctionStarted')
+      //     .withArgs(1, compAsset.address, rsrAsset.address, sellAmtRemainder, minBuyAmtRemainder)
+      //     .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+
+      //   // Check previous auctions closed
+      //   // COMP -> RSR Auction
+      //   await expectAuctionInfo(rsrTrader, 0, {
+      //     sell: compAsset.address,
+      //     buy: rsrAsset.address,
+      //     sellAmount: sellAmt,
+      //     minBuyAmount: minBuyAmt,
+      //     startTime: auctionTimestamp,
+      //     endTime: auctionTimestamp + Number(config.auctionPeriod),
+      //     clearingSellAmount: sellAmt,
+      //     clearingBuyAmount: minBuyAmt,
+      //     externalAuctionId: bn('0'),
+      //     status: AuctionStatus.DONE,
+      //   })
+
+      //   // COMP -> RToken Auction
+      //   await expectAuctionInfo(rTokenTrader, 0, {
+      //     sell: compAsset.address,
+      //     buy: rTokenAsset.address,
+      //     sellAmount: sellAmtRToken,
+      //     minBuyAmount: minBuyAmtRToken,
+      //     startTime: auctionTimestamp,
+      //     endTime: auctionTimestamp + Number(config.auctionPeriod),
+      //     clearingSellAmount: sellAmtRToken,
+      //     clearingBuyAmount: minBuyAmtRToken,
+      //     externalAuctionId: bn('1'),
+      //     status: AuctionStatus.DONE,
+      //   })
+
+      //   await expectAuctionInfo(rsrTrader, 1, {
+      //     sell: compAsset.address,
+      //     buy: rsrAsset.address,
+      //     sellAmount: sellAmtRemainder,
+      //     minBuyAmount: minBuyAmtRemainder,
+      //     startTime: await getLatestBlockTimestamp(),
+      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+      //     clearingSellAmount: bn('0'),
+      //     clearingBuyAmount: bn('0'),
+      //     externalAuctionId: bn('2'),
+      //     status: AuctionStatus.OPEN,
+      //   })
+
+      //   // Check destinations at this stage
+      //   // StRSR
+      //   expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
+      //   // Furnace
+      //   expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+      //   let { amount, start } = await furnace.batches(0)
+      //   expect(amount).to.equal(minBuyAmtRToken)
+      //   expect(start).to.equal(await getLatestBlockTimestamp())
+
+      //   // Run final auction until all funds are converted
+      //   // Advance time till auction ended
+      //   await advanceTime(config.auctionPeriod.add(100).toString())
+
+      //   // Perform Mock Bids for RSR and RToken (addr1 has balance)
+      //   await rsr.connect(addr1).approve(market.address, minBuyAmtRemainder)
+      //   await market.placeBid(2, {
+      //     bidder: addr1.address,
+      //     sellAmount: sellAmtRemainder,
+      //     buyAmount: minBuyAmtRemainder,
+      //   })
+
+      //   await expect(main.poke())
+      //     .to.emit(rsrTrader, 'AuctionEnded')
+      //     .withArgs(1, compAsset.address, rsrAsset.address, sellAmtRemainder, minBuyAmtRemainder)
+      //     .and.to.not.emit(rsrTrader, 'AuctionStarted')
+      //     .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+
+      //   // Check all auctions are closed
+      //   await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
+      //   await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
+      //   await expectAuctionStatus(rsrTrader, 1, AuctionStatus.DONE)
+
+      //   // Check balances at destinations
+      //   // StRSR
+      //   expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.add(minBuyAmtRemainder))
+      //   // Furnace - Some melting occurred at this point
+      //   const { melted } = await furnace.batches(0)
+      //   expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken.sub(melted))
+      // })
 
       it('Should handle custom destinations correctly', async () => {
         // Advance time to get next reward
