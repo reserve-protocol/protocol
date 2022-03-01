@@ -93,10 +93,8 @@ contract DeployerP0 is IDeployer {
         ctorArgs.market = market;
         ctorArgs.rsr = rsr;
         ctorArgs.stRSR = deployStRSR(
-            main,
             string(abi.encodePacked("st", symbol, "RSR Token")),
-            string(abi.encodePacked("st", symbol, "RSR")),
-            owner
+            string(abi.encodePacked("st", symbol, "RSR"))
         );
         ctorArgs.rToken = deployRToken(main, name, symbol, owner);
 
@@ -124,12 +122,12 @@ contract DeployerP0 is IDeployer {
         );
         ctorArgs.assets[3] = new CompoundPricedAssetP0(comp, maxAuctionSize, comptroller);
 
-        ctorArgs.rTokenIssuer = new RTokenIssuerP0();
-        ctorArgs.rewardClaimer = new RewardClaimerP0();
+        ctorArgs.assetRegistry = new AssetRegistryP0();
         ctorArgs.auctioneer = new AuctioneerP0();
         ctorArgs.basketHandler = new BasketHandlerP0();
-        ctorArgs.assetRegistry = new AssetRegistryP0();
+        ctorArgs.rTokenIssuer = new RTokenIssuerP0();
         ctorArgs.revenueDistributor = new RevenueDistributorP0();
+        ctorArgs.rewardClaimer = new RewardClaimerP0();
         ctorArgs.settings = new SettingsP0();
 
         // Init main
@@ -169,12 +167,11 @@ contract DeployerP0 is IDeployer {
         return new FurnaceP0(rToken, period, ratio);
     }
 
-    function deployStRSR(
-        IMain main,
-        string memory name,
-        string memory symbol,
-        address owner
-    ) internal virtual returns (IStRSR) {
-        return new StRSRP0(main, name, symbol, owner);
+    function deployStRSR(string memory name, string memory symbol)
+        internal
+        virtual
+        returns (IStRSR)
+    {
+        return new StRSRP0(name, symbol);
     }
 }

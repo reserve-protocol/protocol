@@ -149,7 +149,7 @@ contract MainP0 is Ownable, Pausable, IMain {
 
         emit StRSRSet(stRSR, args.stRSR);
         stRSR = args.stRSR;
-        // TODO: initComponent
+        stRSR.initComponent(this, args);
 
         emit RTokenSet(rToken, args.rToken);
         rToken = args.rToken;

@@ -4,20 +4,23 @@ import { ethers } from 'hardhat'
 
 import { expectInReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
+import { ATokenFiatCollateralP0 } from '../../../typechain/ATokenFiatCollateralP0'
 import { AaveClaimAdapterP0 } from '../../../typechain/AaveClaimAdapterP0'
 import { AaveLendingAddrProviderMockP0 } from '../../../typechain/AaveLendingAddrProviderMockP0'
 import { AaveLendingPoolMockP0 } from '../../../typechain/AaveLendingPoolMockP0'
 import { AaveOracleMockP0 } from '../../../typechain/AaveOracleMockP0'
 import { AavePricedAssetP0 } from '../../../typechain/AavePricedAssetP0'
 import { AssetP0 } from '../../../typechain/AssetP0'
-import { ATokenFiatCollateralP0 } from '../../../typechain/ATokenFiatCollateralP0'
+import { AssetRegistryP0 } from '../../../typechain/AssetRegistryP0'
+import { AuctioneerP0 } from '../../../typechain/AuctioneerP0'
+import { BasketHandlerP0 } from '../../../typechain/BasketHandlerP0'
+import { CTokenFiatCollateralP0 } from '../../../typechain/CTokenFiatCollateralP0'
+import { CTokenMock } from '../../../typechain/CTokenMock'
 import { CollateralP0 } from '../../../typechain/CollateralP0'
 import { CompoundClaimAdapterP0 } from '../../../typechain/CompoundClaimAdapterP0'
 import { CompoundOracleMockP0 } from '../../../typechain/CompoundOracleMockP0'
 import { CompoundPricedAssetP0 } from '../../../typechain/CompoundPricedAssetP0'
 import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
-import { CTokenFiatCollateralP0 } from '../../../typechain/CTokenFiatCollateralP0'
-import { CTokenMock } from '../../../typechain/CTokenMock'
 import { DeployerP0 } from '../../../typechain/DeployerP0'
 import { ERC20Mock } from '../../../typechain/ERC20Mock'
 import { ExplorerFacadeP0 } from '../../../typechain/ExplorerFacadeP0'
@@ -25,9 +28,14 @@ import { FurnaceP0 } from '../../../typechain/FurnaceP0'
 import { MainP0 } from '../../../typechain/MainP0'
 import { MarketMock } from '../../../typechain/MarketMock'
 import { RTokenAssetP0 } from '../../../typechain/RTokenAssetP0'
+import { RTokenIssuerP0 } from '../../../typechain/RTokenIssuerP0'
 import { RTokenP0 } from '../../../typechain/RTokenP0'
-import { StaticATokenMock } from '../../../typechain/StaticATokenMock'
+import { RevenueDistributorP0 } from '../../../typechain/RevenueDistributorP0'
+import { RevenueTraderP0 } from '../../../typechain/RevenueTraderP0'
+import { RewardClaimerP0 } from '../../../typechain/RewardClaimerP0'
+import { SettingsP0 } from '../../../typechain/SettingsP0'
 import { StRSRP0 } from '../../../typechain/StRSRP0'
+import { StaticATokenMock } from '../../../typechain/StaticATokenMock'
 import { USDCMock } from '../../../typechain/USDCMock'
 import { getLatestBlockTimestamp } from '../../utils/time'
 
@@ -308,6 +316,13 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   dist: IRevenueShare
   deployer: DeployerP0
   main: MainP0
+  assetRegistry: AssetRegistryP0
+  auctioneer: AuctioneerP0
+  basketHandler: BasketHandlerP0
+  rTokenIssuer: RTokenIssuerP0
+  revenueDistributor: RevenueDistributorP0
+  rewardClaimer: RewardClaimerP0
+  settings: SettingsP0
   rsrAsset: AssetP0
   compAsset: AssetP0
   aaveAsset: AssetP0
@@ -377,8 +392,31 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
   const facadeAddr = expectInReceipt(receipt, 'RTokenCreated').args.facade
+  const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
 
   // Get Components
+  const assetRegistry: AssetRegistryP0 = <AssetRegistryP0>(
+    await ethers.getContractAt('AssetRegistryP0', await main.assetRegistry())
+  )
+  const auctioneer: AuctioneerP0 = <AuctioneerP0>(
+    await ethers.getContractAt('AuctioneerP0', await main.auctioneer())
+  )
+  const basketHandler: BasketHandlerP0 = <BasketHandlerP0>(
+    await ethers.getContractAt('BasketHandlerP0', await main.basketHandler())
+  )
+  const rTokenIssuer: RTokenIssuerP0 = <RTokenIssuerP0>(
+    await ethers.getContractAt('RTokenIssuerP0', await main.rTokenIssuer())
+  )
+  const revenueDistributor: RevenueDistributorP0 = <RevenueDistributorP0>(
+    await ethers.getContractAt('RevenueDistributorP0', await main.revenueDistributor())
+  )
+  const rewardClaimer: RewardClaimerP0 = <RewardClaimerP0>(
+    await ethers.getContractAt('RewardClaimerP0', await main.rewardClaimer())
+  )
+  const settings: SettingsP0 = <SettingsP0>(
+    await ethers.getContractAt('SettingsP0', await main.settings())
+  )
+
   const compoundClaimer = <CompoundClaimAdapterP0>(
     await ethers.getContractAt('CompoundClaimAdapterP0', await deployer.compoundClaimer())
   )
@@ -386,20 +424,22 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await ethers.getContractAt('AaveClaimAdapterP0', await deployer.aaveClaimer())
   )
 
-  const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
   const rsrAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('AavePricedAssetP0', await main.toAsset(rsr.address))
+    await ethers.getContractAt('AavePricedAssetP0', await assetRegistry.toAsset(rsr.address))
   )
 
   const aaveAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('AavePricedAssetP0', await main.toAsset(aaveToken.address))
+    await ethers.getContractAt('AavePricedAssetP0', await assetRegistry.toAsset(aaveToken.address))
   )
   const compAsset: AssetP0 = <AssetP0>(
-    await ethers.getContractAt('CompoundPricedAssetP0', await main.toAsset(compToken.address))
+    await ethers.getContractAt(
+      'CompoundPricedAssetP0',
+      await assetRegistry.toAsset(compToken.address)
+    )
   )
   const rToken: RTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', await main.rToken())
   const rTokenAsset: RTokenAssetP0 = <RTokenAssetP0>(
-    await ethers.getContractAt('RTokenAssetP0', await main.toAsset(rToken.address))
+    await ethers.getContractAt('RTokenAssetP0', await assetRegistry.toAsset(rToken.address))
   )
 
   const furnace: FurnaceP0 = <FurnaceP0>(
@@ -442,13 +482,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Register prime collateral
   const basketERC20s = []
   for (let i = 0; i < basket.length; i++) {
-    await main.connect(owner).registerAsset(basket[i].address)
+    await assetRegistry.connect(owner).registerAsset(basket[i].address)
     basketERC20s.push(await basket[i].erc20())
   }
 
   // Set non-empty basket
-  await main.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
-  await main.connect(owner).switchBasket()
+  await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
+  await basketHandler.connect(owner).switchBasket()
 
   // Unpause
   await main.connect(owner).unpause()
@@ -473,6 +513,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     dist,
     deployer,
     main,
+    assetRegistry,
+    auctioneer,
+    basketHandler,
+    rTokenIssuer,
+    revenueDistributor,
+    rewardClaimer,
+    settings,
     rToken,
     rTokenAsset,
     furnace,

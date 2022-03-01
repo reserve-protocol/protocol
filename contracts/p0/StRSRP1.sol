@@ -13,6 +13,7 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/Component.sol";
 
 /*
  * @title StRSRP0
@@ -23,7 +24,7 @@ import "contracts/libraries/Fixed.sol";
  * across non-withdrawing stakes, while when RSR is seized, it must be seized from both
  * stakes that are in the process of being withdrawn and those that are not.
  */
-contract StRSRP1 is IStRSR, Ownable, EIP712 {
+contract StRSRP1 is IStRSR, Component, EIP712 {
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Metadata;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -42,8 +43,6 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
         );
 
     // ====
-
-    IMain public main;
 
     // Staking Token Name and Symbol
     string private _name;
@@ -76,17 +75,13 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
         uint256 startedAt; // When the last of those drafts started
     }
 
-    constructor(
-        IMain main_,
-        string memory name_,
-        string memory symbol_,
-        address owner_
-    ) EIP712(name_, "1") {
-        main = main_;
+    constructor(string memory name_, string memory symbol_) EIP712(name_, "1") Component() {
         _name = name_;
         _symbol = symbol_;
-        _transferOwnership(owner_);
-        payoutLastPaid = main.settings().rewardStart();
+    }
+
+    function init(ConstructorArgs calldata args) internal override {
+        payoutLastPaid = args.config.rewardStart;
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system

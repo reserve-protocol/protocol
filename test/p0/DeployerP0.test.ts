@@ -17,6 +17,13 @@ import {
   RTokenAssetP0,
   RTokenP0,
   StRSRP0,
+  AssetRegistryP0,
+  AuctioneerP0,
+  BasketHandlerP0,
+  RTokenIssuerP0,
+  RevenueDistributorP0,
+  RewardClaimerP0,
+  SettingsP0,
 } from '../../typechain'
 import { defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
@@ -53,7 +60,15 @@ describe('DeployerP0 contract', () => {
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
+
   let facade: ExplorerFacadeP0
+  let assetRegistry: AssetRegistryP0
+  let auctioneer: AuctioneerP0
+  let basketHandler: BasketHandlerP0
+  let rTokenIssuer: RTokenIssuerP0
+  let revenueDistributor: RevenueDistributorP0
+  let rewardClaimer: RewardClaimerP0
+  let settings: SettingsP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -80,6 +95,13 @@ describe('DeployerP0 contract', () => {
       dist,
       deployer,
       main,
+      assetRegistry,
+      auctioneer,
+      basketHandler,
+      rTokenIssuer,
+      revenueDistributor,
+      rewardClaimer,
+      settings,
       rToken,
       rTokenAsset,
       furnace,
@@ -122,22 +144,22 @@ describe('DeployerP0 contract', () => {
 
       // Assets
       // RSR
-      expect(await main.toAsset(rsr.address)).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(rsr.address)).to.equal(rsrAsset.address)
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
       expect(await main.rsr()).to.equal(rsr.address)
 
       // RToken
-      expect(await main.toAsset(rToken.address)).to.equal(rTokenAsset.address)
+      expect(await assetRegistry.toAsset(rToken.address)).to.equal(rTokenAsset.address)
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await main.rToken()).to.equal(rToken.address)
 
       // Check assets/collateral
-      const erc20s = await main.registeredERC20s()
-      expect(await main.toAsset(erc20s[0])).to.equal(rTokenAsset.address)
-      expect(await main.toAsset(erc20s[1])).to.equal(rsrAsset.address)
-      expect(await main.toAsset(erc20s[2])).to.equal(aaveAsset.address)
-      expect(await main.toAsset(erc20s[3])).to.equal(compAsset.address)
-      expect(erc20s.length).to.eql((await main.basketTokens()).length + 4)
+      const erc20s = await assetRegistry.registeredERC20s()
+      expect(await assetRegistry.toAsset(erc20s[0])).to.equal(rTokenAsset.address)
+      expect(await assetRegistry.toAsset(erc20s[1])).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(erc20s[2])).to.equal(aaveAsset.address)
+      expect(await assetRegistry.toAsset(erc20s[3])).to.equal(compAsset.address)
+      expect(erc20s.length).to.eql((await rTokenIssuer.basketTokens()).length + 4)
 
       // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)
@@ -158,7 +180,6 @@ describe('DeployerP0 contract', () => {
     })
 
     it('Should setup stRSR correctly', async () => {
-      expect(await stRSR.main()).to.equal(main.address)
       expect(await stRSR.name()).to.equal('stRTKNRSR Token')
       expect(await stRSR.symbol()).to.equal('stRTKNRSR')
       expect(await stRSR.decimals()).to.equal(18)
