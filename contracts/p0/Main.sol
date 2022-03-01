@@ -155,7 +155,6 @@ contract MainP0 is Ownable, Pausable, IMain {
         // initComponent if revenueFurnace becomes a Component
 
         setMarket(args.market);
-        // initComponent if Market becomes a Component
 
         setRSR(args.rsr);
 
