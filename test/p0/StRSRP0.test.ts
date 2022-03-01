@@ -577,7 +577,7 @@ describe('StRSRP0 contract', () => {
     })
   })
 
-  describe.only('Remove RSR', () => {
+  describe('Remove RSR', () => {
     it('Should allow to remove RSR - Single staker', async () => {
       const amount: BigNumber = bn('10e18')
       const amount2: BigNumber = bn('1e18')
