@@ -4,4 +4,4 @@
 yarn lint
 yarn compile
 # yarn test:p0
-npx hardhat test test/p0/CollateralP0.test.ts test/p0/AssetP0.test.ts test/p0/MainP0.Setup.test.ts test/p0/DeployerP0.test.ts test/p0/RTokenP0.test.ts --parallel
+npx hardhat test test/p0/CollateralP0.test.ts test/p0/AssetP0.test.ts test/p0/MainP0.Setup.test.ts test/p0/DeployerP0.test.ts test/p0/RTokenP0.test.ts test/p0/FurnaceP0.test.ts --parallel
