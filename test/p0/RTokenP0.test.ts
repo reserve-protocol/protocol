@@ -10,11 +10,10 @@ import {
   RTokenP0,
   StaticATokenMock,
   AssetRegistryP0,
-  AuctioneerP0,
+  BackingManagerP0,
   BasketHandlerP0,
   RTokenIssuerP0,
   RevenueDistributorP0,
-  RewardClaimerP0,
   SettingsP0,
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
@@ -31,11 +30,10 @@ describe('RTokenP0 contract', () => {
   // Main
   let main: MainP0
   let assetRegistry: AssetRegistryP0
-  let auctioneer: AuctioneerP0
+  let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
   let revenueDistributor: RevenueDistributorP0
-  let rewardClaimer: RewardClaimerP0
   let settings: SettingsP0
 
   // Tokens/Assets
@@ -75,11 +73,10 @@ describe('RTokenP0 contract', () => {
       main,
       rToken,
       assetRegistry,
-      auctioneer,
+      backingManager,
       basketHandler,
       rTokenIssuer,
       revenueDistributor,
-      rewardClaimer,
       settings,
     } = await loadFixture(defaultFixture))
 
@@ -201,7 +198,7 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-      await whileImpersonating(auctioneer.address, async (auctioneerSigner) => {
+      await whileImpersonating(backingManager.address, async (auctioneerSigner) => {
         await rToken.connect(auctioneerSigner).mint(addr1.address, mintAmount)
       })
 
