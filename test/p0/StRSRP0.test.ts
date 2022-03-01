@@ -333,10 +333,10 @@ describe('StRSRP0 contract', () => {
         await token3.connect(owner).mint(addr1.address, initialBal)
 
         // Approvals
-        await token0.connect(addr1).approve(main.address, initialBal)
-        await token1.connect(addr1).approve(main.address, initialBal)
-        await token2.connect(addr1).approve(main.address, initialBal)
-        await token3.connect(addr1).approve(main.address, initialBal)
+        await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
 
         // Issue tokens
         const issueAmount: BigNumber = bn('100e18')

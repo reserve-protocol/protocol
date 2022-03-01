@@ -94,10 +94,10 @@ describe('ExplorerFacadeP0 contract', () => {
       issueAmount = bn('100e18')
 
       // Provide approvals
-      await token.connect(addr1).approve(main.address, initialBal)
-      await usdc.connect(addr1).approve(main.address, initialBal)
-      await aToken.connect(addr1).approve(main.address, initialBal)
-      await cToken.connect(addr1).approve(main.address, initialBal)
+      await token.connect(addr1).approve(rTokenIssuer.address, initialBal)
+      await usdc.connect(addr1).approve(rTokenIssuer.address, initialBal)
+      await aToken.connect(addr1).approve(rTokenIssuer.address, initialBal)
+      await cToken.connect(addr1).approve(rTokenIssuer.address, initialBal)
 
       // Issue rTokens
       await main.connect(addr1).issue(issueAmount)

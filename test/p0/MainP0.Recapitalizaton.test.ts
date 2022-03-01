@@ -258,12 +258,12 @@ describe('MainP0 contract', () => {
         )
 
         // Provide approvals
-        await token0.connect(addr1).approve(main.address, initialBal)
-        await token1.connect(addr1).approve(main.address, initialBal)
-        await token2.connect(addr1).approve(main.address, initialBal)
-        await token3.connect(addr1).approve(main.address, initialBal)
-        await backupToken1.connect(addr1).approve(main.address, initialBal)
-        await backupToken2.connect(addr1).approve(main.address, initialBal)
+        await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await backupToken1.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await backupToken2.connect(addr1).approve(rTokenIssuer.address, initialBal)
 
         // Issue rTokens
         await main.connect(addr1).issue(issueAmount)
@@ -501,7 +501,7 @@ describe('MainP0 contract', () => {
         await main.connect(owner).switchBasket()
 
         // Provide approvals
-        await token0.connect(addr1).approve(main.address, initialBal)
+        await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
 
         // Issue rTokens
         await main.connect(addr1).issue(issueAmount)
@@ -1444,10 +1444,10 @@ describe('MainP0 contract', () => {
         issueAmount = bn('100e18')
 
         // Provide approvals
-        await token0.connect(addr1).approve(main.address, initialBal)
-        await token1.connect(addr1).approve(main.address, initialBal)
-        await token2.connect(addr1).approve(main.address, initialBal)
-        await token3.connect(addr1).approve(main.address, initialBal)
+        await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
 
         // Issue rTokens
         await main.connect(addr1).issue(issueAmount)
