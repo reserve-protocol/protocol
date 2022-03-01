@@ -194,24 +194,23 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.totalSupply()).to.equal(issueAmount.sub(meltAmount.mul(2)))
     })
 
-    it('Should allow to mint tokens when called by Main', async () => {
+    it('Should allow to mint tokens when called by Auctioneer', async () => {
       // Mint tokens
       const mintAmount: BigNumber = bn('10e18')
-
-      // Update Main to mock call - from mainMock
-      await rToken.connect(owner).setMain(mainMock.address)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-      await rToken.connect(mainMock).mint(addr1.address, mintAmount)
+      await whileImpersonating(auctioneer.address, async (auctioneerSigner) => {
+        await rToken.connect(auctioneerSigner).mint(addr1.address, mintAmount)
+      })
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(mintAmount))
       expect(await rToken.totalSupply()).to.equal(issueAmount.add(mintAmount))
 
       // Trying to mint with another account will fail
       await expect(rToken.connect(other).mint(addr1.address, mintAmount)).to.be.revertedWith(
-        'only main'
+        'only components of main'
       )
     })
   })
