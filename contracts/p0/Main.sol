@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/main/Settings.sol";
+import "contracts/p0/Settings.sol";
 import "contracts/p0/interfaces/IMain.sol"; //
 import "contracts/Pausable.sol";
 
