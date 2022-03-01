@@ -147,6 +147,8 @@ describe('MainP0 contract', () => {
       compoundClaimer,
       aaveClaimer,
       facade,
+      rsrTrader,
+      rTokenTrader,
     } = await loadFixture(defaultFixture))
     token0 = erc20s[collateral.indexOf(basket[0])]
     token1 = erc20s[collateral.indexOf(basket[1])]
@@ -160,13 +162,6 @@ describe('MainP0 contract', () => {
     collateral1 = basket[1]
     collateral2 = <ATokenFiatCollateralP0>basket[2]
     collateral3 = <CTokenFiatCollateralP0>basket[3]
-
-    rsrTrader = <RevenueTraderP0>(
-      await ethers.getContractAt('RevenueTraderP0', await main.rsrTrader())
-    )
-    rTokenTrader = <RevenueTraderP0>(
-      await ethers.getContractAt('RevenueTraderP0', await main.rTokenTrader())
-    )
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -300,38 +295,18 @@ describe('MainP0 contract', () => {
         claimAdapters: [compoundClaimer.address, aaveClaimer.address],
         assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
       }
-      await expect(main.init(ctorArgs)).to.be.revertedWith('already initialized')
+      await expect(main.init(ctorArgs)).to.be.revertedWith('Already initialized')
     })
 
     it('Should perform validations on init', async () => {
-      const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
-      const newMain: MainP0 = <MainP0>await MainFactory.deploy()
-      await newMain.connect(owner).unpause()
-
       // Set invalid RSRPayPeriod
       const newConfig = { ...config }
       newConfig.stRSRPayPeriod = config.stRSRWithdrawalDelay
 
-      // Deploy new main
-      const ctorArgs = {
-        config: newConfig,
-        dist: dist,
-        furnace: furnace.address,
-        market: market.address,
-        rsr: rsr.address,
-        stRSR: stRSR.address,
-        rToken: rToken.address,
-        assetRegistry: assetRegistry.address,
-        auctioneer: auctioneer.address,
-        basketHandler: basketHandler.address,
-        rTokenIssuer: rTokenIssuer.address,
-        revenueDistributor: revenueDistributor.address,
-        rewardClaimer: rewardClaimer.address,
-        settings: settings.address,
-        claimAdapters: [compoundClaimer.address, aaveClaimer.address],
-        assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
-      }
-      await expect(newMain.init(ctorArgs)).to.be.revertedWith('RSR pay period too long')
+      // Deploy new system instance
+      await expect(
+        deployer.deploy('RTKN RToken', 'RTKN', owner.address, newConfig, dist, 0)
+      ).to.be.revertedWith('RSR pay period too long')
     })
   })
 
@@ -419,7 +394,7 @@ describe('MainP0 contract', () => {
 
       // If not owner cannot update
       await expect(settings.connect(other).setRewardStart(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Check value did not change
@@ -427,7 +402,7 @@ describe('MainP0 contract', () => {
 
       // Update with owner
       await expect(settings.connect(owner).setRewardStart(newValue))
-        .to.emit(main, 'RewardStartSet')
+        .to.emit(settings, 'RewardStartSet')
         .withArgs(config.rewardStart, newValue)
 
       // Check value was updated
@@ -442,7 +417,7 @@ describe('MainP0 contract', () => {
 
       // If not owner cannot update
       await expect(settings.connect(other).setRewardPeriod(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Check value did not change
@@ -450,7 +425,7 @@ describe('MainP0 contract', () => {
 
       // Update with owner
       await expect(settings.connect(owner).setRewardPeriod(newValue))
-        .to.emit(main, 'RewardPeriodSet')
+        .to.emit(settings, 'RewardPeriodSet')
         .withArgs(config.rewardPeriod, newValue)
 
       // Check value was updated
@@ -465,7 +440,7 @@ describe('MainP0 contract', () => {
 
       // If not owner cannot update
       await expect(settings.connect(other).setAuctionPeriod(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Check value did not change
@@ -473,7 +448,7 @@ describe('MainP0 contract', () => {
 
       // Update with owner
       await expect(settings.connect(owner).setAuctionPeriod(newValue))
-        .to.emit(main, 'AuctionPeriodSet')
+        .to.emit(settings, 'AuctionPeriodSet')
         .withArgs(config.auctionPeriod, newValue)
 
       // Check value was updated
@@ -488,7 +463,7 @@ describe('MainP0 contract', () => {
 
       // If not owner cannot update
       await expect(settings.connect(other).setStRSRPayPeriod(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Reverts if the value is too long
@@ -502,7 +477,7 @@ describe('MainP0 contract', () => {
 
       // Update with owner
       await expect(settings.connect(owner).setStRSRPayPeriod(newValue))
-        .to.emit(main, 'StRSRPayPeriodSet')
+        .to.emit(settings, 'StRSRPayPeriodSet')
         .withArgs(config.stRSRPayPeriod, newValue)
 
       // Check value was updated
@@ -517,7 +492,7 @@ describe('MainP0 contract', () => {
 
       // If not owner cannot update
       await expect(settings.connect(other).setStRSRWithdrawalDelay(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Reverts if the value is too short
@@ -531,7 +506,7 @@ describe('MainP0 contract', () => {
 
       // Update with owner
       await expect(settings.connect(owner).setStRSRWithdrawalDelay(newValue))
-        .to.emit(main, 'StRSRWithdrawalDelaySet')
+        .to.emit(settings, 'StRSRWithdrawalDelaySet')
         .withArgs(config.stRSRWithdrawalDelay, newValue)
 
       // Check value was updated
@@ -546,7 +521,7 @@ describe('MainP0 contract', () => {
 
       // If not owner cannot update
       await expect(settings.connect(other).setDefaultDelay(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Check value did not change
@@ -554,7 +529,7 @@ describe('MainP0 contract', () => {
 
       // Update with owner
       await expect(settings.connect(owner).setDefaultDelay(newValue))
-        .to.emit(main, 'DefaultDelaySet')
+        .to.emit(settings, 'DefaultDelaySet')
         .withArgs(config.defaultDelay, newValue)
 
       // Check value was updated
@@ -569,7 +544,7 @@ describe('MainP0 contract', () => {
 
       // If not owner cannot update
       await expect(settings.connect(other).setMaxTradeSlippage(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Check value did not change
@@ -577,7 +552,7 @@ describe('MainP0 contract', () => {
 
       // Update with owner
       await expect(settings.connect(owner).setMaxTradeSlippage(newValue))
-        .to.emit(main, 'MaxTradeSlippageSet')
+        .to.emit(settings, 'MaxTradeSlippageSet')
         .withArgs(config.maxTradeSlippage, newValue)
 
       // Check value was updated
@@ -592,7 +567,7 @@ describe('MainP0 contract', () => {
 
       // If not owner cannot update
       await expect(settings.connect(other).setDustAmount(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Check value did not change
@@ -600,7 +575,7 @@ describe('MainP0 contract', () => {
 
       // Update with owner
       await expect(settings.connect(owner).setDustAmount(newValue))
-        .to.emit(main, 'DustAmountSet')
+        .to.emit(settings, 'DustAmountSet')
         .withArgs(config.dustAmount, newValue)
 
       // Check value was updated
@@ -615,7 +590,7 @@ describe('MainP0 contract', () => {
 
       // If not owner cannot update
       await expect(settings.connect(other).setBackingBuffer(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Check value did not change
@@ -623,7 +598,7 @@ describe('MainP0 contract', () => {
 
       // Update with owner
       await expect(settings.connect(owner).setBackingBuffer(newValue))
-        .to.emit(main, 'BackingBufferSet')
+        .to.emit(settings, 'BackingBufferSet')
         .withArgs(config.backingBuffer, newValue)
 
       // Check value was updated
@@ -638,7 +613,7 @@ describe('MainP0 contract', () => {
 
       // If not owner cannot update
       await expect(settings.connect(other).setIssuanceRate(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Check value did not change
@@ -646,7 +621,7 @@ describe('MainP0 contract', () => {
 
       // Update with owner
       await expect(settings.connect(owner).setIssuanceRate(newValue))
-        .to.emit(main, 'IssuanceRateSet')
+        .to.emit(settings, 'IssuanceRateSet')
         .withArgs(config.issuanceRate, newValue)
 
       // Check value was updated
@@ -661,7 +636,7 @@ describe('MainP0 contract', () => {
 
       // If not owner cannot update
       await expect(settings.connect(other).setDefaultThreshold(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Check value did not change
@@ -669,7 +644,7 @@ describe('MainP0 contract', () => {
 
       // Update with owner
       await expect(settings.connect(owner).setDefaultThreshold(newValue))
-        .to.emit(main, 'DefaultThresholdSet')
+        .to.emit(settings, 'DefaultThresholdSet')
         .withArgs(config.defaultThreshold, newValue)
 
       // Check value was updated
@@ -684,7 +659,7 @@ describe('MainP0 contract', () => {
 
       // If not owner cannot update
       await expect(settings.connect(other).setStRSRPayRatio(newValue)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Check value did not change
@@ -692,7 +667,7 @@ describe('MainP0 contract', () => {
 
       // Update with owner
       await expect(settings.connect(owner).setStRSRPayRatio(newValue))
-        .to.emit(main, 'StRSRPayRatioSet')
+        .to.emit(settings, 'StRSRPayRatioSet')
         .withArgs(config.stRSRPayRatio, newValue)
 
       // Check value was updated
@@ -817,44 +792,44 @@ describe('MainP0 contract', () => {
 
     it('Should allow to add ClaimAdapter if Owner', async () => {
       // Check existing value
-      expect(await claimRewarder.isTrustedClaimAdapter(other.address)).to.equal(false)
+      expect(await rewardClaimer.isTrustedClaimAdapter(other.address)).to.equal(false)
 
       // If not owner cannot update - use mock address
-      await expect(claimRewarder.connect(other).addClaimAdapter(other.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+      await expect(rewardClaimer.connect(other).addClaimAdapter(other.address)).to.be.revertedWith(
+        'Component: caller is not the owner'
       )
 
       // Check value did not change
-      expect(await claimRewarder.isTrustedClaimAdapter(other.address)).to.equal(false)
+      expect(await rewardClaimer.isTrustedClaimAdapter(other.address)).to.equal(false)
 
       // Update with owner
-      await expect(claimRewarder.connect(owner).addClaimAdapter(other.address))
-        .to.emit(main, 'ClaimAdapterAdded')
+      await expect(rewardClaimer.connect(owner).addClaimAdapter(other.address))
+        .to.emit(rewardClaimer, 'ClaimAdapterAdded')
         .withArgs(other.address)
 
       // Check value was updated
-      expect(await claimRewarder.isTrustedClaimAdapter(other.address)).to.equal(true)
+      expect(await rewardClaimer.isTrustedClaimAdapter(other.address)).to.equal(true)
     })
 
     it('Should allow to remove ClaimAdapter if Owner', async () => {
       // Check existing value
-      expect(await claimRewarder.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
+      expect(await rewardClaimer.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
 
       // If not owner cannot update - use mock address
       await expect(
-        claimRewarder.connect(other).removeClaimAdapter(compoundClaimer.address)
-      ).to.be.revertedWith('Ownable: caller is not the owner')
+        rewardClaimer.connect(other).removeClaimAdapter(compoundClaimer.address)
+      ).to.be.revertedWith('Component: caller is not the owner')
 
       // Check value did not change
-      expect(await claimRewarder.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
+      expect(await rewardClaimer.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
 
       // Update with owner
-      await expect(claimRewarder.connect(owner).removeClaimAdapter(compoundClaimer.address))
-        .to.emit(main, 'ClaimAdapterRemoved')
+      await expect(rewardClaimer.connect(owner).removeClaimAdapter(compoundClaimer.address))
+        .to.emit(rewardClaimer, 'ClaimAdapterRemoved')
         .withArgs(compoundClaimer.address)
 
       // Check value was updated
-      expect(await claimRewarder.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(false)
+      expect(await rewardClaimer.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(false)
     })
 
     it('Should allow to set RevenueFurnace if Owner and perform validations', async () => {
@@ -912,7 +887,7 @@ describe('MainP0 contract', () => {
 
       // Cannot add asset if not owner
       await expect(assetRegistry.connect(other).registerAsset(newAsset.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Nothing occurs if attempting to add an existing asset
@@ -924,7 +899,7 @@ describe('MainP0 contract', () => {
 
       // Add new asset
       await expect(assetRegistry.connect(owner).registerAsset(newAsset.address))
-        .to.emit(main, 'AssetRegistered')
+        .to.emit(assetRegistry, 'AssetRegistered')
         .withArgs(erc20s[5].address, newAsset.address)
 
       // Check it was added
@@ -955,7 +930,7 @@ describe('MainP0 contract', () => {
       // Cannot remove asset if not owner
       await expect(
         assetRegistry.connect(other).unregisterAsset(compAsset.address)
-      ).to.be.revertedWith('Ownable: caller is not the owner')
+      ).to.be.revertedWith('Component: caller is not the owner')
 
       // Cannot remove asset that does not exist
       await expect(
@@ -1003,7 +978,7 @@ describe('MainP0 contract', () => {
       // Cannot swap asset if not owner
       await expect(
         assetRegistry.connect(other).swapRegisteredAsset(newAsset.address)
-      ).to.be.revertedWith('Ownable: caller is not the owner')
+      ).to.be.revertedWith('Component: caller is not the owner')
 
       // Cannot swap asset if ERC20 is not registered
       await expect(
@@ -1017,7 +992,7 @@ describe('MainP0 contract', () => {
       await expect(assetRegistry.connect(owner).swapRegisteredAsset(newAsset.address))
         .to.emit(main, 'AssetUnregistered')
         .withArgs(token0.address, collateral0.address)
-        .and.to.emit(main, 'AssetRegistered')
+        .and.to.emit(assetRegistry, 'AssetRegistered')
         .withArgs(token0.address, newAsset.address)
 
       // Check length is not modified and erc20 remains registered
@@ -1069,7 +1044,7 @@ describe('MainP0 contract', () => {
     it('Should not allow to set prime Basket if not Owner', async () => {
       await expect(
         basketHandler.connect(other).setPrimeBasket([collateral0.address], [fp('1')])
-      ).to.be.revertedWith('Ownable: caller is not the owner')
+      ).to.be.revertedWith('Component: caller is not the owner')
     })
 
     it('Should not allow to set prime Basket with invalid length', async () => {
@@ -1081,38 +1056,38 @@ describe('MainP0 contract', () => {
     it('Should allow to set prime Basket if Owner', async () => {
       // Set basket
       await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
-        .to.emit(main, 'PrimeBasketSet')
+        .to.emit(basketHandler, 'PrimeBasketSet')
         .withArgs([token0.address], [fp('1')])
     })
 
     it('Should not allow to set backup Config if not Owner', async () => {
       await expect(
-        main
+        basketHandler
           .connect(other)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [collateral0.address])
-      ).to.be.revertedWith('Ownable: caller is not the owner')
+      ).to.be.revertedWith('Component: caller is not the owner')
     })
 
     it('Should allow to set backup Config if Owner', async () => {
       // Set basket
       await expect(
-        main
+        basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [collateral0.address])
       )
-        .to.emit(main, 'BackupConfigSet')
+        .to.emit(basketHandler, 'BackupConfigSet')
         .withArgs(ethers.utils.formatBytes32String('USD'), bn(1), [collateral0.address])
     })
 
     it('Should not allow to switch basket if not Owner', async () => {
       await expect(basketHandler.connect(other).switchBasket()).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
     })
 
     it('Should allow to call switch Basket if Owner - No changes', async () => {
       // Switch basket - No backup nor default
-      await expect(basketHandler.connect(owner).switchBasket()).to.emit(main, 'BasketSet')
+      await expect(basketHandler.connect(owner).switchBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Basket remains the same in this case
       expect(await basketHandler.fullyCapitalized()).to.equal(true)

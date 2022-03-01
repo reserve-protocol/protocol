@@ -333,6 +333,8 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   facade: ExplorerFacadeP0
   compoundClaimer: CompoundClaimAdapterP0
   aaveClaimer: AaveClaimAdapterP0
+  rsrTrader: RevenueTraderP0
+  rTokenTrader: RevenueTraderP0
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -460,6 +462,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     aaveToken
   )
 
+  const rsrTrader = <RevenueTraderP0>(
+    await ethers.getContractAt('RevenueTraderP0', await auctioneer.rsrTrader())
+  )
+  const rTokenTrader = <RevenueTraderP0>(
+    await ethers.getContractAt('RevenueTraderP0', await auctioneer.rTokenTrader())
+  )
+
   // Set Oracle Prices
   await compoundOracleInternal.setPrice('ETH', bn('4000e6'))
   await compoundOracleInternal.setPrice('COMP', bn('1e6'))
@@ -528,5 +537,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     facade,
     compoundClaimer,
     aaveClaimer,
+    rsrTrader,
+    rTokenTrader,
   }
 }

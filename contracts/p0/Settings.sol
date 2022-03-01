@@ -31,7 +31,7 @@ contract SettingsP0 is Component, ISettings {
 
     uint256 public stRSRPayPeriod;
 
-    function setStRSRPayPeriod(uint256 val) external {
+    function setStRSRPayPeriod(uint256 val) external override onlyOwner {
         emit StRSRPayPeriodSet(stRSRPayPeriod, val);
         stRSRPayPeriod = val;
         require(stRSRPayPeriod * 2 <= stRSRWithdrawalDelay, "RSR pay period too long");
@@ -89,7 +89,7 @@ contract SettingsP0 is Component, ISettings {
 
     Fix public stRSRPayRatio;
 
-    function setStRSRPayRatio(Fix val) external {
+    function setStRSRPayRatio(Fix val) external override onlyOwner {
         emit StRSRPayRatioSet(stRSRPayRatio, val);
         stRSRPayRatio = val;
     }
@@ -109,6 +109,6 @@ contract SettingsP0 is Component, ISettings {
         defaultThreshold = args.config.defaultThreshold;
         stRSRPayRatio = args.config.stRSRPayRatio;
 
-        require(stRSRPayPeriod * 2 < stRSRWithdrawalDelay, "RSR pay period too long");
+        require(stRSRPayPeriod * 2 <= stRSRWithdrawalDelay, "RSR pay period too long");
     }
 }
