@@ -12,8 +12,15 @@ import {
   MainP0,
   StaticATokenMock,
   StRSRP0,
+  AssetRegistryP0,
+  BackingManagerP0,
+  BasketHandlerP0,
+  RTokenIssuerP0,
+  RevenueDistributorP0,
+  SettingsP0,
 } from '../../typechain'
 import { advanceTime } from '../utils/time'
+import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -30,6 +37,12 @@ describe('StRSRP0 contract', () => {
 
   // Main and AssetManager mocks
   let main: MainP0
+  let assetRegistry: AssetRegistryP0
+  let backingManager: BackingManagerP0
+  let basketHandler: BasketHandlerP0
+  let rTokenIssuer: RTokenIssuerP0
+  let revenueDistributor: RevenueDistributorP0
+  let settings: SettingsP0
 
   // StRSR
   let stRSR: StRSRP0
@@ -64,7 +77,19 @@ describe('StRSRP0 contract', () => {
     ;[owner, addr1, addr2, addr3, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ rsr, stRSR, basket, basketsNeededAmts, main } = await loadFixture(defaultFixture))
+    ;({
+      rsr,
+      stRSR,
+      basket,
+      basketsNeededAmts,
+      main,
+      assetRegistry,
+      backingManager,
+      basketHandler,
+      rTokenIssuer,
+      revenueDistributor,
+      settings,
+    } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
     initialBal = bn('100e18')
@@ -86,7 +111,6 @@ describe('StRSRP0 contract', () => {
 
   describe('Deployment', () => {
     it('Should setup initial addresses and values correctly', async () => {
-      expect(await stRSR.main()).to.equal(main.address)
       expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
       expect(await stRSR.balanceOf(owner.address)).to.equal(0)
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
@@ -111,24 +135,6 @@ describe('StRSRP0 contract', () => {
           chainId,
           verifyingContract,
         })
-      )
-    })
-  })
-
-  describe('Configuration / State', () => {
-    it('Should allow to update Main if Owner', async () => {
-      // Deploy a new Main Mock
-      let mainMock: MainCallerMockP0
-      const MainCallerFactory: ContractFactory = await ethers.getContractFactory('MainCallerMockP0')
-      mainMock = <MainCallerMockP0>await MainCallerFactory.deploy(main.address)
-
-      await stRSR.connect(owner).setMain(mainMock.address)
-
-      expect(await stRSR.main()).to.equal(mainMock.address)
-
-      // Try to update again if not owner
-      await expect(stRSR.connect(other).setMain(main.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
       )
     })
   })
@@ -279,7 +285,7 @@ describe('StRSRP0 contract', () => {
       let stkWithdrawalDelay: number
 
       beforeEach(async () => {
-        stkWithdrawalDelay = (await main.stRSRWithdrawalDelay()).toNumber()
+        stkWithdrawalDelay = (await settings.stRSRWithdrawalDelay()).toNumber()
 
         // Perform stake
         amount1 = bn('1e18')
@@ -333,14 +339,14 @@ describe('StRSRP0 contract', () => {
         await token3.connect(owner).mint(addr1.address, initialBal)
 
         // Approvals
-        await token0.connect(addr1).approve(main.address, initialBal)
-        await token1.connect(addr1).approve(main.address, initialBal)
-        await token2.connect(addr1).approve(main.address, initialBal)
-        await token3.connect(addr1).approve(main.address, initialBal)
+        await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
 
         // Issue tokens
         const issueAmount: BigNumber = bn('100e18')
-        await main.connect(addr1).issue(issueAmount)
+        await rTokenIssuer.connect(addr1).issue(issueAmount)
 
         // Get current balance for user
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)
@@ -349,12 +355,12 @@ describe('StRSRP0 contract', () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Save backing tokens
-        const erc20s = await main.basketTokens()
+        const erc20s = await rTokenIssuer.basketTokens()
 
         // Set not fully capitalized by changing basket
-        await main.connect(owner).setPrimeBasket([token0.address], [fp('1e18')])
-        await main.connect(owner).switchBasket()
-        expect(await main.fullyCapitalized()).to.equal(false)
+        await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1e18')])
+        await basketHandler.connect(owner).switchBasket()
+        expect(await basketHandler.fullyCapitalized()).to.equal(false)
 
         // Process unstakes
         await expect(stRSR.processWithdrawals(addr1.address)).to.be.revertedWith(
@@ -362,10 +368,10 @@ describe('StRSRP0 contract', () => {
         )
 
         // If fully capitalized should process OK  - Set back original basket
-        await main.connect(owner).setPrimeBasket(erc20s, basketsNeededAmts)
-        await main.connect(owner).switchBasket()
+        await basketHandler.connect(owner).setPrimeBasket(erc20s, basketsNeededAmts)
+        await basketHandler.connect(owner).switchBasket()
 
-        expect(await main.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
 
         // Process unstakes
         await stRSR.processWithdrawals(addr1.address)
@@ -571,18 +577,7 @@ describe('StRSRP0 contract', () => {
     })
   })
 
-  describe('Remove RSR', () => {
-    let mainMock: MainCallerMockP0
-
-    beforeEach(async () => {
-      // Deploy Main-Caller mock
-      const MainCallerFactory: ContractFactory = await ethers.getContractFactory('MainCallerMockP0')
-      mainMock = <MainCallerMockP0>await MainCallerFactory.deploy(main.address)
-
-      // Set Main
-      await stRSR.connect(owner).setMain(mainMock.address)
-    })
-
+  describe.only('Remove RSR', () => {
     it('Should allow to remove RSR - Single staker', async () => {
       const amount: BigNumber = bn('10e18')
       const amount2: BigNumber = bn('1e18')
@@ -598,7 +593,9 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
 
       // Seize RSR
-      await mainMock.seizeRSR(amount2)
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await stRSR.connect(signer).seizeRSR(amount2)
+      })
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.sub(amount2))
@@ -627,7 +624,9 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
 
       // Seize RSR
-      await mainMock.seizeRSR(amount2)
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await stRSR.connect(signer).seizeRSR(amount2)
+      })
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2).sub(amount2))
@@ -663,7 +662,9 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr3.address)).to.equal(amount)
 
       // Seize RSR
-      await mainMock.seizeRSR(amount2)
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await stRSR.connect(signer).seizeRSR(amount2)
+      })
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3).sub(amount2))
@@ -706,9 +707,11 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
 
       // Seize RSR
-      await expect(mainMock.seizeRSR(amount2))
-        .to.emit(rsr, 'Transfer')
-        .withArgs(stRSR.address, mainMock.address, amount2)
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSR.connect(signer).seizeRSR(amount2))
+          .to.emit(rsr, 'Transfer')
+          .withArgs(stRSR.address, backingManager.address, amount2)
+      })
 
       // Check balances, stakes, and withdrawals
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.sub(amount2))
@@ -758,7 +761,9 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
 
       // Seize RSR
-      await mainMock.seizeRSR(amount2)
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await stRSR.connect(signer).seizeRSR(amount2)
+      })
 
       // Check balances, stakes, and withdrawals
       const proportionalAmountToSeize: BigNumber = amount2.div(2)

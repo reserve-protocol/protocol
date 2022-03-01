@@ -166,7 +166,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR might be smaller than rsrAmount if we're out of RSR.
     function seizeRSR(uint256 rsrAmount) external override returns (uint256 seizedRSR) {
-        require(_msgSender() == address(main), "not main");
+        require(main.hasComponent(_msgSender()), "not main");
         require(rsrAmount > 0, "Amount cannot be zero");
         uint256 rewards = rsrRewards();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
