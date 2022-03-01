@@ -14,7 +14,7 @@ import "contracts/Pausable.sol";
  * @title Main
  * @notice Collects all mixins.
  */
-// solhint-disable max-states
+// solhint-disable max-states-count
 contract MainP0 is Ownable, Pausable, IMain {
     using FixLib for Fix;
     using EnumerableSet for EnumerableSet.AddressSet;
