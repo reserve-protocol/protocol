@@ -16,7 +16,7 @@
         "test:p0": "npx hardhat test test/p0/*.test.ts",
         "test:coverage": "npx hardhat coverage --temp artifacts",
         "test:generic": "npx hardhat test test/generic/*.test.ts",
-        "test:parallel": "mocha --require hardhat/register --recursive --parallel --exit",
+        "test:parallel": "npx hardhat test --parallel",
         "test:recompile": "npx hardhat compile --force && mocha --require hardhat/register --recursive --exit",
         "lint": "npx solhint 'contracts/**/*.sol'",
         "prettier": "npx prettier --write 'contracts/**/*.sol' '{test,common,scripts,tasks,types,}/**/{*.ts,*.json}' '*.ts' '*.json'",

@@ -3,4 +3,4 @@
 
 yarn lint
 yarn compile
-yarn exec hardhat test test/p0/*.test.ts --parallel
+yarn test:parallel
