@@ -937,10 +937,10 @@ describe('MainP0 contract', () => {
 
       it('Should recapitalize correctly in case of default - Taking Haircut - No RSR', async () => {
         // Register Collateral
-        await main.connect(owner).registerAsset(backupCollateral1.address)
+        await assetRegistry.connect(owner).registerAsset(backupCollateral1.address)
 
         // Set backup configuration - USDT as backup
-        await main
+        await basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
 
