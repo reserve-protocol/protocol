@@ -422,8 +422,10 @@ describe('CollateralP0 contracts', () => {
       expect(await compoundUsdcAsset.price()).to.equal(fp('1'))
 
       // Update values in Oracle increase by 10%
-      await compoundOracleInternal.setPrice(await token.symbol(), bn('1.1e6')) // 10%
-      await compoundOracleInternal.setPrice(await usdc.symbol(), bn('1.1e6')) // 10%
+      let symbol: string = await token.symbol()
+      await compoundOracleInternal.setPrice(symbol, bn('1.1e6')) // 10%
+      symbol = await usdc.symbol()
+      await compoundOracleInternal.setPrice(symbol, bn('1.1e6')) // 10%
 
       // Check new prices
       expect(await compoundTokenAsset.price()).to.equal(fp('1.1'))
@@ -431,7 +433,7 @@ describe('CollateralP0 contracts', () => {
 
       // Revert if price is zero - Update Oracles and check prices
       // Fiat token
-      let symbol: string = await token.symbol()
+      symbol = await token.symbol()
       await compoundOracleInternal.setPrice(symbol, bn(0))
       await expect(compoundTokenAsset.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
 
