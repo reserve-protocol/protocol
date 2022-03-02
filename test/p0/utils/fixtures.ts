@@ -43,7 +43,6 @@ export type Collateral = CollateralP0 | CTokenFiatCollateralP0 | ATokenFiatColla
 const maxAuctionSize = fp(1e6) // $1M
 
 export interface IConfig {
-  rewardStart: BigNumber
   rewardPeriod: BigNumber
   auctionPeriod: BigNumber
   stRSRPayPeriod: BigNumber
@@ -351,9 +350,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const { market } = await marketFixture()
 
   // Setup Config
-  const rewardStart: BigNumber = bn(await getLatestBlockTimestamp())
   const config: IConfig = {
-    rewardStart: rewardStart,
     rewardPeriod: bn('604800'), // 1 week
     auctionPeriod: bn('1800'), // 30 minutes
     stRSRPayPeriod: bn('86400'), // 1 day

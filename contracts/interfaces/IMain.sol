@@ -24,7 +24,6 @@ import "./ITrader.sol";
 /// Configuration of the system
 struct Config {
     // Time (seconds)
-    uint256 rewardStart; // the timestamp of the very first reward claim event
     uint256 rewardPeriod; // the duration between reward-claim events
     uint256 auctionPeriod; // the length of an auction
     uint256 stRSRPayPeriod; // the duration between stRSR payment events
@@ -40,7 +39,6 @@ struct Config {
 
     // Sample values
     //
-    // rewardStart = timestamp of first weekly handout
     // rewardPeriod = 604800 (1 week)
     // auctionPeriod = 1800 (30 minutes)
     // stRSRPayPeriod = 86400 (1 day)

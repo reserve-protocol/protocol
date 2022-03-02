@@ -5,12 +5,6 @@ import "contracts/libraries/Fixed.sol";
 import "./IComponent.sol";
 
 interface ISettings is IComponent {
-    event RewardStartSet(uint256 indexed oldVal, uint256 indexed newVal);
-
-    function setRewardStart(uint256 rewardStart) external;
-
-    function rewardStart() external view returns (uint256);
-
     event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
 
     function setRewardPeriod(uint256 rewardPeriod) external;

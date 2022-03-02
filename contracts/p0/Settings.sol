@@ -8,13 +8,6 @@ import "contracts/p0/Component.sol";
 
 /// Protocol governance settings
 contract SettingsP0 is Component, ISettings {
-    uint256 public rewardStart;
-
-    function setRewardStart(uint256 val) external override onlyOwner {
-        emit RewardStartSet(rewardStart, val);
-        rewardStart = val;
-    }
-
     uint256 public rewardPeriod;
 
     function setRewardPeriod(uint256 val) external override onlyOwner {
@@ -95,7 +88,6 @@ contract SettingsP0 is Component, ISettings {
     }
 
     function init(ConstructorArgs calldata args) internal override {
-        rewardStart = args.config.rewardStart;
         rewardPeriod = args.config.rewardPeriod;
         auctionPeriod = args.config.auctionPeriod;
         stRSRPayPeriod = args.config.stRSRPayPeriod;

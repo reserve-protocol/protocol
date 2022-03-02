@@ -1089,7 +1089,6 @@ describe('MainP0 contract', () => {
 
       //   // Set Max auction to 25% and migration chunk to 100% (so everything is redeemd at once)
       //   const newConfig: IConfig = {
-      //     rewardStart: config.rewardStart,
       //     rewardPeriod: config.rewardPeriod,
       //     auctionPeriod: config.auctionPeriod,
       //     stRSRWithdrawalDelay: config.stRSRWithdrawalDelay,

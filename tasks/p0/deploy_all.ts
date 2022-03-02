@@ -126,9 +126,7 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
 
     // Setup Config
     const latestBlock = await hre.ethers.provider.getBlock('latest')
-    const rewardStart: BigNumber = bn(await latestBlock.timestamp)
     const config: IConfig = {
-      rewardStart: rewardStart,
       rewardPeriod: bn('604800'), // 1 week
       auctionPeriod: bn('1800'), // 30 minutes
       stRSRWithdrawalDelay: bn('1209600'), // 2 weeks

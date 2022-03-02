@@ -85,7 +85,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     function init(ConstructorArgs calldata args) internal override {
-        payoutLastPaid = args.config.rewardStart;
+        payoutLastPaid = block.timestamp;
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system

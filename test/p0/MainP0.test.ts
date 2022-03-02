@@ -194,7 +194,6 @@ describe('MainP0 contract', () => {
       expect(rTokenCut[0]).to.equal(bn(40))
       expect(rTokenCut[1]).to.equal(bn(100))
 
-      expect(await settings.rewardStart()).to.equal(config.rewardStart)
       expect(await settings.rewardPeriod()).to.equal(config.rewardPeriod)
       expect(await settings.auctionPeriod()).to.equal(config.auctionPeriod)
       expect(await settings.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
@@ -384,29 +383,6 @@ describe('MainP0 contract', () => {
   })
 
   describe('Configuration/State', () => {
-    it('Should allow to update rewardStart if Owner', async () => {
-      const newValue: BigNumber = bn(await getLatestBlockTimestamp())
-
-      // Check existing value
-      expect(await settings.rewardStart()).to.equal(config.rewardStart)
-
-      // If not owner cannot update
-      await expect(settings.connect(other).setRewardStart(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
-
-      // Check value did not change
-      expect(await settings.rewardStart()).to.equal(config.rewardStart)
-
-      // Update with owner
-      await expect(settings.connect(owner).setRewardStart(newValue))
-        .to.emit(settings, 'RewardStartSet')
-        .withArgs(config.rewardStart, newValue)
-
-      // Check value was updated
-      expect(await settings.rewardStart()).to.equal(newValue)
-    })
-
     it('Should allow to update rewardPeriod if Owner', async () => {
       const newValue: BigNumber = bn('360')
 
