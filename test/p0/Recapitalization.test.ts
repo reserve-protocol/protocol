@@ -538,8 +538,8 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
-        expect(await token0.balanceOf(main.address)).to.equal(issueAmount)
-        expect(await token1.balanceOf(main.address)).to.equal(0)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken

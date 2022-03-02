@@ -60,7 +60,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         quantities = new uint256[](tokens.length);
 
         for (uint256 j = 0; j < tokens.length; j++) {
-            quantities[j] += IERC20Metadata(tokens[j]).balanceOf(address(main));
+            quantities[j] += IERC20Metadata(tokens[j]).balanceOf(address(main.backingManager()));
         }
     }
 
