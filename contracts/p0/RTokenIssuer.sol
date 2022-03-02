@@ -74,8 +74,9 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
 
         // Bound the redemption by the prorata share, in case we're currently under-capitalized
         for (uint256 i = 0; i < erc20s.length; i++) {
+            uint256 bal = IERC20(erc20s[i]).balanceOf(address(main.backingManager()));
             // {qTok} = {1} * {qTok}
-            uint256 prorata = prorate.mulu(IERC20(erc20s[i]).balanceOf(address(main))).floor();
+            uint256 prorata = prorate.mulu(bal).floor();
 
             withdrawals[i] = Math.min(withdrawals[i], prorata);
             main.backingManager().withdraw(IERC20(erc20s[i]), _msgSender(), withdrawals[i]);
