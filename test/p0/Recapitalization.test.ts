@@ -317,7 +317,7 @@ describe('MainP0 contract', () => {
         // Check state - No changes
         expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.IFFY)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
-        // quotes = await rTokenHandler.connect(addr1).callStatic.issue(bn('1e18'))
+        // quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
         // expect(quotes).to.eql(initialQuotes)
         await expectCurrentBacking(facade, {
           tokens: initialTokens,
@@ -376,7 +376,7 @@ describe('MainP0 contract', () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rTokenHandler.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token2 to hard default - Decrease rate
@@ -405,7 +405,7 @@ describe('MainP0 contract', () => {
             bn('0'),
           ],
         })
-        quotes = await rTokenHandler.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([
           initialQuotes[0],
           initialQuotes[1],
@@ -431,7 +431,7 @@ describe('MainP0 contract', () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rTokenHandler.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token0 to default - 50% price reduction
@@ -465,7 +465,7 @@ describe('MainP0 contract', () => {
           tokens: [initialTokens[1], backupToken1.address],
           quantities: [initialQuantities[1], bn('0')],
         })
-        quotes = await rTokenHandler.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[1], bn('0.75e18')])
       })
 
@@ -485,7 +485,7 @@ describe('MainP0 contract', () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rTokenHandler.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token3 to hard default - Decrease rate (cDai)
@@ -501,7 +501,7 @@ describe('MainP0 contract', () => {
           tokens: [initialTokens[0], initialTokens[1], initialTokens[2]],
           quantities: [initialQuantities[0], initialQuantities[1], initialQuantities[2]],
         })
-        quotes = await rTokenHandler.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
         // Incremented the weight for token0
         expect(quotes).to.eql([bn('0.5e18'), initialQuotes[1], initialQuotes[2]])
       })
@@ -623,19 +623,21 @@ describe('MainP0 contract', () => {
 
         //  End current auction, should  not start any new auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(bakingManager, 'AuctionEnded')
+          .to.emit(backingManager, 'AuctionEnded')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6))
-          .and.to.not.emit(bakingManager, 'AuctionStarted')
+          .and.to.not.emit(backingManager, 'AuctionStarted')
 
         // Check previous auction is closed
-        expectAuctionStatus(bakingManager, 0, AuctionStatus.DONE)
+        expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
 
         // Check state - Order restablished
         expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
-        expect(await token0.balanceOf(bakingManager.address)).to.equal(0)
-        expect(await token1.balanceOf(bakingManager.address)).to.equal(toBNDecimals(issueAmount, 6))
+        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(
+          toBNDecimals(issueAmount, 6)
+        )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
@@ -650,8 +652,8 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
-        expect(await token0.balanceOf(bakingManager.address)).to.equal(issueAmount)
-        expect(await token1.balanceOf(bakingManager.address)).to.equal(0)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
@@ -667,25 +669,25 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
-        expect(await token0.balanceOf(bakingManager.address)).to.equal(issueAmount)
-        expect(await token1.balanceOf(bakingManager.address)).to.equal(0)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
         //  Check price in USD of the current RToken
         expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
 
         // Trigger recapitalization
-        let sellAmt: BigNumber = await token0.balanceOf(bakingManager.address)
+        let sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(bakingManager, 'AuctionStarted')
+          .to.emit(backingManager, 'AuctionStarted')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // Token0 -> Token1 Auction
-        await expectAuctionInfo(bakingManager, 0, {
+        await expectAuctionInfo(backingManager, 0, {
           sell: token0.address,
           buy: token1.address,
           sellAmount: sellAmt,
@@ -703,8 +705,8 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
         expect(await facade.totalAssetValue()).to.equal(0)
-        expect(await token0.balanceOf(bakingManager.address)).to.equal(0)
-        expect(await token1.balanceOf(bakingManager.address)).to.equal(0)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
         //  Check price in USD of the current RToken
         expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
@@ -713,7 +715,10 @@ describe('MainP0 contract', () => {
         expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
 
         //  Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders()).to.not.emit(bakingManager, 'AuctionStarted')
+        await expect(facade.runAuctionsForAllTraders()).to.not.emit(
+          backingManager,
+          'AuctionStarted'
+        )
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Only cover minBuyAmount - 10% less
@@ -729,19 +734,19 @@ describe('MainP0 contract', () => {
 
         //  End current auction, should  not start any new auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(bakingManager, 'AuctionEnded')
+          .to.emit(backingManager, 'AuctionEnded')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
-          .and.to.not.emit(bakingManager, 'AuctionStarted')
+          .and.to.not.emit(backingManager, 'AuctionStarted')
 
         // Check previous auction is closed
-        expectAuctionStatus(bakingManager, 0, AuctionStatus.DONE)
+        expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
 
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(minBuyAmt)
-        expect(await token0.balanceOf(bakingManager.address)).to.equal(0)
-        expect(await token1.balanceOf(bakingManager.address)).to.equal(toBNDecimals(minBuyAmt, 6))
+        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(toBNDecimals(minBuyAmt, 6))
         expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
 
         //  Check price in USD of the current RToken - Haircut of 10% taken
@@ -756,8 +761,8 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
-        expect(await token0.balanceOf(bakingManager.address)).to.equal(issueAmount)
-        expect(await token1.balanceOf(bakingManager.address)).to.equal(0)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
@@ -782,26 +787,26 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
-        expect(await token0.balanceOf(bakingManager.address)).to.equal(issueAmount)
-        expect(await token1.balanceOf(bakingManager.address)).to.equal(0)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
         expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
 
         // Trigger recapitalization
-        let sellAmt: BigNumber = await token0.balanceOf(bakingManager.address)
+        let sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(bakingManager, 'AuctionStarted')
+          .to.emit(backingManager, 'AuctionStarted')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         let auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // Token0 -> Token1 Auction
-        await expectAuctionInfo(bakingManager, 0, {
+        await expectAuctionInfo(backingManager, 0, {
           sell: token0.address,
           buy: token1.address,
           sellAmount: sellAmt,
@@ -819,8 +824,8 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
         expect(await facade.totalAssetValue()).to.equal(0)
-        expect(await token0.balanceOf(bakingManager.address)).to.equal(0)
-        expect(await token1.balanceOf(bakingManager.address)).to.equal(0)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
@@ -830,7 +835,10 @@ describe('MainP0 contract', () => {
         expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
 
         //  Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders()).to.not.emit(bakingManager, 'AuctionStarted')
+        await expect(facade.runAuctionsForAllTraders()).to.not.emit(
+          backingManager,
+          'AuctionStarted'
+        )
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Get fair price - minBuyAmt
@@ -850,18 +858,18 @@ describe('MainP0 contract', () => {
         let sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')) // Due to trade slippage 1% - Calculation to match Solidity
 
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(bakingManager, 'AuctionEnded')
+          .to.emit(backingManager, 'AuctionEnded')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
-          .and.to.emit(bakingManager, 'AuctionStarted')
+          .and.to.emit(backingManager, 'AuctionStarted')
           .withArgs(1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6))
 
         // Check previous auction is closed
-        expectAuctionStatus(bakingManager, 0, AuctionStatus.DONE)
+        expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
 
         auctionTimestamp = await getLatestBlockTimestamp()
 
         // RSR -> Token1 Auction
-        await expectAuctionInfo(bakingManager, 1, {
+        await expectAuctionInfo(backingManager, 1, {
           sell: rsr.address,
           buy: token1.address,
           sellAmount: sellAmtRSR,
@@ -877,8 +885,8 @@ describe('MainP0 contract', () => {
         // Check state
         expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
-        expect(await token0.balanceOf(bakingManager.address)).to.equal(0)
-        expect(await token1.balanceOf(bakingManager.address)).to.equal(toBNDecimals(minBuyAmt, 6))
+        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(toBNDecimals(minBuyAmt, 6))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
@@ -888,7 +896,10 @@ describe('MainP0 contract', () => {
         expect(await rsr.balanceOf(market.address)).to.equal(sellAmtRSR)
 
         //  Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders()).to.not.emit(bakingManager, 'AuctionStarted')
+        await expect(facade.runAuctionsForAllTraders()).to.not.emit(
+          backingManager,
+          'AuctionStarted'
+        )
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Cover buyAmtBidRSR which is all the RSR required
@@ -904,18 +915,20 @@ describe('MainP0 contract', () => {
 
         //  End current auction, should  not start any new auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(bakingManager, 'AuctionEnded')
+          .to.emit(backingManager, 'AuctionEnded')
           .withArgs(1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6))
-          .and.to.not.emit(bakingManager, 'AuctionStarted')
+          .and.to.not.emit(backingManager, 'AuctionStarted')
 
         // Check previous auction is closed
-        expectAuctionStatus(bakingManager, 1, AuctionStatus.DONE)
+        expectAuctionStatus(backingManager, 1, AuctionStatus.DONE)
 
         // Check state - Order restablished
         expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
-        expect(await token0.balanceOf(bakingManager.address)).to.equal(0)
-        expect(await token1.balanceOf(bakingManager.address)).to.equal(toBNDecimals(issueAmount, 6))
+        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(
+          toBNDecimals(issueAmount, 6)
+        )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
