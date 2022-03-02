@@ -3,16 +3,4 @@
 
 yarn lint
 yarn compile
-# yarn test:p0
-yarn exec hardhat test \
-    test/p0/CollateralP0.test.ts \
-    test/p0/AssetP0.test.ts \
-    test/p0/MainP0.test.ts \
-    test/p0/DeployerP0.test.ts  \
-    test/p0/RTokenP0.test.ts \
-    test/p0/FurnaceP0.test.ts \
-    test/p0/StRSRP0.test.ts \
-    test/p0/RTokenIssuer.test.ts \
-    test/p0/Revenues.test.ts \
-    test/p0/RecapitalizationP0.test.ts \
-    --parallel
+yarn exec hardhat test test/p0/*.test.ts --parallel

@@ -10,6 +10,12 @@ import {
   MainP0,
   StaticATokenMock,
   USDCMock,
+  AssetRegistryP0,
+  BackingManagerP0,
+  BasketHandlerP0,
+  RTokenIssuerP0,
+  RevenueDistributorP0,
+  SettingsP0,
 } from '../../typechain'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
@@ -40,6 +46,12 @@ describe('ExplorerFacadeP0 contract', () => {
 
   // Main
   let main: MainP0
+  let assetRegistry: AssetRegistryP0
+  let backingManager: BackingManagerP0
+  let basketHandler: BasketHandlerP0
+  let rTokenIssuer: RTokenIssuerP0
+  let revenueDistributor: RevenueDistributorP0
+  let settings: SettingsP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -53,7 +65,17 @@ describe('ExplorerFacadeP0 contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, facade, main } = await loadFixture(defaultFixture))
+    ;({
+      basket,
+      facade,
+      main,
+      assetRegistry,
+      backingManager,
+      basketHandler,
+      rTokenIssuer,
+      revenueDistributor,
+      settings,
+    } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
     ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
@@ -76,7 +98,7 @@ describe('ExplorerFacadeP0 contract', () => {
     let issueAmount: BigNumber
 
     beforeEach(async () => {
-      await main.connect(owner).setIssuanceRate(fp('1'))
+      await settings.connect(owner).setIssuanceRate(fp('1'))
 
       // Mint Tokens
       initialBal = bn('1000e18')
@@ -100,7 +122,7 @@ describe('ExplorerFacadeP0 contract', () => {
       await cToken.connect(addr1).approve(rTokenIssuer.address, initialBal)
 
       // Issue rTokens
-      await main.connect(addr1).issue(issueAmount)
+      await rTokenIssuer.connect(addr1).issue(issueAmount)
     })
 
     it('Should return maxIssuable correctly', async () => {
