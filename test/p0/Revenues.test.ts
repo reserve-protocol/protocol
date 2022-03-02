@@ -566,7 +566,7 @@ describe('Revenues', () => {
         )
 
         // Perform swap
-        await main.connect(owner).swapRegisteredAsset(newCompAsset.address)
+        await assetRegistry.connect(owner).swapRegisteredAsset(newCompAsset.address)
 
         // Set f = 1
         await revenueDistributor
@@ -713,7 +713,7 @@ describe('Revenues', () => {
         )
 
         // Perform swap
-        await main.connect(owner).swapRegisteredAsset(newAaveAsset.address)
+        await assetRegistry.connect(owner).swapRegisteredAsset(newAaveAsset.address)
 
         // Set f = 0, avoid dropping tokens
         await revenueDistributor
@@ -848,7 +848,7 @@ describe('Revenues', () => {
         )
 
         // Perform swap
-        await main.connect(owner).swapRegisteredAsset(newCompAsset.address)
+        await assetRegistry.connect(owner).swapRegisteredAsset(newCompAsset.address)
 
         // Set f = 0.8 (0.2 for Rtoken)
         await revenueDistributor
