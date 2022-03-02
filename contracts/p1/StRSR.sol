@@ -10,22 +10,21 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/Component.sol";
 
 /*
- * @title StRSRP0
+ * @title StRSR
  * @notice The StRSR is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken.
  *
  * There's an important assymetry in the StRSR. When RSR is added, it must be split only
- * across non-withdrawing balances, while when RSR is seized, it must be seized from both
- * balances that are in the process of being withdrawn and those that are not.
+ * across non-withdrawing stakes, while when RSR is seized, it must be seized from both
+ * stakes that are in the process of being withdrawn and those that are not.
  */
-contract StRSRP0 is IStRSR, Component, EIP712 {
+contract StRSR is IStRSR, Component, EIP712 {
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Metadata;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -49,35 +48,32 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     string private _name;
     string private _symbol;
 
-    // Balances per account
-    mapping(address => uint256) private balances;
+    // Era. If ever there's a total RSR wipeout, increment the era to zero old balances in one step.
+    uint256 internal era = 0;
+
+    // Stakes: usual staking position. These are the token stakes!
+    mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
+    uint256 internal totalStakes; // Total of all stakes {qStakes}
+    uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
+
+    // Drafts: share of the withdrawing tokens. Not transferrable.
+    // Draft queues by account. Handle only through pushDrafts() and popDrafts(). Indexed by era.
+    mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues;
+    mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft;
+    uint256 internal totalDrafts; // Total of all drafts {qDrafts}
+    uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
+
+    // ERC20 allowances of stakes
     mapping(address => mapping(address => uint256)) private allowances;
-
-    // List of accounts. If balances[user] > 0 then (user is in accounts)
-    // TODO: still needed?
-    EnumerableSet.AddressSet internal accounts;
-
-    // {qStRSR} Total of all stRSR balances, not including pending withdrawals
-    uint256 internal totalStaked;
-
-    // {qRSR} How much RSR is allocated to backing currently-staked balances
-    uint256 internal rsrBacking;
 
     // {seconds} The last time stRSR paid out rewards to stakers
     uint256 internal payoutLastPaid;
 
-    // The momentary stake/unstake rate is rsrBacking/totalStaked {RSR/stRSR}
-    // That rate is locked in when slow unstaking *begins*
-
-    // Delayed Withdrawals
-    struct Withdrawal {
-        address account;
-        uint256 rsrAmount; // How much rsr this withdrawal will be redeemed for, if none is seized
-        uint256 availableAt;
+    // Delayed drafts
+    struct CumulativeDraft {
+        uint256 drafts; // Total amount of drafts that will become available
+        uint256 startedAt; // When the last of those drafts started
     }
-
-    // Withdrawal queues by account
-    mapping(address => Withdrawal[]) public withdrawals;
 
     constructor(string memory name_, string memory symbol_) EIP712(name_, "1") Component() {
         _name = name_;
@@ -95,27 +91,15 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         require(rsrAmount > 0, "Cannot stake zero");
         require(!main.paused(), "main paused");
 
-        IBasketHandler bh = main.basketHandler();
-
         // Process pending withdrawals
-        if (bh.fullyCapitalized() && bh.worstCollateralStatus() == CollateralStatus.SOUND) {
+        if (
+            main.basketHandler().fullyCapitalized() &&
+            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND
+        ) {
             _processWithdrawals(account);
         }
         _payoutRewards();
-
-        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
-        uint256 stakeAmount = rsrAmount;
-        if (totalStaked > 0) stakeAmount = (rsrAmount * totalStaked) / rsrBacking;
-
-        // Create stRSR balance
-        if (balances[account] == 0) accounts.add(account);
-        balances[account] += stakeAmount;
-        totalStaked += stakeAmount;
-
-        // Move deposited RSR to backing
-        rsrBacking += rsrAmount;
-
-        emit Staked(account, rsrAmount, stakeAmount);
+        _stake(account, rsrAmount);
     }
 
     /// Begins a delayed unstaking for `amount` stRSR
@@ -123,9 +107,8 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     function unstake(uint256 stakeAmount) external override {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
-        require(balances[account] >= stakeAmount, "Not enough balance");
+        require(stakes[era][account] >= stakeAmount, "Not enough balance");
         require(!main.paused(), "main paused");
-
         require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
         require(
             main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
@@ -135,20 +118,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         // Process pending withdrawals
         _processWithdrawals(account);
         _payoutRewards();
-
-        uint256 rsrAmount = (stakeAmount * rsrBacking) / totalStaked;
-
-        // Destroy the stRSR balance
-        balances[account] -= stakeAmount;
-        totalStaked -= stakeAmount;
-
-        // Move RSR from backing to withdrawal-queue balance
-        rsrBacking -= rsrAmount;
-
-        // Create the corresponding withdrawal ticket
-        uint256 availableAt = block.timestamp + main.settings().stRSRWithdrawalDelay();
-        withdrawals[account].push(Withdrawal(account, rsrAmount, availableAt));
-        emit UnstakingStarted(withdrawals[account].length - 1, account, rsrAmount, stakeAmount);
+        _unstake(account, stakeAmount);
     }
 
     function processWithdrawals(address account) public {
@@ -166,41 +136,34 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR might be smaller than rsrAmount if we're out of RSR.
     function seizeRSR(uint256 rsrAmount) external override returns (uint256 seizedRSR) {
-        require(main.hasComponent(_msgSender()), "not main");
+        require(_msgSender() == address(main), "not main");
         require(rsrAmount > 0, "Amount cannot be zero");
-        uint256 rewards = rsrRewards();
+
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
 
+        if (rsrBalance == 0) return 0;
         if (rsrBalance <= rsrAmount) {
-            // Everyone's wiped out! Doom! Mayhem!
-            // Zero all balances and withdrawals
+            // Total RSR stake wipeout.
             seizedRSR = rsrBalance;
-            rsrBacking = 0;
-            for (uint256 i = 0; i < accounts.length(); i++) {
-                address account = accounts.at(i);
-                delete withdrawals[account];
-                _transfer(account, address(0), balances[account]);
-            }
-            totalStaked = 0;
+
+            // Zero all stakes and withdrawals
+            stakeRSR = 0;
+            draftRSR = 0;
+            era++;
+
+            emit AllBalancesReset();
         } else {
-            // Remove RSR evenly from stakers, withdrawals, and the reward pool
-            uint256 backingToTake = (rsrBacking * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-            rsrBacking -= backingToTake;
-            seizedRSR = backingToTake;
+            // Remove RSR evenly from stakeRSR, draftRSR, and the reward pool
+            uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+            stakeRSR -= stakeRSRToTake;
+            seizedRSR = stakeRSRToTake;
 
-            for (uint256 i = 0; i < accounts.length(); i++) {
-                Withdrawal[] storage withdrawalQ = withdrawals[accounts.at(i)];
-                for (uint256 j = 0; j < withdrawalQ.length; j++) {
-                    uint256 withdrawAmt = withdrawalQ[j].rsrAmount;
-                    uint256 amtToTake = (withdrawAmt * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-                    withdrawalQ[j].rsrAmount -= amtToTake;
-
-                    seizedRSR += amtToTake;
-                }
-            }
+            uint256 draftRSRToTake = (draftRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+            draftRSR -= draftRSRToTake;
+            seizedRSR += draftRSRToTake;
 
             // Removing from unpaid rewards is implicit
-            uint256 rewardsToTake = (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+            uint256 rewardsToTake = (rsrRewards() * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             seizedRSR += rewardsToTake;
 
             assert(rsrAmount <= seizedRSR);
@@ -230,11 +193,11 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     function totalSupply() external view override returns (uint256) {
-        return totalStaked;
+        return totalStakes;
     }
 
     function balanceOf(address account) external view override returns (uint256) {
-        return balances[account];
+        return stakes[era][account];
     }
 
     function transfer(address recipient, uint256 amount) external override returns (bool) {
@@ -249,10 +212,9 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     ) private {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
-        require(balances[sender] >= amount, "ERC20: transfer amount exceeds balance");
-        balances[sender] -= amount;
-        balances[recipient] += amount;
-        accounts.add(recipient);
+        require(stakes[era][sender] >= amount, "ERC20: transfer amount exceeds balance");
+        stakes[era][sender] -= amount;
+        stakes[era][recipient] += amount;
     }
 
     function allowance(address owner_, address spender) public view override returns (uint256) {
@@ -293,22 +255,13 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     // ==== end ERC20 Interface ====
 
     // ==== Internal Functions ====
-    /// @return total {qRSR} Total amount of qRSR being withdrawn
-    function rsrBeingWithdrawn() internal view returns (uint256 total) {
-        for (uint256 i = 0; i < accounts.length(); i++) {
-            for (uint256 j = 0; j < withdrawals[accounts.at(i)].length; j++) {
-                total += withdrawals[accounts.at(i)][j].rsrAmount;
-            }
-        }
-    }
-
     /// @return {qRSR} The balance of RSR that this contract owns dedicated to future RSR rewards.
     function rsrRewards() internal view returns (uint256) {
-        return main.rsr().balanceOf(address(this)) - rsrBacking - rsrBeingWithdrawn();
+        return main.rsr().balanceOf(address(this)) - stakeRSR - draftRSR;
     }
 
     /// Assign reward payouts to the staker pool
-    /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
+    /// @dev do this by effecting stakeRSR and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
     function _payoutRewards() internal {
         uint256 period = main.settings().stRSRPayPeriod();
@@ -323,23 +276,125 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
 
         // Apply payout to RSR backing
-        rsrBacking += payout;
+        stakeRSR += payout;
         payoutLastPaid += numPeriods * period;
 
         emit RSRRewarded(payout, numPeriods);
     }
 
-    function _processWithdrawals(address account) internal {
-        // Process all pending withdrawals for the account
-        Withdrawal[] storage withdrawalQ = withdrawals[account];
+    /* On staking R RSR, you get R * (totalStakes/stakeRSR) stakes
+       On unstaking S stakes, you get S * (stakeRSR/totalStakes) * (totalDrafts/draftRSR) drafts
+       On withdrawing D drafts, you get D * (draftRSR/totalDrafts) RSR
 
-        for (uint256 i = 0; i < withdrawalQ.length; i++) {
-            if (block.timestamp >= withdrawalQ[i].availableAt && withdrawalQ[i].rsrAmount > 0) {
-                main.rsr().safeTransfer(withdrawalQ[i].account, withdrawalQ[i].rsrAmount);
-                emit UnstakingCompleted(i, i, withdrawalQ[i].account, withdrawalQ[i].rsrAmount);
-                withdrawalQ[i].rsrAmount = 0;
-            }
+       Each conversion rate is taken to be 1 if its denominator is 0 -- this is fine, because that's
+       setting the rate in the first place.
+     */
+
+    /// Execute the staking of `rsrAmount` RSR for `account`
+    function _stake(address account, uint256 rsrAmount) internal {
+        // Transfer RSR from account to this contract
+        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
+
+        // Compute stake amount
+        uint256 stakeAmount = (stakeRSR == 0) ? rsrAmount : (rsrAmount * totalStakes) / stakeRSR;
+
+        // Add to stakeAmount to stakes
+        stakes[era][account] += stakeAmount;
+        totalStakes += stakeAmount;
+        stakeRSR += rsrAmount;
+
+        emit Staked(account, rsrAmount, stakeAmount);
+    }
+
+    /// Execute the move of `stakeAmount` from stake to draft, for `account`
+    function _unstake(address account, uint256 stakeAmount) internal {
+        // Compute draft and RSR amounts
+        uint256 rsrAmount = (stakeAmount * stakeRSR) / totalStakes;
+        uint256 draftAmount = (draftRSR == 0) ? rsrAmount : (rsrAmount * totalDrafts) / draftRSR;
+
+        // Reduce stake balance
+        stakes[era][account] -= stakeAmount;
+        totalStakes -= stakeAmount;
+        stakeRSR -= rsrAmount;
+
+        // Increase draft balance
+        totalDrafts += draftAmount;
+        draftRSR += rsrAmount;
+
+        // Push drafts into account's draft queue
+        pushDrafts(account, draftAmount);
+
+        emit UnstakingStarted(
+            draftQueues[era][account].length - 1,
+            account,
+            rsrAmount,
+            stakeAmount
+        );
+    }
+
+    /// Execute the withdrawal of all available drafts
+    function _processWithdrawals(address account) internal {
+        // Retrieve (and pop) any now-available drafts from account's draft queue
+        (uint256 draftAmount, uint256 firstId, uint256 lastId) = popDrafts(account);
+        if (draftAmount == 0) return;
+
+        // Compute RSR amount
+        uint256 rsrAmount = (draftAmount * draftRSR) / totalDrafts;
+
+        // Reduce draft balance
+        totalDrafts -= draftAmount;
+        draftRSR -= rsrAmount;
+
+        // Transfer RSR from this contract to the account
+        main.rsr().safeTransfer(account, rsrAmount);
+
+        emit UnstakingCompleted(firstId, lastId, account, rsrAmount);
+    }
+
+    /// Add a cumulative draft to account's draft queue (at the current time).
+    function pushDrafts(address account, uint256 draftAmount) internal {
+        CumulativeDraft[] storage queue = draftQueues[era][account];
+
+        uint256 oldDrafts = queue.length > 0 ? queue[queue.length - 1].drafts : 0;
+
+        queue.push(CumulativeDraft(oldDrafts + draftAmount, block.timestamp));
+    }
+
+    /// Remove and return all current drafts from account's draft queue.
+    /// @return draftsFound The amount of current drafts found and removed from the queue
+    /// @return firstId The ID of the first draft removed, if any
+    /// @return lastId The ID of the last draft removed, if any
+    function popDrafts(address account)
+        internal
+        returns (
+            uint256 draftsFound,
+            uint256 firstId,
+            uint256 lastId
+        )
+    {
+        uint256 time = block.timestamp - main.settings().stRSRWithdrawalDelay();
+        CumulativeDraft[] storage queue = draftQueues[era][account];
+
+        // Binary search for the current cumulative draft
+        firstId = firstRemainingDraft[era][account];
+
+        (uint256 left, uint256 right) = (firstId, queue.length);
+        // If there are no drafts to be found, return 0 drafts
+        if (left >= right || queue[left].startedAt > time) return (0, 0, 0);
+        // Otherwise, there *are* drafts with left <= index < right and startedAt <= time.
+        // Binary search, keeping true that (queue[left].startedAt <= time) and
+        //   (right == queue.length or queue[right].startedAt > time)
+        while (left < right - 1) {
+            uint256 test = (left + right) / 2;
+            if (queue[test].startedAt <= time) left = test;
+            else right = test;
         }
+        lastId = left;
+        // NOTE: If we expect gas refunds for zeroing values, then here's where we'd do it!
+        // (but we don't, and the deletion is expensive, so instead we'll be messy forever)
+        uint256 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
+        draftsFound = queue[left].drafts - oldDrafts;
+        firstRemainingDraft[era][account] = left + 1;
     }
 
     // ==== end Internal Functions ====

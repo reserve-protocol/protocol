@@ -8,9 +8,9 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IBasketHandler.sol";
-import "contracts/p0/interfaces/IRToken.sol";
+import "contracts/interfaces/IMain.sol";
+import "contracts/interfaces/IBasketHandler.sol";
+import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
 
 struct SlowIssuance {

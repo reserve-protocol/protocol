@@ -4,10 +4,9 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/Component.sol";
+import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/Component.sol";
 
 contract RevenueDistributorP0 is Component, IRevenueDistributor {
     using SafeERC20 for IERC20;
