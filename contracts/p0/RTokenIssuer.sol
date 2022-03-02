@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/interfaces/IMain.sol";
+import "contracts/interfaces/IMain.sol";
 import "contracts/p0/Component.sol";
 
 /**
@@ -72,14 +72,17 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
         Fix prorate = toFix(amount).divu(rToken.totalSupply());
         rToken.redeem(_msgSender(), amount, baskets);
 
+        IBackingManager backingMgr = main.backingManager();
+        backingMgr.grantAllowances();
+
         // Bound the redemption by the prorata share, in case we're currently under-capitalized
         for (uint256 i = 0; i < erc20s.length; i++) {
-            uint256 bal = IERC20(erc20s[i]).balanceOf(address(main.backingManager()));
+            uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingMgr));
             // {qTok} = {1} * {qTok}
             uint256 prorata = prorate.mulu(bal).floor();
 
             withdrawals[i] = Math.min(withdrawals[i], prorata);
-            main.backingManager().withdraw(IERC20(erc20s[i]), _msgSender(), withdrawals[i]);
+            IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), withdrawals[i]);
         }
 
         emit Redemption(_msgSender(), amount, baskets);

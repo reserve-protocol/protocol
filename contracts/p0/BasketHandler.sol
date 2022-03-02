@@ -3,13 +3,11 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/p0/interfaces/IAsset.sol";
-import "contracts/p0/interfaces/IAssetRegistry.sol";
-import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/libraries/Basket.sol";
+import "contracts/interfaces/IAsset.sol";
+import "contracts/interfaces/IAssetRegistry.sol";
+import "contracts/interfaces/IMain.sol";
 import "contracts/p0/Component.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/Pausable.sol";
 
 struct BackupConfig {
     uint256 max; // Maximum number of backup collateral erc20s to use in a basket
@@ -23,6 +21,56 @@ struct BasketConfig {
     mapping(IERC20Metadata => Fix) targetAmts;
     // Backup configurations, per target name.
     mapping(bytes32 => BackupConfig) backups;
+}
+
+/// A specific definition of a BU that evolves over time according to the BasketConfig
+struct Basket {
+    // Invariant: all reference basket collateral must be registered with the registry
+    IERC20Metadata[] erc20s;
+    mapping(IERC20Metadata => Fix) refAmts; // {ref/BU}
+    uint256 nonce;
+}
+
+/*
+ * @title BasketLib
+ */
+library BasketLib {
+    using BasketLib for Basket;
+    using FixLib for Fix;
+
+    // Empty self
+    function empty(Basket storage self) internal {
+        for (uint256 i = 0; i < self.erc20s.length; i++) {
+            self.refAmts[self.erc20s[i]] = FIX_ZERO;
+        }
+        delete self.erc20s;
+        self.nonce++;
+    }
+
+    /// Set `self` equal to `other`
+    function copy(Basket storage self, Basket storage other) internal {
+        empty(self);
+        for (uint256 i = 0; i < other.erc20s.length; i++) {
+            self.erc20s.push(other.erc20s[i]);
+            self.refAmts[other.erc20s[i]] = other.refAmts[other.erc20s[i]];
+        }
+        self.nonce++;
+    }
+
+    /// Add `weight` to the refAmount of collateral token `tok` in the basket `self`
+    function add(
+        Basket storage self,
+        IERC20Metadata tok,
+        Fix weight
+    ) internal {
+        if (self.refAmts[tok].eq(FIX_ZERO)) {
+            self.erc20s.push(tok);
+            self.refAmts[tok] = weight;
+        } else {
+            self.refAmts[tok] = self.refAmts[tok].plus(weight);
+        }
+        self.nonce++;
+    }
 }
 
 /**

@@ -2,14 +2,14 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/p0/interfaces/IAsset.sol";
-import "contracts/p0/interfaces/IAssetRegistry.sol";
-import "contracts/p0/interfaces/IRToken.sol";
-import "contracts/p0/interfaces/IMain.sol";
+import "contracts/interfaces/IAsset.sol";
+import "contracts/interfaces/IAssetRegistry.sol";
+import "contracts/interfaces/IExplorerFacade.sol";
+import "contracts/interfaces/IRToken.sol";
+import "contracts/interfaces/IMain.sol";
 import "contracts/p0/Main.sol";
 import "contracts/p0/RevenueTrader.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/IExplorerFacade.sol";
 
 /**
  * @title ExplorerFacadeP0

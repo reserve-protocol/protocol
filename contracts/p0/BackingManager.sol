@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/p0/interfaces/IAsset.sol";
-import "contracts/p0/interfaces/IAssetRegistry.sol";
-import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IMarket.sol";
+import "contracts/interfaces/IAsset.sol";
+import "contracts/interfaces/IAssetRegistry.sol";
+import "contracts/interfaces/IMain.sol";
+import "contracts/interfaces/IMarket.sol";
 import "contracts/p0/Component.sol";
 import "contracts/p0/Trader.sol";
 import "contracts/p0/RevenueTrader.sol";
@@ -24,13 +24,12 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     using SafeERC20 for IERC20Metadata;
     using SafeERC20 for IERC20;
 
-    function withdraw(
-        IERC20 erc20,
-        address account,
-        uint256 amount
-    ) external override notPaused {
-        require(_msgSender() == address(main.rTokenIssuer()), "rTokenIssuer only");
-        erc20.safeTransfer(account, amount);
+    // Give RTokenIssuer max allowances over all basket tokens
+    function grantAllowances() external notPaused {
+        address[] memory basketTokens = main.rTokenIssuer().basketTokens();
+        for (uint256 i = 0; i < basketTokens.length; i++) {
+            IERC20(basketTokens[i]).approve(address(main.rTokenIssuer()), type(uint256).max);
+        }
     }
 
     function manageFunds() external override notPaused {

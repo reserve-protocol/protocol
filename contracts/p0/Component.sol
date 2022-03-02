@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Context.sol";
-import "contracts/p0/interfaces/IMain.sol";
+import "contracts/interfaces/IMain.sol";
 
 /**
  * Abstract superclass for system contracts registered in Main

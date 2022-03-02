@@ -5,10 +5,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/Settings.sol";
-
-import "contracts/p0/interfaces/IMain.sol"; //
-import "contracts/Pausable.sol";
+import "contracts/interfaces/IMain.sol";
+import "contracts/p0/Pausable.sol";
 
 /**
  * @title Main
