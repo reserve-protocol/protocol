@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/p0/interfaces/IAsset.sol";
+import "contracts/p0/interfaces/IAssetRegistry.sol";
 import "contracts/p0/interfaces/IRToken.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/Main.sol";
@@ -24,15 +25,16 @@ contract ExplorerFacadeP0 is IExplorerFacade {
     }
 
     function runAuctionsForAllTraders() external override {
-        main.manageFunds();
+        main.backingManager().manageFunds();
         main.rsrTrader().manageFunds();
         main.rTokenTrader().manageFunds();
     }
 
-    function claimAndSweepRewardsForAllTraders() external override {
-        main.claimRewards();
-        main.rsrTrader().claimAndSweepRewardsToMain();
-        main.rTokenTrader().claimAndSweepRewardsToMain();
+    function claimRewards() external override {
+        main.backingManager().claimAndSweepRewards();
+        main.rsrTrader().claimAndSweepRewards();
+        main.rTokenTrader().claimAndSweepRewards();
+        // TODO main.rToken().claimAndSweepRewards()
     }
 
     function doFurnaceMelting() external override {
@@ -40,12 +42,12 @@ contract ExplorerFacadeP0 is IExplorerFacade {
     }
 
     function ensureValidBasket() external override {
-        main.ensureValidBasket();
+        main.basketHandler().ensureValidBasket();
     }
 
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
-        return main.maxIssuable(account);
+        return main.rTokenIssuer().maxIssuable(account);
     }
 
     function currentBacking()
@@ -54,25 +56,27 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         override
         returns (address[] memory tokens, uint256[] memory quantities)
     {
-        tokens = main.basketTokens();
+        tokens = main.rTokenIssuer().basketTokens();
         quantities = new uint256[](tokens.length);
 
         for (uint256 j = 0; j < tokens.length; j++) {
-            quantities[j] += IERC20Metadata(tokens[j]).balanceOf(address(main));
+            quantities[j] += IERC20Metadata(tokens[j]).balanceOf(address(main.backingManager()));
         }
     }
 
     /// @return total {UoA} An estimate of the total value of all assets held
     function totalAssetValue() external view override returns (Fix total) {
-        IERC20Metadata[] memory erc20s = main.registeredERC20s();
+        IAssetRegistry reg = main.assetRegistry();
+        address backingManager = address(main.backingManager());
+
+        IERC20Metadata[] memory erc20s = reg.registeredERC20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
-            IAsset asset = main.toAsset(erc20s[i]);
+            IAsset asset = reg.toAsset(erc20s[i]);
             // Exclude collateral that has defaulted
             if (
-                !asset.isCollateral() ||
-                main.toColl(erc20s[i]).status() != CollateralStatus.DISABLED
+                !asset.isCollateral() || reg.toColl(erc20s[i]).status() != CollateralStatus.DISABLED
             ) {
-                uint256 bal = erc20s[i].balanceOf(address(main));
+                uint256 bal = erc20s[i].balanceOf(backingManager);
 
                 // {UoA/tok} = {UoA/tok} * {qTok} / {qTok/tok}
                 Fix p = asset.price().mulu(bal).shiftLeft(-int8(erc20s[i].decimals()));

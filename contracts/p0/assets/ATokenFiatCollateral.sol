@@ -73,7 +73,7 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
         } else {
             // If the underlying is showing signs of depegging, default eventually
             whenDefault = isReferenceDepegged()
-                ? Math.min(whenDefault, block.timestamp + main.defaultDelay())
+                ? Math.min(whenDefault, block.timestamp + main.settings().defaultDelay())
                 : NEVER;
         }
         prevReferencePrice = p;
@@ -92,7 +92,7 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
     function isReferenceDepegged() private view returns (bool) {
         // {UoA/ref} = {UoA/target} * {target/ref}
         Fix peg = pricePerTarget().mul(targetPerRef());
-        Fix delta = peg.mul(main.defaultThreshold());
+        Fix delta = peg.mul(main.settings().defaultThreshold());
         Fix p = consultOracle(referenceERC20);
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }

@@ -10,9 +10,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/p0/interfaces/IAsset.sol";
+import "contracts/p0/interfaces/IBasketHandler.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/Component.sol";
 
 /*
  * @title StRSRP0
@@ -23,7 +25,7 @@ import "contracts/libraries/Fixed.sol";
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both
  * balances that are in the process of being withdrawn and those that are not.
  */
-contract StRSRP0 is IStRSR, Ownable, EIP712 {
+contract StRSRP0 is IStRSR, Component, EIP712 {
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Metadata;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -42,8 +44,6 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         );
 
     // ====
-
-    IMain public main;
 
     // Staking Token Name and Symbol
     string private _name;
@@ -79,17 +79,13 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     // Withdrawal queues by account
     mapping(address => Withdrawal[]) public withdrawals;
 
-    constructor(
-        IMain main_,
-        string memory name_,
-        string memory symbol_,
-        address owner_
-    ) EIP712(name_, "1") {
-        main = main_;
+    constructor(string memory name_, string memory symbol_) EIP712(name_, "1") Component() {
         _name = name_;
         _symbol = symbol_;
-        _transferOwnership(owner_);
-        payoutLastPaid = main.rewardStart();
+    }
+
+    function init(ConstructorArgs calldata args) internal override {
+        payoutLastPaid = args.config.rewardStart;
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
@@ -99,8 +95,10 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         require(rsrAmount > 0, "Cannot stake zero");
         require(!main.paused(), "main paused");
 
+        IBasketHandler bh = main.basketHandler();
+
         // Process pending withdrawals
-        if (main.fullyCapitalized() && main.worstCollateralStatus() == CollateralStatus.SOUND) {
+        if (bh.fullyCapitalized() && bh.worstCollateralStatus() == CollateralStatus.SOUND) {
             _processWithdrawals(account);
         }
         _payoutRewards();
@@ -127,8 +125,12 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
         require(!main.paused(), "main paused");
-        require(main.fullyCapitalized(), "RToken uncapitalized");
-        require(main.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+
+        require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
+        require(
+            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
+            "basket defaulted"
+        );
 
         // Process pending withdrawals
         _processWithdrawals(account);
@@ -144,15 +146,18 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
         rsrBacking -= rsrAmount;
 
         // Create the corresponding withdrawal ticket
-        uint256 availableAt = block.timestamp + main.stRSRWithdrawalDelay();
+        uint256 availableAt = block.timestamp + main.settings().stRSRWithdrawalDelay();
         withdrawals[account].push(Withdrawal(account, rsrAmount, availableAt));
         emit UnstakingStarted(withdrawals[account].length - 1, account, rsrAmount, stakeAmount);
     }
 
     function processWithdrawals(address account) public {
         require(!main.paused(), "main paused");
-        require(main.fullyCapitalized(), "RToken uncapitalized");
-        require(main.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+        require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
+        require(
+            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
+            "basket defaulted"
+        );
         _processWithdrawals(account);
     }
 
@@ -161,7 +166,7 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR might be smaller than rsrAmount if we're out of RSR.
     function seizeRSR(uint256 rsrAmount) external override returns (uint256 seizedRSR) {
-        require(_msgSender() == address(main), "not main");
+        require(main.hasComponent(_msgSender()), "not main");
         require(rsrAmount > 0, "Amount cannot be zero");
         uint256 rewards = rsrRewards();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
@@ -306,13 +311,15 @@ contract StRSRP0 is IStRSR, Ownable, EIP712 {
     /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
     function _payoutRewards() internal {
-        uint256 period = main.stRSRPayPeriod();
+        uint256 period = main.settings().stRSRPayPeriod();
         if (block.timestamp < payoutLastPaid + period) return;
 
         uint256 numPeriods = (block.timestamp - payoutLastPaid) / period;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(main.stRSRPayRatio()).powu(numPeriods));
+        Fix payoutRatio = FIX_ONE.minus(
+            FIX_ONE.minus(main.settings().stRSRPayRatio()).powu(numPeriods)
+        );
         uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
 
         // Apply payout to RSR backing

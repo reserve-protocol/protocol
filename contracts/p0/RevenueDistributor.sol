@@ -4,13 +4,12 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+
 import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/main/Mixin.sol";
-import "contracts/p0/main/SettingsHandler.sol";
+import "contracts/p0/Component.sol";
 import "contracts/libraries/Fixed.sol";
 
-contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
+contract RevenueDistributorP0 is Component, IRevenueDistributor {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -24,15 +23,14 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
 
-    function init(ConstructorArgs calldata args) public virtual override(Mixin, SettingsHandlerP0) {
-        super.init(args);
+    function init(ConstructorArgs calldata args) internal override {
         _setDistribution(FURNACE, RevenueShare(args.dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, args.dist.rsrDist));
     }
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
     /// main.revenueFurnace() and main.stRSR().
-    function setDistribution(address dest, RevenueShare memory share) public override onlyOwner {
+    function setDistribution(address dest, RevenueShare memory share) external override onlyOwner {
         _setDistribution(dest, share);
     }
 
@@ -43,41 +41,49 @@ contract RevenueDistributorP0 is Mixin, SettingsHandlerP0, IRevenueDistributor {
         IERC20 erc20,
         address from,
         uint256 amount
-    ) public override {
-        require(erc20 == rsr() || erc20 == rToken(), "RSR or RToken");
-        bool isRSR = erc20 == rsr(); // if false: isRToken
-        (uint256 rTokenTotal, uint256 rsrTotal) = shareTotals();
-        uint256 totalShares = isRSR ? rsrTotal : rTokenTotal;
+    ) external override {
+        IERC20Metadata rsr = main.rsr();
+
+        require(erc20 == rsr || erc20 == main.rToken(), "RSR or RToken");
+        bool isRSR = erc20 == rsr; // if false: isRToken
+        uint256 totalShares;
+        {
+            (uint256 rTokenTotal, uint256 rsrTotal) = shareTotals();
+            totalShares = isRSR ? rsrTotal : rTokenTotal;
+        }
 
         // Evenly distribute revenue tokens per distribution share.
+        // This rounds "early", and that's deliberate!
         uint256 tokensPerShare = amount / totalShares;
 
         for (uint256 i = 0; i < destinations.length(); i++) {
             address addrTo = destinations.at(i);
-            uint256 numberOfShares = isRSR
-                ? distribution[addrTo].rsrDist
-                : distribution[addrTo].rTokenDist;
-            if (numberOfShares == 0) continue;
-
-            uint256 transferAmt = tokensPerShare * numberOfShares;
+            uint256 transferAmt;
+            {
+                uint256 numberOfShares = isRSR
+                    ? distribution[addrTo].rsrDist
+                    : distribution[addrTo].rTokenDist;
+                if (numberOfShares == 0) continue;
+                transferAmt = tokensPerShare * numberOfShares;
+            }
 
             if (addrTo == FURNACE) {
-                addrTo = address(revenueFurnace());
+                addrTo = address(main.revenueFurnace());
             } else if (addrTo == ST_RSR) {
-                addrTo = address(stRSR());
+                addrTo = address(main.stRSR());
             }
             erc20.safeTransferFrom(from, addrTo, transferAmt);
         }
     }
 
     /// Returns the sum of all rsr cuts
-    function rsrCut() public view returns (uint256 rsrShares, uint256 totalShares) {
+    function rsrCut() external view returns (uint256 rsrShares, uint256 totalShares) {
         (uint256 rTokenTotal, uint256 rsrTotal) = shareTotals();
         return (rsrTotal, rsrTotal + rTokenTotal);
     }
 
     /// Returns the sum of all rToken cuts
-    function rTokenCut() public view returns (uint256 rTokenShares, uint256 totalShares) {
+    function rTokenCut() external view returns (uint256 rTokenShares, uint256 totalShares) {
         (uint256 rTokenTotal, uint256 rsrTotal) = shareTotals();
         return (rTokenTotal, rsrTotal + rTokenTotal);
     }

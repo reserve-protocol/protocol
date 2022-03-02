@@ -7,10 +7,11 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
-import "contracts/p0/libraries/Rewards.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/Component.sol";
+import "contracts/p0/Rewardable.sol";
 
-abstract contract TraderP0 is ITraderEvents {
+abstract contract TraderP0 is RewardableP0, ITrader {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
@@ -25,12 +26,6 @@ abstract contract TraderP0 is ITraderEvents {
 
     // The latest end time for any auction in `auctions`.
     uint256 private latestAuctionEnd;
-
-    IMain public main;
-
-    function initTrader(address main_) internal virtual {
-        main = IMain(main_);
-    }
 
     /// @return true iff this trader now has open auctions.
     function hasOpenAuctions() public view returns (bool) {
@@ -67,7 +62,7 @@ abstract contract TraderP0 is ITraderEvents {
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         Fix exactBuyAmount = sellAmount.mul(sell.price()).div(buy.price());
-        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.maxTradeSlippage()));
+        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.settings().maxTradeSlippage()));
 
         // TODO Check floor() and ceil() rounding below
         return (
@@ -81,7 +76,10 @@ abstract contract TraderP0 is ITraderEvents {
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,
                 startTime: block.timestamp,
-                endTime: Math.max(block.timestamp + main.auctionPeriod(), latestAuctionEnd),
+                endTime: Math.max(
+                    block.timestamp + main.settings().auctionPeriod(),
+                    latestAuctionEnd
+                ),
                 status: AuctionStatus.NOT_YET_OPEN
             })
         );
@@ -110,7 +108,9 @@ abstract contract TraderP0 is ITraderEvents {
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
-        Fix idealSellAmount = exactSellAmount.div(FIX_ONE.minus(main.maxTradeSlippage()));
+        Fix idealSellAmount = exactSellAmount.div(
+            FIX_ONE.minus(main.settings().maxTradeSlippage())
+        );
 
         Fix sellAmount = fixMin(idealSellAmount, maxSellAmount);
         return prepareAuctionSell(sell, buy, sellAmount);
@@ -119,7 +119,7 @@ abstract contract TraderP0 is ITraderEvents {
     /// @return {tok} The least amount of whole tokens ever worth trying to sell
     function dustThreshold(IAsset asset) internal view returns (Fix) {
         // {tok} = {UoA} / {UoA/tok}
-        return main.dustAmount().div(asset.price());
+        return main.settings().dustAmount().div(asset.price());
     }
 
     /// Launch an auction:

@@ -17,10 +17,16 @@ import "contracts/p0/interfaces/IFurnace.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/p0/interfaces/IMarket.sol";
 import "contracts/p0/assets/RTokenAsset.sol";
+import "contracts/p0/AssetRegistry.sol";
+import "contracts/p0/BackingManager.sol";
+import "contracts/p0/BasketHandler.sol";
 import "contracts/p0/ExplorerFacade.sol";
 import "contracts/p0/Furnace.sol";
 import "contracts/p0/Main.sol";
 import "contracts/p0/RToken.sol";
+import "contracts/p0/RTokenIssuer.sol";
+import "contracts/p0/RevenueDistributor.sol";
+import "contracts/p0/Settings.sol";
 import "contracts/p0/StRSR.sol";
 import "contracts/IExplorerFacade.sol";
 import "contracts/libraries/CommonErrors.sol";
@@ -79,25 +85,26 @@ contract DeployerP0 is IDeployer {
         IMain main = deployMain();
         deployments.push(main);
 
-        // Prepare ConstructorArgs
+        // Prepare ConstructorArgs while deploying most of the system
         ConstructorArgs memory ctorArgs;
         ctorArgs.config = config;
         ctorArgs.dist = dist;
         ctorArgs.market = market;
         ctorArgs.rsr = rsr;
         ctorArgs.stRSR = deployStRSR(
-            main,
             string(abi.encodePacked("st", symbol, "RSR Token")),
-            string(abi.encodePacked("st", symbol, "RSR")),
-            owner
+            string(abi.encodePacked("st", symbol, "RSR"))
         );
         ctorArgs.rToken = deployRToken(main, name, symbol, owner);
+
         Fix furnaceRatio = config.stRSRPayRatio;
         ctorArgs.furnace = deployRevenueFurnace(ctorArgs.rToken, config.rewardPeriod, furnaceRatio);
         Ownable(address(ctorArgs.furnace)).transferOwnership(owner);
+
         ctorArgs.claimAdapters = new IClaimAdapter[](2);
         ctorArgs.claimAdapters[0] = compoundClaimer;
         ctorArgs.claimAdapters[1] = aaveClaimer;
+
         ctorArgs.assets = new IAsset[](4);
         ctorArgs.assets[0] = new RTokenAssetP0(ctorArgs.rToken, maxAuctionSize, main);
         ctorArgs.assets[1] = new AavePricedAssetP0(
@@ -114,7 +121,16 @@ contract DeployerP0 is IDeployer {
         );
         ctorArgs.assets[3] = new CompoundPricedAssetP0(comp, maxAuctionSize, comptroller);
 
-        // Init
+        ctorArgs.assetRegistry = new AssetRegistryP0();
+        ctorArgs.backingManager = new BackingManagerP0();
+        ctorArgs.basketHandler = new BasketHandlerP0();
+        ctorArgs.rTokenIssuer = new RTokenIssuerP0();
+        ctorArgs.revenueDistributor = new RevenueDistributorP0();
+        ctorArgs.settings = new SettingsP0();
+        ctorArgs.rsrTrader = new RevenueTraderP0(ctorArgs.rsr);
+        ctorArgs.rTokenTrader = new RevenueTraderP0(ctorArgs.rToken);
+
+        // Init main
         main.init(ctorArgs);
 
         // Roles
@@ -151,12 +167,11 @@ contract DeployerP0 is IDeployer {
         return new FurnaceP0(rToken, period, ratio);
     }
 
-    function deployStRSR(
-        IMain main,
-        string memory name,
-        string memory symbol,
-        address owner
-    ) internal virtual returns (IStRSR) {
-        return new StRSRP0(main, name, symbol, owner);
+    function deployStRSR(string memory name, string memory symbol)
+        internal
+        virtual
+        returns (IStRSR)
+    {
+        return new StRSRP0(name, symbol);
     }
 }

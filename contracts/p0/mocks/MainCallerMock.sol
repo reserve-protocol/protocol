@@ -22,11 +22,11 @@ contract MainCallerMockP0 {
     }
 
     function fullyCapitalized() external view returns (bool) {
-        return main.fullyCapitalized();
+        return main.basketHandler().fullyCapitalized();
     }
 
     function worstCollateralStatus() external view returns (CollateralStatus) {
-        return main.worstCollateralStatus();
+        return main.basketHandler().worstCollateralStatus();
     }
 
     function rsr() external view returns (IERC20) {
@@ -34,14 +34,14 @@ contract MainCallerMockP0 {
     }
 
     function stRSRWithdrawalDelay() external view returns (uint256) {
-        return main.stRSRWithdrawalDelay();
+        return main.settings().stRSRWithdrawalDelay();
     }
 
     function stRSRPayPeriod() external view returns (uint256) {
-        return main.stRSRPayPeriod();
+        return main.settings().stRSRPayPeriod();
     }
 
     function stRSRPayRatio() external view returns (Fix) {
-        return main.stRSRPayRatio();
+        return main.settings().stRSRPayRatio();
     }
 }

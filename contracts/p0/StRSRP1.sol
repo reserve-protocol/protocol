@@ -13,6 +13,7 @@ import "contracts/p0/interfaces/IAsset.sol";
 import "contracts/p0/interfaces/IStRSR.sol";
 import "contracts/p0/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/Component.sol";
 
 /*
  * @title StRSRP0
@@ -23,7 +24,7 @@ import "contracts/libraries/Fixed.sol";
  * across non-withdrawing stakes, while when RSR is seized, it must be seized from both
  * stakes that are in the process of being withdrawn and those that are not.
  */
-contract StRSRP1 is IStRSR, Ownable, EIP712 {
+contract StRSRP1 is IStRSR, Component, EIP712 {
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Metadata;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -42,8 +43,6 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
         );
 
     // ====
-
-    IMain public main;
 
     // Staking Token Name and Symbol
     string private _name;
@@ -76,17 +75,13 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
         uint256 startedAt; // When the last of those drafts started
     }
 
-    constructor(
-        IMain main_,
-        string memory name_,
-        string memory symbol_,
-        address owner_
-    ) EIP712(name_, "1") {
-        main = main_;
+    constructor(string memory name_, string memory symbol_) EIP712(name_, "1") Component() {
         _name = name_;
         _symbol = symbol_;
-        _transferOwnership(owner_);
-        payoutLastPaid = main.rewardStart();
+    }
+
+    function init(ConstructorArgs calldata args) internal override {
+        payoutLastPaid = args.config.rewardStart;
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
@@ -97,7 +92,10 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
         require(!main.paused(), "main paused");
 
         // Process pending withdrawals
-        if (main.fullyCapitalized() && main.worstCollateralStatus() == CollateralStatus.SOUND) {
+        if (
+            main.basketHandler().fullyCapitalized() &&
+            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND
+        ) {
             _processWithdrawals(account);
         }
         _payoutRewards();
@@ -111,8 +109,11 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
         require(!main.paused(), "main paused");
-        require(main.fullyCapitalized(), "RToken uncapitalized");
-        require(main.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+        require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
+        require(
+            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
+            "basket defaulted"
+        );
 
         // Process pending withdrawals
         _processWithdrawals(account);
@@ -122,8 +123,11 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
 
     function processWithdrawals(address account) public {
         require(!main.paused(), "main paused");
-        require(main.fullyCapitalized(), "RToken uncapitalized");
-        require(main.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+        require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
+        require(
+            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
+            "basket defaulted"
+        );
         _processWithdrawals(account);
     }
 
@@ -260,13 +264,15 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
     /// @dev do this by effecting stakeRSR and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
     function _payoutRewards() internal {
-        uint256 period = main.stRSRPayPeriod();
+        uint256 period = main.settings().stRSRPayPeriod();
         if (block.timestamp < payoutLastPaid + period) return;
 
         uint256 numPeriods = (block.timestamp - payoutLastPaid) / period;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(main.stRSRPayRatio()).powu(numPeriods));
+        Fix payoutRatio = FIX_ONE.minus(
+            FIX_ONE.minus(main.settings().stRSRPayRatio()).powu(numPeriods)
+        );
         uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
 
         // Apply payout to RSR backing
@@ -366,7 +372,7 @@ contract StRSRP1 is IStRSR, Ownable, EIP712 {
             uint256 lastId
         )
     {
-        uint256 time = block.timestamp - main.stRSRWithdrawalDelay();
+        uint256 time = block.timestamp - main.settings().stRSRWithdrawalDelay();
         CumulativeDraft[] storage queue = draftQueues[era][account];
 
         // Binary search for the current cumulative draft

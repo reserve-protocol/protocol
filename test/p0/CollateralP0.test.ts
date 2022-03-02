@@ -12,6 +12,13 @@ import {
   ComptrollerMockP0,
   CTokenFiatCollateralP0,
   CTokenMock,
+  AssetRegistryP0,
+  ExplorerFacadeP0,
+  BackingManagerP0,
+  BasketHandlerP0,
+  RTokenIssuerP0,
+  RevenueDistributorP0,
+  SettingsP0,
   ERC20Mock,
   MainP0,
   StaticATokenMock,
@@ -47,6 +54,13 @@ describe('CollateralP0 contracts', () => {
 
   // Main
   let main: MainP0
+  let assetRegistry: AssetRegistryP0
+  let backingManager: BackingManagerP0
+  let basketHandler: BasketHandlerP0
+  let rTokenIssuer: RTokenIssuerP0
+  let revenueDistributor: RevenueDistributorP0
+  let settings: SettingsP0
+  let facade: ExplorerFacadeP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -70,6 +84,13 @@ describe('CollateralP0 contracts', () => {
       aaveOracleInternal,
       basket,
       main,
+      assetRegistry,
+      backingManager,
+      basketHandler,
+      rTokenIssuer,
+      revenueDistributor,
+      settings,
+      facade,
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
@@ -151,7 +172,7 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenAsset.price()).to.equal(fp('1.1'))
 
       // Check RToken price
-      expect(await main.rTokenPrice()).to.equal(fp('1.1'))
+      expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1.1'))
     })
 
     it('Should calculate price correctly when ATokens and CTokens appreciate', async () => {
@@ -168,7 +189,7 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenAsset.price()).to.equal(fp('2'))
 
       // Check RToken price - Remains the same until Revenues are processed
-      expect(await main.rTokenPrice()).to.equal(fp('1'))
+      expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
     })
 
     it('Should revert if price is zero', async () => {
@@ -214,7 +235,7 @@ describe('CollateralP0 contracts', () => {
     })
 
     it('Updates status in case of soft default', async () => {
-      const defaultDelay: BigNumber = await main.defaultDelay()
+      const defaultDelay: BigNumber = await settings.defaultDelay()
 
       // Check initial state
       expect(await tokenAsset.status()).to.equal(CollateralStatus.SOUND)
@@ -315,36 +336,36 @@ describe('CollateralP0 contracts', () => {
       // Set COMP and AAVE rewards for Main
       const rewardAmountCOMP: BigNumber = bn('100e18')
       const rewardAmountAAVE: BigNumber = bn('20e18')
-      await compoundMock.setRewards(main.address, rewardAmountCOMP)
-      await aToken.setRewards(main.address, rewardAmountAAVE)
+      await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+      await aToken.setRewards(backingManager.address, rewardAmountAAVE)
 
       // Check funds not yet swept
-      expect(await compToken.balanceOf(main.address)).to.equal(0)
-      expect(await aaveToken.balanceOf(main.address)).to.equal(0)
+      expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
+      expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
 
       // Claim and Sweep rewards - From Main
-      await main.claimRewards()
+      await facade.claimRewards()
 
-      // Check rewards were transfered to Main
-      expect(await compToken.balanceOf(await main.address)).to.equal(rewardAmountCOMP)
-      expect(await aaveToken.balanceOf(await main.address)).to.equal(rewardAmountAAVE)
+      // Check rewards were transfered to BackingManager
+      expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+      expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
     })
 
     it('Should handle failure in the Rewards call', async function () {
       // Set COMP reward for Main
       const rewardAmountCOMP: BigNumber = bn('100e18')
-      await compoundMock.setRewards(main.address, rewardAmountCOMP)
+      await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
 
       // Check funds not yet swept
-      expect(await compToken.balanceOf(main.address)).to.equal(0)
+      expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
 
       // Force call to fail, set an invalid COMP token in Comptroller
       await compoundMock.connect(owner).setCompToken(cTokenAsset.address)
-      await expect(main.claimRewards()).to.be.revertedWith('rewards claim failed')
+      await expect(facade.claimRewards()).to.be.revertedWith('rewards claim failed')
 
       // Check funds not yet swept
-      expect(await compToken.balanceOf(main.address)).to.equal(0)
-      expect(await aaveToken.balanceOf(main.address)).to.equal(0)
+      expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
+      expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
     })
   })
 

@@ -12,7 +12,7 @@ import "contracts/libraries/Fixed.sol";
 interface IExplorerFacade {
     function runAuctionsForAllTraders() external;
 
-    function claimAndSweepRewardsForAllTraders() external;
+    function claimRewards() external;
 
     function doFurnaceMelting() external;
 
