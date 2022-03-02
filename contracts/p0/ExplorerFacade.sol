@@ -67,6 +67,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
     /// @return total {UoA} An estimate of the total value of all assets held
     function totalAssetValue() external view override returns (Fix total) {
         IAssetRegistry reg = main.assetRegistry();
+        address backingManager = address(main.backingManager());
 
         IERC20Metadata[] memory erc20s = reg.registeredERC20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -75,7 +76,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
             if (
                 !asset.isCollateral() || reg.toColl(erc20s[i]).status() != CollateralStatus.DISABLED
             ) {
-                uint256 bal = erc20s[i].balanceOf(address(main));
+                uint256 bal = erc20s[i].balanceOf(backingManager);
 
                 // {UoA/tok} = {UoA/tok} * {qTok} / {qTok/tok}
                 Fix p = asset.price().mulu(bal).shiftLeft(-int8(erc20s[i].decimals()));
