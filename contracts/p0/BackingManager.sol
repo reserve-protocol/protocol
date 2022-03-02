@@ -57,14 +57,14 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     function handoutExcessAssets() private {
         IRToken rToken = main.rToken();
 
-        Fix held = main.basketHandler().basketsHeldBy(address(main));
+        Fix held = main.basketHandler().basketsHeldBy(address(this));
         Fix needed = rToken.basketsNeeded();
 
         // Mint revenue RToken
         if (held.gt(needed)) {
             // {qRTok} = {(BU - BU) * qRTok / BU}
             uint256 qRTok = held.minus(needed).mulu(rToken.totalSupply()).div(needed).floor();
-            rToken.mint(address(main), qRTok);
+            rToken.mint(address(this), qRTok);
             rToken.setBasketsNeeded(held);
             needed = held;
         }
@@ -75,7 +75,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         IERC20Metadata[] memory erc20s = main.assetRegistry().registeredERC20s();
         // Handout excess assets above what is needed, including any newly minted RToken
         for (uint256 i = 0; i < erc20s.length; i++) {
-            uint256 bal = erc20s[i].balanceOf(address(main));
+            uint256 bal = erc20s[i].balanceOf(address(this));
             uint256 neededI = needed.mul(main.basketHandler().basketQuantity(erc20s[i])).ceil();
 
             if (bal > neededI) {
@@ -136,7 +136,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
 
         (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit();
 
-        uint256 rsrBal = rsr.balanceOf(address(main));
+        uint256 rsrBal = rsr.balanceOf(address(this));
         (bool trade, Auction memory auction) = prepareAuctionToCoverDeficit(
             main.assetRegistry().toAsset(rsr),
             deficit,
@@ -156,7 +156,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
     function giveRTokenHoldersAHaircut() private returns (bool) {
         assert(!hasOpenAuctions() && !main.basketHandler().fullyCapitalized());
-        main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(main)));
+        main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
         assert(main.basketHandler().fullyCapitalized());
         return true;
     }
@@ -196,7 +196,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
                 needed = basketsNeeded.mul(main.basketHandler().basketQuantity(erc20s[i])).ceil();
             }
             // held: {qTok} that Main is already holding
-            uint256 held = erc20s[i].balanceOf(address(main));
+            uint256 held = erc20s[i].balanceOf(address(this));
 
             if (held > needed) {
                 // {tok} = {qTok} * {tok/qTok}

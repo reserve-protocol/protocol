@@ -31,6 +31,12 @@ import {
   StaticATokenMock,
   StRSRP0,
   TraderP0,
+  AssetRegistryP0,
+  BackingManagerP0,
+  BasketHandlerP0,
+  RTokenIssuerP0,
+  RevenueDistributorP0,
+  SettingsP0,
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
@@ -89,7 +95,7 @@ const expectAuctionStatus = async (
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('MainP0 contract', () => {
+describe('Revenues', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -139,6 +145,12 @@ describe('MainP0 contract', () => {
   let furnace: FurnaceP0
   let main: MainP0
   let facade: ExplorerFacadeP0
+  let assetRegistry: AssetRegistryP0
+  let backingManager: BackingManagerP0
+  let basketHandler: BasketHandlerP0
+  let rTokenIssuer: RTokenIssuerP0
+  let revenueDistributor: RevenueDistributorP0
+  let settings: SettingsP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -171,12 +183,20 @@ describe('MainP0 contract', () => {
       deployer,
       dist,
       main,
+      assetRegistry,
+      backingManager,
+      basketHandler,
+      rTokenIssuer,
+      revenueDistributor,
+      settings,
       rToken,
       rTokenAsset,
       furnace,
       stRSR,
       market,
       facade,
+      rsrTrader,
+      rTokenTrader,
     } = await loadFixture(defaultFixture))
     token0 = erc20s[collateral.indexOf(basket[0])]
     token1 = erc20s[collateral.indexOf(basket[1])]
@@ -184,7 +204,7 @@ describe('MainP0 contract', () => {
     token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
 
     // Set backingBuffer to 0 to make math easy
-    await main.connect(owner).setBackingBuffer(0)
+    await settings.connect(owner).setBackingBuffer(0)
 
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
@@ -193,13 +213,6 @@ describe('MainP0 contract', () => {
     collateral1 = basket[1]
     collateral2 = <ATokenFiatCollateralP0>basket[2]
     collateral3 = <CTokenFiatCollateralP0>basket[3]
-
-    rsrTrader = <RevenueTraderP0>(
-      await ethers.getContractAt('RevenueTraderP0', await main.rsrTrader())
-    )
-    rTokenTrader = <RevenueTraderP0>(
-      await ethers.getContractAt('RevenueTraderP0', await main.rTokenTrader())
-    )
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -217,39 +230,43 @@ describe('MainP0 contract', () => {
   describe('Config/Setup', function () {
     it('Should setup initial distribution correctly', async () => {
       // Configuration
-      let rsrCut = await main.rsrCut()
+      let rsrCut = await revenueDistributor.rsrCut()
       expect(rsrCut.rsrShares).equal(bn(60))
       expect(rsrCut.totalShares).equal(bn(100))
 
-      let rtokenCut = await main.rTokenCut()
+      let rtokenCut = await revenueDistributor.rTokenCut()
       expect(rtokenCut.rTokenShares).equal(bn(40))
       expect(rtokenCut.totalShares).equal(bn(100))
     })
 
     it('Should allow to set distribution if owner', async () => {
       // Check initial status
-      let rsrCut = await main.rsrCut()
+      let rsrCut = await revenueDistributor.rsrCut()
       expect(rsrCut.rsrShares).equal(bn(60))
       expect(rsrCut.totalShares).equal(bn(100))
 
-      let rtokenCut = await main.rTokenCut()
+      let rtokenCut = await revenueDistributor.rTokenCut()
       expect(rtokenCut.rTokenShares).equal(bn(40))
       expect(rtokenCut.totalShares).equal(bn(100))
 
       // Attempt to update with another account
       await expect(
-        main.connect(other).setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-      ).to.be.revertedWith('Ownable: caller is not the owner')
+        revenueDistributor
+          .connect(other)
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+      ).to.be.revertedWith('Component: caller is not the owner')
 
       // Update with owner - Set f = 1
-      await main.connect(owner).setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+      await revenueDistributor
+        .connect(owner)
+        .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
 
       // Check updated status
-      rsrCut = await main.rsrCut()
+      rsrCut = await revenueDistributor.rsrCut()
       expect(rsrCut.rsrShares).equal(bn(60))
       expect(rsrCut.totalShares).equal(bn(60))
 
-      rtokenCut = await main.rTokenCut()
+      rtokenCut = await revenueDistributor.rTokenCut()
       expect(rtokenCut.rTokenShares).equal(bn(0))
       expect(rtokenCut.totalShares).equal(bn(60))
     })
@@ -257,22 +274,30 @@ describe('MainP0 contract', () => {
     it('Should perform distribution validations', async () => {
       // Cannot set RSR > 0 for Furnace
       await expect(
-        main.connect(owner).setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+        revenueDistributor
+          .connect(owner)
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
       ).to.be.revertedWith('Furnace must get 0% of RSR')
 
       // Cannot set RToken > 0 for StRSR
       await expect(
-        main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+        revenueDistributor
+          .connect(owner)
+          .setDistribution(STRSR_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
       ).to.be.revertedWith('StRSR must get 0% of RToken')
 
       // Cannot set RSR distribution too high
       await expect(
-        main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(10001) })
+        revenueDistributor
+          .connect(owner)
+          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(10001) })
       ).to.be.revertedWith('RSR distribution too high')
 
       // Cannot set RToken distribution too high
       await expect(
-        main.connect(owner).setDistribution(FURNACE_DEST, { rTokenDist: bn(10001), rsrDist: bn(0) })
+        revenueDistributor
+          .connect(owner)
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(10001), rsrDist: bn(0) })
       ).to.be.revertedWith('RSR distribution too high')
     })
   })
@@ -293,32 +318,10 @@ describe('MainP0 contract', () => {
         await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
 
         // Issue rTokens
-        await main.connect(addr1).issue(issueAmount)
+        await rTokenIssuer.connect(addr1).issue(issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
-      })
-
-      it('Should not allow to claim more than once for each rewardPeriod', async () => {
-        // Advance time to get next reward
-        await advanceTime(config.rewardPeriod.toString())
-
-        // Set COMP tokens as reward
-        rewardAmountCOMP = bn('0.8e18')
-
-        // COMP Rewards
-        await compoundMock.setRewards(main.address, rewardAmountCOMP)
-        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
-
-        // Set new rewards and attempt to claim again
-        await compoundMock.setRewards(main.address, rewardAmountCOMP)
-        await expect(main.claimRewards()).to.not.emit(main, 'RewardsClaimed')
-
-        // Advance time to get next reward
-        await advanceTime(config.rewardPeriod.toString())
-
-        // Now should be able to claim rewards again
-        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
       })
 
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
@@ -329,7 +332,7 @@ describe('MainP0 contract', () => {
         rewardAmountCOMP = bn('0.8e18')
 
         // COMP Rewards
-        await compoundMock.setRewards(main.address, rewardAmountCOMP)
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
@@ -339,7 +342,10 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+        await expect(backingManager.claimAndSweepRewards()).to.emit(
+          backingManager,
+          'RewardsClaimed'
+        )
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -454,7 +460,7 @@ describe('MainP0 contract', () => {
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards
-        await token2.setRewards(main.address, rewardAmountAAVE)
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
@@ -465,7 +471,7 @@ describe('MainP0 contract', () => {
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         // Can also claim through Facade
-        await expect(facade.claimAndSweepRewardsForAllTraders()).to.emit(main, 'RewardsClaimed')
+        await expect(facade.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -550,24 +556,29 @@ describe('MainP0 contract', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Set f = 1
-        await main
+        await revenueDistributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
         // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
-        await main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+        await revenueDistributor
+          .connect(owner)
+          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
 
         // Set COMP tokens as reward - Exceed max auction size
         rewardAmountCOMP = bn('2000000e18')
 
         // COMP Rewards
-        await compoundMock.setRewards(main.address, rewardAmountCOMP)
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
         let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+        await expect(backingManager.claimAndSweepRewards()).to.emit(
+          backingManager,
+          'RewardsClaimed'
+        )
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -634,23 +645,28 @@ describe('MainP0 contract', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Set f = 0, avoid dropping tokens
-        await main
+        await revenueDistributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
-        await main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        await revenueDistributor
+          .connect(owner)
+          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
 
         // Set AAVE tokens as reward
         rewardAmountAAVE = bn('1.5e18')
 
         // AAVE Rewards
-        await token2.setRewards(main.address, rewardAmountAAVE)
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
         let sellAmt: BigNumber = (await rToken.totalSupply()).div(100) // due to 1% max auction size
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+        await expect(backingManager.claimAndSweepRewards()).to.emit(
+          backingManager,
+          'RewardsClaimed'
+        )
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -753,8 +769,10 @@ describe('MainP0 contract', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Set f = 0.8 (0.2 for Rtoken)
-        await main.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(4) })
-        await main
+        await revenueDistributor
+          .connect(owner)
+          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(4) })
+        await revenueDistributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
 
@@ -763,7 +781,7 @@ describe('MainP0 contract', () => {
         rewardAmountCOMP = bn('2e18')
 
         // COMP Rewards
-        await compoundMock.setRewards(main.address, rewardAmountCOMP)
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
@@ -773,7 +791,10 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+        await expect(backingManager.claimAndSweepRewards()).to.emit(
+          backingManager,
+          'RewardsClaimed'
+        )
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -932,7 +953,7 @@ describe('MainP0 contract', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Set distribution - 50% of each to another account
-        await main
+        await revenueDistributor
           .connect(owner)
           .setDistribution(other.address, { rTokenDist: bn(40), rsrDist: bn(60) })
 
@@ -940,7 +961,7 @@ describe('MainP0 contract', () => {
         rewardAmountCOMP = bn('1e18')
 
         // COMP Rewards
-        await compoundMock.setRewards(main.address, rewardAmountCOMP)
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
@@ -950,8 +971,8 @@ describe('MainP0 contract', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(main.claimRewards())
-          .to.emit(main, 'RewardsClaimed')
+        await expect(backingManager.claimAndSweepRewards())
+          .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(compToken.address, rewardAmountCOMP)
 
         // Check status of destinations at this point
@@ -1065,7 +1086,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.balanceOf(other.address)).to.equal(minBuyAmtRToken.div(2))
       })
 
-      it('Should claim and sweep rewards to Main from the Revenue Traders', async () => {
+      it('Should claim and sweep rewards to BackingManager from the Revenue Traders', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -1075,14 +1096,14 @@ describe('MainP0 contract', () => {
         await token2.setRewards(rsrTrader.address, rewardAmountAAVE)
 
         // Check balance in main and Traders
-        expect(await aaveToken.balanceOf(main.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
         expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
 
         // Collect revenue
-        await expect(rsrTrader.claimAndSweepRewardsToMain()).to.emit(rsrTrader, 'RewardsClaimed')
+        await expect(rsrTrader.claimAndSweepRewards()).to.emit(rsrTrader, 'RewardsClaimed')
 
         // Check rewards sent to Main
-        expect(await aaveToken.balanceOf(main.address)).to.equal(rewardAmountAAVE)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
         expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
       })
     })
@@ -1133,43 +1154,48 @@ describe('MainP0 contract', () => {
       })
 
       it('Should ignore claiming if no adapter defined', async () => {
-        await main.swapRegisteredAsset(newATokenCollateral.address)
+        await assetRegistry.swapRegisteredAsset(newATokenCollateral.address)
 
         // Setup new basket with AToken with no claim adapter
-        await main.connect(owner).setPrimeBasket([token2.address], [fp('1')])
-        await main.connect(owner).switchBasket()
+        await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1')])
+        await basketHandler.connect(owner).switchBasket()
 
         // Provide approvals
         await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
 
         // Issue rTokens
-        await main.connect(addr1).issue(issueAmount)
+        await rTokenIssuer.connect(addr1).issue(issueAmount)
 
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
         // Set AAVE Rewards
-        await token2.setRewards(main.address, bn('0.5e18'))
+        await token2.setRewards(backingManager.address, bn('0.5e18'))
 
         // Attempt to claim, no rewards claimed (0 amount)
-        await expect(main.claimRewards()).to.emit(main, 'RewardsClaimed')
+        await expect(backingManager.claimAndSweepRewards()).to.emit(
+          backingManager,
+          'RewardsClaimed'
+        )
       })
 
       it('Should revert for non-trusted adapters', async () => {
-        await main.swapRegisteredAsset(newCTokenCollateral.address)
+        await assetRegistry.swapRegisteredAsset(newCTokenCollateral.address)
 
         // Setup new basket with CToken with untrusted adapter
-        await main.connect(owner).setPrimeBasket([token3.address], [fp('1')])
-        await main.connect(owner).switchBasket()
+        await basketHandler.connect(owner).setPrimeBasket([token3.address], [fp('1')])
+        await basketHandler.connect(owner).switchBasket()
 
         // Provide approvals
         await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
 
         // Issue rTokens
-        await main.connect(addr1).issue(issueAmount)
+        await rTokenIssuer.connect(addr1).issue(issueAmount)
 
         // Will revert when attempting to get rewards
-        await expect(main.claimRewards()).to.be.revertedWith('claim adapter is not trusted')
+        await expect(backingManager.claimAndSweepRewards()).to.be.revertedWith(
+          'claim adapter is not trusted'
+        )
       })
     })
 
@@ -1180,17 +1206,17 @@ describe('MainP0 contract', () => {
         issueAmount = bn('100e18')
 
         // Setup new basket with ATokens and CTokens
-        await main
+        await basketHandler
           .connect(owner)
           .setPrimeBasket([token2.address, token3.address], [fp('0.5'), fp('0.5')])
-        await main.connect(owner).switchBasket()
+        await basketHandler.connect(owner).switchBasket()
 
         // Provide approvals
         await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
         await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
 
         // Issue rTokens
-        await main.connect(addr1).issue(issueAmount)
+        await rTokenIssuer.connect(addr1).issue(issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -1201,7 +1227,7 @@ describe('MainP0 contract', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Check Price and Assets value
-        expect(await main.rTokenPrice()).to.equal(fp('1'))
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1211,7 +1237,7 @@ describe('MainP0 contract', () => {
         // Check Price (unchanged) and Assets value increment by 50%
         const excessValue: BigNumber = issueAmount.div(2)
         const excessQuantity: BigNumber = excessValue.div(2) // Because each unit is now worth $2
-        expect(await main.rTokenPrice()).to.equal(fp('1'))
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessValue))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1236,7 +1262,7 @@ describe('MainP0 contract', () => {
           .withArgs(0, token2.address, rToken.address, sellAmt, minBuyAmt)
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
-        expect(await main.rTokenPrice()).to.equal(fp('1'))
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1311,7 +1337,7 @@ describe('MainP0 contract', () => {
           .withArgs(1, token2.address, rToken.address, sellAmt, minBuyAmt)
 
         // Check Price (unchanged) and Assets value (unchanged)
-        expect(await main.rTokenPrice()).to.equal(fp('1'))
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1369,7 +1395,7 @@ describe('MainP0 contract', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Check Price and Assets value
-        expect(await main.rTokenPrice()).to.equal(fp('1'))
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1380,7 +1406,7 @@ describe('MainP0 contract', () => {
         // Check Price (unchanged) and Assets value increment by 1% (only half of the basket increased in value)
         const excessValue: BigNumber = issueAmount.mul(1).div(100)
         const excessQuantity: BigNumber = divCeil(excessValue.mul(BN_SCALE_FACTOR), rate) // Because each unit is now worth $1.02
-        expect(near(await main.rTokenPrice(), fp('1'), 1)).to.equal(true)
+        expect(near(await rTokenIssuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessValue))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1410,7 +1436,7 @@ describe('MainP0 contract', () => {
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
-        expect(near(await main.rTokenPrice(), fp('1'), 1)).to.equal(true)
+        expect(near(await rTokenIssuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(near(await facade.totalAssetValue(), issueAmount, 2)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1486,7 +1512,7 @@ describe('MainP0 contract', () => {
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
         //  Check Price (unchanged) and Assets value (unchanged)
-        expect(near(await main.rTokenPrice(), fp('1'), 1)).to.equal(true)
+        expect(near(await rTokenIssuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(near(await facade.totalAssetValue(), issueAmount, 2)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1506,7 +1532,7 @@ describe('MainP0 contract', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Check Price and Assets value
-        expect(await main.rTokenPrice()).to.equal(fp('1'))
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1515,7 +1541,7 @@ describe('MainP0 contract', () => {
         await token3.setExchangeRate(fp('2'))
 
         // Check Price (unchanged) and Assets value (now doubled)
-        expect(await main.rTokenPrice()).to.equal(fp('1'))
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1542,7 +1568,7 @@ describe('MainP0 contract', () => {
           .withArgs(0, rToken.address, rsr.address, sellAmt, minBuyAmt)
 
         // Check Price (unchanged) and Assets value - Supply has doubled
-        expect(await main.rTokenPrice()).to.equal(fp('1'))
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
         expect(await rToken.totalSupply()).to.equal(newTotalSupply)
 
@@ -1597,7 +1623,7 @@ describe('MainP0 contract', () => {
         let updatedRTokenPrice: BigNumber = newTotalSupply
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
-        expect(await main.rTokenPrice()).to.equal(updatedRTokenPrice)
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(updatedRTokenPrice)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
 
         // Check destinations after newly minted tokens
@@ -1643,7 +1669,7 @@ describe('MainP0 contract', () => {
 
         // Check Price and Assets value - RToken price increases due to melting
         updatedRTokenPrice = newTotalSupply.mul(BN_SCALE_FACTOR).div(await rToken.totalSupply())
-        expect(await main.rTokenPrice()).to.equal(updatedRTokenPrice)
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(updatedRTokenPrice)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
 
         // Check destinations
@@ -1656,7 +1682,7 @@ describe('MainP0 contract', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Check Price and Assets value
-        expect(await main.rTokenPrice()).to.equal(fp('1'))
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1666,7 +1692,7 @@ describe('MainP0 contract', () => {
 
         // Check Price (unchanged) and Assets value (now 80% higher)
         const excessTotalValue: BigNumber = issueAmount.mul(80).div(100)
-        expect(near(await main.rTokenPrice(), fp('1'), 1)).to.equal(true)
+        expect(near(await rTokenIssuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessTotalValue))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1726,7 +1752,7 @@ describe('MainP0 contract', () => {
           )
 
         // Check Price (unchanged) and Assets value (excess collateral not counted anymore) - Supply has increased
-        expect(await main.rTokenPrice()).to.equal(fp('1'))
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessRToken))
         expect(await rToken.totalSupply()).to.equal(newTotalSupply)
 
@@ -1856,7 +1882,7 @@ describe('MainP0 contract', () => {
         let updatedRTokenPrice: BigNumber = newTotalSupply
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
-        expect(await main.rTokenPrice()).to.equal(updatedRTokenPrice)
+        expect(await rTokenIssuer.rTokenPrice()).to.equal(updatedRTokenPrice)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessRToken))
 
         //  Check destinations
