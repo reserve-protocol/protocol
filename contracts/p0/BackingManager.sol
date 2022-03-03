@@ -24,16 +24,16 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     using SafeERC20 for IERC20Metadata;
     using SafeERC20 for IERC20;
 
-    // Give RTokenIssuer max allowances over all basket tokens
+    // Give RTokenIssuer max allowances over all registered tokens
     function grantAllowances() external notPaused {
-        address[] memory basketTokens = main.rTokenIssuer().basketTokens();
-        for (uint256 i = 0; i < basketTokens.length; i++) {
-            IERC20(basketTokens[i]).approve(address(main.rTokenIssuer()), type(uint256).max);
+        IERC20Metadata[] memory erc20s = main.assetRegistry().registeredERC20s();
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            erc20s[i].approve(address(main.rTokenIssuer()), type(uint256).max);
         }
     }
 
     function manageFunds() external override notPaused {
-        main.basketHandler().forceCollateralUpdates();
+        main.basketHandler().ensureValidBasket();
         closeDueAuctions();
 
         if (hasOpenAuctions()) return;

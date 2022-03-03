@@ -86,8 +86,9 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     BasketConfig private config;
     Basket private basket;
 
-    /// Force an update for all collateral that could be swapped into the basket
-    function forceCollateralUpdates() public override {
+    /// Try to ensure a new valid basket
+    function ensureValidBasket() external override notPaused {
+        // Force updates for *all* collateral that could be swapped into the basket
         IAssetRegistry reg = main.assetRegistry();
         IERC20Metadata[] memory erc20s = reg.registeredERC20s();
 
@@ -96,11 +97,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
                 reg.toColl(erc20s[i]).forceUpdates();
             }
         }
-    }
 
-    /// Try to ensure a new valid basket
-    function ensureValidBasket() external override notPaused {
-        forceCollateralUpdates();
         if (worstCollateralStatus() == CollateralStatus.DISABLED) {
             _switchBasket();
         }

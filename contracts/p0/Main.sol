@@ -208,4 +208,14 @@ contract MainP0 is Ownable, Pausable, IMain {
     function owner() public view override(IMain, Ownable) returns (address) {
         return Ownable.owner();
     }
+
+    function poke() external {
+        // We _think_ these are totally order-independent.
+        backingManager.grantAllowances();
+        basketHandler.ensureValidBasket();
+        revenueFurnace.melt();
+        rsrTrader.closeDueAuctions();
+        rTokenTrader.closeDueAuctions();
+        backingManager.closeDueAuctions();
+    }
 }

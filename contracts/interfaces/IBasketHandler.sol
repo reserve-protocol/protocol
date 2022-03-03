@@ -39,8 +39,6 @@ interface IBasketHandler is IComponent {
         IERC20Metadata[] calldata erc20s
     ) external;
 
-    function forceCollateralUpdates() external;
-
     function ensureValidBasket() external;
 
     function switchBasket() external returns (bool);

@@ -49,4 +49,7 @@ interface ITrader is IRewardable {
         uint256 sellAmount,
         uint256 buyAmount
     );
+
+    /// Settle any auctions that are due (past their end time)
+    function closeDueAuctions() external;
 }

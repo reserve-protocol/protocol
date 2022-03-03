@@ -33,7 +33,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
     }
 
     /// Settle any auctions that are due (past their end time)
-    function closeDueAuctions() internal {
+    function closeDueAuctions() public {
         // Close open auctions
         uint256 i = auctionsStart;
         for (; i < auctions.length && block.timestamp >= auctions[i].endTime; i++) {

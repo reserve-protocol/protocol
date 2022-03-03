@@ -187,4 +187,6 @@ interface IMain is IPausable {
     function isTrustedClaimAdapter(IClaimAdapter claimAdapter) external view returns (bool);
 
     function claimAdapters() external view returns (IClaimAdapter[] memory adapters);
+
+    function poke() external;
 }
