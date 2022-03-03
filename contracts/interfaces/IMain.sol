@@ -24,7 +24,7 @@ import "./ITrader.sol";
 /// Configuration of an entire system instance
 struct ConstructorArgs {
     DeploymentParams params;
-    Components components;
+    Core core;
     Periphery periphery;
     IERC20Metadata rsr;
 }
@@ -32,7 +32,7 @@ struct ConstructorArgs {
 /// The spokes of our hub-and-spoke component model centered around Main
 /// One single security domain
 /// Upgradeable
-struct Components {
+struct Core {
     IRToken rToken; // not actually a component, yet
     IStRSR stRSR;
     IAssetRegistry assetRegistry;
@@ -45,7 +45,7 @@ struct Components {
 }
 
 /// INVARIANT: Unaware of Main
-/// Not upgradeable
+/// Not upgradeable, only swappable
 struct Periphery {
     IMarket market;
     IFurnace furnace;

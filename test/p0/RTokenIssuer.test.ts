@@ -155,7 +155,7 @@ describe('RTokenIssuerP0 contract', () => {
     collateral2 = <ATokenFiatCollateralP0>basket[2]
     collateral3 = <CTokenFiatCollateralP0>basket[3]
 
-    initialBasketNonce = await basketHandler.basketNonce()
+    initialBasketNonce = (await basketHandler.basketLastSet())[0]
 
     rsrTrader = <RevenueTraderP0>(
       await ethers.getContractAt('RevenueTraderP0', await main.rsrTrader())

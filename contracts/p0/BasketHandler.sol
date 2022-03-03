@@ -29,6 +29,7 @@ struct Basket {
     IERC20Metadata[] erc20s;
     mapping(IERC20Metadata => Fix) refAmts; // {ref/BU}
     uint256 nonce;
+    uint256 timestamp;
 }
 
 /*
@@ -45,6 +46,7 @@ library BasketLib {
         }
         delete self.erc20s;
         self.nonce++;
+        self.timestamp = block.timestamp;
     }
 
     /// Set `self` equal to `other`
@@ -55,6 +57,7 @@ library BasketLib {
             self.refAmts[other.erc20s[i]] = other.refAmts[other.erc20s[i]];
         }
         self.nonce++;
+        self.timestamp = block.timestamp;
     }
 
     /// Add `weight` to the refAmount of collateral token `tok` in the basket `self`
@@ -70,6 +73,7 @@ library BasketLib {
             self.refAmts[tok] = self.refAmts[tok].plus(weight);
         }
         self.nonce++;
+        self.timestamp = block.timestamp;
     }
 }
 
@@ -151,8 +155,11 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         return basketsHeldBy(address(main.backingManager())).gte(main.rToken().basketsNeeded());
     }
 
-    function basketNonce() external view override returns (uint256) {
-        return basket.nonce;
+    /// @return nonce The current basket nonce
+    /// @return timestamp The timestamp when the basket was last set
+    function basketLastSet() external view override returns (uint256 nonce, uint256 timestamp) {
+        nonce = basket.nonce;
+        timestamp = basket.timestamp;
     }
 
     /// @return status The maximum CollateralStatus among basket collateral

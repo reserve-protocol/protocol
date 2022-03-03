@@ -260,7 +260,7 @@ describe('MainP0 contract', () => {
       expect(backing.length).to.equal(4)
 
       // Check other values
-      expect(await basketHandler.basketNonce()).to.be.gt(bn(0))
+      expect((await basketHandler.basketLastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
       expect(await facade.totalAssetValue()).to.equal(0)
 
@@ -273,7 +273,7 @@ describe('MainP0 contract', () => {
     it('Should not allow to initialize Main twice', async () => {
       const ctorArgs = {
         params: config,
-        components: {
+        core: {
           rToken: rToken.address,
           stRSR: stRSR.address,
           assetRegistry: assetRegistry.address,
@@ -1052,7 +1052,7 @@ describe('MainP0 contract', () => {
       expect(backing.length).to.equal(4)
 
       // Not updated so basket last changed is not set
-      expect(await basketHandler.basketNonce()).to.be.gt(bn(1))
+      expect((await basketHandler.basketLastSet())[0]).to.be.gt(bn(1))
       expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
       expect(await facade.totalAssetValue()).to.equal(0)
     })

@@ -51,6 +51,9 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
 
         if (hasOpenAuctions()) return;
 
+        (, uint256 basketTimestamp) = main.basketHandler().basketLastSet();
+        if (block.timestamp < basketTimestamp + auctionDelay) return;
+
         if (main.basketHandler().fullyCapitalized()) {
             handoutExcessAssets();
             return;

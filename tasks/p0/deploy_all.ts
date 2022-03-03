@@ -178,7 +178,7 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
     // Get main and facade addresses
     const { main: mainAddr, facade: facadeAddr } = expectInReceipt(receipt, 'RTokenCreated').args
 
-    // Get Components
+    // Get Core
     const main: MainP0 = <MainP0>await hre.ethers.getContractAt('MainP0', mainAddr)
     const rTokenAddr = await main.rToken()
     const stRSRAddr = await main.stRSR()

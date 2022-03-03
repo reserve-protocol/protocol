@@ -97,6 +97,8 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             );
         }
 
+        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
+
         // Assumption: Main has already deposited the collateral
         SlowIssuance memory iss = SlowIssuance({
             issuer: issuer,
@@ -104,7 +106,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             baskets: baskets,
             erc20s: erc20s,
             deposits: deposits,
-            basketNonce: main.basketHandler().basketNonce(),
+            basketNonce: basketNonce,
             blockAvailableAt: nextIssuanceBlockAvailable(amount, blockIssuanceRates[block.number]),
             processed: false
         });
@@ -124,7 +126,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         // Complete issuance instantly if it fits into this block
         if (iss.blockAvailableAt.lte(toFix(block.number))) {
             // At this point all checks have been done to ensure the issuance should vest
-            assert(tryVestIssuance(issuer, issuances[issuer].length - 1) > 0);
+            assert(tryVestIssuance(issuer, issuances[issuer].length - 1) == iss.amount);
         }
     }
 
@@ -224,9 +226,10 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     /// @return issued The total amount of RToken minted
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
         SlowIssuance storage iss = issuances[issuer][index];
+        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
         if (
             !iss.processed &&
-            iss.basketNonce == main.basketHandler().basketNonce() &&
+            iss.basketNonce == basketNonce &&
             iss.blockAvailableAt.lte(toFix(block.number))
         ) {
             for (uint256 i = 0; i < iss.erc20s.length; i++) {

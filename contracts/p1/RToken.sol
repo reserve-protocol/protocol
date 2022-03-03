@@ -120,9 +120,11 @@ contract RToken is Ownable, ERC20Permit, IRToken {
             lastIssRate = fixMax(MIN_ISS_RATE, issuanceRate.mulu(totalSupply()));
         }
 
+        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
+
         // Ensure that the queue is initialized, and models the current basket
-        if (queue.items.length == 0 || queue.basketNonce < main.basketHandler().basketNonce()) {
-            queue.basketNonce = main.basketHandler().basketNonce();
+        if (queue.items.length == 0 || queue.basketNonce < basketNonce) {
+            queue.basketNonce = basketNonce;
             queue.tokens = erc20s;
             queue.left = 0;
             queue.right = 0;
@@ -135,7 +137,7 @@ contract RToken is Ownable, ERC20Permit, IRToken {
         }
 
         assert(queue.items.length > 0);
-        assert(queue.basketNonce == main.basketHandler().basketNonce());
+        assert(queue.basketNonce == basketNonce);
 
         // Add amtRToken's worth of issuance delay to allVestAt
         allVestAt = fixMin(allVestAt, toFix(block.number)).plus(divFix(amtRToken, lastIssRate));
@@ -181,9 +183,8 @@ contract RToken is Ownable, ERC20Permit, IRToken {
 
         IssueQueue storage queue = issueQueues[account];
         refundOldBasketIssues(account);
-        assert(
-            queue.left == queue.right || queue.basketNonce == main.basketHandler().basketNonce()
-        );
+        (, uint256 basketTimestamp) = main.basketHandler().basketLastSet();
+        assert(queue.left == queue.right || queue.basketNonce == basketTimestamp);
 
         // Handle common edge cases in O(1)
         if (queue.left == queue.right) return 0;
@@ -324,8 +325,9 @@ contract RToken is Ownable, ERC20Permit, IRToken {
     /// If account's queue models an old basket, refund those issuances.
     function refundOldBasketIssues(address account) private {
         IssueQueue storage queue = issueQueues[account];
+        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
         // ensure that the queue models issuances against the current basket, not previous baskets
-        if (queue.basketNonce != main.basketHandler().basketNonce()) {
+        if (queue.basketNonce != basketNonce) {
             refundSpan(account, queue.left, queue.right);
             queue.left = 0;
             queue.right = 0;

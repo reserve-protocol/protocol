@@ -364,7 +364,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rewardPeriod: bn('604800'), // 1 week
     rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
     unstakingDelay: bn('1209600'), // 2 weeks
-    auctionDelay: bn('14400'), // 4 hours
+    auctionDelay: bn('0'), // (the delay _after_ default has been confirmed)
     auctionLength: bn('1800'), // 30 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
@@ -392,7 +392,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const facadeAddr = expectInReceipt(receipt, 'RTokenCreated').args.facade
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
 
-  // Get Components
+  // Get Core
   const assetRegistry: AssetRegistryP0 = <AssetRegistryP0>(
     await ethers.getContractAt('AssetRegistryP0', await main.assetRegistry())
   )

@@ -58,5 +58,5 @@ interface IBasketHandler is IComponent {
 
     function basketPrice() external view returns (Fix price);
 
-    function basketNonce() external view returns (uint256);
+    function basketLastSet() external view returns (uint256, uint256);
 }

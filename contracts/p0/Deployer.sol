@@ -104,8 +104,8 @@ contract DeployerP0 is IDeployer {
         );
         periphery.assets[3] = new CompoundPricedAssetP0(comp, params.maxAuctionSize, comptroller);
 
-        // Components
-        Components memory components;
+        // Core
+        Core memory components;
         components.rToken = rToken;
         components.stRSR = deployStRSR(
             string(abi.encodePacked("st", symbol, "RSR Token")),
@@ -132,7 +132,7 @@ contract DeployerP0 is IDeployer {
 
         // Facade
         IExplorerFacade facade = new ExplorerFacadeP0(address(main));
-        emit RTokenCreated(main, rToken, ctorArgs.components.stRSR, facade, owner);
+        emit RTokenCreated(main, rToken, ctorArgs.core.stRSR, facade, owner);
         return (address(main));
     }
 

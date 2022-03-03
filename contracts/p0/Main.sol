@@ -46,25 +46,25 @@ contract MainP0 is Ownable, Pausable, IMain {
         require(!initialized, "Already initialized");
         initialized = true;
 
-        setRTokenIssuer(args.components.rTokenIssuer);
+        setRTokenIssuer(args.core.rTokenIssuer);
         rTokenIssuer.initComponent(this, args);
 
-        setBackingManager(args.components.backingManager);
+        setBackingManager(args.core.backingManager);
         backingManager.initComponent(this, args);
 
-        setBasketHandler(args.components.basketHandler);
+        setBasketHandler(args.core.basketHandler);
         basketHandler.initComponent(this, args);
 
-        setRSRTrader(args.components.rsrTrader);
+        setRSRTrader(args.core.rsrTrader);
         rsrTrader.initComponent(this, args);
 
-        setRTokenTrader(args.components.rTokenTrader);
+        setRTokenTrader(args.core.rTokenTrader);
         rTokenTrader.initComponent(this, args);
 
-        setAssetRegistry(args.components.assetRegistry);
+        setAssetRegistry(args.core.assetRegistry);
         assetRegistry.initComponent(this, args);
 
-        setRevenueDistributor(args.components.revenueDistributor);
+        setRevenueDistributor(args.core.revenueDistributor);
         revenueDistributor.initComponent(this, args);
 
         setRevenueFurnace(args.periphery.furnace);
@@ -73,10 +73,10 @@ contract MainP0 is Ownable, Pausable, IMain {
 
         setRSR(args.rsr);
 
-        setStRSR(args.components.stRSR);
+        setStRSR(args.core.stRSR);
         stRSR.initComponent(this, args);
 
-        setRToken(args.components.rToken);
+        setRToken(args.core.rToken);
         // TODO: make Component
 
         for (uint256 i = 0; i < args.periphery.claimAdapters.length; i++) {
