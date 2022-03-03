@@ -19,7 +19,11 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
     }
 
     /// Close any open auctions and start new ones, for all assets
+    /// Collective Action
     function manageFunds() external {
+        // Call state keepers
+        main.poke();
+
         IERC20Metadata[] memory erc20s = main.assetRegistry().registeredERC20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
             manageERC20(erc20s[i]);

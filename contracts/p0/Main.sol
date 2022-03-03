@@ -211,11 +211,13 @@ contract MainP0 is Ownable, Pausable, IMain {
 
     function poke() external {
         // We _think_ these are totally order-independent.
+        require(!paused, "paused");
         backingManager.grantAllowances();
         basketHandler.ensureValidBasket();
         revenueFurnace.melt();
         rsrTrader.closeDueAuctions();
         rTokenTrader.closeDueAuctions();
         backingManager.closeDueAuctions();
+        stRSR.payoutRewards();
     }
 }

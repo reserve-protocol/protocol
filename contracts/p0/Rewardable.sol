@@ -15,7 +15,11 @@ abstract contract RewardableP0 is Component, IRewardable {
     using SafeERC20 for IERC20Metadata;
 
     /// Claim all rewards and sweep to BackingManager
+    /// Collective Action
     function claimAndSweepRewards() external override {
+        // Call state keepers before collective actions
+        main.poke();
+
         IClaimAdapter[] memory adapters = main.claimAdapters();
 
         // Cache initial reward token balances

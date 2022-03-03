@@ -71,6 +71,9 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
     /// @return seizedRSR {qRSR} The actual amount seized. May be dust-larger than `amount`.
     function seizeRSR(uint256 amount) external returns (uint256 seizedRSR);
 
+    /// Gather and payout rewards from rsrTrader. State Keeper.
+    function payoutRewards() external;
+
     /// Sets Main, only by owner
     function setMain(IMain main) external;
 }

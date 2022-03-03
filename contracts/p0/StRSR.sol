@@ -89,19 +89,20 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
+    /// User Action
     /// @param rsrAmount {qRSR}
     function stake(uint256 rsrAmount) external override {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
         require(!main.paused(), "main paused");
-
+        main.poke();
         IBasketHandler bh = main.basketHandler();
 
         // Process pending withdrawals
         if (bh.fullyCapitalized() && bh.worstCollateralStatus() == CollateralStatus.SOUND) {
             _processWithdrawals(account);
         }
-        _payoutRewards();
+        payoutRewards();
 
         main.rsr().safeTransferFrom(account, address(this), rsrAmount);
         uint256 stakeAmount = rsrAmount;
@@ -119,6 +120,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     /// Begins a delayed unstaking for `amount` stRSR
+    /// User Action
     /// @param stakeAmount {qRSR}
     function unstake(uint256 stakeAmount) external override {
         address account = _msgSender();
@@ -132,9 +134,10 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
             "basket defaulted"
         );
 
-        // Process pending withdrawals
+        // Call state keepers
+        main.poke();
         _processWithdrawals(account);
-        _payoutRewards();
+        payoutRewards();
 
         uint256 rsrAmount = (stakeAmount * rsrBacking) / totalStaked;
 
@@ -209,6 +212,29 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         // Transfer RSR to caller
         main.rsr().safeTransfer(_msgSender(), seizedRSR);
         emit RSRSeized(_msgSender(), seizedRSR);
+    }
+
+    /// Assign reward payouts to the staker pool
+    /// State Keeper
+    /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
+    /// value of rsrRewards()
+    function payoutRewards() public {
+        uint256 period = main.settings().stRSRPayPeriod();
+        if (block.timestamp < payoutLastPaid + period) return;
+
+        uint256 numPeriods = (block.timestamp - payoutLastPaid) / period;
+
+        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
+        Fix payoutRatio = FIX_ONE.minus(
+            FIX_ONE.minus(main.settings().stRSRPayRatio()).powu(numPeriods)
+        );
+        uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
+
+        // Apply payout to RSR backing
+        rsrBacking += payout;
+        payoutLastPaid += numPeriods * period;
+
+        emit RSRRewarded(payout, numPeriods);
     }
 
     function setMain(IMain main_) external virtual override onlyOwner {
@@ -305,28 +331,6 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     /// @return {qRSR} The balance of RSR that this contract owns dedicated to future RSR rewards.
     function rsrRewards() internal view returns (uint256) {
         return main.rsr().balanceOf(address(this)) - rsrBacking - rsrBeingWithdrawn();
-    }
-
-    /// Assign reward payouts to the staker pool
-    /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
-    /// value of rsrRewards()
-    function _payoutRewards() internal {
-        uint256 period = main.settings().stRSRPayPeriod();
-        if (block.timestamp < payoutLastPaid + period) return;
-
-        uint256 numPeriods = (block.timestamp - payoutLastPaid) / period;
-
-        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        Fix payoutRatio = FIX_ONE.minus(
-            FIX_ONE.minus(main.settings().stRSRPayRatio()).powu(numPeriods)
-        );
-        uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
-
-        // Apply payout to RSR backing
-        rsrBacking += payout;
-        payoutLastPaid += numPeriods * period;
-
-        emit RSRRewarded(payout, numPeriods);
     }
 
     function _processWithdrawals(address account) internal {

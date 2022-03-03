@@ -18,15 +18,16 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
     using SafeERC20 for IERC20;
 
     /// Begin a time-delayed issuance of RToken for basket collateral
+    /// User Action
     /// @param amount {qTok} The quantity of RToken to issue
     /// @return deposits {qTok} The quantities of collateral tokens transferred in
     function issue(uint256 amount) public override notPaused returns (uint256[] memory deposits) {
         require(amount > 0, "Cannot issue zero");
+        // Call collective state keepers.
+
+        main.poke();
         IBasketHandler basketHandler = main.basketHandler();
         IRToken rToken = main.rToken();
-
-        main.revenueFurnace().melt();
-        basketHandler.ensureValidBasket();
 
         require(
             basketHandler.worstCollateralStatus() == CollateralStatus.SOUND,
@@ -51,16 +52,18 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
     }
 
     /// Redeem RToken for basket collateral
+    /// User Action
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @return withdrawals {qTok} The quantities of collateral tokens transferred out
     function redeem(uint256 amount) public override returns (uint256[] memory withdrawals) {
         require(amount > 0, "Cannot redeem zero");
+        // Call collective state keepers
+        main.poke();
+
         IBasketHandler basketHandler = main.basketHandler();
         IRToken rToken = main.rToken();
 
         require(rToken.balanceOf(_msgSender()) >= amount, "not enough RToken");
-        main.revenueFurnace().melt();
-        // intentional: no forceCollateralUpdates() or ensureValidBasket()
 
         // {BU} = {BU} * {qRTok} / {qRTok}
         Fix baskets = rToken.basketsNeeded().mulu(amount).divuRound(rToken.totalSupply());

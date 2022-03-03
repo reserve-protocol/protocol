@@ -32,8 +32,11 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         }
     }
 
+    /// Manage backing funds: maintain the overall backing policy
+    /// Collective Action
     function manageFunds() external override notPaused {
-        main.basketHandler().ensureValidBasket();
+        // Call keepers before
+        main.poke();
         closeDueAuctions();
 
         if (hasOpenAuctions()) return;

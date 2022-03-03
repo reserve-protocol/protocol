@@ -188,5 +188,6 @@ interface IMain is IPausable {
 
     function claimAdapters() external view returns (IClaimAdapter[] memory adapters);
 
+    /// Call all collective state keepers
     function poke() external;
 }

@@ -120,6 +120,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     }
 
     /// Cancels a vesting slow issuance
+    /// User Action
     /// @param account The account of the issuer, and caller
     /// @param throughIndex The index of the issuance in the issuer's queue to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
@@ -129,6 +130,10 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         bool earliest
     ) public returns (uint256[] memory deposits) {
         require(account == _msgSender(), "issuer does not match caller");
+
+        // Call state keepers
+        main.poke();
+        vestIssuances(account);
 
         SlowIssuance[] storage queue = issuances[account];
         (uint256 first, uint256 last) = earliest
@@ -152,7 +157,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amount of RToken quanta vested
-    function vestIssuances(address account) external override returns (uint256 vested) {
+    function vestIssuances(address account) public override returns (uint256 vested) {
         require(!main.paused(), "main is paused");
         require(
             main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
