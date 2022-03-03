@@ -172,7 +172,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         // Accumulate and zero executable withdrawals
         uint256 total = 0;
         uint256 i = start;
-        for (i; i <= queue.length && queue[i].availableAt <= block.timestamp; i++) {
+        for (i; i < endId && queue[i].availableAt <= block.timestamp; i++) {
             total += queue[i].rsrAmount;
             queue[i].rsrAmount = 0;
         }
@@ -186,7 +186,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     function endIdForWithdraw(address account) external view returns (uint256) {
         Withdrawal[] storage queue = withdrawals[account];
         uint256 i = 0;
-        while (i <= queue.length && queue[i].availableAt <= block.timestamp) i++;
+        while (i < queue.length && queue[i].availableAt <= block.timestamp) i++;
         return i;
     }
 
