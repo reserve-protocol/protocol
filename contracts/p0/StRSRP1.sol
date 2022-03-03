@@ -179,6 +179,10 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
         main = main_;
     }
 
+    function exchangeRate() external view returns (Fix) {
+        return toFix(stakeRSR).divu(totalStakes);
+    }
+
     // ==== ERC20 Interface ====
     function name() public view returns (string memory) {
         return _name;

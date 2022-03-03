@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "contracts/libraries/Fixed.sol";
 import "./IComponent.sol";
 import "./IMain.sol";
 
@@ -73,4 +74,7 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
 
     /// Sets Main, only by owner
     function setMain(IMain main) external;
+
+    /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
+    function exchangeRate() external view returns (Fix);
 }

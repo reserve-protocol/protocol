@@ -84,4 +84,8 @@ contract ExplorerFacadeP0 is IExplorerFacade {
             }
         }
     }
+
+    function stRSRExchangeRate() external view returns (Fix) {
+        return main.stRSR().exchangeRate();
+    }
 }
