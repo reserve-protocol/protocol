@@ -77,7 +77,7 @@ contract MainP0 is Ownable, Pausable, IMain {
         stRSR.initComponent(this, args);
 
         setRToken(args.core.rToken);
-        // TODO: make Component
+        rToken.initComponent(this, args);
 
         for (uint256 i = 0; i < args.periphery.claimAdapters.length; i++) {
             _claimAdapters.add(address(args.periphery.claimAdapters[i]));
@@ -92,6 +92,8 @@ contract MainP0 is Ownable, Pausable, IMain {
 
     function setRToken(IRToken val) public onlyOwner {
         emit RTokenSet(rToken, val);
+        components.remove(address(rToken));
+        components.add(address(val));
         rToken = val;
     }
 

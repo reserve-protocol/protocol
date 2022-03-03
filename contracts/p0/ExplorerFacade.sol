@@ -34,7 +34,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         main.backingManager().claimAndSweepRewards();
         main.rsrTrader().claimAndSweepRewards();
         main.rTokenTrader().claimAndSweepRewards();
-        // TODO main.rToken().claimAndSweepRewards()
+        main.rToken().claimAndSweepRewards();
     }
 
     function doFurnaceMelting() external override {

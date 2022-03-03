@@ -168,7 +168,6 @@ describe('DeployerP0 contract', () => {
       expect(await rToken.symbol()).to.equal('RTKN')
       expect(await rToken.decimals()).to.equal(18)
       expect(await rToken.totalSupply()).to.equal(bn(0))
-      expect(await rToken.main()).to.equal(main.address)
     })
 
     it('Should setup Furnace correctly', async () => {

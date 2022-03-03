@@ -99,7 +99,6 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.symbol()).to.equal('RTKN')
       expect(await rToken.decimals()).to.equal(18)
       expect(await rToken.totalSupply()).to.equal(bn(0))
-      expect(await rToken.main()).to.equal(main.address)
       expect(await rToken.basketsNeeded()).to.equal(0)
 
       // Check RToken price
@@ -108,31 +107,13 @@ describe('RTokenP0 contract', () => {
   })
 
   describe('Configuration', () => {
-    it('Should allow to set Main if Owner', async () => {
-      // Check initial status
-      expect(await rToken.main()).to.equal(main.address)
-
-      // Try to update with another user
-      await expect(rToken.connect(addr1).setMain(other.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
-
-      // Check nothing changed
-      expect(await rToken.main()).to.equal(main.address)
-
-      // Update with owner
-      await rToken.connect(owner).setMain(other.address)
-
-      expect(await rToken.main()).to.equal(other.address)
-    })
-
     it('Should allow to set basketsNeeded only from Main components', async () => {
       // Check initial status
       expect(await rToken.basketsNeeded()).to.equal(0)
 
       // Try to update value if not a Main component
       await expect(rToken.connect(owner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
-        'only components of main'
+        'Component: caller is not a component'
       )
 
       await whileImpersonating(basketHandler.address, async (bhSigner) => {
@@ -204,7 +185,7 @@ describe('RTokenP0 contract', () => {
 
       // Trying to mint with another account will fail
       await expect(rToken.connect(other).mint(addr1.address, mintAmount)).to.be.revertedWith(
-        'only components of main'
+        'Component: caller is not a component'
       )
     })
   })

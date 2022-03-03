@@ -10,19 +10,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/Rewardable.sol";
 
 /**
  * @title RToken
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RToken is Ownable, ERC20Permit, IRToken {
+contract RToken is RewardableP0, ERC20Permit, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20;
 
     Fix public constant MIN_ISS_RATE = Fix.wrap(1e40); // {qRTok/block} 10k whole RTok
-
-    IMain public main;
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
     Fix public lastIssRate; // {qRTok/block}
@@ -72,21 +71,17 @@ contract RToken is Ownable, ERC20Permit, IRToken {
 
     Fix public issuanceRate; // {%} of RToken supply to issue per block
 
-    constructor(
-        IMain main_,
-        string memory name_,
-        string memory symbol_,
-        address owner_,
-        Fix issuanceRate_
-    ) ERC20(name_, symbol_) ERC20Permit(name_) {
-        main = main_;
-        issuanceRate = issuanceRate_;
-        _transferOwnership(owner_);
-    }
+    // solhint-disable no-empty-blocks
+    constructor(string memory name_, string memory symbol_)
+        ERC20(name_, symbol_)
+        ERC20Permit(name_)
+    {}
 
-    modifier onlyComponent() {
-        require(main.hasComponent(_msgSender()), "only components of main");
-        _;
+    // solhint-enable no-empty-blocks
+
+    function init(ConstructorArgs calldata args) internal override {
+        issuanceRate = args.params.issuanceRate;
+        emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }
 
     function setIssuanceRate(Fix val) external onlyOwner {
