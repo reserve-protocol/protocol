@@ -21,8 +21,6 @@ interface IRTokenIssuer is IComponent {
 
     function redeem(uint256 amount) external returns (uint256[] memory compensation);
 
-    function basketTokens() external view returns (address[] memory);
-
     function maxIssuable(address account) external view returns (uint256);
 
     // {UoA/rTok}

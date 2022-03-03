@@ -56,7 +56,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         override
         returns (address[] memory tokens, uint256[] memory quantities)
     {
-        tokens = main.rTokenIssuer().basketTokens();
+        tokens = main.basketHandler().basketTokens();
         quantities = new uint256[](tokens.length);
 
         for (uint256 j = 0; j < tokens.length; j++) {

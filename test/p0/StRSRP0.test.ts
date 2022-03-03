@@ -352,7 +352,7 @@ describe('StRSRP0 contract', () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Save backing tokens
-        const erc20s = await rTokenIssuer.basketTokens()
+        const erc20s = await basketHandler.basketTokens()
 
         // Set not fully capitalized by changing basket
         await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1e18')])

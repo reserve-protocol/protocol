@@ -89,11 +89,6 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
         emit Redemption(_msgSender(), amount, baskets);
     }
 
-    /// @return tokens The addresses of the ERC20s backing the RToken
-    function basketTokens() public view returns (address[] memory tokens) {
-        (tokens, ) = main.basketHandler().basketQuote(FIX_ONE, RoundingApproach.ROUND);
-    }
-
     /// @return {qRTok} How much RToken `account` can issue given current holdings
     function maxIssuable(address account) external view override returns (uint256) {
         Fix needed = main.rToken().basketsNeeded();

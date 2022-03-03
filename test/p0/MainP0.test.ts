@@ -229,7 +229,7 @@ describe('MainP0 contract', () => {
         })
       )
       expect(registeredERC20s.slice(4)).to.eql(initialTokens)
-      expect(registeredERC20s.length).to.eql((await rTokenIssuer.basketTokens()).length + 4)
+      expect(registeredERC20s.length).to.eql((await basketHandler.basketTokens()).length + 4)
 
       // Assets
       expect(await assetRegistry.toAsset(registeredERC20s[0])).to.equal(rTokenAsset.address)
@@ -251,7 +251,7 @@ describe('MainP0 contract', () => {
     it('Should register Basket correctly', async () => {
       // Basket
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
-      const backing = await rTokenIssuer.basketTokens()
+      const backing = await basketHandler.basketTokens()
       expect(backing[0]).to.equal(token0.address)
       expect(backing[1]).to.equal(token1.address)
       expect(backing[2]).to.equal(token2.address)
@@ -650,7 +650,7 @@ describe('MainP0 contract', () => {
     // })
 
     it('Should return backing tokens', async () => {
-      expect(await rTokenIssuer.basketTokens()).to.eql([
+      expect(await basketHandler.basketTokens()).to.eql([
         token0.address,
         token1.address,
         token2.address,
@@ -1043,7 +1043,7 @@ describe('MainP0 contract', () => {
 
       // Basket remains the same in this case
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
-      const backing = await rTokenIssuer.basketTokens()
+      const backing = await basketHandler.basketTokens()
       expect(backing[0]).to.equal(token0.address)
       expect(backing[1]).to.equal(token1.address)
       expect(backing[2]).to.equal(token2.address)
