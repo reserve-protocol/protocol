@@ -26,10 +26,12 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
 
     // this is not yet used in implementation
     uint256 public auctionDelay; // {s} how long to wait until starting auctions after switching
+    Fix public backingBuffer; // {%} how much extra backing collateral to keep
 
-    function init(ConstructorArgs calldata args) internal override onlyOwner {
+    function init(ConstructorArgs calldata args) internal override {
         TraderP0.init(args);
         auctionDelay = args.params.auctionDelay;
+        backingBuffer = args.params.backingBuffer;
     }
 
     // Give RTokenIssuer max allowances over all registered tokens

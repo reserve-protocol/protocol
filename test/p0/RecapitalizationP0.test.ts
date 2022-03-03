@@ -38,7 +38,6 @@ import {
   BasketHandlerP0,
   RTokenIssuerP0,
   RevenueDistributorP0,
-  SettingsP0,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
@@ -158,7 +157,6 @@ describe('MainP0 contract', () => {
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
   let revenueDistributor: RevenueDistributorP0
-  let settings: SettingsP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -218,7 +216,6 @@ describe('MainP0 contract', () => {
       basketHandler,
       rTokenIssuer,
       revenueDistributor,
-      settings,
     } = await loadFixture(defaultFixture))
     token0 = erc20s[collateral.indexOf(basket[0])]
     token1 = erc20s[collateral.indexOf(basket[1])]
@@ -327,8 +324,8 @@ describe('MainP0 contract', () => {
         // Basket should not switch yet
         await expect(basketHandler.ensureValidBasket()).to.not.emit(basketHandler, 'BasketSet')
 
-        // Advance time post defaultDelay
-        await advanceTime(config.defaultDelay.toString())
+        // Advance time post delayUntilDefault
+        await advanceTime((await collateral1.delayUntilDefault()).toString())
 
         // Confirm default
         await collateral1.forceUpdates()
@@ -452,8 +449,8 @@ describe('MainP0 contract', () => {
         // Basket should not switch yet
         await expect(basketHandler.ensureValidBasket()).to.not.emit(basketHandler, 'BasketSet')
 
-        // Advance time post defaultDelay
-        await advanceTime(config.defaultDelay.toString())
+        // Advance time post delayUntilDefault
+        await advanceTime((await collateral0.delayUntilDefault()).toString())
 
         // Basket should switch, default is confirmed
         await expect(basketHandler.ensureValidBasket()).to.emit(basketHandler, 'BasketSet')
@@ -968,8 +965,8 @@ describe('MainP0 contract', () => {
         await collateral0.forceUpdates()
         expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.IFFY)
 
-        // Advance time post defaultDelay
-        await advanceTime(config.defaultDelay.toString())
+        // Advance time post delayUntilDefault
+        await advanceTime((await collateral0.delayUntilDefault()).toString())
 
         // Confirm default
         await collateral0.forceUpdates()
@@ -1092,7 +1089,7 @@ describe('MainP0 contract', () => {
       //     rewardPeriod: config.rewardPeriod,
       //     auctionLength: config.auctionLength,
       //     unstakingDelay: config.unstakingDelay,
-      //     defaultDelay: config.defaultDelay,
+      //     delayUntilDefault: (await collateral0.delayUntilDefault()),
       //     maxTradeSlippage: config.maxTradeSlippage,
       //     maxAuctionSize: fp('0.25'), // 25%
       //     minRecapitalizationAuctionSize: config.minRecapitalizationAuctionSize,
@@ -1123,8 +1120,8 @@ describe('MainP0 contract', () => {
       //   expect(await assetManager.vault()).to.equal(defVault.address)
       //   expect(await assetManager.fullyCapitalized()).to.equal(true)
 
-      //   // Advance time post defaultDelay
-      //   await advanceTime(config.defaultDelay.toString())
+      //   // Advance time post delayUntilDefault
+      //   await advanceTime((await collateral0.delayUntilDefault()).toString())
 
       //   await expect(main.noticeDefault()).to.emit(main, 'SystemStateChanged').withArgs(State.DOUBT, State.TRADING)
 

@@ -29,13 +29,11 @@ abstract contract TraderP0 is RewardableP0, ITrader {
 
     // === Gov Params ===
     uint256 public auctionLength; // {s} the length of an auction
-    Fix public backingBuffer; // {%} how much extra backing collateral to keep
     Fix public maxTradeSlippage; // {%} max slippage acceptable in a trade
     Fix public dustAmount; // {UoA} value below which we don't bother handling some tokens
 
-    function init(ConstructorArgs calldata args) internal virtual override onlyOwner {
+    function init(ConstructorArgs calldata args) internal virtual override {
         auctionLength = args.params.auctionLength;
-        backingBuffer = args.params.backingBuffer;
         maxTradeSlippage = args.params.maxTradeSlippage;
         dustAmount = args.params.dustAmount;
     }

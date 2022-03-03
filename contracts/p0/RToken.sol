@@ -54,19 +54,17 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         IMain main_,
         string memory name_,
         string memory symbol_,
-        address owner_
+        address owner_,
+        Fix issuanceRate_
     ) ERC20(name_, symbol_) ERC20Permit(name_) {
         main = main_;
+        issuanceRate = issuanceRate_;
         _transferOwnership(owner_);
     }
 
     modifier onlyComponent() {
         require(main.hasComponent(_msgSender()), "only components of main");
         _;
-    }
-
-    function init(ConstructorArgs calldata args) public onlyOwner {
-        issuanceRate = args.params.issuanceRate;
     }
 
     function setIssuanceRate(Fix val) external onlyOwner {

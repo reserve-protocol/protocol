@@ -38,7 +38,6 @@ import {
   BasketHandlerP0,
   RTokenIssuerP0,
   RevenueDistributorP0,
-  SettingsP0,
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
@@ -152,7 +151,6 @@ describe('Revenues', () => {
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
   let revenueDistributor: RevenueDistributorP0
-  let settings: SettingsP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -190,7 +188,6 @@ describe('Revenues', () => {
       basketHandler,
       rTokenIssuer,
       revenueDistributor,
-      settings,
       rToken,
       rTokenAsset,
       furnace,
@@ -206,7 +203,7 @@ describe('Revenues', () => {
     token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
 
     // Set backingBuffer to 0 to make math easy
-    await settings.connect(owner).setBackingBuffer(0)
+    await backingManager.connect(owner).setBackingBuffer(0)
 
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
@@ -1205,8 +1202,9 @@ describe('Revenues', () => {
           await ATokenCollateralFactory.deploy(
             token2.address,
             await collateral2.maxAuctionSize(),
+            await collateral2.defaultThreshold(),
+            await collateral2.delayUntilDefault(),
             token0.address,
-            main.address,
             compoundMock.address,
             aaveMock.address,
             ZERO_ADDRESS
@@ -1227,8 +1225,9 @@ describe('Revenues', () => {
           await CTokenCollateralFactory.deploy(
             token3.address,
             await collateral3.maxAuctionSize(),
+            await collateral3.defaultThreshold(),
+            await collateral3.delayUntilDefault(),
             token0.address,
-            main.address,
             compoundMock.address,
             nonTrustedClaimer.address
           )

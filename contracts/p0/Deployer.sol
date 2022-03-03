@@ -78,7 +78,7 @@ contract DeployerP0 is IDeployer {
     ) external override returns (address) {
         IMain main = deployMain();
         deployments.push(main);
-        IRToken rToken = deployRToken(main, name, symbol, owner);
+        IRToken rToken = deployRToken(main, name, symbol, owner, params.issuanceRate);
 
         // Periphery
         Periphery memory periphery;
@@ -147,9 +147,10 @@ contract DeployerP0 is IDeployer {
         IMain main,
         string memory name,
         string memory symbol,
-        address owner
+        address owner,
+        Fix issuanceRate
     ) internal virtual returns (IRToken) {
-        return new RTokenP0(main, name, symbol, owner);
+        return new RTokenP0(main, name, symbol, owner, issuanceRate);
     }
 
     function deployRevenueFurnace(

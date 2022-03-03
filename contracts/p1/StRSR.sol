@@ -91,7 +91,7 @@ contract StRSR is IStRSR, Component, EIP712 {
         unstakingDelay = args.params.unstakingDelay;
         rewardPeriod = args.params.rewardPeriod;
         rewardRatio = args.params.rewardRatio;
-        require(rewardPeriod * 2 <= unstakingDelay, "unstaking withdrawal delay too short");
+        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
@@ -458,13 +458,13 @@ contract StRSR is IStRSR, Component, EIP712 {
     function setUnstakingDelay(uint256 val) external onlyOwner {
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
-        require(rewardPeriod * 2 <= unstakingDelay, "unstaking withdrawal delay too short");
+        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
     function setRewardPeriod(uint256 val) external onlyOwner {
         emit RewardPeriodSet(rewardPeriod, val);
         rewardPeriod = val;
-        require(rewardPeriod * 2 <= unstakingDelay, "unstaking withdrawal delay too short");
+        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
     function setRewardRatio(Fix val) external onlyOwner {

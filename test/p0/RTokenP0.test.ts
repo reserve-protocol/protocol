@@ -14,7 +14,6 @@ import {
   BasketHandlerP0,
   RTokenIssuerP0,
   RevenueDistributorP0,
-  SettingsP0,
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture } from './utils/fixtures'
@@ -34,7 +33,6 @@ describe('RTokenP0 contract', () => {
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
   let revenueDistributor: RevenueDistributorP0
-  let settings: SettingsP0
 
   // Tokens/Assets
   let token0: ERC20Mock
@@ -77,7 +75,6 @@ describe('RTokenP0 contract', () => {
       basketHandler,
       rTokenIssuer,
       revenueDistributor,
-      settings,
     } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
