@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/p0/Component.sol";
@@ -14,10 +15,12 @@ contract AssetRegistryP0 is Component, IAssetRegistry {
     EnumerableSet.AddressSet private erc20s;
 
     // Registered Assets
-    mapping(IERC20Metadata => IAsset) private assets;
+    mapping(IERC20 => IAsset) private assets;
 
     function init(ConstructorArgs calldata args) internal virtual override {
-        for (uint256 i = 0; i < args.assets.length; i++) _registerAsset(args.assets[i]);
+        for (uint256 i = 0; i < args.periphery.assets.length; i++) {
+            _registerAsset(args.periphery.assets[i]);
+        }
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered
@@ -45,28 +48,28 @@ contract AssetRegistryP0 is Component, IAssetRegistry {
     }
 
     /// Return the Asset modelling this ERC20, or revert
-    function toAsset(IERC20Metadata erc20) external view override returns (IAsset) {
+    function toAsset(IERC20 erc20) external view override returns (IAsset) {
         require(erc20s.contains(address(erc20)), "erc20 unregistered");
         assert(assets[erc20] != IAsset(address(0)));
         return assets[erc20];
     }
 
     /// Return the Collateral modelling this ERC20, or revert
-    function toColl(IERC20Metadata erc20) external view override returns (ICollateral) {
+    function toColl(IERC20 erc20) external view override returns (ICollateral) {
         require(erc20s.contains(address(erc20)), "erc20 unregistered");
         assert(assets[erc20] != IAsset(address(0)));
         require(assets[erc20].isCollateral(), "erc20 is not collateral");
         return ICollateral(address(assets[erc20]));
     }
 
-    function isRegistered(IERC20Metadata erc20) external view override returns (bool) {
+    function isRegistered(IERC20 erc20) external view override returns (bool) {
         return erc20s.contains(address(erc20));
     }
 
-    function registeredERC20s() external view override returns (IERC20Metadata[] memory erc20s_) {
-        erc20s_ = new IERC20Metadata[](erc20s.length());
+    function registeredERC20s() external view override returns (IERC20[] memory erc20s_) {
+        erc20s_ = new IERC20[](erc20s.length());
         for (uint256 i = 0; i < erc20s.length(); i++) {
-            erc20s_[i] = IERC20Metadata(erc20s.at(i));
+            erc20s_[i] = IERC20(erc20s.at(i));
         }
     }
 

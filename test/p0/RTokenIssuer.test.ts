@@ -32,7 +32,6 @@ import {
   BasketHandlerP0,
   RTokenIssuerP0,
   RevenueDistributorP0,
-  SettingsP0,
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockNumber } from '../utils/time'
@@ -95,7 +94,6 @@ describe('RTokenIssuerP0 contract', () => {
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
   let revenueDistributor: RevenueDistributorP0
-  let settings: SettingsP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -136,7 +134,6 @@ describe('RTokenIssuerP0 contract', () => {
       basketHandler,
       rTokenIssuer,
       revenueDistributor,
-      settings,
       rToken,
       furnace,
       stRSR,
@@ -158,7 +155,7 @@ describe('RTokenIssuerP0 contract', () => {
     collateral2 = <ATokenFiatCollateralP0>basket[2]
     collateral3 = <CTokenFiatCollateralP0>basket[3]
 
-    initialBasketNonce = await basketHandler.basketNonce()
+    initialBasketNonce = (await basketHandler.basketLastSet())[0]
 
     rsrTrader = <RevenueTraderP0>(
       await ethers.getContractAt('RevenueTraderP0', await main.rsrTrader())
@@ -538,7 +535,7 @@ describe('RTokenIssuerP0 contract', () => {
 
       // Set issuance rate to 50% per block
       // Update config
-      settings.connect(owner).setIssuanceRate(fp('0.5'))
+      rToken.connect(owner).setIssuanceRate(fp('0.5'))
 
       // Try new issuance. Should be based on issuance rate = 50% per block should take two blocks
       // Based on current supply its gonna be 25000e18 tokens per block

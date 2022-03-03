@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IRewardable.sol";
 
 enum AuctionStatus {
@@ -11,8 +11,8 @@ enum AuctionStatus {
 }
 
 struct Auction {
-    IERC20Metadata sell;
-    IERC20Metadata buy;
+    IERC20 sell;
+    IERC20 buy;
     uint256 sellAmount; // {qSellTok}
     uint256 minBuyAmount; // {qBuyTok}
     uint256 startTime; // {sec}
@@ -32,8 +32,8 @@ interface ITrader is IRewardable {
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
     event AuctionStarted(
         uint256 indexed auctionId,
-        IERC20Metadata indexed sell,
-        IERC20Metadata indexed buy,
+        IERC20 indexed sell,
+        IERC20 indexed buy,
         uint256 sellAmount,
         uint256 minBuyAmount
     );
@@ -44,8 +44,8 @@ interface ITrader is IRewardable {
     /// @param buyAmount {qBuyTok} The quantity of the token bought
     event AuctionEnded(
         uint256 indexed auctionId,
-        IERC20Metadata indexed sell,
-        IERC20Metadata indexed buy,
+        IERC20 indexed sell,
+        IERC20 indexed buy,
         uint256 sellAmount,
         uint256 buyAmount
     );

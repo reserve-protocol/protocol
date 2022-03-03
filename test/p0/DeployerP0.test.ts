@@ -22,7 +22,6 @@ import {
   BasketHandlerP0,
   RTokenIssuerP0,
   RevenueDistributorP0,
-  SettingsP0,
 } from '../../typechain'
 import { defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
@@ -66,7 +65,6 @@ describe('DeployerP0 contract', () => {
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
   let revenueDistributor: RevenueDistributorP0
-  let settings: SettingsP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -98,7 +96,6 @@ describe('DeployerP0 contract', () => {
       basketHandler,
       rTokenIssuer,
       revenueDistributor,
-      settings,
       rToken,
       rTokenAsset,
       furnace,
@@ -171,7 +168,6 @@ describe('DeployerP0 contract', () => {
       expect(await rToken.symbol()).to.equal('RTKN')
       expect(await rToken.decimals()).to.equal(18)
       expect(await rToken.totalSupply()).to.equal(bn(0))
-      expect(await rToken.main()).to.equal(main.address)
     })
 
     it('Should setup Furnace correctly', async () => {

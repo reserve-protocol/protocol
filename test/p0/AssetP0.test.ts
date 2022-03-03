@@ -19,7 +19,6 @@ import {
   BasketHandlerP0,
   RTokenIssuerP0,
   RevenueDistributorP0,
-  SettingsP0,
 } from '../../typechain'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
@@ -59,7 +58,6 @@ describe('AssetsP0 contracts', () => {
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
   let revenueDistributor: RevenueDistributorP0
-  let settings: SettingsP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -91,7 +89,6 @@ describe('AssetsP0 contracts', () => {
       basketHandler,
       rTokenIssuer,
       revenueDistributor,
-      settings,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))

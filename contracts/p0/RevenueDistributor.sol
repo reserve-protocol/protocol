@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/Component.sol";
@@ -23,8 +23,8 @@ contract RevenueDistributorP0 is Component, IRevenueDistributor {
     address public constant ST_RSR = address(2);
 
     function init(ConstructorArgs calldata args) internal override {
-        _setDistribution(FURNACE, RevenueShare(args.dist.rTokenDist, 0));
-        _setDistribution(ST_RSR, RevenueShare(0, args.dist.rsrDist));
+        _setDistribution(FURNACE, RevenueShare(args.params.dist.rTokenDist, 0));
+        _setDistribution(ST_RSR, RevenueShare(0, args.params.dist.rsrDist));
     }
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
@@ -41,7 +41,7 @@ contract RevenueDistributorP0 is Component, IRevenueDistributor {
         address from,
         uint256 amount
     ) external override {
-        IERC20Metadata rsr = main.rsr();
+        IERC20 rsr = main.rsr();
 
         require(erc20 == rsr || erc20 == main.rToken(), "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken

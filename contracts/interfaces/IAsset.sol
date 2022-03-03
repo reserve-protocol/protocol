@@ -16,6 +16,12 @@ interface IAsset {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() external view returns (Fix);
 
+    /// {tok} -> {qTok}
+    function toQ(Fix tok) external view returns (Fix);
+
+    /// {qTok} -> {tok}
+    function fromQ(Fix qTok) external view returns (Fix);
+
     /// @return The ERC20 contract of the token with decimals() available
     function erc20() external view returns (IERC20Metadata);
 

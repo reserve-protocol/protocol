@@ -38,7 +38,6 @@ import {
   BasketHandlerP0,
   RTokenIssuerP0,
   RevenueDistributorP0,
-  SettingsP0,
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
@@ -152,7 +151,6 @@ describe('Revenues', () => {
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
   let revenueDistributor: RevenueDistributorP0
-  let settings: SettingsP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -190,7 +188,6 @@ describe('Revenues', () => {
       basketHandler,
       rTokenIssuer,
       revenueDistributor,
-      settings,
       rToken,
       rTokenAsset,
       furnace,
@@ -206,7 +203,7 @@ describe('Revenues', () => {
     token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
 
     // Set backingBuffer to 0 to make math easy
-    await settings.connect(owner).setBackingBuffer(0)
+    await backingManager.connect(owner).setBackingBuffer(0)
 
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
@@ -369,7 +366,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -383,7 +380,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -394,7 +391,7 @@ describe('Revenues', () => {
         expect(await compToken.balanceOf(market.address)).to.equal(rewardAmountCOMP)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -427,7 +424,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: sellAmt,
           clearingBuyAmount: minBuyAmt,
           externalAuctionId: bn('0'),
@@ -441,7 +438,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: sellAmtRToken,
           clearingBuyAmount: minBuyAmtRToken,
           externalAuctionId: bn('1'),
@@ -493,7 +490,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: await getLatestBlockTimestamp(),
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -507,7 +504,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: await getLatestBlockTimestamp(),
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -518,7 +515,7 @@ describe('Revenues', () => {
         expect(await aaveToken.balanceOf(market.address)).to.equal(rewardAmountAAVE)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -611,7 +608,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -639,7 +636,7 @@ describe('Revenues', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
@@ -659,7 +656,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: await getLatestBlockTimestamp(),
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -679,7 +676,7 @@ describe('Revenues', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Close auctions
         await expect(facade.runAuctionsForAllTraders())
@@ -757,7 +754,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -781,7 +778,7 @@ describe('Revenues', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Another call will create a new auction and close existing
         await expect(facade.runAuctionsForAllTraders())
@@ -798,7 +795,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRemainder,
           minBuyAmount: minBuyAmtRemainder,
           startTime: await getLatestBlockTimestamp(),
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -817,7 +814,7 @@ describe('Revenues', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Close auction
         await expect(facade.runAuctionsForAllTraders())
@@ -897,7 +894,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -911,7 +908,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -919,7 +916,7 @@ describe('Revenues', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -962,7 +959,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: sellAmt,
           clearingBuyAmount: minBuyAmt,
           externalAuctionId: bn('0'),
@@ -976,7 +973,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: sellAmtRToken,
           clearingBuyAmount: minBuyAmtRToken,
           externalAuctionId: bn('1'),
@@ -989,7 +986,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRemainder,
           minBuyAmount: minBuyAmtRemainder,
           startTime: await getLatestBlockTimestamp(),
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('2'),
@@ -1004,7 +1001,7 @@ describe('Revenues', () => {
 
         // Run final auction until all funds are converted
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(market.address, minBuyAmtRemainder)
@@ -1079,7 +1076,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -1093,7 +1090,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -1104,7 +1101,7 @@ describe('Revenues', () => {
         expect(await compToken.balanceOf(market.address)).to.equal(rewardAmountCOMP)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -1137,7 +1134,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: sellAmt,
           clearingBuyAmount: minBuyAmt,
           externalAuctionId: bn('0'),
@@ -1151,7 +1148,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: sellAmtRToken,
           clearingBuyAmount: minBuyAmtRToken,
           externalAuctionId: bn('1'),
@@ -1205,8 +1202,9 @@ describe('Revenues', () => {
           await ATokenCollateralFactory.deploy(
             token2.address,
             await collateral2.maxAuctionSize(),
+            await collateral2.defaultThreshold(),
+            await collateral2.delayUntilDefault(),
             token0.address,
-            main.address,
             compoundMock.address,
             aaveMock.address,
             ZERO_ADDRESS
@@ -1227,8 +1225,9 @@ describe('Revenues', () => {
           await CTokenCollateralFactory.deploy(
             token3.address,
             await collateral3.maxAuctionSize(),
+            await collateral3.defaultThreshold(),
+            await collateral3.delayUntilDefault(),
             token0.address,
-            main.address,
             compoundMock.address,
             nonTrustedClaimer.address
           )
@@ -1363,7 +1362,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -1377,7 +1376,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -1392,7 +1391,7 @@ describe('Revenues', () => {
         )
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -1500,7 +1499,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -1514,7 +1513,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -1532,7 +1531,7 @@ describe('Revenues', () => {
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -1636,7 +1635,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -1652,7 +1651,7 @@ describe('Revenues', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         //  End current auction - will not start new one
         await expect(facade.runAuctionsForAllTraders())
@@ -1786,7 +1785,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtFromRToken,
           minBuyAmount: minBuyAmtFromRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -1800,7 +1799,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRSRFromCollateral,
           minBuyAmount: minBuyAmtRSRFromCollateral,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -1814,7 +1813,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRTokenFromCollateral,
           minBuyAmount: minBuyAmtRTokenFromCollateral,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('2'),
@@ -1845,7 +1844,7 @@ describe('Revenues', () => {
         })
 
         //  Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction, should start a new one with same amount
         await expect(facade.runAuctionsForAllTraders())

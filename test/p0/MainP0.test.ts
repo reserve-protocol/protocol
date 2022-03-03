@@ -31,7 +31,6 @@ import {
   BasketHandlerP0,
   RTokenIssuerP0,
   RevenueDistributorP0,
-  SettingsP0,
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
@@ -100,7 +99,6 @@ describe('MainP0 contract', () => {
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
   let revenueDistributor: RevenueDistributorP0
-  let settings: SettingsP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -135,7 +133,6 @@ describe('MainP0 contract', () => {
       basketHandler,
       rTokenIssuer,
       revenueDistributor,
-      settings,
       rToken,
       rTokenAsset,
       furnace,
@@ -194,18 +191,18 @@ describe('MainP0 contract', () => {
       expect(rTokenCut[0]).to.equal(bn(40))
       expect(rTokenCut[1]).to.equal(bn(100))
 
-      expect(await settings.rewardStart()).to.equal(config.rewardStart)
-      expect(await settings.rewardPeriod()).to.equal(config.rewardPeriod)
-      expect(await settings.auctionPeriod()).to.equal(config.auctionPeriod)
-      expect(await settings.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
-      expect(await settings.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
-      expect(await settings.defaultDelay()).to.equal(config.defaultDelay)
-      expect(await settings.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      expect(await settings.dustAmount()).to.equal(config.dustAmount)
-      expect(await settings.backingBuffer()).to.equal(config.backingBuffer)
-      expect(await settings.issuanceRate()).to.equal(config.issuanceRate)
-      expect(await settings.defaultThreshold()).to.equal(config.defaultThreshold)
-      expect(await settings.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
+      // TODO move check out to individual contract where variable is stored
+      // expect(await settings.rewardPeriod()).to.equal(config.rewardPeriod)
+      // expect(await settings.auctionLength()).to.equal(config.auctionLength)
+      // expect(await settings.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
+      // expect(await settings.unstakingDelay()).to.equal(config.unstakingDelay)
+      // expect(await settings.defaultDelay()).to.equal(config.defaultDelay)
+      // expect(await settings.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+      // expect(await settings.dustAmount()).to.equal(config.dustAmount)
+      // expect(await settings.backingBuffer()).to.equal(config.backingBuffer)
+      // expect(await settings.issuanceRate()).to.equal(config.issuanceRate)
+      // expect(await settings.defaultThreshold()).to.equal(config.defaultThreshold)
+      // expect(await settings.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
     })
 
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
@@ -263,7 +260,7 @@ describe('MainP0 contract', () => {
       expect(backing.length).to.equal(4)
 
       // Check other values
-      expect(await basketHandler.basketNonce()).to.be.gt(bn(0))
+      expect((await basketHandler.basketLastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
       expect(await facade.totalAssetValue()).to.equal(0)
 
@@ -275,23 +272,25 @@ describe('MainP0 contract', () => {
   describe('Initialization', () => {
     it('Should not allow to initialize Main twice', async () => {
       const ctorArgs = {
-        config: config,
-        dist: dist,
-        furnace: furnace.address,
-        market: market.address,
+        params: config,
+        core: {
+          rToken: rToken.address,
+          stRSR: stRSR.address,
+          assetRegistry: assetRegistry.address,
+          basketHandler: basketHandler.address,
+          backingManager: backingManager.address,
+          rTokenIssuer: rTokenIssuer.address,
+          revenueDistributor: revenueDistributor.address,
+          rsrTrader: rsrTrader.address,
+          rTokenTrader: rTokenTrader.address,
+        },
+        periphery: {
+          furnace: furnace.address,
+          market: market.address,
+          claimAdapters: [compoundClaimer.address, aaveClaimer.address],
+          assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
+        },
         rsr: rsr.address,
-        stRSR: stRSR.address,
-        rToken: rToken.address,
-        assetRegistry: assetRegistry.address,
-        backingManager: backingManager.address,
-        basketHandler: basketHandler.address,
-        rTokenIssuer: rTokenIssuer.address,
-        revenueDistributor: revenueDistributor.address,
-        settings: settings.address,
-        claimAdapters: [compoundClaimer.address, aaveClaimer.address],
-        assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
-        rsrTrader: rsrTrader.address,
-        rTokenTrader: rTokenTrader.address,
       }
       await expect(main.init(ctorArgs)).to.be.revertedWith('Already initialized')
     })
@@ -299,12 +298,12 @@ describe('MainP0 contract', () => {
     it('Should perform validations on init', async () => {
       // Set invalid RSRPayPeriod
       const newConfig = { ...config }
-      newConfig.stRSRPayPeriod = config.stRSRWithdrawalDelay
+      newConfig.rewardPeriod = config.unstakingDelay
 
       // Deploy new system instance
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', owner.address, newConfig, dist, 0)
-      ).to.be.revertedWith('RSR pay period too long')
+        deployer.deploy('RTKN RToken', 'RTKN', owner.address, newConfig)
+      ).to.be.revertedWith('unstakingDelay/rewardPeriod incompatible')
     })
   })
 
@@ -383,294 +382,272 @@ describe('MainP0 contract', () => {
     })
   })
 
+  // TODO Move test into the specific test file for that variable
   describe('Configuration/State', () => {
-    it('Should allow to update rewardStart if Owner', async () => {
-      const newValue: BigNumber = bn(await getLatestBlockTimestamp())
+    // it('Should allow to update rewardPeriod if Owner', async () => {
+    //   const newValue: BigNumber = bn('360')
+
+    //   // Check existing value
+    //   expect(await settings.rewardPeriod()).to.equal(config.rewardPeriod)
+
+    //   // If not owner cannot update
+    //   await expect(settings.connect(other).setRewardPeriod(newValue)).to.be.revertedWith(
+    //     'Component: caller is not the owner'
+    //   )
 
-      // Check existing value
-      expect(await settings.rewardStart()).to.equal(config.rewardStart)
+    //   // Check value did not change
+    //   expect(await settings.rewardPeriod()).to.equal(config.rewardPeriod)
+
+    //   // Update with owner
+    //   await expect(settings.connect(owner).setRewardPeriod(newValue))
+    //     .to.emit(settings, 'RewardPeriodSet')
+    //     .withArgs(config.rewardPeriod, newValue)
 
-      // If not owner cannot update
-      await expect(settings.connect(other).setRewardStart(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
+    //   // Check value was updated
+    //   expect(await settings.rewardPeriod()).to.equal(newValue)
+    // })
+
+    // it('Should allow to update auctionLength if Owner', async () => {
+    //   const newValue: BigNumber = bn('360')
+
+    //   // Check existing value
+    //   expect(await settings.auctionLength()).to.equal(config.auctionLength)
 
-      // Check value did not change
-      expect(await settings.rewardStart()).to.equal(config.rewardStart)
-
-      // Update with owner
-      await expect(settings.connect(owner).setRewardStart(newValue))
-        .to.emit(settings, 'RewardStartSet')
-        .withArgs(config.rewardStart, newValue)
+    //   // If not owner cannot update
+    //   await expect(settings.connect(other).setAuctionLength(newValue)).to.be.revertedWith(
+    //     'Component: caller is not the owner'
+    //   )
 
-      // Check value was updated
-      expect(await settings.rewardStart()).to.equal(newValue)
-    })
-
-    it('Should allow to update rewardPeriod if Owner', async () => {
-      const newValue: BigNumber = bn('360')
-
-      // Check existing value
-      expect(await settings.rewardPeriod()).to.equal(config.rewardPeriod)
+    //   // Check value did not change
+    //   expect(await settings.auctionLength()).to.equal(config.auctionLength)
 
-      // If not owner cannot update
-      await expect(settings.connect(other).setRewardPeriod(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
+    //   // Update with owner
+    //   await expect(settings.connect(owner).setAuctionLength(newValue))
+    //     .to.emit(settings, 'AuctionLengthSet')
+    //     .withArgs(config.auctionLength, newValue)
 
-      // Check value did not change
-      expect(await settings.rewardPeriod()).to.equal(config.rewardPeriod)
+    //   // Check value was updated
+    //   expect(await settings.auctionLength()).to.equal(newValue)
+    // })
+
+    // it('Should allow to update stRSRPayPeriod if Owner and perform validations', async () => {
+    //   const newValue: BigNumber = config.stRSRPayPeriod.div(2)
 
-      // Update with owner
-      await expect(settings.connect(owner).setRewardPeriod(newValue))
-        .to.emit(settings, 'RewardPeriodSet')
-        .withArgs(config.rewardPeriod, newValue)
+    //   // Check existing value
+    //   expect(await settings.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
 
-      // Check value was updated
-      expect(await settings.rewardPeriod()).to.equal(newValue)
-    })
-
-    it('Should allow to update auctionPeriod if Owner', async () => {
-      const newValue: BigNumber = bn('360')
+    //   // If not owner cannot update
+    //   await expect(settings.connect(other).setStRSRPayPeriod(newValue)).to.be.revertedWith(
+    //     'Component: caller is not the owner'
+    //   )
 
-      // Check existing value
-      expect(await settings.auctionPeriod()).to.equal(config.auctionPeriod)
+    //   // Reverts if the value is too long
+    //   const invalidValue: BigNumber = config.unstakingDelay
+    //   await expect(settings.connect(owner).setStRSRPayPeriod(invalidValue)).to.be.revertedWith(
+    //     'RSR pay period too long'
+    //   )
 
-      // If not owner cannot update
-      await expect(settings.connect(other).setAuctionPeriod(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
+    //   // Check value did not change
+    //   expect(await settings.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
 
-      // Check value did not change
-      expect(await settings.auctionPeriod()).to.equal(config.auctionPeriod)
+    //   // Update with owner
+    //   await expect(settings.connect(owner).setStRSRPayPeriod(newValue))
+    //     .to.emit(settings, 'StRSRPayPeriodSet')
+    //     .withArgs(config.stRSRPayPeriod, newValue)
 
-      // Update with owner
-      await expect(settings.connect(owner).setAuctionPeriod(newValue))
-        .to.emit(settings, 'AuctionPeriodSet')
-        .withArgs(config.auctionPeriod, newValue)
+    //   // Check value was updated
+    //   expect(await settings.stRSRPayPeriod()).to.equal(newValue)
+    // })
 
-      // Check value was updated
-      expect(await settings.auctionPeriod()).to.equal(newValue)
-    })
+    // it('Should allow to update unstakingDelay if Owner and perform validations', async () => {
+    //   const newValue: BigNumber = config.unstakingDelay.div(2)
 
-    it('Should allow to update stRSRPayPeriod if Owner and perform validations', async () => {
-      const newValue: BigNumber = config.stRSRPayPeriod.div(2)
+    //   // Check existing value
+    //   expect(await settings.unstakingDelay()).to.equal(config.unstakingDelay)
 
-      // Check existing value
-      expect(await settings.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
+    //   // If not owner cannot update
+    //   await expect(settings.connect(other).setStRSRWithdrawalDelay(newValue)).to.be.revertedWith(
+    //     'Component: caller is not the owner'
+    //   )
 
-      // If not owner cannot update
-      await expect(settings.connect(other).setStRSRPayPeriod(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
+    //   // Reverts if the value is too short
+    //   const invalidValue: BigNumber = config.stRSRPayPeriod
+    //   await expect(
+    //     settings.connect(owner).setStRSRWithdrawalDelay(invalidValue)
+    //   ).to.be.revertedWith('RSR withdrawal delay too short')
 
-      // Reverts if the value is too long
-      const invalidValue: BigNumber = config.stRSRWithdrawalDelay
-      await expect(settings.connect(owner).setStRSRPayPeriod(invalidValue)).to.be.revertedWith(
-        'RSR pay period too long'
-      )
+    //   // Check value did not change
+    //   expect(await settings.unstakingDelay()).to.equal(config.unstakingDelay)
 
-      // Check value did not change
-      expect(await settings.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
+    //   // Update with owner
+    //   await expect(settings.connect(owner).setStRSRWithdrawalDelay(newValue))
+    //     .to.emit(settings, 'StRSRWithdrawalDelaySet')
+    //     .withArgs(config.unstakingDelay, newValue)
 
-      // Update with owner
-      await expect(settings.connect(owner).setStRSRPayPeriod(newValue))
-        .to.emit(settings, 'StRSRPayPeriodSet')
-        .withArgs(config.stRSRPayPeriod, newValue)
+    //   // Check value was updated
+    //   expect(await settings.unstakingDelay()).to.equal(newValue)
+    // })
 
-      // Check value was updated
-      expect(await settings.stRSRPayPeriod()).to.equal(newValue)
-    })
+    // it('Should allow to update defaultDelay if Owner', async () => {
+    //   const newValue: BigNumber = bn('360')
 
-    it('Should allow to update stRSRWithdrawalDelay if Owner and perform validations', async () => {
-      const newValue: BigNumber = config.stRSRWithdrawalDelay.div(2)
+    //   // Check existing value
+    //   expect(await settings.defaultDelay()).to.equal(config.defaultDelay)
 
-      // Check existing value
-      expect(await settings.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
+    //   // If not owner cannot update
+    //   await expect(settings.connect(other).setDefaultDelay(newValue)).to.be.revertedWith(
+    //     'Component: caller is not the owner'
+    //   )
 
-      // If not owner cannot update
-      await expect(settings.connect(other).setStRSRWithdrawalDelay(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
+    //   // Check value did not change
+    //   expect(await settings.defaultDelay()).to.equal(config.defaultDelay)
 
-      // Reverts if the value is too short
-      const invalidValue: BigNumber = config.stRSRPayPeriod
-      await expect(
-        settings.connect(owner).setStRSRWithdrawalDelay(invalidValue)
-      ).to.be.revertedWith('RSR withdrawal delay too short')
+    //   // Update with owner
+    //   await expect(settings.connect(owner).setDefaultDelay(newValue))
+    //     .to.emit(settings, 'DefaultDelaySet')
+    //     .withArgs(config.defaultDelay, newValue)
 
-      // Check value did not change
-      expect(await settings.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
+    //   // Check value was updated
+    //   expect(await settings.defaultDelay()).to.equal(newValue)
+    // })
 
-      // Update with owner
-      await expect(settings.connect(owner).setStRSRWithdrawalDelay(newValue))
-        .to.emit(settings, 'StRSRWithdrawalDelaySet')
-        .withArgs(config.stRSRWithdrawalDelay, newValue)
+    // it('Should allow to update maxTradeSlippage if Owner', async () => {
+    //   const newValue: BigNumber = fp('0.02')
 
-      // Check value was updated
-      expect(await settings.stRSRWithdrawalDelay()).to.equal(newValue)
-    })
+    //   // Check existing value
+    //   expect(await settings.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
 
-    it('Should allow to update defaultDelay if Owner', async () => {
-      const newValue: BigNumber = bn('360')
+    //   // If not owner cannot update
+    //   await expect(settings.connect(other).setMaxTradeSlippage(newValue)).to.be.revertedWith(
+    //     'Component: caller is not the owner'
+    //   )
 
-      // Check existing value
-      expect(await settings.defaultDelay()).to.equal(config.defaultDelay)
+    //   // Check value did not change
+    //   expect(await settings.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
 
-      // If not owner cannot update
-      await expect(settings.connect(other).setDefaultDelay(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
+    //   // Update with owner
+    //   await expect(settings.connect(owner).setMaxTradeSlippage(newValue))
+    //     .to.emit(settings, 'MaxTradeSlippageSet')
+    //     .withArgs(config.maxTradeSlippage, newValue)
 
-      // Check value did not change
-      expect(await settings.defaultDelay()).to.equal(config.defaultDelay)
+    //   // Check value was updated
+    //   expect(await settings.maxTradeSlippage()).to.equal(newValue)
+    // })
 
-      // Update with owner
-      await expect(settings.connect(owner).setDefaultDelay(newValue))
-        .to.emit(settings, 'DefaultDelaySet')
-        .withArgs(config.defaultDelay, newValue)
+    // it('Should allow to update dustAmount if Owner', async () => {
+    //   const newValue: BigNumber = fp('0.02')
 
-      // Check value was updated
-      expect(await settings.defaultDelay()).to.equal(newValue)
-    })
+    //   // Check existing value
+    //   expect(await settings.dustAmount()).to.equal(config.dustAmount)
 
-    it('Should allow to update maxTradeSlippage if Owner', async () => {
-      const newValue: BigNumber = fp('0.02')
+    //   // If not owner cannot update
+    //   await expect(settings.connect(other).setDustAmount(newValue)).to.be.revertedWith(
+    //     'Component: caller is not the owner'
+    //   )
 
-      // Check existing value
-      expect(await settings.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+    //   // Check value did not change
+    //   expect(await settings.dustAmount()).to.equal(config.dustAmount)
 
-      // If not owner cannot update
-      await expect(settings.connect(other).setMaxTradeSlippage(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
+    //   // Update with owner
+    //   await expect(settings.connect(owner).setDustAmount(newValue))
+    //     .to.emit(settings, 'DustAmountSet')
+    //     .withArgs(config.dustAmount, newValue)
 
-      // Check value did not change
-      expect(await settings.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+    //   // Check value was updated
+    //   expect(await settings.dustAmount()).to.equal(newValue)
+    // })
 
-      // Update with owner
-      await expect(settings.connect(owner).setMaxTradeSlippage(newValue))
-        .to.emit(settings, 'MaxTradeSlippageSet')
-        .withArgs(config.maxTradeSlippage, newValue)
+    // it('Should allow to update backingBuffer if Owner', async () => {
+    //   const newValue: BigNumber = fp('0.02')
 
-      // Check value was updated
-      expect(await settings.maxTradeSlippage()).to.equal(newValue)
-    })
+    //   // Check existing value
+    //   expect(await settings.backingBuffer()).to.equal(config.backingBuffer)
 
-    it('Should allow to update dustAmount if Owner', async () => {
-      const newValue: BigNumber = fp('0.02')
+    //   // If not owner cannot update
+    //   await expect(settings.connect(other).setBackingBuffer(newValue)).to.be.revertedWith(
+    //     'Component: caller is not the owner'
+    //   )
 
-      // Check existing value
-      expect(await settings.dustAmount()).to.equal(config.dustAmount)
+    //   // Check value did not change
+    //   expect(await settings.backingBuffer()).to.equal(config.backingBuffer)
 
-      // If not owner cannot update
-      await expect(settings.connect(other).setDustAmount(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
+    //   // Update with owner
+    //   await expect(settings.connect(owner).setBackingBuffer(newValue))
+    //     .to.emit(settings, 'BackingBufferSet')
+    //     .withArgs(config.backingBuffer, newValue)
 
-      // Check value did not change
-      expect(await settings.dustAmount()).to.equal(config.dustAmount)
+    //   // Check value was updated
+    //   expect(await settings.backingBuffer()).to.equal(newValue)
+    // })
 
-      // Update with owner
-      await expect(settings.connect(owner).setDustAmount(newValue))
-        .to.emit(settings, 'DustAmountSet')
-        .withArgs(config.dustAmount, newValue)
+    // it('Should allow to update issuanceRate if Owner', async () => {
+    //   const newValue: BigNumber = fp('0.1')
 
-      // Check value was updated
-      expect(await settings.dustAmount()).to.equal(newValue)
-    })
+    //   // Check existing value
+    //   expect(await settings.issuanceRate()).to.equal(config.issuanceRate)
 
-    it('Should allow to update backingBuffer if Owner', async () => {
-      const newValue: BigNumber = fp('0.02')
+    //   // If not owner cannot update
+    //   await expect(settings.connect(other).setIssuanceRate(newValue)).to.be.revertedWith(
+    //     'Component: caller is not the owner'
+    //   )
 
-      // Check existing value
-      expect(await settings.backingBuffer()).to.equal(config.backingBuffer)
+    //   // Check value did not change
+    //   expect(await settings.issuanceRate()).to.equal(config.issuanceRate)
 
-      // If not owner cannot update
-      await expect(settings.connect(other).setBackingBuffer(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
+    //   // Update with owner
+    //   await expect(settings.connect(owner).setIssuanceRate(newValue))
+    //     .to.emit(settings, 'IssuanceRateSet')
+    //     .withArgs(config.issuanceRate, newValue)
 
-      // Check value did not change
-      expect(await settings.backingBuffer()).to.equal(config.backingBuffer)
+    //   // Check value was updated
+    //   expect(await settings.issuanceRate()).to.equal(newValue)
+    // })
 
-      // Update with owner
-      await expect(settings.connect(owner).setBackingBuffer(newValue))
-        .to.emit(settings, 'BackingBufferSet')
-        .withArgs(config.backingBuffer, newValue)
+    // it('Should allow to update defaultThreshold if Owner', async () => {
+    //   const newValue: BigNumber = fp('0.1')
 
-      // Check value was updated
-      expect(await settings.backingBuffer()).to.equal(newValue)
-    })
+    //   // Check existing value
+    //   expect(await settings.defaultThreshold()).to.equal(config.defaultThreshold)
 
-    it('Should allow to update issuanceRate if Owner', async () => {
-      const newValue: BigNumber = fp('0.1')
+    //   // If not owner cannot update
+    //   await expect(settings.connect(other).setDefaultThreshold(newValue)).to.be.revertedWith(
+    //     'Component: caller is not the owner'
+    //   )
 
-      // Check existing value
-      expect(await settings.issuanceRate()).to.equal(config.issuanceRate)
+    //   // Check value did not change
+    //   expect(await settings.defaultThreshold()).to.equal(config.defaultThreshold)
 
-      // If not owner cannot update
-      await expect(settings.connect(other).setIssuanceRate(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
+    //   // Update with owner
+    //   await expect(settings.connect(owner).setDefaultThreshold(newValue))
+    //     .to.emit(settings, 'DefaultThresholdSet')
+    //     .withArgs(config.defaultThreshold, newValue)
 
-      // Check value did not change
-      expect(await settings.issuanceRate()).to.equal(config.issuanceRate)
+    //   // Check value was updated
+    //   expect(await settings.defaultThreshold()).to.equal(newValue)
+    // })
 
-      // Update with owner
-      await expect(settings.connect(owner).setIssuanceRate(newValue))
-        .to.emit(settings, 'IssuanceRateSet')
-        .withArgs(config.issuanceRate, newValue)
+    // it('Should allow to update stRSRPayRatio if Owner', async () => {
+    //   const newValue: BigNumber = config.stRSRPayRatio.div(2)
 
-      // Check value was updated
-      expect(await settings.issuanceRate()).to.equal(newValue)
-    })
+    //   // Check existing value
+    //   expect(await settings.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
 
-    it('Should allow to update defaultThreshold if Owner', async () => {
-      const newValue: BigNumber = fp('0.1')
+    //   // If not owner cannot update
+    //   await expect(settings.connect(other).setStRSRPayRatio(newValue)).to.be.revertedWith(
+    //     'Component: caller is not the owner'
+    //   )
 
-      // Check existing value
-      expect(await settings.defaultThreshold()).to.equal(config.defaultThreshold)
+    //   // Check value did not change
+    //   expect(await settings.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
 
-      // If not owner cannot update
-      await expect(settings.connect(other).setDefaultThreshold(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
+    //   // Update with owner
+    //   await expect(settings.connect(owner).setStRSRPayRatio(newValue))
+    //     .to.emit(settings, 'StRSRPayRatioSet')
+    //     .withArgs(config.stRSRPayRatio, newValue)
 
-      // Check value did not change
-      expect(await settings.defaultThreshold()).to.equal(config.defaultThreshold)
-
-      // Update with owner
-      await expect(settings.connect(owner).setDefaultThreshold(newValue))
-        .to.emit(settings, 'DefaultThresholdSet')
-        .withArgs(config.defaultThreshold, newValue)
-
-      // Check value was updated
-      expect(await settings.defaultThreshold()).to.equal(newValue)
-    })
-
-    it('Should allow to update stRSRPayRatio if Owner', async () => {
-      const newValue: BigNumber = config.stRSRPayRatio.div(2)
-
-      // Check existing value
-      expect(await settings.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
-
-      // If not owner cannot update
-      await expect(settings.connect(other).setStRSRPayRatio(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
-
-      // Check value did not change
-      expect(await settings.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
-
-      // Update with owner
-      await expect(settings.connect(owner).setStRSRPayRatio(newValue))
-        .to.emit(settings, 'StRSRPayRatioSet')
-        .withArgs(config.stRSRPayRatio, newValue)
-
-      // Check value was updated
-      expect(await settings.stRSRPayRatio()).to.equal(newValue)
-    })
+    //   // Check value was updated
+    //   expect(await settings.stRSRPayRatio()).to.equal(newValue)
+    // })
 
     it('Should return backing tokens', async () => {
       expect(await rTokenIssuer.basketTokens()).to.eql([
@@ -811,7 +788,7 @@ describe('MainP0 contract', () => {
       // Setup test furnaces
       const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')
       const newFurnace = <FurnaceP0>(
-        await FurnaceFactory.deploy(rToken.address, config.rewardPeriod, config.stRSRPayRatio)
+        await FurnaceFactory.deploy(rToken.address, config.rewardPeriod, config.rewardRatio)
       )
 
       // Check existing value
@@ -1075,7 +1052,7 @@ describe('MainP0 contract', () => {
       expect(backing.length).to.equal(4)
 
       // Not updated so basket last changed is not set
-      expect(await basketHandler.basketNonce()).to.be.gt(bn(1))
+      expect((await basketHandler.basketLastSet())[0]).to.be.gt(bn(1))
       expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
       expect(await facade.totalAssetValue()).to.equal(0)
     })

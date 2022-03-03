@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -27,7 +26,6 @@ import "contracts/p0/Component.sol";
  */
 contract StRSRP0 is IStRSR, Component, EIP712 {
     using SafeERC20 for IERC20;
-    using SafeERC20 for IERC20Metadata;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
@@ -79,13 +77,22 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     // Withdrawal queues by account
     mapping(address => Withdrawal[]) public withdrawals;
 
+    // ==== Gov Params ====
+    uint256 public unstakingDelay;
+    uint256 public rewardPeriod;
+    Fix public rewardRatio;
+
     constructor(string memory name_, string memory symbol_) EIP712(name_, "1") Component() {
         _name = name_;
         _symbol = symbol_;
     }
 
     function init(ConstructorArgs calldata args) internal override {
-        payoutLastPaid = args.config.rewardStart;
+        payoutLastPaid = block.timestamp;
+        unstakingDelay = args.params.unstakingDelay;
+        rewardPeriod = args.params.rewardPeriod;
+        rewardRatio = args.params.rewardRatio;
+        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
@@ -142,7 +149,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         rsrBacking -= rsrAmount;
 
         // Create the corresponding withdrawal ticket
-        uint256 availableAt = block.timestamp + main.settings().stRSRWithdrawalDelay();
+        uint256 availableAt = block.timestamp + unstakingDelay;
         withdrawals[account].push(Withdrawal(account, rsrAmount, availableAt));
         emit UnstakingStarted(withdrawals[account].length - 1, account, rsrAmount, stakeAmount);
     }
@@ -245,20 +252,17 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
     function payoutRewards() public {
-        uint256 period = main.settings().stRSRPayPeriod();
-        if (block.timestamp < payoutLastPaid + period) return;
+        if (block.timestamp < payoutLastPaid + rewardPeriod) return;
 
-        uint256 numPeriods = (block.timestamp - payoutLastPaid) / period;
+        uint256 numPeriods = (block.timestamp - payoutLastPaid) / rewardPeriod;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        Fix payoutRatio = FIX_ONE.minus(
-            FIX_ONE.minus(main.settings().stRSRPayRatio()).powu(numPeriods)
-        );
+        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
         uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
 
         // Apply payout to RSR backing
         rsrBacking += payout;
-        payoutLastPaid += numPeriods * period;
+        payoutLastPaid += numPeriods * rewardPeriod;
 
         emit RSRRewarded(payout, numPeriods);
     }
@@ -403,5 +407,22 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         nonce.increment();
     }
 
-    // ==== End ERC20Permit ====
+    // ==== Gov Param Setters ====
+
+    function setUnstakingDelay(uint256 val) external onlyOwner {
+        emit UnstakingDelaySet(unstakingDelay, val);
+        unstakingDelay = val;
+        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
+    }
+
+    function setRewardPeriod(uint256 val) external onlyOwner {
+        emit RewardPeriodSet(rewardPeriod, val);
+        rewardPeriod = val;
+        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
+    }
+
+    function setRewardRatio(Fix val) external onlyOwner {
+        emit RewardRatioSet(rewardRatio, val);
+        rewardRatio = val;
+    }
 }

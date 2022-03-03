@@ -10,10 +10,18 @@ contract CompoundPricedFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
     constructor(
         IERC20Metadata erc20_,
         Fix maxAuctionSize_,
-        IMain main_,
+        Fix defaultThreshold_,
+        uint256 delayUntilDefault_,
         IComptroller comptroller_
     )
-        CollateralP0(erc20_, maxAuctionSize_, erc20_, main_, bytes32(bytes("USD")))
+        CollateralP0(
+            erc20_,
+            maxAuctionSize_,
+            defaultThreshold_,
+            delayUntilDefault_,
+            erc20_,
+            bytes32(bytes("USD"))
+        )
         CompoundOracleMixinP0(comptroller_)
     {}
 

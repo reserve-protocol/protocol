@@ -17,7 +17,6 @@ import {
   BasketHandlerP0,
   RTokenIssuerP0,
   RevenueDistributorP0,
-  SettingsP0,
 } from '../../typechain'
 import { advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
@@ -42,7 +41,6 @@ describe('StRSRP0 contract', () => {
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
   let revenueDistributor: RevenueDistributorP0
-  let settings: SettingsP0
 
   // StRSR
   let stRSR: StRSRP0
@@ -88,7 +86,6 @@ describe('StRSRP0 contract', () => {
       basketHandler,
       rTokenIssuer,
       revenueDistributor,
-      settings,
     } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
@@ -285,7 +282,7 @@ describe('StRSRP0 contract', () => {
       let stkWithdrawalDelay: number
 
       beforeEach(async () => {
-        stkWithdrawalDelay = (await settings.stRSRWithdrawalDelay()).toNumber()
+        stkWithdrawalDelay = (await stRSR.unstakingDelay()).toNumber()
 
         // Perform stake
         amount1 = bn('1e18')

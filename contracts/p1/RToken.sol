@@ -10,20 +10,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/Rewardable.sol";
 
 /**
  * @title RToken
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RToken is Ownable, ERC20Permit, IRToken {
+contract RToken is RewardableP0, ERC20Permit, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
-    using SafeERC20 for IERC20Metadata;
     using SafeERC20 for IERC20;
 
     Fix public constant MIN_ISS_RATE = Fix.wrap(1e40); // {qRTok/block} 10k whole RTok
-
-    IMain public main;
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
     Fix public lastIssRate; // {qRTok/block}
@@ -71,19 +69,24 @@ contract RToken is Ownable, ERC20Permit, IRToken {
 
     Fix public override basketsNeeded; // {BU}
 
-    constructor(
-        IMain main_,
-        string memory name_,
-        string memory symbol_,
-        address owner_
-    ) ERC20(name_, symbol_) ERC20Permit(name_) {
-        main = main_;
-        _transferOwnership(owner_);
+    Fix public issuanceRate; // {%} of RToken supply to issue per block
+
+    // solhint-disable no-empty-blocks
+    constructor(string memory name_, string memory symbol_)
+        ERC20(name_, symbol_)
+        ERC20Permit(name_)
+    {}
+
+    // solhint-enable no-empty-blocks
+
+    function init(ConstructorArgs calldata args) internal override {
+        issuanceRate = args.params.issuanceRate;
+        emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }
 
-    modifier onlyComponent() {
-        require(main.hasComponent(_msgSender()), "only components of main");
-        _;
+    function setIssuanceRate(Fix val) external onlyOwner {
+        emit IssuanceRateSet(issuanceRate, val);
+        issuanceRate = val;
     }
 
     /// Begins the SlowIssuance accounting process, keeping a roughly constant basket rate
@@ -108,12 +111,14 @@ contract RToken is Ownable, ERC20Permit, IRToken {
         // Calculate the issuance rate if this is the first issue in the block
         if (lastIssRateBlock < block.number) {
             lastIssRateBlock = block.number;
-            lastIssRate = fixMax(MIN_ISS_RATE, main.settings().issuanceRate().mulu(totalSupply()));
+            lastIssRate = fixMax(MIN_ISS_RATE, issuanceRate.mulu(totalSupply()));
         }
 
+        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
+
         // Ensure that the queue is initialized, and models the current basket
-        if (queue.items.length == 0 || queue.basketNonce < main.basketHandler().basketNonce()) {
-            queue.basketNonce = main.basketHandler().basketNonce();
+        if (queue.items.length == 0 || queue.basketNonce < basketNonce) {
+            queue.basketNonce = basketNonce;
             queue.tokens = erc20s;
             queue.left = 0;
             queue.right = 0;
@@ -126,7 +131,7 @@ contract RToken is Ownable, ERC20Permit, IRToken {
         }
 
         assert(queue.items.length > 0);
-        assert(queue.basketNonce == main.basketHandler().basketNonce());
+        assert(queue.basketNonce == basketNonce);
 
         // Add amtRToken's worth of issuance delay to allVestAt
         allVestAt = fixMin(allVestAt, toFix(block.number)).plus(divFix(amtRToken, lastIssRate));
@@ -172,9 +177,8 @@ contract RToken is Ownable, ERC20Permit, IRToken {
 
         IssueQueue storage queue = issueQueues[account];
         refundOldBasketIssues(account);
-        assert(
-            queue.left == queue.right || queue.basketNonce == main.basketHandler().basketNonce()
-        );
+        (, uint256 basketTimestamp) = main.basketHandler().basketLastSet();
+        assert(queue.left == queue.right || queue.basketNonce == basketTimestamp);
 
         // Handle common edge cases in O(1)
         if (queue.left == queue.right) return 0;
@@ -315,8 +319,9 @@ contract RToken is Ownable, ERC20Permit, IRToken {
     /// If account's queue models an old basket, refund those issuances.
     function refundOldBasketIssues(address account) private {
         IssueQueue storage queue = issueQueues[account];
+        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
         // ensure that the queue models issuances against the current basket, not previous baskets
-        if (queue.basketNonce != main.basketHandler().basketNonce()) {
+        if (queue.basketNonce != basketNonce) {
             refundSpan(account, queue.left, queue.right);
             queue.left = 0;
             queue.right = 0;

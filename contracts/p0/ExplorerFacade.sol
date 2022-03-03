@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IExplorerFacade.sol";
@@ -34,7 +34,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         main.backingManager().claimAndSweepRewards();
         main.rsrTrader().claimAndSweepRewards();
         main.rTokenTrader().claimAndSweepRewards();
-        // TODO main.rToken().claimAndSweepRewards()
+        main.rToken().claimAndSweepRewards();
     }
 
     function doFurnaceMelting() external override {
@@ -60,7 +60,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         quantities = new uint256[](tokens.length);
 
         for (uint256 j = 0; j < tokens.length; j++) {
-            quantities[j] += IERC20Metadata(tokens[j]).balanceOf(address(main.backingManager()));
+            quantities[j] += IERC20(tokens[j]).balanceOf(address(main.backingManager()));
         }
     }
 
@@ -69,7 +69,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         IAssetRegistry reg = main.assetRegistry();
         address backingManager = address(main.backingManager());
 
-        IERC20Metadata[] memory erc20s = reg.registeredERC20s();
+        IERC20[] memory erc20s = reg.registeredERC20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
             IAsset asset = reg.toAsset(erc20s[i]);
             // Exclude collateral that has defaulted
@@ -79,7 +79,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
                 uint256 bal = erc20s[i].balanceOf(backingManager);
 
                 // {UoA/tok} = {UoA/tok} * {qTok} / {qTok/tok}
-                Fix p = asset.price().mulu(bal).shiftLeft(-int8(erc20s[i].decimals()));
+                Fix p = asset.fromQ(asset.price().mulu(bal));
                 total = total.plus(p);
             }
         }

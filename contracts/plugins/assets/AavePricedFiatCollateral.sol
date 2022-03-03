@@ -10,11 +10,19 @@ contract AavePricedFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
     constructor(
         IERC20Metadata erc20_,
         Fix maxAuctionSize_,
-        IMain main_,
+        Fix defaultThreshold_,
+        uint256 delayUntilDefault_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_
     )
-        CollateralP0(erc20_, maxAuctionSize_, erc20_, main_, bytes32(bytes("USD")))
+        CollateralP0(
+            erc20_,
+            maxAuctionSize_,
+            defaultThreshold_,
+            delayUntilDefault_,
+            erc20_,
+            bytes32(bytes("USD"))
+        )
         AaveOracleMixinP0(comptroller_, aaveLendingPool_)
     {}
 

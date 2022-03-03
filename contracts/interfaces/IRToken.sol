@@ -4,14 +4,16 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import "contracts/libraries/Fixed.sol";
+import "./IComponent.sol";
 import "./IMain.sol";
+import "./IRewardable.sol";
 
 /**
  * @title IRToken
  * @notice An ERC20 with an elastic supply.
  * @dev The p0-specific IRToken
  */
-interface IRToken is IERC20Metadata, IERC20Permit {
+interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// Emitted when issuance is started, at the point collateral is taken in
     /// @param issuer The account performing the issuance
     /// @param index The index off the issuance in the issuer's queue
@@ -63,6 +65,8 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param oldMain The old address of Main
     /// @param newMain The new address of Main
     event MainSet(IMain indexed oldMain, IMain indexed newMain);
+
+    event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
 
     /// Begins the SlowIssuance process
     /// @param account The account issuing the RToken

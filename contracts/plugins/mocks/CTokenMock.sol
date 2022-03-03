@@ -7,16 +7,16 @@ import "./ERC20Mock.sol";
 
 contract CTokenMock is ERC20Mock {
     using FixLib for Fix;
-    address internal immutable _underlyingAsset;
+    address internal immutable _underlyingToken;
 
     uint256 internal _exchangeRate;
 
     constructor(
         string memory name,
         string memory symbol,
-        address underlyingAsset
+        address underlyingToken
     ) ERC20Mock(name, symbol) {
-        _underlyingAsset = underlyingAsset;
+        _underlyingToken = underlyingToken;
         _exchangeRate = _toExchangeRate(FIX_ONE);
     }
 
@@ -39,13 +39,13 @@ contract CTokenMock is ERC20Mock {
     }
 
     function underlying() external view returns (address) {
-        return _underlyingAsset;
+        return _underlyingToken;
     }
 
     function _toExchangeRate(Fix fiatcoinRedemptionRate) internal view returns (uint256) {
         /// From Compound Docs: The current exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
         Fix start = toFixWithShift(2, -2); // 0.02
-        int8 leftShift = 18 - int8(decimals()) + int8(IERC20Metadata(_underlyingAsset).decimals());
+        int8 leftShift = 18 - int8(decimals()) + int8(IERC20Metadata(_underlyingToken).decimals());
         return fiatcoinRedemptionRate.shiftLeft(leftShift).mul(start).floor();
     }
 }
