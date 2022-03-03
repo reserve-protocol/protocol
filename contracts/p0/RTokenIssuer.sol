@@ -1,7 +1,6 @@
 pragma solidity 0.8.9;
 // SPDX-License-Identifier: BlueOak-1.0.0
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/libraries/Fixed.sol";
@@ -14,7 +13,6 @@ import "contracts/p0/Component.sol";
  */
 contract RTokenIssuerP0 is IRTokenIssuer, Component {
     using FixLib for Fix;
-    using SafeERC20 for IERC20Metadata;
     using SafeERC20 for IERC20;
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -37,7 +35,7 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
         uint256 rTokSupply = rToken.totalSupply(); // {qRTok}
         Fix baskets = (rTokSupply > 0) // {BU}
             ? rToken.basketsNeeded().mulu(amount).divuRound(rTokSupply) // {BU * qRTok / qRTok}
-            : toFixWithShift(amount, -int8(rToken.decimals())); // {qRTok / qRTok}
+            : main.assetRegistry().toAsset(rToken).fromQ(toFix(amount)); // {qRTok / qRTok}
 
         address[] memory erc20s;
         (erc20s, deposits) = basketHandler.basketQuote(baskets, RoundingApproach.CEIL);
@@ -100,8 +98,9 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
     function maxIssuable(address account) external view override returns (uint256) {
         Fix needed = main.rToken().basketsNeeded();
         Fix held = main.basketHandler().basketsHeldBy(account);
+        IAsset rTokenAsset = main.assetRegistry().toAsset(main.rToken());
 
-        if (needed.eq(FIX_ZERO)) return held.shiftLeft(int8(main.rToken().decimals())).floor();
+        if (needed.eq(FIX_ZERO)) return rTokenAsset.toQ(held).floor();
 
         // {qRTok} = {BU} * {qRTok} / {BU}
         return held.mulu(main.rToken().totalSupply()).div(needed).floor();
@@ -110,7 +109,9 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
     /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
     function rTokenPrice() external view override returns (Fix p) {
         IRToken rToken = main.rToken();
-        Fix rTokSupply = toFixWithShift(rToken.totalSupply(), -int8(rToken.decimals()));
+        IAsset rTokenAsset = main.assetRegistry().toAsset(rToken);
+
+        Fix rTokSupply = rTokenAsset.fromQ(toFix(rToken.totalSupply()));
         if (rTokSupply.eq(FIX_ZERO)) return main.basketHandler().basketPrice();
 
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}

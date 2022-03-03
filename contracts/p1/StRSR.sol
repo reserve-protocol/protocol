@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -27,7 +26,6 @@ import "contracts/p0/Component.sol";
 // solhint-disable max-states-count
 contract StRSR is IStRSR, Component, EIP712 {
     using SafeERC20 for IERC20;
-    using SafeERC20 for IERC20Metadata;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 

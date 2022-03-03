@@ -30,12 +30,12 @@ abstract contract CompoundOracleMixinP0 {
     }
 
     /// @return {UoA/erc20}
-    function consultOracle(IERC20Metadata erc20_) internal view virtual returns (Fix) {
+    function consultOracle(IERC20Metadata erc20) internal view virtual returns (Fix) {
         // Compound stores prices with 6 decimals of precision
 
-        uint256 p = comptroller.oracle().price(erc20_.symbol());
+        uint256 p = comptroller.oracle().price(erc20.symbol());
         if (p == 0) {
-            revert CommonErrors.PriceIsZero(erc20_.symbol());
+            revert CommonErrors.PriceIsZero(erc20.symbol());
         }
 
         // {UoA/tok} = {microUoA/tok} / {microUoA/UoA}

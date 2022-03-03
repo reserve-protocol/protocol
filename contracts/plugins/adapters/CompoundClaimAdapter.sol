@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 import "contracts/interfaces/IClaimAdapter.sol";
 
@@ -8,16 +9,16 @@ import "contracts/interfaces/IClaimAdapter.sol";
 contract CompoundClaimAdapterP0 is IClaimAdapter {
     IComptroller public immutable comptroller;
 
-    IERC20Metadata public immutable override rewardERC20;
+    IERC20 public immutable override rewardERC20;
 
-    constructor(IComptroller comptroller_, IERC20Metadata rewardERC20_) {
+    constructor(IComptroller comptroller_, IERC20 rewardERC20_) {
         comptroller = comptroller_;
         rewardERC20 = rewardERC20_;
     }
 
     /// @return _to The address to send the call to
     /// @return _calldata The calldata to send
-    function getClaimCalldata(IERC20Metadata)
+    function getClaimCalldata(IERC20)
         external
         view
         override

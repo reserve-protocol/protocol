@@ -18,7 +18,6 @@ import "contracts/libraries/Fixed.sol";
 contract RToken is Ownable, ERC20Permit, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
-    using SafeERC20 for IERC20Metadata;
     using SafeERC20 for IERC20;
 
     Fix public constant MIN_ISS_RATE = Fix.wrap(1e40); // {qRTok/block} 10k whole RTok

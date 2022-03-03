@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -13,7 +13,7 @@ import "contracts/p0/Rewardable.sol";
 
 abstract contract TraderP0 is RewardableP0, ITrader {
     using FixLib for Fix;
-    using SafeERC20 for IERC20Metadata;
+    using SafeERC20 for IERC20;
 
     // All auctions, OPEN and past.
     // Invariant: if 0 <= i and i+1 < auctions.length,
@@ -81,8 +81,8 @@ abstract contract TraderP0 is RewardableP0, ITrader {
             Auction({
                 sell: sell.erc20(),
                 buy: buy.erc20(),
-                sellAmount: sellAmount.shiftLeft(int8(sell.erc20().decimals())).floor(),
-                minBuyAmount: minBuyAmount.shiftLeft(int8(buy.erc20().decimals())).ceil(),
+                sellAmount: sell.toQ(sellAmount).floor(),
+                minBuyAmount: buy.toQ(minBuyAmount).ceil(),
                 clearingSellAmount: 0,
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,

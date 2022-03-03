@@ -172,9 +172,9 @@ contract MainP0 is Ownable, Pausable, IMain {
         revenueFurnace = val;
     }
 
-    IERC20Metadata public rsr;
+    IERC20 public rsr;
 
-    function setRSR(IERC20Metadata val) public onlyOwner {
+    function setRSR(IERC20 val) public onlyOwner {
         emit RSRSet(rsr, val);
         rsr = val;
     }
