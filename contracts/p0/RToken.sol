@@ -37,7 +37,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     IMain public main;
 
     // To enforce a fixed issuanceRate throughout the entire block
-    mapping(uint256 => Fix) private issuanceRate; // block.number => {qRTok/block}
+    mapping(uint256 => Fix) private blockIssuanceRates; // block.number => {qRTok/block}
 
     Fix public constant MIN_ISSUANCE_RATE = Fix.wrap(1e40); // {qRTok/block} 10k whole RTok
 
@@ -47,6 +47,8 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     mapping(address => SlowIssuance[]) public issuances;
 
     Fix public override basketsNeeded; //  {BU}
+
+    Fix public issuanceRate; // {%} of RToken supply to issue per block
 
     constructor(
         IMain main_,
@@ -61,6 +63,15 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     modifier onlyComponent() {
         require(main.hasComponent(_msgSender()), "only components of main");
         _;
+    }
+
+    function init(ConstructorArgs calldata args) public onlyOwner {
+        issuanceRate = args.params.issuanceRate;
+    }
+
+    function setIssuanceRate(Fix val) external onlyOwner {
+        emit IssuanceRateSet(issuanceRate, val);
+        issuanceRate = val;
     }
 
     /// Begins the SlowIssuance accounting process, keeping a roughly constant basket rate
@@ -81,10 +92,10 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         assert(erc20s.length == deposits.length);
 
         // Calculate the issuance rate if this is the first issue in the block
-        if (issuanceRate[block.number].eq(FIX_ZERO)) {
-            issuanceRate[block.number] = fixMax(
+        if (blockIssuanceRates[block.number].eq(FIX_ZERO)) {
+            blockIssuanceRates[block.number] = fixMax(
                 MIN_ISSUANCE_RATE,
-                main.settings().issuanceRate().mulu(totalSupply())
+                issuanceRate.mulu(totalSupply())
             );
         }
 
@@ -96,7 +107,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             erc20s: erc20s,
             deposits: deposits,
             basketNonce: main.basketHandler().basketNonce(),
-            blockAvailableAt: nextIssuanceBlockAvailable(amount, issuanceRate[block.number]),
+            blockAvailableAt: nextIssuanceBlockAvailable(amount, blockIssuanceRates[block.number]),
             processed: false
         });
         issuances[issuer].push(iss);

@@ -285,7 +285,7 @@ describe('StRSRP0 contract', () => {
       let stkWithdrawalDelay: number
 
       beforeEach(async () => {
-        stkWithdrawalDelay = (await settings.stRSRWithdrawalDelay()).toNumber()
+        stkWithdrawalDelay = (await settings.unstakingDelay()).toNumber()
 
         // Perform stake
         amount1 = bn('1e18')

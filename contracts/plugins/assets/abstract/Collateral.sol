@@ -29,19 +29,23 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
 
     IERC20Metadata public immutable referenceERC20;
 
-    IMain public immutable main;
-
     IClaimAdapter public override claimAdapter;
+
+    Fix public immutable defaultThreshold; // {%} e.g. 0.05
+
+    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     constructor(
         IERC20Metadata erc20_,
         Fix maxAuctionSize_,
+        Fix defaultThreshold_,
+        uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
-        IMain main_,
         bytes32 targetName_
     ) AssetP0(erc20_, maxAuctionSize_) {
+        defaultThreshold = defaultThreshold_;
+        delayUntilDefault = delayUntilDefault_;
         referenceERC20 = referenceERC20_;
-        main = main_;
         targetName = targetName_;
     }
 
@@ -58,7 +62,7 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
         if (whenDefault > block.timestamp) {
             // If the price is below the default-threshold price, default eventually
             whenDefault = isDepegged()
-                ? Math.min(whenDefault, block.timestamp + main.settings().defaultDelay())
+                ? Math.min(whenDefault, block.timestamp + delayUntilDefault)
                 : NEVER;
         }
 
@@ -101,7 +105,7 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
     function isDepegged() internal view returns (bool) {
         // {UoA/ref} = {UoA/target} * {target/ref}
         Fix peg = pricePerTarget().mul(targetPerRef());
-        Fix delta = peg.mul(main.settings().defaultThreshold());
+        Fix delta = peg.mul(defaultThreshold);
         Fix p = price();
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }

@@ -17,7 +17,9 @@ contract AssetRegistryP0 is Component, IAssetRegistry {
     mapping(IERC20Metadata => IAsset) private assets;
 
     function init(ConstructorArgs calldata args) internal virtual override {
-        for (uint256 i = 0; i < args.assets.length; i++) _registerAsset(args.assets[i]);
+        for (uint256 i = 0; i < args.periphery.assets.length; i++) {
+            _registerAsset(args.periphery.assets[i]);
+        }
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered

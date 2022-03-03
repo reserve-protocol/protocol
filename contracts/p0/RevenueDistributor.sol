@@ -23,8 +23,8 @@ contract RevenueDistributorP0 is Component, IRevenueDistributor {
     address public constant ST_RSR = address(2);
 
     function init(ConstructorArgs calldata args) internal override {
-        _setDistribution(FURNACE, RevenueShare(args.dist.rTokenDist, 0));
-        _setDistribution(ST_RSR, RevenueShare(0, args.dist.rsrDist));
+        _setDistribution(FURNACE, RevenueShare(args.params.dist.rTokenDist, 0));
+        _setDistribution(ST_RSR, RevenueShare(0, args.params.dist.rsrDist));
     }
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to

@@ -71,6 +71,8 @@ contract RToken is Ownable, ERC20Permit, IRToken {
 
     Fix public override basketsNeeded; // {BU}
 
+    Fix public issRate; // {%} of RToken supply to issue per block
+
     constructor(
         IMain main_,
         string memory name_,
@@ -84,6 +86,15 @@ contract RToken is Ownable, ERC20Permit, IRToken {
     modifier onlyComponent() {
         require(main.hasComponent(_msgSender()), "only components of main");
         _;
+    }
+
+    function init(ConstructorArgs calldata args) public onlyOwner {
+        issRate = args.params.issuanceRate;
+    }
+
+    function setIssuanceRate(Fix val) external onlyOwner {
+        emit IssuanceRateSet(issRate, val);
+        issRate = val;
     }
 
     /// Begins the SlowIssuance accounting process, keeping a roughly constant basket rate
@@ -108,7 +119,7 @@ contract RToken is Ownable, ERC20Permit, IRToken {
         // Calculate the issuance rate if this is the first issue in the block
         if (lastIssRateBlock < block.number) {
             lastIssRateBlock = block.number;
-            lastIssRate = fixMax(MIN_ISS_RATE, main.settings().issuanceRate().mulu(totalSupply()));
+            lastIssRate = fixMax(MIN_ISS_RATE, issRate.mulu(totalSupply()));
         }
 
         // Ensure that the queue is initialized, and models the current basket

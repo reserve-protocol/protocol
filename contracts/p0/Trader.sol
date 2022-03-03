@@ -27,6 +27,19 @@ abstract contract TraderP0 is RewardableP0, ITrader {
     // The latest end time for any auction in `auctions`.
     uint256 private latestAuctionEnd;
 
+    // === Gov Params ===
+    uint256 public auctionLength; // {s} the length of an auction
+    Fix public backingBuffer; // {%} how much extra backing collateral to keep
+    Fix public maxTradeSlippage; // {%} max slippage acceptable in a trade
+    Fix public dustAmount; // {UoA} value below which we don't bother handling some tokens
+
+    function init(ConstructorArgs calldata args) internal virtual override onlyOwner {
+        auctionLength = args.params.auctionLength;
+        backingBuffer = args.params.backingBuffer;
+        maxTradeSlippage = args.params.maxTradeSlippage;
+        dustAmount = args.params.dustAmount;
+    }
+
     /// @return true iff this trader now has open auctions.
     function hasOpenAuctions() public view returns (bool) {
         return auctions.length > auctionsStart;
@@ -62,7 +75,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         Fix exactBuyAmount = sellAmount.mul(sell.price()).div(buy.price());
-        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(main.settings().maxTradeSlippage()));
+        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(maxTradeSlippage));
 
         // TODO Check floor() and ceil() rounding below
         return (
@@ -76,10 +89,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
                 clearingBuyAmount: 0,
                 externalAuctionId: 0,
                 startTime: block.timestamp,
-                endTime: Math.max(
-                    block.timestamp + main.settings().auctionPeriod(),
-                    latestAuctionEnd
-                ),
+                endTime: Math.max(block.timestamp + auctionLength, latestAuctionEnd),
                 status: AuctionStatus.NOT_YET_OPEN
             })
         );
@@ -108,9 +118,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
-        Fix idealSellAmount = exactSellAmount.div(
-            FIX_ONE.minus(main.settings().maxTradeSlippage())
-        );
+        Fix idealSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage));
 
         Fix sellAmount = fixMin(idealSellAmount, maxSellAmount);
         return prepareAuctionSell(sell, buy, sellAmount);
@@ -119,7 +127,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
     /// @return {tok} The least amount of whole tokens ever worth trying to sell
     function dustThreshold(IAsset asset) internal view returns (Fix) {
         // {tok} = {UoA} / {UoA/tok}
-        return main.settings().dustAmount().div(asset.price());
+        return dustAmount.div(asset.price());
     }
 
     /// Launch an auction:

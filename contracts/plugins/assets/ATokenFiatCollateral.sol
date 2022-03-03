@@ -40,13 +40,21 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
     constructor(
         IERC20Metadata erc20_,
         Fix maxAuctionSize_,
+        Fix defaultThreshold_,
+        uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
-        IMain main_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_,
         AaveClaimAdapterP0 claimAdapter_
     )
-        CollateralP0(erc20_, maxAuctionSize_, referenceERC20_, main_, bytes32(bytes("USD")))
+        CollateralP0(
+            erc20_,
+            maxAuctionSize_,
+            defaultThreshold_,
+            delayUntilDefault_,
+            referenceERC20_,
+            bytes32(bytes("USD"))
+        )
         AaveOracleMixinP0(comptroller_, aaveLendingPool_)
     {
         claimAdapter = claimAdapter_;
@@ -73,7 +81,7 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
         } else {
             // If the underlying is showing signs of depegging, default eventually
             whenDefault = isReferenceDepegged()
-                ? Math.min(whenDefault, block.timestamp + main.settings().defaultDelay())
+                ? Math.min(whenDefault, block.timestamp + delayUntilDefault)
                 : NEVER;
         }
         prevReferencePrice = p;
@@ -92,7 +100,7 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
     function isReferenceDepegged() private view returns (bool) {
         // {UoA/ref} = {UoA/target} * {target/ref}
         Fix peg = pricePerTarget().mul(targetPerRef());
-        Fix delta = peg.mul(main.settings().defaultThreshold());
+        Fix delta = peg.mul(defaultThreshold);
         Fix p = consultOracle(referenceERC20);
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }

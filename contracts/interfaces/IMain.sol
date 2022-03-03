@@ -10,6 +10,7 @@ import "./IAssetRegistry.sol";
 import "./IBackingManager.sol";
 import "./IBasketHandler.sol";
 import "./IClaimAdapter.sol";
+import "./IDeployer.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
 import "./IPausable.sol";
@@ -17,63 +18,39 @@ import "./IRevenueDistributor.sol";
 import "./IRToken.sol";
 import "./IRTokenIssuer.sol";
 import "./IRevenueTrader.sol";
-import "./ISettings.sol";
 import "./IStRSR.sol";
 import "./ITrader.sol";
 
-/// Configuration of the system
-struct Config {
-    // Time (seconds)
-    uint256 rewardPeriod; // the duration between reward-claim events
-    uint256 auctionPeriod; // the length of an auction
-    uint256 stRSRPayPeriod; // the duration between stRSR payment events
-    uint256 stRSRWithdrawalDelay; // the "thawing time" of staked RSR before withdrawal
-    uint256 defaultDelay; // how long to wait until switching vaults after detecting default
-    // Ratios
-    Fix maxTradeSlippage; // max slippage acceptable in a trade
-    Fix dustAmount; // value below which we don't bother handling some tokens {UoA}
-    Fix backingBuffer; // percentage of the backing to keep as extra
-    Fix issuanceRate; // number of RToken to issue per block / (RToken value)
-    Fix defaultThreshold; // multiplier beyond which a token is marked as in-default
-    Fix stRSRPayRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
-
-    // Sample values
-    //
-    // rewardPeriod = 604800 (1 week)
-    // auctionPeriod = 1800 (30 minutes)
-    // stRSRPayPeriod = 86400 (1 day)
-    // stRSRWithdrawalDelay = 1209600 (2 weeks)
-    // defaultDelay = 86400 (24 hours)
-
-    // maxTradeSlippage = 0.01 (1%)
-    // dustAmount = 1 (1 USD)
-    // auctionClearingTolerance = 0.1 (10%)
-    // backingBuffer = 0.0001 (0.01% extra collateral)
-    // issuanceRate = 0.00025 (0.025% per block, or ~0.1% per minute)
-    // defaultThreshold = 0.05 (5% deviation, either above or below)
-    // stRSRPayRatio = 0.022840031565754093 (half-life of 30 days)
+/// Configuration of an entire system instance
+struct ConstructorArgs {
+    DeploymentParams params;
+    Components components;
+    Periphery periphery;
+    IERC20Metadata rsr;
 }
 
-// TODO: Put all these contract addresses into their own substructure
-
-struct ConstructorArgs {
-    Config config;
-    RevenueShare dist;
-    IFurnace furnace;
-    IMarket market;
-    IERC20Metadata rsr;
+/// The spokes of our hub-and-spoke component model centered around Main
+/// One single security domain
+/// Upgradeable
+struct Components {
+    IRToken rToken; // not actually a component, yet
     IStRSR stRSR;
-    IRToken rToken;
-    IRTokenIssuer rTokenIssuer;
-    IBackingManager backingManager;
-    IBasketHandler basketHandler;
     IAssetRegistry assetRegistry;
+    IBasketHandler basketHandler;
+    IBackingManager backingManager;
+    IRTokenIssuer rTokenIssuer;
     IRevenueDistributor revenueDistributor;
-    ISettings settings;
-    IClaimAdapter[] claimAdapters;
-    IAsset[] assets;
     IRevenueTrader rsrTrader;
     IRevenueTrader rTokenTrader;
+}
+
+/// INVARIANT: Unaware of Main
+/// Not upgradeable
+struct Periphery {
+    IMarket market;
+    IFurnace furnace;
+    IClaimAdapter[] claimAdapters;
+    IAsset[] assets;
 }
 
 /**
@@ -82,17 +59,55 @@ struct ConstructorArgs {
  * @dev The p0-specific IMain
  */
 interface IMain is IPausable {
-    event RTokenIssuerSet(IRTokenIssuer indexed oldVal, IRTokenIssuer indexed newVal);
+    /// Call all collective state keepers
+    function poke() external;
 
-    function rTokenIssuer() external view returns (IRTokenIssuer);
+    // ---
 
-    function setRTokenIssuer(IRTokenIssuer val) external;
+    event RTokenSet(IRToken indexed oldVal, IRToken indexed newVal);
+
+    function rToken() external view returns (IRToken);
+
+    function setRToken(IRToken rToken) external;
+
+    event StRSRSet(IStRSR indexed oldVal, IStRSR indexed newVal);
+
+    function stRSR() external view returns (IStRSR);
+
+    function setStRSR(IStRSR stRSR) external;
+
+    event AssetRegistrySet(IAssetRegistry indexed oldVal, IAssetRegistry indexed newVal);
+
+    function assetRegistry() external view returns (IAssetRegistry);
+
+    function setAssetRegistry(IAssetRegistry val) external;
+
+    event BasketHandlerSet(IBasketHandler indexed oldVal, IBasketHandler indexed newVal);
+
+    function basketHandler() external view returns (IBasketHandler);
+
+    function setBasketHandler(IBasketHandler val) external;
 
     event BackingManagerSet(IBackingManager indexed oldVal, IBackingManager indexed newVal);
 
     function backingManager() external view returns (IBackingManager);
 
     function setBackingManager(IBackingManager val) external;
+
+    event RTokenIssuerSet(IRTokenIssuer indexed oldVal, IRTokenIssuer indexed newVal);
+
+    function rTokenIssuer() external view returns (IRTokenIssuer);
+
+    function setRTokenIssuer(IRTokenIssuer val) external;
+
+    event RevenueDistributorSet(
+        IRevenueDistributor indexed oldVal,
+        IRevenueDistributor indexed newVal
+    );
+
+    function revenueDistributor() external view returns (IRevenueDistributor);
+
+    function setRevenueDistributor(IRevenueDistributor val) external;
 
     event RSRTraderSet(IRevenueTrader indexed oldVal, IRevenueTrader indexed newVal);
 
@@ -106,33 +121,6 @@ interface IMain is IPausable {
 
     function setRTokenTrader(IRevenueTrader rTokenTrader) external;
 
-    event BasketHandlerSet(IBasketHandler indexed oldVal, IBasketHandler indexed newVal);
-
-    function basketHandler() external view returns (IBasketHandler);
-
-    function setBasketHandler(IBasketHandler val) external;
-
-    event AssetRegistrySet(IAssetRegistry indexed oldVal, IAssetRegistry indexed newVal);
-
-    function assetRegistry() external view returns (IAssetRegistry);
-
-    function setAssetRegistry(IAssetRegistry val) external;
-
-    event RevenueDistributorSet(
-        IRevenueDistributor indexed oldVal,
-        IRevenueDistributor indexed newVal
-    );
-
-    function revenueDistributor() external view returns (IRevenueDistributor);
-
-    function setRevenueDistributor(IRevenueDistributor val) external;
-
-    event SettingsSet(ISettings indexed oldVal, ISettings indexed newVal);
-
-    function settings() external view returns (ISettings);
-
-    function setSettings(ISettings val) external;
-
     event RevenueFurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
 
     function revenueFurnace() external view returns (IFurnace);
@@ -145,23 +133,11 @@ interface IMain is IPausable {
 
     function setMarket(IMarket market) external;
 
-    event RTokenSet(IRToken indexed oldVal, IRToken indexed newVal);
-
-    function rToken() external view returns (IRToken);
-
-    function setRToken(IRToken rToken) external;
-
     event RSRSet(IERC20Metadata indexed oldVal, IERC20Metadata indexed newVal);
 
     function rsr() external view returns (IERC20Metadata);
 
     function setRSR(IERC20Metadata rsr) external;
-
-    event StRSRSet(IStRSR indexed oldVal, IStRSR indexed newVal);
-
-    function stRSR() external view returns (IStRSR);
-
-    function setStRSR(IStRSR stRSR) external;
 
     // ---
     event Initialized();
@@ -185,7 +161,4 @@ interface IMain is IPausable {
     function isTrustedClaimAdapter(IClaimAdapter claimAdapter) external view returns (bool);
 
     function claimAdapters() external view returns (IClaimAdapter[] memory adapters);
-
-    /// Call all collective state keepers
-    function poke() external;
 }

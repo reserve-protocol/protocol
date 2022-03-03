@@ -195,9 +195,9 @@ describe('MainP0 contract', () => {
       expect(rTokenCut[1]).to.equal(bn(100))
 
       expect(await settings.rewardPeriod()).to.equal(config.rewardPeriod)
-      expect(await settings.auctionPeriod()).to.equal(config.auctionPeriod)
+      expect(await settings.auctionLength()).to.equal(config.auctionLength)
       expect(await settings.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
-      expect(await settings.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
+      expect(await settings.unstakingDelay()).to.equal(config.unstakingDelay)
       expect(await settings.defaultDelay()).to.equal(config.defaultDelay)
       expect(await settings.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
       expect(await settings.dustAmount()).to.equal(config.dustAmount)
@@ -298,7 +298,7 @@ describe('MainP0 contract', () => {
     it('Should perform validations on init', async () => {
       // Set invalid RSRPayPeriod
       const newConfig = { ...config }
-      newConfig.stRSRPayPeriod = config.stRSRWithdrawalDelay
+      newConfig.stRSRPayPeriod = config.unstakingDelay
 
       // Deploy new system instance
       await expect(
@@ -406,27 +406,27 @@ describe('MainP0 contract', () => {
       expect(await settings.rewardPeriod()).to.equal(newValue)
     })
 
-    it('Should allow to update auctionPeriod if Owner', async () => {
+    it('Should allow to update auctionLength if Owner', async () => {
       const newValue: BigNumber = bn('360')
 
       // Check existing value
-      expect(await settings.auctionPeriod()).to.equal(config.auctionPeriod)
+      expect(await settings.auctionLength()).to.equal(config.auctionLength)
 
       // If not owner cannot update
-      await expect(settings.connect(other).setAuctionPeriod(newValue)).to.be.revertedWith(
+      await expect(settings.connect(other).setAuctionLength(newValue)).to.be.revertedWith(
         'Component: caller is not the owner'
       )
 
       // Check value did not change
-      expect(await settings.auctionPeriod()).to.equal(config.auctionPeriod)
+      expect(await settings.auctionLength()).to.equal(config.auctionLength)
 
       // Update with owner
-      await expect(settings.connect(owner).setAuctionPeriod(newValue))
-        .to.emit(settings, 'AuctionPeriodSet')
-        .withArgs(config.auctionPeriod, newValue)
+      await expect(settings.connect(owner).setAuctionLength(newValue))
+        .to.emit(settings, 'AuctionLengthSet')
+        .withArgs(config.auctionLength, newValue)
 
       // Check value was updated
-      expect(await settings.auctionPeriod()).to.equal(newValue)
+      expect(await settings.auctionLength()).to.equal(newValue)
     })
 
     it('Should allow to update stRSRPayPeriod if Owner and perform validations', async () => {
@@ -441,7 +441,7 @@ describe('MainP0 contract', () => {
       )
 
       // Reverts if the value is too long
-      const invalidValue: BigNumber = config.stRSRWithdrawalDelay
+      const invalidValue: BigNumber = config.unstakingDelay
       await expect(settings.connect(owner).setStRSRPayPeriod(invalidValue)).to.be.revertedWith(
         'RSR pay period too long'
       )
@@ -458,11 +458,11 @@ describe('MainP0 contract', () => {
       expect(await settings.stRSRPayPeriod()).to.equal(newValue)
     })
 
-    it('Should allow to update stRSRWithdrawalDelay if Owner and perform validations', async () => {
-      const newValue: BigNumber = config.stRSRWithdrawalDelay.div(2)
+    it('Should allow to update unstakingDelay if Owner and perform validations', async () => {
+      const newValue: BigNumber = config.unstakingDelay.div(2)
 
       // Check existing value
-      expect(await settings.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
+      expect(await settings.unstakingDelay()).to.equal(config.unstakingDelay)
 
       // If not owner cannot update
       await expect(settings.connect(other).setStRSRWithdrawalDelay(newValue)).to.be.revertedWith(
@@ -476,15 +476,15 @@ describe('MainP0 contract', () => {
       ).to.be.revertedWith('RSR withdrawal delay too short')
 
       // Check value did not change
-      expect(await settings.stRSRWithdrawalDelay()).to.equal(config.stRSRWithdrawalDelay)
+      expect(await settings.unstakingDelay()).to.equal(config.unstakingDelay)
 
       // Update with owner
       await expect(settings.connect(owner).setStRSRWithdrawalDelay(newValue))
         .to.emit(settings, 'StRSRWithdrawalDelaySet')
-        .withArgs(config.stRSRWithdrawalDelay, newValue)
+        .withArgs(config.unstakingDelay, newValue)
 
       // Check value was updated
-      expect(await settings.stRSRWithdrawalDelay()).to.equal(newValue)
+      expect(await settings.unstakingDelay()).to.equal(newValue)
     })
 
     it('Should allow to update defaultDelay if Owner', async () => {

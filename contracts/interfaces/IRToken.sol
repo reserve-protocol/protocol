@@ -64,6 +64,8 @@ interface IRToken is IERC20Metadata, IERC20Permit {
     /// @param newMain The new address of Main
     event MainSet(IMain indexed oldMain, IMain indexed newMain);
 
+    event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
+
     /// Begins the SlowIssuance process
     /// @param account The account issuing the RToken
     /// @param amtRToken {qRTok}

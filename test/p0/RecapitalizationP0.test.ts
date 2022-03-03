@@ -579,7 +579,7 @@ describe('MainP0 contract', () => {
           sellAmount: sellAmt,
           minBuyAmount: toBNDecimals(minBuyAmt, 6),
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -619,7 +619,7 @@ describe('MainP0 contract', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         //  End current auction, should  not start any new auctions
         await expect(facade.runAuctionsForAllTraders())
@@ -693,7 +693,7 @@ describe('MainP0 contract', () => {
           sellAmount: sellAmt,
           minBuyAmount: toBNDecimals(minBuyAmt, 6),
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -730,7 +730,7 @@ describe('MainP0 contract', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         //  End current auction, should  not start any new auctions
         await expect(facade.runAuctionsForAllTraders())
@@ -812,7 +812,7 @@ describe('MainP0 contract', () => {
           sellAmount: sellAmt,
           minBuyAmount: toBNDecimals(minBuyAmt, 6),
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -850,7 +850,7 @@ describe('MainP0 contract', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction, should start a new one to sell RSR for collateral
         // Only 1e18 Tokens left to buy - Sets Buy amount as independent value
@@ -875,7 +875,7 @@ describe('MainP0 contract', () => {
           sellAmount: sellAmtRSR,
           minBuyAmount: toBNDecimals(buyAmtBidRSR, 6),
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -911,7 +911,7 @@ describe('MainP0 contract', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         //  End current auction, should  not start any new auctions
         await expect(facade.runAuctionsForAllTraders())
@@ -1006,7 +1006,7 @@ describe('MainP0 contract', () => {
           sellAmount: sellAmt,
           minBuyAmount: bn(0),
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -1045,7 +1045,7 @@ describe('MainP0 contract', () => {
         })
 
         //  Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - will end current, will not open any new auctions (no RSR)
         await expect(facade.runAuctionsForAllTraders())
@@ -1090,8 +1090,8 @@ describe('MainP0 contract', () => {
       //   // Set Max auction to 25% and migration chunk to 100% (so everything is redeemd at once)
       //   const newConfig: IConfig = {
       //     rewardPeriod: config.rewardPeriod,
-      //     auctionPeriod: config.auctionPeriod,
-      //     stRSRWithdrawalDelay: config.stRSRWithdrawalDelay,
+      //     auctionLength: config.auctionLength,
+      //     unstakingDelay: config.unstakingDelay,
       //     defaultDelay: config.defaultDelay,
       //     maxTradeSlippage: config.maxTradeSlippage,
       //     maxAuctionSize: fp('0.25'), // 25%
@@ -1153,7 +1153,7 @@ describe('MainP0 contract', () => {
       //     sellAmount: sellAmt,
       //     minBuyAmount: bn('0'),
       //     startTime: await getLatestBlockTimestamp(),
-      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
       //     clearingSellAmount: bn('0'),
       //     clearingBuyAmount: bn('0'),
       //     fate: Fate.Stay,
@@ -1179,7 +1179,7 @@ describe('MainP0 contract', () => {
       //   await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: buyAmtBid })
 
       //   // Advance time till auction ended
-      //   await advanceTime(newConfig.auctionPeriod.add(100).toString())
+      //   await advanceTime(newConfig.auctionLength.add(100).toString())
 
       //   // Call poke to end current auction, should start a new one with same amount
       //   await expect(main.poke())
@@ -1198,7 +1198,7 @@ describe('MainP0 contract', () => {
       //     sellAmount: sellAmt,
       //     minBuyAmount: bn('0'),
       //     startTime: await getLatestBlockTimestamp(),
-      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
       //     clearingSellAmount: bn('0'),
       //     clearingBuyAmount: bn('0'),
       //     fate: Fate.Stay,
@@ -1223,7 +1223,7 @@ describe('MainP0 contract', () => {
       //   await trading.placeBid(1, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: buyAmtBid })
 
       //   // Advance time till auction ended
-      //   await advanceTime(newConfig.auctionPeriod.add(100).toString())
+      //   await advanceTime(newConfig.auctionLength.add(100).toString())
 
       //   // Check staking situation remains unchanged
       //   expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount)
@@ -1246,7 +1246,7 @@ describe('MainP0 contract', () => {
       //     sellAmount: sellAmtRSR,
       //     minBuyAmount: buyAmtBidRSR,
       //     startTime: await getLatestBlockTimestamp(),
-      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
       //     clearingSellAmount: bn('0'),
       //     clearingBuyAmount: bn('0'),
       //     fate: Fate.Burn,
@@ -1283,7 +1283,7 @@ describe('MainP0 contract', () => {
       //   })
 
       //   // Advance time till auction ended
-      //   await advanceTime(newConfig.auctionPeriod.add(100).toString())
+      //   await advanceTime(newConfig.auctionLength.add(100).toString())
 
       //   // Call poke to end current auction, should start a new one with remaining RSR to seize
       //   // Will apply max auction size (25%) over the new RToken supply of 75e18 (100e18 - 25e18) = 18.75e18
@@ -1303,7 +1303,7 @@ describe('MainP0 contract', () => {
       //     sellAmount: sellAmtRSRRemain,
       //     minBuyAmount: buyAmtBidRSRRemain,
       //     startTime: await getLatestBlockTimestamp(),
-      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
       //     clearingSellAmount: bn('0'),
       //     clearingBuyAmount: bn('0'),
       //     fate: Fate.Burn,
@@ -1340,7 +1340,7 @@ describe('MainP0 contract', () => {
       //     buyAmount: sellAmtRSRRemain,
       //   })
       //   // Advance time till auction ended
-      //   await advanceTime(newConfig.auctionPeriod.add(100).toString())
+      //   await advanceTime(newConfig.auctionLength.add(100).toString())
 
       //   // Call poke to end current auction, should start a new one with remaining RSR to seize
       //   // Only 6.25e18 Tokens left to buy (50e18 - (25e18 + 18.75e18)) = 6.25e18
@@ -1361,7 +1361,7 @@ describe('MainP0 contract', () => {
       //     sellAmount: sellAmtRSRFinal,
       //     minBuyAmount: buyAmtBidRSRFinal,
       //     startTime: await getLatestBlockTimestamp(),
-      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+      //     endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
       //     clearingSellAmount: bn('0'),
       //     clearingBuyAmount: bn('0'),
       //     fate: Fate.Burn,
@@ -1404,7 +1404,7 @@ describe('MainP0 contract', () => {
       //   })
 
       //   // Advance time till auction ended
-      //   await advanceTime(newConfig.auctionPeriod.add(100).toString())
+      //   await advanceTime(newConfig.auctionLength.add(100).toString())
 
       //   // Call auction to be processed
       //   await expect(main.poke())

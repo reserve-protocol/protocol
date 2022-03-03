@@ -32,16 +32,4 @@ contract MainCallerMockP0 {
     function rsr() external view returns (IERC20) {
         return main.rsr();
     }
-
-    function stRSRWithdrawalDelay() external view returns (uint256) {
-        return main.settings().stRSRWithdrawalDelay();
-    }
-
-    function stRSRPayPeriod() external view returns (uint256) {
-        return main.settings().stRSRPayPeriod();
-    }
-
-    function stRSRPayRatio() external view returns (Fix) {
-        return main.settings().stRSRPayRatio();
-    }
 }

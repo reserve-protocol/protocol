@@ -24,6 +24,14 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     using SafeERC20 for IERC20Metadata;
     using SafeERC20 for IERC20;
 
+    // this is not yet used in implementation
+    uint256 public auctionDelay; // {s} how long to wait until starting auctions after switching
+
+    function init(ConstructorArgs calldata args) internal override onlyOwner {
+        TraderP0.init(args);
+        auctionDelay = args.params.auctionDelay;
+    }
+
     // Give RTokenIssuer max allowances over all registered tokens
     function grantAllowances() external notPaused {
         IERC20Metadata[] memory erc20s = main.assetRegistry().registeredERC20s();
@@ -55,6 +63,31 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         sellSurplusAssetsForCollateral() || sellRSRForCollateral() || giveRTokenHoldersAHaircut();
     }
 
+    function setAuctionDelay(uint256 val) external onlyOwner {
+        emit AuctionDelaySet(auctionDelay, val);
+        auctionDelay = val;
+    }
+
+    function setAuctionLength(uint256 val) external onlyOwner {
+        emit AuctionLengthSet(auctionLength, val);
+        auctionLength = val;
+    }
+
+    function setBackingBuffer(Fix val) external onlyOwner {
+        emit BackingBufferSet(backingBuffer, val);
+        backingBuffer = val;
+    }
+
+    function setMaxTradeSlippage(Fix val) external onlyOwner {
+        emit MaxTradeSlippageSet(maxTradeSlippage, val);
+        maxTradeSlippage = val;
+    }
+
+    function setDustAmount(Fix val) external onlyOwner {
+        emit DustAmountSet(dustAmount, val);
+        dustAmount = val;
+    }
+
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
         IRToken rToken = main.rToken();
@@ -72,7 +105,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         }
 
         // Keep a small surplus of individual collateral
-        needed = needed.mul(FIX_ONE.plus(main.settings().backingBuffer()));
+        needed = needed.mul(FIX_ONE.plus(backingBuffer));
 
         IERC20Metadata[] memory erc20s = main.assetRegistry().registeredERC20s();
         // Handout excess assets above what is needed, including any newly minted RToken

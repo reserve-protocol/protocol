@@ -5,6 +5,32 @@ import "./IExplorerFacade.sol";
 import "./IMain.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
+import "./IRevenueDistributor.sol";
+
+struct DeploymentParams {
+    // === RSR/RToken/AAVE/COMP ===
+    Fix maxAuctionSize; // {UoA}
+    //
+    // === Revenue sharing ===
+    RevenueShare dist; // revenue sharing splits between RToken and RSR
+    //
+    // === Rewards (Furnace + StRSR) ===
+    uint256 rewardPeriod; // {s} the atomic unit of rewards, determines # of exponential rounds
+    Fix rewardRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
+    //
+    // === StRSR ===
+    uint256 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
+    //
+    // === BackingManager ===
+    uint256 auctionDelay; // {s} how long to wait until starting auctions after switching basket
+    uint256 auctionLength; // {s} the length of an auction
+    Fix backingBuffer; // {%} how much extra backing collateral to keep
+    Fix maxTradeSlippage; // {%} max slippage acceptable in a trade
+    Fix dustAmount; // {UoA} value below which we don't bother handling some tokens
+    //
+    // === RToken ===
+    Fix issuanceRate; // {%} number of RToken to issue per block / (RToken value)
+}
 
 /**
  * @title IDeployer
@@ -31,16 +57,12 @@ interface IDeployer {
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
     /// @param owner The address that should own the entire system, hopefully a governance contract
-    /// @param config Governance param
-    /// @param dist Shares of revenue initially to RSR pool and RToken melting
-    /// @param maxAuctionSize {UoA} The max auction size to use for RToken/RSR/COMP/AAVE
+    /// @param params Deployment params
     /// @return The address of the newly deployed Main instance.
     function deploy(
         string calldata name,
         string calldata symbol,
         address owner,
-        Config calldata config,
-        RevenueShare calldata dist,
-        Fix maxAuctionSize
+        DeploymentParams memory params
     ) external returns (address);
 }

@@ -244,8 +244,8 @@ describe('AssetManagerP0 contract', () => {
         const newConfig: IConfig = {
           rewardStart: config.rewardStart,
           rewardPeriod: config.rewardPeriod,
-          auctionPeriod: config.auctionPeriod,
-          stRSRWithdrawalDelay: config.stRSRWithdrawalDelay,
+          auctionLength: config.auctionLength,
+          unstakingDelay: config.unstakingDelay,
           defaultDelay: config.defaultDelay,
           maxTradeSlippage: config.maxTradeSlippage,
           maxAuctionSize: fp('0.8'), // 25%
@@ -307,7 +307,7 @@ describe('AssetManagerP0 contract', () => {
           sellAmount: sellAmt,
           minBuyAmount: bn('0'),
           startTime: await getLatestBlockTimestamp(),
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           fate: Fate.Stay,
@@ -337,7 +337,7 @@ describe('AssetManagerP0 contract', () => {
         await trading.placeBid(0, { bidder: addr1.address, sellAmount: sellAmt, buyAmount: buyAmtBid })
 
         // Advance time till auction ended
-        await advanceTime(newConfig.auctionPeriod.add(100).toString())
+        await advanceTime(newConfig.auctionLength.add(100).toString())
 
         // Call poke to end current auction, should start a new one for RSR to seize
         // Note:  Sets Buy amount as independent value
@@ -357,7 +357,7 @@ describe('AssetManagerP0 contract', () => {
           sellAmount: sellAmtRSRFinal,
           minBuyAmount: buyAmtBidRSRFinal,
           startTime: await getLatestBlockTimestamp(),
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           fate: Fate.Burn,
@@ -394,7 +394,7 @@ describe('AssetManagerP0 contract', () => {
         })
 
         //  Advance time till auction ended
-        await advanceTime(newConfig.auctionPeriod.add(100).toString())
+        await advanceTime(newConfig.auctionLength.add(100).toString())
 
         //  Call auction to be processed
         await expect(main.poke())

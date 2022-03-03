@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "contracts/libraries/Fixed.sol";
 import "./IComponent.sol";
 import "./IMain.sol";
 
@@ -59,6 +60,10 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
 
     /// Emitted if all the RSR in the staking pool is seized and all balances are reset to zero.
     event AllBalancesReset();
+
+    event UnstakingDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
+    event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
+    event RewardRatioSet(Fix indexed oldVal, Fix indexed newVal);
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param amount {qRSR}

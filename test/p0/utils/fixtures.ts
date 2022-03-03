@@ -44,9 +44,9 @@ const maxAuctionSize = fp(1e6) // $1M
 
 export interface IConfig {
   rewardPeriod: BigNumber
-  auctionPeriod: BigNumber
+  auctionLength: BigNumber
   stRSRPayPeriod: BigNumber
-  stRSRWithdrawalDelay: BigNumber
+  unstakingDelay: BigNumber
   defaultDelay: BigNumber
   maxTradeSlippage: BigNumber
   dustAmount: BigNumber
@@ -352,9 +352,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Setup Config
   const config: IConfig = {
     rewardPeriod: bn('604800'), // 1 week
-    auctionPeriod: bn('1800'), // 30 minutes
+    auctionLength: bn('1800'), // 30 minutes
     stRSRPayPeriod: bn('86400'), // 1 day
-    stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
+    unstakingDelay: bn('1209600'), // 2 weeks
     defaultDelay: bn('86400'), // 24 hs
     maxTradeSlippage: fp('0.01'), // 1%
     dustAmount: fp('0.01'), // 0.01 UoA (USD)
@@ -406,9 +406,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
   const revenueDistributor: RevenueDistributorP0 = <RevenueDistributorP0>(
     await ethers.getContractAt('RevenueDistributorP0', await main.revenueDistributor())
-  )
-  const settings: SettingsP0 = <SettingsP0>(
-    await ethers.getContractAt('SettingsP0', await main.settings())
   )
 
   const compoundClaimer = <CompoundClaimAdapterP0>(
@@ -519,7 +516,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     basketHandler,
     rTokenIssuer,
     revenueDistributor,
-    settings,
     rToken,
     rTokenAsset,
     furnace,

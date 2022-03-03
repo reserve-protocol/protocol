@@ -128,8 +128,8 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
     const latestBlock = await hre.ethers.provider.getBlock('latest')
     const config: IConfig = {
       rewardPeriod: bn('604800'), // 1 week
-      auctionPeriod: bn('1800'), // 30 minutes
-      stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
+      auctionLength: bn('1800'), // 30 minutes
+      unstakingDelay: bn('1209600'), // 2 weeks
       defaultDelay: bn('86400'), // 24 hs
       maxTradeSlippage: fp('0.01'), // 1%
       maxAuctionSize: fp('0.01'), // 1%

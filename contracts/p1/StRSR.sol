@@ -24,6 +24,7 @@ import "contracts/p0/Component.sol";
  * across non-withdrawing stakes, while when RSR is seized, it must be seized from both
  * stakes that are in the process of being withdrawn and those that are not.
  */
+// solhint-disable max-states-count
 contract StRSR is IStRSR, Component, EIP712 {
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Metadata;
@@ -75,6 +76,11 @@ contract StRSR is IStRSR, Component, EIP712 {
         uint256 startedAt; // When the last of those drafts started
     }
 
+    // ==== Gov Params ====
+    uint256 public unstakingDelay;
+    uint256 public rewardPeriod;
+    Fix public rewardRatio;
+
     constructor(string memory name_, string memory symbol_) EIP712(name_, "1") Component() {
         _name = name_;
         _symbol = symbol_;
@@ -82,6 +88,10 @@ contract StRSR is IStRSR, Component, EIP712 {
 
     function init(ConstructorArgs calldata args) internal override {
         payoutLastPaid = block.timestamp;
+        unstakingDelay = args.params.unstakingDelay;
+        rewardPeriod = args.params.rewardPeriod;
+        rewardRatio = args.params.rewardRatio;
+        require(rewardPeriod * 2 <= unstakingDelay, "unstaking withdrawal delay too short");
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
@@ -181,20 +191,17 @@ contract StRSR is IStRSR, Component, EIP712 {
     /// @dev do this by effecting stakeRSR and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
     function payoutRewards() public {
-        uint256 period = main.settings().stRSRPayPeriod();
-        if (block.timestamp < payoutLastPaid + period) return;
+        if (block.timestamp < payoutLastPaid + rewardPeriod) return;
 
-        uint256 numPeriods = (block.timestamp - payoutLastPaid) / period;
+        uint256 numPeriods = (block.timestamp - payoutLastPaid) / rewardPeriod;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        Fix payoutRatio = FIX_ONE.minus(
-            FIX_ONE.minus(main.settings().stRSRPayRatio()).powu(numPeriods)
-        );
+        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
         uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
 
         // Apply payout to RSR backing
         stakeRSR += payout;
-        payoutLastPaid += numPeriods * period;
+        payoutLastPaid += numPeriods * rewardPeriod;
 
         emit RSRRewarded(payout, numPeriods);
     }
@@ -375,7 +382,7 @@ contract StRSR is IStRSR, Component, EIP712 {
             uint256 lastId
         )
     {
-        uint256 time = block.timestamp - main.settings().stRSRWithdrawalDelay();
+        uint256 time = block.timestamp - unstakingDelay;
         CumulativeDraft[] storage queue = draftQueues[era][account];
 
         // Binary search for the current cumulative draft
@@ -445,4 +452,23 @@ contract StRSR is IStRSR, Component, EIP712 {
     }
 
     // ==== End ERC20Permit ====
+
+    // ==== Gov Param Setters ====
+
+    function setUnstakingDelay(uint256 val) external onlyOwner {
+        emit UnstakingDelaySet(unstakingDelay, val);
+        unstakingDelay = val;
+        require(rewardPeriod * 2 <= unstakingDelay, "unstaking withdrawal delay too short");
+    }
+
+    function setRewardPeriod(uint256 val) external onlyOwner {
+        emit RewardPeriodSet(rewardPeriod, val);
+        rewardPeriod = val;
+        require(rewardPeriod * 2 <= unstakingDelay, "unstaking withdrawal delay too short");
+    }
+
+    function setRewardRatio(Fix val) external onlyOwner {
+        emit RewardRatioSet(rewardRatio, val);
+        rewardRatio = val;
+    }
 }
