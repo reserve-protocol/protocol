@@ -42,11 +42,11 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     struct IssueQueue {
         uint256 basketNonce; // The nonce of the basket this queue models deposits against
         address[] tokens; // Addresses of the erc20 tokens modelled by deposits in this queue
-        uint256 left; // Largest index into items that's already been used
-        uint256 right; // Largest index into items that's currently-valid. (Avoid needless deletes)
+        uint256 left; // [left, right) is the span of currently-valid items
+        uint256 right; //
         IssueItem[] items; // The actual items (The issuance "fenceposts")
     }
-    /* An initialized IssueQueue should start with a zero-value item.
+    /* An initialized IssueQueue should start with a zero-value item. // TODO FIXME
      * If we want to clean up state, it's safe to delete items[x] iff x < left.
      * For an initialized IssueQueue queue:
      *     queue.items.right >= left
@@ -106,7 +106,13 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     ) external override onlyComponent {
         assert(erc20s.length == deposits.length);
         IssueQueue storage queue = issueQueues[account];
+
+        // Refund issuances against previous baskets
         refundOldBasketIssues(account);
+        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
+
+        // Either the queue is empty or the basketNonce is up-to-date
+        assert(queue.left == queue.right || queue.basketNonce == basketNonce);
 
         // Calculate the issuance rate if this is the first issue in the block
         if (lastIssRateBlock < block.number) {
@@ -114,33 +120,14 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
             lastIssRate = fixMax(MIN_ISS_RATE, issuanceRate.mulu(totalSupply()));
         }
 
-        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
-
-        // Ensure that the queue is initialized, and models the current basket
-        if (queue.items.length == 0 || queue.basketNonce < basketNonce) {
-            queue.basketNonce = basketNonce;
-            queue.tokens = erc20s;
-            queue.left = 0;
-            queue.right = 0;
-
-            IssueItem storage zero = queue.items.length == 0 ? queue.items.push() : queue.items[0];
-            zero.when = block.number;
-            zero.amtRToken = 0;
-            zero.amtBaskets = FIX_ZERO;
-            zero.deposits = new uint256[](erc20s.length);
-        }
-
-        assert(queue.items.length > 0);
-        assert(queue.basketNonce == basketNonce);
-
         // Add amtRToken's worth of issuance delay to allVestAt
         allVestAt = fixMin(allVestAt, toFix(block.number)).plus(divFix(amtRToken, lastIssRate));
 
         // Push issuance onto queue
-        IssueItem storage prev = queue.items[queue.right];
-        IssueItem storage curr = queue.items.length == queue.right + 1
-            ? queue.items.push()
-            : queue.items[queue.right + 1];
+        IssueItem storage prev = queue.items[queue.right - 1];
+        IssueItem storage curr = (
+            queue.items.length == queue.right ? queue.items.push() : queue.items[queue.right]
+        );
 
         curr.when = allVestAt.floor();
         curr.amtRToken = prev.amtRToken + amtRToken;
@@ -161,66 +148,72 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         );
 
         // Vest immediately if the vesting fits into this block.
-        if (allVestAt.floor() <= block.number) vestThrough(account, queue.right);
+        if (allVestAt.floor() <= block.number) vestUpTo(account, queue.right);
     }
 
     /// Vest all available issuance for the account
     /// Callable by anyone!
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amtRToken of RToken quanta vested
-    function vestIssuances(address account) external override returns (uint256 vested) {
-        require(!main.paused(), "main is paused");
+    function vestIssuances(address account, uint256 endId)
+        external
+        notPaused
+        returns (uint256 vested)
+    {
         require(
             main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
             "collateral default"
         );
 
-        IssueQueue storage queue = issueQueues[account];
+        main.poke();
         refundOldBasketIssues(account);
-        (, uint256 basketTimestamp) = main.basketHandler().basketLastSet();
-        assert(queue.left == queue.right || queue.basketNonce == basketTimestamp);
+
+        return vestUpTo(account, endId);
+    }
+
+    function endIdForVest(address account) external view returns (uint256) {
+        IssueQueue storage queue = issueQueues[account];
 
         // Handle common edge cases in O(1)
-        if (queue.left == queue.right) return 0;
-        if (block.timestamp < queue.items[queue.left].when) return 0;
-        if (queue.items[queue.right].when <= block.timestamp) {
-            return vestThrough(account, queue.right);
-        }
+        if (queue.left == queue.right) return queue.left;
+        if (block.timestamp < queue.items[queue.left].when) return queue.left;
+        if (queue.items[queue.right].when <= block.timestamp) return queue.right;
 
-        // find left = right-1 such that: queue[left].when <= block.timestamp < queue[right].when
-        // using binary search, where always left <= right, and
-        //     queue[left].when <= block.timestamp < queue[right].when
-        uint256 left = queue.left + 1;
+        // find left and right (using binary search where always left <= right) such that:
+        //     left == right - 1
+        //     queue[left].when <= block.timestamp
+        //     right == queue.right  or  block.timestamp < queue[right].when
+        uint256 left = queue.left;
         uint256 right = queue.right;
         while (left < right - 1) {
             uint256 test = (left + right) / 2;
             if (queue.items[test].when <= block.timestamp) left = test;
             else right = test;
         }
-
-        return vestThrough(account, left);
+        return right;
     }
 
     /// Cancel some vesting issuance(s)
+    /// If earliest == true, cancel id if id < endId
+    /// If earliest == false, cancel id if endId <= id
     /// @param account The account of the issuer, and caller
     /// @param through The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    function cancelIssuances(
-        address account,
-        uint256 through,
-        bool earliest
-    ) external override returns (uint256[] memory deposits) {
-        require(account == _msgSender(), "issuer does not match caller");
+    function cancelIssuances(uint256 endId, bool earliest)
+        external
+        returns (uint256[] memory deposits)
+    {
+        address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
-        require(queue.left <= through && through <= queue.right, "'through' is out of range");
+        require(queue.left <= endId && endId < queue.right, "'endId' is out of range");
 
         if (earliest) {
-            deposits = refundSpan(account, queue.left, through);
-            queue.left = through;
+            deposits = refundSpan(account, queue.left, end);
+            queue.left = end;
         } else {
-            deposits = refundSpan(account, through, queue.right);
-            queue.right = through;
+            deposits = refundSpan(account, end, queue.right);
+            queue.right = end;
         }
     }
 
@@ -267,7 +260,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     }
 
     // ==== private ====
-    /// Refund all deposits in the given span.
+    /// Refund all deposits in the span [left, right)
     /// This does *not* fixup queue.left and queue.right!
     function refundSpan(
         address account,
@@ -278,42 +271,49 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         if (left >= right) return deposits;
 
         // refund total deposits
-        IssueItem storage leftItem = queue.items[queue.left];
-        IssueItem storage rightItem = queue.items[right];
+        IssueItem storage leftItem;
+        if (queue.left > 0) leftItem = queue.items[queue.left - 1];
+        IssueItem storage rightItem = queue.items[right - 1];
 
         for (uint256 i = 0; i < queue.tokens.length; i++) {
-            deposits[i] = rightItem.deposits[i] - leftItem.deposits[i];
+            deposits[i] = queue.left > 0
+                ? rightItem.deposits[i] - leftItem.deposits[i]
+                : rightItem.deposits[i];
             IERC20(queue.tokens[i]).safeTransfer(address(main), deposits[i]);
         }
 
         // emit issuancesCanceled
-        emit IssuancesCanceled(account, left + 1, right);
+        emit IssuancesCanceled(account, left, right);
     }
 
     /// Vest all RToken issuance in queue = queues[account], from queue.left through index `through`
     /// This *does* fixup queue.left and queue.right!
-    function vestThrough(address account, uint256 through) private returns (uint256 amtRToken) {
+    function vestUpTo(address account, uint256 end) private returns (uint256 amtRToken) {
         IssueQueue storage queue = issueQueues[account];
-        assert(queue.left <= through && through <= queue.right); // out-of-bounds error
+        if (queue.left == end) return;
+        assert(queue.left < end && end <= queue.right); // out- of-bounds error
 
         // Vest the span up to index `through`.
-        IssueItem storage leftItem = queue.items[queue.left];
+        IssueItem storage leftItem;
+        if (queue.left > 0) leftItem = queue.items[queue.left];
         IssueItem storage rightItem = queue.items[through];
 
         for (uint256 i = 0; i < queue.tokens.length; i++) {
-            uint256 amtDeposit = rightItem.deposits[i] - leftItem.deposits[i];
+            uint256 amtDeposit = queue.left > 0
+                ? rightItem.deposits[i] - leftItem.deposits[i]
+                : rightItem.depostis[i];
             IERC20(queue.tokens[i]).safeTransfer(address(main), amtDeposit);
         }
-        amtRToken = rightItem.amtRToken - leftItem.amtRToken;
+        amtRToken = queue.left > 0 ? rightItem.amtRToken - leftItem.amtRToken : rightItem.amtRToken;
         _mint(account, amtRToken);
 
         Fix newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets.minus(leftItem.amtBaskets));
         basketsNeeded = newBasketsNeeded;
 
-        emit IssuancesCompleted(account, queue.left + 1, through);
+        emit IssuancesCompleted(account, queue.left, end);
         emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
 
-        queue.left = through;
+        queue.left = end;
     }
 
     /// If account's queue models an old basket, refund those issuances.

@@ -130,7 +130,7 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     function cancelIssuances(
         address account,
-        uint256 throughIndex,
+        uint256 endId,
         bool earliest
     ) public returns (uint256[] memory deposits) {
         require(account == _msgSender(), "issuer does not match caller");
@@ -140,11 +140,9 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
         vestIssuances(account);
 
         SlowIssuance[] storage queue = issuances[account];
-        (uint256 first, uint256 last) = earliest
-            ? (0, throughIndex)
-            : (throughIndex, queue.length - 1);
+        (uint256 first, uint256 last) = earliest ? (0, endId) : (endId, queue.length);
 
-        for (uint256 n = first; n <= last; n++) {
+        for (uint256 n = first; n < last; n++) {
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
                 deposits = new uint256[](iss.erc20s.length);
@@ -161,16 +159,28 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amount of RToken quanta vested
-    function vestIssuances(address account) public override returns (uint256 vested) {
-        require(!main.paused(), "main is paused");
+    function vestIssuances(address account, uint256 endId)
+        public
+        notPaused
+        returns (uint256 vested)
+    {
         require(
             main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
             "collateral default"
         );
 
-        for (uint256 i = 0; i < issuances[account].length; i++) {
-            vested += tryVestIssuance(account, i);
-        }
+        main.poke();
+
+        for (uint256 i = 0; i < endId; i++) vested += tryVestIssuance(account, i);
+    }
+
+    /// Return the highest index that could be completed by a vestIssuances call.
+    function endIdForVest(address account) public view returns (uint256) {
+        uint256 i;
+        Fix currBlock = toFix(block.number);
+        SlowIssuance[] storage queue = issuances[account];
+        while (i < queue.length && queue[i].blockAvailableAt.lte(currBlock)) i++;
+        return i;
     }
 
     /// Redeem a quantity of RToken from an account, keeping a roughly constant basket rate

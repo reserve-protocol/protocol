@@ -74,7 +74,7 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
     /// @param amount {qRSR}
     function unstake(uint256 amount) external;
 
-    /// Complete delayed unstaking, up through `endId`.
+    /// Complete delayed unstaking, up to (but not including!) `endId`.
     function withdraw(uint256 endId) external;
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work

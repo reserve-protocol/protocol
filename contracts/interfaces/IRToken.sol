@@ -39,7 +39,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     event IssuancesCanceled(
         address indexed issuer,
         uint256 indexed firstIndex,
-        uint256 indexed lastIndex
+        uint256 indexed endIndex
     );
 
     /// Emitted when an RToken issuance is completed successfully
@@ -49,7 +49,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     event IssuancesCompleted(
         address indexed issuer,
         uint256 indexed firstIndex,
-        uint256 indexed lastIndex
+        uint256 indexed endIndex
     );
 
     /// Emitted when the number of baskets needed changes
@@ -69,6 +69,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
 
     /// Begins the SlowIssuance process
+    /// User Action
     /// @param account The account issuing the RToken
     /// @param amtRToken {qRTok}
     /// @param amtBaskets {BU}
@@ -82,20 +83,24 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
         uint256[] memory deposits
     ) external;
 
-    /// Cancels a vesting slow issuance
-    /// @param account The account of the issuer, and caller
-    /// @param throughIndex The index of the issuance in the issuer's queue to cancel through
+    /// Cancels a vesting slow issuance of _msgSender
+    /// User Action
+    /// If earliest == true, cancel id if id < endId
+    /// If earliest == false, cancel id if endId <= id
+    /// @param endId One edge of the issuance range to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    function cancelIssuances(
-        address account,
-        uint256 throughIndex,
-        bool earliest
-    ) external returns (uint256[] memory deposits);
+    function cancelIssuances(uint256 endId, bool earliest)
+        external
+        returns (uint256[] memory deposits);
 
-    /// Completes all vested slow issuances for the account, callable by anyone
+    /// Completes vested slow issuances for the account, up to endId.
+    /// User Action, callable by anyone
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amount of RToken quanta vested
-    function vestIssuances(address account) external returns (uint256 vested);
+    function vestIssuances(address account, uint256 endId) external returns (uint256 vested);
+
+    /// Return the highest index that could be completed by a vestIssuances call.
+    function endIdForVest(address account) external view returns (uint256);
 
     /// Burns a quantity of RToken from the callers account
     /// @param from The account from which RToken should be burned
