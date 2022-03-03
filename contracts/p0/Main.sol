@@ -211,17 +211,4 @@ contract MainP0 is Ownable, Pausable, IMain {
             adapters[i] = IClaimAdapter(_claimAdapters.at(i));
         }
     }
-
-    /// Call all collective state keepers in the system
-    function poke() external {
-        // We _think_ these are totally order-independent.
-        require(!paused, "paused");
-        backingManager.grantAllowances();
-        basketHandler.ensureValidBasket();
-        revenueFurnace.melt();
-        rsrTrader.closeDueAuctions();
-        rTokenTrader.closeDueAuctions();
-        backingManager.closeDueAuctions();
-        stRSR.payoutRewards();
-    }
 }
