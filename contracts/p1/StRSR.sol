@@ -57,7 +57,7 @@ contract StRSR is IStRSR, Component, EIP712 {
     uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
 
     // Drafts: share of the withdrawing tokens. Not transferrable.
-    // Draft queues by account. Handle only through pushDrafts() and popDrafts(). Indexed by era.
+    // Draft queues by account. Handle only through pushDrafts() and withdraw(). Indexed by era.
     mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues;
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft;
     uint256 internal totalDrafts; // Total of all drafts {qDrafts}
@@ -85,53 +85,49 @@ contract StRSR is IStRSR, Component, EIP712 {
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
+    /// User Action
     /// @param rsrAmount {qRSR}
-    function stake(uint256 rsrAmount) external override {
+    function stake(uint256 rsrAmount) external notPaused {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
-        require(!main.paused(), "main paused");
 
         // Process pending withdrawals
-        if (
-            main.basketHandler().fullyCapitalized() &&
-            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND
-        ) {
-            _processWithdrawals(account);
-        }
         payoutRewards();
         _stake(account, rsrAmount);
     }
 
     /// Begins a delayed unstaking for `amount` stRSR
+    /// User Action
     /// @param stakeAmount {qRSR}
-    function unstake(uint256 stakeAmount) external override {
+    function unstake(uint256 stakeAmount) external notPaused {
         address account = _msgSender();
+        IBasketHandler bh = main.basketHandler();
+
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
-        require(!main.paused(), "main paused");
-        require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
-        require(
-            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
-            "basket defaulted"
-        );
+
+        require(bh.fullyCapitalized(), "RToken uncapitalized");
+        require(bh.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
 
         // Process pending withdrawals
-        _processWithdrawals(account);
         payoutRewards();
         _unstake(account, stakeAmount);
     }
 
-    /// User-state keeper (-ish)
-    /// TODO: to match the keeper/action logic, the fullyCapitalized and
-    /// worstCollateralStatus checks should just be conditional guards, not requires.
-    function processWithdrawals(address account) public {
-        require(!main.paused(), "main paused");
-        require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
-        require(
-            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
-            "basket defaulted"
-        );
-        _processWithdrawals(account);
+    /// Complete delayed unstking, up to but not including `endId`
+    /// User Action.
+    function withdraw(uint256 endId) external notPaused {
+        address account = _msgSender();
+        IBasketHandler bh = main.basketHandler();
+        require(bh.fullyCapitalized(), "RToken uncapitalized");
+        require(bh.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+
+        CumulativeDraft[] storage queue = draftQueues[era][account];
+        require(endId <= queue.length, "index out-of-bounds");
+
+        uint256 time = block.timestamp - main.settings().stRSRWithdrawalDelay();
+        require(queue[endId - 1].startedAt <= time, "withdrawal unavailable");
+        _withdraw(account, endId);
     }
 
     /// @param rsrAmount {qRSR}
@@ -202,6 +198,32 @@ contract StRSR is IStRSR, Component, EIP712 {
     function setMain(IMain main_) external virtual override onlyOwner {
         emit MainSet(main, main_);
         main = main_;
+    }
+
+    /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
+    /// This search may be slightly expensive.
+    /// TODO: experiment! For what values of queue.length - firstId is this actually cheaper
+    ///     than linear search?
+    function endIdForWithdraw(address account) external view returns (uint256) {
+        uint256 time = block.timestamp - main.settings().stRSRWithdrawalDelay();
+        CumulativeDraft[] storage queue = draftQueues[era][account];
+
+        // Bounds our search for the current cumulative draft
+        (uint256 left, uint256 right) = (firstRemainingDraft[era][account], queue.length);
+
+        // If there are no drafts to be found, return 0 drafts
+        if (left >= right) return right;
+        if (queue[left].startedAt > time) return left;
+
+        // Otherwise, there *are* drafts with left <= index < right and startedAt <= time.
+        // Binary search, keeping true that (queue[left].startedAt <= time) and
+        //   (right == queue.length or queue[right].startedAt > time)
+        while (left < right - 1) {
+            uint256 test = (left + right) / 2;
+            if (queue[test].startedAt <= time) left = test;
+            else right = test;
+        }
+        return right;
     }
 
     // ==== ERC20 Interface ====
@@ -335,23 +357,28 @@ contract StRSR is IStRSR, Component, EIP712 {
         );
     }
 
-    /// Execute the withdrawal of all available drafts
-    function _processWithdrawals(address account) internal {
-        // Retrieve (and pop) any now-available drafts from account's draft queue
-        (uint256 draftAmount, uint256 firstId, uint256 lastId) = popDrafts(account);
-        if (draftAmount == 0) return;
+    /// Execute the completion of all drafts,
+    /// from firstRemainingDraft[era][account] up to (but not including!) endId
+    function _withdraw(address account, uint256 endId) internal {
+        uint256 firstId = firstRemainingDraft[era][account];
+        if (firstId >= endId) return;
 
-        // Compute RSR amount
+        CumulativeDraft[] storage queue = draftQueues[era][account];
+        uint256 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
+        uint256 draftAmount = queue[endId - 1].drafts - oldDrafts;
+
+        // advance queue past withdrawal
+        firstRemainingDraft[era][account] = endId;
+
+        // Compute RSR amount and transfer it from the draft pool
         uint256 rsrAmount = (draftAmount * draftRSR) / totalDrafts;
+        if (rsrAmount == 0) return;
 
-        // Reduce draft balance
         totalDrafts -= draftAmount;
         draftRSR -= rsrAmount;
-
-        // Transfer RSR from this contract to the account
         main.rsr().safeTransfer(account, rsrAmount);
 
-        emit UnstakingCompleted(firstId, lastId, account, rsrAmount);
+        emit UnstakingCompleted(firstId, endId, account, rsrAmount);
     }
 
     /// Add a cumulative draft to account's draft queue (at the current time).
@@ -361,43 +388,6 @@ contract StRSR is IStRSR, Component, EIP712 {
         uint256 oldDrafts = queue.length > 0 ? queue[queue.length - 1].drafts : 0;
 
         queue.push(CumulativeDraft(oldDrafts + draftAmount, block.timestamp));
-    }
-
-    /// Remove and return all current drafts from account's draft queue.
-    /// @return draftsFound The amount of current drafts found and removed from the queue
-    /// @return firstId The ID of the first draft removed, if any
-    /// @return lastId The ID of the last draft removed, if any
-    function popDrafts(address account)
-        internal
-        returns (
-            uint256 draftsFound,
-            uint256 firstId,
-            uint256 lastId
-        )
-    {
-        uint256 time = block.timestamp - main.settings().stRSRWithdrawalDelay();
-        CumulativeDraft[] storage queue = draftQueues[era][account];
-
-        // Binary search for the current cumulative draft
-        firstId = firstRemainingDraft[era][account];
-
-        (uint256 left, uint256 right) = (firstId, queue.length);
-        // If there are no drafts to be found, return 0 drafts
-        if (left >= right || queue[left].startedAt > time) return (0, 0, 0);
-        // Otherwise, there *are* drafts with left <= index < right and startedAt <= time.
-        // Binary search, keeping true that (queue[left].startedAt <= time) and
-        //   (right == queue.length or queue[right].startedAt > time)
-        while (left < right - 1) {
-            uint256 test = (left + right) / 2;
-            if (queue[test].startedAt <= time) left = test;
-            else right = test;
-        }
-        lastId = left;
-        // NOTE: If we expect gas refunds for zeroing values, then here's where we'd do it!
-        // (but we don't, and the deletion is expensive, so instead we'll be messy forever)
-        uint256 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
-        draftsFound = queue[left].drafts - oldDrafts;
-        firstRemainingDraft[era][account] = left + 1;
     }
 
     // ==== end Internal Functions ====

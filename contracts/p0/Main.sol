@@ -209,6 +209,7 @@ contract MainP0 is Ownable, Pausable, IMain {
         return Ownable.owner();
     }
 
+    /// Call all collective state keepers in the system
     function poke() external {
         // We _think_ these are totally order-independent.
         require(!paused, "paused");

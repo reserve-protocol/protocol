@@ -36,13 +36,14 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
     );
 
     /// Emitted when RSR is unstaked
-    /// @param firstId The first draft ID withdrawn in this transaction
-    /// @param lastId The last draft ID withdrawn in this transaction
+    /// @param firstId The beginning of the range of draft IDs withdrawn in this transaction
+    /// @param endId The end of range of draft IDs withdrawn in this transaction
+    /// (ID i was withdrawn if firstId <= i < endId)
     /// @param staker The address of the unstaker
     /// @param rsrAmount {qRSR} How much RSR this unstaking was worth
     event UnstakingCompleted(
         uint256 indexed firstId,
-        uint256 indexed lastId,
+        uint256 indexed endId,
         address indexed staker,
         uint256 rsrAmount
     );
@@ -67,6 +68,12 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param amount {qRSR}
     function unstake(uint256 amount) external;
+
+    /// Complete delayed unstaking, up through `endId`.
+    function withdraw(uint256 endId) external;
+
+    /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
+    function endIdForWithdraw(address account) external view returns (uint256 endId);
 
     /// @return seizedRSR {qRSR} The actual amount seized. May be dust-larger than `amount`.
     function seizeRSR(uint256 amount) external returns (uint256 seizedRSR);

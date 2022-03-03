@@ -95,13 +95,9 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
         require(!main.paused(), "main paused");
-        main.poke();
-        IBasketHandler bh = main.basketHandler();
 
-        // Process pending withdrawals
-        if (bh.fullyCapitalized() && bh.worstCollateralStatus() == CollateralStatus.SOUND) {
-            _processWithdrawals(account);
-        }
+        // Run state keepers
+        main.poke();
         payoutRewards();
 
         main.rsr().safeTransferFrom(account, address(this), rsrAmount);
@@ -128,15 +124,12 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         require(balances[account] >= stakeAmount, "Not enough balance");
         require(!main.paused(), "main paused");
 
-        require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
-        require(
-            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
-            "basket defaulted"
-        );
+        IBasketHandler bh = main.basketHandler();
+        require(bh.fullyCapitalized(), "RToken uncapitalized");
+        require(bh.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
 
         // Call state keepers
         main.poke();
-        _processWithdrawals(account);
         payoutRewards();
 
         uint256 rsrAmount = (stakeAmount * rsrBacking) / totalStaked;
@@ -154,14 +147,47 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         emit UnstakingStarted(withdrawals[account].length - 1, account, rsrAmount, stakeAmount);
     }
 
-    function processWithdrawals(address account) public {
-        require(!main.paused(), "main paused");
-        require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
-        require(
-            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
-            "basket defaulted"
-        );
-        _processWithdrawals(account);
+    /// Complete delayed staking, up to but not including draft ID `endId`
+    /// User Action
+    function withdraw(uint256 endId) external notPaused {
+        address account = _msgSender();
+
+        IBasketHandler bh = main.basketHandler();
+        require(bh.fullyCapitalized(), "RToken uncapitalized");
+        require(bh.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+
+        Withdrawal[] storage queue = withdrawals[account];
+        if (endId == 0) return;
+        require(endId <= queue.length, "index out-of-bounds");
+        require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
+
+        // Call state keepers
+        main.poke();
+        payoutRewards();
+
+        // Skip executed withdrawals
+        uint256 start = 0;
+        while (queue[start].rsrAmount == 0 && start < endId) start++;
+
+        // Accumulate and zero executable withdrawals
+        uint256 total = 0;
+        uint256 i = start;
+        for (i; i <= queue.length && queue[i].availableAt <= block.timestamp; i++) {
+            total += queue[i].rsrAmount;
+            queue[i].rsrAmount = 0;
+        }
+
+        // Execute accumulated withdrawals
+        main.rsr().safeTransfer(account, total);
+        emit UnstakingCompleted(start, i, account, total);
+    }
+
+    /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
+    function endIdForWithdraw(address account) external view returns (uint256) {
+        Withdrawal[] storage queue = withdrawals[account];
+        uint256 i = 0;
+        while (i <= queue.length && queue[i].availableAt <= block.timestamp) i++;
+        return i;
     }
 
     /// @param rsrAmount {qRSR}
@@ -331,19 +357,6 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     /// @return {qRSR} The balance of RSR that this contract owns dedicated to future RSR rewards.
     function rsrRewards() internal view returns (uint256) {
         return main.rsr().balanceOf(address(this)) - rsrBacking - rsrBeingWithdrawn();
-    }
-
-    function _processWithdrawals(address account) internal {
-        // Process all pending withdrawals for the account
-        Withdrawal[] storage withdrawalQ = withdrawals[account];
-
-        for (uint256 i = 0; i < withdrawalQ.length; i++) {
-            if (block.timestamp >= withdrawalQ[i].availableAt && withdrawalQ[i].rsrAmount > 0) {
-                main.rsr().safeTransfer(withdrawalQ[i].account, withdrawalQ[i].rsrAmount);
-                emit UnstakingCompleted(i, i, withdrawalQ[i].account, withdrawalQ[i].rsrAmount);
-                withdrawalQ[i].rsrAmount = 0;
-            }
-        }
     }
 
     // ==== end Internal Functions ====
