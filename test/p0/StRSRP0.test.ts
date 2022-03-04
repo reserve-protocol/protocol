@@ -313,13 +313,15 @@ describe('StRSRP0 contract', () => {
         await main.connect(owner).pause()
 
         // Withdraw
-        await expect(stRSR.connect(addr1).withdraw(1)).to.be.revertedWith('is paused')
+        await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
+          'is paused'
+        )
 
         // If unpaused should withdraw OK
         await main.connect(owner).unpause()
 
         // Withdraw
-        await stRSR.connect(addr1).withdraw(1)
+        await stRSR.connect(addr1).withdraw(addr1.address, 1)
 
         // Withdrawal was completed
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
@@ -360,7 +362,9 @@ describe('StRSRP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
 
         // Withdraw
-        await expect(stRSR.connect(addr1).withdraw(1)).to.be.revertedWith('RToken uncapitalized')
+        await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
+          'RToken uncapitalized'
+        )
 
         // If fully capitalized should withdraw OK  - Set back original basket
         await basketHandler.connect(owner).setPrimeBasket(erc20s, basketsNeededAmts)
@@ -369,7 +373,7 @@ describe('StRSRP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
 
         // Withdraw
-        await stRSR.connect(addr1).withdraw(1)
+        await stRSR.connect(addr1).withdraw(addr1.address, 1)
 
         // Withdrawal completed
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
@@ -381,7 +385,9 @@ describe('StRSRP0 contract', () => {
 
       it('Should not withdraw before stakingWithdrawalDelay', async () => {
         // Withdraw
-        await expect(stRSR.connect(addr1).withdraw(1)).to.be.revertedWith('withdrawal unavailable')
+        await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
+          'withdrawal unavailable'
+        )
 
         // Nothing completed so far
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
@@ -391,7 +397,9 @@ describe('StRSRP0 contract', () => {
         // Withdraw after certain time (still before stakingWithdrawalDelay)
         await advanceTime(stkWithdrawalDelay / 2)
 
-        await expect(stRSR.connect(addr1).withdraw(1)).to.be.revertedWith('withdrawal unavailable')
+        await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
+          'withdrawal unavailable'
+        )
 
         // Nothing completed still
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
@@ -407,7 +415,7 @@ describe('StRSRP0 contract', () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Withdraw
-        await stRSR.connect(addr1).withdraw(1)
+        await stRSR.connect(addr1).withdraw(addr1.address, 1)
 
         // Withdrawal was completed
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
@@ -429,8 +437,12 @@ describe('StRSRP0 contract', () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Withdraw
-        await stRSR.connect(addr1).withdraw(await stRSR.endIdForWithdraw(addr1.address))
-        await stRSR.connect(addr2).withdraw(await stRSR.endIdForWithdraw(addr2.address))
+        await stRSR
+          .connect(addr1)
+          .withdraw(addr1.address, await stRSR.endIdForWithdraw(addr1.address))
+        await stRSR
+          .connect(addr2)
+          .withdraw(addr2.address, await stRSR.endIdForWithdraw(addr2.address))
 
         // Withdrawals completed
         expect(await stRSR.totalSupply()).to.equal(amount3)
@@ -447,7 +459,9 @@ describe('StRSRP0 contract', () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Withdraw
-        await stRSR.connect(addr2).withdraw(await stRSR.endIdForWithdraw(addr2.address))
+        await stRSR
+          .connect(addr2)
+          .withdraw(addr2.address, await stRSR.endIdForWithdraw(addr2.address))
 
         // Withdrawals completed
         expect(await stRSR.totalSupply()).to.equal(0)
