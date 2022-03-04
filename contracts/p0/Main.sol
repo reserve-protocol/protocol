@@ -26,6 +26,7 @@ contract MainP0 is Ownable, Pausable, IMain {
         require(!paused, "paused");
         backingManager.grantAllowances();
         basketHandler.ensureValidBasket();
+        assetRegistry.forceUpdates();
         revenueFurnace.melt();
         rsrTrader.closeDueAuctions();
         rTokenTrader.closeDueAuctions();

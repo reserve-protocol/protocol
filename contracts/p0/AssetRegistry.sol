@@ -23,6 +23,14 @@ contract AssetRegistryP0 is Component, IAssetRegistry {
         }
     }
 
+    /// Force updates in all collateral assets
+    function forceUpdates() external {
+        for (uint256 i = 0; i < erc20s.length(); i++) {
+            IAsset asset = assets[IERC20(erc20s.at(i))];
+            if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
+        }
+    }
+
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return If the asset was moved from unregistered to registered
     function registerAsset(IAsset asset) external onlyOwner returns (bool) {
