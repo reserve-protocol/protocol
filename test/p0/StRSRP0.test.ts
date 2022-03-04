@@ -15,8 +15,8 @@ import {
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
-  RTokenIssuerP0,
-  RevenueDistributorP0,
+  IssuerP0,
+  DistributorP0,
 } from '../../typechain'
 import { advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
@@ -39,8 +39,8 @@ describe('StRSRP0 contract', () => {
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let rTokenIssuer: RTokenIssuerP0
-  let revenueDistributor: RevenueDistributorP0
+  let issuer: IssuerP0
+  let distributor: DistributorP0
 
   // StRSR
   let stRSR: StRSRP0
@@ -84,8 +84,8 @@ describe('StRSRP0 contract', () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      rTokenIssuer,
-      revenueDistributor,
+      issuer,
+      distributor,
     } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
@@ -336,14 +336,14 @@ describe('StRSRP0 contract', () => {
         await token3.connect(owner).mint(addr1.address, initialBal)
 
         // Approvals
-        await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token0.connect(addr1).approve(issuer.address, initialBal)
+        await token1.connect(addr1).approve(issuer.address, initialBal)
+        await token2.connect(addr1).approve(issuer.address, initialBal)
+        await token3.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue tokens
         const issueAmount: BigNumber = bn('100e18')
-        await rTokenIssuer.connect(addr1).issue(issueAmount)
+        await issuer.connect(addr1).issue(issueAmount)
 
         // Get current balance for user
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)
@@ -352,7 +352,7 @@ describe('StRSRP0 contract', () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Save backing tokens
-        const erc20s = await rTokenIssuer.basketTokens()
+        const erc20s = await basketHandler.tokens()
 
         // Set not fully capitalized by changing basket
         await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1e18')])

@@ -17,8 +17,8 @@ import {
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
-  RTokenIssuerP0,
-  RevenueDistributorP0,
+  IssuerP0,
+  DistributorP0,
 } from '../../typechain'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
@@ -56,8 +56,8 @@ describe('AssetsP0 contracts', () => {
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let rTokenIssuer: RTokenIssuerP0
-  let revenueDistributor: RevenueDistributorP0
+  let issuer: IssuerP0
+  let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -87,8 +87,8 @@ describe('AssetsP0 contracts', () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      rTokenIssuer,
-      revenueDistributor,
+      issuer,
+      distributor,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
@@ -109,12 +109,12 @@ describe('AssetsP0 contracts', () => {
     await token2.connect(owner).mint(other.address, amt)
     await token3.connect(owner).mint(other.address, amt)
 
-    await token0.connect(other).approve(rTokenIssuer.address, amt)
-    await token1.connect(other).approve(rTokenIssuer.address, amt)
-    await token2.connect(other).approve(rTokenIssuer.address, amt)
-    await token3.connect(other).approve(rTokenIssuer.address, amt)
+    await token0.connect(other).approve(issuer.address, amt)
+    await token1.connect(other).approve(issuer.address, amt)
+    await token2.connect(other).approve(issuer.address, amt)
+    await token3.connect(other).approve(issuer.address, amt)
 
-    await rTokenIssuer.connect(other).issue(amt)
+    await issuer.connect(other).issue(amt)
   })
 
   describe('Deployment', () => {

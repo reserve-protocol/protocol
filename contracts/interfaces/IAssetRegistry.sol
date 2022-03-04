@@ -16,11 +16,13 @@ interface IAssetRegistry is IComponent {
     /// @param asset The asset contract removed from the registry
     event AssetUnregistered(IERC20 indexed erc20, IAsset indexed asset);
 
+    function forceUpdates() external;
+
     function toAsset(IERC20 erc20) external view returns (IAsset);
 
     function toColl(IERC20 erc20) external view returns (ICollateral);
 
     function isRegistered(IERC20 erc20) external view returns (bool);
 
-    function registeredERC20s() external view returns (IERC20[] memory);
+    function erc20s() external view returns (IERC20[] memory);
 }

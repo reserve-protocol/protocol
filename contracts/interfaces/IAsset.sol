@@ -6,6 +6,8 @@ import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 import "./IClaimAdapter.sol";
 
+error PriceIsZero(string);
+
 /**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,

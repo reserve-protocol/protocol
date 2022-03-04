@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/libraries/Fixed.sol";
 import "./IComponent.sol";
 
-interface IRTokenIssuer is IComponent {
+interface IIssuer is IComponent {
     /// Emitted when an issuance of RToken begins
     /// @param issuer The address of the account redeeeming RTokens
     /// @param amount The quantity of RToken being issued
@@ -20,8 +20,6 @@ interface IRTokenIssuer is IComponent {
     function issue(uint256 amount) external returns (uint256[] memory deposits);
 
     function redeem(uint256 amount) external returns (uint256[] memory compensation);
-
-    function basketTokens() external view returns (address[] memory);
 
     function maxIssuable(address account) external view returns (uint256);
 

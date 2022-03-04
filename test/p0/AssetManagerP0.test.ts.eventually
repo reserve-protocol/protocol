@@ -205,8 +205,8 @@ describe('AssetManagerP0 contract', () => {
         // Issue some RTokens to user
         issueAmount = bn('100e18')
         // Provide approvals
-        await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token0.connect(addr1).approve(issuer.address, initialBal)
+        await token1.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue rTokens
         await main.connect(addr1).issue(issueAmount)

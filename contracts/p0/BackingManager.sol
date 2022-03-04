@@ -32,24 +32,24 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         backingBuffer = args.params.backingBuffer;
     }
 
-    // Give RTokenIssuer max allowances over all registered tokens
+    // Give Issuer max allowances over all registered tokens
     function grantAllowances() external notPaused {
-        IERC20[] memory erc20s = main.assetRegistry().registeredERC20s();
+        IERC20[] memory erc20s = main.assetRegistry().erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
-            erc20s[i].approve(address(main.rTokenIssuer()), type(uint256).max);
+            erc20s[i].approve(address(main.issuer()), type(uint256).max);
         }
     }
 
     /// Manage backing funds: maintain the overall backing policy
     /// Collective Action
-    function manageFunds() external override notPaused {
+    function manageFunds() external notPaused {
         // Call keepers before
         main.poke();
         closeDueAuctions();
 
         if (hasOpenAuctions()) return;
 
-        (, uint256 basketTimestamp) = main.basketHandler().basketLastSet();
+        (, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + auctionDelay) return;
 
         if (main.basketHandler().fullyCapitalized()) {
@@ -64,31 +64,6 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
          */
 
         sellSurplusAssetsForCollateral() || sellRSRForCollateral() || giveRTokenHoldersAHaircut();
-    }
-
-    function setAuctionDelay(uint256 val) external onlyOwner {
-        emit AuctionDelaySet(auctionDelay, val);
-        auctionDelay = val;
-    }
-
-    function setAuctionLength(uint256 val) external onlyOwner {
-        emit AuctionLengthSet(auctionLength, val);
-        auctionLength = val;
-    }
-
-    function setBackingBuffer(Fix val) external onlyOwner {
-        emit BackingBufferSet(backingBuffer, val);
-        backingBuffer = val;
-    }
-
-    function setMaxTradeSlippage(Fix val) external onlyOwner {
-        emit MaxTradeSlippageSet(maxTradeSlippage, val);
-        maxTradeSlippage = val;
-    }
-
-    function setDustAmount(Fix val) external onlyOwner {
-        emit DustAmountSet(dustAmount, val);
-        dustAmount = val;
     }
 
     /// Send excess assets to the RSR and RToken traders
@@ -110,14 +85,14 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         // Keep a small surplus of individual collateral
         needed = needed.mul(FIX_ONE.plus(backingBuffer));
 
-        IERC20[] memory erc20s = main.assetRegistry().registeredERC20s();
+        IERC20[] memory erc20s = main.assetRegistry().erc20s();
         // Handout excess assets above what is needed, including any newly minted RToken
         for (uint256 i = 0; i < erc20s.length; i++) {
             uint256 bal = erc20s[i].balanceOf(address(this));
-            uint256 neededI = needed.mul(main.basketHandler().basketQuantity(erc20s[i])).ceil();
+            uint256 neededI = needed.mul(main.basketHandler().quantity(erc20s[i])).ceil();
 
             if (bal > neededI) {
-                (uint256 rsrShares, uint256 totalShares) = main.revenueDistributor().rsrCut();
+                (uint256 rsrShares, uint256 totalShares) = main.distributor().rsrCut();
                 uint256 tokensPerShare = (bal - neededI) / totalShares;
                 uint256 toRSR = tokensPerShare * rsrShares;
                 uint256 toRToken = tokensPerShare * (totalShares - rsrShares);
@@ -219,7 +194,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         )
     {
         IAssetRegistry reg = main.assetRegistry();
-        IERC20[] memory erc20s = reg.registeredERC20s();
+        IERC20[] memory erc20s = reg.erc20s();
 
         Fix basketsNeeded = main.rToken().basketsNeeded(); // {BU}
         Fix[] memory prices = new Fix[](erc20s.length); // {UoA/tok}
@@ -234,7 +209,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
             // needed: {qTok} that Main must hold to meet obligations
             uint256 needed;
             if (asset.isCollateral()) {
-                needed = basketsNeeded.mul(main.basketHandler().basketQuantity(erc20s[i])).ceil();
+                needed = basketsNeeded.mul(main.basketHandler().quantity(erc20s[i])).ceil();
             }
             // held: {qTok} that Main is already holding
             uint256 held = erc20s[i].balanceOf(address(this));
@@ -273,5 +248,32 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         // {tok} = {UoA} / {UoA/tok}
         buyAmount = deficitMax.div(prices[deficitIndex]);
         deficit = reg.toColl(erc20s[deficitIndex]);
+    }
+
+    // === Setters ===
+
+    function setAuctionDelay(uint256 val) external onlyOwner {
+        emit AuctionDelaySet(auctionDelay, val);
+        auctionDelay = val;
+    }
+
+    function setAuctionLength(uint256 val) external onlyOwner {
+        emit AuctionLengthSet(auctionLength, val);
+        auctionLength = val;
+    }
+
+    function setBackingBuffer(Fix val) external onlyOwner {
+        emit BackingBufferSet(backingBuffer, val);
+        backingBuffer = val;
+    }
+
+    function setMaxTradeSlippage(Fix val) external onlyOwner {
+        emit MaxTradeSlippageSet(maxTradeSlippage, val);
+        maxTradeSlippage = val;
+    }
+
+    function setDustAmount(Fix val) external onlyOwner {
+        emit DustAmountSet(dustAmount, val);
+        dustAmount = val;
     }
 }

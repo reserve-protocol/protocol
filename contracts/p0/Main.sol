@@ -6,14 +6,56 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/p0/Pausable.sol";
+
+/** Contract mixin providing:
+ * - The paused flag
+ * - A pauser role, modifiable by pauser or owner
+ * - Pause and unpause commands, to allow either pauser or owner to set the paused flag.
+ * - The `notPaused` modifier.
+ */
+contract Pausable is Ownable, IPausable {
+    address private _pauser;
+    bool public paused;
+
+    constructor() {
+        _pauser = _msgSender();
+        paused = true;
+    }
+
+    modifier notPaused() {
+        require(!paused, "paused");
+        _;
+    }
+
+    function pause() external {
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PausedSet(paused, true);
+        paused = true;
+    }
+
+    function unpause() external {
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PausedSet(paused, false);
+        paused = false;
+    }
+
+    function pauser() external view returns (address) {
+        return _pauser;
+    }
+
+    function setPauser(address pauser_) external {
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PauserSet(_pauser, pauser_);
+        _pauser = pauser_;
+    }
+}
 
 /**
  * @title Main
  * @notice Collects all mixins.
  */
 // solhint-disable max-states-count
-contract MainP0 is Ownable, Pausable, IMain {
+contract MainP0 is Pausable, IMain {
     using FixLib for Fix;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -25,8 +67,9 @@ contract MainP0 is Ownable, Pausable, IMain {
         // We _think_ these are totally order-independent.
         require(!paused, "paused");
         backingManager.grantAllowances();
-        basketHandler.ensureValidBasket();
-        revenueFurnace.melt();
+        basketHandler.ensureBasket();
+        assetRegistry.forceUpdates();
+        furnace.melt();
         rsrTrader.closeDueAuctions();
         rTokenTrader.closeDueAuctions();
         backingManager.closeDueAuctions();
@@ -46,8 +89,8 @@ contract MainP0 is Ownable, Pausable, IMain {
         require(!initialized, "Already initialized");
         initialized = true;
 
-        setRTokenIssuer(args.core.rTokenIssuer);
-        rTokenIssuer.initComponent(this, args);
+        setIssuer(args.core.issuer);
+        issuer.initComponent(this, args);
 
         setBackingManager(args.core.backingManager);
         backingManager.initComponent(this, args);
@@ -64,10 +107,10 @@ contract MainP0 is Ownable, Pausable, IMain {
         setAssetRegistry(args.core.assetRegistry);
         assetRegistry.initComponent(this, args);
 
-        setRevenueDistributor(args.core.revenueDistributor);
-        revenueDistributor.initComponent(this, args);
+        setDistributor(args.core.distributor);
+        distributor.initComponent(this, args);
 
-        setRevenueFurnace(args.periphery.furnace);
+        setFurnace(args.periphery.furnace);
 
         setMarket(args.periphery.market);
 
@@ -133,22 +176,22 @@ contract MainP0 is Ownable, Pausable, IMain {
         backingManager = val;
     }
 
-    IRTokenIssuer public rTokenIssuer;
+    IIssuer public issuer;
 
-    function setRTokenIssuer(IRTokenIssuer val) public onlyOwner {
-        emit RTokenIssuerSet(rTokenIssuer, val);
-        components.remove(address(rTokenIssuer));
+    function setIssuer(IIssuer val) public onlyOwner {
+        emit IssuerSet(issuer, val);
+        components.remove(address(issuer));
         components.add(address(val));
-        rTokenIssuer = val;
+        issuer = val;
     }
 
-    IRevenueDistributor public revenueDistributor;
+    IDistributor public distributor;
 
-    function setRevenueDistributor(IRevenueDistributor val) public onlyOwner {
-        emit RevenueDistributorSet(revenueDistributor, val);
-        components.remove(address(revenueDistributor));
+    function setDistributor(IDistributor val) public onlyOwner {
+        emit DistributorSet(distributor, val);
+        components.remove(address(distributor));
         components.add(address(val));
-        revenueDistributor = val;
+        distributor = val;
     }
 
     IRevenueTrader public rsrTrader;
@@ -167,11 +210,11 @@ contract MainP0 is Ownable, Pausable, IMain {
 
     // === Non-components ===
 
-    IFurnace public revenueFurnace;
+    IFurnace public furnace;
 
-    function setRevenueFurnace(IFurnace val) public onlyOwner {
-        emit RevenueFurnaceSet(revenueFurnace, val);
-        revenueFurnace = val;
+    function setFurnace(IFurnace val) public onlyOwner {
+        emit FurnaceSet(furnace, val);
+        furnace = val;
     }
 
     IERC20 public rsr;
@@ -191,21 +234,21 @@ contract MainP0 is Ownable, Pausable, IMain {
     // === Claim Adapter Registry ===
     EnumerableSet.AddressSet private _claimAdapters;
 
-    function addClaimAdapter(IClaimAdapter claimAdapter) external override onlyOwner {
+    function addClaimAdapter(IClaimAdapter claimAdapter) external onlyOwner {
         emit ClaimAdapterAdded(claimAdapter);
         _claimAdapters.add(address(claimAdapter));
     }
 
-    function removeClaimAdapter(IClaimAdapter claimAdapter) external override onlyOwner {
+    function removeClaimAdapter(IClaimAdapter claimAdapter) external onlyOwner {
         emit ClaimAdapterRemoved(claimAdapter);
         _claimAdapters.remove(address(claimAdapter));
     }
 
-    function isTrustedClaimAdapter(IClaimAdapter claimAdapter) public view override returns (bool) {
+    function isTrustedClaimAdapter(IClaimAdapter claimAdapter) public view returns (bool) {
         return _claimAdapters.contains(address(claimAdapter));
     }
 
-    function claimAdapters() public view override returns (IClaimAdapter[] memory adapters) {
+    function claimAdapters() public view returns (IClaimAdapter[] memory adapters) {
         adapters = new IClaimAdapter[](_claimAdapters.length());
         for (uint256 i = 0; i < _claimAdapters.length(); i++) {
             adapters[i] = IClaimAdapter(_claimAdapters.at(i));

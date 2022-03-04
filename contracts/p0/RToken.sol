@@ -43,7 +43,7 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
 
     mapping(address => SlowIssuance[]) public issuances;
 
-    Fix public override basketsNeeded; //  {BU}
+    Fix public basketsNeeded; //  {BU}
 
     Fix public issuanceRate; // {%} of RToken supply to issue per block
 
@@ -79,7 +79,7 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
         Fix baskets,
         address[] memory erc20s,
         uint256[] memory deposits
-    ) external override onlyComponent {
+    ) external onlyComponent {
         assert(erc20s.length == deposits.length);
 
         // Calculate the issuance rate if this is the first issue in the block
@@ -90,7 +90,7 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
             );
         }
 
-        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
 
         // Assumption: Main has already deposited the collateral
         SlowIssuance memory iss = SlowIssuance({
@@ -129,14 +129,8 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One end of the range of issuance IDs to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    function cancelIssuances(uint256 endId, bool earliest)
-        external
-        returns (uint256[] memory deposits)
-    {
+    function cancel(uint256 endId, bool earliest) external returns (uint256[] memory deposits) {
         address account = _msgSender();
-
-        // Call state keepers
-        main.poke();
 
         SlowIssuance[] storage queue = issuances[account];
         (uint256 first, uint256 last) = earliest ? (0, endId) : (endId, queue.length);
@@ -158,15 +152,8 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amount of RToken quanta vested
-    function vestIssuances(address account, uint256 endId)
-        external
-        notPaused
-        returns (uint256 vested)
-    {
-        require(
-            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
-            "collateral default"
-        );
+    function vest(address account, uint256 endId) external notPaused returns (uint256 vested) {
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
         main.poke();
 
@@ -191,7 +178,7 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
         address from,
         uint256 amount,
         Fix baskets
-    ) external override onlyComponent {
+    ) external onlyComponent {
         _burn(from, amount);
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
@@ -203,24 +190,24 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
-    function mint(address recipient, uint256 amount) external override onlyComponent {
+    function mint(address recipient, uint256 amount) external onlyComponent {
         _mint(recipient, amount);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amount {qRTok} The amount to be melted
-    function melt(uint256 amount) external override {
+    function melt(uint256 amount) external {
         _burn(_msgSender(), amount);
         emit Melted(amount);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(Fix basketsNeeded_) external override onlyComponent {
+    function setBasketsNeeded(Fix basketsNeeded_) external onlyComponent {
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
 
-    function setMain(IMain main_) external override onlyOwner {
+    function setMain(IMain main_) external onlyOwner {
         emit MainSet(main, main_);
         main = main_;
     }
@@ -229,7 +216,7 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     /// @return issued The total amount of RToken minted
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
         SlowIssuance storage iss = issuances[issuer][index];
-        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
         if (
             !iss.processed &&
             iss.basketNonce == basketNonce &&

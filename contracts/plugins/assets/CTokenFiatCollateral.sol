@@ -58,7 +58,7 @@ contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (Fix) {
+    function price() public view virtual returns (Fix) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         return consultOracle(referenceERC20).mul(refPerTok());
     }

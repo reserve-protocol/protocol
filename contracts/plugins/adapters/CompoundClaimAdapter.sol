@@ -9,7 +9,7 @@ import "contracts/interfaces/IClaimAdapter.sol";
 contract CompoundClaimAdapterP0 is IClaimAdapter {
     IComptroller public immutable comptroller;
 
-    IERC20 public immutable override rewardERC20;
+    IERC20 public immutable rewardERC20;
 
     constructor(IComptroller comptroller_, IERC20 rewardERC20_) {
         comptroller = comptroller_;
@@ -18,12 +18,7 @@ contract CompoundClaimAdapterP0 is IClaimAdapter {
 
     /// @return _to The address to send the call to
     /// @return _calldata The calldata to send
-    function getClaimCalldata(IERC20)
-        external
-        view
-        override
-        returns (address _to, bytes memory _calldata)
-    {
+    function getClaimCalldata(IERC20) external view returns (address _to, bytes memory _calldata) {
         _to = address(comptroller);
         _calldata = abi.encodeWithSignature("claimComp(address)", msg.sender);
     }

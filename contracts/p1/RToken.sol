@@ -67,7 +67,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
 
     mapping(address => IssueQueue) public issueQueues;
 
-    Fix public override basketsNeeded; // {BU}
+    Fix public basketsNeeded; // {BU}
 
     Fix public issuanceRate; // {%} of RToken supply to issue per block
 
@@ -103,7 +103,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         Fix amtBaskets,
         address[] memory erc20s,
         uint256[] memory deposits
-    ) external override onlyComponent {
+    ) external onlyComponent {
         assert(erc20s.length == deposits.length);
         IssueQueue storage queue = issueQueues[account];
 
@@ -155,19 +155,11 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// Callable by anyone!
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amtRToken of RToken quanta vested
-    function vestIssuances(address account, uint256 endId)
-        external
-        notPaused
-        returns (uint256 vested)
-    {
-        require(
-            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
-            "collateral default"
-        );
+    function vest(address account, uint256 endId) external notPaused returns (uint256 vested) {
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
         main.poke();
         refundOldBasketIssues(account);
-
         return vestUpTo(account, endId);
     }
 
@@ -198,10 +190,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    function cancelIssuances(uint256 endId, bool earliest)
-        external
-        returns (uint256[] memory deposits)
-    {
+    function cancel(uint256 endId, bool earliest) external returns (uint256[] memory deposits) {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
@@ -224,7 +213,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         address from,
         uint256 amtRToken,
         Fix amtBaskets
-    ) external override onlyComponent {
+    ) external onlyComponent {
         _burn(from, amtRToken);
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(amtBaskets));
@@ -236,24 +225,24 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
-    function mint(address recipient, uint256 amtRToken) external override onlyComponent {
+    function mint(address recipient, uint256 amtRToken) external onlyComponent {
         _mint(recipient, amtRToken);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
-    function melt(uint256 amtRToken) external override {
+    function melt(uint256 amtRToken) external {
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(Fix basketsNeeded_) external override onlyComponent {
+    function setBasketsNeeded(Fix basketsNeeded_) external onlyComponent {
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
 
-    function setMain(IMain main_) external override onlyOwner {
+    function setMain(IMain main_) external onlyOwner {
         emit MainSet(main, main_);
         main = main_;
     }
@@ -331,7 +320,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// If account's queue models an old basket, refund those issuances.
     function refundOldBasketIssues(address account) private {
         IssueQueue storage queue = issueQueues[account];
-        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
         // ensure that the queue models issuances against the current basket, not previous baskets
         if (queue.basketNonce != basketNonce) {
             refundSpan(account, queue.left, queue.right);

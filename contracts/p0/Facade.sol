@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/interfaces/IExplorerFacade.sol";
+import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/p0/Main.sol";
@@ -12,10 +12,10 @@ import "contracts/p0/RevenueTrader.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title ExplorerFacadeP0
+ * @title FacadeP0
  * @notice A UX-friendly layer that for all the non-governance protocol functions
  */
-contract ExplorerFacadeP0 is IExplorerFacade {
+contract FacadeP0 is IFacade {
     using FixLib for Fix;
 
     MainP0 public main;
@@ -24,39 +24,38 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         main = MainP0(main_);
     }
 
-    function runAuctionsForAllTraders() external override {
+    function runAuctionsForAllTraders() external {
         main.backingManager().manageFunds();
         main.rsrTrader().manageFunds();
         main.rTokenTrader().manageFunds();
     }
 
-    function claimRewards() external override {
+    function claimRewards() external {
         main.backingManager().claimAndSweepRewards();
         main.rsrTrader().claimAndSweepRewards();
         main.rTokenTrader().claimAndSweepRewards();
         main.rToken().claimAndSweepRewards();
     }
 
-    function doFurnaceMelting() external override {
-        main.revenueFurnace().melt();
+    function doFurnaceMelting() external {
+        main.furnace().melt();
     }
 
-    function ensureValidBasket() external override {
-        main.basketHandler().ensureValidBasket();
+    function ensureBasket() external {
+        main.basketHandler().ensureBasket();
     }
 
     /// @return How many RToken `account` can issue given current holdings
-    function maxIssuable(address account) external view override returns (uint256) {
-        return main.rTokenIssuer().maxIssuable(account);
+    function maxIssuable(address account) external view returns (uint256) {
+        return main.issuer().maxIssuable(account);
     }
 
     function currentBacking()
         external
         view
-        override
         returns (address[] memory tokens, uint256[] memory quantities)
     {
-        tokens = main.rTokenIssuer().basketTokens();
+        tokens = main.basketHandler().tokens();
         quantities = new uint256[](tokens.length);
 
         for (uint256 j = 0; j < tokens.length; j++) {
@@ -65,11 +64,11 @@ contract ExplorerFacadeP0 is IExplorerFacade {
     }
 
     /// @return total {UoA} An estimate of the total value of all assets held
-    function totalAssetValue() external view override returns (Fix total) {
+    function totalAssetValue() external view returns (Fix total) {
         IAssetRegistry reg = main.assetRegistry();
         address backingManager = address(main.backingManager());
 
-        IERC20[] memory erc20s = reg.registeredERC20s();
+        IERC20[] memory erc20s = reg.erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
             IAsset asset = reg.toAsset(erc20s[i]);
             // Exclude collateral that has defaulted

@@ -21,7 +21,7 @@ import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { ExplorerFacadeP0 } from '../../typechain/ExplorerFacadeP0'
+import { FacadeP0 } from '../../typechain/FacadeP0'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { MarketMock } from '../../typechain/MarketMock'
@@ -36,8 +36,8 @@ import {
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
-  RTokenIssuerP0,
-  RevenueDistributorP0,
+  IssuerP0,
+  DistributorP0,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
@@ -151,12 +151,12 @@ describe('MainP0 contract', () => {
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
-  let facade: ExplorerFacadeP0
+  let facade: FacadeP0
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let rTokenIssuer: RTokenIssuerP0
-  let revenueDistributor: RevenueDistributorP0
+  let issuer: IssuerP0
+  let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -166,10 +166,7 @@ describe('MainP0 contract', () => {
     quantities: BigNumber[]
   }
 
-  const expectCurrentBacking = async (
-    facade: ExplorerFacadeP0,
-    backingInfo: Partial<IBackingInfo>
-  ) => {
+  const expectCurrentBacking = async (facade: FacadeP0, backingInfo: Partial<IBackingInfo>) => {
     const { tokens, quantities } = await facade.currentBacking()
 
     expect(tokens).to.eql(backingInfo.tokens)
@@ -214,8 +211,8 @@ describe('MainP0 contract', () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      rTokenIssuer,
-      revenueDistributor,
+      issuer,
+      distributor,
     } = await loadFixture(defaultFixture))
     token0 = erc20s[collateral.indexOf(basket[0])]
     token1 = erc20s[collateral.indexOf(basket[1])]
@@ -275,20 +272,20 @@ describe('MainP0 contract', () => {
         )
 
         // Provide approvals
-        await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await backupToken1.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await backupToken2.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token0.connect(addr1).approve(issuer.address, initialBal)
+        await token1.connect(addr1).approve(issuer.address, initialBal)
+        await token2.connect(addr1).approve(issuer.address, initialBal)
+        await token3.connect(addr1).approve(issuer.address, initialBal)
+        await backupToken1.connect(addr1).approve(issuer.address, initialBal)
+        await backupToken2.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue rTokens
-        await rTokenIssuer.connect(addr1).issue(issueAmount)
+        await issuer.connect(addr1).issue(issueAmount)
       })
 
       it('Should select backup config correctly - Single backup token', async () => {
         // Register Collateral
-        await assetRegistry.connect(owner).registerAsset(backupCollateral1.address)
+        await assetRegistry.connect(owner).register(backupCollateral1.address)
 
         // Set backup configuration - USDT as backup
         await basketHandler
@@ -296,13 +293,13 @@ describe('MainP0 contract', () => {
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
 
         // Check initial state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking(facade, {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token0 to default - 50% price reduction
@@ -312,9 +309,9 @@ describe('MainP0 contract', () => {
         await collateral1.forceUpdates()
 
         // Check state - No changes
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.IFFY)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
-        // quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
+        // quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
         // expect(quotes).to.eql(initialQuotes)
         await expectCurrentBacking(facade, {
           tokens: initialTokens,
@@ -322,7 +319,7 @@ describe('MainP0 contract', () => {
         })
 
         // Basket should not switch yet
-        await expect(basketHandler.ensureValidBasket()).to.not.emit(basketHandler, 'BasketSet')
+        await expect(basketHandler.ensureBasket()).to.not.emit(basketHandler, 'BasketSet')
 
         // Advance time post delayUntilDefault
         await advanceTime((await collateral1.delayUntilDefault()).toString())
@@ -331,7 +328,7 @@ describe('MainP0 contract', () => {
         await collateral1.forceUpdates()
 
         // Check state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.DISABLED)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(bn('75e18')) // 25% defaulted, value = 0
         await expectCurrentBacking(facade, {
@@ -340,23 +337,23 @@ describe('MainP0 contract', () => {
         })
 
         // Basket should switch
-        await expect(basketHandler.ensureValidBasket()).to.emit(basketHandler, 'BasketSet')
+        await expect(basketHandler.ensureBasket()).to.emit(basketHandler, 'BasketSet')
 
         // Check state - Basket switch
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking(facade, {
           tokens: [initialTokens[0], initialTokens[2], initialTokens[3], backupToken1.address],
           quantities: [initialQuantities[0], initialQuantities[2], initialQuantities[3], bn('0')],
         })
-        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[2], initialQuotes[3], bn('0.25e18')])
       })
 
       it('Should select backup config correctly - Multiple backup tokens', async () => {
         // Register Collateral
-        await assetRegistry.connect(owner).registerAsset(backupCollateral1.address)
-        await assetRegistry.connect(owner).registerAsset(backupCollateral2.address)
+        await assetRegistry.connect(owner).register(backupCollateral1.address)
+        await assetRegistry.connect(owner).register(backupCollateral2.address)
 
         // Set backup configuration - USDT and cUSDT as backup
         await basketHandler
@@ -367,13 +364,13 @@ describe('MainP0 contract', () => {
           ])
 
         // Check initial state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking(facade, {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token2 to hard default - Decrease rate
@@ -381,10 +378,10 @@ describe('MainP0 contract', () => {
 
         // Basket should switch as default is detected immediately
         // Perform via facade (same result)
-        await expect(facade.ensureValidBasket()).to.emit(basketHandler, 'BasketSet')
+        await expect(facade.ensureBasket()).to.emit(basketHandler, 'BasketSet')
 
         // Check state - Basket switch
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking(facade, {
           tokens: [
@@ -402,7 +399,7 @@ describe('MainP0 contract', () => {
             bn('0'),
           ],
         })
-        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([
           initialQuotes[0],
           initialQuotes[1],
@@ -414,7 +411,7 @@ describe('MainP0 contract', () => {
 
       it('Should replace ATokens/CTokens if underlying erc20 defaults', async () => {
         // Register Collateral
-        await assetRegistry.connect(owner).registerAsset(backupCollateral1.address)
+        await assetRegistry.connect(owner).register(backupCollateral1.address)
 
         // Set backup configuration - USDT as backup
         await basketHandler
@@ -422,13 +419,13 @@ describe('MainP0 contract', () => {
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
 
         // Check initial state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking(facade, {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token0 to default - 50% price reduction
@@ -439,7 +436,7 @@ describe('MainP0 contract', () => {
         await collateral0.forceUpdates()
 
         // Check state - No changes
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.IFFY)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking(facade, {
           tokens: initialTokens,
@@ -447,22 +444,22 @@ describe('MainP0 contract', () => {
         })
 
         // Basket should not switch yet
-        await expect(basketHandler.ensureValidBasket()).to.not.emit(basketHandler, 'BasketSet')
+        await expect(basketHandler.ensureBasket()).to.not.emit(basketHandler, 'BasketSet')
 
         // Advance time post delayUntilDefault
         await advanceTime((await collateral0.delayUntilDefault()).toString())
 
         // Basket should switch, default is confirmed
-        await expect(basketHandler.ensureValidBasket()).to.emit(basketHandler, 'BasketSet')
+        await expect(basketHandler.ensureBasket()).to.emit(basketHandler, 'BasketSet')
 
         // Check state - Basket switch
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking(facade, {
           tokens: [initialTokens[1], backupToken1.address],
           quantities: [initialQuantities[1], bn('0')],
         })
-        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[1], bn('0.75e18')])
       })
 
@@ -476,29 +473,29 @@ describe('MainP0 contract', () => {
           ])
 
         // Check initial state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking(facade, {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token3 to hard default - Decrease rate (cDai)
         await token3.setExchangeRate(fp('0.8'))
 
         // Basket should switch as default is detected immediately
-        await expect(basketHandler.ensureValidBasket()).to.emit(basketHandler, 'BasketSet')
+        await expect(basketHandler.ensureBasket()).to.emit(basketHandler, 'BasketSet')
 
         // Check state - Basket switch
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking(facade, {
           tokens: [initialTokens[0], initialTokens[1], initialTokens[2]],
           quantities: [initialQuantities[0], initialQuantities[1], initialQuantities[2]],
         })
-        quotes = await rTokenIssuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
         // Incremented the weight for token0
         expect(quotes).to.eql([bn('0.5e18'), initialQuotes[1], initialQuotes[2]])
       })
@@ -518,10 +515,10 @@ describe('MainP0 contract', () => {
         await basketHandler.connect(owner).switchBasket()
 
         // Provide approvals
-        await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token0.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue rTokens
-        await rTokenIssuer.connect(addr1).issue(issueAmount)
+        await issuer.connect(addr1).issue(issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -532,7 +529,7 @@ describe('MainP0 contract', () => {
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
         // Check initial state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
@@ -540,7 +537,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         // Switch Basket
         await expect(basketHandler.connect(owner).switchBasket()).to.emit(
@@ -549,14 +546,14 @@ describe('MainP0 contract', () => {
         )
 
         // Check state remains SOUND
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         // Trigger recapitalization
         let sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -584,7 +581,7 @@ describe('MainP0 contract', () => {
         })
 
         // Check state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
         expect(await facade.totalAssetValue()).to.equal(0)
@@ -593,7 +590,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         // Check Market
         expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
@@ -628,7 +625,7 @@ describe('MainP0 contract', () => {
         await expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
 
         // Check state - Order restablished
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
@@ -638,7 +635,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
       })
 
       it('Should recapitalize correctly when switching basket - Taking Haircut - No RSR', async () => {
@@ -646,7 +643,7 @@ describe('MainP0 contract', () => {
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
         // Check initial state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
@@ -654,7 +651,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         // Switch Basket
         await expect(basketHandler.connect(owner).switchBasket()).to.emit(
@@ -663,14 +660,14 @@ describe('MainP0 contract', () => {
         )
 
         // Check state remains SOUND
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         // Trigger recapitalization
         let sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -698,7 +695,7 @@ describe('MainP0 contract', () => {
         })
 
         // Check state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
         expect(await facade.totalAssetValue()).to.equal(0)
@@ -706,7 +703,7 @@ describe('MainP0 contract', () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         // Check Market
         expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
@@ -739,7 +736,7 @@ describe('MainP0 contract', () => {
         await expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
 
         // Check state - Haircut taken, price of RToken has been reduced
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(minBuyAmt)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
@@ -747,7 +744,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
 
         //  Check price in USD of the current RToken - Haircut of 10% taken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('0.99'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('0.99'))
       })
 
       it('Should recapitalize correctly when switching basket - Using RSR for remainder', async () => {
@@ -755,7 +752,7 @@ describe('MainP0 contract', () => {
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
         // Check initial state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
@@ -763,7 +760,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         // Perform stake
         const stkAmount: BigNumber = bn('100e18')
@@ -781,7 +778,7 @@ describe('MainP0 contract', () => {
         )
 
         // Check state remains SOUND
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
@@ -789,7 +786,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         // Trigger recapitalization
         let sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -817,7 +814,7 @@ describe('MainP0 contract', () => {
         })
 
         // Check state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
         expect(await facade.totalAssetValue()).to.equal(0)
@@ -826,7 +823,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         // Check Market
         expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
@@ -880,14 +877,14 @@ describe('MainP0 contract', () => {
         })
 
         // Check state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(toBNDecimals(minBuyAmt, 6))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         // Check Market
         expect(await rsr.balanceOf(market.address)).to.equal(sellAmtRSR)
@@ -920,7 +917,7 @@ describe('MainP0 contract', () => {
         await expectAuctionStatus(backingManager, 1, AuctionStatus.DONE)
 
         // Check state - Order restablished
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(
@@ -929,12 +926,12 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
       })
 
       it('Should recapitalize correctly in case of default - Taking Haircut - No RSR', async () => {
         // Register Collateral
-        await assetRegistry.connect(owner).registerAsset(backupCollateral1.address)
+        await assetRegistry.connect(owner).register(backupCollateral1.address)
 
         // Set backup configuration - USDT as backup
         await basketHandler
@@ -942,7 +939,7 @@ describe('MainP0 contract', () => {
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
 
         // Check initial state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
@@ -950,7 +947,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         // Set Token0 to default - 50% price reduction
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
@@ -963,20 +960,20 @@ describe('MainP0 contract', () => {
 
         // Mark default as probable
         await collateral0.forceUpdates()
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.IFFY)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
 
         // Advance time post delayUntilDefault
         await advanceTime((await collateral0.delayUntilDefault()).toString())
 
         // Confirm default
         await collateral0.forceUpdates()
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.DISABLED)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
         // Ensure valid basket
-        await basketHandler.ensureValidBasket()
+        await basketHandler.ensureBasket()
 
         // Check new state after basket switch
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         // Asset value is zero, the only collateral held is defaulted
         expect(await facade.totalAssetValue()).to.equal(0)
@@ -985,7 +982,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RTokenc- Remains the same
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         // Running auctions will trigger recapitalization - All balance will be redeemed
         let sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -1020,7 +1017,7 @@ describe('MainP0 contract', () => {
         await expectAuctionStatus(backingManager, 0, AuctionStatus.OPEN)
 
         // Check state
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         // Asset value is zero, the only collateral held is defaulted
         expect(await facade.totalAssetValue()).to.equal(0)
@@ -1029,7 +1026,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken - Reduced 50%
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
 
         //  Perform Mock Bids for the new Token (addr1 has balance)
         //  Assume fair price, get half of the tokens (because price reduction was 50%)
@@ -1054,7 +1051,7 @@ describe('MainP0 contract', () => {
         await expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
 
         // Check state - Haircut taken, price of RToken has been reduced
-        expect(await basketHandler.worstCollateralStatus()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(minBuyAmt)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
@@ -1062,7 +1059,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
 
         //  Check price in USD of the current RToken - Haircut of 50% taken
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1').div(2))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1').div(2))
       })
 
       // it('Should recapitalize correctly in case of default - Using RSR for remainder', async () => {
@@ -1444,13 +1441,13 @@ describe('MainP0 contract', () => {
         issueAmount = bn('100e18')
 
         // Provide approvals
-        await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token0.connect(addr1).approve(issuer.address, initialBal)
+        await token1.connect(addr1).approve(issuer.address, initialBal)
+        await token2.connect(addr1).approve(issuer.address, initialBal)
+        await token3.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue rTokens
-        await rTokenIssuer.connect(addr1).issue(issueAmount)
+        await issuer.connect(addr1).issue(issueAmount)
       })
 
       it.skip('Should recapitalize correctly when basket changes', async () => {

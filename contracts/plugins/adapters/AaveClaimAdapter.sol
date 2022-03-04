@@ -7,7 +7,7 @@ import "contracts/interfaces/IClaimAdapter.sol";
 
 /// Claim adapter for the Compound protocol
 contract AaveClaimAdapterP0 is IClaimAdapter {
-    IERC20 public immutable override rewardERC20;
+    IERC20 public immutable rewardERC20;
 
     constructor(IERC20 rewardERC20_) {
         rewardERC20 = rewardERC20_;
@@ -18,7 +18,6 @@ contract AaveClaimAdapterP0 is IClaimAdapter {
     function getClaimCalldata(IERC20 erc20)
         external
         pure
-        override
         returns (address _to, bytes memory _calldata)
     {
         _to = address(erc20); // this should be a StaticAToken

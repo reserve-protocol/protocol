@@ -16,11 +16,11 @@ contract AaveOracleMockP0 is IAaveOracle {
         _prices[token] = price_;
     }
 
-    function WETH() external view override returns (address) {
+    function WETH() external view returns (address) {
         return _weth;
     }
 
-    function getAssetPrice(address token) external view override returns (uint256) {
+    function getAssetPrice(address token) external view returns (uint256) {
         return _prices[token];
     }
 }

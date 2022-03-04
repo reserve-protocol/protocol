@@ -10,7 +10,7 @@ contract AaveLendingAddrProviderMockP0 is ILendingPoolAddressesProvider {
         _aaveOracle = IAaveOracle(aaveOracleAddress);
     }
 
-    function getPriceOracle() external view override returns (IAaveOracle) {
+    function getPriceOracle() external view returns (IAaveOracle) {
         return _aaveOracle;
     }
 }

@@ -10,7 +10,7 @@ import {
   ComptrollerMockP0,
   DeployerP0,
   ERC20Mock,
-  ExplorerFacadeP0,
+  FacadeP0,
   FurnaceP0,
   MainP0,
   MarketMock,
@@ -20,8 +20,8 @@ import {
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
-  RTokenIssuerP0,
-  RevenueDistributorP0,
+  IssuerP0,
+  DistributorP0,
 } from '../../typechain'
 import { defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
@@ -59,12 +59,12 @@ describe('DeployerP0 contract', () => {
   let furnace: FurnaceP0
   let main: MainP0
 
-  let facade: ExplorerFacadeP0
+  let facade: FacadeP0
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let rTokenIssuer: RTokenIssuerP0
-  let revenueDistributor: RevenueDistributorP0
+  let issuer: IssuerP0
+  let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -94,8 +94,8 @@ describe('DeployerP0 contract', () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      rTokenIssuer,
-      revenueDistributor,
+      issuer,
+      distributor,
       rToken,
       rTokenAsset,
       furnace,
@@ -148,16 +148,16 @@ describe('DeployerP0 contract', () => {
       expect(await main.rToken()).to.equal(rToken.address)
 
       // Check assets/collateral
-      const erc20s = await assetRegistry.registeredERC20s()
+      const erc20s = await assetRegistry.erc20s()
       expect(await assetRegistry.toAsset(erc20s[0])).to.equal(rTokenAsset.address)
       expect(await assetRegistry.toAsset(erc20s[1])).to.equal(rsrAsset.address)
       expect(await assetRegistry.toAsset(erc20s[2])).to.equal(aaveAsset.address)
       expect(await assetRegistry.toAsset(erc20s[3])).to.equal(compAsset.address)
-      expect(erc20s.length).to.eql((await rTokenIssuer.basketTokens()).length + 4)
+      expect(erc20s.length).to.eql((await basketHandler.tokens()).length + 4)
 
       // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)
-      expect(await main.revenueFurnace()).to.equal(furnace.address)
+      expect(await main.furnace()).to.equal(furnace.address)
 
       // TODO: test this for all components
       expect(await main.hasComponent(assetRegistry.address)).to.equal(true)

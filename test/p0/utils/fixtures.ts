@@ -23,14 +23,14 @@ import { CompoundPricedAssetP0 } from '../../../typechain/CompoundPricedAssetP0'
 import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
 import { DeployerP0 } from '../../../typechain/DeployerP0'
 import { ERC20Mock } from '../../../typechain/ERC20Mock'
-import { ExplorerFacadeP0 } from '../../../typechain/ExplorerFacadeP0'
+import { FacadeP0 } from '../../../typechain/FacadeP0'
 import { FurnaceP0 } from '../../../typechain/FurnaceP0'
 import { MainP0 } from '../../../typechain/MainP0'
 import { MarketMock } from '../../../typechain/MarketMock'
 import { RTokenAssetP0 } from '../../../typechain/RTokenAssetP0'
-import { RTokenIssuerP0 } from '../../../typechain/RTokenIssuerP0'
+import { IssuerP0 } from '../../../typechain/IssuerP0'
 import { RTokenP0 } from '../../../typechain/RTokenP0'
-import { RevenueDistributorP0 } from '../../../typechain/RevenueDistributorP0'
+import { DistributorP0 } from '../../../typechain/DistributorP0'
 import { RevenueTraderP0 } from '../../../typechain/RevenueTraderP0'
 import { SettingsP0 } from '../../../typechain/SettingsP0'
 import { StRSRP0 } from '../../../typechain/StRSRP0'
@@ -322,8 +322,8 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   assetRegistry: AssetRegistryP0
   backingManager: BackingManagerP0
   basketHandler: BasketHandlerP0
-  rTokenIssuer: RTokenIssuerP0
-  revenueDistributor: RevenueDistributorP0
+  issuer: IssuerP0
+  distributor: DistributorP0
   rsrAsset: AssetP0
   compAsset: AssetP0
   aaveAsset: AssetP0
@@ -331,7 +331,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   rTokenAsset: RTokenAssetP0
   furnace: FurnaceP0
   stRSR: StRSRP0
-  facade: ExplorerFacadeP0
+  facade: FacadeP0
   compoundClaimer: CompoundClaimAdapterP0
   aaveClaimer: AaveClaimAdapterP0
   rsrTrader: RevenueTraderP0
@@ -402,11 +402,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const basketHandler: BasketHandlerP0 = <BasketHandlerP0>(
     await ethers.getContractAt('BasketHandlerP0', await main.basketHandler())
   )
-  const rTokenIssuer: RTokenIssuerP0 = <RTokenIssuerP0>(
-    await ethers.getContractAt('RTokenIssuerP0', await main.rTokenIssuer())
-  )
-  const revenueDistributor: RevenueDistributorP0 = <RevenueDistributorP0>(
-    await ethers.getContractAt('RevenueDistributorP0', await main.revenueDistributor())
+  const issuer: IssuerP0 = <IssuerP0>await ethers.getContractAt('IssuerP0', await main.issuer())
+  const distributor: DistributorP0 = <DistributorP0>(
+    await ethers.getContractAt('DistributorP0', await main.distributor())
   )
 
   const compoundClaimer = <CompoundClaimAdapterP0>(
@@ -435,13 +433,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
 
   const furnace: FurnaceP0 = <FurnaceP0>(
-    await ethers.getContractAt('FurnaceP0', await main.revenueFurnace())
+    await ethers.getContractAt('FurnaceP0', await main.furnace())
   )
   const stRSR: StRSRP0 = <StRSRP0>await ethers.getContractAt('StRSRP0', await main.stRSR())
 
-  const facade: ExplorerFacadeP0 = <ExplorerFacadeP0>(
-    await ethers.getContractAt('ExplorerFacadeP0', facadeAddr)
-  )
+  const facade: FacadeP0 = <FacadeP0>await ethers.getContractAt('FacadeP0', facadeAddr)
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
@@ -482,7 +478,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Register prime collateral
   const basketERC20s = []
   for (let i = 0; i < basket.length; i++) {
-    await assetRegistry.connect(owner).registerAsset(basket[i].address)
+    await assetRegistry.connect(owner).register(basket[i].address)
     basketERC20s.push(await basket[i].erc20())
   }
 
@@ -516,8 +512,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     assetRegistry,
     backingManager,
     basketHandler,
-    rTokenIssuer,
-    revenueDistributor,
+    issuer,
+    distributor,
     rToken,
     rTokenAsset,
     furnace,

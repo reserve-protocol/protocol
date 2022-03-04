@@ -16,7 +16,7 @@ abstract contract RewardableP0 is Component, IRewardable {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    function claimAndSweepRewards() external override {
+    function claimAndSweepRewards() external {
         // Call state keepers before collective actions
         main.poke();
 
@@ -30,7 +30,7 @@ abstract contract RewardableP0 is Component, IRewardable {
 
         // Claim rewards for all registered collateral
         IAssetRegistry reg = main.assetRegistry();
-        IERC20[] memory erc20s = reg.registeredERC20s();
+        IERC20[] memory erc20s = reg.erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
             if (!reg.toAsset(erc20s[i]).isCollateral()) continue;
 

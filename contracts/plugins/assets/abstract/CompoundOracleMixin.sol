@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/libraries/CommonErrors.sol";
+import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
 
 // ==== External Interfaces  ====
@@ -35,7 +35,7 @@ abstract contract CompoundOracleMixinP0 {
 
         uint256 p = comptroller.oracle().price(erc20.symbol());
         if (p == 0) {
-            revert CommonErrors.PriceIsZero(erc20.symbol());
+            revert PriceIsZero(erc20.symbol());
         }
 
         // {UoA/tok} = {microUoA/tok} / {microUoA/UoA}

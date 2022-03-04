@@ -90,19 +90,11 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     BasketConfig private config;
     Basket private basket;
 
-    /// Try to ensure a new valid basket
-    function ensureValidBasket() external override notPaused {
-        // Force updates for *all* collateral that could be swapped into the basket
-        IAssetRegistry reg = main.assetRegistry();
-        IERC20[] memory erc20s = reg.registeredERC20s();
+    /// Try to ensure the current basket is valid, switching it if necessary
+    function ensureBasket() external notPaused {
+        main.assetRegistry().forceUpdates();
 
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            if (reg.toAsset(erc20s[i]).isCollateral()) {
-                reg.toColl(erc20s[i]).forceUpdates();
-            }
-        }
-
-        if (worstCollateralStatus() == CollateralStatus.DISABLED) {
+        if (status() == CollateralStatus.DISABLED) {
             _switchBasket();
         }
     }
@@ -110,11 +102,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    function setPrimeBasket(IERC20[] memory erc20s, Fix[] memory targetAmts)
-        public
-        override
-        onlyOwner
-    {
+    function setPrimeBasket(IERC20[] memory erc20s, Fix[] memory targetAmts) public onlyOwner {
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
@@ -134,7 +122,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         bytes32 targetName,
         uint256 max,
         IERC20[] memory erc20s
-    ) public override onlyOwner {
+    ) public onlyOwner {
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
 
@@ -146,24 +134,24 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     }
 
     /// @return true if we registered a change in the underlying reference basket
-    function switchBasket() external override onlyOwner returns (bool) {
+    function switchBasket() external onlyOwner returns (bool) {
         return _switchBasket();
     }
 
     /// @return Whether it holds enough basket units of collateral
-    function fullyCapitalized() external view override returns (bool) {
+    function fullyCapitalized() external view returns (bool) {
         return basketsHeldBy(address(main.backingManager())).gte(main.rToken().basketsNeeded());
     }
 
     /// @return nonce The current basket nonce
     /// @return timestamp The timestamp when the basket was last set
-    function basketLastSet() external view override returns (uint256 nonce, uint256 timestamp) {
+    function lastSet() external view returns (uint256 nonce, uint256 timestamp) {
         nonce = basket.nonce;
         timestamp = basket.timestamp;
     }
 
-    /// @return status The maximum CollateralStatus among basket collateral
-    function worstCollateralStatus() public view override returns (CollateralStatus status) {
+    /// @return status_ The maximum CollateralStatus among basket collateral
+    function status() public view returns (CollateralStatus status_) {
         IAssetRegistry reg = main.assetRegistry();
 
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
@@ -172,9 +160,9 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             if (!reg.isRegistered(erc20)) statusI = CollateralStatus.DISABLED;
             else statusI = reg.toColl(erc20).status();
 
-            if (uint256(statusI) > uint256(status)) {
-                status = statusI;
-                if (status == CollateralStatus.DISABLED) return status;
+            if (uint256(statusI) > uint256(status_)) {
+                status_ = statusI;
+                if (status_ == CollateralStatus.DISABLED) return status_;
             }
         }
     }
@@ -182,7 +170,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     // ==== Internal ====
 
     /// @return {qTok/BU} The quantity of collateral in the basket
-    function basketQuantity(IERC20 erc20) public view returns (Fix) {
+    function quantity(IERC20 erc20) public view returns (Fix) {
         IAssetRegistry reg = main.assetRegistry();
         if (!reg.isRegistered(erc20) || !reg.toAsset(erc20).isCollateral()) return FIX_ZERO;
         ICollateral coll = reg.toColl(erc20);
@@ -192,7 +180,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
-    function basketPrice() public view returns (Fix p) {
+    function price() public view returns (Fix p) {
         IAssetRegistry reg = main.assetRegistry();
 
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
@@ -201,7 +189,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
             if (reg.isRegistered(erc20) && coll.status() != CollateralStatus.DISABLED) {
                 // {UoA/BU} = {UoA/BU} + {UoA/tok} * {qTok/BU} / {qTok/tok}
-                p = p.plus(coll.fromQ(coll.price().mul(basketQuantity(erc20))));
+                p = p.plus(coll.fromQ(coll.price().mul(quantity(erc20))));
             }
         }
     }
@@ -209,7 +197,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
-    function basketQuote(Fix amount, RoundingApproach rounding)
+    function quote(Fix amount, RoundingApproach rounding)
         public
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
@@ -218,9 +206,14 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         quantities = new uint256[](basket.erc20s.length);
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             // {qTok} = {BU} * {qTok/BU}
-            quantities[i] = amount.mul(basketQuantity(basket.erc20s[i])).toUint(rounding);
+            quantities[i] = amount.mul(quantity(basket.erc20s[i])).toUint(rounding);
             erc20s[i] = address(basket.erc20s[i]);
         }
+    }
+
+    /// @return tokens_ The addresses of the ERC20s backing the RToken
+    function tokens() public view returns (address[] memory tokens_) {
+        (tokens_, ) = quote(FIX_ONE, RoundingApproach.ROUND);
     }
 
     /// @return baskets {BU} The balance of basket units held by `account`
@@ -228,7 +221,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         baskets = FIX_MAX;
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             Fix bal = toFix(basket.erc20s[i].balanceOf(account)); // {qTok}
-            Fix q = basketQuantity(basket.erc20s[i]); // {qTok/BU}
+            Fix q = quantity(basket.erc20s[i]); // {qTok/BU}
 
             // baskets {BU} = bal {qTok} / q {qTok/BU}
             if (q.gt(FIX_ZERO)) baskets = fixMin(baskets, bal.div(q));

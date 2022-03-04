@@ -8,7 +8,7 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/Component.sol";
 
-contract RevenueDistributorP0 is Component, IRevenueDistributor {
+contract DistributorP0 is Component, IDistributor {
     using SafeERC20 for IERC20;
     using FixLib for Fix;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -28,8 +28,8 @@ contract RevenueDistributorP0 is Component, IRevenueDistributor {
     }
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
-    /// main.revenueFurnace() and main.stRSR().
-    function setDistribution(address dest, RevenueShare memory share) external override onlyOwner {
+    /// main.furnace() and main.stRSR().
+    function setDistribution(address dest, RevenueShare memory share) external onlyOwner {
         _setDistribution(dest, share);
     }
 
@@ -40,7 +40,7 @@ contract RevenueDistributorP0 is Component, IRevenueDistributor {
         IERC20 erc20,
         address from,
         uint256 amount
-    ) external override {
+    ) external {
         IERC20 rsr = main.rsr();
 
         require(erc20 == rsr || erc20 == main.rToken(), "RSR or RToken");
@@ -67,7 +67,7 @@ contract RevenueDistributorP0 is Component, IRevenueDistributor {
             }
 
             if (addrTo == FURNACE) {
-                addrTo = address(main.revenueFurnace());
+                addrTo = address(main.furnace());
             } else if (addrTo == ST_RSR) {
                 addrTo = address(main.stRSR());
             }
