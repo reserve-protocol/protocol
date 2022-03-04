@@ -12,6 +12,7 @@ import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/Rewardable.sol";
+import "hardhat/console.sol";
 
 struct SlowIssuance {
     address issuer;
@@ -177,8 +178,18 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     function endIdForVest(address account) public view returns (uint256) {
         uint256 i;
         Fix currBlock = toFix(block.number);
+        console.log("block.number: %d", block.number);
         SlowIssuance[] storage queue = issuances[account];
-        while (i < queue.length && queue[i].blockAvailableAt.lte(currBlock)) i++;
+        console.log("queue.length: %d", queue.length);
+
+        console.log("queue[0].blockAvailableAt: %d", queue[0].blockAvailableAt.floor());
+
+        while (i < queue.length && queue[i].blockAvailableAt.lte(currBlock)) {
+            i++;
+            if (i < queue.length) {
+                console.log("queue[%d].blockAvailableAt: %d", i, queue[0].blockAvailableAt.floor());
+            }
+        }
         return i;
     }
 

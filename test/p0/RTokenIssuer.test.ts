@@ -34,7 +34,7 @@ import {
   RevenueDistributorP0,
   USDCMock,
 } from '../../typechain'
-import { advanceTime, getLatestBlockNumber } from '../utils/time'
+import { advanceTime, advanceBlocks, getLatestBlockNumber } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -226,7 +226,7 @@ describe('RTokenIssuerP0 contract', () => {
       expect(await rToken.totalSupply()).to.equal(bn('0'))
     })
 
-    it.only('Should issue RTokens with single basket token', async function () {
+    it('Should issue RTokens with single basket token', async function () {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
 
       // Set basket
@@ -269,6 +269,7 @@ describe('RTokenIssuerP0 contract', () => {
       expect(sm_proc).to.equal(false)
 
       // Process issuance
+      await advanceBlocks(17)
       let endID = await rToken.endIdForVest(addr1.address)
       expect(endID).to.equal(1)
       await rToken.vestIssuances(addr1.address, 1)
@@ -356,6 +357,7 @@ describe('RTokenIssuerP0 contract', () => {
       await token1.connect(addr2).approve(rTokenIssuer.address, initialBal)
       await token2.connect(addr2).approve(rTokenIssuer.address, initialBal)
       await token3.connect(addr2).approve(rTokenIssuer.address, initialBal)
+      advanceBlocks(1)
       await rToken.vestIssuances(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
@@ -398,6 +400,7 @@ describe('RTokenIssuerP0 contract', () => {
       expect(sm_proc).to.equal(false)
 
       // Complete 2nd issuance
+      advanceBlocks(1)
       await rToken.vestIssuances(addr2.address, await rToken.endIdForVest(addr2.address))
 
       // Check issuance is confirmed
@@ -576,7 +579,8 @@ describe('RTokenIssuerP0 contract', () => {
       ).to.equal(0)
       await rToken.vestIssuances(addr1.address, await rToken.endIdForVest(addr1.address))
 
-      // Check previous minting was not processed[, , , , , sm_proc] = await rToken.issuances(addr1.address, 1)
+      // Check previous minting was not processed
+      // [, , , , , sm_proc] = await rToken.issuances(addr1.address, 1)
       expect(sm_proc).to.equal(false)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -586,6 +590,7 @@ describe('RTokenIssuerP0 contract', () => {
       expect(await facade.totalAssetValue()).to.equal(issueAmount)
 
       // Process slow mintings one more time
+      advanceBlocks(1)
       await rToken.vestIssuances(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
@@ -615,22 +620,22 @@ describe('RTokenIssuerP0 contract', () => {
       await rTokenIssuer.connect(addr1).issue(newIssueAmount)
       await rTokenIssuer.connect(addr1).issue(newIssueAmount)
 
-      // Process remaining 2, blocks for first issuance (3 already processed by issue calls)
-      await advanceTime(100)
-      await rToken.vestIssuances(addr1.address, await rToken.endIdForVest(addr1.address))
+      // Mine remaining block for first issuance (3 already automined by issue calls, this )
+      await advanceBlocks(1)
+      await rToken.vestIssuances(addr1.address, 1)
 
       // Check first slow minting is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await facade.totalAssetValue()).to.equal(issueAmount)
 
       // Process another block to get the 2nd issuance processed
-      await rToken.vestIssuances(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vestIssuances(addr1.address, 2)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
       expect(await facade.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount))
 
       // Process another block to get the 3rd issuance processed
-      await rToken.vestIssuances(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vestIssuances(addr1.address, 3)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
       expect(await facade.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount.mul(2)))
@@ -654,7 +659,7 @@ describe('RTokenIssuerP0 contract', () => {
       await rTokenIssuer.connect(addr1).issue(issueAmount)
 
       // Mine block
-      await hre.network.provider.send('evm_mine', [])
+      await advanceBlocks(1)
 
       // Check mintings
       // First minting
@@ -731,7 +736,7 @@ describe('RTokenIssuerP0 contract', () => {
       expect(await facade.totalAssetValue()).to.equal(issueAmount)
 
       // Process issuance 2
-      await rToken.vestIssuances(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vestIssuances(addr1.address, 2)
 
       // Check second mintings is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
@@ -768,9 +773,9 @@ describe('RTokenIssuerP0 contract', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Cancel with issuer
-      await expect(rToken.connect(addr1).cancelIssuances(0, true))
+      await expect(rToken.connect(addr1).cancelIssuances(1, true))
         .to.emit(rToken, 'IssuancesCanceled')
-        .withArgs(addr1.address, 0, 0)
+        .withArgs(addr1.address, 0, 1)
 
       // Check minting was cancelled but not tokens minted
       ;[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
@@ -787,7 +792,7 @@ describe('RTokenIssuerP0 contract', () => {
       expect(await facade.totalAssetValue()).to.equal(0)
 
       // Another call will not do anything, will not revert
-      await rToken.connect(addr1).cancelIssuances(0, true)
+      await rToken.connect(addr1).cancelIssuances(1, true)
     })
 
     it('Should rollback mintings if Basket changes (2 blocks)', async function () {
@@ -835,7 +840,7 @@ describe('RTokenIssuerP0 contract', () => {
       // Cancel slow issuances
       await expect(rToken.connect(addr1).cancelIssuances(0, false))
         .to.emit(rToken, 'IssuancesCanceled')
-        .withArgs(addr1.address, 0, 0)
+        .withArgs(addr1.address, 0, 1)
 
       // Check Balances after - Funds returned to minter
       expect(await token0.balanceOf(main.address)).to.equal(0)
