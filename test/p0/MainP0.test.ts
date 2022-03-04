@@ -183,13 +183,9 @@ describe('MainP0 contract', () => {
       expect(await main.market()).to.equal(market.address)
 
       // Configuration
-      let rsrCut = await distributor.rsrCut()
-      expect(rsrCut[0]).to.equal(bn(60))
-      expect(rsrCut[1]).to.equal(bn(100))
-
-      let rTokenCut = await distributor.rTokenCut()
-      expect(rTokenCut[0]).to.equal(bn(40))
-      expect(rTokenCut[1]).to.equal(bn(100))
+      let totals = await distributor.totals()
+      expect(totals.rTokenTotal).to.equal(bn(40))
+      expect(totals.rsrTotal).to.equal(bn(60))
 
       // TODO move check out to individual contract where variable is stored
       // expect(await settings.rewardPeriod()).to.equal(config.rewardPeriod)

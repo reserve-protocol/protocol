@@ -229,24 +229,16 @@ describe('Revenues', () => {
   describe('Config/Setup', function () {
     it('Should setup initial distribution correctly', async () => {
       // Configuration
-      let rsrCut = await distributor.rsrCut()
-      expect(rsrCut.rsrShares).equal(bn(60))
-      expect(rsrCut.totalShares).equal(bn(100))
-
-      let rtokenCut = await distributor.rTokenCut()
-      expect(rtokenCut.rTokenShares).equal(bn(40))
-      expect(rtokenCut.totalShares).equal(bn(100))
+      let totals = await distributor.totals()
+      expect(totals.rsrTotal).equal(bn(60))
+      expect(totals.rTokenTotal).equal(bn(40))
     })
 
     it('Should allow to set distribution if owner', async () => {
       // Check initial status
-      let rsrCut = await distributor.rsrCut()
-      expect(rsrCut.rsrShares).equal(bn(60))
-      expect(rsrCut.totalShares).equal(bn(100))
-
-      let rtokenCut = await distributor.rTokenCut()
-      expect(rtokenCut.rTokenShares).equal(bn(40))
-      expect(rtokenCut.totalShares).equal(bn(100))
+      let totals = await distributor.totals()
+      expect(totals.rsrTotal).equal(bn(60))
+      expect(totals.rTokenTotal).equal(bn(40))
 
       // Attempt to update with another account
       await expect(
@@ -261,13 +253,9 @@ describe('Revenues', () => {
         .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
 
       // Check updated status
-      rsrCut = await distributor.rsrCut()
-      expect(rsrCut.rsrShares).equal(bn(60))
-      expect(rsrCut.totalShares).equal(bn(60))
-
-      rtokenCut = await distributor.rTokenCut()
-      expect(rtokenCut.rTokenShares).equal(bn(0))
-      expect(rtokenCut.totalShares).equal(bn(60))
+      totals = await distributor.totals()
+      expect(totals.rsrTotal).equal(bn(60))
+      expect(totals.rTokenTotal).equal(bn(0))
     })
 
     it('Should perform distribution validations', async () => {

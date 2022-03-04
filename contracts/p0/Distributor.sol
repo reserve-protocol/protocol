@@ -47,7 +47,7 @@ contract DistributorP0 is Component, IDistributor {
         bool isRSR = erc20 == rsr; // if false: isRToken
         uint256 totalShares;
         {
-            (uint256 rTokenTotal, uint256 rsrTotal) = shareTotals();
+            (uint256 rTokenTotal, uint256 rsrTotal) = totals();
             totalShares = isRSR ? rsrTotal : rTokenTotal;
         }
 
@@ -75,20 +75,8 @@ contract DistributorP0 is Component, IDistributor {
         }
     }
 
-    /// Returns the sum of all rsr cuts
-    function rsrCut() external view returns (uint256 rsrShares, uint256 totalShares) {
-        (uint256 rTokenTotal, uint256 rsrTotal) = shareTotals();
-        return (rsrTotal, rsrTotal + rTokenTotal);
-    }
-
-    /// Returns the sum of all rToken cuts
-    function rTokenCut() external view returns (uint256 rTokenShares, uint256 totalShares) {
-        (uint256 rTokenTotal, uint256 rsrTotal) = shareTotals();
-        return (rTokenTotal, rsrTotal + rTokenTotal);
-    }
-
     /// Returns the rsr + rToken shareTotals
-    function shareTotals() private view returns (uint256 rTokenTotal, uint256 rsrTotal) {
+    function totals() public view returns (uint256 rTokenTotal, uint256 rsrTotal) {
         for (uint256 i = 0; i < destinations.length(); i++) {
             RevenueShare storage share = distribution[destinations.at(i)];
             rTokenTotal += share.rTokenDist;

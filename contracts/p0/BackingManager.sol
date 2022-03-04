@@ -92,10 +92,11 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
             uint256 neededI = needed.mul(main.basketHandler().quantity(erc20s[i])).ceil();
 
             if (bal > neededI) {
-                (uint256 rsrShares, uint256 totalShares) = main.distributor().rsrCut();
+                (uint256 rTokenShares, uint256 rsrShares) = main.distributor().totals();
+                uint256 totalShares = rTokenShares + rsrShares;
                 uint256 tokensPerShare = (bal - neededI) / totalShares;
                 uint256 toRSR = tokensPerShare * rsrShares;
-                uint256 toRToken = tokensPerShare * (totalShares - rsrShares);
+                uint256 toRToken = tokensPerShare * rTokenShares;
 
                 if (toRSR > 0) erc20s[i].safeTransfer(address(main.rsrTrader()), toRSR);
                 if (toRToken > 0) erc20s[i].safeTransfer(address(main.rTokenTrader()), toRToken);

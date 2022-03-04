@@ -24,7 +24,5 @@ interface IDistributor is IComponent {
         uint256 amount
     ) external;
 
-    function rsrCut() external view returns (uint256 rsrShares, uint256 totalShares);
-
-    function rTokenCut() external view returns (uint256 rtokenShares, uint256 totalShares);
+    function totals() external view returns (uint256 rTokenTotal, uint256 rsrTotal);
 }
