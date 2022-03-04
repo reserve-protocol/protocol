@@ -65,8 +65,8 @@ contract MainP0 is Ownable, Pausable, IMain {
         setAssetRegistry(args.core.assetRegistry);
         assetRegistry.initComponent(this, args);
 
-        setRevenueDistributor(args.core.revenueDistributor);
-        revenueDistributor.initComponent(this, args);
+        setDistributor(args.core.distributor);
+        distributor.initComponent(this, args);
 
         setRevenueFurnace(args.periphery.furnace);
 
@@ -143,13 +143,13 @@ contract MainP0 is Ownable, Pausable, IMain {
         rTokenIssuer = val;
     }
 
-    IRevenueDistributor public revenueDistributor;
+    IDistributor public distributor;
 
-    function setRevenueDistributor(IRevenueDistributor val) public onlyOwner {
-        emit RevenueDistributorSet(revenueDistributor, val);
-        components.remove(address(revenueDistributor));
+    function setDistributor(IDistributor val) public onlyOwner {
+        emit DistributorSet(distributor, val);
+        components.remove(address(distributor));
         components.add(address(val));
-        revenueDistributor = val;
+        distributor = val;
     }
 
     IRevenueTrader public rsrTrader;
@@ -192,21 +192,21 @@ contract MainP0 is Ownable, Pausable, IMain {
     // === Claim Adapter Registry ===
     EnumerableSet.AddressSet private _claimAdapters;
 
-    function addClaimAdapter(IClaimAdapter claimAdapter) external override onlyOwner {
+    function addClaimAdapter(IClaimAdapter claimAdapter) external onlyOwner {
         emit ClaimAdapterAdded(claimAdapter);
         _claimAdapters.add(address(claimAdapter));
     }
 
-    function removeClaimAdapter(IClaimAdapter claimAdapter) external override onlyOwner {
+    function removeClaimAdapter(IClaimAdapter claimAdapter) external onlyOwner {
         emit ClaimAdapterRemoved(claimAdapter);
         _claimAdapters.remove(address(claimAdapter));
     }
 
-    function isTrustedClaimAdapter(IClaimAdapter claimAdapter) public view override returns (bool) {
+    function isTrustedClaimAdapter(IClaimAdapter claimAdapter) public view returns (bool) {
         return _claimAdapters.contains(address(claimAdapter));
     }
 
-    function claimAdapters() public view override returns (IClaimAdapter[] memory adapters) {
+    function claimAdapters() public view returns (IClaimAdapter[] memory adapters) {
         adapters = new IClaimAdapter[](_claimAdapters.length());
         for (uint256 i = 0; i < _claimAdapters.length(); i++) {
             adapters[i] = IClaimAdapter(_claimAdapters.at(i));

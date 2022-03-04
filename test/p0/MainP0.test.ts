@@ -30,7 +30,7 @@ import {
   BackingManagerP0,
   BasketHandlerP0,
   RTokenIssuerP0,
-  RevenueDistributorP0,
+  DistributorP0,
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
@@ -98,7 +98,7 @@ describe('MainP0 contract', () => {
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
-  let revenueDistributor: RevenueDistributorP0
+  let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -132,7 +132,7 @@ describe('MainP0 contract', () => {
       backingManager,
       basketHandler,
       rTokenIssuer,
-      revenueDistributor,
+      distributor,
       rToken,
       rTokenAsset,
       furnace,
@@ -183,11 +183,11 @@ describe('MainP0 contract', () => {
       expect(await main.market()).to.equal(market.address)
 
       // Configuration
-      let rsrCut = await revenueDistributor.rsrCut()
+      let rsrCut = await distributor.rsrCut()
       expect(rsrCut[0]).to.equal(bn(60))
       expect(rsrCut[1]).to.equal(bn(100))
 
-      let rTokenCut = await revenueDistributor.rTokenCut()
+      let rTokenCut = await distributor.rTokenCut()
       expect(rTokenCut[0]).to.equal(bn(40))
       expect(rTokenCut[1]).to.equal(bn(100))
 
@@ -280,7 +280,7 @@ describe('MainP0 contract', () => {
           basketHandler: basketHandler.address,
           backingManager: backingManager.address,
           rTokenIssuer: rTokenIssuer.address,
-          revenueDistributor: revenueDistributor.address,
+          distributor: distributor.address,
           rsrTrader: rsrTrader.address,
           rTokenTrader: rTokenTrader.address,
         },

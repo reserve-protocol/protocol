@@ -67,7 +67,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
 
     mapping(address => IssueQueue) public issueQueues;
 
-    Fix public override basketsNeeded; // {BU}
+    Fix public basketsNeeded; // {BU}
 
     Fix public issuanceRate; // {%} of RToken supply to issue per block
 
@@ -103,7 +103,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         Fix amtBaskets,
         address[] memory erc20s,
         uint256[] memory deposits
-    ) external override onlyComponent {
+    ) external onlyComponent {
         assert(erc20s.length == deposits.length);
         IssueQueue storage queue = issueQueues[account];
         refundOldBasketIssues(account);
@@ -168,7 +168,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// Callable by anyone!
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amtRToken of RToken quanta vested
-    function vestIssuances(address account) external override returns (uint256 vested) {
+    function vestIssuances(address account) external returns (uint256 vested) {
         require(!main.paused(), "main is paused");
         require(
             main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
@@ -209,7 +209,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         address account,
         uint256 through,
         bool earliest
-    ) external override returns (uint256[] memory deposits) {
+    ) external returns (uint256[] memory deposits) {
         require(account == _msgSender(), "issuer does not match caller");
         IssueQueue storage queue = issueQueues[account];
 
@@ -232,7 +232,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         address from,
         uint256 amtRToken,
         Fix amtBaskets
-    ) external override onlyComponent {
+    ) external onlyComponent {
         _burn(from, amtRToken);
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(amtBaskets));
@@ -244,24 +244,24 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
-    function mint(address recipient, uint256 amtRToken) external override onlyComponent {
+    function mint(address recipient, uint256 amtRToken) external onlyComponent {
         _mint(recipient, amtRToken);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
-    function melt(uint256 amtRToken) external override {
+    function melt(uint256 amtRToken) external {
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(Fix basketsNeeded_) external override onlyComponent {
+    function setBasketsNeeded(Fix basketsNeeded_) external onlyComponent {
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
 
-    function setMain(IMain main_) external override onlyOwner {
+    function setMain(IMain main_) external onlyOwner {
         emit MainSet(main, main_);
         main = main_;
     }

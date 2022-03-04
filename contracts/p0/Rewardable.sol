@@ -16,7 +16,7 @@ abstract contract RewardableP0 is Component, IRewardable {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    function claimAndSweepRewards() external override {
+    function claimAndSweepRewards() external {
         // Call state keepers before collective actions
         main.poke();
 

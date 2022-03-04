@@ -8,9 +8,9 @@ import "contracts/libraries/Fixed.sol";
 abstract contract AssetP0 is IAsset {
     using FixLib for Fix;
 
-    IERC20Metadata public immutable override erc20;
+    IERC20Metadata public immutable erc20;
 
-    Fix public immutable override maxAuctionSize; // {UoA}
+    Fix public immutable maxAuctionSize; // {UoA}
 
     constructor(IERC20Metadata erc20_, Fix maxAuctionSize_) {
         erc20 = erc20_;
@@ -18,7 +18,7 @@ abstract contract AssetP0 is IAsset {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (Fix);
+    function price() public view virtual returns (Fix);
 
     /// {tok} -> {qTok}
     function toQ(Fix tok) external view returns (Fix) {
@@ -31,7 +31,7 @@ abstract contract AssetP0 is IAsset {
     }
 
     /// @return If the asset is an instance of ICollateral or not
-    function isCollateral() external pure virtual override returns (bool) {
+    function isCollateral() external pure virtual returns (bool) {
         return false;
     }
 }

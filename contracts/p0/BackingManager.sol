@@ -42,7 +42,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
 
     /// Manage backing funds: maintain the overall backing policy
     /// Collective Action
-    function manageFunds() external override notPaused {
+    function manageFunds() external notPaused {
         // Call keepers before
         main.poke();
         closeDueAuctions();
@@ -117,7 +117,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
             uint256 neededI = needed.mul(main.basketHandler().basketQuantity(erc20s[i])).ceil();
 
             if (bal > neededI) {
-                (uint256 rsrShares, uint256 totalShares) = main.revenueDistributor().rsrCut();
+                (uint256 rsrShares, uint256 totalShares) = main.distributor().rsrCut();
                 uint256 tokensPerShare = (bal - neededI) / totalShares;
                 uint256 toRSR = tokensPerShare * rsrShares;
                 uint256 toRToken = tokensPerShare * (totalShares - rsrShares);

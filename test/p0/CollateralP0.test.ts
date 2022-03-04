@@ -17,7 +17,7 @@ import {
   BackingManagerP0,
   BasketHandlerP0,
   RTokenIssuerP0,
-  RevenueDistributorP0,
+  DistributorP0,
   ERC20Mock,
   MainP0,
   StaticATokenMock,
@@ -60,7 +60,7 @@ describe('CollateralP0 contracts', () => {
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
-  let revenueDistributor: RevenueDistributorP0
+  let distributor: DistributorP0
   let facade: ExplorerFacadeP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -89,7 +89,7 @@ describe('CollateralP0 contracts', () => {
       backingManager,
       basketHandler,
       rTokenIssuer,
-      revenueDistributor,
+      distributor,
       facade,
     } = await loadFixture(defaultFixture))
 

@@ -26,7 +26,7 @@ import "contracts/p0/Furnace.sol";
 import "contracts/p0/Main.sol";
 import "contracts/p0/RToken.sol";
 import "contracts/p0/RTokenIssuer.sol";
-import "contracts/p0/RevenueDistributor.sol";
+import "contracts/p0/Distributor.sol";
 import "contracts/p0/StRSR.sol";
 
 /**
@@ -75,7 +75,7 @@ contract DeployerP0 is IDeployer {
         string memory symbol,
         address owner,
         DeploymentParams memory params
-    ) external override returns (address) {
+    ) external returns (address) {
         IRToken rToken = deployRToken(name, symbol);
         IMain main = deployMain();
         deployments.push(main);
@@ -116,7 +116,7 @@ contract DeployerP0 is IDeployer {
         components.basketHandler = new BasketHandlerP0();
         components.backingManager = new BackingManagerP0();
         components.rTokenIssuer = new RTokenIssuerP0();
-        components.revenueDistributor = new RevenueDistributorP0();
+        components.distributor = new DistributorP0();
         components.rsrTrader = new RevenueTraderP0(rsr);
         components.rTokenTrader = new RevenueTraderP0(rToken);
 

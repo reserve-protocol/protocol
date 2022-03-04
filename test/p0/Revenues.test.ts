@@ -37,7 +37,7 @@ import {
   BackingManagerP0,
   BasketHandlerP0,
   RTokenIssuerP0,
-  RevenueDistributorP0,
+  DistributorP0,
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
@@ -150,7 +150,7 @@ describe('Revenues', () => {
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
-  let revenueDistributor: RevenueDistributorP0
+  let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -187,7 +187,7 @@ describe('Revenues', () => {
       backingManager,
       basketHandler,
       rTokenIssuer,
-      revenueDistributor,
+      distributor,
       rToken,
       rTokenAsset,
       furnace,
@@ -229,43 +229,43 @@ describe('Revenues', () => {
   describe('Config/Setup', function () {
     it('Should setup initial distribution correctly', async () => {
       // Configuration
-      let rsrCut = await revenueDistributor.rsrCut()
+      let rsrCut = await distributor.rsrCut()
       expect(rsrCut.rsrShares).equal(bn(60))
       expect(rsrCut.totalShares).equal(bn(100))
 
-      let rtokenCut = await revenueDistributor.rTokenCut()
+      let rtokenCut = await distributor.rTokenCut()
       expect(rtokenCut.rTokenShares).equal(bn(40))
       expect(rtokenCut.totalShares).equal(bn(100))
     })
 
     it('Should allow to set distribution if owner', async () => {
       // Check initial status
-      let rsrCut = await revenueDistributor.rsrCut()
+      let rsrCut = await distributor.rsrCut()
       expect(rsrCut.rsrShares).equal(bn(60))
       expect(rsrCut.totalShares).equal(bn(100))
 
-      let rtokenCut = await revenueDistributor.rTokenCut()
+      let rtokenCut = await distributor.rTokenCut()
       expect(rtokenCut.rTokenShares).equal(bn(40))
       expect(rtokenCut.totalShares).equal(bn(100))
 
       // Attempt to update with another account
       await expect(
-        revenueDistributor
+        distributor
           .connect(other)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
       ).to.be.revertedWith('Component: caller is not the owner')
 
       // Update with owner - Set f = 1
-      await revenueDistributor
+      await distributor
         .connect(owner)
         .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
 
       // Check updated status
-      rsrCut = await revenueDistributor.rsrCut()
+      rsrCut = await distributor.rsrCut()
       expect(rsrCut.rsrShares).equal(bn(60))
       expect(rsrCut.totalShares).equal(bn(60))
 
-      rtokenCut = await revenueDistributor.rTokenCut()
+      rtokenCut = await distributor.rTokenCut()
       expect(rtokenCut.rTokenShares).equal(bn(0))
       expect(rtokenCut.totalShares).equal(bn(60))
     })
@@ -273,28 +273,28 @@ describe('Revenues', () => {
     it('Should perform distribution validations', async () => {
       // Cannot set RSR > 0 for Furnace
       await expect(
-        revenueDistributor
+        distributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
       ).to.be.revertedWith('Furnace must get 0% of RSR')
 
       // Cannot set RToken > 0 for StRSR
       await expect(
-        revenueDistributor
+        distributor
           .connect(owner)
           .setDistribution(STRSR_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
       ).to.be.revertedWith('StRSR must get 0% of RToken')
 
       // Cannot set RSR distribution too high
       await expect(
-        revenueDistributor
+        distributor
           .connect(owner)
           .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(10001) })
       ).to.be.revertedWith('RSR distribution too high')
 
       // Cannot set RToken distribution too high
       await expect(
-        revenueDistributor
+        distributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(10001), rsrDist: bn(0) })
       ).to.be.revertedWith('RSR distribution too high')
@@ -566,11 +566,11 @@ describe('Revenues', () => {
         await assetRegistry.connect(owner).swapRegisteredAsset(newCompAsset.address)
 
         // Set f = 1
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
         // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
 
@@ -713,10 +713,10 @@ describe('Revenues', () => {
         await assetRegistry.connect(owner).swapRegisteredAsset(newAaveAsset.address)
 
         // Set f = 0, avoid dropping tokens
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
 
@@ -848,10 +848,10 @@ describe('Revenues', () => {
         await assetRegistry.connect(owner).swapRegisteredAsset(newCompAsset.address)
 
         // Set f = 0.8 (0.2 for Rtoken)
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(4) })
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
 
@@ -1032,7 +1032,7 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Set distribution - 50% of each to another account
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(other.address, { rTokenDist: bn(40), rsrDist: bn(60) })
 

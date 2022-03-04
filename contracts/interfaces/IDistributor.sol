@@ -9,7 +9,7 @@ struct RevenueShare {
     uint16 rsrDist;
 }
 
-interface IRevenueDistributor is IComponent {
+interface IDistributor is IComponent {
     /// Emitted when a distribution is set
     /// @param dest The address set to receive the distribution
     /// @param rTokenDist The distribution of RToken that should go to `dest`

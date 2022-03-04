@@ -14,7 +14,7 @@ import "./IDeployer.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
 import "./IPausable.sol";
-import "./IRevenueDistributor.sol";
+import "./IDistributor.sol";
 import "./IRToken.sol";
 import "./IRTokenIssuer.sol";
 import "./IRevenueTrader.sol";
@@ -39,7 +39,7 @@ struct Core {
     IBasketHandler basketHandler;
     IBackingManager backingManager;
     IRTokenIssuer rTokenIssuer;
-    IRevenueDistributor revenueDistributor;
+    IDistributor distributor;
     IRevenueTrader rsrTrader;
     IRevenueTrader rTokenTrader;
 }
@@ -100,14 +100,11 @@ interface IMain is IPausable {
 
     function setRTokenIssuer(IRTokenIssuer val) external;
 
-    event RevenueDistributorSet(
-        IRevenueDistributor indexed oldVal,
-        IRevenueDistributor indexed newVal
-    );
+    event DistributorSet(IDistributor indexed oldVal, IDistributor indexed newVal);
 
-    function revenueDistributor() external view returns (IRevenueDistributor);
+    function distributor() external view returns (IDistributor);
 
-    function setRevenueDistributor(IRevenueDistributor val) external;
+    function setDistributor(IDistributor val) external;
 
     event RSRTraderSet(IRevenueTrader indexed oldVal, IRevenueTrader indexed newVal);
 

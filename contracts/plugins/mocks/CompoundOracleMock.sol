@@ -14,7 +14,7 @@ contract CompoundOracleMockP0 is ICompoundOracle {
     }
 
     /// @return {microUoA/tok} The UoA price of the corresponding token with 6 decimals.
-    function price(string memory symbol) external view override returns (uint256) {
+    function price(string memory symbol) external view returns (uint256) {
         return _prices[symbol];
     }
 }

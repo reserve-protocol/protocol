@@ -30,7 +30,7 @@ import { MarketMock } from '../../../typechain/MarketMock'
 import { RTokenAssetP0 } from '../../../typechain/RTokenAssetP0'
 import { RTokenIssuerP0 } from '../../../typechain/RTokenIssuerP0'
 import { RTokenP0 } from '../../../typechain/RTokenP0'
-import { RevenueDistributorP0 } from '../../../typechain/RevenueDistributorP0'
+import { DistributorP0 } from '../../../typechain/DistributorP0'
 import { RevenueTraderP0 } from '../../../typechain/RevenueTraderP0'
 import { SettingsP0 } from '../../../typechain/SettingsP0'
 import { StRSRP0 } from '../../../typechain/StRSRP0'
@@ -323,7 +323,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   backingManager: BackingManagerP0
   basketHandler: BasketHandlerP0
   rTokenIssuer: RTokenIssuerP0
-  revenueDistributor: RevenueDistributorP0
+  distributor: DistributorP0
   rsrAsset: AssetP0
   compAsset: AssetP0
   aaveAsset: AssetP0
@@ -405,8 +405,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const rTokenIssuer: RTokenIssuerP0 = <RTokenIssuerP0>(
     await ethers.getContractAt('RTokenIssuerP0', await main.rTokenIssuer())
   )
-  const revenueDistributor: RevenueDistributorP0 = <RevenueDistributorP0>(
-    await ethers.getContractAt('RevenueDistributorP0', await main.revenueDistributor())
+  const distributor: DistributorP0 = <DistributorP0>(
+    await ethers.getContractAt('DistributorP0', await main.distributor())
   )
 
   const compoundClaimer = <CompoundClaimAdapterP0>(
@@ -517,7 +517,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     backingManager,
     basketHandler,
     rTokenIssuer,
-    revenueDistributor,
+    distributor,
     rToken,
     rTokenAsset,
     furnace,

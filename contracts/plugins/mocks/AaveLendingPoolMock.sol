@@ -9,7 +9,7 @@ contract AaveLendingPoolMockP0 is IAaveLendingPool {
         _lendingAddressesProvider = ILendingPoolAddressesProvider(lendingAddressesProvider);
     }
 
-    function getAddressesProvider() external view override returns (ILendingPoolAddressesProvider) {
+    function getAddressesProvider() external view returns (ILendingPoolAddressesProvider) {
         return _lendingAddressesProvider;
     }
 }

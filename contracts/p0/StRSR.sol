@@ -98,7 +98,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// User Action
     /// @param rsrAmount {qRSR}
-    function stake(uint256 rsrAmount) external override {
+    function stake(uint256 rsrAmount) external {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
         require(!main.paused(), "main paused");
@@ -125,7 +125,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     /// Begins a delayed unstaking for `amount` stRSR
     /// User Action
     /// @param stakeAmount {qRSR}
-    function unstake(uint256 stakeAmount) external override {
+    function unstake(uint256 stakeAmount) external {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
@@ -201,7 +201,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     /// @return seizedRSR {qRSR} The actual rsrAmount seized.
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR might be smaller than rsrAmount if we're out of RSR.
-    function seizeRSR(uint256 rsrAmount) external override returns (uint256 seizedRSR) {
+    function seizeRSR(uint256 rsrAmount) external returns (uint256 seizedRSR) {
         require(main.hasComponent(_msgSender()), "not main");
         require(rsrAmount > 0, "Amount cannot be zero");
         uint256 rewards = rsrRewards();
@@ -267,7 +267,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         emit RSRRewarded(payout, numPeriods);
     }
 
-    function setMain(IMain main_) external virtual override onlyOwner {
+    function setMain(IMain main_) external virtual onlyOwner {
         emit MainSet(main, main_);
         main = main_;
     }
@@ -285,15 +285,15 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         return 18;
     }
 
-    function totalSupply() external view override returns (uint256) {
+    function totalSupply() external view returns (uint256) {
         return totalStaked;
     }
 
-    function balanceOf(address account) external view override returns (uint256) {
+    function balanceOf(address account) external view returns (uint256) {
         return balances[account];
     }
 
-    function transfer(address recipient, uint256 amount) external override returns (bool) {
+    function transfer(address recipient, uint256 amount) external returns (bool) {
         _transfer(_msgSender(), recipient, amount);
         return true;
     }
@@ -311,11 +311,11 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         accounts.add(recipient);
     }
 
-    function allowance(address owner_, address spender) public view override returns (uint256) {
+    function allowance(address owner_, address spender) public view returns (uint256) {
         return allowances[owner_][spender];
     }
 
-    function approve(address spender, uint256 amount) public override returns (bool) {
+    function approve(address spender, uint256 amount) public returns (bool) {
         _approve(_msgSender(), spender, amount);
         return true;
     }
@@ -324,7 +324,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         address sender,
         address recipient,
         uint256 amount
-    ) public override returns (bool) {
+    ) public returns (bool) {
         _transfer(sender, recipient, amount);
 
         uint256 currentAllowance = allowances[sender][_msgSender()];
@@ -377,7 +377,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public virtual override {
+    ) public virtual {
         require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
 
         bytes32 structHash = keccak256(
@@ -392,12 +392,12 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         _approve(owner_, spender, value);
     }
 
-    function nonces(address owner_) public view virtual override returns (uint256) {
+    function nonces(address owner_) public view virtual returns (uint256) {
         return _nonces[owner_].current();
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function DOMAIN_SEPARATOR() external view override returns (bytes32) {
+    function DOMAIN_SEPARATOR() external view returns (bytes32) {
         return _domainSeparatorV4();
     }
 

@@ -24,36 +24,35 @@ contract ExplorerFacadeP0 is IExplorerFacade {
         main = MainP0(main_);
     }
 
-    function runAuctionsForAllTraders() external override {
+    function runAuctionsForAllTraders() external {
         main.backingManager().manageFunds();
         main.rsrTrader().manageFunds();
         main.rTokenTrader().manageFunds();
     }
 
-    function claimRewards() external override {
+    function claimRewards() external {
         main.backingManager().claimAndSweepRewards();
         main.rsrTrader().claimAndSweepRewards();
         main.rTokenTrader().claimAndSweepRewards();
         main.rToken().claimAndSweepRewards();
     }
 
-    function doFurnaceMelting() external override {
+    function doFurnaceMelting() external {
         main.revenueFurnace().melt();
     }
 
-    function ensureValidBasket() external override {
+    function ensureValidBasket() external {
         main.basketHandler().ensureValidBasket();
     }
 
     /// @return How many RToken `account` can issue given current holdings
-    function maxIssuable(address account) external view override returns (uint256) {
+    function maxIssuable(address account) external view returns (uint256) {
         return main.rTokenIssuer().maxIssuable(account);
     }
 
     function currentBacking()
         external
         view
-        override
         returns (address[] memory tokens, uint256[] memory quantities)
     {
         tokens = main.basketHandler().basketTokens();
@@ -65,7 +64,7 @@ contract ExplorerFacadeP0 is IExplorerFacade {
     }
 
     /// @return total {UoA} An estimate of the total value of all assets held
-    function totalAssetValue() external view override returns (Fix total) {
+    function totalAssetValue() external view returns (Fix total) {
         IAssetRegistry reg = main.assetRegistry();
         address backingManager = address(main.backingManager());
 

@@ -91,7 +91,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     Basket private basket;
 
     /// Try to ensure a new valid basket
-    function ensureValidBasket() external override notPaused {
+    function ensureValidBasket() external notPaused {
         main.assetRegistry().forceUpdates();
 
         if (worstCollateralStatus() == CollateralStatus.DISABLED) {
@@ -102,11 +102,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    function setPrimeBasket(IERC20[] memory erc20s, Fix[] memory targetAmts)
-        public
-        override
-        onlyOwner
-    {
+    function setPrimeBasket(IERC20[] memory erc20s, Fix[] memory targetAmts) public onlyOwner {
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
@@ -126,7 +122,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         bytes32 targetName,
         uint256 max,
         IERC20[] memory erc20s
-    ) public override onlyOwner {
+    ) public onlyOwner {
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
 
@@ -138,24 +134,24 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     }
 
     /// @return true if we registered a change in the underlying reference basket
-    function switchBasket() external override onlyOwner returns (bool) {
+    function switchBasket() external onlyOwner returns (bool) {
         return _switchBasket();
     }
 
     /// @return Whether it holds enough basket units of collateral
-    function fullyCapitalized() external view override returns (bool) {
+    function fullyCapitalized() external view returns (bool) {
         return basketsHeldBy(address(main.backingManager())).gte(main.rToken().basketsNeeded());
     }
 
     /// @return nonce The current basket nonce
     /// @return timestamp The timestamp when the basket was last set
-    function basketLastSet() external view override returns (uint256 nonce, uint256 timestamp) {
+    function basketLastSet() external view returns (uint256 nonce, uint256 timestamp) {
         nonce = basket.nonce;
         timestamp = basket.timestamp;
     }
 
     /// @return status The maximum CollateralStatus among basket collateral
-    function worstCollateralStatus() public view override returns (CollateralStatus status) {
+    function worstCollateralStatus() public view returns (CollateralStatus status) {
         IAssetRegistry reg = main.assetRegistry();
 
         for (uint256 i = 0; i < basket.erc20s.length; i++) {

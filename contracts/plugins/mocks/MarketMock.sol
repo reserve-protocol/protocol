@@ -55,7 +55,7 @@ contract MarketMock is IMarket, ITrading {
         bool,
         address,
         bytes memory
-    ) external override returns (uint256 auctionId) {
+    ) external returns (uint256 auctionId) {
         auctionId = auctions.length;
         auctioningToken.safeTransferFrom(msg.sender, address(this), auctionedSellAmount);
         auctions.push(
@@ -73,13 +73,13 @@ contract MarketMock is IMarket, ITrading {
     }
 
     /// @dev Requires allowances
-    function placeBid(uint256 auctionId, Bid memory bid) external override {
+    function placeBid(uint256 auctionId, Bid memory bid) external {
         auctions[auctionId].buy.transferFrom(bid.bidder, address(this), bid.buyAmount);
         bids[auctionId] = bid;
     }
 
     /// Can only be called by the origin of the auction and only after auction.endTime is past
-    function settleAuction(uint256 auctionId) external override returns (bytes32 encodedOrder) {
+    function settleAuction(uint256 auctionId) external returns (bytes32 encodedOrder) {
         MockAuction storage auction = auctions[auctionId];
         require(msg.sender == auction.origin, "only origin can claim");
         require(auction.status == AuctionStatus.OPEN, "auction already closed");

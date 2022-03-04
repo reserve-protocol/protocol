@@ -5,7 +5,7 @@ import "./IExplorerFacade.sol";
 import "./IMain.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
-import "./IRevenueDistributor.sol";
+import "./IDistributor.sol";
 
 struct DeploymentParams {
     // === RSR/RToken/AAVE/COMP ===

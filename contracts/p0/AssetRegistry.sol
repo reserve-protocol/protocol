@@ -56,25 +56,25 @@ contract AssetRegistryP0 is Component, IAssetRegistry {
     }
 
     /// Return the Asset modelling this ERC20, or revert
-    function toAsset(IERC20 erc20) external view override returns (IAsset) {
+    function toAsset(IERC20 erc20) external view returns (IAsset) {
         require(erc20s.contains(address(erc20)), "erc20 unregistered");
         assert(assets[erc20] != IAsset(address(0)));
         return assets[erc20];
     }
 
     /// Return the Collateral modelling this ERC20, or revert
-    function toColl(IERC20 erc20) external view override returns (ICollateral) {
+    function toColl(IERC20 erc20) external view returns (ICollateral) {
         require(erc20s.contains(address(erc20)), "erc20 unregistered");
         assert(assets[erc20] != IAsset(address(0)));
         require(assets[erc20].isCollateral(), "erc20 is not collateral");
         return ICollateral(address(assets[erc20]));
     }
 
-    function isRegistered(IERC20 erc20) external view override returns (bool) {
+    function isRegistered(IERC20 erc20) external view returns (bool) {
         return erc20s.contains(address(erc20));
     }
 
-    function registeredERC20s() external view override returns (IERC20[] memory erc20s_) {
+    function registeredERC20s() external view returns (IERC20[] memory erc20s_) {
         erc20s_ = new IERC20[](erc20s.length());
         for (uint256 i = 0; i < erc20s.length(); i++) {
             erc20s_[i] = IERC20(erc20s.at(i));

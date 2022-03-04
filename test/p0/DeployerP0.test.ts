@@ -21,7 +21,7 @@ import {
   BackingManagerP0,
   BasketHandlerP0,
   RTokenIssuerP0,
-  RevenueDistributorP0,
+  DistributorP0,
 } from '../../typechain'
 import { defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
@@ -64,7 +64,7 @@ describe('DeployerP0 contract', () => {
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
-  let revenueDistributor: RevenueDistributorP0
+  let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -95,7 +95,7 @@ describe('DeployerP0 contract', () => {
       backingManager,
       basketHandler,
       rTokenIssuer,
-      revenueDistributor,
+      distributor,
       rToken,
       rTokenAsset,
       furnace,

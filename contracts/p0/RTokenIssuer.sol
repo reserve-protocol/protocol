@@ -19,7 +19,7 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
     /// User Action
     /// @param amount {qTok} The quantity of RToken to issue
     /// @return deposits {qTok} The quantities of collateral tokens transferred in
-    function issue(uint256 amount) public override notPaused returns (uint256[] memory deposits) {
+    function issue(uint256 amount) public notPaused returns (uint256[] memory deposits) {
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
 
@@ -53,7 +53,7 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
     /// User Action
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @return withdrawals {qTok} The quantities of collateral tokens transferred out
-    function redeem(uint256 amount) public override returns (uint256[] memory withdrawals) {
+    function redeem(uint256 amount) public returns (uint256[] memory withdrawals) {
         require(amount > 0, "Cannot redeem zero");
         // Call collective state keepers
         main.poke();
@@ -90,7 +90,7 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
     }
 
     /// @return {qRTok} How much RToken `account` can issue given current holdings
-    function maxIssuable(address account) external view override returns (uint256) {
+    function maxIssuable(address account) external view returns (uint256) {
         Fix needed = main.rToken().basketsNeeded();
         Fix held = main.basketHandler().basketsHeldBy(account);
         IAsset rTokenAsset = main.assetRegistry().toAsset(main.rToken());
@@ -102,7 +102,7 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
     }
 
     /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
-    function rTokenPrice() external view override returns (Fix p) {
+    function rTokenPrice() external view returns (Fix p) {
         IRToken rToken = main.rToken();
         IAsset rTokenAsset = main.assetRegistry().toAsset(rToken);
 

@@ -29,7 +29,7 @@ contract AavePricedFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
     // solhint-enable no-empty-blocks
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (Fix) {
+    function price() public view virtual returns (Fix) {
         return consultOracle(erc20);
     }
 }

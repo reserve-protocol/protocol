@@ -15,7 +15,7 @@ contract ComptrollerMockP0 is IComptroller {
         _compoundOracle = ICompoundOracle(compoundOracleAddress);
     }
 
-    function oracle() external view override returns (ICompoundOracle) {
+    function oracle() external view returns (ICompoundOracle) {
         return _compoundOracle;
     }
 
@@ -27,7 +27,7 @@ contract ComptrollerMockP0 is IComptroller {
         compBalances[recipient] = amount;
     }
 
-    function claimComp(address holder) external override {
+    function claimComp(address holder) external {
         // Mint amount and update internal balances
         if (address(compToken) != address(0)) {
             uint256 amount = compBalances[holder];

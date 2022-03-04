@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
+import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
 
 // ==== External Interfaces ====
@@ -37,13 +38,13 @@ abstract contract AaveOracleMixinP0 is CompoundOracleMixinP0 {
     }
 
     /// @return {UoA/erc20}
-    function consultOracle(IERC20Metadata erc20_) internal view virtual override returns (Fix) {
+    function consultOracle(IERC20Metadata erc20_) internal view override returns (Fix) {
         // Aave keeps their prices in terms of ETH
         IAaveOracle aaveOracle = aaveLendingPool.getAddressesProvider().getPriceOracle();
         uint256 p = aaveOracle.getAssetPrice(address(erc20_));
 
         if (p == 0) {
-            revert CommonErrors.PriceIsZero(erc20_.symbol());
+            revert PriceIsZero(erc20_.symbol());
         }
 
         Fix inETH = toFix(p); // {qETH/tok}

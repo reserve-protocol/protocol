@@ -8,7 +8,7 @@ import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/p0/Trader.sol";
 
 /// The RevenueTrader converts all asset balances at its address to a single target asset
-/// and sends this asset to the RevenueDistributor.
+/// and sends this asset to the Distributor.
 contract RevenueTraderP0 is TraderP0, IRevenueTrader {
     using SafeERC20 for IERC20;
 
@@ -43,8 +43,8 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
         if (bal == 0) return;
 
         if (erc20 == tokenToBuy) {
-            erc20.safeApprove(address(main.revenueDistributor()), bal);
-            main.revenueDistributor().distribute(erc20, address(this), bal);
+            erc20.safeApprove(address(main.distributor()), bal);
+            main.distributor().distribute(erc20, address(this), bal);
             return;
         }
 

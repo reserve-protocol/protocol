@@ -16,7 +16,7 @@ import {
   BackingManagerP0,
   BasketHandlerP0,
   RTokenIssuerP0,
-  RevenueDistributorP0,
+  DistributorP0,
 } from '../../typechain'
 import { advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
@@ -40,7 +40,7 @@ describe('StRSRP0 contract', () => {
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
   let rTokenIssuer: RTokenIssuerP0
-  let revenueDistributor: RevenueDistributorP0
+  let distributor: DistributorP0
 
   // StRSR
   let stRSR: StRSRP0
@@ -85,7 +85,7 @@ describe('StRSRP0 contract', () => {
       backingManager,
       basketHandler,
       rTokenIssuer,
-      revenueDistributor,
+      distributor,
     } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
