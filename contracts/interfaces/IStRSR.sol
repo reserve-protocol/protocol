@@ -25,26 +25,33 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
     event Staked(address indexed staker, uint256 indexed rsrAmount, uint256 indexed stRSRAmount);
 
     /// Emitted when an unstaking is started
-    /// @param draftId The id of the draft. (staker, draftId) are pairwise unique.
+    /// @param draftId The id of the draft.
+    /// @param draftEra The era of the draft.
     /// @param staker The address of the unstaker
+    ///   The triple (staker, draftEra, draftId) is a unique ID
     /// @param rsrAmount {qRSR} How much RSR this unstaking will be worth, absent seizures
     /// @param stRSRAmount {qStRSR} How much stRSR was burned by this unstaking
     event UnstakingStarted(
         uint256 indexed draftId,
+        uint256 indexed draftEra,
         address indexed staker,
-        uint256 indexed rsrAmount,
+        uint256 rsrAmount,
         uint256 stRSRAmount
     );
 
     /// Emitted when RSR is unstaked
     /// @param firstId The beginning of the range of draft IDs withdrawn in this transaction
     /// @param endId The end of range of draft IDs withdrawn in this transaction
-    /// (ID i was withdrawn if firstId <= i < endId)
+    ///   (ID i was withdrawn if firstId <= i < endId)
+    /// @param draftEra The era of the draft.
+    ///   The triple (staker, draftEra, id) is a unique ID among drafts
     /// @param staker The address of the unstaker
+
     /// @param rsrAmount {qRSR} How much RSR this unstaking was worth
     event UnstakingCompleted(
         uint256 indexed firstId,
         uint256 indexed endId,
+        uint256 draftEra,
         address indexed staker,
         uint256 rsrAmount
     );
@@ -60,7 +67,7 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
     event RSRSeized(address indexed from, uint256 indexed amount);
 
     /// Emitted if all the RSR in the staking pool is seized and all balances are reset to zero.
-    event AllBalancesReset();
+    event AllBalancesReset(uint256 indexed newEra);
 
     event UnstakingDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
     event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);

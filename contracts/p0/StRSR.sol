@@ -151,7 +151,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         // Create the corresponding withdrawal ticket
         uint256 availableAt = block.timestamp + unstakingDelay;
         withdrawals[account].push(Withdrawal(account, rsrAmount, availableAt));
-        emit UnstakingStarted(withdrawals[account].length - 1, account, rsrAmount, stakeAmount);
+        emit UnstakingStarted(withdrawals[account].length - 1, 0, account, rsrAmount, stakeAmount);
     }
 
     /// Complete delayed staking, up to but not including draft ID `endId`
@@ -186,7 +186,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
 
         // Execute accumulated withdrawals
         main.rsr().safeTransfer(account, total);
-        emit UnstakingCompleted(start, i, account, total);
+        emit UnstakingCompleted(start, i, 0, account, total);
     }
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work

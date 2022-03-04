@@ -158,7 +158,7 @@ contract StRSR is IStRSR, Component, EIP712 {
             draftRSR = 0;
             era++;
 
-            emit AllBalancesReset();
+            emit AllBalancesReset(era);
         } else {
             // Remove RSR evenly from stakeRSR, draftRSR, and the reward pool
             uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
@@ -356,6 +356,7 @@ contract StRSR is IStRSR, Component, EIP712 {
 
         emit UnstakingStarted(
             draftQueues[era][account].length - 1,
+            era,
             account,
             rsrAmount,
             stakeAmount
@@ -383,7 +384,7 @@ contract StRSR is IStRSR, Component, EIP712 {
         draftRSR -= rsrAmount;
         main.rsr().safeTransfer(account, rsrAmount);
 
-        emit UnstakingCompleted(firstId, endId, account, rsrAmount);
+        emit UnstakingCompleted(firstId, endId, era, account, rsrAmount);
     }
 
     /// Add a cumulative draft to account's draft queue (at the current time).
