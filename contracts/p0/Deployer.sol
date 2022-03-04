@@ -13,7 +13,7 @@ import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IClaimAdapter.sol";
 import "contracts/interfaces/IDeployer.sol";
-import "contracts/interfaces/IExplorerFacade.sol";
+import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IFurnace.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IMarket.sol";
@@ -21,11 +21,11 @@ import "contracts/plugins/assets/RTokenAsset.sol";
 import "contracts/p0/AssetRegistry.sol";
 import "contracts/p0/BackingManager.sol";
 import "contracts/p0/BasketHandler.sol";
-import "contracts/p0/ExplorerFacade.sol";
+import "contracts/p0/Facade.sol";
 import "contracts/p0/Furnace.sol";
 import "contracts/p0/Main.sol";
 import "contracts/p0/RToken.sol";
-import "contracts/p0/RTokenIssuer.sol";
+import "contracts/p0/Issuer.sol";
 import "contracts/p0/Distributor.sol";
 import "contracts/p0/StRSR.sol";
 
@@ -82,7 +82,7 @@ contract DeployerP0 is IDeployer {
 
         // Periphery
         Periphery memory periphery;
-        periphery.furnace = deployRevenueFurnace(rToken, params.rewardPeriod, params.rewardRatio);
+        periphery.furnace = deployFurnace(rToken, params.rewardPeriod, params.rewardRatio);
         Ownable(address(periphery.furnace)).transferOwnership(owner);
         periphery.market = market;
         periphery.claimAdapters = new IClaimAdapter[](2);
@@ -115,7 +115,7 @@ contract DeployerP0 is IDeployer {
         components.assetRegistry = new AssetRegistryP0();
         components.basketHandler = new BasketHandlerP0();
         components.backingManager = new BackingManagerP0();
-        components.rTokenIssuer = new RTokenIssuerP0();
+        components.issuer = new IssuerP0();
         components.distributor = new DistributorP0();
         components.rsrTrader = new RevenueTraderP0(rsr);
         components.rTokenTrader = new RevenueTraderP0(rToken);
@@ -131,7 +131,7 @@ contract DeployerP0 is IDeployer {
         Ownable(address(main)).transferOwnership(owner);
 
         // Facade
-        IExplorerFacade facade = new ExplorerFacadeP0(address(main));
+        IFacade facade = new FacadeP0(address(main));
         emit RTokenCreated(main, rToken, ctorArgs.core.stRSR, facade, owner);
         return (address(main));
     }
@@ -151,7 +151,7 @@ contract DeployerP0 is IDeployer {
         return new RTokenP0(name, symbol);
     }
 
-    function deployRevenueFurnace(
+    function deployFurnace(
         IRToken rToken,
         uint256 period,
         Fix ratio

@@ -25,8 +25,8 @@ contract MainCallerMockP0 {
         return main.basketHandler().fullyCapitalized();
     }
 
-    function worstCollateralStatus() external view returns (CollateralStatus) {
-        return main.basketHandler().worstCollateralStatus();
+    function status() external view returns (CollateralStatus) {
+        return main.basketHandler().status();
     }
 
     function rsr() external view returns (IERC20) {

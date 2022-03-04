@@ -133,7 +133,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
 
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
-        require(bh.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
         // Call state keepers
         main.poke();
@@ -161,7 +161,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
 
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
-        require(bh.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
         Withdrawal[] storage queue = withdrawals[account];
         if (endId == 0) return;

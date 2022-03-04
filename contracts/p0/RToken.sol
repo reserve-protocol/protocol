@@ -90,7 +90,7 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
             );
         }
 
-        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
 
         // Assumption: Main has already deposited the collateral
         SlowIssuance memory iss = SlowIssuance({
@@ -128,7 +128,7 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     /// @param account The account of the issuer, and caller
     /// @param throughIndex The index of the issuance in the issuer's queue to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    function cancelIssuances(
+    function cancel(
         address account,
         uint256 throughIndex,
         bool earliest
@@ -137,7 +137,7 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
 
         // Call state keepers
         main.poke();
-        vestIssuances(account);
+        vest(account);
 
         SlowIssuance[] storage queue = issuances[account];
         (uint256 first, uint256 last) = earliest
@@ -161,12 +161,9 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amount of RToken quanta vested
-    function vestIssuances(address account) public returns (uint256 vested) {
+    function vest(address account) public returns (uint256 vested) {
         require(!main.paused(), "main is paused");
-        require(
-            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
-            "collateral default"
-        );
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
         for (uint256 i = 0; i < issuances[account].length; i++) {
             vested += tryVestIssuance(account, i);
@@ -219,7 +216,7 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     /// @return issued The total amount of RToken minted
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
         SlowIssuance storage iss = issuances[issuer][index];
-        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
         if (
             !iss.processed &&
             iss.basketNonce == basketNonce &&

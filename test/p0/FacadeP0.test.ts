@@ -6,7 +6,7 @@ import { bn, fp } from '../../common/numbers'
 import {
   CTokenMock,
   ERC20Mock,
-  ExplorerFacadeP0,
+  FacadeP0,
   MainP0,
   StaticATokenMock,
   USDCMock,
@@ -14,14 +14,14 @@ import {
   RTokenP0,
   BackingManagerP0,
   BasketHandlerP0,
-  RTokenIssuerP0,
+  IssuerP0,
   DistributorP0,
 } from '../../typechain'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('ExplorerFacadeP0 contract', () => {
+describe('FacadeP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -42,7 +42,7 @@ describe('ExplorerFacadeP0 contract', () => {
   let cTokenAsset: Collateral
 
   // Facade
-  let facade: ExplorerFacadeP0
+  let facade: FacadeP0
 
   // Main
   let main: MainP0
@@ -50,7 +50,7 @@ describe('ExplorerFacadeP0 contract', () => {
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let rTokenIssuer: RTokenIssuerP0
+  let issuer: IssuerP0
   let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -73,7 +73,7 @@ describe('ExplorerFacadeP0 contract', () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      rTokenIssuer,
+      issuer,
       distributor,
     } = await loadFixture(defaultFixture))
 
@@ -116,13 +116,13 @@ describe('ExplorerFacadeP0 contract', () => {
       issueAmount = bn('100e18')
 
       // Provide approvals
-      await token.connect(addr1).approve(rTokenIssuer.address, initialBal)
-      await usdc.connect(addr1).approve(rTokenIssuer.address, initialBal)
-      await aToken.connect(addr1).approve(rTokenIssuer.address, initialBal)
-      await cToken.connect(addr1).approve(rTokenIssuer.address, initialBal)
+      await token.connect(addr1).approve(issuer.address, initialBal)
+      await usdc.connect(addr1).approve(issuer.address, initialBal)
+      await aToken.connect(addr1).approve(issuer.address, initialBal)
+      await cToken.connect(addr1).approve(issuer.address, initialBal)
 
       // Issue rTokens
-      await rTokenIssuer.connect(addr1).issue(issueAmount)
+      await issuer.connect(addr1).issue(issueAmount)
     })
 
     it('Should return maxIssuable correctly', async () => {

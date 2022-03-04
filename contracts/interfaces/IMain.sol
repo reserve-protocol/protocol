@@ -13,10 +13,9 @@ import "./IClaimAdapter.sol";
 import "./IDeployer.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
-import "./IPausable.sol";
 import "./IDistributor.sol";
 import "./IRToken.sol";
-import "./IRTokenIssuer.sol";
+import "./IIssuer.sol";
 import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
 import "./ITrader.sol";
@@ -38,7 +37,7 @@ struct Core {
     IAssetRegistry assetRegistry;
     IBasketHandler basketHandler;
     IBackingManager backingManager;
-    IRTokenIssuer rTokenIssuer;
+    IIssuer issuer;
     IDistributor distributor;
     IRevenueTrader rsrTrader;
     IRevenueTrader rTokenTrader;
@@ -51,6 +50,28 @@ struct Periphery {
     IFurnace furnace;
     IClaimAdapter[] claimAdapters;
     IAsset[] assets;
+}
+
+interface IPausable {
+    /// Emitted when the paused status is set
+    /// @param oldPaused The old value of the paused state
+    /// @param newPaused The new value of the paused state
+    event PausedSet(bool oldPaused, bool newPaused);
+
+    /// Emitted when the pauser address is set
+    /// @param oldPauser The address of the old pauser
+    /// @param newPauser The address of the new pauser
+    event PauserSet(address oldPauser, address newPauser);
+
+    function pause() external;
+
+    function unpause() external;
+
+    function paused() external returns (bool);
+
+    function pauser() external view returns (address);
+
+    function setPauser(address pauser_) external;
 }
 
 /**
@@ -94,11 +115,11 @@ interface IMain is IPausable {
 
     function setBackingManager(IBackingManager val) external;
 
-    event RTokenIssuerSet(IRTokenIssuer indexed oldVal, IRTokenIssuer indexed newVal);
+    event IssuerSet(IIssuer indexed oldVal, IIssuer indexed newVal);
 
-    function rTokenIssuer() external view returns (IRTokenIssuer);
+    function issuer() external view returns (IIssuer);
 
-    function setRTokenIssuer(IRTokenIssuer val) external;
+    function setIssuer(IIssuer val) external;
 
     event DistributorSet(IDistributor indexed oldVal, IDistributor indexed newVal);
 
@@ -118,11 +139,11 @@ interface IMain is IPausable {
 
     function setRTokenTrader(IRevenueTrader rTokenTrader) external;
 
-    event RevenueFurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
+    event FurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
 
-    function revenueFurnace() external view returns (IFurnace);
+    function furnace() external view returns (IFurnace);
 
-    function setRevenueFurnace(IFurnace furnace) external;
+    function setFurnace(IFurnace furnace) external;
 
     event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
 

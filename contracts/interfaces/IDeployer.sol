@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "./IExplorerFacade.sol";
+import "./IFacade.sol";
 import "./IMain.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
@@ -47,7 +47,7 @@ interface IDeployer {
         IMain indexed main,
         IRToken indexed rToken,
         IStRSR stRSR,
-        IExplorerFacade facade,
+        IFacade facade,
         address indexed owner
     );
 

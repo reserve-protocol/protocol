@@ -12,7 +12,7 @@ import {
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
-  RTokenIssuerP0,
+  IssuerP0,
   DistributorP0,
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
@@ -31,7 +31,7 @@ describe('RTokenP0 contract', () => {
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let rTokenIssuer: RTokenIssuerP0
+  let issuer: IssuerP0
   let distributor: DistributorP0
 
   // Tokens/Assets
@@ -66,16 +66,8 @@ describe('RTokenP0 contract', () => {
     ;[owner, addr1, mainMock, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({
-      basket,
-      main,
-      rToken,
-      assetRegistry,
-      backingManager,
-      basketHandler,
-      rTokenIssuer,
-      distributor,
-    } = await loadFixture(defaultFixture))
+    ;({ basket, main, rToken, assetRegistry, backingManager, basketHandler, issuer, distributor } =
+      await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
     initialBal = bn('100e18')
@@ -102,7 +94,7 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.basketsNeeded()).to.equal(0)
 
       // Check RToken price
-      expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+      expect(await issuer.rTokenPrice()).to.equal(fp('1'))
     })
   })
 
@@ -138,13 +130,13 @@ describe('RTokenP0 contract', () => {
       await token3.connect(owner).mint(addr1.address, initialBal)
 
       // Approvals
-      await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
-      await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
-      await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
-      await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
+      await token0.connect(addr1).approve(issuer.address, initialBal)
+      await token1.connect(addr1).approve(issuer.address, initialBal)
+      await token2.connect(addr1).approve(issuer.address, initialBal)
+      await token3.connect(addr1).approve(issuer.address, initialBal)
 
       // Issue tokens
-      await rTokenIssuer.connect(addr1).issue(issueAmount)
+      await issuer.connect(addr1).issue(issueAmount)
     })
 
     it('Should allow to melt tokens if caller or Main', async () => {

@@ -5,17 +5,17 @@ import "contracts/libraries/Fixed.sol";
 import "./IRToken.sol";
 
 /**
- * @title IExplorerFacade
+ * @title IFacade
  * @notice A read-only layer on top of the protocol for use from an off-chain explorer.
  */
-interface IExplorerFacade {
+interface IFacade {
     function runAuctionsForAllTraders() external;
 
     function claimRewards() external;
 
     function doFurnaceMelting() external;
 
-    function ensureValidBasket() external;
+    function ensureBasket() external;
 
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external view returns (uint256);

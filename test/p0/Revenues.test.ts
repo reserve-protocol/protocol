@@ -23,7 +23,7 @@ import {
   CTokenMock,
   DeployerP0,
   ERC20Mock,
-  ExplorerFacadeP0,
+  FacadeP0,
   FurnaceP0,
   MainP0,
   MarketMock,
@@ -36,7 +36,7 @@ import {
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
-  RTokenIssuerP0,
+  IssuerP0,
   DistributorP0,
   USDCMock,
 } from '../../typechain'
@@ -145,11 +145,11 @@ describe('Revenues', () => {
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
-  let facade: ExplorerFacadeP0
+  let facade: FacadeP0
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let rTokenIssuer: RTokenIssuerP0
+  let issuer: IssuerP0
   let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -186,7 +186,7 @@ describe('Revenues', () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      rTokenIssuer,
+      issuer,
       distributor,
       rToken,
       rTokenAsset,
@@ -311,13 +311,13 @@ describe('Revenues', () => {
         issueAmount = bn('100e18')
 
         // Provide approvals
-        await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token0.connect(addr1).approve(issuer.address, initialBal)
+        await token1.connect(addr1).approve(issuer.address, initialBal)
+        await token2.connect(addr1).approve(issuer.address, initialBal)
+        await token3.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue rTokens
-        await rTokenIssuer.connect(addr1).issue(issueAmount)
+        await issuer.connect(addr1).issue(issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -563,7 +563,7 @@ describe('Revenues', () => {
         )
 
         // Perform swap
-        await assetRegistry.connect(owner).swapRegisteredAsset(newCompAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
 
         // Set f = 1
         await distributor
@@ -710,7 +710,7 @@ describe('Revenues', () => {
         )
 
         // Perform swap
-        await assetRegistry.connect(owner).swapRegisteredAsset(newAaveAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newAaveAsset.address)
 
         // Set f = 0, avoid dropping tokens
         await distributor
@@ -845,7 +845,7 @@ describe('Revenues', () => {
         )
 
         // Perform swap
-        await assetRegistry.connect(owner).swapRegisteredAsset(newCompAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
 
         // Set f = 0.8 (0.2 for Rtoken)
         await distributor
@@ -1235,17 +1235,17 @@ describe('Revenues', () => {
       })
 
       it('Should ignore claiming if no adapter defined', async () => {
-        await assetRegistry.swapRegisteredAsset(newATokenCollateral.address)
+        await assetRegistry.swapRegistered(newATokenCollateral.address)
 
         // Setup new basket with AToken with no claim adapter
         await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1')])
         await basketHandler.connect(owner).switchBasket()
 
         // Provide approvals
-        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token2.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue rTokens
-        await rTokenIssuer.connect(addr1).issue(issueAmount)
+        await issuer.connect(addr1).issue(issueAmount)
 
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
@@ -1261,17 +1261,17 @@ describe('Revenues', () => {
       })
 
       it('Should revert for non-trusted adapters', async () => {
-        await assetRegistry.swapRegisteredAsset(newCTokenCollateral.address)
+        await assetRegistry.swapRegistered(newCTokenCollateral.address)
 
         // Setup new basket with CToken with untrusted adapter
         await basketHandler.connect(owner).setPrimeBasket([token3.address], [fp('1')])
         await basketHandler.connect(owner).switchBasket()
 
         // Provide approvals
-        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token3.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue rTokens
-        await rTokenIssuer.connect(addr1).issue(issueAmount)
+        await issuer.connect(addr1).issue(issueAmount)
 
         // Will revert when attempting to get rewards
         await expect(backingManager.claimAndSweepRewards()).to.be.revertedWith(
@@ -1293,11 +1293,11 @@ describe('Revenues', () => {
         await basketHandler.connect(owner).switchBasket()
 
         // Provide approvals
-        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token2.connect(addr1).approve(issuer.address, initialBal)
+        await token3.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue rTokens
-        await rTokenIssuer.connect(addr1).issue(issueAmount)
+        await issuer.connect(addr1).issue(issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -1308,7 +1308,7 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Check Price and Assets value
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1318,7 +1318,7 @@ describe('Revenues', () => {
         // Check Price (unchanged) and Assets value increment by 50%
         const excessValue: BigNumber = issueAmount.div(2)
         const excessQuantity: BigNumber = excessValue.div(2) // Because each unit is now worth $2
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessValue))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1344,7 +1344,7 @@ describe('Revenues', () => {
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1417,7 +1417,7 @@ describe('Revenues', () => {
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
         // Check Price (unchanged) and Assets value (unchanged)
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1440,7 +1440,7 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Check Price and Assets value
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1451,7 +1451,7 @@ describe('Revenues', () => {
         // Check Price (unchanged) and Assets value increment by 1% (only half of the basket increased in value)
         const excessValue: BigNumber = issueAmount.mul(1).div(100)
         const excessQuantity: BigNumber = divCeil(excessValue.mul(BN_SCALE_FACTOR), rate) // Because each unit is now worth $1.02
-        expect(near(await rTokenIssuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
+        expect(near(await issuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessValue))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1481,7 +1481,7 @@ describe('Revenues', () => {
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
-        expect(near(await rTokenIssuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
+        expect(near(await issuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(near(await facade.totalAssetValue(), issueAmount, 2)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1557,7 +1557,7 @@ describe('Revenues', () => {
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
         //  Check Price (unchanged) and Assets value (unchanged)
-        expect(near(await rTokenIssuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
+        expect(near(await issuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(near(await facade.totalAssetValue(), issueAmount, 2)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1577,7 +1577,7 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Check Price and Assets value
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1586,7 +1586,7 @@ describe('Revenues', () => {
         await token3.setExchangeRate(fp('2'))
 
         // Check Price (unchanged) and Assets value (now doubled)
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1613,7 +1613,7 @@ describe('Revenues', () => {
           .withArgs(0, rToken.address, rsr.address, sellAmt, minBuyAmt)
 
         // Check Price (unchanged) and Assets value - Supply has doubled
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
         expect(await rToken.totalSupply()).to.equal(newTotalSupply)
 
@@ -1666,7 +1666,7 @@ describe('Revenues', () => {
         let updatedRTokenPrice: BigNumber = newTotalSupply
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(updatedRTokenPrice)
+        expect(await issuer.rTokenPrice()).to.equal(updatedRTokenPrice)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
 
         // Check no funds in Market
@@ -1682,7 +1682,7 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Check Price and Assets value
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1692,7 +1692,7 @@ describe('Revenues', () => {
 
         // Check Price (unchanged) and Assets value (now 80% higher)
         const excessTotalValue: BigNumber = issueAmount.mul(80).div(100)
-        expect(near(await rTokenIssuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
+        expect(near(await issuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessTotalValue))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1752,7 +1752,7 @@ describe('Revenues', () => {
           )
 
         // Check Price (unchanged) and Assets value (excess collateral not counted anymore) - Supply has increased
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessRToken))
         expect(await rToken.totalSupply()).to.equal(newTotalSupply)
 
@@ -1882,7 +1882,7 @@ describe('Revenues', () => {
         let updatedRTokenPrice: BigNumber = newTotalSupply
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(updatedRTokenPrice)
+        expect(await issuer.rTokenPrice()).to.equal(updatedRTokenPrice)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessRToken))
 
         //  Check destinations

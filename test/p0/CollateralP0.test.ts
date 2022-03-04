@@ -13,10 +13,10 @@ import {
   CTokenFiatCollateralP0,
   CTokenMock,
   AssetRegistryP0,
-  ExplorerFacadeP0,
+  FacadeP0,
   BackingManagerP0,
   BasketHandlerP0,
-  RTokenIssuerP0,
+  IssuerP0,
   DistributorP0,
   ERC20Mock,
   MainP0,
@@ -59,9 +59,9 @@ describe('CollateralP0 contracts', () => {
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let rTokenIssuer: RTokenIssuerP0
+  let issuer: IssuerP0
   let distributor: DistributorP0
-  let facade: ExplorerFacadeP0
+  let facade: FacadeP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -88,7 +88,7 @@ describe('CollateralP0 contracts', () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      rTokenIssuer,
+      issuer,
       distributor,
       facade,
     } = await loadFixture(defaultFixture))
@@ -172,7 +172,7 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenCollateral.price()).to.equal(fp('1.1'))
 
       // Check RToken price
-      expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1.1'))
+      expect(await issuer.rTokenPrice()).to.equal(fp('1.1'))
     })
 
     it('Should calculate price correctly when ATokens and CTokens appreciate', async () => {
@@ -189,7 +189,7 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenCollateral.price()).to.equal(fp('2'))
 
       // Check RToken price - Remains the same until Revenues are processed
-      expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+      expect(await issuer.rTokenPrice()).to.equal(fp('1'))
     })
 
     it('Should revert if price is zero', async () => {

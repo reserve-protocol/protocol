@@ -6,14 +6,56 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/p0/Pausable.sol";
+
+/** Contract mixin providing:
+ * - The paused flag
+ * - A pauser role, modifiable by pauser or owner
+ * - Pause and unpause commands, to allow either pauser or owner to set the paused flag.
+ * - The `notPaused` modifier.
+ */
+contract Pausable is Ownable, IPausable {
+    address private _pauser;
+    bool public paused;
+
+    constructor() {
+        _pauser = _msgSender();
+        paused = true;
+    }
+
+    modifier notPaused() {
+        require(!paused, "paused");
+        _;
+    }
+
+    function pause() external {
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PausedSet(paused, true);
+        paused = true;
+    }
+
+    function unpause() external {
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PausedSet(paused, false);
+        paused = false;
+    }
+
+    function pauser() external view returns (address) {
+        return _pauser;
+    }
+
+    function setPauser(address pauser_) external {
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PauserSet(_pauser, pauser_);
+        _pauser = pauser_;
+    }
+}
 
 /**
  * @title Main
  * @notice Collects all mixins.
  */
 // solhint-disable max-states-count
-contract MainP0 is Ownable, Pausable, IMain {
+contract MainP0 is Pausable, IMain {
     using FixLib for Fix;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -25,9 +67,9 @@ contract MainP0 is Ownable, Pausable, IMain {
         // We _think_ these are totally order-independent.
         require(!paused, "paused");
         backingManager.grantAllowances();
-        basketHandler.ensureValidBasket();
+        basketHandler.ensureBasket();
         assetRegistry.forceUpdates();
-        revenueFurnace.melt();
+        furnace.melt();
         rsrTrader.closeDueAuctions();
         rTokenTrader.closeDueAuctions();
         backingManager.closeDueAuctions();
@@ -47,8 +89,8 @@ contract MainP0 is Ownable, Pausable, IMain {
         require(!initialized, "Already initialized");
         initialized = true;
 
-        setRTokenIssuer(args.core.rTokenIssuer);
-        rTokenIssuer.initComponent(this, args);
+        setIssuer(args.core.issuer);
+        issuer.initComponent(this, args);
 
         setBackingManager(args.core.backingManager);
         backingManager.initComponent(this, args);
@@ -68,7 +110,7 @@ contract MainP0 is Ownable, Pausable, IMain {
         setDistributor(args.core.distributor);
         distributor.initComponent(this, args);
 
-        setRevenueFurnace(args.periphery.furnace);
+        setFurnace(args.periphery.furnace);
 
         setMarket(args.periphery.market);
 
@@ -134,13 +176,13 @@ contract MainP0 is Ownable, Pausable, IMain {
         backingManager = val;
     }
 
-    IRTokenIssuer public rTokenIssuer;
+    IIssuer public issuer;
 
-    function setRTokenIssuer(IRTokenIssuer val) public onlyOwner {
-        emit RTokenIssuerSet(rTokenIssuer, val);
-        components.remove(address(rTokenIssuer));
+    function setIssuer(IIssuer val) public onlyOwner {
+        emit IssuerSet(issuer, val);
+        components.remove(address(issuer));
         components.add(address(val));
-        rTokenIssuer = val;
+        issuer = val;
     }
 
     IDistributor public distributor;
@@ -168,11 +210,11 @@ contract MainP0 is Ownable, Pausable, IMain {
 
     // === Non-components ===
 
-    IFurnace public revenueFurnace;
+    IFurnace public furnace;
 
-    function setRevenueFurnace(IFurnace val) public onlyOwner {
-        emit RevenueFurnaceSet(revenueFurnace, val);
-        revenueFurnace = val;
+    function setFurnace(IFurnace val) public onlyOwner {
+        emit FurnaceSet(furnace, val);
+        furnace = val;
     }
 
     IERC20 public rsr;

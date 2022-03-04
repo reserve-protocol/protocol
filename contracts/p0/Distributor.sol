@@ -28,7 +28,7 @@ contract DistributorP0 is Component, IDistributor {
     }
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
-    /// main.revenueFurnace() and main.stRSR().
+    /// main.furnace() and main.stRSR().
     function setDistribution(address dest, RevenueShare memory share) external onlyOwner {
         _setDistribution(dest, share);
     }
@@ -67,7 +67,7 @@ contract DistributorP0 is Component, IDistributor {
             }
 
             if (addrTo == FURNACE) {
-                addrTo = address(main.revenueFurnace());
+                addrTo = address(main.furnace());
             } else if (addrTo == ST_RSR) {
                 addrTo = address(main.stRSR());
             }

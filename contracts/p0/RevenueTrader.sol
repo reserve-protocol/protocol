@@ -24,7 +24,7 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
         // Call state keepers
         main.poke();
 
-        IERC20[] memory erc20s = main.assetRegistry().registeredERC20s();
+        IERC20[] memory erc20s = main.assetRegistry().erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
             manageERC20(erc20s[i]);
         }

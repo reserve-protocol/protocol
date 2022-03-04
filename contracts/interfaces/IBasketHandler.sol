@@ -38,26 +38,26 @@ interface IBasketHandler is IComponent {
         IERC20[] calldata erc20s
     ) external;
 
-    function ensureValidBasket() external;
+    function ensureBasket() external;
 
     function switchBasket() external returns (bool);
 
     function fullyCapitalized() external view returns (bool);
 
-    function worstCollateralStatus() external view returns (CollateralStatus status);
+    function status() external view returns (CollateralStatus status);
 
-    function basketQuantity(IERC20 erc20) external view returns (Fix);
+    function quantity(IERC20 erc20) external view returns (Fix);
 
-    function basketQuote(Fix amount, RoundingApproach rounding)
+    function quote(Fix amount, RoundingApproach rounding)
         external
         view
         returns (address[] memory erc20s, uint256[] memory quantities);
 
     function basketsHeldBy(address account) external view returns (Fix baskets);
 
-    function basketPrice() external view returns (Fix price);
+    function price() external view returns (Fix price);
 
-    function basketTokens() external view returns (address[] memory);
+    function tokens() external view returns (address[] memory);
 
-    function basketLastSet() external view returns (uint256, uint256);
+    function lastSet() external view returns (uint256, uint256);
 }

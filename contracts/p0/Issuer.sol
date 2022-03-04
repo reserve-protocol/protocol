@@ -8,10 +8,10 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/p0/Component.sol";
 
 /**
- * @title RTokenIssuer
+ * @title Issuer
  * @notice Handles issuance and redemption of RToken.
  */
-contract RTokenIssuerP0 is IRTokenIssuer, Component {
+contract IssuerP0 is IIssuer, Component {
     using FixLib for Fix;
     using SafeERC20 for IERC20;
 
@@ -27,10 +27,7 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
         IBasketHandler basketHandler = main.basketHandler();
         IRToken rToken = main.rToken();
 
-        require(
-            basketHandler.worstCollateralStatus() == CollateralStatus.SOUND,
-            "collateral not sound"
-        );
+        require(basketHandler.status() == CollateralStatus.SOUND, "collateral not sound");
 
         uint256 rTokSupply = rToken.totalSupply(); // {qRTok}
         Fix baskets = (rTokSupply > 0) // {BU}
@@ -38,7 +35,7 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
             : main.assetRegistry().toAsset(rToken).fromQ(toFix(amount)); // {qRTok / qRTok}
 
         address[] memory erc20s;
-        (erc20s, deposits) = basketHandler.basketQuote(baskets, RoundingApproach.CEIL);
+        (erc20s, deposits) = basketHandler.quote(baskets, RoundingApproach.CEIL);
 
         // Transfer collateral to RToken
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -67,7 +64,7 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
         Fix baskets = rToken.basketsNeeded().mulu(amount).divuRound(rToken.totalSupply());
 
         address[] memory erc20s;
-        (erc20s, withdrawals) = basketHandler.basketQuote(baskets, RoundingApproach.FLOOR);
+        (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingApproach.FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         Fix prorate = toFix(amount).divu(rToken.totalSupply());
@@ -107,9 +104,9 @@ contract RTokenIssuerP0 is IRTokenIssuer, Component {
         IAsset rTokenAsset = main.assetRegistry().toAsset(rToken);
 
         Fix rTokSupply = rTokenAsset.fromQ(toFix(rToken.totalSupply()));
-        if (rTokSupply.eq(FIX_ZERO)) return main.basketHandler().basketPrice();
+        if (rTokSupply.eq(FIX_ZERO)) return main.basketHandler().price();
 
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
-        return main.basketHandler().basketPrice().mul(rToken.basketsNeeded()).div(rTokSupply);
+        return main.basketHandler().price().mul(rToken.basketsNeeded()).div(rTokSupply);
     }
 }

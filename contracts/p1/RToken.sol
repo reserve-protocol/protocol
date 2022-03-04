@@ -114,7 +114,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
             lastIssRate = fixMax(MIN_ISS_RATE, issuanceRate.mulu(totalSupply()));
         }
 
-        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
 
         // Ensure that the queue is initialized, and models the current basket
         if (queue.items.length == 0 || queue.basketNonce < basketNonce) {
@@ -168,16 +168,13 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// Callable by anyone!
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amtRToken of RToken quanta vested
-    function vestIssuances(address account) external returns (uint256 vested) {
+    function vest(address account) external returns (uint256 vested) {
         require(!main.paused(), "main is paused");
-        require(
-            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
-            "collateral default"
-        );
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
         IssueQueue storage queue = issueQueues[account];
         refundOldBasketIssues(account);
-        (, uint256 basketTimestamp) = main.basketHandler().basketLastSet();
+        (, uint256 basketTimestamp) = main.basketHandler().lastSet();
         assert(queue.left == queue.right || queue.basketNonce == basketTimestamp);
 
         // Handle common edge cases in O(1)
@@ -205,7 +202,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// @param account The account of the issuer, and caller
     /// @param through The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    function cancelIssuances(
+    function cancel(
         address account,
         uint256 through,
         bool earliest
@@ -319,7 +316,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// If account's queue models an old basket, refund those issuances.
     function refundOldBasketIssues(address account) private {
         IssueQueue storage queue = issueQueues[account];
-        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
         // ensure that the queue models issuances against the current basket, not previous baskets
         if (queue.basketNonce != basketNonce) {
             refundSpan(account, queue.left, queue.right);

@@ -24,5 +24,5 @@ interface IAssetRegistry is IComponent {
 
     function isRegistered(IERC20 erc20) external view returns (bool);
 
-    function registeredERC20s() external view returns (IERC20[] memory);
+    function erc20s() external view returns (IERC20[] memory);
 }

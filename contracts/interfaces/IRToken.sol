@@ -86,7 +86,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// @param account The account of the issuer, and caller
     /// @param throughIndex The index of the issuance in the issuer's queue to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    function cancelIssuances(
+    function cancel(
         address account,
         uint256 throughIndex,
         bool earliest
@@ -95,7 +95,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amount of RToken quanta vested
-    function vestIssuances(address account) external returns (uint256 vested);
+    function vest(address account) external returns (uint256 vested);
 
     /// Burns a quantity of RToken from the callers account
     /// @param from The account from which RToken should be burned

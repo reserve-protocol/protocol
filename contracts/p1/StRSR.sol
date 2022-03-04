@@ -115,7 +115,7 @@ contract StRSR is IStRSR, Component, EIP712 {
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
 
         require(bh.fullyCapitalized(), "RToken uncapitalized");
-        require(bh.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
         // Process pending withdrawals
         payoutRewards();
@@ -128,7 +128,7 @@ contract StRSR is IStRSR, Component, EIP712 {
         address account = _msgSender();
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
-        require(bh.worstCollateralStatus() == CollateralStatus.SOUND, "basket defaulted");
+        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
         CumulativeDraft[] storage queue = draftQueues[era][account];
         require(endId <= queue.length, "index out-of-bounds");
