@@ -125,19 +125,18 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
 
     /// Cancels a vesting slow issuance
     /// User Action
-    /// @param account The account of the issuer, and caller
-    /// @param throughIndex The index of the issuance in the issuer's queue to cancel through
+    /// If earliest == true, cancel id if id < endId
+    /// If earliest == false, cancel id if endId <= id
+    /// @param endId One end of the range of issuance IDs to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    function cancelIssuances(
-        address account,
-        uint256 endId,
-        bool earliest
-    ) public returns (uint256[] memory deposits) {
-        require(account == _msgSender(), "issuer does not match caller");
+    function cancelIssuances(uint256 endId, bool earliest)
+        external
+        returns (uint256[] memory deposits)
+    {
+        address account = _msgSender();
 
         // Call state keepers
         main.poke();
-        vestIssuances(account);
 
         SlowIssuance[] storage queue = issuances[account];
         (uint256 first, uint256 last) = earliest ? (0, endId) : (endId, queue.length);
@@ -160,7 +159,7 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amount of RToken quanta vested
     function vestIssuances(address account, uint256 endId)
-        public
+        external
         notPaused
         returns (uint256 vested)
     {

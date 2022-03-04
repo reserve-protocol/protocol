@@ -196,8 +196,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// Cancel some vesting issuance(s)
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id
-    /// @param account The account of the issuer, and caller
-    /// @param through The issuance index to cancel through
+    /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     function cancelIssuances(uint256 endId, bool earliest)
         external
@@ -209,11 +208,11 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         require(queue.left <= endId && endId < queue.right, "'endId' is out of range");
 
         if (earliest) {
-            deposits = refundSpan(account, queue.left, end);
-            queue.left = end;
+            deposits = refundSpan(account, queue.left, endId);
+            queue.left = endId;
         } else {
-            deposits = refundSpan(account, end, queue.right);
-            queue.right = end;
+            deposits = refundSpan(account, endId, queue.right);
+            queue.right = endId;
         }
     }
 
@@ -270,15 +269,21 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         IssueQueue storage queue = issueQueues[account];
         if (left >= right) return deposits;
 
-        // refund total deposits
-        IssueItem storage leftItem;
-        if (queue.left > 0) leftItem = queue.items[queue.left - 1];
+        // compute total deposits
         IssueItem storage rightItem = queue.items[right - 1];
+        if (queue.left == 0) {
+            for (uint256 i = 0; i < queue.tokens.length; i++) {
+                deposits[i] = rightItem.deposits[i];
+            }
+        } else {
+            IssueItem storage leftItem = queue.items[queue.left - 1];
+            for (uint256 i = 0; i < queue.tokens.length; i++) {
+                deposits[i] = rightItem.deposits[i] - leftItem.deposits[i];
+            }
+        }
 
+        // transfer deposits
         for (uint256 i = 0; i < queue.tokens.length; i++) {
-            deposits[i] = queue.left > 0
-                ? rightItem.deposits[i] - leftItem.deposits[i]
-                : rightItem.deposits[i];
             IERC20(queue.tokens[i]).safeTransfer(address(main), deposits[i]);
         }
 
@@ -288,32 +293,39 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
 
     /// Vest all RToken issuance in queue = queues[account], from queue.left through index `through`
     /// This *does* fixup queue.left and queue.right!
-    function vestUpTo(address account, uint256 end) private returns (uint256 amtRToken) {
+    function vestUpTo(address account, uint256 endId) private returns (uint256 amtRToken) {
         IssueQueue storage queue = issueQueues[account];
-        if (queue.left == end) return;
-        assert(queue.left < end && end <= queue.right); // out- of-bounds error
+        if (queue.left == endId) return 0;
+        assert(queue.left < endId && endId <= queue.right); // out- of-bounds error
 
-        // Vest the span up to index `through`.
-        IssueItem storage leftItem;
-        if (queue.left > 0) leftItem = queue.items[queue.left];
-        IssueItem storage rightItem = queue.items[through];
+        // Vest the span up to `endId`.
+        uint256 amtRTokenToMint;
+        Fix newBasketsNeeded;
+        IssueItem storage rightItem = queue.items[endId];
 
-        for (uint256 i = 0; i < queue.tokens.length; i++) {
-            uint256 amtDeposit = queue.left > 0
-                ? rightItem.deposits[i] - leftItem.deposits[i]
-                : rightItem.depostis[i];
-            IERC20(queue.tokens[i]).safeTransfer(address(main), amtDeposit);
+        if (queue.left == 0) {
+            for (uint256 i = 0; i < queue.tokens.length; i++) {
+                uint256 amtDeposit = rightItem.deposits[i];
+                IERC20(queue.tokens[i]).safeTransfer(address(main), amtDeposit);
+            }
+            amtRTokenToMint = rightItem.amtRToken;
+            newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets);
+        } else {
+            IssueItem storage leftItem = queue.items[queue.left - 1];
+            for (uint256 i = 0; i < queue.tokens.length; i++) {
+                uint256 amtDeposit = rightItem.deposits[i] - leftItem.deposits[i];
+                IERC20(queue.tokens[i]).safeTransfer(address(main), amtDeposit);
+            }
+            amtRTokenToMint = rightItem.amtRToken - leftItem.amtRToken;
+            newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets).minus(leftItem.amtBaskets);
         }
-        amtRToken = queue.left > 0 ? rightItem.amtRToken - leftItem.amtRToken : rightItem.amtRToken;
-        _mint(account, amtRToken);
 
-        Fix newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets.minus(leftItem.amtBaskets));
+        _mint(account, amtRTokenToMint);
         basketsNeeded = newBasketsNeeded;
-
-        emit IssuancesCompleted(account, queue.left, end);
         emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
 
-        queue.left = end;
+        emit IssuancesCompleted(account, queue.left, endId);
+        queue.left = endId;
     }
 
     /// If account's queue models an old basket, refund those issuances.

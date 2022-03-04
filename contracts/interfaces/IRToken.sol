@@ -34,22 +34,18 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
 
     /// Emitted when an RToken issuance is canceled, such as during a default
     /// @param issuer The account of the issuer
-    /// @param firstIndex The first of the cancelled issuances in the issuer's queue
-    /// @param lastIndex The last of the cancelled issuances in the issuer's queue
-    event IssuancesCanceled(
-        address indexed issuer,
-        uint256 indexed firstIndex,
-        uint256 indexed endIndex
-    );
+    /// @param firstId The first of the cancelled issuances in the issuer's queue
+    /// @param endId The last of the cancelled issuances in the issuer's queue
+    event IssuancesCanceled(address indexed issuer, uint256 indexed firstId, uint256 indexed endId);
 
     /// Emitted when an RToken issuance is completed successfully
     /// @param issuer The account of the issuer
-    /// @param firstIndex The first of the completed issuances in the issuer's queue
-    /// @param lastIndex The first of the completed issuances in the issuer's queue
+    /// @param firstId The first of the completed issuances in the issuer's queue
+    /// @param endId The first of the completed issuances in the issuer's queue
     event IssuancesCompleted(
         address indexed issuer,
-        uint256 indexed firstIndex,
-        uint256 indexed endIndex
+        uint256 indexed firstId,
+        uint256 indexed endId
     );
 
     /// Emitted when the number of baskets needed changes
