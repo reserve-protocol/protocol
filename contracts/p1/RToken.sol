@@ -109,7 +109,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
 
         // Refund issuances against previous baskets
         refundOldBasketIssues(account);
-        (uint256 basketNonce, ) = main.basketHandler().basketLastSet();
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
 
         // Either the queue is empty or the basketNonce is up-to-date
         assert(queue.left == queue.right || queue.basketNonce == basketNonce);
