@@ -118,6 +118,8 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
             Fix deficitAmount
         ) = largestSurplusAndDeficit(pickTarget);
 
+        if (address(surplus) == address(0) || address(deficit) == address(0)) return false;
+
         // Of primary concern here is whether we can trust the prices for the assets
         // we are selling. If we cannot, then we should not `prepareAuctionToCoverDeficit`
 
@@ -153,6 +155,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
 
         (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit(false);
+        if (address(deficit) == address(0)) return false;
 
         uint256 rsrBal = rsrAsset.erc20().balanceOf(address(this));
         uint256 rsrBalStRSR = rsrAsset.erc20().balanceOf(address(stRSR));
@@ -186,8 +189,8 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     /// using the unit of account for interconversion.
     /// @param pickTarget If true, compute surplus relative to asset average;
     ///                   if false, just use basketsNeeded
-    /// @return surplus Surplus asset
-    /// @return deficit Deficit collateral
+    /// @return surplus Surplus asset OR address(0)
+    /// @return deficit Deficit collateral OR address(0)
     /// @return sellAmount {sellTok} Surplus amount (whole tokens)
     /// @return buyAmount {buyTok} Deficit amount (whole tokens)
     function largestSurplusAndDeficit(bool pickTarget)
@@ -290,11 +293,13 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
 
         // {tok} = {UoA} / {UoA/tok}
         sellAmount = surplusMax.div(prices[surplusIndex]);
-        surplus = reg.toAsset(erc20s[surplusIndex]);
+        surplus = sellAmount.gt(FIX_ZERO) ? reg.toAsset(erc20s[surplusIndex]) : IAsset(address(0));
 
         // {tok} = {UoA} / {UoA/tok}
         buyAmount = deficitMax.div(prices[deficitIndex]);
-        deficit = reg.toColl(erc20s[deficitIndex]);
+        deficit = buyAmount.gt(FIX_ZERO)
+            ? reg.toColl(erc20s[deficitIndex])
+            : ICollateral(address(0));
     }
 
     // === Setters ===
