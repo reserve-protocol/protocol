@@ -204,6 +204,10 @@ contract StRSR is IStRSR, Component, EIP712 {
         main = main_;
     }
 
+    function exchangeRate() external view returns (Fix) {
+        return toFix(stakeRSR).divu(totalStakes);
+    }
+
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
     /// This search may be slightly expensive.
     /// TODO: experiment! For what values of queue.length - firstId is this actually cheaper

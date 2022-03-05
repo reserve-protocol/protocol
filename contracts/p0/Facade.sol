@@ -83,4 +83,8 @@ contract FacadeP0 is IFacade {
             }
         }
     }
+
+    function stRSRExchangeRate() external view returns (Fix) {
+        return main.stRSR().exchangeRate();
+    }
 }

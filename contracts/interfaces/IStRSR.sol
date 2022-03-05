@@ -95,4 +95,7 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
 
     /// Sets Main, only by owner
     function setMain(IMain main) external;
+
+    /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
+    function exchangeRate() external view returns (Fix);
 }
