@@ -3,33 +3,31 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "contracts/p0/adapters/AaveClaimAdapter.sol";
-import "contracts/p0/adapters/CompoundClaimAdapter.sol";
-import "contracts/p0/assets/AavePricedAsset.sol";
-import "contracts/p0/assets/CompoundPricedAsset.sol";
-import "contracts/p0/assets/RTokenAsset.sol";
-import "contracts/p0/assets/abstract/AaveOracleMixin.sol";
-import "contracts/p0/assets/abstract/CompoundOracleMixin.sol";
-import "contracts/p0/interfaces/IAsset.sol";
-import "contracts/p0/interfaces/IClaimAdapter.sol";
-import "contracts/p0/interfaces/IDeployer.sol";
-import "contracts/p0/interfaces/IFurnace.sol";
-import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IMarket.sol";
-import "contracts/p0/assets/RTokenAsset.sol";
+import "contracts/plugins/adapters/AaveClaimAdapter.sol";
+import "contracts/plugins/adapters/CompoundClaimAdapter.sol";
+import "contracts/plugins/assets/AavePricedAsset.sol";
+import "contracts/plugins/assets/CompoundPricedAsset.sol";
+import "contracts/plugins/assets/RTokenAsset.sol";
+import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
+import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
+import "contracts/interfaces/IAsset.sol";
+import "contracts/interfaces/IClaimAdapter.sol";
+import "contracts/interfaces/IDeployer.sol";
+import "contracts/interfaces/IFacade.sol";
+import "contracts/interfaces/IFurnace.sol";
+import "contracts/interfaces/IMain.sol";
+import "contracts/interfaces/IMarket.sol";
+import "contracts/plugins/assets/RTokenAsset.sol";
 import "contracts/p0/AssetRegistry.sol";
 import "contracts/p0/BackingManager.sol";
 import "contracts/p0/BasketHandler.sol";
-import "contracts/p0/ExplorerFacade.sol";
+import "contracts/p0/Facade.sol";
 import "contracts/p0/Furnace.sol";
 import "contracts/p0/Main.sol";
 import "contracts/p0/RToken.sol";
-import "contracts/p0/RTokenIssuer.sol";
-import "contracts/p0/RevenueDistributor.sol";
-import "contracts/p0/Settings.sol";
+import "contracts/p0/Issuer.sol";
+import "contracts/p0/Distributor.sol";
 import "contracts/p0/StRSR.sol";
-import "contracts/IExplorerFacade.sol";
-import "contracts/libraries/CommonErrors.sol";
 
 /**
  * @title DeployerP0
@@ -70,65 +68,60 @@ contract DeployerP0 is IDeployer {
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
     /// @param owner The address that should own the entire system, hopefully a governance contract
-    /// @param config Governance params
-    /// @param dist The revenue shares distribution
-    /// @param maxAuctionSize {UoA} The max auction size to use for RToken/RSR/COMP/AAVE
+    /// @param params Deployment params
     /// @return The address of the newly deployed Main instance.
     function deploy(
         string memory name,
         string memory symbol,
         address owner,
-        Config memory config,
-        RevenueShare memory dist,
-        Fix maxAuctionSize
-    ) external override returns (address) {
+        DeploymentParams memory params
+    ) external returns (address) {
+        IRToken rToken = deployRToken(name, symbol);
         IMain main = deployMain();
         deployments.push(main);
 
-        // Prepare ConstructorArgs while deploying most of the system
-        ConstructorArgs memory ctorArgs;
-        ctorArgs.config = config;
-        ctorArgs.dist = dist;
-        ctorArgs.market = market;
-        ctorArgs.rsr = rsr;
-        ctorArgs.stRSR = deployStRSR(
+        // Periphery
+        Periphery memory periphery;
+        periphery.furnace = deployFurnace(rToken, params.rewardPeriod, params.rewardRatio);
+        Ownable(address(periphery.furnace)).transferOwnership(owner);
+        periphery.market = market;
+        periphery.claimAdapters = new IClaimAdapter[](2);
+        periphery.claimAdapters[0] = compoundClaimer;
+        periphery.claimAdapters[1] = aaveClaimer;
+        periphery.assets = new IAsset[](4);
+        periphery.assets[0] = new RTokenAssetP0(rToken, params.maxAuctionSize, main);
+        periphery.assets[1] = new AavePricedAssetP0(
+            rsr,
+            params.maxAuctionSize,
+            comptroller,
+            aaveLendingPool
+        );
+        periphery.assets[2] = new AavePricedAssetP0(
+            aave,
+            params.maxAuctionSize,
+            comptroller,
+            aaveLendingPool
+        );
+        periphery.assets[3] = new CompoundPricedAssetP0(comp, params.maxAuctionSize, comptroller);
+
+        // Core
+        Core memory components;
+        components.rToken = rToken;
+        components.stRSR = deployStRSR(
             string(abi.encodePacked("st", symbol, "RSR Token")),
             string(abi.encodePacked("st", symbol, "RSR"))
         );
-        ctorArgs.rToken = deployRToken(main, name, symbol, owner);
+        components.rToken = rToken;
+        components.assetRegistry = new AssetRegistryP0();
+        components.basketHandler = new BasketHandlerP0();
+        components.backingManager = new BackingManagerP0();
+        components.issuer = new IssuerP0();
+        components.distributor = new DistributorP0();
+        components.rsrTrader = new RevenueTraderP0(rsr);
+        components.rTokenTrader = new RevenueTraderP0(rToken);
 
-        Fix furnaceRatio = config.stRSRPayRatio;
-        ctorArgs.furnace = deployRevenueFurnace(ctorArgs.rToken, config.rewardPeriod, furnaceRatio);
-        Ownable(address(ctorArgs.furnace)).transferOwnership(owner);
-
-        ctorArgs.claimAdapters = new IClaimAdapter[](2);
-        ctorArgs.claimAdapters[0] = compoundClaimer;
-        ctorArgs.claimAdapters[1] = aaveClaimer;
-
-        ctorArgs.assets = new IAsset[](4);
-        ctorArgs.assets[0] = new RTokenAssetP0(ctorArgs.rToken, maxAuctionSize, main);
-        ctorArgs.assets[1] = new AavePricedAssetP0(
-            rsr,
-            maxAuctionSize,
-            comptroller,
-            aaveLendingPool
-        );
-        ctorArgs.assets[2] = new AavePricedAssetP0(
-            aave,
-            maxAuctionSize,
-            comptroller,
-            aaveLendingPool
-        );
-        ctorArgs.assets[3] = new CompoundPricedAssetP0(comp, maxAuctionSize, comptroller);
-
-        ctorArgs.assetRegistry = new AssetRegistryP0();
-        ctorArgs.backingManager = new BackingManagerP0();
-        ctorArgs.basketHandler = new BasketHandlerP0();
-        ctorArgs.rTokenIssuer = new RTokenIssuerP0();
-        ctorArgs.revenueDistributor = new RevenueDistributorP0();
-        ctorArgs.settings = new SettingsP0();
-        ctorArgs.rsrTrader = new RevenueTraderP0(ctorArgs.rsr);
-        ctorArgs.rTokenTrader = new RevenueTraderP0(ctorArgs.rToken);
+        // ConstructorArgs
+        ConstructorArgs memory ctorArgs = ConstructorArgs(params, components, periphery, rsr);
 
         // Init main
         main.init(ctorArgs);
@@ -138,8 +131,8 @@ contract DeployerP0 is IDeployer {
         Ownable(address(main)).transferOwnership(owner);
 
         // Facade
-        IExplorerFacade facade = new ExplorerFacadeP0(address(main));
-        emit RTokenCreated(main, ctorArgs.rToken, ctorArgs.stRSR, facade, owner);
+        IFacade facade = new FacadeP0(address(main));
+        emit RTokenCreated(main, rToken, ctorArgs.core.stRSR, facade, owner);
         return (address(main));
     }
 
@@ -150,16 +143,15 @@ contract DeployerP0 is IDeployer {
         return new MainP0();
     }
 
-    function deployRToken(
-        IMain main,
-        string memory name,
-        string memory symbol,
-        address owner
-    ) internal virtual returns (IRToken) {
-        return new RTokenP0(main, name, symbol, owner);
+    function deployRToken(string memory name, string memory symbol)
+        internal
+        virtual
+        returns (IRToken)
+    {
+        return new RTokenP0(name, symbol);
     }
 
-    function deployRevenueFurnace(
+    function deployFurnace(
         IRToken rToken,
         uint256 period,
         Fix ratio

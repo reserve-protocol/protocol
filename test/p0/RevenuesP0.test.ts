@@ -23,7 +23,7 @@ import {
   CTokenMock,
   DeployerP0,
   ERC20Mock,
-  ExplorerFacadeP0,
+  FacadeP0,
   FurnaceP0,
   MainP0,
   MarketMock,
@@ -36,9 +36,8 @@ import {
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
-  RTokenIssuerP0,
-  RevenueDistributorP0,
-  SettingsP0,
+  IssuerP0,
+  DistributorP0,
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
@@ -146,13 +145,12 @@ describe('Revenues', () => {
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
-  let facade: ExplorerFacadeP0
+  let facade: FacadeP0
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let rTokenIssuer: RTokenIssuerP0
-  let revenueDistributor: RevenueDistributorP0
-  let settings: SettingsP0
+  let issuer: IssuerP0
+  let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -188,9 +186,8 @@ describe('Revenues', () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      rTokenIssuer,
-      revenueDistributor,
-      settings,
+      issuer,
+      distributor,
       rToken,
       rTokenAsset,
       furnace,
@@ -206,7 +203,7 @@ describe('Revenues', () => {
     token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
 
     // Set backingBuffer to 0 to make math easy
-    await settings.connect(owner).setBackingBuffer(0)
+    await backingManager.connect(owner).setBackingBuffer(0)
 
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
@@ -232,72 +229,60 @@ describe('Revenues', () => {
   describe('Config/Setup', function () {
     it('Should setup initial distribution correctly', async () => {
       // Configuration
-      let rsrCut = await revenueDistributor.rsrCut()
-      expect(rsrCut.rsrShares).equal(bn(60))
-      expect(rsrCut.totalShares).equal(bn(100))
-
-      let rtokenCut = await revenueDistributor.rTokenCut()
-      expect(rtokenCut.rTokenShares).equal(bn(40))
-      expect(rtokenCut.totalShares).equal(bn(100))
+      let totals = await distributor.totals()
+      expect(totals.rsrTotal).equal(bn(60))
+      expect(totals.rTokenTotal).equal(bn(40))
     })
 
     it('Should allow to set distribution if owner', async () => {
       // Check initial status
-      let rsrCut = await revenueDistributor.rsrCut()
-      expect(rsrCut.rsrShares).equal(bn(60))
-      expect(rsrCut.totalShares).equal(bn(100))
-
-      let rtokenCut = await revenueDistributor.rTokenCut()
-      expect(rtokenCut.rTokenShares).equal(bn(40))
-      expect(rtokenCut.totalShares).equal(bn(100))
+      let totals = await distributor.totals()
+      expect(totals.rsrTotal).equal(bn(60))
+      expect(totals.rTokenTotal).equal(bn(40))
 
       // Attempt to update with another account
       await expect(
-        revenueDistributor
+        distributor
           .connect(other)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
       ).to.be.revertedWith('Component: caller is not the owner')
 
       // Update with owner - Set f = 1
-      await revenueDistributor
+      await distributor
         .connect(owner)
         .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
 
       // Check updated status
-      rsrCut = await revenueDistributor.rsrCut()
-      expect(rsrCut.rsrShares).equal(bn(60))
-      expect(rsrCut.totalShares).equal(bn(60))
-
-      rtokenCut = await revenueDistributor.rTokenCut()
-      expect(rtokenCut.rTokenShares).equal(bn(0))
-      expect(rtokenCut.totalShares).equal(bn(60))
+      totals = await distributor.totals()
+      expect(totals.rsrTotal).equal(bn(60))
+      expect(totals.rTokenTotal).equal(bn(0))
     })
 
     it('Should perform distribution validations', async () => {
       // Cannot set RSR > 0 for Furnace
       await expect(
-        revenueDistributor
+        distributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
       ).to.be.revertedWith('Furnace must get 0% of RSR')
 
       // Cannot set RToken > 0 for StRSR
       await expect(
-        revenueDistributor
+        distributor
           .connect(owner)
           .setDistribution(STRSR_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
       ).to.be.revertedWith('StRSR must get 0% of RToken')
 
       // Cannot set RSR distribution too high
       await expect(
-        revenueDistributor
+        distributor
           .connect(owner)
           .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(10001) })
       ).to.be.revertedWith('RSR distribution too high')
 
       // Cannot set RToken distribution too high
       await expect(
-        revenueDistributor
+        distributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(10001), rsrDist: bn(0) })
       ).to.be.revertedWith('RSR distribution too high')
@@ -314,13 +299,13 @@ describe('Revenues', () => {
         issueAmount = bn('100e18')
 
         // Provide approvals
-        await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token0.connect(addr1).approve(issuer.address, initialBal)
+        await token1.connect(addr1).approve(issuer.address, initialBal)
+        await token2.connect(addr1).approve(issuer.address, initialBal)
+        await token3.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue rTokens
-        await rTokenIssuer.connect(addr1).issue(issueAmount)
+        await issuer.connect(addr1).issue(issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -369,7 +354,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -383,7 +368,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -394,7 +379,7 @@ describe('Revenues', () => {
         expect(await compToken.balanceOf(market.address)).to.equal(rewardAmountCOMP)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -427,7 +412,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: sellAmt,
           clearingBuyAmount: minBuyAmt,
           externalAuctionId: bn('0'),
@@ -441,7 +426,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: sellAmtRToken,
           clearingBuyAmount: minBuyAmtRToken,
           externalAuctionId: bn('1'),
@@ -493,7 +478,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: await getLatestBlockTimestamp(),
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -507,7 +492,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: await getLatestBlockTimestamp(),
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -518,7 +503,7 @@ describe('Revenues', () => {
         expect(await aaveToken.balanceOf(market.address)).to.equal(rewardAmountAAVE)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -566,14 +551,14 @@ describe('Revenues', () => {
         )
 
         // Perform swap
-        await assetRegistry.connect(owner).swapRegisteredAsset(newCompAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
 
         // Set f = 1
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
         // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
 
@@ -611,7 +596,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -639,7 +624,7 @@ describe('Revenues', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
@@ -659,7 +644,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: await getLatestBlockTimestamp(),
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -679,7 +664,7 @@ describe('Revenues', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Close auctions
         await expect(facade.runAuctionsForAllTraders())
@@ -713,13 +698,13 @@ describe('Revenues', () => {
         )
 
         // Perform swap
-        await assetRegistry.connect(owner).swapRegisteredAsset(newAaveAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newAaveAsset.address)
 
         // Set f = 0, avoid dropping tokens
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
 
@@ -757,7 +742,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -781,7 +766,7 @@ describe('Revenues', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Another call will create a new auction and close existing
         await expect(facade.runAuctionsForAllTraders())
@@ -798,7 +783,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRemainder,
           minBuyAmount: minBuyAmtRemainder,
           startTime: await getLatestBlockTimestamp(),
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -817,7 +802,7 @@ describe('Revenues', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Close auction
         await expect(facade.runAuctionsForAllTraders())
@@ -848,13 +833,13 @@ describe('Revenues', () => {
         )
 
         // Perform swap
-        await assetRegistry.connect(owner).swapRegisteredAsset(newCompAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
 
         // Set f = 0.8 (0.2 for Rtoken)
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(4) })
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
 
@@ -897,7 +882,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -911,7 +896,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -919,7 +904,7 @@ describe('Revenues', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -962,7 +947,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: sellAmt,
           clearingBuyAmount: minBuyAmt,
           externalAuctionId: bn('0'),
@@ -976,7 +961,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: sellAmtRToken,
           clearingBuyAmount: minBuyAmtRToken,
           externalAuctionId: bn('1'),
@@ -989,7 +974,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRemainder,
           minBuyAmount: minBuyAmtRemainder,
           startTime: await getLatestBlockTimestamp(),
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionPeriod),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('2'),
@@ -1004,7 +989,7 @@ describe('Revenues', () => {
 
         // Run final auction until all funds are converted
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(market.address, minBuyAmtRemainder)
@@ -1035,7 +1020,7 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Set distribution - 50% of each to another account
-        await revenueDistributor
+        await distributor
           .connect(owner)
           .setDistribution(other.address, { rTokenDist: bn(40), rsrDist: bn(60) })
 
@@ -1079,7 +1064,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -1093,7 +1078,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -1104,7 +1089,7 @@ describe('Revenues', () => {
         expect(await compToken.balanceOf(market.address)).to.equal(rewardAmountCOMP)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -1137,7 +1122,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: sellAmt,
           clearingBuyAmount: minBuyAmt,
           externalAuctionId: bn('0'),
@@ -1151,7 +1136,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: sellAmtRToken,
           clearingBuyAmount: minBuyAmtRToken,
           externalAuctionId: bn('1'),
@@ -1205,8 +1190,9 @@ describe('Revenues', () => {
           await ATokenCollateralFactory.deploy(
             token2.address,
             await collateral2.maxAuctionSize(),
+            await collateral2.defaultThreshold(),
+            await collateral2.delayUntilDefault(),
             token0.address,
-            main.address,
             compoundMock.address,
             aaveMock.address,
             ZERO_ADDRESS
@@ -1227,8 +1213,9 @@ describe('Revenues', () => {
           await CTokenCollateralFactory.deploy(
             token3.address,
             await collateral3.maxAuctionSize(),
+            await collateral3.defaultThreshold(),
+            await collateral3.delayUntilDefault(),
             token0.address,
-            main.address,
             compoundMock.address,
             nonTrustedClaimer.address
           )
@@ -1236,17 +1223,17 @@ describe('Revenues', () => {
       })
 
       it('Should ignore claiming if no adapter defined', async () => {
-        await assetRegistry.swapRegisteredAsset(newATokenCollateral.address)
+        await assetRegistry.swapRegistered(newATokenCollateral.address)
 
         // Setup new basket with AToken with no claim adapter
         await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1')])
         await basketHandler.connect(owner).switchBasket()
 
         // Provide approvals
-        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token2.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue rTokens
-        await rTokenIssuer.connect(addr1).issue(issueAmount)
+        await issuer.connect(addr1).issue(issueAmount)
 
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
@@ -1262,17 +1249,17 @@ describe('Revenues', () => {
       })
 
       it('Should revert for non-trusted adapters', async () => {
-        await assetRegistry.swapRegisteredAsset(newCTokenCollateral.address)
+        await assetRegistry.swapRegistered(newCTokenCollateral.address)
 
         // Setup new basket with CToken with untrusted adapter
         await basketHandler.connect(owner).setPrimeBasket([token3.address], [fp('1')])
         await basketHandler.connect(owner).switchBasket()
 
         // Provide approvals
-        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token3.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue rTokens
-        await rTokenIssuer.connect(addr1).issue(issueAmount)
+        await issuer.connect(addr1).issue(issueAmount)
 
         // Will revert when attempting to get rewards
         await expect(backingManager.claimAndSweepRewards()).to.be.revertedWith(
@@ -1294,11 +1281,11 @@ describe('Revenues', () => {
         await basketHandler.connect(owner).switchBasket()
 
         // Provide approvals
-        await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
-        await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
+        await token2.connect(addr1).approve(issuer.address, initialBal)
+        await token3.connect(addr1).approve(issuer.address, initialBal)
 
         // Issue rTokens
-        await rTokenIssuer.connect(addr1).issue(issueAmount)
+        await issuer.connect(addr1).issue(issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -1309,7 +1296,7 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Check Price and Assets value
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1319,7 +1306,7 @@ describe('Revenues', () => {
         // Check Price (unchanged) and Assets value increment by 50%
         const excessValue: BigNumber = issueAmount.div(2)
         const excessQuantity: BigNumber = excessValue.div(2) // Because each unit is now worth $2
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessValue))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1345,7 +1332,7 @@ describe('Revenues', () => {
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1363,7 +1350,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -1377,7 +1364,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -1392,7 +1379,7 @@ describe('Revenues', () => {
         )
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -1418,7 +1405,7 @@ describe('Revenues', () => {
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
         // Check Price (unchanged) and Assets value (unchanged)
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1441,7 +1428,7 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Check Price and Assets value
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1452,7 +1439,7 @@ describe('Revenues', () => {
         // Check Price (unchanged) and Assets value increment by 1% (only half of the basket increased in value)
         const excessValue: BigNumber = issueAmount.mul(1).div(100)
         const excessQuantity: BigNumber = divCeil(excessValue.mul(BN_SCALE_FACTOR), rate) // Because each unit is now worth $1.02
-        expect(near(await rTokenIssuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
+        expect(near(await issuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessValue))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1482,7 +1469,7 @@ describe('Revenues', () => {
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
-        expect(near(await rTokenIssuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
+        expect(near(await issuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(near(await facade.totalAssetValue(), issueAmount, 2)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1500,7 +1487,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -1514,7 +1501,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRToken,
           minBuyAmount: minBuyAmtRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -1532,7 +1519,7 @@ describe('Revenues', () => {
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -1558,7 +1545,7 @@ describe('Revenues', () => {
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
         //  Check Price (unchanged) and Assets value (unchanged)
-        expect(near(await rTokenIssuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
+        expect(near(await issuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(near(await facade.totalAssetValue(), issueAmount, 2)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1578,7 +1565,7 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Check Price and Assets value
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1587,7 +1574,7 @@ describe('Revenues', () => {
         await token3.setExchangeRate(fp('2'))
 
         // Check Price (unchanged) and Assets value (now doubled)
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1614,7 +1601,7 @@ describe('Revenues', () => {
           .withArgs(0, rToken.address, rsr.address, sellAmt, minBuyAmt)
 
         // Check Price (unchanged) and Assets value - Supply has doubled
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
         expect(await rToken.totalSupply()).to.equal(newTotalSupply)
 
@@ -1636,7 +1623,7 @@ describe('Revenues', () => {
           sellAmount: sellAmt,
           minBuyAmount: minBuyAmt,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -1652,7 +1639,7 @@ describe('Revenues', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         //  End current auction - will not start new one
         await expect(facade.runAuctionsForAllTraders())
@@ -1667,7 +1654,7 @@ describe('Revenues', () => {
         let updatedRTokenPrice: BigNumber = newTotalSupply
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(updatedRTokenPrice)
+        expect(await issuer.rTokenPrice()).to.equal(updatedRTokenPrice)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
 
         // Check no funds in Market
@@ -1683,7 +1670,7 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Check Price and Assets value
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1693,7 +1680,7 @@ describe('Revenues', () => {
 
         // Check Price (unchanged) and Assets value (now 80% higher)
         const excessTotalValue: BigNumber = issueAmount.mul(80).div(100)
-        expect(near(await rTokenIssuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
+        expect(near(await issuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessTotalValue))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1753,7 +1740,7 @@ describe('Revenues', () => {
           )
 
         // Check Price (unchanged) and Assets value (excess collateral not counted anymore) - Supply has increased
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessRToken))
         expect(await rToken.totalSupply()).to.equal(newTotalSupply)
 
@@ -1786,7 +1773,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtFromRToken,
           minBuyAmount: minBuyAmtFromRToken,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('0'),
@@ -1800,7 +1787,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRSRFromCollateral,
           minBuyAmount: minBuyAmtRSRFromCollateral,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('1'),
@@ -1814,7 +1801,7 @@ describe('Revenues', () => {
           sellAmount: sellAmtRTokenFromCollateral,
           minBuyAmount: minBuyAmtRTokenFromCollateral,
           startTime: auctionTimestamp,
-          endTime: auctionTimestamp + Number(config.auctionPeriod),
+          endTime: auctionTimestamp + Number(config.auctionLength),
           clearingSellAmount: bn('0'),
           clearingBuyAmount: bn('0'),
           externalAuctionId: bn('2'),
@@ -1845,7 +1832,7 @@ describe('Revenues', () => {
         })
 
         //  Advance time till auction ended
-        await advanceTime(config.auctionPeriod.add(100).toString())
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction, should start a new one with same amount
         await expect(facade.runAuctionsForAllTraders())
@@ -1883,7 +1870,7 @@ describe('Revenues', () => {
         let updatedRTokenPrice: BigNumber = newTotalSupply
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
-        expect(await rTokenIssuer.rTokenPrice()).to.equal(updatedRTokenPrice)
+        expect(await issuer.rTokenPrice()).to.equal(updatedRTokenPrice)
         expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessRToken))
 
         //  Check destinations

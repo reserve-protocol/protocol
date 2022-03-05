@@ -1,26 +1,30 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IAssetRegistry.sol";
+import "contracts/interfaces/IMain.sol";
+import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/p0/Trader.sol";
 
 /// The RevenueTrader converts all asset balances at its address to a single target asset
-/// and sends this asset to the RevenueDistributor.
+/// and sends this asset to the Distributor.
 contract RevenueTraderP0 is TraderP0, IRevenueTrader {
-    using SafeERC20 for IERC20Metadata;
+    using SafeERC20 for IERC20;
 
-    IERC20Metadata public immutable tokenToBuy;
+    IERC20 public immutable tokenToBuy;
 
-    constructor(IERC20Metadata tokenToBuy_) TraderP0() {
+    constructor(IERC20 tokenToBuy_) TraderP0() {
         tokenToBuy = tokenToBuy_;
     }
 
     /// Close any open auctions and start new ones, for all assets
+    /// Collective Action
     function manageFunds() external {
-        IERC20Metadata[] memory erc20s = main.assetRegistry().registeredERC20s();
+        // Call state keepers
+        main.poke();
+
+        IERC20[] memory erc20s = main.assetRegistry().erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
             manageERC20(erc20s[i]);
         }
@@ -28,7 +32,7 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
 
     /// - If we have any of `tokenToBuy` (RSR or RToken), distribute it.
     /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
-    function manageERC20(IERC20Metadata erc20) public {
+    function manageERC20(IERC20 erc20) public {
         IAssetRegistry reg = main.assetRegistry();
 
         require(reg.isRegistered(erc20), "erc20 not registered");
@@ -39,8 +43,8 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
         if (bal == 0) return;
 
         if (erc20 == tokenToBuy) {
-            erc20.safeApprove(address(main.revenueDistributor()), bal);
-            main.revenueDistributor().distribute(erc20, address(this), bal);
+            erc20.safeApprove(address(main.distributor()), bal);
+            main.distributor().distribute(erc20, address(this), bal);
             return;
         }
 
@@ -51,7 +55,7 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
 
         // If not dust, trade the non-target asset for the target asset
         // {tok} =  {qTok} / {qTok/tok}
-        Fix sellAmount = toFixWithShift(bal, -int8(erc20.decimals()));
+        Fix sellAmount = reg.toAsset(erc20).fromQ(toFix(bal));
         (bool launch, Auction memory auction) = prepareAuctionSell(
             reg.toAsset(erc20),
             reg.toAsset(tokenToBuy),

@@ -12,7 +12,7 @@
         "compile": "TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile",
         "deploy:p0": "TASKS=true npx hardhat run scripts/proto0/deploy_all.ts --network localhost",
         "devchain": "npx hardhat node",
-        "test": "npx hardhat test --parallel",
+        "test": "npx hardhat test",
         "test:p0": "npx hardhat test test/p0/*.test.ts",
         "test:coverage": "npx hardhat coverage --temp artifacts",
         "test:generic": "npx hardhat test test/generic/*.test.ts",

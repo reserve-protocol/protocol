@@ -5,17 +5,57 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/Settings.sol";
+import "contracts/interfaces/IMain.sol";
 
-import "contracts/p0/interfaces/IMain.sol"; //
-import "contracts/Pausable.sol";
+/** Contract mixin providing:
+ * - The paused flag
+ * - A pauser role, modifiable by pauser or owner
+ * - Pause and unpause commands, to allow either pauser or owner to set the paused flag.
+ * - The `notPaused` modifier.
+ */
+contract Pausable is Ownable, IPausable {
+    address private _pauser;
+    bool public paused;
+
+    constructor() {
+        _pauser = _msgSender();
+        paused = true;
+    }
+
+    modifier notPaused() {
+        require(!paused, "paused");
+        _;
+    }
+
+    function pause() external {
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PausedSet(paused, true);
+        paused = true;
+    }
+
+    function unpause() external {
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PausedSet(paused, false);
+        paused = false;
+    }
+
+    function pauser() external view returns (address) {
+        return _pauser;
+    }
+
+    function setPauser(address pauser_) external {
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PauserSet(_pauser, pauser_);
+        _pauser = pauser_;
+    }
+}
 
 /**
  * @title Main
  * @notice Collects all mixins.
  */
 // solhint-disable max-states-count
-contract MainP0 is Ownable, Pausable, IMain {
+contract MainP0 is Pausable, IMain {
     using FixLib for Fix;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -23,38 +63,108 @@ contract MainP0 is Ownable, Pausable, IMain {
     bool private initialized;
     EnumerableSet.AddressSet private components;
 
-    // === Claim Adapter Registry ===
-    EnumerableSet.AddressSet private _claimAdapters;
-
-    function addClaimAdapter(IClaimAdapter claimAdapter) external override onlyOwner {
-        emit ClaimAdapterAdded(claimAdapter);
-        _claimAdapters.add(address(claimAdapter));
+    function poke() external {
+        // We _think_ these are totally order-independent.
+        require(!paused, "paused");
+        backingManager.grantAllowances();
+        basketHandler.ensureBasket();
+        assetRegistry.forceUpdates();
+        furnace.melt();
+        rsrTrader.closeDueAuctions();
+        rTokenTrader.closeDueAuctions();
+        backingManager.closeDueAuctions();
+        stRSR.payoutRewards();
     }
 
-    function removeClaimAdapter(IClaimAdapter claimAdapter) external override onlyOwner {
-        emit ClaimAdapterRemoved(claimAdapter);
-        _claimAdapters.remove(address(claimAdapter));
+    function hasComponent(address addr) external view returns (bool) {
+        return components.contains(addr);
     }
 
-    function isTrustedClaimAdapter(IClaimAdapter claimAdapter) public view override returns (bool) {
-        return _claimAdapters.contains(address(claimAdapter));
+    function owner() public view override(IMain, Ownable) returns (address) {
+        return Ownable.owner();
     }
 
-    function claimAdapters() public view override returns (IClaimAdapter[] memory adapters) {
-        adapters = new IClaimAdapter[](_claimAdapters.length());
-        for (uint256 i = 0; i < _claimAdapters.length(); i++) {
-            adapters[i] = IClaimAdapter(_claimAdapters.at(i));
+    /// Initializer
+    function init(ConstructorArgs calldata args) public onlyOwner {
+        require(!initialized, "Already initialized");
+        initialized = true;
+
+        setIssuer(args.core.issuer);
+        issuer.initComponent(this, args);
+
+        setBackingManager(args.core.backingManager);
+        backingManager.initComponent(this, args);
+
+        setBasketHandler(args.core.basketHandler);
+        basketHandler.initComponent(this, args);
+
+        setRSRTrader(args.core.rsrTrader);
+        rsrTrader.initComponent(this, args);
+
+        setRTokenTrader(args.core.rTokenTrader);
+        rTokenTrader.initComponent(this, args);
+
+        setAssetRegistry(args.core.assetRegistry);
+        assetRegistry.initComponent(this, args);
+
+        setDistributor(args.core.distributor);
+        distributor.initComponent(this, args);
+
+        setFurnace(args.periphery.furnace);
+
+        setMarket(args.periphery.market);
+
+        setRSR(args.rsr);
+
+        setStRSR(args.core.stRSR);
+        stRSR.initComponent(this, args);
+
+        setRToken(args.core.rToken);
+        rToken.initComponent(this, args);
+
+        for (uint256 i = 0; i < args.periphery.claimAdapters.length; i++) {
+            _claimAdapters.add(address(args.periphery.claimAdapters[i]));
         }
+
+        emit Initialized();
     }
 
     // === Registered Contracts ===
-    IRTokenIssuer public rTokenIssuer;
 
-    function setRTokenIssuer(IRTokenIssuer val) public onlyOwner {
-        emit RTokenIssuerSet(rTokenIssuer, val);
-        components.remove(address(rTokenIssuer));
+    IRToken public rToken;
+
+    function setRToken(IRToken val) public onlyOwner {
+        emit RTokenSet(rToken, val);
+        components.remove(address(rToken));
         components.add(address(val));
-        rTokenIssuer = val;
+        rToken = val;
+    }
+
+    IStRSR public stRSR;
+
+    function setStRSR(IStRSR val) public onlyOwner {
+        emit StRSRSet(stRSR, val);
+        components.remove(address(stRSR));
+        components.add(address(val));
+        stRSR = val;
+    }
+
+    IAssetRegistry public assetRegistry;
+
+    function setAssetRegistry(IAssetRegistry val) public onlyOwner {
+        emit AssetRegistrySet(assetRegistry, val);
+        components.remove(address(assetRegistry));
+        components.add(address(val));
+        assetRegistry = val;
+    }
+
+    IBasketHandler public basketHandler;
+
+    function setBasketHandler(IBasketHandler val) public onlyOwner {
+        emit BasketHandlerSet(basketHandler, val);
+        components.remove(address(basketHandler));
+        components.add(address(val));
+        basketHandler = val;
     }
 
     IBackingManager public backingManager;
@@ -64,6 +174,24 @@ contract MainP0 is Ownable, Pausable, IMain {
         components.remove(address(backingManager));
         components.add(address(val));
         backingManager = val;
+    }
+
+    IIssuer public issuer;
+
+    function setIssuer(IIssuer val) public onlyOwner {
+        emit IssuerSet(issuer, val);
+        components.remove(address(issuer));
+        components.add(address(val));
+        issuer = val;
+    }
+
+    IDistributor public distributor;
+
+    function setDistributor(IDistributor val) public onlyOwner {
+        emit DistributorSet(distributor, val);
+        components.remove(address(distributor));
+        components.add(address(val));
+        distributor = val;
     }
 
     IRevenueTrader public rsrTrader;
@@ -80,70 +208,18 @@ contract MainP0 is Ownable, Pausable, IMain {
         rTokenTrader = val;
     }
 
-    IBasketHandler public basketHandler;
+    // === Non-components ===
 
-    function setBasketHandler(IBasketHandler val) public onlyOwner {
-        emit BasketHandlerSet(basketHandler, val);
-        components.remove(address(basketHandler));
-        components.add(address(val));
-        basketHandler = val;
+    IFurnace public furnace;
+
+    function setFurnace(IFurnace val) public onlyOwner {
+        emit FurnaceSet(furnace, val);
+        furnace = val;
     }
 
-    IAssetRegistry public assetRegistry;
+    IERC20 public rsr;
 
-    function setAssetRegistry(IAssetRegistry val) public onlyOwner {
-        emit AssetRegistrySet(assetRegistry, val);
-        components.remove(address(assetRegistry));
-        components.add(address(val));
-        assetRegistry = val;
-    }
-
-    IRevenueDistributor public revenueDistributor;
-
-    function setRevenueDistributor(IRevenueDistributor val) public onlyOwner {
-        emit RevenueDistributorSet(revenueDistributor, val);
-        components.remove(address(revenueDistributor));
-        components.add(address(val));
-        revenueDistributor = val;
-    }
-
-    ISettings public settings;
-
-    function setSettings(ISettings val) public onlyOwner {
-        emit SettingsSet(settings, val);
-        components.remove(address(settings));
-        components.add(address(val));
-        settings = val;
-    }
-
-    IStRSR public stRSR;
-
-    function setStRSR(IStRSR val) public onlyOwner {
-        emit StRSRSet(stRSR, val);
-        components.remove(address(stRSR));
-        components.add(address(val));
-        stRSR = val;
-    }
-
-    IFurnace public revenueFurnace;
-
-    function setRevenueFurnace(IFurnace val) public onlyOwner {
-        emit RevenueFurnaceSet(revenueFurnace, val);
-        components.remove(address(revenueFurnace));
-        components.add(address(val));
-        revenueFurnace = val;
-    }
-
-    IRToken public rToken;
-
-    function setRToken(IRToken val) public onlyOwner {
-        emit RTokenSet(rToken, val);
-        rToken = val;
-    }
-
-    IERC20Metadata public rsr;
-
-    function setRSR(IERC20Metadata val) public onlyOwner {
+    function setRSR(IERC20 val) public onlyOwner {
         emit RSRSet(rsr, val);
         rsr = val;
     }
@@ -155,59 +231,27 @@ contract MainP0 is Ownable, Pausable, IMain {
         market = val;
     }
 
-    /// Initializer
-    function init(ConstructorArgs calldata args) public onlyOwner {
-        require(!initialized, "Already initialized");
-        initialized = true;
+    // === Claim Adapter Registry ===
+    EnumerableSet.AddressSet private _claimAdapters;
 
-        setRTokenIssuer(args.rTokenIssuer);
-        rTokenIssuer.initComponent(this, args);
+    function addClaimAdapter(IClaimAdapter claimAdapter) external onlyOwner {
+        emit ClaimAdapterAdded(claimAdapter);
+        _claimAdapters.add(address(claimAdapter));
+    }
 
-        setBackingManager(args.backingManager);
-        backingManager.initComponent(this, args);
+    function removeClaimAdapter(IClaimAdapter claimAdapter) external onlyOwner {
+        emit ClaimAdapterRemoved(claimAdapter);
+        _claimAdapters.remove(address(claimAdapter));
+    }
 
-        setBasketHandler(args.basketHandler);
-        basketHandler.initComponent(this, args);
+    function isTrustedClaimAdapter(IClaimAdapter claimAdapter) public view returns (bool) {
+        return _claimAdapters.contains(address(claimAdapter));
+    }
 
-        setRSRTrader(args.rsrTrader);
-        rsrTrader.initComponent(this, args);
-
-        setRTokenTrader(args.rTokenTrader);
-        rTokenTrader.initComponent(this, args);
-
-        setAssetRegistry(args.assetRegistry);
-        assetRegistry.initComponent(this, args);
-
-        setRevenueDistributor(args.revenueDistributor);
-        revenueDistributor.initComponent(this, args);
-
-        setSettings(args.settings);
-        settings.initComponent(this, args);
-
-        setRevenueFurnace(args.furnace);
-
-        setMarket(args.market);
-
-        setRSR(args.rsr);
-
-        setStRSR(args.stRSR);
-        stRSR.initComponent(this, args);
-
-        setRToken(args.rToken);
-        // TODO: make Component
-
-        for (uint256 i = 0; i < args.claimAdapters.length; i++) {
-            _claimAdapters.add(address(args.claimAdapters[i]));
+    function claimAdapters() public view returns (IClaimAdapter[] memory adapters) {
+        adapters = new IClaimAdapter[](_claimAdapters.length());
+        for (uint256 i = 0; i < _claimAdapters.length(); i++) {
+            adapters[i] = IClaimAdapter(_claimAdapters.at(i));
         }
-
-        emit Initialized();
-    }
-
-    function hasComponent(address addr) external view returns (bool) {
-        return components.contains(addr);
-    }
-
-    function owner() public view override(IMain, Ownable) returns (address) {
-        return Ownable.owner();
     }
 }

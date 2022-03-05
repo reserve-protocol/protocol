@@ -77,7 +77,7 @@ export interface IRTokenConfig {
   name: string
   symbol: string
   params: IRTokenParams
-  basketTokens: IBasketToken[]
+  tokens: IBasketToken[]
   rsr: IRSRConfig
 }
 
@@ -102,7 +102,7 @@ const rTokenConfig: { [key: string]: IRTokenConfig } = {
       insurancePool: ZERO_ADDRESS,
       protocolFund: ZERO_ADDRESS,
     },
-    basketTokens: [
+    tokens: [
       {
         tokenAddress: ZERO_ADDRESS,
         genesisQuantity: 0,

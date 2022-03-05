@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Context.sol";
-import "contracts/p0/interfaces/IMain.sol";
+import "contracts/interfaces/IMain.sol";
 
 /**
  * Abstract superclass for system contracts registered in Main
@@ -25,6 +25,11 @@ abstract contract Component is IComponent, Context {
 
     modifier onlyOwner() {
         require(main.owner() == _msgSender(), "Component: caller is not the owner");
+        _;
+    }
+
+    modifier onlyComponent() {
+        require(main.hasComponent(_msgSender()), "Component: caller is not a component");
         _;
     }
 

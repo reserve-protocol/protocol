@@ -23,38 +23,34 @@ import { CompoundPricedAssetP0 } from '../../../typechain/CompoundPricedAssetP0'
 import { ComptrollerMockP0 } from '../../../typechain/ComptrollerMockP0'
 import { DeployerP0 } from '../../../typechain/DeployerP0'
 import { ERC20Mock } from '../../../typechain/ERC20Mock'
-import { ExplorerFacadeP0 } from '../../../typechain/ExplorerFacadeP0'
+import { FacadeP0 } from '../../../typechain/FacadeP0'
 import { FurnaceP0 } from '../../../typechain/FurnaceP0'
 import { MainP0 } from '../../../typechain/MainP0'
 import { MarketMock } from '../../../typechain/MarketMock'
 import { RTokenAssetP0 } from '../../../typechain/RTokenAssetP0'
-import { RTokenIssuerP0 } from '../../../typechain/RTokenIssuerP0'
+import { IssuerP0 } from '../../../typechain/IssuerP0'
 import { RTokenP0 } from '../../../typechain/RTokenP0'
-import { RevenueDistributorP0 } from '../../../typechain/RevenueDistributorP0'
+import { DistributorP0 } from '../../../typechain/DistributorP0'
 import { RevenueTraderP0 } from '../../../typechain/RevenueTraderP0'
 import { SettingsP0 } from '../../../typechain/SettingsP0'
 import { StRSRP0 } from '../../../typechain/StRSRP0'
 import { StaticATokenMock } from '../../../typechain/StaticATokenMock'
 import { USDCMock } from '../../../typechain/USDCMock'
-import { getLatestBlockTimestamp } from '../../utils/time'
 
 export type Collateral = CollateralP0 | CTokenFiatCollateralP0 | ATokenFiatCollateralP0
 
-const maxAuctionSize = fp(1e6) // $1M
-
 export interface IConfig {
-  rewardStart: BigNumber
+  maxAuctionSize: BigNumber
+  dist: IRevenueShare
   rewardPeriod: BigNumber
-  auctionPeriod: BigNumber
-  stRSRPayPeriod: BigNumber
-  stRSRWithdrawalDelay: BigNumber
-  defaultDelay: BigNumber
+  rewardRatio: BigNumber
+  unstakingDelay: BigNumber
+  auctionDelay: BigNumber
+  auctionLength: BigNumber
+  backingBuffer: BigNumber
   maxTradeSlippage: BigNumber
   dustAmount: BigNumber
-  backingBuffer: BigNumber
   issuanceRate: BigNumber
-  defaultThreshold: BigNumber
-  stRSRPayRatio: BigNumber
 }
 
 export interface IRevenueShare {
@@ -161,7 +157,8 @@ async function collateralFixture(
   main: MainP0,
   comptroller: ComptrollerMockP0,
   aaveLendingPool: AaveLendingPoolMockP0,
-  aaveToken: ERC20Mock
+  aaveToken: ERC20Mock,
+  config: IConfig
 ): Promise<CollateralFixture> {
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
@@ -172,6 +169,9 @@ async function collateralFixture(
   )
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateralP0')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateralP0')
+  const defaultThreshold = fp('0.05') // 5%
+  const delayUntilDefault = bn('86400') // 24h
+
   // Deploy all potential collateral assets
   const makeVanillaCollateral = async (symbol: string): Promise<[ERC20Mock, CollateralP0]> => {
     const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(symbol + ' Token', symbol)
@@ -180,8 +180,9 @@ async function collateralFixture(
       <CollateralP0>(
         await AaveCollateralFactory.deploy(
           erc20.address,
-          maxAuctionSize,
-          main.address,
+          config.maxAuctionSize,
+          defaultThreshold,
+          delayUntilDefault,
           comptroller.address,
           aaveLendingPool.address
         )
@@ -195,8 +196,9 @@ async function collateralFixture(
       <CollateralP0>(
         await AaveCollateralFactory.deploy(
           erc20.address,
-          maxAuctionSize,
-          main.address,
+          config.maxAuctionSize,
+          defaultThreshold,
+          delayUntilDefault,
           comptroller.address,
           aaveLendingPool.address
         )
@@ -216,9 +218,10 @@ async function collateralFixture(
       <CTokenFiatCollateralP0>(
         await CTokenCollateralFactory.deploy(
           erc20.address,
-          maxAuctionSize,
+          config.maxAuctionSize,
+          defaultThreshold,
+          delayUntilDefault,
           underlyingAddress,
-          main.address,
           comptroller.address,
           compoundClaimer
         )
@@ -243,9 +246,10 @@ async function collateralFixture(
       <ATokenFiatCollateralP0>(
         await ATokenCollateralFactory.deploy(
           erc20.address,
-          maxAuctionSize,
+          config.maxAuctionSize,
+          defaultThreshold,
+          delayUntilDefault,
           underlyingAddress,
-          main.address,
           comptroller.address,
           aaveLendingPool.address,
           aaveClaimer
@@ -318,9 +322,8 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   assetRegistry: AssetRegistryP0
   backingManager: BackingManagerP0
   basketHandler: BasketHandlerP0
-  rTokenIssuer: RTokenIssuerP0
-  revenueDistributor: RevenueDistributorP0
-  settings: SettingsP0
+  issuer: IssuerP0
+  distributor: DistributorP0
   rsrAsset: AssetP0
   compAsset: AssetP0
   aaveAsset: AssetP0
@@ -328,7 +331,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   rTokenAsset: RTokenAssetP0
   furnace: FurnaceP0
   stRSR: StRSRP0
-  facade: ExplorerFacadeP0
+  facade: FacadeP0
   compoundClaimer: CompoundClaimAdapterP0
   aaveClaimer: AaveClaimAdapterP0
   rsrTrader: RevenueTraderP0
@@ -349,27 +352,24 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     aaveMock,
   } = await compAaveFixture()
   const { market } = await marketFixture()
-
-  // Setup Config
-  const rewardStart: BigNumber = bn(await getLatestBlockTimestamp())
-  const config: IConfig = {
-    rewardStart: rewardStart,
-    rewardPeriod: bn('604800'), // 1 week
-    auctionPeriod: bn('1800'), // 30 minutes
-    stRSRPayPeriod: bn('86400'), // 1 day
-    stRSRWithdrawalDelay: bn('1209600'), // 2 weeks
-    defaultDelay: bn('86400'), // 24 hs
-    maxTradeSlippage: fp('0.01'), // 1%
-    dustAmount: fp('0.01'), // 0.01 UoA (USD)
-    backingBuffer: fp('0.0001'), // 0.01%
-    issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-    defaultThreshold: fp('0.05'), // 5% deviation
-    stRSRPayRatio: fp('0.02284'), // approx. half life of 30 pay periods
-  }
-
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
     rsrDist: bn(60), // 3/5 RSR
+  }
+
+  // Setup Config
+  const config: IConfig = {
+    maxAuctionSize: fp('1e6'), // $1M
+    dist: dist,
+    rewardPeriod: bn('604800'), // 1 week
+    rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
+    unstakingDelay: bn('1209600'), // 2 weeks
+    auctionDelay: bn('0'), // (the delay _after_ default has been confirmed)
+    auctionLength: bn('1800'), // 30 minutes
+    backingBuffer: fp('0.0001'), // 0.01%
+    maxTradeSlippage: fp('0.01'), // 1%
+    dustAmount: fp('0.01'), // 0.01 UoA (USD)
+    issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
   }
 
   // Create Deployer
@@ -386,15 +386,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
 
   // Deploy actual contracts
-  const receipt = await (
-    await deployer.deploy('RTKN RToken', 'RTKN', owner.address, config, dist, maxAuctionSize)
-  ).wait()
+  const receipt = await (await deployer.deploy('RTKN RToken', 'RTKN', owner.address, config)).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
   const facadeAddr = expectInReceipt(receipt, 'RTokenCreated').args.facade
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
 
-  // Get Components
+  // Get Core
   const assetRegistry: AssetRegistryP0 = <AssetRegistryP0>(
     await ethers.getContractAt('AssetRegistryP0', await main.assetRegistry())
   )
@@ -404,14 +402,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const basketHandler: BasketHandlerP0 = <BasketHandlerP0>(
     await ethers.getContractAt('BasketHandlerP0', await main.basketHandler())
   )
-  const rTokenIssuer: RTokenIssuerP0 = <RTokenIssuerP0>(
-    await ethers.getContractAt('RTokenIssuerP0', await main.rTokenIssuer())
-  )
-  const revenueDistributor: RevenueDistributorP0 = <RevenueDistributorP0>(
-    await ethers.getContractAt('RevenueDistributorP0', await main.revenueDistributor())
-  )
-  const settings: SettingsP0 = <SettingsP0>(
-    await ethers.getContractAt('SettingsP0', await main.settings())
+  const issuer: IssuerP0 = <IssuerP0>await ethers.getContractAt('IssuerP0', await main.issuer())
+  const distributor: DistributorP0 = <DistributorP0>(
+    await ethers.getContractAt('DistributorP0', await main.distributor())
   )
 
   const compoundClaimer = <CompoundClaimAdapterP0>(
@@ -440,13 +433,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
 
   const furnace: FurnaceP0 = <FurnaceP0>(
-    await ethers.getContractAt('FurnaceP0', await main.revenueFurnace())
+    await ethers.getContractAt('FurnaceP0', await main.furnace())
   )
   const stRSR: StRSRP0 = <StRSRP0>await ethers.getContractAt('StRSRP0', await main.stRSR())
 
-  const facade: ExplorerFacadeP0 = <ExplorerFacadeP0>(
-    await ethers.getContractAt('ExplorerFacadeP0', facadeAddr)
-  )
+  const facade: FacadeP0 = <FacadeP0>await ethers.getContractAt('FacadeP0', facadeAddr)
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
@@ -454,7 +445,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     main,
     compoundMock,
     aaveMock,
-    aaveToken
+    aaveToken,
+    config
   )
 
   const rsrTrader = <RevenueTraderP0>(
@@ -486,7 +478,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Register prime collateral
   const basketERC20s = []
   for (let i = 0; i < basket.length; i++) {
-    await assetRegistry.connect(owner).registerAsset(basket[i].address)
+    await assetRegistry.connect(owner).register(basket[i].address)
     basketERC20s.push(await basket[i].erc20())
   }
 
@@ -520,9 +512,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     assetRegistry,
     backingManager,
     basketHandler,
-    rTokenIssuer,
-    revenueDistributor,
-    settings,
+    issuer,
+    distributor,
     rToken,
     rTokenAsset,
     furnace,

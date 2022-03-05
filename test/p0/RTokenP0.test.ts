@@ -12,9 +12,8 @@ import {
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
-  RTokenIssuerP0,
-  RevenueDistributorP0,
-  SettingsP0,
+  IssuerP0,
+  DistributorP0,
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture } from './utils/fixtures'
@@ -32,9 +31,8 @@ describe('RTokenP0 contract', () => {
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let rTokenIssuer: RTokenIssuerP0
-  let revenueDistributor: RevenueDistributorP0
-  let settings: SettingsP0
+  let issuer: IssuerP0
+  let distributor: DistributorP0
 
   // Tokens/Assets
   let token0: ERC20Mock
@@ -68,17 +66,8 @@ describe('RTokenP0 contract', () => {
     ;[owner, addr1, mainMock, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({
-      basket,
-      main,
-      rToken,
-      assetRegistry,
-      backingManager,
-      basketHandler,
-      rTokenIssuer,
-      revenueDistributor,
-      settings,
-    } = await loadFixture(defaultFixture))
+    ;({ basket, main, rToken, assetRegistry, backingManager, basketHandler, issuer, distributor } =
+      await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
     initialBal = bn('100e18')
@@ -102,40 +91,21 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.symbol()).to.equal('RTKN')
       expect(await rToken.decimals()).to.equal(18)
       expect(await rToken.totalSupply()).to.equal(bn(0))
-      expect(await rToken.main()).to.equal(main.address)
       expect(await rToken.basketsNeeded()).to.equal(0)
 
       // Check RToken price
-      expect(await rTokenIssuer.rTokenPrice()).to.equal(fp('1'))
+      expect(await issuer.rTokenPrice()).to.equal(fp('1'))
     })
   })
 
   describe('Configuration', () => {
-    it('Should allow to set Main if Owner', async () => {
-      // Check initial status
-      expect(await rToken.main()).to.equal(main.address)
-
-      // Try to update with another user
-      await expect(rToken.connect(addr1).setMain(other.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
-
-      // Check nothing changed
-      expect(await rToken.main()).to.equal(main.address)
-
-      // Update with owner
-      await rToken.connect(owner).setMain(other.address)
-
-      expect(await rToken.main()).to.equal(other.address)
-    })
-
     it('Should allow to set basketsNeeded only from Main components', async () => {
       // Check initial status
       expect(await rToken.basketsNeeded()).to.equal(0)
 
       // Try to update value if not a Main component
       await expect(rToken.connect(owner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
-        'only components of main'
+        'Component: caller is not a component'
       )
 
       await whileImpersonating(basketHandler.address, async (bhSigner) => {
@@ -160,13 +130,13 @@ describe('RTokenP0 contract', () => {
       await token3.connect(owner).mint(addr1.address, initialBal)
 
       // Approvals
-      await token0.connect(addr1).approve(rTokenIssuer.address, initialBal)
-      await token1.connect(addr1).approve(rTokenIssuer.address, initialBal)
-      await token2.connect(addr1).approve(rTokenIssuer.address, initialBal)
-      await token3.connect(addr1).approve(rTokenIssuer.address, initialBal)
+      await token0.connect(addr1).approve(issuer.address, initialBal)
+      await token1.connect(addr1).approve(issuer.address, initialBal)
+      await token2.connect(addr1).approve(issuer.address, initialBal)
+      await token3.connect(addr1).approve(issuer.address, initialBal)
 
       // Issue tokens
-      await rTokenIssuer.connect(addr1).issue(issueAmount)
+      await issuer.connect(addr1).issue(issueAmount)
     })
 
     it('Should allow to melt tokens if caller or Main', async () => {
@@ -207,7 +177,7 @@ describe('RTokenP0 contract', () => {
 
       // Trying to mint with another account will fail
       await expect(rToken.connect(other).mint(addr1.address, mintAmount)).to.be.revertedWith(
-        'only components of main'
+        'Component: caller is not a component'
       )
     })
   })

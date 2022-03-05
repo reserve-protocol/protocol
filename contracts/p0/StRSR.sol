@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -9,10 +8,10 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "contracts/p0/interfaces/IAsset.sol";
-import "contracts/p0/interfaces/IBasketHandler.sol";
-import "contracts/p0/interfaces/IStRSR.sol";
-import "contracts/p0/interfaces/IMain.sol";
+import "contracts/interfaces/IAsset.sol";
+import "contracts/interfaces/IBasketHandler.sol";
+import "contracts/interfaces/IStRSR.sol";
+import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/Component.sol";
 
@@ -27,7 +26,6 @@ import "contracts/p0/Component.sol";
  */
 contract StRSRP0 is IStRSR, Component, EIP712 {
     using SafeERC20 for IERC20;
-    using SafeERC20 for IERC20Metadata;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 
@@ -79,29 +77,35 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     // Withdrawal queues by account
     mapping(address => Withdrawal[]) public withdrawals;
 
+    // ==== Gov Params ====
+    uint256 public unstakingDelay;
+    uint256 public rewardPeriod;
+    Fix public rewardRatio;
+
     constructor(string memory name_, string memory symbol_) EIP712(name_, "1") Component() {
         _name = name_;
         _symbol = symbol_;
     }
 
     function init(ConstructorArgs calldata args) internal override {
-        payoutLastPaid = args.config.rewardStart;
+        payoutLastPaid = block.timestamp;
+        unstakingDelay = args.params.unstakingDelay;
+        rewardPeriod = args.params.rewardPeriod;
+        rewardRatio = args.params.rewardRatio;
+        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
+    /// User Action
     /// @param rsrAmount {qRSR}
-    function stake(uint256 rsrAmount) external override {
+    function stake(uint256 rsrAmount) external {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
         require(!main.paused(), "main paused");
 
-        IBasketHandler bh = main.basketHandler();
-
-        // Process pending withdrawals
-        if (bh.fullyCapitalized() && bh.worstCollateralStatus() == CollateralStatus.SOUND) {
-            _processWithdrawals(account);
-        }
-        _payoutRewards();
+        // Run state keepers
+        main.poke();
+        payoutRewards();
 
         main.rsr().safeTransferFrom(account, address(this), rsrAmount);
         uint256 stakeAmount = rsrAmount;
@@ -119,22 +123,21 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     /// Begins a delayed unstaking for `amount` stRSR
+    /// User Action
     /// @param stakeAmount {qRSR}
-    function unstake(uint256 stakeAmount) external override {
+    function unstake(uint256 stakeAmount) external {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
         require(!main.paused(), "main paused");
 
-        require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
-        require(
-            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
-            "basket defaulted"
-        );
+        IBasketHandler bh = main.basketHandler();
+        require(bh.fullyCapitalized(), "RToken uncapitalized");
+        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
-        // Process pending withdrawals
-        _processWithdrawals(account);
-        _payoutRewards();
+        // Call state keepers
+        main.poke();
+        payoutRewards();
 
         uint256 rsrAmount = (stakeAmount * rsrBacking) / totalStaked;
 
@@ -146,26 +149,57 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         rsrBacking -= rsrAmount;
 
         // Create the corresponding withdrawal ticket
-        uint256 availableAt = block.timestamp + main.settings().stRSRWithdrawalDelay();
+        uint256 availableAt = block.timestamp + unstakingDelay;
         withdrawals[account].push(Withdrawal(account, rsrAmount, availableAt));
-        emit UnstakingStarted(withdrawals[account].length - 1, account, rsrAmount, stakeAmount);
+        emit UnstakingStarted(withdrawals[account].length - 1, 0, account, rsrAmount, stakeAmount);
     }
 
-    function processWithdrawals(address account) public {
-        require(!main.paused(), "main paused");
-        require(main.basketHandler().fullyCapitalized(), "RToken uncapitalized");
-        require(
-            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
-            "basket defaulted"
-        );
-        _processWithdrawals(account);
+    /// Complete delayed staking for an account, up to but not including draft ID `endId`
+    /// User Action
+    function withdraw(address account, uint256 endId) external notPaused {
+        IBasketHandler bh = main.basketHandler();
+        require(bh.fullyCapitalized(), "RToken uncapitalized");
+        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
+
+        Withdrawal[] storage queue = withdrawals[account];
+        if (endId == 0) return;
+        require(endId <= queue.length, "index out-of-bounds");
+        require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
+
+        // Call state keepers
+        main.poke();
+        payoutRewards();
+
+        // Skip executed withdrawals
+        uint256 start = 0;
+        while (queue[start].rsrAmount == 0 && start < endId) start++;
+
+        // Accumulate and zero executable withdrawals
+        uint256 total = 0;
+        uint256 i = start;
+        for (i; i < endId && queue[i].availableAt <= block.timestamp; i++) {
+            total += queue[i].rsrAmount;
+            queue[i].rsrAmount = 0;
+        }
+
+        // Execute accumulated withdrawals
+        main.rsr().safeTransfer(account, total);
+        emit UnstakingCompleted(start, i, 0, account, total);
+    }
+
+    /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
+    function endIdForWithdraw(address account) external view returns (uint256) {
+        Withdrawal[] storage queue = withdrawals[account];
+        uint256 i = 0;
+        while (i < queue.length && queue[i].availableAt <= block.timestamp) i++;
+        return i;
     }
 
     /// @param rsrAmount {qRSR}
     /// @return seizedRSR {qRSR} The actual rsrAmount seized.
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR might be smaller than rsrAmount if we're out of RSR.
-    function seizeRSR(uint256 rsrAmount) external override returns (uint256 seizedRSR) {
+    function seizeRSR(uint256 rsrAmount) external returns (uint256 seizedRSR) {
         require(main.hasComponent(_msgSender()), "not main");
         require(rsrAmount > 0, "Amount cannot be zero");
         uint256 rewards = rsrRewards();
@@ -211,7 +245,27 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         emit RSRSeized(_msgSender(), seizedRSR);
     }
 
-    function setMain(IMain main_) external virtual override onlyOwner {
+    /// Assign reward payouts to the staker pool
+    /// State Keeper
+    /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
+    /// value of rsrRewards()
+    function payoutRewards() public {
+        if (block.timestamp < payoutLastPaid + rewardPeriod) return;
+
+        uint256 numPeriods = (block.timestamp - payoutLastPaid) / rewardPeriod;
+
+        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
+        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
+        uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
+
+        // Apply payout to RSR backing
+        rsrBacking += payout;
+        payoutLastPaid += numPeriods * rewardPeriod;
+
+        emit RSRRewarded(payout, numPeriods);
+    }
+
+    function setMain(IMain main_) external virtual onlyOwner {
         emit MainSet(main, main_);
         main = main_;
     }
@@ -233,15 +287,15 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         return 18;
     }
 
-    function totalSupply() external view override returns (uint256) {
+    function totalSupply() external view returns (uint256) {
         return totalStaked;
     }
 
-    function balanceOf(address account) external view override returns (uint256) {
+    function balanceOf(address account) external view returns (uint256) {
         return balances[account];
     }
 
-    function transfer(address recipient, uint256 amount) external override returns (bool) {
+    function transfer(address recipient, uint256 amount) external returns (bool) {
         _transfer(_msgSender(), recipient, amount);
         return true;
     }
@@ -259,11 +313,11 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         accounts.add(recipient);
     }
 
-    function allowance(address owner_, address spender) public view override returns (uint256) {
+    function allowance(address owner_, address spender) public view returns (uint256) {
         return allowances[owner_][spender];
     }
 
-    function approve(address spender, uint256 amount) public override returns (bool) {
+    function approve(address spender, uint256 amount) public returns (bool) {
         _approve(_msgSender(), spender, amount);
         return true;
     }
@@ -272,7 +326,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         address sender,
         address recipient,
         uint256 amount
-    ) public override returns (bool) {
+    ) public returns (bool) {
         _transfer(sender, recipient, amount);
 
         uint256 currentAllowance = allowances[sender][_msgSender()];
@@ -311,41 +365,6 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         return main.rsr().balanceOf(address(this)) - rsrBacking - rsrBeingWithdrawn();
     }
 
-    /// Assign reward payouts to the staker pool
-    /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
-    /// value of rsrRewards()
-    function _payoutRewards() internal {
-        uint256 period = main.settings().stRSRPayPeriod();
-        if (block.timestamp < payoutLastPaid + period) return;
-
-        uint256 numPeriods = (block.timestamp - payoutLastPaid) / period;
-
-        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        Fix payoutRatio = FIX_ONE.minus(
-            FIX_ONE.minus(main.settings().stRSRPayRatio()).powu(numPeriods)
-        );
-        uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
-
-        // Apply payout to RSR backing
-        rsrBacking += payout;
-        payoutLastPaid += numPeriods * period;
-
-        emit RSRRewarded(payout, numPeriods);
-    }
-
-    function _processWithdrawals(address account) internal {
-        // Process all pending withdrawals for the account
-        Withdrawal[] storage withdrawalQ = withdrawals[account];
-
-        for (uint256 i = 0; i < withdrawalQ.length; i++) {
-            if (block.timestamp >= withdrawalQ[i].availableAt && withdrawalQ[i].rsrAmount > 0) {
-                main.rsr().safeTransfer(withdrawalQ[i].account, withdrawalQ[i].rsrAmount);
-                emit UnstakingCompleted(i, i, withdrawalQ[i].account, withdrawalQ[i].rsrAmount);
-                withdrawalQ[i].rsrAmount = 0;
-            }
-        }
-    }
-
     // ==== end Internal Functions ====
 
     // === ERC20Permit ====
@@ -360,7 +379,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public virtual override {
+    ) public virtual {
         require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
 
         bytes32 structHash = keccak256(
@@ -375,12 +394,12 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         _approve(owner_, spender, value);
     }
 
-    function nonces(address owner_) public view virtual override returns (uint256) {
+    function nonces(address owner_) public view virtual returns (uint256) {
         return _nonces[owner_].current();
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function DOMAIN_SEPARATOR() external view override returns (bytes32) {
+    function DOMAIN_SEPARATOR() external view returns (bytes32) {
         return _domainSeparatorV4();
     }
 
@@ -390,5 +409,22 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         nonce.increment();
     }
 
-    // ==== End ERC20Permit ====
+    // ==== Gov Param Setters ====
+
+    function setUnstakingDelay(uint256 val) external onlyOwner {
+        emit UnstakingDelaySet(unstakingDelay, val);
+        unstakingDelay = val;
+        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
+    }
+
+    function setRewardPeriod(uint256 val) external onlyOwner {
+        emit RewardPeriodSet(rewardPeriod, val);
+        rewardPeriod = val;
+        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
+    }
+
+    function setRewardRatio(Fix val) external onlyOwner {
+        emit RewardRatioSet(rewardRatio, val);
+        rewardRatio = val;
+    }
 }

@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/p0/interfaces/IAsset.sol";
-import "contracts/p0/interfaces/IAssetRegistry.sol";
-import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IMarket.sol";
+import "contracts/interfaces/IAsset.sol";
+import "contracts/interfaces/IAssetRegistry.sol";
+import "contracts/interfaces/IMain.sol";
+import "contracts/interfaces/IMarket.sol";
 import "contracts/p0/Component.sol";
 import "contracts/p0/Trader.sol";
 import "contracts/p0/RevenueTrader.sol";
@@ -21,23 +20,37 @@ import "contracts/libraries/Fixed.sol";
 contract BackingManagerP0 is TraderP0, IBackingManager {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
-    using SafeERC20 for IERC20Metadata;
     using SafeERC20 for IERC20;
 
-    function withdraw(
-        IERC20 erc20,
-        address account,
-        uint256 amount
-    ) external override notPaused {
-        require(_msgSender() == address(main.rTokenIssuer()), "rTokenIssuer only");
-        erc20.safeTransfer(account, amount);
+    // this is not yet used in implementation
+    uint256 public auctionDelay; // {s} how long to wait until starting auctions after switching
+    Fix public backingBuffer; // {%} how much extra backing collateral to keep
+
+    function init(ConstructorArgs calldata args) internal override {
+        TraderP0.init(args);
+        auctionDelay = args.params.auctionDelay;
+        backingBuffer = args.params.backingBuffer;
     }
 
-    function manageFunds() external override notPaused {
-        main.basketHandler().forceCollateralUpdates();
+    // Give Issuer max allowances over all registered tokens
+    function grantAllowances() external notPaused {
+        IERC20[] memory erc20s = main.assetRegistry().erc20s();
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            erc20s[i].approve(address(main.issuer()), type(uint256).max);
+        }
+    }
+
+    /// Manage backing funds: maintain the overall backing policy
+    /// Collective Action
+    function manageFunds() external notPaused {
+        // Call keepers before
+        main.poke();
         closeDueAuctions();
 
         if (hasOpenAuctions()) return;
+
+        (, uint256 basketTimestamp) = main.basketHandler().lastSet();
+        if (block.timestamp < basketTimestamp + auctionDelay) return;
 
         if (main.basketHandler().fullyCapitalized()) {
             handoutExcessAssets();
@@ -47,10 +60,14 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         /* Recapitalization:
          *   1. Sell all surplus assets at Main for deficit collateral
          *   2. When there is no more surplus, seize RSR and sell that for collateral
-         *   3. When there is no more RSR, give RToken holders a haircut
+         *   3. When there is no more RSR, pick a new basket target, and sell assets for deficits
+         *   3. When all trades are dust, give RToken holders a haircut
          */
 
-        sellSurplusAssetsForCollateral() || sellRSRForCollateral() || giveRTokenHoldersAHaircut();
+        sellSurplusAssetsForCollateral(false) ||
+            sellRSRForCollateral() ||
+            sellSurplusAssetsForCollateral(true) ||
+            giveRTokenHoldersAHaircut();
     }
 
     /// Send excess assets to the RSR and RToken traders
@@ -70,19 +87,20 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         }
 
         // Keep a small surplus of individual collateral
-        needed = needed.mul(FIX_ONE.plus(main.settings().backingBuffer()));
+        needed = needed.mul(FIX_ONE.plus(backingBuffer));
 
-        IERC20Metadata[] memory erc20s = main.assetRegistry().registeredERC20s();
+        IERC20[] memory erc20s = main.assetRegistry().erc20s();
         // Handout excess assets above what is needed, including any newly minted RToken
         for (uint256 i = 0; i < erc20s.length; i++) {
             uint256 bal = erc20s[i].balanceOf(address(this));
-            uint256 neededI = needed.mul(main.basketHandler().basketQuantity(erc20s[i])).ceil();
+            uint256 neededI = needed.mul(main.basketHandler().quantity(erc20s[i])).ceil();
 
             if (bal > neededI) {
-                (uint256 rsrShares, uint256 totalShares) = main.revenueDistributor().rsrCut();
+                (uint256 rTokenShares, uint256 rsrShares) = main.distributor().totals();
+                uint256 totalShares = rTokenShares + rsrShares;
                 uint256 tokensPerShare = (bal - neededI) / totalShares;
                 uint256 toRSR = tokensPerShare * rsrShares;
-                uint256 toRToken = tokensPerShare * (totalShares - rsrShares);
+                uint256 toRToken = tokensPerShare * rTokenShares;
 
                 if (toRSR > 0) erc20s[i].safeTransfer(address(main.rsrTrader()), toRSR);
                 if (toRToken > 0) erc20s[i].safeTransfer(address(main.rTokenTrader()), toRToken);
@@ -92,13 +110,15 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
 
     /// Try to launch a surplus-asset-for-collateral auction
     /// @return Whether an auction was launched
-    function sellSurplusAssetsForCollateral() private returns (bool) {
+    function sellSurplusAssetsForCollateral(bool pickTarget) private returns (bool) {
         (
             IAsset surplus,
             ICollateral deficit,
             Fix surplusAmount,
             Fix deficitAmount
-        ) = largestSurplusAndDeficit();
+        ) = largestSurplusAndDeficit(pickTarget);
+
+        if (address(surplus) == address(0) || address(deficit) == address(0)) return false;
 
         // Of primary concern here is whether we can trust the prices for the assets
         // we are selling. If we cannot, then we should not `prepareAuctionToCoverDeficit`
@@ -131,16 +151,19 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     function sellRSRForCollateral() private returns (bool) {
         assert(!hasOpenAuctions() && !main.basketHandler().fullyCapitalized());
 
-        IERC20Metadata rsr = main.rsr();
         IStRSR stRSR = main.stRSR();
+        IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
 
-        (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit();
+        (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit(false);
+        if (address(deficit) == address(0)) return false;
 
-        uint256 rsrBal = rsr.balanceOf(address(this));
+        uint256 rsrBal = rsrAsset.erc20().balanceOf(address(this));
+        uint256 rsrBalStRSR = rsrAsset.erc20().balanceOf(address(stRSR));
+
         (bool trade, Auction memory auction) = prepareAuctionToCoverDeficit(
-            main.assetRegistry().toAsset(rsr),
+            rsrAsset,
             deficit,
-            toFixWithShift(rsrBal + rsr.balanceOf(address(stRSR)), -int8(rsr.decimals())),
+            rsrAsset.fromQ(toFix(rsrBal + rsrBalStRSR)),
             deficitAmount
         );
 
@@ -164,11 +187,13 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     /// Compute the largest asset-token-for-collateral-token trade by identifying
     /// the most in-surplus and most in-deficit tokens relative to their basket refAmts,
     /// using the unit of account for interconversion.
-    /// @return surplus Surplus asset
-    /// @return deficit Deficit collateral
+    /// @param pickTarget If true, compute surplus relative to asset average;
+    ///                   if false, just use basketsNeeded
+    /// @return surplus Surplus asset OR address(0)
+    /// @return deficit Deficit collateral OR address(0)
     /// @return sellAmount {sellTok} Surplus amount (whole tokens)
     /// @return buyAmount {buyTok} Deficit amount (whole tokens)
-    function largestSurplusAndDeficit()
+    function largestSurplusAndDeficit(bool pickTarget)
         private
         view
         returns (
@@ -179,32 +204,73 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         )
     {
         IAssetRegistry reg = main.assetRegistry();
-        IERC20Metadata[] memory erc20s = reg.registeredERC20s();
+        IBasketHandler basket = main.basketHandler();
+        IERC20[] memory erc20s = reg.erc20s();
 
-        Fix basketsNeeded = main.rToken().basketsNeeded(); // {BU}
         Fix[] memory prices = new Fix[](erc20s.length); // {UoA/tok}
+
+        // Compute prices
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            IAsset asset = reg.toAsset(erc20s[i]);
+            prices[i] = asset.price();
+        }
+
+        // Compute basketTop and basketBottom
+        // basketTop is the lowest number of BUs to which we'll try to sell surplus assets
+        // basketBottom is the greatest number of BUs to which we'll try to buy deficit assets
+        Fix basketTop = main.rToken().basketsNeeded(); // {BU}
+        Fix basketBottom = basketTop;
+
+        if (pickTarget) {
+            Fix totalValue; // {UoA}
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                IAsset asset = reg.toAsset(erc20s[i]);
+                Fix assetBalance = asset.fromQ(toFix(erc20s[i].balanceOf(address(this)))); // {tok}
+                totalValue = totalValue.plus(assetBalance.mul(prices[i])); // {UoA}
+            }
+            basketTop = totalValue.div(basket.price());
+
+            Fix tradeVolume; // {UoA}
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                IAsset asset = reg.toAsset(erc20s[i]);
+                if (!asset.isCollateral()) continue;
+                uint256 needed = basketTop.mul(basket.quantity(erc20s[i])).round();
+                uint256 held = erc20s[i].balanceOf(address(this));
+                if (held < needed) {
+                    Fix deficitTok = asset.fromQ(toFix(needed - held));
+                    tradeVolume = tradeVolume.plus(deficitTok.mul(prices[i]));
+                }
+            }
+
+            basketBottom = basketTop.mul(
+                FIX_ONE.minus(maxTradeSlippage.mul(tradeVolume).div(totalValue))
+            ); // {BU}
+        }
+
+        // Compute supluses relative to basketTop and deficits relative to basketBottom
         Fix[] memory surpluses = new Fix[](erc20s.length); // {UoA}
         Fix[] memory deficits = new Fix[](erc20s.length); // {UoA}
 
-        // Calculate surplus and deficits relative to the reference basket
         for (uint256 i = 0; i < erc20s.length; i++) {
-            prices[i] = reg.toAsset(erc20s[i]).price();
+            IAsset asset = reg.toAsset(erc20s[i]);
 
             // needed: {qTok} that Main must hold to meet obligations
-            uint256 needed;
-            if (reg.toAsset(erc20s[i]).isCollateral()) {
-                needed = basketsNeeded.mul(main.basketHandler().basketQuantity(erc20s[i])).ceil();
+            uint256 tokenTop;
+            uint256 tokenBottom;
+            if (asset.isCollateral()) {
+                tokenTop = basketTop.mul(basket.quantity(erc20s[i])).ceil();
+                tokenBottom = basketBottom.mul(basket.quantity(erc20s[i])).ceil();
             }
             // held: {qTok} that Main is already holding
             uint256 held = erc20s[i].balanceOf(address(this));
 
-            if (held > needed) {
+            if (held > tokenTop) {
                 // {tok} = {qTok} * {tok/qTok}
-                Fix surplusTok = toFixWithShift(held - needed, -int8(erc20s[i].decimals()));
+                Fix surplusTok = asset.fromQ(toFix(held - tokenTop));
                 surpluses[i] = surplusTok.mul(prices[i]);
-            } else if (held < needed) {
+            } else if (held < tokenBottom) {
                 // {tok} = {qTok} * {tok/qTok}
-                Fix deficitTok = toFixWithShift(needed - held, -int8(erc20s[i].decimals()));
+                Fix deficitTok = asset.fromQ(toFix(tokenBottom - held));
                 deficits[i] = deficitTok.mul(prices[i]);
             }
         }
@@ -227,10 +293,39 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
 
         // {tok} = {UoA} / {UoA/tok}
         sellAmount = surplusMax.div(prices[surplusIndex]);
-        surplus = reg.toAsset(erc20s[surplusIndex]);
+        surplus = sellAmount.gt(FIX_ZERO) ? reg.toAsset(erc20s[surplusIndex]) : IAsset(address(0));
 
         // {tok} = {UoA} / {UoA/tok}
         buyAmount = deficitMax.div(prices[deficitIndex]);
-        deficit = reg.toColl(erc20s[deficitIndex]);
+        deficit = buyAmount.gt(FIX_ZERO)
+            ? reg.toColl(erc20s[deficitIndex])
+            : ICollateral(address(0));
+    }
+
+    // === Setters ===
+
+    function setAuctionDelay(uint256 val) external onlyOwner {
+        emit AuctionDelaySet(auctionDelay, val);
+        auctionDelay = val;
+    }
+
+    function setAuctionLength(uint256 val) external onlyOwner {
+        emit AuctionLengthSet(auctionLength, val);
+        auctionLength = val;
+    }
+
+    function setBackingBuffer(Fix val) external onlyOwner {
+        emit BackingBufferSet(backingBuffer, val);
+        backingBuffer = val;
+    }
+
+    function setMaxTradeSlippage(Fix val) external onlyOwner {
+        emit MaxTradeSlippageSet(maxTradeSlippage, val);
+        maxTradeSlippage = val;
+    }
+
+    function setDustAmount(Fix val) external onlyOwner {
+        emit DustAmountSet(dustAmount, val);
+        dustAmount = val;
     }
 }

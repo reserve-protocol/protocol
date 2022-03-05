@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "contracts/p0/interfaces/IMain.sol";
-import "contracts/p0/interfaces/IBasketHandler.sol";
-import "contracts/p0/interfaces/IRToken.sol";
+import "contracts/interfaces/IMain.sol";
+import "contracts/interfaces/IBasketHandler.sol";
+import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/Rewardable.sol";
 
 struct SlowIssuance {
     address issuer;
@@ -28,16 +28,13 @@ struct SlowIssuance {
  * @title RTokenP0
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP0 is Ownable, ERC20Permit, IRToken {
+contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
-    using SafeERC20 for IERC20Metadata;
     using SafeERC20 for IERC20;
 
-    IMain public main;
-
     // To enforce a fixed issuanceRate throughout the entire block
-    mapping(uint256 => Fix) private issuanceRate; // block.number => {qRTok/block}
+    mapping(uint256 => Fix) private blockIssuanceRates; // block.number => {qRTok/block}
 
     Fix public constant MIN_ISSUANCE_RATE = Fix.wrap(1e40); // {qRTok/block} 10k whole RTok
 
@@ -46,21 +43,26 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
 
     mapping(address => SlowIssuance[]) public issuances;
 
-    Fix public override basketsNeeded; //  {BU}
+    Fix public basketsNeeded; //  {BU}
 
-    constructor(
-        IMain main_,
-        string memory name_,
-        string memory symbol_,
-        address owner_
-    ) ERC20(name_, symbol_) ERC20Permit(name_) {
-        main = main_;
-        _transferOwnership(owner_);
+    Fix public issuanceRate; // {%} of RToken supply to issue per block
+
+    // solhint-disable no-empty-blocks
+    constructor(string memory name_, string memory symbol_)
+        ERC20(name_, symbol_)
+        ERC20Permit(name_)
+    {}
+
+    // solhint-enable no-empty-blocks
+
+    function init(ConstructorArgs calldata args) internal override {
+        issuanceRate = args.params.issuanceRate;
+        emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }
 
-    modifier onlyComponent() {
-        require(main.hasComponent(_msgSender()), "only components of main");
-        _;
+    function setIssuanceRate(Fix val) external onlyOwner {
+        emit IssuanceRateSet(issuanceRate, val);
+        issuanceRate = val;
     }
 
     /// Begins the SlowIssuance accounting process, keeping a roughly constant basket rate
@@ -77,16 +79,18 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         Fix baskets,
         address[] memory erc20s,
         uint256[] memory deposits
-    ) external override onlyComponent {
+    ) external onlyComponent {
         assert(erc20s.length == deposits.length);
 
         // Calculate the issuance rate if this is the first issue in the block
-        if (issuanceRate[block.number].eq(FIX_ZERO)) {
-            issuanceRate[block.number] = fixMax(
+        if (blockIssuanceRates[block.number].eq(FIX_ZERO)) {
+            blockIssuanceRates[block.number] = fixMax(
                 MIN_ISSUANCE_RATE,
-                main.settings().issuanceRate().mulu(totalSupply())
+                issuanceRate.mulu(totalSupply())
             );
         }
+
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
 
         // Assumption: Main has already deposited the collateral
         SlowIssuance memory iss = SlowIssuance({
@@ -95,8 +99,8 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
             baskets: baskets,
             erc20s: erc20s,
             deposits: deposits,
-            basketNonce: main.basketHandler().basketNonce(),
-            blockAvailableAt: nextIssuanceBlockAvailable(amount, issuanceRate[block.number]),
+            basketNonce: basketNonce,
+            blockAvailableAt: nextIssuanceBlockAvailable(amount, blockIssuanceRates[block.number]),
             processed: false
         });
         issuances[issuer].push(iss);
@@ -115,27 +119,23 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         // Complete issuance instantly if it fits into this block
         if (iss.blockAvailableAt.lte(toFix(block.number))) {
             // At this point all checks have been done to ensure the issuance should vest
-            assert(tryVestIssuance(issuer, issuances[issuer].length - 1) > 0);
+            assert(tryVestIssuance(issuer, issuances[issuer].length - 1) == iss.amount);
         }
     }
 
     /// Cancels a vesting slow issuance
-    /// @param account The account of the issuer, and caller
-    /// @param throughIndex The index of the issuance in the issuer's queue to cancel through
+    /// User Action
+    /// If earliest == true, cancel id if id < endId
+    /// If earliest == false, cancel id if endId <= id
+    /// @param endId One end of the range of issuance IDs to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    function cancelIssuances(
-        address account,
-        uint256 throughIndex,
-        bool earliest
-    ) public returns (uint256[] memory deposits) {
-        require(account == _msgSender(), "issuer does not match caller");
+    function cancel(uint256 endId, bool earliest) external returns (uint256[] memory deposits) {
+        address account = _msgSender();
 
         SlowIssuance[] storage queue = issuances[account];
-        (uint256 first, uint256 last) = earliest
-            ? (0, throughIndex)
-            : (throughIndex, queue.length - 1);
+        (uint256 first, uint256 last) = earliest ? (0, endId) : (endId, queue.length);
 
-        for (uint256 n = first; n <= last; n++) {
+        for (uint256 n = first; n < last; n++) {
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
                 deposits = new uint256[](iss.erc20s.length);
@@ -152,16 +152,22 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amount of RToken quanta vested
-    function vestIssuances(address account) external override returns (uint256 vested) {
-        require(!main.paused(), "main is paused");
-        require(
-            main.basketHandler().worstCollateralStatus() == CollateralStatus.SOUND,
-            "collateral default"
-        );
+    function vest(address account, uint256 endId) external notPaused returns (uint256 vested) {
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
-        for (uint256 i = 0; i < issuances[account].length; i++) {
-            vested += tryVestIssuance(account, i);
-        }
+        main.poke();
+
+        for (uint256 i = 0; i < endId; i++) vested += tryVestIssuance(account, i);
+    }
+
+    /// Return the highest index that could be completed by a vestIssuances call.
+    function endIdForVest(address account) public view returns (uint256) {
+        uint256 i;
+        Fix currBlock = toFix(block.number);
+        SlowIssuance[] storage queue = issuances[account];
+
+        while (i < queue.length && queue[i].blockAvailableAt.lte(currBlock)) i++;
+        return i;
     }
 
     /// Redeem a quantity of RToken from an account, keeping a roughly constant basket rate
@@ -172,7 +178,7 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
         address from,
         uint256 amount,
         Fix baskets
-    ) external override onlyComponent {
+    ) external onlyComponent {
         _burn(from, amount);
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
@@ -184,24 +190,24 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
-    function mint(address recipient, uint256 amount) external override onlyComponent {
+    function mint(address recipient, uint256 amount) external onlyComponent {
         _mint(recipient, amount);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amount {qRTok} The amount to be melted
-    function melt(uint256 amount) external override {
+    function melt(uint256 amount) external {
         _burn(_msgSender(), amount);
         emit Melted(amount);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(Fix basketsNeeded_) external override onlyComponent {
+    function setBasketsNeeded(Fix basketsNeeded_) external onlyComponent {
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
 
-    function setMain(IMain main_) external override onlyOwner {
+    function setMain(IMain main_) external onlyOwner {
         emit MainSet(main, main_);
         main = main_;
     }
@@ -210,9 +216,10 @@ contract RTokenP0 is Ownable, ERC20Permit, IRToken {
     /// @return issued The total amount of RToken minted
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
         SlowIssuance storage iss = issuances[issuer][index];
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
         if (
             !iss.processed &&
-            iss.basketNonce == main.basketHandler().basketNonce() &&
+            iss.basketNonce == basketNonce &&
             iss.blockAvailableAt.lte(toFix(block.number))
         ) {
             for (uint256 i = 0; i < iss.erc20s.length; i++) {

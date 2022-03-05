@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/IMain.sol";
+import "contracts/interfaces/IMain.sol";
 import "contracts/p0/Main.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -25,23 +25,11 @@ contract MainCallerMockP0 {
         return main.basketHandler().fullyCapitalized();
     }
 
-    function worstCollateralStatus() external view returns (CollateralStatus) {
-        return main.basketHandler().worstCollateralStatus();
+    function status() external view returns (CollateralStatus) {
+        return main.basketHandler().status();
     }
 
     function rsr() external view returns (IERC20) {
         return main.rsr();
-    }
-
-    function stRSRWithdrawalDelay() external view returns (uint256) {
-        return main.settings().stRSRWithdrawalDelay();
-    }
-
-    function stRSRPayPeriod() external view returns (uint256) {
-        return main.settings().stRSRPayPeriod();
-    }
-
-    function stRSRPayRatio() external view returns (Fix) {
-        return main.settings().stRSRPayRatio();
     }
 }
