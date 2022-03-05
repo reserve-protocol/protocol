@@ -60,10 +60,14 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         /* Recapitalization:
          *   1. Sell all surplus assets at Main for deficit collateral
          *   2. When there is no more surplus, seize RSR and sell that for collateral
-         *   3. When there is no more RSR, give RToken holders a haircut
+         *   3. When there is no more RSR, pick a new basket target, and sell assets for deficits
+         *   3. When all trades are dust, give RToken holders a haircut
          */
 
-        sellSurplusAssetsForCollateral() || sellRSRForCollateral() || giveRTokenHoldersAHaircut();
+        sellSurplusAssetsForCollateral(false) ||
+            sellRSRForCollateral() ||
+            sellSurplusAssetsForCollateral(true) ||
+            giveRTokenHoldersAHaircut();
     }
 
     /// Send excess assets to the RSR and RToken traders
@@ -106,13 +110,13 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
 
     /// Try to launch a surplus-asset-for-collateral auction
     /// @return Whether an auction was launched
-    function sellSurplusAssetsForCollateral() private returns (bool) {
+    function sellSurplusAssetsForCollateral(bool pickTarget) private returns (bool) {
         (
             IAsset surplus,
             ICollateral deficit,
             Fix surplusAmount,
             Fix deficitAmount
-        ) = largestSurplusAndDeficit();
+        ) = largestSurplusAndDeficit(pickTarget);
 
         // Of primary concern here is whether we can trust the prices for the assets
         // we are selling. If we cannot, then we should not `prepareAuctionToCoverDeficit`
@@ -148,7 +152,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         IStRSR stRSR = main.stRSR();
         IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
 
-        (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit();
+        (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit(false);
 
         uint256 rsrBal = rsrAsset.erc20().balanceOf(address(this));
         uint256 rsrBalStRSR = rsrAsset.erc20().balanceOf(address(stRSR));
@@ -180,11 +184,13 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     /// Compute the largest asset-token-for-collateral-token trade by identifying
     /// the most in-surplus and most in-deficit tokens relative to their basket refAmts,
     /// using the unit of account for interconversion.
+    /// @param pickTarget If true, compute surplus relative to asset average;
+    ///                   if false, just use basketsNeeded
     /// @return surplus Surplus asset
     /// @return deficit Deficit collateral
     /// @return sellAmount {sellTok} Surplus amount (whole tokens)
     /// @return buyAmount {buyTok} Deficit amount (whole tokens)
-    function largestSurplusAndDeficit()
+    function largestSurplusAndDeficit(bool pickTarget)
         private
         view
         returns (
@@ -195,33 +201,73 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         )
     {
         IAssetRegistry reg = main.assetRegistry();
+        IBasketHandler basket = main.basketHandler();
         IERC20[] memory erc20s = reg.erc20s();
 
-        Fix basketsNeeded = main.rToken().basketsNeeded(); // {BU}
         Fix[] memory prices = new Fix[](erc20s.length); // {UoA/tok}
-        Fix[] memory surpluses = new Fix[](erc20s.length); // {UoA}
-        Fix[] memory deficits = new Fix[](erc20s.length); // {UoA}
 
-        // Calculate surplus and deficits relative to the reference basket
+        // Compute prices
         for (uint256 i = 0; i < erc20s.length; i++) {
             IAsset asset = reg.toAsset(erc20s[i]);
             prices[i] = asset.price();
+        }
+
+        // Compute basketTop and basketBottom
+        // basketTop is the lowest number of BUs to which we'll try to sell surplus assets
+        // basketBottom is the greatest number of BUs to which we'll try to buy deficit assets
+        Fix basketTop = main.rToken().basketsNeeded(); // {BU}
+        Fix basketBottom = basketTop;
+
+        if (pickTarget) {
+            Fix totalValue; // {UoA}
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                IAsset asset = reg.toAsset(erc20s[i]);
+                Fix assetBalance = asset.fromQ(toFix(erc20s[i].balanceOf(address(this)))); // {tok}
+                totalValue = totalValue.plus(assetBalance.mul(prices[i])); // {UoA}
+            }
+            basketTop = totalValue.div(basket.price());
+
+            Fix tradeVolume; // {UoA}
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                IAsset asset = reg.toAsset(erc20s[i]);
+                if (!asset.isCollateral()) continue;
+                uint256 needed = basketTop.mul(basket.quantity(erc20s[i])).round();
+                uint256 held = erc20s[i].balanceOf(address(this));
+                if (held < needed) {
+                    Fix deficitTok = asset.fromQ(toFix(needed - held));
+                    tradeVolume = tradeVolume.plus(deficitTok.mul(prices[i]));
+                }
+            }
+
+            basketBottom = basketTop.mul(
+                FIX_ONE.minus(maxTradeSlippage.mul(tradeVolume).div(totalValue))
+            ); // {BU}
+        }
+
+        // Compute supluses relative to basketTop and deficits relative to basketBottom
+        Fix[] memory surpluses = new Fix[](erc20s.length); // {UoA}
+        Fix[] memory deficits = new Fix[](erc20s.length); // {UoA}
+
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            IAsset asset = reg.toAsset(erc20s[i]);
 
             // needed: {qTok} that Main must hold to meet obligations
-            uint256 needed;
+            uint256 tokenTop;
+            uint256 tokenBottom;
             if (asset.isCollateral()) {
-                needed = basketsNeeded.mul(main.basketHandler().quantity(erc20s[i])).ceil();
+                tokenTop = basketTop.mul(basket.quantity(erc20s[i])).ceil();
+                tokenBottom = basketBottom.mul(basket.quantity(erc20s[i])).ceil();
             }
             // held: {qTok} that Main is already holding
             uint256 held = erc20s[i].balanceOf(address(this));
 
-            if (held > needed) {
+            if (held > tokenTop) {
                 // {tok} = {qTok} * {tok/qTok}
-                Fix surplusTok = asset.fromQ(toFix(held - needed));
+                Fix surplusTok = asset.fromQ(toFix(held - tokenTop));
                 surpluses[i] = surplusTok.mul(prices[i]);
-            } else if (held < needed) {
+            } else if (held < tokenBottom) {
                 // {tok} = {qTok} * {tok/qTok}
-                Fix deficitTok = asset.fromQ(toFix(needed - held));
+                Fix deficitTok = asset.fromQ(toFix(tokenBottom - held));
                 deficits[i] = deficitTok.mul(prices[i]);
             }
         }
