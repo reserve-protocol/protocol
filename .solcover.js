@@ -11,5 +11,6 @@ module.exports = {
     'p1/mocks',
     'p2/test',
     'p2/mocks',
+    'plugins/mocks',
   ],
 }
