@@ -5,25 +5,25 @@ import { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn } from '../../common/numbers'
 import {
+  AaveClaimAdapterP0,
   AaveLendingPoolMockP0,
   AssetP0,
+  AssetRegistryP0,
+  BackingManagerP0,
+  BasketHandlerP0,
+  CompoundClaimAdapterP0,
   ComptrollerMockP0,
   DeployerP0,
+  DistributorP0,
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
+  IssuerP0,
   MainP0,
   MarketMock,
   RTokenAssetP0,
   RTokenP0,
   StRSRP0,
-  AssetRegistryP0,
-  BackingManagerP0,
-  BasketHandlerP0,
-  IssuerP0,
-  DistributorP0,
-  CompoundClaimAdapterP0,
-  AaveClaimAdapterP0,
   TraderP0,
 } from '../../typechain'
 import { defaultFixture } from './utils/fixtures'
