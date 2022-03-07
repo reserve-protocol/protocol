@@ -1,4 +1,3 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
@@ -9,25 +8,17 @@ import {
   CompoundOracleMockP0,
   CTokenMock,
   ERC20Mock,
-  MainP0,
+  IssuerP0,
   RTokenAssetP0,
   RTokenP0,
   StaticATokenMock,
   USDCMock,
-  AssetRegistryP0,
-  BackingManagerP0,
-  BasketHandlerP0,
-  IssuerP0,
-  DistributorP0,
 } from '../../typechain'
-import { Collateral, defaultFixture } from './utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 describe('AssetsP0 contracts', () => {
-  let owner: SignerWithAddress
-  let other: SignerWithAddress
-
   // Tokens
   let rsr: ERC20Mock
   let compToken: ERC20Mock
@@ -37,8 +28,6 @@ describe('AssetsP0 contracts', () => {
   // Tokens/Assets
   let token0: ERC20Mock
   let token1: ERC20Mock
-  let token2: StaticATokenMock
-  let token3: CTokenMock
 
   // Assets
   let rsrAsset: AssetP0
@@ -50,14 +39,11 @@ describe('AssetsP0 contracts', () => {
   let compoundOracleInternal: CompoundOracleMockP0
   let aaveOracleInternal: AaveOracleMockP0
 
-  // Main
-  let main: MainP0
+  // Config
+  let config: IConfig
 
-  let assetRegistry: AssetRegistryP0
-  let backingManager: BackingManagerP0
-  let basketHandler: BasketHandlerP0
+  // Main
   let issuer: IssuerP0
-  let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -68,8 +54,6 @@ describe('AssetsP0 contracts', () => {
   })
 
   beforeEach(async () => {
-    ;[owner, other] = await ethers.getSigners()
-
     let basket: Collateral[]
 
       // Deploy fixture
@@ -83,18 +67,11 @@ describe('AssetsP0 contracts', () => {
       aaveAsset,
       aaveOracleInternal,
       basket,
-      main,
-      assetRegistry,
-      backingManager,
-      basketHandler,
+      config,
       issuer,
-      distributor,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
-
-    // Make RToken supply nonzero
-    const amt = bn('1e18')
 
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await basket[0].erc20())
     token1 = <USDCMock>await ethers.getContractAt('USDCMock', await basket[1].erc20())
@@ -102,19 +79,6 @@ describe('AssetsP0 contracts', () => {
       await ethers.getContractAt('StaticATokenMock', await basket[2].erc20())
     )
     token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await basket[3].erc20())
-
-    // Mint Tokens
-    await token0.connect(owner).mint(other.address, amt)
-    await token1.connect(owner).mint(other.address, amt)
-    await token2.connect(owner).mint(other.address, amt)
-    await token3.connect(owner).mint(other.address, amt)
-
-    await token0.connect(other).approve(issuer.address, amt)
-    await token1.connect(other).approve(issuer.address, amt)
-    await token2.connect(other).approve(issuer.address, amt)
-    await token3.connect(other).approve(issuer.address, amt)
-
-    await issuer.connect(other).issue(amt)
   })
 
   describe('Deployment', () => {
@@ -123,25 +87,38 @@ describe('AssetsP0 contracts', () => {
       expect(await rsrAsset.isCollateral()).to.equal(false)
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
       expect(await rsr.decimals()).to.equal(18)
+      expect(await rsrAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await rsrAsset.toQ(bn('1'))).to.equal(fp('1'))
+      expect(await rsrAsset.fromQ(fp('1'))).to.equal(bn('1'))
       expect(await rsrAsset.price()).to.equal(fp('1'))
 
       // COMP Token
       expect(await compAsset.isCollateral()).to.equal(false)
       expect(await compAsset.erc20()).to.equal(compToken.address)
       expect(await compToken.decimals()).to.equal(18)
+      expect(await compAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await compAsset.toQ(bn('10'))).to.equal(fp('10'))
+      expect(await compAsset.fromQ(fp('10'))).to.equal(bn('10'))
       expect(await compAsset.price()).to.equal(fp('1'))
 
       // AAVE Token
       expect(await aaveAsset.isCollateral()).to.equal(false)
       expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
       expect(await aaveToken.decimals()).to.equal(18)
+      expect(await aaveAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await aaveAsset.toQ(bn('500'))).to.equal(fp('500'))
+      expect(await aaveAsset.fromQ(fp('500'))).to.equal(bn('500'))
       expect(await aaveAsset.price()).to.equal(fp('1'))
 
       // RToken
       expect(await rTokenAsset.isCollateral()).to.equal(false)
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await rToken.decimals()).to.equal(18)
+      expect(await rTokenAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await rTokenAsset.toQ(bn('10000'))).to.equal(fp('10000'))
+      expect(await rTokenAsset.fromQ(fp('10000'))).to.equal(bn('10000'))
       expect(await rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.price()).to.equal(await issuer.rTokenPrice())
     })
   })
 
@@ -164,6 +141,7 @@ describe('AssetsP0 contracts', () => {
       expect(await compAsset.price()).to.equal(fp('1.1'))
       expect(await aaveAsset.price()).to.equal(fp('1.2'))
       expect(await rTokenAsset.price()).to.equal(fp('1')) // No changes
+      expect(await rTokenAsset.price()).to.equal(await issuer.rTokenPrice())
     })
 
     it('Should calculate RToken price correctly', async () => {
@@ -178,6 +156,7 @@ describe('AssetsP0 contracts', () => {
 
       // Price of RToken should increase by 10%
       expect(await rTokenAsset.price()).to.equal(fp('1.1'))
+      expect(await rTokenAsset.price()).to.equal(await issuer.rTokenPrice())
     })
 
     it('Should revert if price is zero', async () => {
