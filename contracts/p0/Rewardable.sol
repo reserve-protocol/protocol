@@ -34,12 +34,10 @@ abstract contract RewardableP0 is Component, IRewardable {
         for (uint256 i = 0; i < erc20s.length; i++) {
             if (!reg.toAsset(erc20s[i]).isCollateral()) continue;
 
-            if (address(reg.toColl(erc20s[i]).claimAdapter()) == address(0)) continue;
-
             IClaimAdapter adapter = reg.toColl(erc20s[i]).claimAdapter();
 
-            // TODO Confirm require here, as opposed to continue
-            require(main.isTrustedClaimAdapter(adapter), "claim adapter is not trusted");
+            if (address(adapter) == address(0)) continue;
+            if (!main.isTrustedClaimAdapter(adapter)) continue;
 
             (address _to, bytes memory _calldata) = adapter.getClaimCalldata(erc20s[i]);
 
