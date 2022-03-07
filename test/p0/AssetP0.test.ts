@@ -6,12 +6,10 @@ import {
   AaveOracleMockP0,
   AssetP0,
   CompoundOracleMockP0,
-  CTokenMock,
   ERC20Mock,
   IssuerP0,
   RTokenAssetP0,
   RTokenP0,
-  StaticATokenMock,
   USDCMock,
 } from '../../typechain'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
@@ -75,10 +73,6 @@ describe('AssetsP0 contracts', () => {
 
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await basket[0].erc20())
     token1 = <USDCMock>await ethers.getContractAt('USDCMock', await basket[1].erc20())
-    token2 = <StaticATokenMock>(
-      await ethers.getContractAt('StaticATokenMock', await basket[2].erc20())
-    )
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await basket[3].erc20())
   })
 
   describe('Deployment', () => {
