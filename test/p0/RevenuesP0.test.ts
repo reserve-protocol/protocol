@@ -197,8 +197,8 @@ describe('Revenues', () => {
       rsrTrader,
       rTokenTrader,
     } = await loadFixture(defaultFixture))
-    token0 = erc20s[collateral.indexOf(basket[0])]
-    token1 = erc20s[collateral.indexOf(basket[1])]
+    token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
+    token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
     token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
 
