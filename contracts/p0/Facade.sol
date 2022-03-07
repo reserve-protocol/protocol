@@ -106,4 +106,18 @@ contract FacadeP0 is IFacade {
             }
         }
     }
+
+    /// `view`
+    function currentBacking()
+        external
+        view
+        returns (address[] memory tokens, uint256[] memory quantities)
+    {
+        tokens = main.basketHandler().tokens();
+        quantities = new uint256[](tokens.length);
+
+        for (uint256 j = 0; j < tokens.length; j++) {
+            quantities[j] += IERC20(tokens[j]).balanceOf(address(main.backingManager()));
+        }
+    }
 }

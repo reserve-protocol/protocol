@@ -416,9 +416,9 @@ describe('IssuerP0 contract', () => {
       const issueAmount = initialBal.div(2)
 
       // Check values, with no issued tokens
-      expect(await facade.maxIssuable(addr1.address)).to.equal(initialBal.mul(4))
-      expect(await facade.maxIssuable(addr2.address)).to.equal(initialBal.mul(4))
-      expect(await facade.maxIssuable(other.address)).to.equal(0)
+      expect(await facade.callStatic.maxIssuable(addr1.address)).to.equal(initialBal.mul(4))
+      expect(await facade.callStatic.maxIssuable(addr2.address)).to.equal(initialBal.mul(4))
+      expect(await facade.callStatic.maxIssuable(other.address)).to.equal(0)
 
       // Provide approvals
       await token0.connect(addr1).approve(issuer.address, issueAmount)
@@ -433,9 +433,11 @@ describe('IssuerP0 contract', () => {
       await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check values, with issued tokens
-      expect(await facade.maxIssuable(addr1.address)).to.equal(initialBal.mul(4).sub(issueAmount))
-      expect(await facade.maxIssuable(addr2.address)).to.equal(initialBal.mul(4))
-      expect(await facade.maxIssuable(other.address)).to.equal(0)
+      expect(await facade.callStatic.maxIssuable(addr1.address)).to.equal(
+        initialBal.mul(4).sub(issueAmount)
+      )
+      expect(await facade.callStatic.maxIssuable(addr2.address)).to.equal(initialBal.mul(4))
+      expect(await facade.callStatic.maxIssuable(other.address)).to.equal(0)
     })
 
     it('Should process issuances in multiple attempts (using minimum issuance)', async function () {

@@ -22,6 +22,11 @@ interface IFacade {
 
     function totalAssetValue() external view returns (Fix total);
 
+    function currentBacking()
+        external
+        view
+        returns (address[] memory tokens, uint256[] memory quantities);
+
     function currentAssets() external returns (address[] memory tokens, uint256[] memory amounts);
 
     function stRSRExchangeRate() external returns (Fix);
