@@ -22,8 +22,11 @@ import {
   BasketHandlerP0,
   IssuerP0,
   DistributorP0,
+  CompoundClaimAdapterP0,
+  AaveClaimAdapterP0,
+  TraderP0,
 } from '../../typechain'
-import { defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
+import { defaultFixture } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -41,30 +44,29 @@ describe('DeployerP0 contract', () => {
   let compToken: ERC20Mock
   let compAsset: AssetP0
   let compoundMock: ComptrollerMockP0
+  let compoundClaimer: CompoundClaimAdapterP0
   let aaveToken: ERC20Mock
   let aaveAsset: AssetP0
   let aaveMock: AaveLendingPoolMockP0
+  let aaveClaimer: AaveClaimAdapterP0
 
-  // Market
+  // Market / Facade
   let market: MarketMock
+  let facade: FacadeP0
 
-  // Config values
-  let config: IConfig
-  let dist: IRevenueShare
-
-  // Contracts to retrieve after deploy
+  // Core contracts
   let rToken: RTokenP0
   let rTokenAsset: RTokenAssetP0
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
-
-  let facade: FacadeP0
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
   let issuer: IssuerP0
   let distributor: DistributorP0
+  let rsrTrader: TraderP0
+  let rTokenTrader: TraderP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -82,13 +84,11 @@ describe('DeployerP0 contract', () => {
       rsr,
       rsrAsset,
       compToken,
-      aaveToken,
       compAsset,
-      aaveAsset,
       compoundMock,
+      aaveToken,
+      aaveAsset,
       aaveMock,
-      config,
-      dist,
       deployer,
       main,
       assetRegistry,
@@ -102,6 +102,10 @@ describe('DeployerP0 contract', () => {
       stRSR,
       market,
       facade,
+      compoundClaimer,
+      aaveClaimer,
+      rsrTrader,
+      rTokenTrader,
     } = await loadFixture(defaultFixture))
   })
 
@@ -113,18 +117,34 @@ describe('DeployerP0 contract', () => {
       expect(await deployer.market()).to.equal(market.address)
       expect(await deployer.comptroller()).to.equal(compoundMock.address)
       expect(await deployer.aaveLendingPool()).to.equal(aaveMock.address)
+      expect(await deployer.compoundClaimer()).to.equal(compoundClaimer.address)
+      expect(await deployer.aaveClaimer()).to.equal(aaveClaimer.address)
     })
 
     it('Should deploy required contracts', async () => {
       expect(main.address).to.not.equal(ZERO_ADDRESS)
+      // Assets
       expect(rsrAsset.address).to.not.equal(ZERO_ADDRESS)
       expect(compAsset.address).to.not.equal(ZERO_ADDRESS)
       expect(aaveAsset.address).to.not.equal(ZERO_ADDRESS)
-      expect(rToken.address).to.not.equal(ZERO_ADDRESS)
       expect(rTokenAsset.address).to.not.equal(ZERO_ADDRESS)
+
+      // Core
+      expect(rToken.address).to.not.equal(ZERO_ADDRESS)
       expect(furnace.address).to.not.equal(ZERO_ADDRESS)
       expect(stRSR.address).to.not.equal(ZERO_ADDRESS)
+      expect(assetRegistry.address).to.not.equal(ZERO_ADDRESS)
+      expect(basketHandler.address).to.not.equal(ZERO_ADDRESS)
+      expect(backingManager.address).to.not.equal(ZERO_ADDRESS)
+      expect(issuer.address).to.not.equal(ZERO_ADDRESS)
+      expect(distributor.address).to.not.equal(ZERO_ADDRESS)
+      expect(rsrTrader.address).to.not.equal(ZERO_ADDRESS)
+      expect(rTokenTrader.address).to.not.equal(ZERO_ADDRESS)
+
+      // Other contracts
       expect(facade.address).to.not.equal(ZERO_ADDRESS)
+      expect(compoundClaimer.address).to.not.equal(ZERO_ADDRESS)
+      expect(aaveClaimer.address).to.not.equal(ZERO_ADDRESS)
     })
 
     it('Should register deployment', async () => {
@@ -155,12 +175,24 @@ describe('DeployerP0 contract', () => {
       expect(await assetRegistry.toAsset(erc20s[3])).to.equal(compAsset.address)
       expect(erc20s.length).to.eql((await basketHandler.tokens()).length + 4)
 
+      // Components
+      expect(await main.hasComponent(assetRegistry.address)).to.equal(true)
+      expect(await main.hasComponent(basketHandler.address)).to.equal(true)
+      expect(await main.hasComponent(backingManager.address)).to.equal(true)
+      expect(await main.hasComponent(issuer.address)).to.equal(true)
+      expect(await main.hasComponent(distributor.address)).to.equal(true)
+
       // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)
       expect(await main.furnace()).to.equal(furnace.address)
+      expect(await main.market()).to.equal(market.address)
+      expect(await main.rsrTrader()).to.equal(rsrTrader.address)
+      expect(await main.rTokenTrader()).to.equal(rTokenTrader.address)
 
-      // TODO: test this for all components
-      expect(await main.hasComponent(assetRegistry.address)).to.equal(true)
+      // Claim adapters
+      expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
+      expect(await main.isTrustedClaimAdapter(aaveClaimer.address)).to.equal(true)
+      expect(await main.claimAdapters()).to.eql([compoundClaimer.address, aaveClaimer.address])
     })
 
     it('Should setup RToken correctly', async () => {
