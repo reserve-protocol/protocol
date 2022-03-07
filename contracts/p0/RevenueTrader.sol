@@ -32,7 +32,7 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
 
     /// - If we have any of `tokenToBuy` (RSR or RToken), distribute it.
     /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
-    function manageERC20(IERC20 erc20) public {
+    function manageERC20(IERC20 erc20) internal {
         IAssetRegistry reg = main.assetRegistry();
 
         require(reg.isRegistered(erc20), "erc20 not registered");
