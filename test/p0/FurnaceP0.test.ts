@@ -181,7 +181,7 @@ describe('FurnaceP0 contract', () => {
       // Set automine to false for multiple transactions in one block
       await hre.network.provider.send('evm_setAutomine', [false])
 
-      // Approval
+      // Transfer
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
 
       // Melt
@@ -190,7 +190,7 @@ describe('FurnaceP0 contract', () => {
       // Mine block
       await hre.network.provider.send('evm_mine', [])
 
-      // Check melt was registered but not processed
+      // Check melt was not processed
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
@@ -198,27 +198,51 @@ describe('FurnaceP0 contract', () => {
       await hre.network.provider.send('evm_setAutomine', [true])
     })
 
+    it('Should not melt if no funds available', async () => {
+      // Set time period
+      const period: number = 60 * 60 * 24 // 1 day
+      await furnace.connect(owner).setPeriod(period)
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+      // Advance to the end to melt full amount
+      await advanceTime(period + 1)
+
+      // Melt
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+
+      // Check nothing changed
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+    })
+
     it('Should allow melt - one period', async () => {
       const hndAmt: BigNumber = bn('10e18')
       const period: number = 60 * 60 * 24 // 1 day
 
-      // Set time period for batches
+      // Set time period
       await furnace.connect(owner).setPeriod(period)
 
-      // Approval
+      // Transfer
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
-      // Advance to the end to withdraw full amount
+      // Advance to the end to melt full amount
       await advanceTime(period + 1)
-
-      // Melt
-      await furnace.connect(addr1).melt()
 
       const decayFn = makeDecayFn(await furnace.ratio())
       const expAmt = decayFn(hndAmt, 1) // 1 period
+
+      // Melt
+      await expect(furnace.connect(addr1).melt())
+        .to.emit(rToken, 'Melted')
+        .withArgs(hndAmt.sub(expAmt))
+
+      // Another call to melt should have no impact
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
@@ -228,23 +252,23 @@ describe('FurnaceP0 contract', () => {
       const hndAmt: BigNumber = bn('10e18')
       const period: number = 60 * 60 * 24 // 1 day
 
-      // Set time period for batches
+      // Set time period
       await furnace.connect(owner).setPeriod(period)
 
-      // Approval
+      // Transfer
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
-      // Advance to the end to withdraw full amount
+      // Advance to the end to melt full amount
       await advanceTime(2 * period + 1)
-
-      // Melt - via facade (same result)
-      await facade.doFurnaceMelting()
 
       const decayFn = makeDecayFn(await furnace.ratio())
       const expAmt = decayFn(hndAmt, 2) // 2 periods
+
+      // Melt - via facade (same result)
+      await expect(facade.doFurnaceMelting()).to.emit(rToken, 'Melted').withArgs(hndAmt.sub(expAmt))
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
@@ -254,32 +278,38 @@ describe('FurnaceP0 contract', () => {
       const hndAmt: BigNumber = bn('10e18')
       const period: number = 60 * 60 * 24 // 1 day
 
-      // Set time period for batches
+      // Set time period
       await furnace.connect(owner).setPeriod(period)
 
-      // Approval
+      // Transfer
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
-      // Advance to the end to withdraw full amount
+      // Advance to the end to melt full amount
       await advanceTime(period + 1)
-
-      // Melt
-      await furnace.connect(addr1).melt()
-
-      // Advance to the end to withdraw full amount
-      await advanceTime(period + 1)
-
-      // Melt
-      await furnace.connect(addr1).melt()
 
       const decayFn = makeDecayFn(await furnace.ratio())
-      const expAmt = decayFn(hndAmt, 2) // 2 period
+      const expAmt1 = decayFn(hndAmt, 1) // 1 period
+
+      // Melt
+      await expect(furnace.connect(addr1).melt())
+        .to.emit(rToken, 'Melted')
+        .withArgs(hndAmt.sub(expAmt1))
+
+      // Advance to the end to withdraw full amount
+      await advanceTime(period + 1)
+
+      const expAmt2 = decayFn(hndAmt, 2) // 2 periods
+
+      // Melt
+      await expect(furnace.connect(addr1).melt())
+        .to.emit(rToken, 'Melted')
+        .withArgs(bn(expAmt1).sub(expAmt2))
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
-      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
+      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt2)
     })
   })
 })
