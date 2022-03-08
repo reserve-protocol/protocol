@@ -3,12 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
-import {
-  AuctionStatus,
-  BN_SCALE_FACTOR,
-  CollateralStatus,
-  ZERO_ADDRESS,
-} from '../../common/constants'
+import { BN_SCALE_FACTOR, CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { bn, divCeil, fp, near, toBNDecimals } from '../../common/numbers'
 import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
 import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
@@ -45,52 +40,20 @@ import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixt
 const expectAuctionInfo = async (
   trader: TraderP0,
   index: number,
-  auctionInfo: Partial<IAuctionInfo>
+  auctionInfo: Partial<IOngoingAuctionInfo>
 ) => {
-  const {
-    sell,
-    buy,
-    sellAmount,
-    minBuyAmount,
-    startTime,
-    endTime,
-    clearingSellAmount,
-    clearingBuyAmount,
-    externalAuctionId,
-    status,
-  } = await trader.auctions(index)
+  const { sell, buy, endTime, externalId } = await trader.auctions(index)
   expect(sell).to.equal(auctionInfo.sell)
   expect(buy).to.equal(auctionInfo.buy)
-  expect(sellAmount).to.equal(auctionInfo.sellAmount)
-  expect(minBuyAmount).to.equal(auctionInfo.minBuyAmount)
-  expect(startTime).to.equal(auctionInfo.startTime)
   expect(endTime).to.equal(auctionInfo.endTime)
-  expect(clearingSellAmount).to.equal(auctionInfo.clearingSellAmount)
-  expect(clearingBuyAmount).to.equal(auctionInfo.clearingBuyAmount)
-  expect(externalAuctionId).to.equal(auctionInfo.externalAuctionId)
-  expect(status).to.equal(auctionInfo.status)
+  expect(externalId).to.equal(auctionInfo.externalId)
 }
 
-const expectAuctionStatus = async (
-  trader: TraderP0,
-  index: number,
-  expectedStatus: AuctionStatus
-) => {
-  const { status } = await trader.auctions(index)
-  expect(status).to.equal(expectedStatus)
-}
-
-interface IAuctionInfo {
+interface IOngoingAuctionInfo {
   sell: string
   buy: string
-  sellAmount: BigNumber
-  minBuyAmount: BigNumber
-  startTime: number
   endTime: number
-  clearingSellAmount: BigNumber
-  clearingBuyAmount: BigNumber
-  externalAuctionId: BigNumber
-  status: AuctionStatus
+  externalId: BigNumber
 }
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -570,14 +533,8 @@ describe('MainP0 contract', () => {
         await expectAuctionInfo(backingManager, 0, {
           sell: token0.address,
           buy: token1.address,
-          sellAmount: sellAmt,
-          minBuyAmount: toBNDecimals(minBuyAmt, 6),
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // Check state
@@ -618,9 +575,6 @@ describe('MainP0 contract', () => {
           .to.emit(backingManager, 'AuctionEnded')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6))
           .and.to.not.emit(backingManager, 'AuctionStarted')
-
-        // Check previous auction is closed
-        await expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
 
         // Check state - Order restablished
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -682,14 +636,8 @@ describe('MainP0 contract', () => {
         await expectAuctionInfo(backingManager, 0, {
           sell: token0.address,
           buy: token1.address,
-          sellAmount: sellAmt,
-          minBuyAmount: toBNDecimals(minBuyAmt, 6),
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // Check state
@@ -729,9 +677,6 @@ describe('MainP0 contract', () => {
           .to.emit(backingManager, 'AuctionEnded')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
           .and.to.not.emit(backingManager, 'AuctionStarted')
-
-        // Check previous auction is closed
-        await expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
 
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -801,14 +746,8 @@ describe('MainP0 contract', () => {
         await expectAuctionInfo(backingManager, 0, {
           sell: token0.address,
           buy: token1.address,
-          sellAmount: sellAmt,
-          minBuyAmount: toBNDecimals(minBuyAmt, 6),
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // Check state
@@ -855,23 +794,14 @@ describe('MainP0 contract', () => {
           .and.to.emit(backingManager, 'AuctionStarted')
           .withArgs(1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6))
 
-        // Check previous auction is closed
-        await expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
-
         auctionTimestamp = await getLatestBlockTimestamp()
 
         // RSR -> Token1 Auction
         await expectAuctionInfo(backingManager, 1, {
           sell: rsr.address,
           buy: token1.address,
-          sellAmount: sellAmtRSR,
-          minBuyAmount: toBNDecimals(buyAmtBidRSR, 6),
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('1'),
         })
 
         // Check state
@@ -910,9 +840,6 @@ describe('MainP0 contract', () => {
           .to.emit(backingManager, 'AuctionEnded')
           .withArgs(1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6))
           .and.to.not.emit(backingManager, 'AuctionStarted')
-
-        // Check previous auction is closed
-        await expectAuctionStatus(backingManager, 1, AuctionStatus.DONE)
 
         // Check state - Order restablished
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -995,14 +922,8 @@ describe('MainP0 contract', () => {
         await expectAuctionInfo(backingManager, 0, {
           sell: token0.address,
           buy: backupToken1.address,
-          sellAmount: sellAmt,
-          minBuyAmount: bn(0),
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // Another call should not create any new auctions if still ongoing
@@ -1010,9 +931,6 @@ describe('MainP0 contract', () => {
           backingManager,
           'AuctionStarted'
         )
-
-        //  Check existing auction still open
-        await expectAuctionStatus(backingManager, 0, AuctionStatus.OPEN)
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1044,9 +962,6 @@ describe('MainP0 contract', () => {
           .to.emit(backingManager, 'AuctionEnded')
           .withArgs(0, token0.address, backupToken1.address, sellAmt, minBuyAmt)
           .and.not.to.emit(backingManager, 'AuctionStarted')
-
-        // Check previous auction is closed
-        await expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
 
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1142,14 +1057,8 @@ describe('MainP0 contract', () => {
         await expectAuctionInfo(backingManager, 0, {
           sell: token0.address,
           buy: backupToken1.address,
-          sellAmount: sellAmt,
-          minBuyAmount: bn(0),
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // Check state
@@ -1184,22 +1093,13 @@ describe('MainP0 contract', () => {
           .and.to.emit(backingManager, 'AuctionStarted')
           .withArgs(1, token0.address, backupToken1.address, sellAmt, bn('0'))
 
-        // Check previous auction is closed
-        await expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
-
         // Check new auction
         // Token0 -> Backup Token Auction
         await expectAuctionInfo(backingManager, 1, {
           sell: token0.address,
           buy: backupToken1.address,
-          sellAmount: sellAmt,
-          minBuyAmount: bn(0),
-          startTime: await getLatestBlockTimestamp(),
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('1'),
         })
 
         // Check state
@@ -1242,23 +1142,13 @@ describe('MainP0 contract', () => {
 
         auctionTimestamp = await getLatestBlockTimestamp()
 
-        // Check previous auctions are closed
-        await expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
-        await expectAuctionStatus(backingManager, 1, AuctionStatus.DONE)
-
         // Check new auction
         // RSR -> Backup Token Auction
         await expectAuctionInfo(backingManager, 2, {
           sell: rsr.address,
           buy: backupToken1.address,
-          sellAmount: sellAmtRSR,
-          minBuyAmount: buyAmtBidRSR,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('2'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('2'),
         })
 
         // Check state
@@ -1297,11 +1187,6 @@ describe('MainP0 contract', () => {
         //  Should have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount.sub(sellAmtRSR)) // Sent to market (auction)
         //  expect(await stRSR.balanceOf(addr1.address)).to.equal(stkAmount.sub(sellAmtRSR)) // Seized from user
-
-        //  Check previous auctions are closed
-        await expectAuctionStatus(backingManager, 0, AuctionStatus.DONE)
-        await expectAuctionStatus(backingManager, 1, AuctionStatus.DONE)
-        await expectAuctionStatus(backingManager, 2, AuctionStatus.DONE)
 
         // Check finalstate - All back to normal
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)

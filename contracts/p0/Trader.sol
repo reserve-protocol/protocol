@@ -130,7 +130,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
     function launchAuction(ProposedAuction memory prop) internal {
         OngoingAuction storage ongoing = auctions.push();
 
-        uint256 endTime = Math.min(block.timestamp + auctionLength, latestAuctionEnd);
+        uint256 endTime = Math.max(block.timestamp + auctionLength, latestAuctionEnd);
         prop.sell.safeApprove(address(main.market()), prop.sellAmount);
 
         ongoing.sell = prop.sell;

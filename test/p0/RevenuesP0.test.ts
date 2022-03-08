@@ -3,13 +3,7 @@ import { CompoundClaimAdapterP0 } from '@typechain/CompoundClaimAdapterP0'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import {
-  AuctionStatus,
-  BN_SCALE_FACTOR,
-  FURNACE_DEST,
-  STRSR_DEST,
-  ZERO_ADDRESS,
-} from '../../common/constants'
+import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../../common/constants'
 import { bn, divCeil, fp, near } from '../../common/numbers'
 import {
   AaveLendingPoolMockP0,
@@ -43,55 +37,23 @@ import {
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
-interface IAuctionInfo {
+interface IProposedAuctionInfo {
   sell: string
   buy: string
-  sellAmount: BigNumber
-  minBuyAmount: BigNumber
-  startTime: number
   endTime: number
-  clearingSellAmount: BigNumber
-  clearingBuyAmount: BigNumber
-  externalAuctionId: BigNumber
-  status: AuctionStatus
+  externalId: BigNumber
 }
 
 const expectAuctionInfo = async (
   trader: TraderP0,
   index: number,
-  auctionInfo: Partial<IAuctionInfo>
+  auctionInfo: Partial<IProposedAuctionInfo>
 ) => {
-  const {
-    sell,
-    buy,
-    sellAmount,
-    minBuyAmount,
-    startTime,
-    endTime,
-    clearingSellAmount,
-    clearingBuyAmount,
-    externalAuctionId,
-    status,
-  } = await trader.auctions(index)
+  const { sell, buy, endTime, externalId } = await trader.auctions(index)
   expect(sell).to.equal(auctionInfo.sell)
   expect(buy).to.equal(auctionInfo.buy)
-  expect(sellAmount).to.equal(auctionInfo.sellAmount)
-  expect(minBuyAmount).to.equal(auctionInfo.minBuyAmount)
-  expect(startTime).to.equal(auctionInfo.startTime)
   expect(endTime).to.equal(auctionInfo.endTime)
-  expect(clearingSellAmount).to.equal(auctionInfo.clearingSellAmount)
-  expect(clearingBuyAmount).to.equal(auctionInfo.clearingBuyAmount)
-  expect(externalAuctionId).to.equal(auctionInfo.externalAuctionId)
-  expect(status).to.equal(auctionInfo.status)
-}
-
-const expectAuctionStatus = async (
-  trader: TraderP0,
-  index: number,
-  expectedStatus: AuctionStatus
-) => {
-  const { status } = await trader.auctions(index)
-  expect(status).to.equal(expectedStatus)
+  expect(externalId).to.equal(auctionInfo.externalId)
 }
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -351,28 +313,16 @@ describe('Revenues', () => {
         await expectAuctionInfo(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // COMP -> RToken Auction
         await expectAuctionInfo(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
-          sellAmount: sellAmtRToken,
-          minBuyAmount: minBuyAmtRToken,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('1'),
         })
 
         // Check funds in Market
@@ -409,28 +359,16 @@ describe('Revenues', () => {
         await expectAuctionInfo(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: sellAmt,
-          clearingBuyAmount: minBuyAmt,
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.DONE,
+          externalId: bn('0'),
         })
 
         // COMP -> RToken Auction
         await expectAuctionInfo(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
-          sellAmount: sellAmtRToken,
-          minBuyAmount: minBuyAmtRToken,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: sellAmtRToken,
-          clearingBuyAmount: minBuyAmtRToken,
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.DONE,
+          externalId: bn('1'),
         })
 
         // Check balances sent to corresponding destinations
@@ -475,28 +413,16 @@ describe('Revenues', () => {
         await expectAuctionInfo(rsrTrader, 0, {
           sell: aaveToken.address,
           buy: rsr.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: await getLatestBlockTimestamp(),
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // AAVE -> RToken Auction
         await expectAuctionInfo(rTokenTrader, 0, {
           sell: aaveToken.address,
           buy: rToken.address,
-          sellAmount: sellAmtRToken,
-          minBuyAmount: minBuyAmtRToken,
-          startTime: await getLatestBlockTimestamp(),
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('1'),
         })
 
         // Check funds in Market
@@ -527,9 +453,6 @@ describe('Revenues', () => {
           .withArgs(0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
-
-        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
-        await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
 
         // Check balances sent to corresponding destinations
         // StRSR
@@ -593,14 +516,8 @@ describe('Revenues', () => {
         await expectAuctionInfo(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // Check funds in Market and still in Trader
@@ -611,9 +528,6 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.not.emit(rsrTrader, 'AuctionStarted')
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
-
-        // Check previous auction is still open
-        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.OPEN)
 
         // Perform Mock Bids for RSR (addr1 has balance)
         await rsr.connect(addr1).approve(market.address, minBuyAmt)
@@ -633,22 +547,13 @@ describe('Revenues', () => {
           .withArgs(1, compToken.address, rsr.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
-        // Check previous auction is now closed
-        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
-
         // Check new auction
         // COMP -> RSR Auction
         await expectAuctionInfo(rsrTrader, 1, {
           sell: compToken.address,
           buy: rsr.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: await getLatestBlockTimestamp(),
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('1'),
         })
 
         // Check now all funds in Market
@@ -672,10 +577,6 @@ describe('Revenues', () => {
           .withArgs(1, compToken.address, rsr.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
-
-        //  Check existing auctions are closed
-        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
-        await expectAuctionStatus(rsrTrader, 1, AuctionStatus.DONE)
 
         //  Check balances sent to corresponding destinations
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.mul(2))
@@ -739,14 +640,8 @@ describe('Revenues', () => {
         await expectAuctionInfo(rTokenTrader, 0, {
           sell: aaveToken.address,
           buy: rToken.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // Calculate pending amount
@@ -780,18 +675,9 @@ describe('Revenues', () => {
         await expectAuctionInfo(rTokenTrader, 1, {
           sell: aaveToken.address,
           buy: rToken.address,
-          sellAmount: sellAmtRemainder,
-          minBuyAmount: minBuyAmtRemainder,
-          startTime: await getLatestBlockTimestamp(),
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('1'),
         })
-
-        // Check previous auction is closed
-        await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
 
         // Perform Mock Bids for RToken (addr1 has balance)
         await rToken.connect(addr1).approve(market.address, minBuyAmtRemainder)
@@ -810,10 +696,6 @@ describe('Revenues', () => {
           .withArgs(1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder)
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
-
-        // Check existing auctions are closed
-        await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
-        await expectAuctionStatus(rTokenTrader, 1, AuctionStatus.DONE)
 
         // Check balances in destinations
         // StRSR
@@ -879,28 +761,16 @@ describe('Revenues', () => {
         await expectAuctionInfo(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // COMP -> RToken Auction
         await expectAuctionInfo(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
-          sellAmount: sellAmtRToken,
-          minBuyAmount: minBuyAmtRToken,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('1'),
         })
 
         // Advance time till auction ended
@@ -944,41 +814,23 @@ describe('Revenues', () => {
         await expectAuctionInfo(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: sellAmt,
-          clearingBuyAmount: minBuyAmt,
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.DONE,
+          externalId: bn('0'),
         })
 
         // COMP -> RToken Auction
         await expectAuctionInfo(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
-          sellAmount: sellAmtRToken,
-          minBuyAmount: minBuyAmtRToken,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: sellAmtRToken,
-          clearingBuyAmount: minBuyAmtRToken,
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.DONE,
+          externalId: bn('1'),
         })
 
         await expectAuctionInfo(rsrTrader, 1, {
           sell: compToken.address,
           buy: rsr.address,
-          sellAmount: sellAmtRemainder,
-          minBuyAmount: minBuyAmtRemainder,
-          startTime: await getLatestBlockTimestamp(),
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('2'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('2'),
         })
 
         // Check destinations at this stage
@@ -1004,11 +856,6 @@ describe('Revenues', () => {
           .withArgs(1, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder)
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
-
-        // Check all auctions are closed
-        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
-        await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
-        await expectAuctionStatus(rsrTrader, 1, AuctionStatus.DONE)
 
         // Check balances at destinations
         // StRSR
@@ -1061,28 +908,16 @@ describe('Revenues', () => {
         await expectAuctionInfo(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // COMP -> RToken Auction
         await expectAuctionInfo(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
-          sellAmount: sellAmtRToken,
-          minBuyAmount: minBuyAmtRToken,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('1'),
         })
 
         // Check funds in Market
@@ -1119,28 +954,16 @@ describe('Revenues', () => {
         await expectAuctionInfo(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: sellAmt,
-          clearingBuyAmount: minBuyAmt,
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.DONE,
+          externalId: bn('0'),
         })
 
         // COMP -> RToken Auction
         await expectAuctionInfo(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
-          sellAmount: sellAmtRToken,
-          minBuyAmount: minBuyAmtRToken,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: sellAmtRToken,
-          clearingBuyAmount: minBuyAmtRToken,
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.DONE,
+          externalId: bn('1'),
         })
 
         // Check balances sent to corresponding destinations
@@ -1328,28 +1151,16 @@ describe('Revenues', () => {
         await expectAuctionInfo(rsrTrader, 0, {
           sell: token2.address,
           buy: rsr.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // AToken -> RToken Auction
         await expectAuctionInfo(rTokenTrader, 0, {
           sell: token2.address,
           buy: rToken.address,
-          sellAmount: sellAmtRToken,
-          minBuyAmount: minBuyAmtRToken,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('1'),
         })
 
         // Check funds in Market and Traders
@@ -1393,10 +1204,6 @@ describe('Revenues', () => {
         // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
-
-        // Check previous auctions are already closed
-        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
-        await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
 
         // Check no more funds in Market and Traders
         expect(await token2.balanceOf(market.address)).to.equal(0)
@@ -1465,28 +1272,16 @@ describe('Revenues', () => {
         await expectAuctionInfo(rsrTrader, 0, {
           sell: token2.address,
           buy: rsr.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // AToken -> RToken Auction
         await expectAuctionInfo(rTokenTrader, 0, {
           sell: token2.address,
           buy: rToken.address,
-          sellAmount: sellAmtRToken,
-          minBuyAmount: minBuyAmtRToken,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('1'),
         })
 
         // Check funds in Market and Traders
@@ -1529,10 +1324,6 @@ describe('Revenues', () => {
         expect(near(await issuer.rTokenPrice(), fp('1'), 1)).to.equal(true)
         expect(near(await facade.totalAssetValue(), issueAmount, 2)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
-
-        // Check previous auctions are already closed
-        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
-        await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
 
         // Check balances sent to corresponding destinations
         // StRSR
@@ -1601,14 +1392,8 @@ describe('Revenues', () => {
         await expectAuctionInfo(rsrTrader, 0, {
           sell: rToken.address,
           buy: rsr.address,
-          sellAmount: sellAmt,
-          minBuyAmount: minBuyAmt,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // Perform Mock Bids for RSR(addr1 has balance)
@@ -1627,9 +1412,6 @@ describe('Revenues', () => {
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, rToken.address, rsr.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
-
-        // Check previous auction closed
-        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
 
         // Check Price and Assets value - RToken price increases due to melting
         let updatedRTokenPrice: BigNumber = newTotalSupply
@@ -1751,42 +1533,24 @@ describe('Revenues', () => {
         await expectAuctionInfo(rsrTrader, 0, {
           sell: rToken.address,
           buy: rsr.address,
-          sellAmount: sellAmtFromRToken,
-          minBuyAmount: minBuyAmtFromRToken,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('0'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('0'),
         })
 
         // Collateral -> RSR Auction
         await expectAuctionInfo(rsrTrader, 1, {
           sell: token2.address,
           buy: rsr.address,
-          sellAmount: sellAmtRSRFromCollateral,
-          minBuyAmount: minBuyAmtRSRFromCollateral,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('1'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('1'),
         })
 
         // Collateral -> Rtoken Auction
         await expectAuctionInfo(rTokenTrader, 0, {
           sell: token2.address,
           buy: rToken.address,
-          sellAmount: sellAmtRTokenFromCollateral,
-          minBuyAmount: minBuyAmtRTokenFromCollateral,
-          startTime: auctionTimestamp,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          clearingSellAmount: bn('0'),
-          clearingBuyAmount: bn('0'),
-          externalAuctionId: bn('2'),
-          status: AuctionStatus.OPEN,
+          externalId: bn('2'),
         })
 
         //  Perform Mock Bids for RSR/RToken (addr1 has balance)
@@ -1837,11 +1601,6 @@ describe('Revenues', () => {
           )
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
-
-        //  Check previous auctions closed
-        await expectAuctionStatus(rsrTrader, 0, AuctionStatus.DONE)
-        await expectAuctionStatus(rsrTrader, 1, AuctionStatus.DONE)
-        await expectAuctionStatus(rTokenTrader, 0, AuctionStatus.DONE)
 
         // Check no funds in Market
         expect(await rToken.balanceOf(market.address)).to.equal(0)
