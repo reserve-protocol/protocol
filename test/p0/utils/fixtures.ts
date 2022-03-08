@@ -28,7 +28,6 @@ import { FurnaceP0 } from '../../../typechain/FurnaceP0'
 import { MainP0 } from '../../../typechain/MainP0'
 import { MarketMock } from '../../../typechain/MarketMock'
 import { RTokenAssetP0 } from '../../../typechain/RTokenAssetP0'
-import { IssuerP0 } from '../../../typechain/IssuerP0'
 import { RTokenP0 } from '../../../typechain/RTokenP0'
 import { DistributorP0 } from '../../../typechain/DistributorP0'
 import { RevenueTraderP0 } from '../../../typechain/RevenueTraderP0'
@@ -321,7 +320,6 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   assetRegistry: AssetRegistryP0
   backingManager: BackingManagerP0
   basketHandler: BasketHandlerP0
-  issuer: IssuerP0
   distributor: DistributorP0
   rsrAsset: AssetP0
   compAsset: AssetP0
@@ -401,7 +399,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const basketHandler: BasketHandlerP0 = <BasketHandlerP0>(
     await ethers.getContractAt('BasketHandlerP0', await main.basketHandler())
   )
-  const issuer: IssuerP0 = <IssuerP0>await ethers.getContractAt('IssuerP0', await main.issuer())
   const distributor: DistributorP0 = <DistributorP0>(
     await ethers.getContractAt('DistributorP0', await main.distributor())
   )
@@ -511,7 +508,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     assetRegistry,
     backingManager,
     basketHandler,
-    issuer,
     distributor,
     rToken,
     rTokenAsset,

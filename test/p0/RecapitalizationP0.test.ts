@@ -27,13 +27,7 @@ import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
 import { TraderP0 } from '../../typechain/TraderP0'
 import { USDCMock } from '../../typechain/USDCMock'
-import {
-  AssetRegistryP0,
-  BackingManagerP0,
-  BasketHandlerP0,
-  IssuerP0,
-  DistributorP0,
-} from '../../typechain'
+import { AssetRegistryP0, BackingManagerP0, BasketHandlerP0, DistributorP0 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
@@ -118,7 +112,6 @@ describe('MainP0 contract', () => {
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let issuer: IssuerP0
   let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -174,7 +167,6 @@ describe('MainP0 contract', () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      issuer,
       distributor,
     } = await loadFixture(defaultFixture))
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
@@ -235,15 +227,15 @@ describe('MainP0 contract', () => {
         )
 
         // Provide approvals
-        await token0.connect(addr1).approve(issuer.address, initialBal)
-        await token1.connect(addr1).approve(issuer.address, initialBal)
-        await token2.connect(addr1).approve(issuer.address, initialBal)
-        await token3.connect(addr1).approve(issuer.address, initialBal)
-        await backupToken1.connect(addr1).approve(issuer.address, initialBal)
-        await backupToken2.connect(addr1).approve(issuer.address, initialBal)
+        await token0.connect(addr1).approve(rToken.address, initialBal)
+        await token1.connect(addr1).approve(rToken.address, initialBal)
+        await token2.connect(addr1).approve(rToken.address, initialBal)
+        await token3.connect(addr1).approve(rToken.address, initialBal)
+        await backupToken1.connect(addr1).approve(rToken.address, initialBal)
+        await backupToken2.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
-        await issuer.connect(addr1).issue(issueAmount)
+        await rToken.connect(addr1).issue(issueAmount)
       })
 
       it('Should select backup config correctly - Single backup token', async () => {
@@ -262,7 +254,7 @@ describe('MainP0 contract', () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token0 to default - 50% price reduction
@@ -274,7 +266,7 @@ describe('MainP0 contract', () => {
         // Check state - No changes
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
-        // quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
+        // quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         // expect(quotes).to.eql(initialQuotes)
         await expectCurrentBacking(facade, {
           tokens: initialTokens,
@@ -309,7 +301,7 @@ describe('MainP0 contract', () => {
           tokens: [initialTokens[0], initialTokens[2], initialTokens[3], backupToken1.address],
           quantities: [initialQuantities[0], initialQuantities[2], initialQuantities[3], bn('0')],
         })
-        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[2], initialQuotes[3], bn('0.25e18')])
       })
 
@@ -333,7 +325,7 @@ describe('MainP0 contract', () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token2 to hard default - Decrease rate
@@ -362,7 +354,7 @@ describe('MainP0 contract', () => {
             bn('0'),
           ],
         })
-        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([
           initialQuotes[0],
           initialQuotes[1],
@@ -388,7 +380,7 @@ describe('MainP0 contract', () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token0 to default - 50% price reduction
@@ -422,7 +414,7 @@ describe('MainP0 contract', () => {
           tokens: [initialTokens[1], backupToken1.address],
           quantities: [initialQuantities[1], bn('0')],
         })
-        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[1], bn('0.75e18')])
       })
 
@@ -442,7 +434,7 @@ describe('MainP0 contract', () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token3 to hard default - Decrease rate (cDai)
@@ -458,7 +450,7 @@ describe('MainP0 contract', () => {
           tokens: [initialTokens[0], initialTokens[1], initialTokens[2]],
           quantities: [initialQuantities[0], initialQuantities[1], initialQuantities[2]],
         })
-        quotes = await issuer.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         // Incremented the weight for token0
         expect(quotes).to.eql([bn('0.5e18'), initialQuotes[1], initialQuotes[2]])
       })
@@ -478,10 +470,10 @@ describe('MainP0 contract', () => {
         await basketHandler.connect(owner).switchBasket()
 
         // Provide approvals
-        await token0.connect(addr1).approve(issuer.address, initialBal)
+        await token0.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
-        await issuer.connect(addr1).issue(issueAmount)
+        await rToken.connect(addr1).issue(issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -500,7 +492,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Switch Basket
         await expect(basketHandler.connect(owner).switchBasket()).to.emit(
@@ -516,7 +508,7 @@ describe('MainP0 contract', () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Trigger recapitalization
         let sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -547,7 +539,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Check Market
         expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
@@ -587,7 +579,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
       })
 
       it('Should recapitalize correctly when switching basket - Taking Haircut - No RSR', async () => {
@@ -603,7 +595,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Switch Basket
         await expect(basketHandler.connect(owner).switchBasket()).to.emit(
@@ -619,7 +611,7 @@ describe('MainP0 contract', () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Trigger recapitalization
         let sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -649,7 +641,7 @@ describe('MainP0 contract', () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Check Market
         expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
@@ -687,7 +679,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
 
         //  Check price in USD of the current RToken - Haircut of 10% taken
-        expect(await issuer.rTokenPrice()).to.equal(fp('0.99'))
+        expect(await rToken.price()).to.equal(fp('0.99'))
       })
 
       it('Should recapitalize correctly when switching basket - Using RSR for remainder', async () => {
@@ -703,7 +695,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Perform stake
         const stkAmount: BigNumber = bn('100e18')
@@ -729,7 +721,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Trigger recapitalization
         let sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -760,7 +752,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Check Market
         expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
@@ -812,7 +804,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Check Market
         expect(await rsr.balanceOf(market.address)).to.equal(sellAmtRSR)
@@ -851,7 +843,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
       })
 
       it('Should recapitalize correctly in case of default - Taking Haircut - No RSR', async () => {
@@ -872,7 +864,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Set Token0 to default - 50% price reduction
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
@@ -907,7 +899,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RTokenc- Remains the same
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Running auctions will trigger recapitalization - All balance will be redeemed
         let sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -942,7 +934,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken - Reduced 50%
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         //  Perform Mock Bids for the new Token (addr1 has balance)
         //  Assume fair price, get half of the tokens (because price reduction was 50%)
@@ -972,7 +964,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
 
         //  Check price in USD of the current RToken - Haircut of 50% taken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1').div(2))
+        expect(await rToken.price()).to.equal(fp('1').div(2))
       })
 
       it('Should recapitalize correctly in case of default - Using RSR for remainder', async () => {
@@ -1011,7 +1003,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Perform stake
         const stkAmount: BigNumber = bn('100e18')
@@ -1071,7 +1063,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken - Remains the same
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         //  Perform Mock Bids (addr1 has balance)
         // Assume fair price, get half of the tokens (because price reduction was 50%)
@@ -1111,7 +1103,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken - Remains the same
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         //  Perform Mock Bids (addr1 has balance)
         // Assume fair price, get half of the tokens (because price reduction was 50%)
@@ -1160,7 +1152,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken - Remains the same
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
 
         // Should have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount.sub(sellAmtRSR)) // Sent to market (auction)
@@ -1198,7 +1190,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         //  Check price in USD of the current RToken - Remains the same
-        expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+        expect(await rToken.price()).to.equal(fp('1'))
       })
     })
 
@@ -1209,13 +1201,13 @@ describe('MainP0 contract', () => {
         issueAmount = bn('100e18')
 
         // Provide approvals
-        await token0.connect(addr1).approve(issuer.address, initialBal)
-        await token1.connect(addr1).approve(issuer.address, initialBal)
-        await token2.connect(addr1).approve(issuer.address, initialBal)
-        await token3.connect(addr1).approve(issuer.address, initialBal)
+        await token0.connect(addr1).approve(rToken.address, initialBal)
+        await token1.connect(addr1).approve(rToken.address, initialBal)
+        await token2.connect(addr1).approve(rToken.address, initialBal)
+        await token3.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
-        await issuer.connect(addr1).issue(issueAmount)
+        await rToken.connect(addr1).issue(issueAmount)
       })
 
       it.skip('Should recapitalize correctly when basket changes', async () => {

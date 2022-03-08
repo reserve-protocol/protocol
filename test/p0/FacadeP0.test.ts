@@ -14,7 +14,6 @@ import {
   RTokenP0,
   BackingManagerP0,
   BasketHandlerP0,
-  IssuerP0,
   DistributorP0,
 } from '../../typechain'
 import { Collateral, defaultFixture } from './utils/fixtures'
@@ -50,7 +49,6 @@ describe('FacadeP0 contract', () => {
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let issuer: IssuerP0
   let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -65,17 +63,8 @@ describe('FacadeP0 contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({
-      basket,
-      facade,
-      main,
-      rToken,
-      assetRegistry,
-      backingManager,
-      basketHandler,
-      issuer,
-      distributor,
-    } = await loadFixture(defaultFixture))
+    ;({ basket, facade, main, rToken, assetRegistry, backingManager, basketHandler, distributor } =
+      await loadFixture(defaultFixture))
 
     // Get assets and tokens
     ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
@@ -116,13 +105,13 @@ describe('FacadeP0 contract', () => {
       issueAmount = bn('100e18')
 
       // Provide approvals
-      await token.connect(addr1).approve(issuer.address, initialBal)
-      await usdc.connect(addr1).approve(issuer.address, initialBal)
-      await aToken.connect(addr1).approve(issuer.address, initialBal)
-      await cToken.connect(addr1).approve(issuer.address, initialBal)
+      await token.connect(addr1).approve(rToken.address, initialBal)
+      await usdc.connect(addr1).approve(rToken.address, initialBal)
+      await aToken.connect(addr1).approve(rToken.address, initialBal)
+      await cToken.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
-      await issuer.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
     })
 
     it('Should return maxIssuable correctly', async () => {

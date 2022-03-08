@@ -12,8 +12,8 @@ import {
   CTokenMock,
   DistributorP0,
   ERC20Mock,
-  IssuerP0,
   MainP0,
+  RTokenP0,
   StaticATokenMock,
   StRSRP0,
 } from '../../typechain'
@@ -38,8 +38,8 @@ describe('StRSRP0 contract', () => {
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let issuer: IssuerP0
   let distributor: DistributorP0
+  let rToken: RTokenP0
 
   // StRSR
   let stRSR: StRSRP0
@@ -86,7 +86,6 @@ describe('StRSRP0 contract', () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      issuer,
       distributor,
     } = await loadFixture(defaultFixture))
 
@@ -405,14 +404,14 @@ describe('StRSRP0 contract', () => {
         await token3.connect(owner).mint(addr1.address, initialBal)
 
         // Approvals
-        await token0.connect(addr1).approve(issuer.address, initialBal)
-        await token1.connect(addr1).approve(issuer.address, initialBal)
-        await token2.connect(addr1).approve(issuer.address, initialBal)
-        await token3.connect(addr1).approve(issuer.address, initialBal)
+        await token0.connect(addr1).approve(rToken.address, initialBal)
+        await token1.connect(addr1).approve(rToken.address, initialBal)
+        await token2.connect(addr1).approve(rToken.address, initialBal)
+        await token3.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue tokens
         const issueAmount: BigNumber = bn('100e18')
-        await issuer.connect(addr1).issue(issueAmount)
+        await rToken.connect(addr1).issue(issueAmount)
 
         // Get current balance for user
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)

@@ -10,7 +10,6 @@ import {
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
-  IssuerP0,
   RTokenP0,
   StaticATokenMock,
   USDCMock,
@@ -40,7 +39,6 @@ describe('FurnaceP0 contract', () => {
   let rToken: RTokenP0
   let basket: Collateral[]
   let facade: FacadeP0
-  let issuer: IssuerP0
 
   // Config
   let config: IConfig
@@ -70,7 +68,7 @@ describe('FurnaceP0 contract', () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, rToken, furnace, config, facade, issuer } = await loadFixture(defaultFixture))
+    ;({ basket, rToken, furnace, config, facade } = await loadFixture(defaultFixture))
 
     // Setup issuance of RTokens for users
     initialBal = bn('100e18')
@@ -164,20 +162,20 @@ describe('FurnaceP0 contract', () => {
   describe('Do Melt', () => {
     beforeEach(async () => {
       // Approvals for issuance
-      await token0.connect(addr1).approve(issuer.address, initialBal)
-      await token1.connect(addr1).approve(issuer.address, initialBal)
-      await token2.connect(addr1).approve(issuer.address, initialBal)
-      await token3.connect(addr1).approve(issuer.address, initialBal)
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      await token0.connect(addr2).approve(issuer.address, initialBal)
-      await token1.connect(addr2).approve(issuer.address, initialBal)
-      await token2.connect(addr2).approve(issuer.address, initialBal)
-      await token3.connect(addr2).approve(issuer.address, initialBal)
+      await token0.connect(addr2).approve(rToken.address, initialBal)
+      await token1.connect(addr2).approve(rToken.address, initialBal)
+      await token2.connect(addr2).approve(rToken.address, initialBal)
+      await token3.connect(addr2).approve(rToken.address, initialBal)
 
       // Issue tokens
       const issueAmount: BigNumber = bn('100e18')
-      await issuer.connect(addr1).issue(issueAmount)
-      await issuer.connect(addr2).issue(issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr2).issue(issueAmount)
     })
 
     it('Should not melt any funds in the initial block', async () => {
