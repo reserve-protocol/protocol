@@ -10,21 +10,13 @@ import {
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
-  MainP0,
-  RTokenP0,
   IssuerP0,
+  RTokenP0,
   StaticATokenMock,
   USDCMock,
 } from '../../typechain'
-import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from '../utils/time'
+import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
-
-interface IBatchInfo {
-  amount: BigNumber
-  start: number
-  end: number
-  melted: BigNumber
-}
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -43,15 +35,15 @@ describe('FurnaceP0 contract', () => {
   let addr2: SignerWithAddress
   let other: SignerWithAddress
 
+  // Contracts
   let FurnaceFactory: ContractFactory
   let furnace: FurnaceP0
-  let main: MainP0
   let rToken: RTokenP0
   let basket: Collateral[]
   let facade: FacadeP0
   let issuer: IssuerP0
 
-  // Config values
+  // Config
   let config: IConfig
 
   // Tokens/Assets
@@ -79,7 +71,7 @@ describe('FurnaceP0 contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, rToken, furnace, config, main, facade, issuer } = await loadFixture(defaultFixture))
+    ;({ basket, rToken, furnace, config, facade, issuer } = await loadFixture(defaultFixture))
 
     // Setup issuance of RTokens for users
     initialBal = bn('100e18')
@@ -113,13 +105,21 @@ describe('FurnaceP0 contract', () => {
     it('Deployment should setup Furnace correctly', async () => {
       expect(await furnace.rToken()).to.equal(rToken.address)
       expect(await furnace.period()).to.equal(config.rewardPeriod)
+      expect(await furnace.ratio()).to.equal(config.rewardRatio)
+      expect(await furnace.lastPayout()).to.be.gt(0) // A timestamp is set
       expect(await furnace.owner()).to.equal(owner.address)
     })
 
     it('Deployment does not accept empty token', async () => {
-      await expect(FurnaceFactory.deploy(ZERO_ADDRESS, bn('0'), bn('0'))).to.be.revertedWith(
-        'rToken is zero address'
-      )
+      await expect(
+        FurnaceFactory.deploy(ZERO_ADDRESS, config.rewardPeriod, config.rewardRatio)
+      ).to.be.revertedWith('rToken is zero address')
+    })
+
+    it('Deployment does not accept empty period', async () => {
+      await expect(
+        FurnaceFactory.deploy(rToken.address, bn('0'), config.rewardRatio)
+      ).to.be.revertedWith('period cannot be zero')
     })
   })
 
