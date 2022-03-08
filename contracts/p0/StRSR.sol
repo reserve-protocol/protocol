@@ -52,7 +52,6 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     mapping(address => mapping(address => uint256)) private allowances;
 
     // List of accounts. If balances[user] > 0 then (user is in accounts)
-    // TODO: still needed?
     EnumerableSet.AddressSet internal accounts;
 
     // {qStRSR} Total of all stRSR balances, not including pending withdrawals

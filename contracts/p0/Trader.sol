@@ -76,7 +76,6 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         Fix exactBuyAmount = sellAmount.mul(sell.price()).div(buy.price());
         Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(maxTradeSlippage));
 
-        // TODO Check floor() and ceil() rounding below
         return (
             true,
             ProposedAuction({
