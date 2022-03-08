@@ -123,7 +123,7 @@ describe('FurnaceP0 contract', () => {
   })
 
   describe('Configuration / State', () => {
-    it('Should allow to update period correctly if Owner', async () => {
+    it('Should allow to update period correctly if Owner and perform validations', async () => {
       // Setup a new value
       const newRewardPeriod: BigNumber = bn('100000')
 
@@ -134,8 +134,13 @@ describe('FurnaceP0 contract', () => {
       expect(await furnace.period()).to.equal(newRewardPeriod)
 
       // Try to update again if not owner
-      await expect(furnace.connect(addr1).setPeriod(bn('0'))).to.be.revertedWith(
+      await expect(furnace.connect(addr1).setPeriod(bn('500'))).to.be.revertedWith(
         'Ownable: caller is not the owner'
+      )
+
+      // Cannot update with period zero
+      await expect(furnace.connect(owner).setPeriod(bn('0'))).to.be.revertedWith(
+        'period cannot be zero'
       )
     })
 
