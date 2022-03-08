@@ -45,26 +45,24 @@ contract DistributorP0 is Component, IDistributor {
 
         require(erc20 == rsr || erc20 == main.rToken(), "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
-        uint256 totalShares;
+        uint256 tokensPerShare;
         {
             (uint256 rTokenTotal, uint256 rsrTotal) = totals();
-            totalShares = isRSR ? rsrTotal : rTokenTotal;
+            uint256 totalShares = isRSR ? rsrTotal : rTokenTotal;
+            tokensPerShare = amount / totalShares;
         }
 
         // Evenly distribute revenue tokens per distribution share.
         // This rounds "early", and that's deliberate!
-        uint256 tokensPerShare = amount / totalShares;
 
         for (uint256 i = 0; i < destinations.length(); i++) {
             address addrTo = destinations.at(i);
-            uint256 transferAmt;
-            {
-                uint256 numberOfShares = isRSR
-                    ? distribution[addrTo].rsrDist
-                    : distribution[addrTo].rTokenDist;
-                if (numberOfShares == 0) continue;
-                transferAmt = tokensPerShare * numberOfShares;
-            }
+
+            uint256 numberOfShares = isRSR
+                ? distribution[addrTo].rsrDist
+                : distribution[addrTo].rTokenDist;
+            if (numberOfShares == 0) continue;
+            uint256 transferAmt = tokensPerShare * numberOfShares;
 
             if (addrTo == FURNACE) {
                 addrTo = address(main.furnace());
