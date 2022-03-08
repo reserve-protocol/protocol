@@ -122,10 +122,6 @@ contract MainP0 is Pausable, IMain {
         setRToken(args.core.rToken);
         rToken.initComponent(this, args);
 
-        for (uint256 i = 0; i < args.periphery.claimAdapters.length; i++) {
-            _claimAdapters.add(address(args.periphery.claimAdapters[i]));
-        }
-
         emit Initialized();
     }
 
@@ -229,29 +225,5 @@ contract MainP0 is Pausable, IMain {
     function setMarket(IMarket val) public onlyOwner {
         emit MarketSet(market, val);
         market = val;
-    }
-
-    // === Claim Adapter Registry ===
-    EnumerableSet.AddressSet private _claimAdapters;
-
-    function addClaimAdapter(IClaimAdapter claimAdapter) external onlyOwner {
-        emit ClaimAdapterAdded(claimAdapter);
-        _claimAdapters.add(address(claimAdapter));
-    }
-
-    function removeClaimAdapter(IClaimAdapter claimAdapter) external onlyOwner {
-        emit ClaimAdapterRemoved(claimAdapter);
-        _claimAdapters.remove(address(claimAdapter));
-    }
-
-    function isTrustedClaimAdapter(IClaimAdapter claimAdapter) public view returns (bool) {
-        return _claimAdapters.contains(address(claimAdapter));
-    }
-
-    function claimAdapters() public view returns (IClaimAdapter[] memory adapters) {
-        adapters = new IClaimAdapter[](_claimAdapters.length());
-        for (uint256 i = 0; i < _claimAdapters.length(); i++) {
-            adapters[i] = IClaimAdapter(_claimAdapters.at(i));
-        }
     }
 }

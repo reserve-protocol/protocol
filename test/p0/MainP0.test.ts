@@ -738,48 +738,6 @@ describe('MainP0 contract', () => {
       expect(await main.rToken()).to.equal(other.address)
     })
 
-    it('Should allow to add ClaimAdapter if Owner', async () => {
-      // Check existing value
-      expect(await main.isTrustedClaimAdapter(other.address)).to.equal(false)
-
-      // If not owner cannot update - use mock address
-      await expect(main.connect(other).addClaimAdapter(other.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
-
-      // Check value did not change
-      expect(await main.isTrustedClaimAdapter(other.address)).to.equal(false)
-
-      // Update with owner
-      await expect(main.connect(owner).addClaimAdapter(other.address))
-        .to.emit(main, 'ClaimAdapterAdded')
-        .withArgs(other.address)
-
-      // Check value was updated
-      expect(await main.isTrustedClaimAdapter(other.address)).to.equal(true)
-    })
-
-    it('Should allow to remove ClaimAdapter if Owner', async () => {
-      // Check existing value
-      expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
-
-      // If not owner cannot update - use mock address
-      await expect(
-        main.connect(other).removeClaimAdapter(compoundClaimer.address)
-      ).to.be.revertedWith('Ownable: caller is not the owner')
-
-      // Check value did not change
-      expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
-
-      // Update with owner
-      await expect(main.connect(owner).removeClaimAdapter(compoundClaimer.address))
-        .to.emit(main, 'ClaimAdapterRemoved')
-        .withArgs(compoundClaimer.address)
-
-      // Check value was updated
-      expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(false)
-    })
-
     it('Should allow to set Furnace if Owner and perform validations', async () => {
       // Setup test furnaces
       const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')

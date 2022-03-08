@@ -1247,25 +1247,6 @@ describe('Revenues', () => {
           'RewardsClaimed'
         )
       })
-
-      it('Should revert for non-trusted adapters', async () => {
-        await assetRegistry.swapRegistered(newCTokenCollateral.address)
-
-        // Setup new basket with CToken with untrusted adapter
-        await basketHandler.connect(owner).setPrimeBasket([token3.address], [fp('1')])
-        await basketHandler.connect(owner).switchBasket()
-
-        // Provide approvals
-        await token3.connect(addr1).approve(issuer.address, initialBal)
-
-        // Issue rTokens
-        await issuer.connect(addr1).issue(issueAmount)
-
-        // Will revert when attempting to get rewards
-        await expect(backingManager.claimAndSweepRewards()).to.be.revertedWith(
-          'claim adapter is not trusted'
-        )
-      })
     })
 
     context('With simple basket of ATokens and CTokens', async function () {

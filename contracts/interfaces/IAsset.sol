@@ -32,6 +32,9 @@ interface IAsset {
 
     /// @return {UoA}
     function maxAuctionSize() external view returns (Fix);
+
+    /// @return The claim adapter that should be used with this asset, or the zero address
+    function claimAdapter() external view returns (IClaimAdapter);
 }
 
 enum CollateralStatus {
@@ -58,9 +61,6 @@ interface ICollateral is IAsset {
     /// Force any updates such as updating the default status or poking the defi protocol.
     /// Block-idempotent.
     function forceUpdates() external;
-
-    /// @return The claim adapter that should be used with this asset, or the zero address
-    function claimAdapter() external view returns (IClaimAdapter);
 
     /// @return The canonical name of this collateral's target unit.
     function targetName() external view returns (bytes32);

@@ -85,9 +85,6 @@ contract DeployerP0 is IDeployer {
         periphery.furnace = deployFurnace(rToken, params.rewardPeriod, params.rewardRatio);
         Ownable(address(periphery.furnace)).transferOwnership(owner);
         periphery.market = market;
-        periphery.claimAdapters = new IClaimAdapter[](2);
-        periphery.claimAdapters[0] = compoundClaimer;
-        periphery.claimAdapters[1] = aaveClaimer;
         periphery.assets = new IAsset[](4);
         periphery.assets[0] = new RTokenAssetP0(rToken, params.maxAuctionSize, main);
         periphery.assets[1] = new AavePricedAssetP0(

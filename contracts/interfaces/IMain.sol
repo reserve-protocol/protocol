@@ -9,7 +9,6 @@ import "./IAsset.sol";
 import "./IAssetRegistry.sol";
 import "./IBackingManager.sol";
 import "./IBasketHandler.sol";
-import "./IClaimAdapter.sol";
 import "./IDeployer.sol";
 import "./IFurnace.sol";
 import "./IMarket.sol";
@@ -48,7 +47,6 @@ struct Core {
 struct Periphery {
     IMarket market;
     IFurnace furnace;
-    IClaimAdapter[] claimAdapters;
     IAsset[] assets;
 }
 
@@ -165,18 +163,4 @@ interface IMain is IPausable {
     function hasComponent(address addr) external view returns (bool);
 
     function owner() external view returns (address);
-
-    // --
-    /// Emitted whenever a claim adapter is added by governance
-    event ClaimAdapterAdded(IClaimAdapter indexed adapter);
-    /// Emitted whenever a claim adapter is removed by governance
-    event ClaimAdapterRemoved(IClaimAdapter indexed adapter);
-
-    function addClaimAdapter(IClaimAdapter claimAdapter) external;
-
-    function removeClaimAdapter(IClaimAdapter claimAdapter) external;
-
-    function isTrustedClaimAdapter(IClaimAdapter claimAdapter) external view returns (bool);
-
-    function claimAdapters() external view returns (IClaimAdapter[] memory adapters);
 }

@@ -188,11 +188,6 @@ describe('DeployerP0 contract', () => {
       expect(await main.market()).to.equal(market.address)
       expect(await main.rsrTrader()).to.equal(rsrTrader.address)
       expect(await main.rTokenTrader()).to.equal(rTokenTrader.address)
-
-      // Claim adapters
-      expect(await main.isTrustedClaimAdapter(compoundClaimer.address)).to.equal(true)
-      expect(await main.isTrustedClaimAdapter(aaveClaimer.address)).to.equal(true)
-      expect(await main.claimAdapters()).to.eql([compoundClaimer.address, aaveClaimer.address])
     })
 
     it('Should setup RToken correctly', async () => {
