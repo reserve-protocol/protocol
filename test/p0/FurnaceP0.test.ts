@@ -128,7 +128,9 @@ describe('FurnaceP0 contract', () => {
       // Setup a new value
       const newRewardPeriod: BigNumber = bn('100000')
 
-      await furnace.connect(owner).setPeriod(newRewardPeriod)
+      await expect(furnace.connect(owner).setPeriod(newRewardPeriod))
+        .to.emit(furnace, 'PeriodSet')
+        .withArgs(config.rewardPeriod, newRewardPeriod)
 
       expect(await furnace.period()).to.equal(newRewardPeriod)
 
@@ -142,7 +144,9 @@ describe('FurnaceP0 contract', () => {
       // Setup a new value
       const newRatio: BigNumber = bn('100000')
 
-      await furnace.connect(owner).setRatio(newRatio)
+      await expect(furnace.connect(owner).setRatio(newRatio))
+        .to.emit(furnace, 'RatioSet')
+        .withArgs(config.rewardRatio, newRatio)
 
       expect(await furnace.ratio()).to.equal(newRatio)
 
