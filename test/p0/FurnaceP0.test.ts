@@ -15,7 +15,7 @@ import {
   StaticATokenMock,
   USDCMock,
 } from '../../typechain'
-import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
+import { advanceTime } from '../utils/time'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -33,7 +33,6 @@ describe('FurnaceP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
-  let other: SignerWithAddress
 
   // Contracts
   let FurnaceFactory: ContractFactory
@@ -68,7 +67,7 @@ describe('FurnaceP0 contract', () => {
   })
 
   beforeEach(async () => {
-    ;[owner, addr1, addr2, other] = await ethers.getSigners()
+    ;[owner, addr1, addr2] = await ethers.getSigners()
 
     // Deploy fixture
     ;({ basket, rToken, furnace, config, facade, issuer } = await loadFixture(defaultFixture))
@@ -191,8 +190,6 @@ describe('FurnaceP0 contract', () => {
       // Mine block
       await hre.network.provider.send('evm_mine', [])
 
-      const latestTimestamp = await getLatestBlockTimestamp()
-
       // Check melt was registered but not processed
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
@@ -210,8 +207,6 @@ describe('FurnaceP0 contract', () => {
 
       // Approval
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
-
-      const hndTimestamp = await getLatestBlockTimestamp()
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
@@ -239,8 +234,6 @@ describe('FurnaceP0 contract', () => {
       // Approval
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
 
-      const hndTimestamp = await getLatestBlockTimestamp()
-
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
@@ -266,8 +259,6 @@ describe('FurnaceP0 contract', () => {
 
       // Approval
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
-
-      const hndTimestamp = await getLatestBlockTimestamp()
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
