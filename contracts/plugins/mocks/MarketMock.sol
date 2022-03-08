@@ -14,6 +14,12 @@ interface ITrading {
     function placeBid(uint256 auctionId, Bid memory bid) external;
 }
 
+enum AuctionStatus {
+    NOT_YET_OPEN,
+    OPEN,
+    DONE
+}
+
 /*
  *  Did you mean: Mauction
  */

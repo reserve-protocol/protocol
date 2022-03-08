@@ -4,23 +4,18 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IRewardable.sol";
 
-enum AuctionStatus {
-    NOT_YET_OPEN,
-    OPEN,
-    DONE
-}
-
-struct Auction {
+struct ProposedAuction {
     IERC20 sell;
     IERC20 buy;
     uint256 sellAmount; // {qSellTok}
     uint256 minBuyAmount; // {qBuyTok}
-    uint256 startTime; // {sec}
+}
+
+struct OngoingAuction {
+    IERC20 sell;
+    IERC20 buy;
     uint256 endTime; // {sec}
-    uint256 clearingSellAmount; // only defined if status == DONE
-    uint256 clearingBuyAmount; // only defined if status == DONE
-    uint256 externalAuctionId; // only defined if status > NOT_YET_OPEN
-    AuctionStatus status;
+    uint256 externalId;
 }
 
 interface ITrader is IRewardable {

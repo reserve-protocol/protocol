@@ -49,14 +49,14 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
         }
 
         // Don't open a second auction if there's already one running.
-        for (uint256 i = 0; i < auctions.length; i++) {
-            if (auctions[i].sell == erc20 && auctions[i].status != AuctionStatus.DONE) return;
+        for (uint256 i = auctionsStart; i < auctions.length; i++) {
+            if (auctions[i].sell == erc20) return;
         }
 
         // If not dust, trade the non-target asset for the target asset
         // {tok} =  {qTok} / {qTok/tok}
         Fix sellAmount = reg.toAsset(erc20).fromQ(toFix(bal));
-        (bool launch, Auction memory auction) = prepareAuctionSell(
+        (bool launch, ProposedAuction memory auction) = prepareAuctionSell(
             reg.toAsset(erc20),
             reg.toAsset(tokenToBuy),
             sellAmount

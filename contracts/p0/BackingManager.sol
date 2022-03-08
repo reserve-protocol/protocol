@@ -124,7 +124,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         // we are selling. If we cannot, then we should not `prepareAuctionToCoverDeficit`
 
         bool trade;
-        Auction memory auction;
+        ProposedAuction memory auction;
         if (
             surplus.isCollateral() &&
             main.assetRegistry().toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
@@ -140,9 +140,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
             );
         }
 
-        if (trade) {
-            launchAuction(auction);
-        }
+        if (trade) launchAuction(auction);
         return trade;
     }
 
@@ -160,7 +158,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         uint256 rsrBal = rsrAsset.erc20().balanceOf(address(this));
         uint256 rsrBalStRSR = rsrAsset.erc20().balanceOf(address(stRSR));
 
-        (bool trade, Auction memory auction) = prepareAuctionToCoverDeficit(
+        (bool trade, ProposedAuction memory auction) = prepareAuctionToCoverDeficit(
             rsrAsset,
             deficit,
             rsrAsset.fromQ(toFix(rsrBal + rsrBalStRSR)),

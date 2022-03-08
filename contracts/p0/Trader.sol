@@ -15,14 +15,11 @@ abstract contract TraderP0 is RewardableP0, ITrader {
     using FixLib for Fix;
     using SafeERC20 for IERC20;
 
-    // All auctions, OPEN and past.
-    // Invariant: if 0 <= i and i+1 < auctions.length,
-    //            then auctions[i].endTime <= auctions[i+1].endTime
-    Auction[] public auctions;
+    // All ongoing auctions
+    OngoingAuction[] public auctions;
 
     // First auction that is not yet closed (or auctions.length if all auctions have been closed)
-    // invariant: auction[i].status == CLOSED iff i <= auctionsStart
-    uint256 private auctionsStart;
+    uint256 internal auctionsStart;
 
     // The latest end time for any auction in `auctions`.
     uint256 private latestAuctionEnd;
@@ -48,7 +45,11 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         // Close open auctions
         uint256 i = auctionsStart;
         for (; i < auctions.length && block.timestamp >= auctions[i].endTime; i++) {
-            closeAuction(i);
+            OngoingAuction storage auc = auctions[i];
+            (uint256 clearingSellAmt, uint256 clearingBuyAmt) = decodeOrder(
+                main.market().settleAuction(auc.externalId)
+            );
+            emit AuctionEnded(i, auc.sell, auc.buy, clearingSellAmt, clearingBuyAmt);
         }
         auctionsStart = i;
     }
@@ -62,7 +63,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         IAsset sell,
         IAsset buy,
         Fix sellAmount
-    ) internal view returns (bool notDust, Auction memory auction) {
+    ) internal view returns (bool notDust, ProposedAuction memory auction) {
         assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
 
         // Don't buy dust.
@@ -78,17 +79,11 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         // TODO Check floor() and ceil() rounding below
         return (
             true,
-            Auction({
+            ProposedAuction({
                 sell: sell.erc20(),
                 buy: buy.erc20(),
                 sellAmount: sell.toQ(sellAmount).floor(),
-                minBuyAmount: buy.toQ(minBuyAmount).ceil(),
-                clearingSellAmount: 0,
-                clearingBuyAmount: 0,
-                externalAuctionId: 0,
-                startTime: block.timestamp,
-                endTime: Math.max(block.timestamp + auctionLength, latestAuctionEnd),
-                status: AuctionStatus.NOT_YET_OPEN
+                minBuyAmount: buy.toQ(minBuyAmount).ceil()
             })
         );
     }
@@ -104,7 +99,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         IAsset buy,
         Fix maxSellAmount,
         Fix deficitAmount
-    ) internal view returns (bool notDust, Auction memory auction) {
+    ) internal view returns (bool notDust, ProposedAuction memory auction) {
         // Don't sell dust.
         if (maxSellAmount.lt(dustThreshold(sell))) return (false, auction);
 
@@ -132,60 +127,39 @@ abstract contract TraderP0 is RewardableP0, ITrader {
     /// - Add the auction to the local auction list
     /// - Create the auction in the external auction protocol
     /// - Emit AuctionStarted event
-    /// @dev The struct must already be populated
-    function launchAuction(Auction memory auction_) internal {
-        auctions.push(auction_);
-        Auction storage auction = auctions[auctions.length - 1];
+    function launchAuction(ProposedAuction memory prop) internal {
+        OngoingAuction storage ongoing = auctions.push();
 
-        auction.sell.safeApprove(address(main.market()), auction.sellAmount);
+        uint256 endTime = Math.min(block.timestamp + auctionLength, latestAuctionEnd);
+        prop.sell.safeApprove(address(main.market()), prop.sellAmount);
 
-        auction.externalAuctionId = main.market().initiateAuction(
-            auction.sell,
-            auction.buy,
-            auction.endTime,
-            auction.endTime,
-            uint96(auction.sellAmount),
-            uint96(auction.minBuyAmount),
+        ongoing.sell = prop.sell;
+        ongoing.buy = prop.buy;
+        ongoing.endTime = endTime;
+        ongoing.externalId = main.market().initiateAuction(
+            prop.sell,
+            prop.buy,
+            endTime,
+            endTime,
+            uint96(prop.sellAmount),
+            uint96(prop.minBuyAmount),
             0,
             0,
             false,
             address(0),
             new bytes(0)
         );
-        auction.status = AuctionStatus.OPEN;
-        latestAuctionEnd = auction.endTime;
 
-        emit AuctionStarted(
-            auctions.length - 1,
-            auction.sell,
-            auction.buy,
-            auction.sellAmount,
-            auction.minBuyAmount
-        );
+        latestAuctionEnd = endTime;
+
+        uint256 index = auctions.length - 1;
+        emit AuctionStarted(index, prop.sell, prop.buy, prop.sellAmount, prop.minBuyAmount);
     }
 
     /// Close auctions[i]:
     /// - Set the auction status to DONE
     /// - Settle the auction in the external auction protocl
     /// - Emit AuctionEnded event
-    function closeAuction(uint256 i) private {
-        Auction storage auction = auctions[i];
-        assert(auction.status == AuctionStatus.OPEN);
-        assert(auction.endTime <= block.timestamp);
-
-        bytes32 encodedOrder = main.market().settleAuction(auction.externalAuctionId);
-        (auction.clearingSellAmount, auction.clearingBuyAmount) = decodeOrder(encodedOrder);
-
-        auction.status = AuctionStatus.DONE;
-
-        emit AuctionEnded(
-            i,
-            auction.sell,
-            auction.buy,
-            auction.clearingSellAmount,
-            auction.clearingBuyAmount
-        );
-    }
 
     /// Decode EasyAuction output into its components.
     function decodeOrder(bytes32 encodedOrder)
