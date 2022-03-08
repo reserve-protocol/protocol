@@ -6406,9 +6406,9 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"hardhat@npm:^2.9.0":
-  version: 2.9.0
-  resolution: "hardhat@npm:2.9.0"
+"hardhat@npm:^2.9.1":
+  version: 2.9.1
+  resolution: "hardhat@npm:2.9.1"
   dependencies:
     "@ethereumjs/block": ^3.6.0
     "@ethereumjs/blockchain": ^5.5.0
@@ -6460,7 +6460,7 @@ fsevents@~2.3.2:
     ws: ^7.4.6
   bin:
     hardhat: internal/cli/cli.js
-  checksum: 11673fa4ea2e0cb98cd663f00e7bd03b3eb28b4538da09b30179fbb3d1256133d1288cfa06351660817fc3055fec9da0200e3915dc50beb75fef149437261057
+  checksum: 1f622e9f0be506a1e201502c04cfe6a98339e437a067b435ec22f69c90828ab1a926ac23b920931cd3143a71a668eb7ebd471347b97e7f80d7b88021fff533c4
   languageName: node
   linkType: hard
 
@@ -10508,7 +10508,7 @@ fsevents@~2.3.2:
     eth-permit: ^0.2.1
     ethereum-waffle: ^3.4.0
     ethers: ^5.5.2
-    hardhat: ^2.9.0
+    hardhat: ^2.9.1
     hardhat-contract-sizer: ^2.4.0
     hardhat-gas-reporter: ^1.0.6
     husky: ^7.0.0
