@@ -26,7 +26,7 @@ import {
   StRSRP0,
   TraderP0,
 } from '../../typechain'
-import { defaultFixture } from './utils/fixtures'
+import { defaultFixture, IConfig } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -35,6 +35,9 @@ describe('DeployerP0 contract', () => {
 
   // Deployer contract
   let deployer: DeployerP0
+
+  // Config
+  let config: IConfig
 
   // RSR
   let rsr: ERC20Mock
@@ -89,6 +92,7 @@ describe('DeployerP0 contract', () => {
       aaveToken,
       aaveAsset,
       aaveMock,
+      config,
       deployer,
       main,
       assetRegistry,
@@ -145,6 +149,13 @@ describe('DeployerP0 contract', () => {
       expect(facade.address).to.not.equal(ZERO_ADDRESS)
       expect(compoundClaimer.address).to.not.equal(ZERO_ADDRESS)
       expect(aaveClaimer.address).to.not.equal(ZERO_ADDRESS)
+    })
+
+    it('Should emit event', async () => {
+      await expect(deployer.deploy('RTKN RToken', 'RTKN', owner.address, config)).to.emit(
+        deployer,
+        'RTokenCreated'
+      )
     })
 
     it('Should register deployment', async () => {
