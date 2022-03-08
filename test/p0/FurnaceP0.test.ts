@@ -155,7 +155,7 @@ describe('FurnaceP0 contract', () => {
       expect(await furnace.ratio()).to.equal(newRatio)
 
       // Try to update again if not owner
-      await expect(furnace.connect(addr1).setPeriod(bn('0'))).to.be.revertedWith(
+      await expect(furnace.connect(addr1).setRatio(bn('0'))).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
     })
