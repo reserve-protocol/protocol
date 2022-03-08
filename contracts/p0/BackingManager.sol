@@ -32,11 +32,11 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         backingBuffer = args.params.backingBuffer;
     }
 
-    // Give Issuer max allowances over all registered tokens
+    // Give RToken max allowances over all registered tokens
     function grantAllowances() external notPaused {
         IERC20[] memory erc20s = main.assetRegistry().erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
-            erc20s[i].approve(address(main.issuer()), type(uint256).max);
+            erc20s[i].approve(address(main.rToken()), type(uint256).max);
         }
     }
 

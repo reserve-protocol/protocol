@@ -18,7 +18,7 @@ contract RTokenAssetP0 is AssetP0 {
 
     /// @return {UoA/rTok}
     function price() public view override returns (Fix) {
-        return main.issuer().rTokenPrice();
+        return main.rToken().price();
     }
 
     function claimAdapter() external view virtual returns (IClaimAdapter) {

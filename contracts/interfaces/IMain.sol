@@ -14,7 +14,6 @@ import "./IFurnace.sol";
 import "./IMarket.sol";
 import "./IDistributor.sol";
 import "./IRToken.sol";
-import "./IIssuer.sol";
 import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
 import "./ITrader.sol";
@@ -31,12 +30,11 @@ struct ConstructorArgs {
 /// One single security domain
 /// Upgradeable
 struct Core {
-    IRToken rToken; // not actually a component, yet
+    IRToken rToken;
     IStRSR stRSR;
     IAssetRegistry assetRegistry;
     IBasketHandler basketHandler;
     IBackingManager backingManager;
-    IIssuer issuer;
     IDistributor distributor;
     IRevenueTrader rsrTrader;
     IRevenueTrader rTokenTrader;
@@ -112,12 +110,6 @@ interface IMain is IPausable {
     function backingManager() external view returns (IBackingManager);
 
     function setBackingManager(IBackingManager val) external;
-
-    event IssuerSet(IIssuer indexed oldVal, IIssuer indexed newVal);
-
-    function issuer() external view returns (IIssuer);
-
-    function setIssuer(IIssuer val) external;
 
     event DistributorSet(IDistributor indexed oldVal, IDistributor indexed newVal);
 

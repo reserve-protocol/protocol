@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/interfaces/IMain.sol";
@@ -89,39 +90,41 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         issuanceRate = val;
     }
 
-    /// Begins the SlowIssuance accounting process, keeping a roughly constant basket rate
-    /// @dev This function assumes that `deposits` are transferred here during this txn.
-    /// @dev This function assumes that `amtBaskets` will be due to issuer after slow issuance.
-    /// @param account The account issuing the RToken
-    /// @param amtRToken {qRTok}
-    /// @param amtBaskets {BU}
-    /// @param erc20s {address[]}
-    /// @param deposits {qRTok[]}
-    function issue(
-        address account,
-        uint256 amtRToken,
-        Fix amtBaskets,
-        address[] memory erc20s,
-        uint256[] memory deposits
-    ) external onlyComponent {
-        assert(erc20s.length == deposits.length);
-        IssueQueue storage queue = issueQueues[account];
-
-        // Refund issuances against previous baskets
-        refundOldBasketIssues(account);
+    /// Begin a time-delayed issuance of RToken for basket collateral
+    /// User Action
+    /// @param amtRToken {qTok} The quantity of RToken to issue
+    /// @return deposits {qTok} The quantities of collateral tokens transferred in
+    function issue(uint256 amtRToken) external notPaused returns (uint256[] memory deposits) {
+        // ==== Basic Setup ====
+        // Call collective state keepers.
+        main.poke(); // TODO: only call what you really need, there should be no en-masse poke()!
+        IBasketHandler basketHandler = main.basketHandler();
+        require(basketHandler.status() == CollateralStatus.SOUND, "collateral not sound");
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
 
-        // Either the queue is empty or the basketNonce is up-to-date
-        assert(queue.left == queue.right || queue.basketNonce == basketNonce);
+        // Refund issuances against previous baskets
+        address issuer = _msgSender();
+        refundOldBasketIssues(issuer);
 
-        // Calculate the issuance rate if this is the first issue in the block
-        if (lastIssRateBlock < block.number) {
-            lastIssRateBlock = block.number;
-            lastIssRate = fixMax(MIN_ISS_RATE, issuanceRate.mulu(totalSupply()));
+        // ==== Compute and accept collateral ====
+        Fix amtBaskets = (totalSupply() > 0) // {BU}
+            ? basketsNeeded.mulu(amtRToken).divuRound(totalSupply()) // {BU * qRTok / qRTok}
+            : main.assetRegistry().toAsset(this).fromQ(toFix(amtRToken)); // {qRTok / qRTok}
+
+        address[] memory erc20s;
+        (erc20s, deposits) = basketHandler.quote(amtBaskets, RoundingApproach.CEIL);
+
+        // Accept collateral
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            IERC20(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
         }
 
+        // ==== Enqueue the issuance ====
+        IssueQueue storage queue = issueQueues[issuer];
+        assert(queue.left == queue.right || queue.basketNonce == basketNonce);
+
         // Add amtRToken's worth of issuance delay to allVestAt
-        allVestAt = fixMin(allVestAt, toFix(block.number)).plus(divFix(amtRToken, lastIssRate));
+        Fix vestingEnd = whenFinished(amtRToken);
 
         // Push issuance onto queue
         IssueItem storage prev = queue.items[queue.right - 1];
@@ -129,7 +132,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
             queue.items.length == queue.right ? queue.items.push() : queue.items[queue.right]
         );
 
-        curr.when = allVestAt.floor();
+        curr.when = vestingEnd.floor();
         curr.amtRToken = prev.amtRToken + amtRToken;
         curr.amtBaskets = prev.amtBaskets.plus(amtBaskets);
         for (uint256 i = 0; i < deposits.length; i++) {
@@ -138,17 +141,31 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         queue.right++;
 
         emit IssuanceStarted(
-            account,
+            issuer,
             queue.right,
             amtRToken,
             amtBaskets,
             erc20s,
             deposits,
-            allVestAt
+            vestingEnd
         );
 
         // Vest immediately if the vesting fits into this block.
-        if (allVestAt.floor() <= block.number) vestUpTo(account, queue.right);
+        if (curr.when <= block.number) vestUpTo(issuer, queue.right);
+    }
+
+    /// Add amtRToken's worth of issuance delay to allVestAt, and return the resulting finish time.
+    /// @return finished the new value of allVestAt
+    function whenFinished(uint256 amtRToken) private returns (Fix finished) {
+        // Calculate the issuance rate (if this is the first issuance in the block)
+        if (lastIssRateBlock < block.number) {
+            lastIssRateBlock = block.number;
+            lastIssRate = fixMax(MIN_ISS_RATE, issuanceRate.mulu(totalSupply()));
+        }
+
+        // Add amtRToken's worth of issuance delay to allVestAt
+        finished = fixMin(allVestAt, toFix(block.number - 1)).plus(divFix(amtRToken, lastIssRate));
+        allVestAt = finished;
     }
 
     /// Vest all available issuance for the account
@@ -205,21 +222,49 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         }
     }
 
-    /// Redeem a quantity of RToken from an account, keeping a roughly constant basket rate
-    /// @param from The account redeeeming RToken
-    /// @param amtRToken {qRTok} The amtRToken to be redeemed
-    /// @param amtBaskets {BU}
-    function redeem(
-        address from,
-        uint256 amtRToken,
-        Fix amtBaskets
-    ) external onlyComponent {
-        _burn(from, amtRToken);
+    /// Redeem RToken for basket collateral
+    /// User Action
+    /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
+    /// @return withdrawals {qTok} The quantities of collateral tokens transferred out
+    function redeem(uint256 amount) external returns (uint256[] memory withdrawals) {
+        require(amount > 0, "Cannot redeem zero");
+        // Call collective state keepers
+        main.poke();
+        IBasketHandler basketHandler = main.basketHandler();
 
-        emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(amtBaskets));
-        basketsNeeded = basketsNeeded.minus(amtBaskets);
+        require(balanceOf(_msgSender()) >= amount, "not enough RToken");
 
-        assert(basketsNeeded.gte(FIX_ZERO));
+        // {BU} = {BU} * {qRTok} / {qRTok}
+        Fix baskets = basketsNeeded.mulu(amount).divuRound(totalSupply());
+        assert(baskets.lte(basketsNeeded));
+
+        address[] memory erc20s;
+        (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingApproach.FLOOR);
+
+        // Accept and burn RToken
+        _burn(_msgSender(), amount);
+
+        emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
+        basketsNeeded = basketsNeeded.minus(baskets);
+
+        // ==== Send back collateral tokens ====
+        IBackingManager backingMgr = main.backingManager();
+        backingMgr.grantAllowances();
+
+        // {1} = {qRTok} / {qRTok}
+        Fix prorate = toFix(amount).divu(totalSupply());
+
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
+            uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingMgr));
+            // {qTok} = {1} * {qTok}
+            uint256 prorata = prorate.mulu(bal).floor();
+            withdrawals[i] = Math.min(withdrawals[i], prorata);
+            // Send withdrawal
+            IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), withdrawals[i]);
+        }
+
+        emit Redemption(_msgSender(), amount, baskets);
     }
 
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
@@ -245,6 +290,30 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     function setMain(IMain main_) external onlyOwner {
         emit MainSet(main, main_);
         main = main_;
+    }
+
+    /// @return {qRTok} How much RToken `account` can issue given current holdings
+    function maxIssuable(address account) external view returns (uint256) {
+        // {BU}
+        Fix held = main.basketHandler().basketsHeldBy(account);
+        IAsset rTokenAsset = main.assetRegistry().toAsset(this);
+
+        // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
+        if (basketsNeeded.eq(FIX_ZERO)) return rTokenAsset.toQ(held).floor();
+
+        // {qRTok} = {BU} * {qRTok} / {BU}
+        return held.mulu(totalSupply()).div(basketsNeeded).floor();
+    }
+
+    /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
+    function price() external view returns (Fix p) {
+        IAsset asset = main.assetRegistry().toAsset(this);
+
+        if (totalSupply() == 0) return main.basketHandler().price();
+
+        // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
+        Fix supply = asset.fromQ(toFix(totalSupply()));
+        return main.basketHandler().price().mul(basketsNeeded).div(supply);
     }
 
     // ==== private ====

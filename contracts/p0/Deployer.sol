@@ -25,7 +25,6 @@ import "contracts/p0/Facade.sol";
 import "contracts/p0/Furnace.sol";
 import "contracts/p0/Main.sol";
 import "contracts/p0/RToken.sol";
-import "contracts/p0/Issuer.sol";
 import "contracts/p0/Distributor.sol";
 import "contracts/p0/StRSR.sol";
 
@@ -112,7 +111,6 @@ contract DeployerP0 is IDeployer {
         components.assetRegistry = new AssetRegistryP0();
         components.basketHandler = new BasketHandlerP0();
         components.backingManager = new BackingManagerP0();
-        components.issuer = new IssuerP0();
         components.distributor = new DistributorP0();
         components.rsrTrader = new RevenueTraderP0(rsr);
         components.rTokenTrader = new RevenueTraderP0(rToken);

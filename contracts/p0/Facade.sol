@@ -59,7 +59,7 @@ contract FacadeP0 is IFacade {
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external returns (uint256) {
         main.poke();
-        return main.issuer().maxIssuable(account);
+        return main.rToken().maxIssuable(account);
     }
 
     /// `staticCall`
