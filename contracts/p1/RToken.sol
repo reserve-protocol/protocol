@@ -241,6 +241,9 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         address[] memory erc20s;
         (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingApproach.FLOOR);
 
+        // {1} = {qRTok} / {qRTok}
+        Fix prorate = toFix(amount).divu(totalSupply());
+
         // Accept and burn RToken
         _burn(_msgSender(), amount);
 
@@ -250,9 +253,6 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
         backingMgr.grantAllowances();
-
-        // {1} = {qRTok} / {qRTok}
-        Fix prorate = toFix(amount).divu(totalSupply());
 
         for (uint256 i = 0; i < erc20s.length; i++) {
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized

@@ -87,6 +87,7 @@ describe('StRSRP0 contract', () => {
       backingManager,
       basketHandler,
       distributor,
+      rToken,
     } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR

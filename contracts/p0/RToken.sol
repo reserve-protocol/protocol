@@ -72,6 +72,7 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     /// @param amount {qTok} The quantity of RToken to issue
     /// @return deposits {qTok} The quantities of collateral tokens transferred in
     function issue(uint256 amount) external notPaused returns (uint256[] memory deposits) {
+        require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
         IBasketHandler basketHandler = main.basketHandler();
@@ -191,6 +192,9 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
         address[] memory erc20s;
         (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingApproach.FLOOR);
 
+        // {1} = {qRTok} / {qRTok}
+        Fix prorate = toFix(amount).divu(totalSupply());
+
         // Accept and burn RToken
         _burn(_msgSender(), amount);
 
@@ -200,9 +204,6 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
         backingMgr.grantAllowances();
-
-        // {1} = {qRTok} / {qRTok}
-        Fix prorate = toFix(amount).divu(totalSupply());
 
         for (uint256 i = 0; i < erc20s.length; i++) {
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
