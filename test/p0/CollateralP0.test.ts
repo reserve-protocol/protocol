@@ -2,38 +2,39 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { CollateralStatus, MAX_UINT256 } from '../../common/constants'
+import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
+  AaveClaimAdapterP0,
   AaveOracleMockP0,
+  AssetRegistryP0,
   ATokenFiatCollateralP0,
+  BackingManagerP0,
+  BasketHandlerP0,
+  CompoundClaimAdapterP0,
   CompoundOracleMockP0,
   CompoundPricedFiatCollateralP0,
   ComptrollerMockP0,
   CTokenFiatCollateralP0,
   CTokenMock,
-  AssetRegistryP0,
-  FacadeP0,
-  BackingManagerP0,
-  BasketHandlerP0,
-  IssuerP0,
   DistributorP0,
   ERC20Mock,
+  FacadeP0,
+  IssuerP0,
   MainP0,
   StaticATokenMock,
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { Collateral, defaultFixture } from './utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
+const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
+
 describe('CollateralP0 contracts', () => {
   let owner: SignerWithAddress
-  let other: SignerWithAddress
-
-  let defaultThreshold: BigNumber
-  let delayUntilDefault: BigNumber
 
   // Tokens
   let token: ERC20Mock
@@ -49,10 +50,15 @@ describe('CollateralP0 contracts', () => {
   let aTokenCollateral: ATokenFiatCollateralP0
   let cTokenCollateral: CTokenFiatCollateralP0
 
-  // Oracles
+  // Aave / Compound
   let compoundMock: ComptrollerMockP0
   let compoundOracleInternal: CompoundOracleMockP0
+  let compoundClaimer: CompoundClaimAdapterP0
   let aaveOracleInternal: AaveOracleMockP0
+  let aaveClaimer: AaveClaimAdapterP0
+
+  // Config
+  let config: IConfig
 
   // Main
   let main: MainP0
@@ -72,7 +78,7 @@ describe('CollateralP0 contracts', () => {
   })
 
   beforeEach(async () => {
-    ;[owner, other] = await ethers.getSigners()
+    ;[owner] = await ethers.getSigners()
 
     let basket: Collateral[]
 
@@ -84,6 +90,7 @@ describe('CollateralP0 contracts', () => {
       aaveToken,
       aaveOracleInternal,
       basket,
+      config,
       main,
       assetRegistry,
       backingManager,
@@ -91,6 +98,8 @@ describe('CollateralP0 contracts', () => {
       issuer,
       distributor,
       facade,
+      compoundClaimer,
+      aaveClaimer,
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
@@ -110,28 +119,52 @@ describe('CollateralP0 contracts', () => {
     it('Deployment should setup collateral correctly', async () => {
       // Fiat Token Asset
       expect(await tokenCollateral.isCollateral()).to.equal(true)
+      expect(await tokenCollateral.referenceERC20()).to.equal(token.address)
       expect(await tokenCollateral.erc20()).to.equal(token.address)
       expect(await token.decimals()).to.equal(18)
+      expect(await tokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await tokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
+      expect(await tokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
+      expect(await tokenCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
+      expect(await tokenCollateral.toQ(bn('1'))).to.equal(fp('1'))
+      expect(await tokenCollateral.fromQ(fp('1'))).to.equal(bn('1'))
+      expect(await tokenCollateral.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await tokenCollateral.price()).to.equal(fp('1'))
 
       // USDC Fiat Token
       expect(await usdcCollateral.isCollateral()).to.equal(true)
+      expect(await usdcCollateral.referenceERC20()).to.equal(usdc.address)
       expect(await usdcCollateral.erc20()).to.equal(usdc.address)
       expect(await usdc.decimals()).to.equal(6)
+      expect(await usdcCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await usdcCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
+      expect(await usdcCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
+      expect(await usdcCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await usdcCollateral.toQ(bn('1'))).to.equal(bn('1e6'))
+      expect(await usdcCollateral.fromQ(bn('1e6'))).to.equal(bn('1'))
+      expect(await usdcCollateral.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await usdcCollateral.refPerTok()).to.equal(fp('1'))
       expect(await usdcCollateral.price()).to.equal(fp('1'))
 
       // AToken
       expect(await aTokenCollateral.isCollateral()).to.equal(true)
+      expect(await aTokenCollateral.referenceERC20()).to.equal(token.address)
       expect(await aTokenCollateral.erc20()).to.equal(aToken.address)
       expect(await aToken.decimals()).to.equal(18)
+      expect(await aTokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await aTokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
+      expect(await aTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
+      expect(await aTokenCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await aTokenCollateral.toQ(bn('1'))).to.equal(fp('1'))
+      expect(await aTokenCollateral.fromQ(fp('1'))).to.equal(bn('1'))
+      expect(await aTokenCollateral.claimAdapter()).to.equal(aaveClaimer.address)
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await aTokenCollateral.prevReferencePrice()).to.equal(
         await aTokenCollateral.refPerTok()
@@ -140,10 +173,18 @@ describe('CollateralP0 contracts', () => {
 
       // CToken
       expect(await cTokenCollateral.isCollateral()).to.equal(true)
+      expect(await cTokenCollateral.referenceERC20()).to.equal(token.address)
       expect(await cTokenCollateral.erc20()).to.equal(cToken.address)
       expect(await cToken.decimals()).to.equal(8)
+      expect(await cTokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await cTokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
+      expect(await cTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
+      expect(await cTokenCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await cTokenCollateral.toQ(bn('1'))).to.equal(bn('1e8'))
+      expect(await cTokenCollateral.fromQ(bn('1e8'))).to.equal(bn('1'))
+      expect(await cTokenCollateral.claimAdapter()).to.equal(compoundClaimer.address)
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await cTokenCollateral.prevReferencePrice()).to.equal(
         await cTokenCollateral.refPerTok()
