@@ -66,6 +66,8 @@ describe('CollateralP0 contracts', () => {
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
+  const amt = fp('1e18')
+
   before('create fixture loader', async () => {
     ;[wallet] = await (ethers as any).getSigners()
     loadFixture = createFixtureLoader([wallet])
@@ -103,6 +105,11 @@ describe('CollateralP0 contracts', () => {
       await ethers.getContractAt('StaticATokenMock', await aTokenCollateral.erc20())
     )
     cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenCollateral.erc20())
+
+    await token.connect(owner).mint(owner.address, amt)
+    await usdc.connect(owner).mint(owner.address, amt.div(bn('1e12')))
+    await aToken.connect(owner).mint(owner.address, amt)
+    await cToken.connect(owner).mint(owner.address, amt.div(bn('1e10')))
   })
 
   describe('Deployment', () => {
@@ -121,8 +128,8 @@ describe('CollateralP0 contracts', () => {
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await tokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await tokenCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await tokenCollateral.toQ(bn('1'))).to.equal(fp('1'))
-      expect(await tokenCollateral.fromQ(fp('1'))).to.equal(bn('1'))
+      expect(await tokenCollateral.bal(owner.address)).to.equal(amt)
+      expect(await tokenCollateral.balQ(owner.address)).to.equal(amt.mul(bn('1e18')))
       expect(await tokenCollateral.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await tokenCollateral.price()).to.equal(fp('1'))
 
@@ -137,8 +144,8 @@ describe('CollateralP0 contracts', () => {
       expect(await usdcCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await usdcCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
       expect(await usdcCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
-      expect(await usdcCollateral.toQ(bn('1'))).to.equal(bn('1e6'))
-      expect(await usdcCollateral.fromQ(bn('1e6'))).to.equal(bn('1'))
+      expect(await usdcCollateral.bal(owner.address)).to.equal(amt)
+      expect(await usdcCollateral.balQ(owner.address)).to.equal(amt.mul(bn('1e6')))
       expect(await usdcCollateral.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await usdcCollateral.refPerTok()).to.equal(fp('1'))
       expect(await usdcCollateral.targetPerRef()).to.equal(fp('1'))
@@ -156,8 +163,8 @@ describe('CollateralP0 contracts', () => {
       expect(await aTokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await aTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
       expect(await aTokenCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
-      expect(await aTokenCollateral.toQ(bn('1'))).to.equal(fp('1'))
-      expect(await aTokenCollateral.fromQ(fp('1'))).to.equal(bn('1'))
+      expect(await aTokenCollateral.bal(owner.address)).to.equal(amt)
+      expect(await aTokenCollateral.balQ(owner.address)).to.equal(amt.mul(bn('1e18')))
       expect(await aTokenCollateral.claimAdapter()).to.equal(aaveClaimer.address)
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await aTokenCollateral.targetPerRef()).to.equal(fp('1'))
@@ -178,8 +185,8 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await cTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
       expect(await cTokenCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
-      expect(await cTokenCollateral.toQ(bn('1'))).to.equal(bn('1e8'))
-      expect(await cTokenCollateral.fromQ(bn('1e8'))).to.equal(bn('1'))
+      expect(await cTokenCollateral.bal(owner.address)).to.equal(amt)
+      expect(await cTokenCollateral.balQ(owner.address)).to.equal(amt.mul(bn('1e10')))
       expect(await cTokenCollateral.claimAdapter()).to.equal(compoundClaimer.address)
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await cTokenCollateral.targetPerRef()).to.equal(fp('1'))
@@ -519,8 +526,8 @@ describe('CollateralP0 contracts', () => {
       expect(await compoundTokenAsset.refPerTok()).to.equal(fp('1'))
       expect(await compoundTokenAsset.targetPerRef()).to.equal(fp('1'))
       expect(await compoundTokenAsset.pricePerTarget()).to.equal(fp('1'))
-      expect(await compoundTokenAsset.toQ(bn('1'))).to.equal(fp('1'))
-      expect(await compoundTokenAsset.fromQ(fp('1'))).to.equal(bn('1'))
+      expect(await compoundTokenAsset.bal(owner.address)).to.equal(amt)
+      expect(await compoundTokenAsset.balQ(owner.address)).to.equal(amt.mul(bn('1e18')))
       expect(await compoundTokenAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await compoundTokenAsset.price()).to.equal(fp('1'))
 
@@ -538,8 +545,8 @@ describe('CollateralP0 contracts', () => {
       expect(await compoundUsdcAsset.refPerTok()).to.equal(fp('1'))
       expect(await compoundUsdcAsset.targetPerRef()).to.equal(fp('1'))
       expect(await compoundUsdcAsset.pricePerTarget()).to.equal(fp('1'))
-      expect(await compoundUsdcAsset.toQ(bn('1'))).to.equal(bn('1e6'))
-      expect(await compoundUsdcAsset.fromQ(bn('1e6'))).to.equal(bn('1'))
+      expect(await compoundUsdcAsset.bal(owner.address)).to.equal(amt)
+      expect(await compoundUsdcAsset.balQ(owner.address)).to.equal(amt.mul(bn('1e6')))
       expect(await compoundUsdcAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await compoundUsdcAsset.price()).to.equal(fp('1'))
     })

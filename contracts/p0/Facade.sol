@@ -98,11 +98,7 @@ contract FacadeP0 is IFacade {
             if (
                 !asset.isCollateral() || reg.toColl(erc20s[i]).status() != CollateralStatus.DISABLED
             ) {
-                uint256 bal = erc20s[i].balanceOf(backingManager);
-
-                // {UoA/tok} = {UoA/tok} * {qTok} / {qTok/tok}
-                Fix p = asset.fromQ(asset.price().mulu(bal));
-                total = total.plus(p);
+                total = total.plus(asset.bal(backingManager).mul(asset.price()));
             }
         }
     }

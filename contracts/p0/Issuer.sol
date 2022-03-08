@@ -32,7 +32,7 @@ contract IssuerP0 is IIssuer, Component {
         uint256 rTokSupply = rToken.totalSupply(); // {qRTok}
         Fix baskets = (rTokSupply > 0) // {BU}
             ? rToken.basketsNeeded().mulu(amount).divuRound(rTokSupply) // {BU * qRTok / qRTok}
-            : main.assetRegistry().toAsset(rToken).fromQ(toFix(amount)); // {qRTok / qRTok}
+            : toFix(amount).shiftLeft(-int8(rToken.decimals())); // {qRTok / qRTok}
 
         address[] memory erc20s;
         (erc20s, deposits) = basketHandler.quote(baskets, RoundingApproach.CEIL);
@@ -90,9 +90,8 @@ contract IssuerP0 is IIssuer, Component {
     function maxIssuable(address account) external view returns (uint256) {
         Fix needed = main.rToken().basketsNeeded();
         Fix held = main.basketHandler().basketsHeldBy(account);
-        IAsset rTokenAsset = main.assetRegistry().toAsset(main.rToken());
 
-        if (needed.eq(FIX_ZERO)) return rTokenAsset.toQ(held).floor();
+        if (needed.eq(FIX_ZERO)) return held.shiftLeft(int8(main.rToken().decimals())).floor();
 
         // {qRTok} = {BU} * {qRTok} / {BU}
         return held.mulu(main.rToken().totalSupply()).div(needed).floor();
@@ -101,9 +100,7 @@ contract IssuerP0 is IIssuer, Component {
     /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
     function rTokenPrice() external view returns (Fix p) {
         IRToken rToken = main.rToken();
-        IAsset rTokenAsset = main.assetRegistry().toAsset(rToken);
-
-        Fix rTokSupply = rTokenAsset.fromQ(toFix(rToken.totalSupply()));
+        Fix rTokSupply = toFix(rToken.totalSupply()).shiftLeft(-int8(rToken.decimals()));
         if (rTokSupply.eq(FIX_ZERO)) return main.basketHandler().price();
 
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}

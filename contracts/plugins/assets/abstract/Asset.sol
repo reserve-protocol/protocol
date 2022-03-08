@@ -20,14 +20,14 @@ abstract contract AssetP0 is IAsset {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual returns (Fix);
 
-    /// {tok} -> {qTok}
-    function toQ(Fix tok) external view returns (Fix) {
-        return tok.shiftLeft(int8(erc20.decimals()));
+    /// @return {tok} The balance of the ERC20 in whole tokens
+    function bal(address account) external view returns (Fix) {
+        return balQ(account).shiftLeft(-int8(erc20.decimals()));
     }
 
-    /// {qTok} -> {tok}
-    function fromQ(Fix qTok) external view returns (Fix) {
-        return qTok.shiftLeft(-int8(erc20.decimals()));
+    /// @return {qTok} The balance of the ERC20 in qTokens
+    function balQ(address account) public view returns (Fix) {
+        return toFix(erc20.balanceOf(account));
     }
 
     /// @return If the asset is an instance of ICollateral or not

@@ -461,7 +461,7 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
       })
 
-      it('Should handle large auctions using maxAuctionSize with f=1 (RSR only)', async () => {
+      it.only('Should handle large auctions using maxAuctionSize with f=1 (RSR only)', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
@@ -526,7 +526,8 @@ describe('Revenues', () => {
 
         // Another call will not create a new auction (only one at a time per pair)
         await expect(facade.runAuctionsForAllTraders())
-          .to.not.emit(rsrTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'AuctionStarted')
+          .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
         // Perform Mock Bids for RSR (addr1 has balance)
@@ -539,6 +540,12 @@ describe('Revenues', () => {
 
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
+
+        console.log(await compToken.balanceOf(market.address))
+        console.log(await compToken.balanceOf(rsrTrader.address))
+        console.log(await compToken.balanceOf(rTokenTrader.address))
+        console.log(await compToken.balanceOf(backingManager.address))
+        console.log('-')
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
@@ -556,6 +563,10 @@ describe('Revenues', () => {
           externalId: bn('1'),
         })
 
+        console.log(await compToken.balanceOf(market.address))
+        console.log(await compToken.balanceOf(rsrTrader.address))
+        console.log(await compToken.balanceOf(rTokenTrader.address))
+        console.log(await compToken.balanceOf(backingManager.address))
         // Check now all funds in Market
         expect(await compToken.balanceOf(market.address)).to.equal(sellAmt)
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)

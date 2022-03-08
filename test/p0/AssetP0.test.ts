@@ -47,6 +47,8 @@ describe('AssetsP0 contracts', () => {
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
+  const amt = fp('1e4')
+
   before('create fixture loader', async () => {
     ;[wallet] = await (ethers as any).getSigners()
     loadFixture = createFixtureLoader([wallet])
@@ -74,6 +76,17 @@ describe('AssetsP0 contracts', () => {
 
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await basket[0].erc20())
     token1 = <USDCMock>await ethers.getContractAt('USDCMock', await basket[1].erc20())
+
+    await rsr.connect(wallet).mint(wallet.address, amt)
+    await compToken.connect(wallet).mint(wallet.address, amt)
+    await aaveToken.connect(wallet).mint(wallet.address, amt)
+
+    for (let i = 0; i < basket.length; i++) {
+      const tok = await ethers.getContractAt('ERC20Mock', await basket[i].erc20())
+      await tok.connect(wallet).mint(wallet.address, amt)
+      await tok.connect(wallet).approve(issuer.address, amt)
+    }
+    await issuer.connect(wallet).issue(amt)
   })
 
   describe('Deployment', () => {
@@ -83,8 +96,8 @@ describe('AssetsP0 contracts', () => {
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
       expect(await rsr.decimals()).to.equal(18)
       expect(await rsrAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
-      expect(await rsrAsset.toQ(bn('1'))).to.equal(fp('1'))
-      expect(await rsrAsset.fromQ(fp('1'))).to.equal(bn('1'))
+      expect(await rsrAsset.bal(wallet.address)).to.equal(amt)
+      expect(await rsrAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
       expect(await rsrAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await rsrAsset.price()).to.equal(fp('1'))
 
@@ -93,8 +106,8 @@ describe('AssetsP0 contracts', () => {
       expect(await compAsset.erc20()).to.equal(compToken.address)
       expect(await compToken.decimals()).to.equal(18)
       expect(await compAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
-      expect(await compAsset.toQ(bn('10'))).to.equal(fp('10'))
-      expect(await compAsset.fromQ(fp('10'))).to.equal(bn('10'))
+      expect(await compAsset.bal(wallet.address)).to.equal(amt)
+      expect(await compAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
       expect(await compAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await compAsset.price()).to.equal(fp('1'))
 
@@ -103,8 +116,8 @@ describe('AssetsP0 contracts', () => {
       expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
       expect(await aaveToken.decimals()).to.equal(18)
       expect(await aaveAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
-      expect(await aaveAsset.toQ(bn('500'))).to.equal(fp('500'))
-      expect(await aaveAsset.fromQ(fp('500'))).to.equal(bn('500'))
+      expect(await aaveAsset.bal(wallet.address)).to.equal(amt)
+      expect(await aaveAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
       expect(await aaveAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await aaveAsset.price()).to.equal(fp('1'))
 
@@ -113,8 +126,8 @@ describe('AssetsP0 contracts', () => {
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await rToken.decimals()).to.equal(18)
       expect(await rTokenAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
-      expect(await rTokenAsset.toQ(bn('10000'))).to.equal(fp('10000'))
-      expect(await rTokenAsset.fromQ(fp('10000'))).to.equal(bn('10000'))
+      expect(await rTokenAsset.bal(wallet.address)).to.equal(amt)
+      expect(await rTokenAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
       expect(await rTokenAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await rTokenAsset.price()).to.equal(fp('1'))
       expect(await rTokenAsset.price()).to.equal(await issuer.rTokenPrice())
