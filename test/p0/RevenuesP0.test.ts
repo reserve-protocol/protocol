@@ -1209,6 +1209,7 @@ describe('Revenues', () => {
       })
 
       // TODO The rounding has changed slightly here and this test no longer passes
+      // It's very very close. Really we just need someone who understands this test to take a look
       it.skip('Should handle slight increase in collateral correctly - full cycle', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
