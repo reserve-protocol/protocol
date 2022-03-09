@@ -166,8 +166,8 @@ describe('Revenues', () => {
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
 
-    collateral0 = basket[0]
-    collateral1 = basket[1]
+    collateral0 = <CollateralP0>basket[0]
+    collateral1 = <CollateralP0>basket[1]
     collateral2 = <ATokenFiatCollateralP0>basket[2]
     collateral3 = <CTokenFiatCollateralP0>basket[3]
 
