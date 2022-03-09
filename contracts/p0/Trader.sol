@@ -46,9 +46,13 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         uint256 i = auctionsStart;
         for (; i < auctions.length && block.timestamp >= auctions[i].endTime; i++) {
             OngoingAuction storage auc = auctions[i];
+            // TODO do the clearing price check for real
+            uint256 initialBuyBal = auc.buy.balanceOf(address(this));
+
             (uint256 clearingSellAmt, uint256 clearingBuyAmt) = decodeOrder(
                 main.market().settleAuction(auc.externalId)
             );
+            assert(auc.buy.balanceOf(address(this)) - initialBuyBal == clearingBuyAmt);
             emit AuctionEnded(i, auc.sell, auc.buy, clearingSellAmt, clearingBuyAmt);
         }
         auctionsStart = i;
@@ -57,7 +61,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
     /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price,
     /// without explicitly aiming at a particular quantity to purchase.
     /// @param sellAmount {sellTok}
-    /// @return notDust Whether the prepared auction is large enough to be worth trading
+    /// @return notDust True when the auction is larger than the dust amount
     /// @return auction The prepared auction
     function prepareAuctionSell(
         IAsset sell,
@@ -65,26 +69,21 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         Fix sellAmount
     ) internal view returns (bool notDust, ProposedAuction memory auction) {
         assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
+        auction.sell = sell;
+        auction.buy = buy;
 
         // Don't buy dust.
         if (sellAmount.lt(dustThreshold(sell))) return (false, auction);
 
         // {sellTok}
-        sellAmount = fixMin(sellAmount, sell.maxAuctionSize().div(sell.price()));
+        Fix fixSellAmount = fixMin(sellAmount, sell.maxAuctionSize().div(sell.price()));
+        auction.sellAmount = fixSellAmount.shiftLeft(int8(sell.erc20().decimals())).floor();
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        Fix exactBuyAmount = sellAmount.mul(sell.price()).div(buy.price());
+        Fix exactBuyAmount = fixSellAmount.mul(sell.price()).div(buy.price());
         Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(maxTradeSlippage));
-
-        return (
-            true,
-            ProposedAuction({
-                sell: sell.erc20(),
-                buy: buy.erc20(),
-                sellAmount: sell.toQ(sellAmount).floor(),
-                minBuyAmount: buy.toQ(minBuyAmount).ceil()
-            })
-        );
+        auction.minBuyAmount = minBuyAmount.shiftLeft(int8(buy.erc20().decimals())).ceil();
+        return (true, auction);
     }
 
     /// Assuming we have `maxSellAmount` sell tokens avaialable, prepare an auction to
@@ -128,18 +127,16 @@ abstract contract TraderP0 is RewardableP0, ITrader {
     /// - Emit AuctionStarted event
     function launchAuction(ProposedAuction memory prop) internal {
         OngoingAuction storage ongoing = auctions.push();
+        ongoing.sell = prop.sell.erc20();
+        ongoing.buy = prop.buy.erc20();
+        ongoing.endTime = Math.max(block.timestamp + auctionLength, latestAuctionEnd);
 
-        uint256 endTime = Math.max(block.timestamp + auctionLength, latestAuctionEnd);
-        prop.sell.safeApprove(address(main.market()), prop.sellAmount);
-
-        ongoing.sell = prop.sell;
-        ongoing.buy = prop.buy;
-        ongoing.endTime = endTime;
+        ongoing.sell.safeApprove(address(main.market()), prop.sellAmount);
         ongoing.externalId = main.market().initiateAuction(
-            prop.sell,
-            prop.buy,
-            endTime,
-            endTime,
+            ongoing.sell,
+            ongoing.buy,
+            ongoing.endTime,
+            ongoing.endTime,
             uint96(prop.sellAmount),
             uint96(prop.minBuyAmount),
             0,
@@ -149,10 +146,10 @@ abstract contract TraderP0 is RewardableP0, ITrader {
             new bytes(0)
         );
 
-        latestAuctionEnd = endTime;
+        latestAuctionEnd = ongoing.endTime;
 
         uint256 index = auctions.length - 1;
-        emit AuctionStarted(index, prop.sell, prop.buy, prop.sellAmount, prop.minBuyAmount);
+        emit AuctionStarted(index, ongoing.sell, ongoing.buy, prop.sellAmount, prop.minBuyAmount);
     }
 
     /// Close auctions[i]:
