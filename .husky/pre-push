@@ -3,4 +3,4 @@
 
 yarn lint
 yarn compile
-yarn test:parallel
+yarn test

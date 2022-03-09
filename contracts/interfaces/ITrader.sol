@@ -2,11 +2,13 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "contracts/libraries/Fixed.sol";
+import "./IAsset.sol";
 import "./IRewardable.sol";
 
 struct ProposedAuction {
-    IERC20 sell;
-    IERC20 buy;
+    IAsset sell;
+    IAsset buy;
     uint256 sellAmount; // {qSellTok}
     uint256 minBuyAmount; // {qBuyTok}
 }

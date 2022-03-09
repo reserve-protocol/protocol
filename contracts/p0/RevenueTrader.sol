@@ -10,6 +10,7 @@ import "contracts/p0/Trader.sol";
 /// The RevenueTrader converts all asset balances at its address to a single target asset
 /// and sends this asset to the Distributor.
 contract RevenueTraderP0 is TraderP0, IRevenueTrader {
+    using FixLib for Fix;
     using SafeERC20 for IERC20;
 
     IERC20 public immutable tokenToBuy;
@@ -54,12 +55,10 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
         }
 
         // If not dust, trade the non-target asset for the target asset
-        // {tok} =  {qTok} / {qTok/tok}
-        Fix sellAmount = reg.toAsset(erc20).fromQ(toFix(bal));
         (bool launch, ProposedAuction memory auction) = prepareAuctionSell(
             reg.toAsset(erc20),
             reg.toAsset(tokenToBuy),
-            sellAmount
+            reg.toAsset(erc20).bal(address(this))
         );
 
         if (launch) launchAuction(auction);
