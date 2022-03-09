@@ -270,6 +270,9 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     function exchangeRate() external view returns (Fix) {
+        if (totalStaked == 0) {
+            return FIX_ONE;
+        }
         return toFix(rsrBacking).divu(totalStaked);
     }
 
