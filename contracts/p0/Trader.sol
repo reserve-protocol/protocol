@@ -5,9 +5,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "contracts/interfaces/IAuction.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IMarket.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p0/Auction.sol";
 import "contracts/p0/Component.sol";
 import "contracts/p0/Rewardable.sol";
 
@@ -15,8 +17,10 @@ abstract contract TraderP0 is RewardableP0, ITrader {
     using FixLib for Fix;
     using SafeERC20 for IERC20;
 
-    // All ongoing auctions
-    OngoingAuction[] public auctions;
+    // All info auctions
+    IAuction[] public auctions;
+
+    AuctionStatus public status;
 
     // First auction that is not yet closed (or auctions.length if all auctions have been closed)
     uint256 internal auctionsStart;
@@ -44,15 +48,8 @@ abstract contract TraderP0 is RewardableP0, ITrader {
     function closeDueAuctions() public {
         // Close open auctions
         uint256 i = auctionsStart;
-        for (; i < auctions.length && block.timestamp >= auctions[i].endTime; i++) {
-            OngoingAuction storage auc = auctions[i];
-            uint256 initialBuyBal = auc.buy.balanceOf(address(this));
-            (uint256 clearingSellAmt, uint256 clearingBuyAmt) = decodeOrder(
-                main.market().settleAuction(auc.externalId)
-            );
-            require(clearingBuyAmt >= auc.minBuyAmount, "auction clearing price too low");
-            assert(auc.buy.balanceOf(address(this)) - initialBuyBal >= clearingBuyAmt);
-            emit AuctionEnded(i, auc.sell, auc.buy, clearingSellAmt, clearingBuyAmt);
+        for (; i < auctions.length && auctions[i].canClose(); i++) {
+            closeAuction(auctions[i]);
         }
         auctionsStart = i;
     }
@@ -120,52 +117,24 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         return dustAmount.div(asset.price());
     }
 
-    /// Launch an auction:
-    /// - Add the auction to the local auction list
-    /// - Create the auction in the external auction protocol
-    /// - Emit AuctionStarted event
+    /// Deploy a oneshot auction contract + kick off auction
     function launchAuction(ProposedAuction memory prop) internal {
-        OngoingAuction storage ongoing = auctions.push();
-        ongoing.sell = prop.sell.erc20();
-        ongoing.buy = prop.buy.erc20();
-        ongoing.minBuyAmount = prop.minBuyAmount;
-        ongoing.endTime = Math.max(block.timestamp + auctionLength, latestAuctionEnd);
+        // TODO fail more cooperatively here
+        require(status == AuctionStatus.ON, "auctions off");
+        latestAuctionEnd = Math.max(block.timestamp + auctionLength, latestAuctionEnd);
 
-        ongoing.sell.safeApprove(address(main.market()), prop.sellAmount);
-        ongoing.externalId = main.market().initiateAuction(
-            ongoing.sell,
-            ongoing.buy,
-            ongoing.endTime,
-            ongoing.endTime,
-            uint96(prop.sellAmount),
-            uint96(prop.minBuyAmount),
-            0,
-            prop.minBuyAmount,
-            false,
-            address(0),
-            new bytes(0)
-        );
+        auctions.push(new Auction());
+        address auctionAddr = address(auctions[auctions.length - 1]);
+        info.sell.safeTransfer(auctionAddr, prop.sellAmount);
 
-        latestAuctionEnd = ongoing.endTime;
-
-        uint256 index = auctions.length - 1;
-        emit AuctionStarted(index, ongoing.sell, ongoing.buy, prop.sellAmount, prop.minBuyAmount);
+        oneshotAuction.open(main.market(), prop, latestAuctionEnd);
+        emit AuctionStarted(auctionAddr, info.sell, info.buy, prop.sellAmount, prop.minBuyAmount);
     }
 
-    /// Close auctions[i]:
-    /// - Set the auction status to DONE
-    /// - Settle the auction in the external auction protocl
-    /// - Emit AuctionEnded event
-
-    /// Decode EasyAuction output into its components.
-    function decodeOrder(bytes32 encodedOrder)
-        private
-        pure
-        returns (uint256 amountSold, uint256 amountBought)
-    {
-        // Note: explicitly converting to a uintN truncates those bits that don't fit
-        uint256 value = uint256(encodedOrder);
-        amountSold = uint96(value);
-        amountBought = uint96(value >> 96);
+    function closeAuction(IAuction auc) private {
+        (bool success, uint256 soldAmt, uint256 boughtAmt) = auc.close();
+        AuctionStatus newStatus = success ? AuctionStatus.ON : AuctionStatus.OFF;
+        if (!success) status = newStatus;
+        emit AuctionEnded(address(auc), auc.sell(), auc.buy(), soldAmt, boughtAmt, newStatus);
     }
 }
