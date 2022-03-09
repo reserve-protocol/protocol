@@ -6,6 +6,7 @@ import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { bn, fp } from '../../common/numbers'
 import {
+  AaveOracleMockP0,
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
@@ -20,6 +21,7 @@ import {
 import { advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+import { CollateralStatus } from '../../common/constants'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -54,6 +56,9 @@ describe('StRSRP0 contract', () => {
   let collateral2: Collateral
   let collateral3: Collateral
 
+  // Aave/ Compound
+  let aaveOracleInternal: AaveOracleMockP0
+
   // Config
   let config: IConfig
 
@@ -79,6 +84,7 @@ describe('StRSRP0 contract', () => {
     ;({
       rsr,
       stRSR,
+      aaveOracleInternal,
       basket,
       basketsNeededAmts,
       config,
@@ -319,8 +325,32 @@ describe('StRSRP0 contract', () => {
   })
 
   describe('Withdrawals/Unstaking', () => {
+    it('Should not allow to unstake amount = 0', async () => {
+      const zero: BigNumber = bn(0)
+
+      // Unstake
+      await expect(stRSR.connect(addr1).unstake(zero)).to.be.revertedWith('Cannot withdraw zero')
+    })
+
+    it('Should not allow to unstake if not enough balance', async () => {
+      const amount: BigNumber = bn('1000e18')
+
+      // Unstake with no stakes/balance
+      await expect(stRSR.connect(addr1).unstake(amount)).to.be.revertedWith('Not enough balance')
+    })
+
+    it('Should not allow to unstake if Main is paused', async () => {
+      const amount: BigNumber = bn('1000e18')
+
+      // Pause Main
+      await main.connect(owner).pause()
+
+      // Unstake with Main paused
+      await expect(stRSR.connect(addr1).unstake(amount)).to.be.revertedWith('main paused')
+    })
+
     it('Should create Pending withdrawal when unstaking', async () => {
-      const amount: BigNumber = bn('1e18')
+      const amount: BigNumber = bn('1000e18')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -341,20 +371,6 @@ describe('StRSRP0 contract', () => {
       // All staked funds withdrawn upfront
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       expect(await stRSR.totalSupply()).to.equal(0)
-    })
-
-    it('Should not allow to unstake amount = 0', async () => {
-      const zero: BigNumber = bn(0)
-
-      // Unstake
-      await expect(stRSR.connect(addr1).unstake(zero)).to.be.revertedWith('Cannot withdraw zero')
-    })
-
-    it('Should not allow to unstake if not enough balance', async () => {
-      const amount: BigNumber = bn('1e18')
-
-      // Unstake with no stakes/balance
-      await expect(stRSR.connect(addr1).unstake(amount)).to.be.revertedWith('Not enough balance')
     })
 
     it('Should allow multiple unstakes/withdrawals in RSR', async () => {
@@ -455,7 +471,7 @@ describe('StRSRP0 contract', () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
-      it('Should not withdraw if Manager is not fully capitalized', async () => {
+      it('Should not withdraw/unstake if not fully capitalized', async () => {
         // Need to issue some RTokens to handle fully/not fully capitalized
         await token0.connect(owner).mint(addr1.address, initialBal)
         await token1.connect(owner).mint(addr1.address, initialBal)
@@ -491,6 +507,11 @@ describe('StRSRP0 contract', () => {
           'RToken uncapitalized'
         )
 
+        // Also you cannot unstake in this situation
+        await expect(stRSR.connect(addr2).unstake(amount2)).to.be.revertedWith(
+          'RToken uncapitalized'
+        )
+
         // If fully capitalized should withdraw OK  - Set back original basket
         await basketHandler.connect(owner).setPrimeBasket(erc20s, basketsNeededAmts)
         await basketHandler.connect(owner).switchBasket()
@@ -505,6 +526,30 @@ describe('StRSRP0 contract', () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
         // All staked funds withdrawn upfront
+        expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      })
+
+      it('Should not withdraw/unstake if basket defaulted', async () => {
+        // Move forward past stakingWithdrawalDelay
+        await advanceTime(stkWithdrawalDelay + 1)
+
+        // Set Token1 to default - 50% price reduction and mark default as probable
+        await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+        await collateral1.forceUpdates()
+        expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+
+        // Attempt to Withdraw
+        await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
+          'basket defaulted'
+        )
+
+        // Also you cannot unstake in this situation
+        await expect(stRSR.connect(addr2).unstake(amount2)).to.be.revertedWith('basket defaulted')
+
+        // Nothing completed
+        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
+        expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
@@ -532,7 +577,7 @@ describe('StRSRP0 contract', () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
-      it('Should withdrawa after stakingWithdrawalDelay', async () => {
+      it('Should withdraw after stakingWithdrawalDelay', async () => {
         // Get current balance for user
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)
 
@@ -709,6 +754,8 @@ describe('StRSRP0 contract', () => {
       // expect(await stRSR.balanceOf(addr2.address)).to.equal(amount.add(amount2.div(3)))
       // expect(await stRSR.balanceOf(addr3.address)).to.equal(amount.add(amount2.div(3)))
     })
+
+    it.skip('Should handle stakes correctly after adding RSR', async () => {})
   })
 
   describe('Remove RSR', () => {
