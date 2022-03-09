@@ -46,13 +46,12 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         uint256 i = auctionsStart;
         for (; i < auctions.length && block.timestamp >= auctions[i].endTime; i++) {
             OngoingAuction storage auc = auctions[i];
-            // TODO do the clearing price check for real
             uint256 initialBuyBal = auc.buy.balanceOf(address(this));
-
             (uint256 clearingSellAmt, uint256 clearingBuyAmt) = decodeOrder(
                 main.market().settleAuction(auc.externalId)
             );
-            assert(auc.buy.balanceOf(address(this)) - initialBuyBal == clearingBuyAmt);
+            require(clearingBuyAmt >= auc.minBuyAmount, "auction clearing price too low");
+            assert(auc.buy.balanceOf(address(this)) - initialBuyBal >= clearingBuyAmt);
             emit AuctionEnded(i, auc.sell, auc.buy, clearingSellAmt, clearingBuyAmt);
         }
         auctionsStart = i;
@@ -129,6 +128,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         OngoingAuction storage ongoing = auctions.push();
         ongoing.sell = prop.sell.erc20();
         ongoing.buy = prop.buy.erc20();
+        ongoing.minBuyAmount = prop.minBuyAmount;
         ongoing.endTime = Math.max(block.timestamp + auctionLength, latestAuctionEnd);
 
         ongoing.sell.safeApprove(address(main.market()), prop.sellAmount);
@@ -140,7 +140,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
             uint96(prop.sellAmount),
             uint96(prop.minBuyAmount),
             0,
-            0,
+            prop.minBuyAmount,
             false,
             address(0),
             new bytes(0)

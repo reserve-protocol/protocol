@@ -16,6 +16,7 @@ struct ProposedAuction {
 struct OngoingAuction {
     IERC20 sell;
     IERC20 buy;
+    uint256 minBuyAmount; // {qBuyTok}
     uint256 endTime; // {sec}
     uint256 externalId;
 }
