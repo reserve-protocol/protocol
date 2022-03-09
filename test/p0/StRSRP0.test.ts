@@ -91,7 +91,7 @@ describe('StRSRP0 contract', () => {
     } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
-    initialBal = bn('100e18')
+    initialBal = bn('10000e18')
     await rsr.connect(owner).mint(addr1.address, initialBal)
     await rsr.connect(owner).mint(addr2.address, initialBal)
     await rsr.connect(owner).mint(addr3.address, initialBal)
@@ -230,24 +230,9 @@ describe('StRSRP0 contract', () => {
   })
 
   describe('Deposits/Staking', () => {
-    it('Should allow to stake/deposit in RSR', async () => {
-      // Perform stake
-      const amount: BigNumber = bn('1e18')
-
-      // Approve transfer and stake
-      await rsr.connect(addr1).approve(stRSR.address, amount)
-      await stRSR.connect(addr1).stake(amount)
-
-      // Check balances and stakes
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
-    })
-
     it('Should not allow to stake amount = 0', async () => {
       // Perform stake
-      const amount: BigNumber = bn('1e18')
+      const amount: BigNumber = bn('1000e18')
       const zero: BigNumber = bn(0)
 
       // Approve transfer and stake
@@ -261,20 +246,64 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
     })
 
+    it('Should not allow to stake if Main is Paused', async () => {
+      // Perform stake
+      const amount: BigNumber = bn('1000e18')
+
+      // Pause Main
+      await main.connect(owner).pause()
+
+      // Approve transfer and stake
+      await rsr.connect(addr1).approve(stRSR.address, amount)
+      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith('main paused')
+
+      // Check deposit not registered
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+    })
+
+    it('Should allow to stake/deposit in RSR', async () => {
+      // Perform stake
+      const amount: BigNumber = bn('1000e18')
+
+      // Approve transfer and stake
+      await rsr.connect(addr1).approve(stRSR.address, amount)
+      await expect(stRSR.connect(addr1).stake(amount))
+        .to.emit(stRSR, 'Staked')
+        .withArgs(addr1.address, amount, amount)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+
+      // Exchange rate remains steady
+      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
+    })
+
     it('Should allow multiple stakes/deposits in RSR', async () => {
       // Perform stake
-      const amount1: BigNumber = bn('1e18')
-      const amount2: BigNumber = bn('2e18')
-      const amount3: BigNumber = bn('3e18')
+      const amount1: BigNumber = bn('1000e18')
+      const amount2: BigNumber = bn('200e18')
+      const amount3: BigNumber = bn('3000e18')
 
       // Approve transfer and stake twice
       await rsr.connect(addr1).approve(stRSR.address, amount1.add(amount2))
-      await stRSR.connect(addr1).stake(amount1)
-      await stRSR.connect(addr1).stake(amount2)
+      await expect(stRSR.connect(addr1).stake(amount1))
+        .to.emit(stRSR, 'Staked')
+        .withArgs(addr1.address, amount1, amount1)
+      await expect(stRSR.connect(addr1).stake(amount2))
+        .to.emit(stRSR, 'Staked')
+        .withArgs(addr1.address, amount2, amount2)
 
       // New stake from different account
       await rsr.connect(addr2).approve(stRSR.address, amount3)
-      await stRSR.connect(addr2).stake(amount3)
+      await expect(stRSR.connect(addr2).stake(amount3))
+        .to.emit(stRSR, 'Staked')
+        .withArgs(addr2.address, amount3, amount3)
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount1.add(amount2).add(amount3))
@@ -283,6 +312,9 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount1.add(amount2))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount3))
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount3)
+
+      // Exchange rate remains steady
+      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
     })
   })
 
