@@ -1,10 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
-import { bn, fp, near } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import {
   AssetRegistryP0,
   BackingManagerP0,
@@ -121,7 +121,7 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.decimals()).to.equal(18)
       expect(await stRSR.totalSupply()).to.equal(0)
 
-      // Governance
+      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
       expect(await stRSR.unstakingDelay()).to.equal(config.unstakingDelay)
       expect(await stRSR.rewardPeriod()).to.equal(config.rewardPeriod)
       expect(await stRSR.rewardRatio()).to.equal(config.rewardRatio)
@@ -200,6 +200,32 @@ describe('StRSRP0 contract', () => {
       await expect(stRSR.connect(addr1).setRewardRatio(bn('0'))).to.be.revertedWith(
         'Component: caller is not the owner'
       )
+    })
+
+    it('Should allow to update main if Owner', async () => {
+      // Deploy a new main
+      const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
+      const newMain: MainP0 = <MainP0>await MainFactory.deploy()
+
+      // Check current stRSR is component of Main
+      expect(await main.hasComponent(stRSR.address)).to.equal(true)
+      expect(await newMain.hasComponent(stRSR.address)).to.equal(false)
+
+      // Try to update if not owner
+      await expect(stRSR.connect(addr1).setMain(other.address)).to.be.revertedWith(
+        'Component: caller is not the owner'
+      )
+
+      // Set Main
+      await expect(stRSR.connect(owner).setMain(newMain.address))
+        .to.emit(stRSR, 'MainSet')
+        .withArgs(main.address, newMain.address)
+
+      // Register new StRSR in new main
+      await newMain.connect(owner).setStRSR(stRSR.address)
+
+      // Check current stRSR is component of new Main
+      expect(await newMain.hasComponent(stRSR.address)).to.equal(true)
     })
   })
 
