@@ -278,7 +278,7 @@ describe('Issuance (previously Issuer contract)', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Check asset value
-      expect(await facade.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
     })
 
     it('Should issue RTokens correctly for more complex basket multiple users', async function () {
@@ -365,7 +365,7 @@ describe('Issuance (previously Issuer contract)', () => {
       expect(await rToken.balanceOf(main.address)).to.equal(0)
 
       // Check asset value at this point
-      expect(await facade.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
 
       // Issue rTokens
       await rToken.connect(addr2).issue(issueAmount)
@@ -406,7 +406,7 @@ describe('Issuance (previously Issuer contract)', () => {
       expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmount)
 
       // Check asset value
-      expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
     })
 
     it('Should return maxIssuable correctly', async () => {
@@ -499,7 +499,7 @@ describe('Issuance (previously Issuer contract)', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check asset value at this point (still nothing issued)
-      expect(await facade.totalAssetValue()).to.equal(0)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(0)
 
       // Process 4 blocks
       await advanceTime(100)
@@ -514,7 +514,7 @@ describe('Issuance (previously Issuer contract)', () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
 
       // Check asset value
-      expect(await facade.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
     })
 
     it('Should process issuances in multiple attempts (using issuanceRate)', async function () {
@@ -580,7 +580,7 @@ describe('Issuance (previously Issuer contract)', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Check asset value at this point (still nothing issued beyond initial amount)
-      expect(await facade.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
 
       // Process slow mintings one more time
       advanceBlocks(1)
@@ -594,7 +594,7 @@ describe('Issuance (previously Issuer contract)', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssuanceAmt))
 
       // Check asset value
-      expect(await facade.totalAssetValue()).to.equal(issueAmount.add(newIssuanceAmt))
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.add(newIssuanceAmt))
     })
 
     it('Should process multiple issuances in the correct order', async function () {
@@ -619,19 +619,21 @@ describe('Issuance (previously Issuer contract)', () => {
 
       // Check first slow minting is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-      expect(await facade.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
 
       // Process another block to get the 2nd issuance processed
       await rToken.vest(addr1.address, 2)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
-      expect(await facade.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount))
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount))
 
       // Process another block to get the 3rd issuance processed
       await rToken.vest(addr1.address, 3)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
-      expect(await facade.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount.mul(2)))
+      expect(await facade.callStatic.totalAssetValue()).to.equal(
+        issueAmount.add(newIssueAmount.mul(2))
+      )
     })
 
     it('Should allow multiple issuances in the same block', async function () {
@@ -682,7 +684,7 @@ describe('Issuance (previously Issuer contract)', () => {
       // Check both slow mintings are confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.mul(2))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
 
       // Set automine to true again
       await hre.network.provider.send('evm_setAutomine', [true])
@@ -723,7 +725,7 @@ describe('Issuance (previously Issuer contract)', () => {
       // Check first slow mintings is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await facade.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
 
       // Process issuance 2
       await rToken.vest(addr1.address, 2)
@@ -731,7 +733,7 @@ describe('Issuance (previously Issuer contract)', () => {
       // Check second mintings is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await facade.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount))
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.add(newIssueAmount))
     })
 
     it('Should allow the issuer to rollback minting', async function () {
@@ -779,7 +781,7 @@ describe('Issuance (previously Issuer contract)', () => {
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
       // Check total asset value did not change
-      expect(await facade.totalAssetValue()).to.equal(0)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(0)
 
       // Another call will not do anything, will not revert
       await rToken.connect(addr1).cancel(1, true)
@@ -852,7 +854,7 @@ describe('Issuance (previously Issuer contract)', () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check total asset value did not change
-      expect(await facade.totalAssetValue()).to.equal(0)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(0)
     })
   })
 
@@ -892,7 +894,7 @@ describe('Issuance (previously Issuer contract)', () => {
         // Check balances
         expect(await rToken.balanceOf(addr1.address)).to.equal(redeemAmount)
         expect(await rToken.totalSupply()).to.equal(redeemAmount)
-        expect(await facade.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
 
         // Redeem rTokens
         await rToken.connect(addr1).redeem(redeemAmount)
@@ -907,7 +909,7 @@ describe('Issuance (previously Issuer contract)', () => {
         expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
         // Check asset value
-        expect(await facade.totalAssetValue()).to.equal(issueAmount.sub(redeemAmount))
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.sub(redeemAmount))
       })
 
       it('Should redeem RTokens correctly for multiple users', async function () {
@@ -919,19 +921,21 @@ describe('Issuance (previously Issuer contract)', () => {
         await token1.connect(addr2).approve(rToken.address, initialBal)
         await token2.connect(addr2).approve(rToken.address, initialBal)
         await token3.connect(addr2).approve(rToken.address, initialBal)
-        expect(await facade.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
 
         //Issue rTokens
         await rToken.connect(addr2).issue(issueAmount)
 
         // Check asset value
-        expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
 
         // Redeem rTokens
         await rToken.connect(addr1).redeem(redeemAmount)
 
         // Check asset value
-        expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2).sub(redeemAmount))
+        expect(await facade.callStatic.totalAssetValue()).to.equal(
+          issueAmount.mul(2).sub(redeemAmount)
+        )
 
         // Redeem rTokens with another user
         await rToken.connect(addr2).redeem(redeemAmount)
@@ -953,7 +957,9 @@ describe('Issuance (previously Issuer contract)', () => {
         expect(await token3.balanceOf(addr2.address)).to.equal(initialBal)
 
         // Check asset value
-        expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2).sub(redeemAmount.mul(2)))
+        expect(await facade.callStatic.totalAssetValue()).to.equal(
+          issueAmount.mul(2).sub(redeemAmount.mul(2))
+        )
       })
     })
   })

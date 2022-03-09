@@ -247,7 +247,7 @@ describe('MainP0 contract', () => {
       // Check other values
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await facade.totalAssetValue()).to.equal(0)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(0)
 
       // Check RToken price
       expect(await rToken.price()).to.equal(fp('1'))
@@ -995,7 +995,7 @@ describe('MainP0 contract', () => {
       // Not updated so basket last changed is not set
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(1))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await facade.totalAssetValue()).to.equal(0)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(0)
     })
   })
 })

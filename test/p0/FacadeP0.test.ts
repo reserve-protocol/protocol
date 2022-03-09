@@ -120,18 +120,5 @@ describe('FacadeP0 contract', () => {
       expect(await facade.callStatic.maxIssuable(addr2.address)).to.equal(bn('4000e18'))
       expect(await facade.callStatic.maxIssuable(other.address)).to.equal(0)
     })
-
-    it('Should return currentBacking correctly', async () => {
-      const [tokens, amounts] = await facade.currentBacking()
-
-      // Check token addresses
-      expect(tokens[0]).to.equal(token.address)
-      expect(tokens[1]).to.equal(usdc.address)
-      expect(tokens[2]).to.equal(aToken.address)
-      expect(tokens[3]).to.equal(cToken.address)
-
-      // Check quantities
-      expect(amounts).to.eql([bn('25e18'), bn('25e6'), bn('25e18'), bn('25e8')])
-    })
   })
 })

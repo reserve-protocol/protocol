@@ -45,16 +45,6 @@ contract FacadeP0 is IFacade {
         main.rToken().claimAndSweepRewards();
     }
 
-    /// `passthrough`
-    function doFurnaceMelting() external {
-        main.furnace().melt();
-    }
-
-    /// `passthrough`
-    function ensureBasket() external {
-        main.basketHandler().ensureBasket();
-    }
-
     /// `staticCall`
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external returns (uint256) {
@@ -85,9 +75,10 @@ contract FacadeP0 is IFacade {
         return main.stRSR().exchangeRate();
     }
 
-    /// `view`
+    /// `staticCall`
     /// @return total {UoA} An estimate of the total value of all assets held
-    function totalAssetValue() external view returns (Fix total) {
+    function totalAssetValue() external returns (Fix total) {
+        main.poke();
         IAssetRegistry reg = main.assetRegistry();
         address backingManager = address(main.backingManager());
 
@@ -100,20 +91,6 @@ contract FacadeP0 is IFacade {
             ) {
                 total = total.plus(asset.bal(backingManager).mul(asset.price()));
             }
-        }
-    }
-
-    /// `view`
-    function currentBacking()
-        external
-        view
-        returns (address[] memory tokens, uint256[] memory quantities)
-    {
-        tokens = main.basketHandler().tokens();
-        quantities = new uint256[](tokens.length);
-
-        for (uint256 j = 0; j < tokens.length; j++) {
-            quantities[j] += IERC20(tokens[j]).balanceOf(address(main.backingManager()));
         }
     }
 }

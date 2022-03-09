@@ -270,8 +270,7 @@ describe('FurnaceP0 contract', () => {
       const decayFn = makeDecayFn(await furnace.ratio())
       const expAmt = decayFn(hndAmt, 2) // 2 periods
 
-      // Melt - via facade (same result)
-      await expect(facade.doFurnaceMelting()).to.emit(rToken, 'Melted').withArgs(hndAmt.sub(expAmt))
+      await expect(furnace.melt()).to.emit(rToken, 'Melted').withArgs(hndAmt.sub(expAmt))
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)

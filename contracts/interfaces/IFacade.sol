@@ -13,21 +13,12 @@ interface IFacade {
 
     function claimRewards() external;
 
-    function doFurnaceMelting() external;
-
-    function ensureBasket() external;
-
     /// @return How many RToken `account` can issue given current holdings
     function maxIssuable(address account) external returns (uint256);
-
-    function totalAssetValue() external view returns (Fix total);
-
-    function currentBacking()
-        external
-        view
-        returns (address[] memory tokens, uint256[] memory quantities);
 
     function currentAssets() external returns (address[] memory tokens, uint256[] memory amounts);
 
     function stRSRExchangeRate() external returns (Fix);
+
+    function totalAssetValue() external returns (Fix total);
 }

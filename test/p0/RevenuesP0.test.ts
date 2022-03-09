@@ -1097,7 +1097,7 @@ describe('Revenues', () => {
 
         // Check Price and Assets value
         expect(await rToken.price()).to.equal(fp('1'))
-        expect(await facade.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Increase redemption rate for AToken to double
@@ -1107,7 +1107,7 @@ describe('Revenues', () => {
         const excessValue: BigNumber = issueAmount.div(2)
         const excessQuantity: BigNumber = excessValue.div(2) // Because each unit is now worth $2
         expect(await rToken.price()).to.equal(fp('1'))
-        expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessValue))
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.add(excessValue))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check status of destinations at this point
@@ -1133,7 +1133,7 @@ describe('Revenues', () => {
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
         expect(await rToken.price()).to.equal(fp('1'))
-        expect(await facade.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
         // Check destinations at this stage
@@ -1194,7 +1194,7 @@ describe('Revenues', () => {
 
         // Check Price (unchanged) and Assets value (unchanged)
         expect(await rToken.price()).to.equal(fp('1'))
-        expect(await facade.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
         // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace
@@ -1215,7 +1215,7 @@ describe('Revenues', () => {
 
         // Check Price and Assets value
         expect(await rToken.price()).to.equal(fp('1'))
-        expect(await facade.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Increase redemption rate for AToken by 2%
@@ -1226,7 +1226,7 @@ describe('Revenues', () => {
         const excessValue: BigNumber = issueAmount.mul(1).div(100)
         const excessQuantity: BigNumber = divCeil(excessValue.mul(BN_SCALE_FACTOR), rate) // Because each unit is now worth $1.02
         expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
-        expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessValue))
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.add(excessValue))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check status of destinations at this point
@@ -1256,7 +1256,7 @@ describe('Revenues', () => {
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
         expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
-        expect(near(await facade.totalAssetValue(), issueAmount, 2)).to.equal(true)
+        expect(near(await facade.callStatic.totalAssetValue(), issueAmount, 2)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
         // Check destinations at this stage
@@ -1320,7 +1320,7 @@ describe('Revenues', () => {
 
         //  Check Price (unchanged) and Assets value (unchanged)
         expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
-        expect(near(await facade.totalAssetValue(), issueAmount, 2)).to.equal(true)
+        expect(near(await facade.callStatic.totalAssetValue(), issueAmount, 2)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
         // Check balances sent to corresponding destinations
@@ -1336,7 +1336,7 @@ describe('Revenues', () => {
 
         // Check Price and Assets value
         expect(await rToken.price()).to.equal(fp('1'))
-        expect(await facade.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Change redemption rate for AToken and CToken to double
@@ -1345,7 +1345,7 @@ describe('Revenues', () => {
 
         // Check Price (unchanged) and Assets value (now doubled)
         expect(await rToken.price()).to.equal(fp('1'))
-        expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check status of destinations at this point
@@ -1372,7 +1372,7 @@ describe('Revenues', () => {
 
         // Check Price (unchanged) and Assets value - Supply has doubled
         expect(await rToken.price()).to.equal(fp('1'))
-        expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
         expect(await rToken.totalSupply()).to.equal(newTotalSupply)
 
         // Check destinations after newly minted tokens
@@ -1416,7 +1416,7 @@ describe('Revenues', () => {
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
         expect(await rToken.price()).to.equal(updatedRTokenPrice)
-        expect(await facade.totalAssetValue()).to.equal(issueAmount.mul(2))
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
 
         // Check no funds in Market
         expect(await rToken.balanceOf(market.address)).to.equal(0)
@@ -1432,7 +1432,7 @@ describe('Revenues', () => {
 
         // Check Price and Assets value
         expect(await rToken.price()).to.equal(fp('1'))
-        expect(await facade.totalAssetValue()).to.equal(issueAmount)
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Change redemption rates for AToken and CToken - Higher for the AToken
@@ -1442,7 +1442,9 @@ describe('Revenues', () => {
         // Check Price (unchanged) and Assets value (now 80% higher)
         const excessTotalValue: BigNumber = issueAmount.mul(80).div(100)
         expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
-        expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessTotalValue))
+        expect(await facade.callStatic.totalAssetValue()).to.equal(
+          issueAmount.add(excessTotalValue)
+        )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check status of destinations and traders at this point
@@ -1502,7 +1504,7 @@ describe('Revenues', () => {
 
         // Check Price (unchanged) and Assets value (excess collateral not counted anymore) - Supply has increased
         expect(await rToken.price()).to.equal(fp('1'))
-        expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessRToken))
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.add(excessRToken))
         expect(await rToken.totalSupply()).to.equal(newTotalSupply)
 
         // Check destinations after newly minted tokens
@@ -1609,7 +1611,7 @@ describe('Revenues', () => {
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
         expect(await rToken.price()).to.equal(updatedRTokenPrice)
-        expect(await facade.totalAssetValue()).to.equal(issueAmount.add(excessRToken))
+        expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.add(excessRToken))
 
         //  Check destinations
         expect(await rsr.balanceOf(stRSR.address)).to.equal(
