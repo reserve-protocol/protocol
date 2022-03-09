@@ -109,7 +109,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         // ==== Compute and accept collateral ====
         Fix amtBaskets = (totalSupply() > 0) // {BU}
             ? basketsNeeded.mulu(amtRToken).divuRound(totalSupply()) // {BU * qRTok / qRTok}
-            : main.assetRegistry().toAsset(this).fromQ(toFix(amtRToken)); // {qRTok / qRTok}
+            : toFixWithShift(amtRToken, -int8(decimals())); // {qRTok / qRTok}
 
         address[] memory erc20s;
         (erc20s, deposits) = basketHandler.quote(amtBaskets, RoundingApproach.CEIL);
@@ -296,10 +296,9 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     function maxIssuable(address account) external view returns (uint256) {
         // {BU}
         Fix held = main.basketHandler().basketsHeldBy(account);
-        IAsset rTokenAsset = main.assetRegistry().toAsset(this);
 
         // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
-        if (basketsNeeded.eq(FIX_ZERO)) return rTokenAsset.toQ(held).floor();
+        if (basketsNeeded.eq(FIX_ZERO)) return held.shiftLeft(int8(decimals())).floor();
 
         // {qRTok} = {BU} * {qRTok} / {BU}
         return held.mulu(totalSupply()).div(basketsNeeded).floor();
@@ -307,12 +306,10 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
 
     /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
     function price() external view returns (Fix p) {
-        IAsset asset = main.assetRegistry().toAsset(this);
-
         if (totalSupply() == 0) return main.basketHandler().price();
 
+        Fix supply = toFixWithShift(totalSupply(), -int8(decimals()));
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
-        Fix supply = asset.fromQ(toFix(totalSupply()));
         return main.basketHandler().price().mul(basketsNeeded).div(supply);
     }
 

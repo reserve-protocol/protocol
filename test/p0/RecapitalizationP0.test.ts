@@ -682,7 +682,7 @@ describe('MainP0 contract', () => {
         expect(await rToken.price()).to.equal(fp('0.99'))
       })
 
-      it.only('Should recapitalize correctly when switching basket - Using RSR for remainder', async () => {
+      it('Should recapitalize correctly when switching basket - Using RSR for remainder', async () => {
         // Set prime basket
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 

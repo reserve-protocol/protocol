@@ -80,9 +80,9 @@ describe('AssetsP0 contracts', () => {
     for (let i = 0; i < basket.length; i++) {
       const tok = await ethers.getContractAt('ERC20Mock', await basket[i].erc20())
       await tok.connect(wallet).mint(wallet.address, amt)
-      await tok.connect(wallet).approve(issuer.address, amt)
+      await tok.connect(wallet).approve(rToken.address, amt)
     }
-    await issuer.connect(wallet).issue(amt)
+    await rToken.connect(wallet).issue(amt)
   })
 
   describe('Deployment', () => {

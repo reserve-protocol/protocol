@@ -1208,7 +1208,7 @@ describe('Revenues', () => {
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      it('Should handle slight increase in collateral correctly - full cycle', async () => {
+      it.only('Should handle slight increase in collateral correctly - full cycle', async () => {
         // Advance time to get next reward
         await advanceTime(config.rewardPeriod.toString())
 
