@@ -6,13 +6,13 @@ import hre, { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveLendingPoolMockP0,
-  AssetP0,
-  ATokenFiatCollateralP0,
-  CollateralP0,
-  CompoundPricedAssetP0,
-  ComptrollerMockP0,
-  CTokenFiatCollateralP0,
+  AaveLendingPoolMock,
+  Asset,
+  ATokenFiatCollateral,
+  Collateral as AbstractCollateral,
+  CompoundPricedAsset,
+  ComptrollerMock,
+  CTokenFiatCollateral,
   CTokenMock,
   DeployerP0,
   ERC20Mock,
@@ -21,7 +21,7 @@ import {
   MainP0,
   MarketMock,
   RevenueTraderP0,
-  RTokenAssetP0,
+  RTokenAsset,
   RTokenP0,
   StaticATokenMock,
   StRSRP0,
@@ -50,12 +50,12 @@ describe('Issuance (previously Issuer contract)', () => {
 
   // Non-backing assets
   let rsr: ERC20Mock
-  let rsrAsset: AssetP0
-  let compAsset: AssetP0
-  let compoundMock: ComptrollerMockP0
+  let rsrAsset: Asset
+  let compAsset: Asset
+  let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
-  let aaveAsset: AssetP0
-  let aaveMock: AaveLendingPoolMockP0
+  let aaveAsset: Asset
+  let aaveMock: AaveLendingPoolMock
 
   // Trading
   let market: MarketMock
@@ -68,10 +68,10 @@ describe('Issuance (previously Issuer contract)', () => {
   let token1: USDCMock
   let token2: StaticATokenMock
   let token3: CTokenMock
-  let collateral0: CollateralP0
-  let collateral1: CollateralP0
-  let collateral2: ATokenFiatCollateralP0
-  let collateral3: CTokenFiatCollateralP0
+  let collateral0: Collateral
+  let collateral1: Collateral
+  let collateral2: ATokenFiatCollateral
+  let collateral3: CTokenFiatCollateral
   let basket: Collateral[]
   let basketsNeededAmts: BigNumber[]
   let initialBasketNonce: BigNumber
@@ -145,10 +145,10 @@ describe('Issuance (previously Issuer contract)', () => {
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
 
-    collateral0 = <CollateralP0>basket[0]
-    collateral1 = <CollateralP0>basket[1]
-    collateral2 = <ATokenFiatCollateralP0>basket[2]
-    collateral3 = <CTokenFiatCollateralP0>basket[3]
+    collateral0 = <Collateral>basket[0]
+    collateral1 = <Collateral>basket[1]
+    collateral2 = <ATokenFiatCollateral>basket[2]
+    collateral3 = <CTokenFiatCollateral>basket[3]
 
     initialBasketNonce = (await basketHandler.lastSet())[0]
 

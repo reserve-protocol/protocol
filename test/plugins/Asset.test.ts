@@ -4,15 +4,15 @@ import { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveOracleMockP0,
-  AssetP0,
-  CompoundOracleMockP0,
+  AaveOracleMock,
+  Asset,
+  CompoundOracleMock,
   ERC20Mock,
-  RTokenAssetP0,
+  RTokenAsset,
   RTokenP0,
   USDCMock,
 } from '../../typechain'
-import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from '../p0/utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -28,15 +28,15 @@ describe('AssetsP0 contracts', () => {
   let token1: ERC20Mock
 
   // Assets
-  let rsrAsset: AssetP0
-  let compAsset: AssetP0
-  let aaveAsset: AssetP0
-  let rTokenAsset: RTokenAssetP0
+  let rsrAsset: Asset
+  let compAsset: Asset
+  let aaveAsset: Asset
+  let rTokenAsset: RTokenAsset
   let basket: Collateral[]
 
   // Oracles
-  let compoundOracleInternal: CompoundOracleMockP0
-  let aaveOracleInternal: AaveOracleMockP0
+  let compoundOracleInternal: CompoundOracleMock
+  let aaveOracleInternal: AaveOracleMock
 
   // Config
   let config: IConfig

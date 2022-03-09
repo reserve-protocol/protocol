@@ -77,20 +77,20 @@ contract DeployerP0 is IDeployer {
         Ownable(address(periphery.furnace)).transferOwnership(owner);
         periphery.market = market;
         periphery.assets = new IAsset[](4);
-        periphery.assets[0] = new RTokenAssetP0(rToken, params.maxAuctionSize, main);
-        periphery.assets[1] = new AavePricedAssetP0(
+        periphery.assets[0] = new RTokenAsset(rToken, params.maxAuctionSize, main);
+        periphery.assets[1] = new AavePricedAsset(
             rsr,
             params.maxAuctionSize,
             comptroller,
             aaveLendingPool
         );
-        periphery.assets[2] = new AavePricedAssetP0(
+        periphery.assets[2] = new AavePricedAsset(
             aave,
             params.maxAuctionSize,
             comptroller,
             aaveLendingPool
         );
-        periphery.assets[3] = new CompoundPricedAssetP0(comp, params.maxAuctionSize, comptroller);
+        periphery.assets[3] = new CompoundPricedAsset(comp, params.maxAuctionSize, comptroller);
 
         // Core
         Core memory components;

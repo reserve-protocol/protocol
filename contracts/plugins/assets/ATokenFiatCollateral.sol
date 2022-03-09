@@ -30,7 +30,7 @@ interface AToken {
 
 // ==== End External ====
 
-contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
+contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
@@ -47,7 +47,7 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
         IAaveLendingPool aaveLendingPool_,
         IERC20 rewardERC20_
     )
-        CollateralP0(
+        Collateral(
             erc20_,
             maxAuctionSize_,
             defaultThreshold_,
@@ -55,7 +55,7 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
             referenceERC20_,
             bytes32(bytes("USD"))
         )
-        AaveOracleMixinP0(comptroller_, aaveLendingPool_)
+        AaveOracleMixin(comptroller_, aaveLendingPool_)
     {
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok();

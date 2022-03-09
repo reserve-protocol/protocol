@@ -26,13 +26,13 @@ interface IAaveOracle {
 
 // ==== End External Interfaces ====
 
-abstract contract AaveOracleMixinP0 is CompoundOracleMixinP0 {
+abstract contract AaveOracleMixin is CompoundOracleMixin {
     using FixLib for Fix;
 
     IAaveLendingPool public immutable aaveLendingPool;
 
     constructor(IComptroller comptroller_, IAaveLendingPool aaveLendingPool_)
-        CompoundOracleMixinP0(comptroller_)
+        CompoundOracleMixin(comptroller_)
     {
         aaveLendingPool = aaveLendingPool_;
     }

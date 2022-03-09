@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/plugins/assets/abstract/Collateral.sol";
 import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 
-contract CompoundPricedFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
+contract CompoundPricedFiatCollateral is CompoundOracleMixin, Collateral {
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
@@ -14,7 +14,7 @@ contract CompoundPricedFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
         uint256 delayUntilDefault_,
         IComptroller comptroller_
     )
-        CollateralP0(
+        Collateral(
             erc20_,
             maxAuctionSize_,
             defaultThreshold_,
@@ -22,7 +22,7 @@ contract CompoundPricedFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
             erc20_,
             bytes32(bytes("USD"))
         )
-        CompoundOracleMixinP0(comptroller_)
+        CompoundOracleMixin(comptroller_)
     {}
 
     // solhint-enable no-empty-blocks

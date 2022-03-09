@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
 
-abstract contract AssetP0 is IAsset {
+abstract contract Asset is IAsset {
     using FixLib for Fix;
 
     IERC20Metadata public immutable erc20;

@@ -5,13 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/plugins/assets/abstract/Asset.sol";
 import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 
-contract CompoundPricedAssetP0 is CompoundOracleMixinP0, AssetP0 {
+contract CompoundPricedAsset is CompoundOracleMixin, Asset {
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
         Fix maxAuctionSize_,
         IComptroller comptroller_
-    ) CompoundOracleMixinP0(comptroller_) AssetP0(erc20_, maxAuctionSize_) {}
+    ) CompoundOracleMixin(comptroller_) Asset(erc20_, maxAuctionSize_) {}
 
     // solhint-enable no-empty-blocks
 

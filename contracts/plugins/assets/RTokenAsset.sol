@@ -5,14 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/plugins/assets/abstract/Asset.sol";
 import "contracts/interfaces/IMain.sol";
 
-contract RTokenAssetP0 is AssetP0 {
+contract RTokenAsset is Asset {
     IMain public immutable main;
 
     constructor(
         IERC20Metadata erc20_,
         Fix maxAuctionSize_,
         IMain main_
-    ) AssetP0(erc20_, maxAuctionSize_) {
+    ) Asset(erc20_, maxAuctionSize_) {
         main = main_;
     }
 

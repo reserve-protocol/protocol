@@ -5,12 +5,12 @@ import { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn } from '../../common/numbers'
 import {
-  AaveLendingPoolMockP0,
-  AssetP0,
+  AaveLendingPoolMock,
+  Asset,
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
-  ComptrollerMockP0,
+  ComptrollerMock,
   DeployerP0,
   DistributorP0,
   ERC20Mock,
@@ -18,7 +18,7 @@ import {
   FurnaceP0,
   MainP0,
   MarketMock,
-  RTokenAssetP0,
+  RTokenAsset,
   RTokenP0,
   StRSRP0,
   TraderP0,
@@ -38,15 +38,15 @@ describe('DeployerP0 contract', () => {
 
   // RSR
   let rsr: ERC20Mock
-  let rsrAsset: AssetP0
+  let rsrAsset: Asset
 
   // AAVE and Compound
   let compToken: ERC20Mock
-  let compAsset: AssetP0
-  let compoundMock: ComptrollerMockP0
+  let compAsset: Asset
+  let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
-  let aaveAsset: AssetP0
-  let aaveMock: AaveLendingPoolMockP0
+  let aaveAsset: Asset
+  let aaveMock: AaveLendingPoolMock
 
   // Market / Facade
   let market: MarketMock
@@ -54,7 +54,7 @@ describe('DeployerP0 contract', () => {
 
   // Core contracts
   let rToken: RTokenP0
-  let rTokenAsset: RTokenAssetP0
+  let rTokenAsset: RTokenAsset
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0

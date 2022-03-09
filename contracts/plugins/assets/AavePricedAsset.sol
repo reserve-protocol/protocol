@@ -5,14 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/plugins/assets/abstract/Asset.sol";
 import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
 
-contract AavePricedAssetP0 is AaveOracleMixinP0, AssetP0 {
+contract AavePricedAsset is AaveOracleMixin, Asset {
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
         Fix maxAuctionSize_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_
-    ) AaveOracleMixinP0(comptroller_, aaveLendingPool_) AssetP0(erc20_, maxAuctionSize_) {}
+    ) AaveOracleMixin(comptroller_, aaveLendingPool_) Asset(erc20_, maxAuctionSize_) {}
 
     // solhint-enable no-empty-blocks
 

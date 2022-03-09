@@ -5,14 +5,14 @@ import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveOracleMockP0,
-  AavePricedFiatCollateralP0,
-  ATokenFiatCollateralP0,
+  AaveOracleMock,
+  AavePricedFiatCollateral,
+  ATokenFiatCollateral,
   BackingManagerP0,
-  CompoundOracleMockP0,
-  CompoundPricedFiatCollateralP0,
-  ComptrollerMockP0,
-  CTokenFiatCollateralP0,
+  CompoundOracleMock,
+  CompoundPricedFiatCollateral,
+  ComptrollerMock,
+  CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
   FacadeP0,
@@ -21,14 +21,14 @@ import {
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from '../p0/utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
-describe('CollateralP0 contracts', () => {
+describe('Collateral contracts', () => {
   let owner: SignerWithAddress
 
   let rToken: RTokenP0
@@ -42,15 +42,15 @@ describe('CollateralP0 contracts', () => {
   let compToken: ERC20Mock
 
   // Assets
-  let tokenCollateral: AavePricedFiatCollateralP0
-  let usdcCollateral: AavePricedFiatCollateralP0
-  let aTokenCollateral: ATokenFiatCollateralP0
-  let cTokenCollateral: CTokenFiatCollateralP0
+  let tokenCollateral: AavePricedFiatCollateral
+  let usdcCollateral: AavePricedFiatCollateral
+  let aTokenCollateral: ATokenFiatCollateral
+  let cTokenCollateral: CTokenFiatCollateral
 
   // Aave / Compound
-  let compoundMock: ComptrollerMockP0
-  let compoundOracleInternal: CompoundOracleMockP0
-  let aaveOracleInternal: AaveOracleMockP0
+  let compoundMock: ComptrollerMock
+  let compoundOracleInternal: CompoundOracleMock
+  let aaveOracleInternal: AaveOracleMock
 
   // Config
   let config: IConfig
@@ -91,10 +91,10 @@ describe('CollateralP0 contracts', () => {
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
-    tokenCollateral = <AavePricedFiatCollateralP0>basket[0]
-    usdcCollateral = <AavePricedFiatCollateralP0>basket[1]
-    aTokenCollateral = <ATokenFiatCollateralP0>basket[2]
-    cTokenCollateral = <CTokenFiatCollateralP0>basket[3]
+    tokenCollateral = <AavePricedFiatCollateral>basket[0]
+    usdcCollateral = <AavePricedFiatCollateral>basket[1]
+    aTokenCollateral = <ATokenFiatCollateral>basket[2]
+    cTokenCollateral = <CTokenFiatCollateral>basket[3]
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenCollateral.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcCollateral.erc20())
     aToken = <StaticATokenMock>(
@@ -488,14 +488,14 @@ describe('CollateralP0 contracts', () => {
 
   // Tests specific to the CompoundFiatCollateral.sol contract, not used by default in fixture
   describe('Compound Fiat Collateral', () => {
-    let compoundTokenAsset: CompoundPricedFiatCollateralP0
-    let compoundUsdcAsset: CompoundPricedFiatCollateralP0
+    let compoundTokenAsset: CompoundPricedFiatCollateral
+    let compoundUsdcAsset: CompoundPricedFiatCollateral
 
     beforeEach(async () => {
       const CompoundFiatCollFactory: ContractFactory = await ethers.getContractFactory(
-        'CompoundPricedFiatCollateralP0'
+        'CompoundPricedFiatCollateral'
       )
-      compoundTokenAsset = <CompoundPricedFiatCollateralP0>(
+      compoundTokenAsset = <CompoundPricedFiatCollateral>(
         await CompoundFiatCollFactory.deploy(
           token.address,
           await tokenCollateral.maxAuctionSize(),
@@ -504,7 +504,7 @@ describe('CollateralP0 contracts', () => {
           await compoundMock.address
         )
       )
-      compoundUsdcAsset = <CompoundPricedFiatCollateralP0>(
+      compoundUsdcAsset = <CompoundPricedFiatCollateral>(
         await CompoundFiatCollFactory.deploy(
           usdc.address,
           await usdcCollateral.maxAuctionSize(),

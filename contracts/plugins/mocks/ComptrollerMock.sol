@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 import "./ERC20Mock.sol";
 
-contract ComptrollerMockP0 is IComptroller {
+contract ComptrollerMock is IComptroller {
     ICompoundOracle private _compoundOracle;
 
     mapping(address => uint256) public compBalances;

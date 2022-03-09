@@ -7,12 +7,12 @@ import { expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
 import { IConfig } from '../../test/p0/utils/fixtures'
 import {
-  AaveLendingAddrProviderMockP0,
-  AaveLendingPoolMockP0,
-  AaveOracleMockP0,
-  AssetP0,
-  CompoundOracleMockP0,
-  ComptrollerMockP0,
+  AaveLendingAddrProviderMock,
+  AaveLendingPoolMock,
+  AaveOracleMock,
+  Asset,
+  CompoundOracleMock,
+  ComptrollerMock,
   DeployerP0,
   ERC20Mock,
   MainP0,
@@ -47,43 +47,43 @@ const deployDependencies = async (hre: HardhatRuntimeEnvironment, deployer: Sign
 
   // Deploy Comp and Aave Oracle Mocks
   const CompoundOracleMockFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'CompoundOracleMockP0'
+    'CompoundOracleMock'
   )
-  const compoundOracle: CompoundOracleMockP0 = <CompoundOracleMockP0>(
+  const compoundOracle: CompoundOracleMock = <CompoundOracleMock>(
     await CompoundOracleMockFactory.connect(deployer).deploy()
   )
   await compoundOracle.deployed()
 
   const ComptrollerMockFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'ComptrollerMockP0'
+    'ComptrollerMock'
   )
-  const compoundMock: ComptrollerMockP0 = <ComptrollerMockP0>(
+  const compoundMock: ComptrollerMock = <ComptrollerMock>(
     await ComptrollerMockFactory.connect(deployer).deploy(compoundOracle.address)
   )
   await compoundMock.deployed()
 
   const AaveOracleMockFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'AaveOracleMockP0'
+    'AaveOracleMock'
   )
   const weth: ERC20Mock = <ERC20Mock>await ERC20.connect(deployer).deploy('Wrapped ETH', 'WETH')
   await weth.deployed()
-  const aaveOracle: AaveOracleMockP0 = <AaveOracleMockP0>(
+  const aaveOracle: AaveOracleMock = <AaveOracleMock>(
     await AaveOracleMockFactory.connect(deployer).deploy(weth.address)
   )
   await aaveOracle.deployed()
 
   const AaveAddrProviderFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'AaveLendingAddrProviderMockP0'
+    'AaveLendingAddrProviderMock'
   )
-  const aaveAddrProvider: AaveLendingAddrProviderMockP0 = <AaveLendingAddrProviderMockP0>(
+  const aaveAddrProvider: AaveLendingAddrProviderMock = <AaveLendingAddrProviderMock>(
     await AaveAddrProviderFactory.connect(deployer).deploy(aaveOracle.address)
   )
   await aaveAddrProvider.deployed()
 
   const AaveLendingPoolMockFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'AaveLendingPoolMockP0'
+    'AaveLendingPoolMock'
   )
-  const aaveMock: AaveLendingPoolMockP0 = <AaveLendingPoolMockP0>(
+  const aaveMock: AaveLendingPoolMock = <AaveLendingPoolMock>(
     await AaveLendingPoolMockFactory.connect(deployer).deploy(aaveAddrProvider.address)
   )
   await aaveMock.deployed()

@@ -5,14 +5,14 @@ import { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../../common/constants'
 import { bn, divCeil, fp, near } from '../../common/numbers'
 import {
-  AaveLendingPoolMockP0,
-  AavePricedAssetP0,
-  AssetP0,
-  ATokenFiatCollateralP0,
-  CollateralP0,
-  CompoundPricedAssetP0,
-  ComptrollerMockP0,
-  CTokenFiatCollateralP0,
+  AaveLendingPoolMock,
+  AavePricedAsset,
+  Asset,
+  ATokenFiatCollateral,
+  Collateral as AbstractCollateral,
+  CompoundPricedAsset,
+  ComptrollerMock,
+  CTokenFiatCollateral,
   CTokenMock,
   DeployerP0,
   ERC20Mock,
@@ -21,7 +21,7 @@ import {
   MainP0,
   MarketMock,
   RevenueTraderP0,
-  RTokenAssetP0,
+  RTokenAsset,
   RTokenP0,
   StaticATokenMock,
   StRSRP0,
@@ -70,13 +70,13 @@ describe('Revenues', () => {
 
   // Non-backing assets
   let rsr: ERC20Mock
-  let rsrAsset: AssetP0
+  let rsrAsset: Asset
   let compToken: ERC20Mock
-  let compAsset: AssetP0
-  let compoundMock: ComptrollerMockP0
+  let compAsset: Asset
+  let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
-  let aaveAsset: AssetP0
-  let aaveMock: AaveLendingPoolMockP0
+  let aaveAsset: Asset
+  let aaveMock: AaveLendingPoolMock
 
   // Trading
   let market: MarketMock
@@ -89,10 +89,10 @@ describe('Revenues', () => {
   let token1: USDCMock
   let token2: StaticATokenMock
   let token3: CTokenMock
-  let collateral0: CollateralP0
-  let collateral1: CollateralP0
-  let collateral2: ATokenFiatCollateralP0
-  let collateral3: CTokenFiatCollateralP0
+  let collateral0: Collateral
+  let collateral1: Collateral
+  let collateral2: ATokenFiatCollateral
+  let collateral3: CTokenFiatCollateral
   let basketsNeededAmts: BigNumber[]
 
   // Config values
@@ -101,7 +101,7 @@ describe('Revenues', () => {
 
   // Contracts to retrieve after deploy
   let rToken: RTokenP0
-  let rTokenAsset: RTokenAssetP0
+  let rTokenAsset: RTokenAsset
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
@@ -166,10 +166,10 @@ describe('Revenues', () => {
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
 
-    collateral0 = <CollateralP0>basket[0]
-    collateral1 = <CollateralP0>basket[1]
-    collateral2 = <ATokenFiatCollateralP0>basket[2]
-    collateral3 = <CTokenFiatCollateralP0>basket[3]
+    collateral0 = <Collateral>basket[0]
+    collateral1 = <Collateral>basket[1]
+    collateral2 = <ATokenFiatCollateral>basket[2]
+    collateral3 = <CTokenFiatCollateral>basket[3]
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -462,10 +462,8 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Set max auction size for asset
-        const AssetFactory: ContractFactory = await ethers.getContractFactory(
-          'CompoundPricedAssetP0'
-        )
-        const newCompAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
+        const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
+        const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
           await AssetFactory.deploy(compToken.address, bn('1e18'), compoundMock.address)
         )
 
@@ -584,8 +582,8 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Set max auction size for asset
-        const AssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAssetP0')
-        const newAaveAsset: AavePricedAssetP0 = <AavePricedAssetP0>(
+        const AssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAsset')
+        const newAaveAsset: AavePricedAsset = <AavePricedAsset>(
           await AssetFactory.deploy(
             aaveToken.address,
             bn('1e18'),
@@ -703,10 +701,8 @@ describe('Revenues', () => {
         await advanceTime(config.rewardPeriod.toString())
 
         // Set max auction size for asset
-        const AssetFactory: ContractFactory = await ethers.getContractFactory(
-          'CompoundPricedAssetP0'
-        )
-        const newCompAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
+        const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
+        const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
           await AssetFactory.deploy(compToken.address, bn('1e18'), compoundMock.address)
         )
 
@@ -996,16 +992,16 @@ describe('Revenues', () => {
 
     // context('With non-valid Claim Adapters', async function () {
     //   let issueAmount: BigNumber
-    //   let newATokenCollateral: ATokenFiatCollateralP0
-    //   let newCTokenCollateral: CTokenFiatCollateralP0
+    //   let newATokenCollateral: ATokenFiatCollateral
+    //   let newCTokenCollateral: CTokenFiatCollateral
     //   let nonTrustedClaimer: CompoundClaimAdapterP0
 
     //   beforeEach(async function () {
     //     issueAmount = bn('100e18')
 
     //     // Deploy new AToken with no claim adapter
-    //     const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateralP0')
-    //     newATokenCollateral = <ATokenFiatCollateralP0>(
+    //     const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
+    //     newATokenCollateral = <ATokenFiatCollateral>(
     //       await ATokenCollateralFactory.deploy(
     //         token2.address,
     //         await collateral2.maxAuctionSize(),
@@ -1027,8 +1023,8 @@ describe('Revenues', () => {
     //     )
 
     //     // Deploy new CToken with non-trusted claim adapter
-    //     const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateralP0')
-    //     newCTokenCollateral = <CTokenFiatCollateralP0>(
+    //     const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
+    //     newCTokenCollateral = <CTokenFiatCollateral>(
     //       await CTokenCollateralFactory.deploy(
     //         token3.address,
     //         await collateral3.maxAuctionSize(),

@@ -20,7 +20,7 @@ interface ICompoundOracle {
 
 // ==== End External Interfaces ====
 
-abstract contract CompoundOracleMixinP0 {
+abstract contract CompoundOracleMixin {
     using FixLib for Fix;
 
     IComptroller public immutable comptroller;

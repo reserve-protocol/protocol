@@ -5,14 +5,14 @@ import { ethers, waffle } from 'hardhat'
 
 import { BN_SCALE_FACTOR, CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { bn, divCeil, fp, near, toBNDecimals } from '../../common/numbers'
-import { AaveLendingPoolMockP0 } from '../../typechain/AaveLendingPoolMockP0'
-import { AaveOracleMockP0 } from '../../typechain/AaveOracleMockP0'
-import { AssetP0 } from '../../typechain/AssetP0'
-import { ATokenFiatCollateralP0 } from '../../typechain/ATokenFiatCollateralP0'
-import { CollateralP0 } from '../../typechain/CollateralP0'
-import { CompoundOracleMockP0 } from '../../typechain/CompoundOracleMockP0'
-import { ComptrollerMockP0 } from '../../typechain/ComptrollerMockP0'
-import { CTokenFiatCollateralP0 } from '../../typechain/CTokenFiatCollateralP0'
+import { AaveLendingPoolMock } from '../../typechain/AaveLendingPoolMock'
+import { AaveOracleMock } from '../../typechain/AaveOracleMock'
+import { Asset } from '../../typechain/Asset'
+import { ATokenFiatCollateral } from '../../typechain/ATokenFiatCollateral'
+import { Collateral as AbstractCollateral } from '../../typechain/Collateral'
+import { CompoundOracleMock } from '../../typechain/CompoundOracleMock'
+import { ComptrollerMock } from '../../typechain/ComptrollerMock'
+import { CTokenFiatCollateral } from '../../typechain/CTokenFiatCollateral'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
@@ -21,7 +21,7 @@ import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { MarketMock } from '../../typechain/MarketMock'
 import { RevenueTraderP0 } from '../../typechain/RevenueTraderP0'
-import { RTokenAssetP0 } from '../../typechain/RTokenAssetP0'
+import { RTokenAsset } from '../../typechain/RTokenAsset'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
@@ -66,15 +66,15 @@ describe('MainP0 contract', () => {
 
   // Non-backing assets
   let rsr: ERC20Mock
-  let rsrAsset: AssetP0
+  let rsrAsset: Asset
   let compToken: ERC20Mock
-  let compAsset: AssetP0
-  let compoundMock: ComptrollerMockP0
-  let compoundOracleInternal: CompoundOracleMockP0
+  let compAsset: Asset
+  let compoundMock: ComptrollerMock
+  let compoundOracleInternal: CompoundOracleMock
   let aaveToken: ERC20Mock
-  let aaveAsset: AssetP0
-  let aaveMock: AaveLendingPoolMockP0
-  let aaveOracleInternal: AaveOracleMockP0
+  let aaveAsset: Asset
+  let aaveMock: AaveLendingPoolMock
+  let aaveOracleInternal: AaveOracleMock
 
   // Trading
   let market: MarketMock
@@ -89,12 +89,12 @@ describe('MainP0 contract', () => {
   let token3: CTokenMock
   let backupToken1: ERC20Mock
   let backupToken2: ERC20Mock
-  let collateral0: CollateralP0
-  let collateral1: CollateralP0
-  let collateral2: ATokenFiatCollateralP0
-  let collateral3: CTokenFiatCollateralP0
-  let backupCollateral1: CollateralP0
-  let backupCollateral2: CollateralP0
+  let collateral0: Collateral
+  let collateral1: Collateral
+  let collateral2: ATokenFiatCollateral
+  let collateral3: CTokenFiatCollateral
+  let backupCollateral1: Collateral
+  let backupCollateral2: Collateral
   let basketsNeededAmts: BigNumber[]
   let basket: Collateral[]
 
@@ -104,7 +104,7 @@ describe('MainP0 contract', () => {
 
   // Contracts to retrieve after deploy
   let rToken: RTokenP0
-  let rTokenAsset: RTokenAssetP0
+  let rTokenAsset: RTokenAsset
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
@@ -181,16 +181,16 @@ describe('MainP0 contract', () => {
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
 
-    collateral0 = <CollateralP0>basket[0]
-    collateral1 = <CollateralP0>basket[1]
-    collateral2 = <ATokenFiatCollateralP0>basket[2]
-    collateral3 = <CTokenFiatCollateralP0>basket[3]
+    collateral0 = <Collateral>basket[0]
+    collateral1 = <Collateral>basket[1]
+    collateral2 = <ATokenFiatCollateral>basket[2]
+    collateral3 = <CTokenFiatCollateral>basket[3]
 
     // Backup tokens and collaterals - USDT and cUSDT
     backupToken1 = erc20s[2]
-    backupCollateral1 = <CollateralP0>collateral[2]
+    backupCollateral1 = <Collateral>collateral[2]
     backupToken2 = erc20s[9]
-    backupCollateral2 = <CollateralP0>collateral[9]
+    backupCollateral2 = <Collateral>collateral[9]
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -981,9 +981,9 @@ describe('MainP0 contract', () => {
 
         // Set new max auction size for asset (will require 2 auctions)
         const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
-          'AavePricedFiatCollateralP0'
+          'AavePricedFiatCollateral'
         )
-        const newCollateral0: CollateralP0 = <CollateralP0>(
+        const newCollateral0: Collateral = <Collateral>(
           await AaveCollateralFactory.deploy(
             token0.address,
             bn('25e18'),

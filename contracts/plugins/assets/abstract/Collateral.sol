@@ -10,10 +10,10 @@ import "contracts/libraries/Fixed.sol";
 import "./Asset.sol";
 
 /**
- * @title CollateralP0
+ * @title Collateral
  * @notice A general non-appreciating collateral type to be extended.
  */
-abstract contract CollateralP0 is ICollateral, AssetP0, Context {
+abstract contract Collateral is ICollateral, Asset, Context {
     using FixLib for Fix;
 
     // Default Status:
@@ -40,7 +40,7 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         bytes32 targetName_
-    ) AssetP0(erc20_, maxAuctionSize_) {
+    ) Asset(erc20_, maxAuctionSize_) {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         referenceERC20 = referenceERC20_;
@@ -78,7 +78,7 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
     }
 
     /// @return If the asset is an instance of ICollateral or not
-    function isCollateral() external pure virtual override(AssetP0, IAsset) returns (bool) {
+    function isCollateral() external pure virtual override(Asset, IAsset) returns (bool) {
         return true;
     }
 

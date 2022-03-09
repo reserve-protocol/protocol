@@ -22,7 +22,7 @@ interface ICToken {
 
 // ==== End External Interfaces ====
 
-contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
+contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
     using FixLib for Fix;
     using SafeERC20 for IERC20Metadata;
 
@@ -43,7 +43,7 @@ contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
         IComptroller comptroller_,
         IERC20 rewardERC20_
     )
-        CollateralP0(
+        Collateral(
             erc20_,
             maxAuctionSize_,
             defaultThreshold_,
@@ -51,7 +51,7 @@ contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
             referenceERC20_,
             bytes32(bytes("USD"))
         )
-        CompoundOracleMixinP0(comptroller_)
+        CompoundOracleMixin(comptroller_)
     {
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok();

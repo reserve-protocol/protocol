@@ -4,7 +4,7 @@ import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import {
-  CollateralP0,
+  Collateral as AbstractCollateral,
   CTokenMock,
   ERC20Mock,
   MainP0,
@@ -72,10 +72,10 @@ describe('RTokenP0 contract', () => {
     initialBal = bn('100e18')
 
     // Get assets and tokens
-    collateral0 = <CollateralP0>basket[0]
-    collateral1 = <CollateralP0>basket[1]
-    collateral2 = <CollateralP0>basket[2]
-    collateral3 = <CollateralP0>basket[3]
+    collateral0 = <Collateral>basket[0]
+    collateral1 = <Collateral>basket[1]
+    collateral2 = <Collateral>basket[2]
+    collateral3 = <Collateral>basket[3]
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
     token1 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral1.erc20())
     token2 = <StaticATokenMock>(

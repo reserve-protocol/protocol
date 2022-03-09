@@ -5,13 +5,13 @@ import { ethers, waffle } from 'hardhat'
 import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveLendingPoolMockP0,
-  AssetP0,
-  ATokenFiatCollateralP0,
-  CollateralP0,
-  CompoundPricedAssetP0,
-  ComptrollerMockP0,
-  CTokenFiatCollateralP0,
+  AaveLendingPoolMock,
+  Asset,
+  ATokenFiatCollateral,
+  Collateral as AbstractCollateral,
+  CompoundPricedAsset,
+  ComptrollerMock,
+  CTokenFiatCollateral,
   CTokenMock,
   DeployerP0,
   ERC20Mock,
@@ -20,7 +20,7 @@ import {
   MainP0,
   MarketMock,
   RevenueTraderP0,
-  RTokenAssetP0,
+  RTokenAsset,
   RTokenP0,
   StaticATokenMock,
   StRSRP0,
@@ -49,13 +49,13 @@ describe('MainP0 contract', () => {
 
   // Non-backing assets
   let rsr: ERC20Mock
-  let rsrAsset: AssetP0
+  let rsrAsset: Asset
   let compToken: ERC20Mock
-  let compAsset: AssetP0
-  let compoundMock: ComptrollerMockP0
+  let compAsset: Asset
+  let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
-  let aaveAsset: AssetP0
-  let aaveMock: AaveLendingPoolMockP0
+  let aaveAsset: Asset
+  let aaveMock: AaveLendingPoolMock
 
   // Trading
   let market: MarketMock
@@ -69,11 +69,11 @@ describe('MainP0 contract', () => {
   let token2: StaticATokenMock
   let token3: CTokenMock
   let newToken: ERC20Mock
-  let collateral0: CollateralP0
-  let collateral1: CollateralP0
-  let collateral2: ATokenFiatCollateralP0
-  let collateral3: CTokenFiatCollateralP0
-  let newAsset: CollateralP0
+  let collateral0: Collateral
+  let collateral1: Collateral
+  let collateral2: ATokenFiatCollateral
+  let collateral3: CTokenFiatCollateral
+  let newAsset: Collateral
   let erc20s: ERC20Mock[]
 
   // Config values
@@ -82,7 +82,7 @@ describe('MainP0 contract', () => {
 
   // Contracts to retrieve after deploy
   let rToken: RTokenP0
-  let rTokenAsset: RTokenAssetP0
+  let rTokenAsset: RTokenAsset
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
@@ -141,10 +141,10 @@ describe('MainP0 contract', () => {
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
 
-    collateral0 = <CollateralP0>basket[0]
-    collateral1 = <CollateralP0>basket[1]
-    collateral2 = <ATokenFiatCollateralP0>basket[2]
-    collateral3 = <CTokenFiatCollateralP0>basket[3]
+    collateral0 = <Collateral>basket[0]
+    collateral1 = <Collateral>basket[1]
+    collateral2 = <ATokenFiatCollateral>basket[2]
+    collateral3 = <CTokenFiatCollateral>basket[3]
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -766,8 +766,8 @@ describe('MainP0 contract', () => {
 
     it('Should allow to register Asset if Owner', async () => {
       // Setup new Asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
-      const newAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
+      const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
         await AssetFactory.deploy(
           erc20s[5].address,
           await collateral0.maxAuctionSize(),
@@ -803,8 +803,8 @@ describe('MainP0 contract', () => {
 
     it('Should allow to unregister asset if Owner', async () => {
       // Setup new Asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
-      const newAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
+      const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
         await AssetFactory.deploy(
           token0.address,
           await collateral0.maxAuctionSize(),
@@ -847,8 +847,8 @@ describe('MainP0 contract', () => {
 
     it('Should allow to swap Asset if Owner', async () => {
       // Setup new Asset - Reusing token
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAssetP0')
-      const newAsset: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
+      const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
         await AssetFactory.deploy(
           token0.address,
           await collateral0.maxAuctionSize(),
@@ -857,7 +857,7 @@ describe('MainP0 contract', () => {
       )
 
       // Setup another one with new token (cannot be used in swap)
-      const invalidAssetForSwap: CompoundPricedAssetP0 = <CompoundPricedAssetP0>(
+      const invalidAssetForSwap: CompoundPricedAsset = <CompoundPricedAsset>(
         await AssetFactory.deploy(
           erc20s[5].address,
           await collateral0.maxAuctionSize(),
