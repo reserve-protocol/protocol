@@ -287,11 +287,6 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         basketsNeeded = basketsNeeded_;
     }
 
-    function setMain(IMain main_) external onlyOwner {
-        emit MainSet(main, main_);
-        main = main_;
-    }
-
     /// @return {qRTok} How much RToken `account` can issue given current holdings
     function maxIssuable(address account) external view returns (uint256) {
         // {BU}

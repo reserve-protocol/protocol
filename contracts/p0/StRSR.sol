@@ -264,11 +264,6 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         emit RSRRewarded(payout, numPeriods);
     }
 
-    function setMain(IMain main_) external virtual onlyOwner {
-        emit MainSet(main, main_);
-        main = main_;
-    }
-
     function exchangeRate() external view returns (Fix) {
         if (totalStaked == 0) {
             return FIX_ONE;

@@ -238,11 +238,6 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
         basketsNeeded = basketsNeeded_;
     }
 
-    function setMain(IMain main_) external onlyOwner {
-        emit MainSet(main, main_);
-        main = main_;
-    }
-
     /// Tries to vest an issuance
     /// @return issued The total amount of RToken minted
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {

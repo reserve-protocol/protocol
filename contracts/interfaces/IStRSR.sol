@@ -93,9 +93,6 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
     /// Gather and payout rewards from rsrTrader. State Keeper.
     function payoutRewards() external;
 
-    /// Sets Main, only by owner
-    function setMain(IMain main) external;
-
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
     function exchangeRate() external view returns (Fix);
 }

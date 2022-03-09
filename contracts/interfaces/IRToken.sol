@@ -108,8 +108,6 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// @param amount {qTok} The amount to be melted
     function melt(uint256 amount) external;
 
-    function setMain(IMain main) external;
-
     /// An affordance of last resort for Main in order to ensure re-capitalization
     function setBasketsNeeded(Fix basketsNeeded) external;
 

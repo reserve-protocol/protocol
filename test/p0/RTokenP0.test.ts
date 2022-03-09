@@ -138,7 +138,7 @@ describe('RTokenP0 contract', () => {
       await rToken.connect(addr1).issue(issueAmount)
     })
 
-    it('Should allow to melt tokens if caller or Main', async () => {
+    it('Should allow to melt tokens if caller', async () => {
       // Melt tokens
       const meltAmount: BigNumber = bn('10e18')
 
@@ -149,15 +149,6 @@ describe('RTokenP0 contract', () => {
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(meltAmount))
       expect(await rToken.totalSupply()).to.equal(issueAmount.sub(meltAmount))
-
-      // Update Main to mock call - from mainMock
-      await rToken.connect(owner).setMain(mainMock.address)
-
-      // Melt another set of tokens
-      await rToken.connect(addr1).melt(meltAmount)
-
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(meltAmount.mul(2)))
-      expect(await rToken.totalSupply()).to.equal(issueAmount.sub(meltAmount.mul(2)))
     })
 
     it('Should allow to mint tokens when called by Auctioneer', async () => {

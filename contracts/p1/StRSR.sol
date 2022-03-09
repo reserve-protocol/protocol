@@ -199,11 +199,6 @@ contract StRSR is IStRSR, Component, EIP712 {
         emit RSRRewarded(payout, numPeriods);
     }
 
-    function setMain(IMain main_) external virtual onlyOwner {
-        emit MainSet(main, main_);
-        main = main_;
-    }
-
     function exchangeRate() external view returns (Fix) {
         return toFix(stakeRSR).divu(totalStakes);
     }

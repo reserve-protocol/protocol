@@ -6,7 +6,7 @@ import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveOracleMockP0,
+  AaveOracleMock,
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
@@ -57,7 +57,7 @@ describe('StRSRP0 contract', () => {
   let collateral3: Collateral
 
   // Aave/ Compound
-  let aaveOracleInternal: AaveOracleMockP0
+  let aaveOracleInternal: AaveOracleMock
 
   // Config
   let config: IConfig
@@ -206,32 +206,6 @@ describe('StRSRP0 contract', () => {
       await expect(stRSR.connect(addr1).setRewardRatio(bn('0'))).to.be.revertedWith(
         'Component: caller is not the owner'
       )
-    })
-
-    it('Should allow to update main if Owner', async () => {
-      // Deploy a new main
-      const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
-      const newMain: MainP0 = <MainP0>await MainFactory.deploy()
-
-      // Check current stRSR is component of Main
-      expect(await main.hasComponent(stRSR.address)).to.equal(true)
-      expect(await newMain.hasComponent(stRSR.address)).to.equal(false)
-
-      // Try to update if not owner
-      await expect(stRSR.connect(addr1).setMain(other.address)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
-
-      // Set Main
-      await expect(stRSR.connect(owner).setMain(newMain.address))
-        .to.emit(stRSR, 'MainSet')
-        .withArgs(main.address, newMain.address)
-
-      // Register new StRSR in new main
-      await newMain.connect(owner).setStRSR(stRSR.address)
-
-      // Check current stRSR is component of new Main
-      expect(await newMain.hasComponent(stRSR.address)).to.equal(true)
     })
   })
 
