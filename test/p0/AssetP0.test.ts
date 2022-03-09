@@ -32,6 +32,7 @@ describe('AssetsP0 contracts', () => {
   let compAsset: AssetP0
   let aaveAsset: AssetP0
   let rTokenAsset: RTokenAssetP0
+  let basket: Collateral[]
 
   // Oracles
   let compoundOracleInternal: CompoundOracleMockP0
@@ -52,9 +53,7 @@ describe('AssetsP0 contracts', () => {
   })
 
   beforeEach(async () => {
-    let basket: Collateral[]
-
-      // Deploy fixture
+    // Deploy fixture
     ;({
       rsr,
       rsrAsset,
@@ -95,6 +94,8 @@ describe('AssetsP0 contracts', () => {
       expect(await rsrAsset.bal(wallet.address)).to.equal(amt)
       expect(await rsrAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
       expect(await rsrAsset.price()).to.equal(fp('1'))
+      expect(await rsrAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+      expect(await rsrAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
 
       // COMP Token
       expect(await compAsset.isCollateral()).to.equal(false)
@@ -104,6 +105,8 @@ describe('AssetsP0 contracts', () => {
       expect(await compAsset.bal(wallet.address)).to.equal(amt)
       expect(await compAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
       expect(await compAsset.price()).to.equal(fp('1'))
+      expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+      expect(await compAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
 
       // AAVE Token
       expect(await aaveAsset.isCollateral()).to.equal(false)
@@ -113,6 +116,8 @@ describe('AssetsP0 contracts', () => {
       expect(await aaveAsset.bal(wallet.address)).to.equal(amt)
       expect(await aaveAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
       expect(await aaveAsset.price()).to.equal(fp('1'))
+      expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+      expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
 
       // RToken
       expect(await rTokenAsset.isCollateral()).to.equal(false)
@@ -123,6 +128,8 @@ describe('AssetsP0 contracts', () => {
       expect(await rTokenAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
       expect(await rTokenAsset.price()).to.equal(fp('1'))
       expect(await rTokenAsset.price()).to.equal(await rToken.price())
+      expect(await rTokenAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+      expect(await rTokenAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
   })
 
