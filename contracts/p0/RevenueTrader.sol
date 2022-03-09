@@ -44,9 +44,9 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
         if (bal.eq(FIX_ZERO)) return;
 
         if (erc20 == tokenToBuy) {
-            uint256 balQ = reg.toAsset(erc20).balQ(address(this)).floor();
-            erc20.safeApprove(address(main.distributor()), balQ);
-            main.distributor().distribute(erc20, address(this), balQ);
+            uint256 qTok = erc20.balanceOf(address(this));
+            erc20.safeApprove(address(main.distributor()), qTok);
+            main.distributor().distribute(erc20, address(this), qTok);
             return;
         }
 
@@ -56,13 +56,12 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
         }
 
         // If not dust, trade the non-target asset for the target asset
-        // {tok} =  {qTok} / {qTok/tok}
-        ProposedAuction memory auction = prepareAuctionSell(
+        (bool trade, ProposedAuction memory auction) = prepareAuctionSell(
             reg.toAsset(erc20),
             reg.toAsset(tokenToBuy),
             bal
         );
 
-        launchAuction(auction);
+        if (trade) launchAuction(auction);
     }
 }

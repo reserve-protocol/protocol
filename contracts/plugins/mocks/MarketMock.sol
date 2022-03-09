@@ -80,7 +80,7 @@ contract MarketMock is IMarket, ITrading {
 
     /// @dev Requires allowances
     function placeBid(uint256 auctionId, Bid memory bid) external {
-        auctions[auctionId].buy.transferFrom(bid.bidder, address(this), bid.buyAmount);
+        auctions[auctionId].buy.safeTransferFrom(bid.bidder, address(this), bid.buyAmount);
         bids[auctionId] = bid;
     }
 

@@ -11,8 +11,6 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p0/Component.sol";
 import "contracts/p0/Rewardable.sol";
 
-import "hardhat/console.sol";
-
 abstract contract TraderP0 is RewardableP0, ITrader {
     using FixLib for Fix;
     using SafeERC20 for IERC20;
@@ -48,6 +46,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         uint256 i = auctionsStart;
         for (; i < auctions.length && block.timestamp >= auctions[i].endTime; i++) {
             OngoingAuction storage auc = auctions[i];
+            // TODO do the clearing price check for real
             uint256 initialBuyBal = auc.buy.balanceOf(address(this));
 
             (uint256 clearingSellAmt, uint256 clearingBuyAmt) = decodeOrder(
@@ -62,25 +61,29 @@ abstract contract TraderP0 is RewardableP0, ITrader {
     /// Prepare an auction to sell `sellAmount` that guarantees a reasonable closing price,
     /// without explicitly aiming at a particular quantity to purchase.
     /// @param sellAmount {sellTok}
+    /// @return notDust True when the auction is larger than the dust amount
     /// @return auction The prepared auction
     function prepareAuctionSell(
         IAsset sell,
         IAsset buy,
         Fix sellAmount
-    ) internal view returns (ProposedAuction memory auction) {
+    ) internal view returns (bool notDust, ProposedAuction memory auction) {
         assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
         auction.sell = sell;
         auction.buy = buy;
 
         // Don't buy dust.
-        if (sellAmount.lt(dustThreshold(sell))) return auction;
+        if (sellAmount.lt(dustThreshold(sell))) return (false, auction);
 
         // {sellTok}
-        auction.sellAmount = fixMin(sellAmount, sell.maxAuctionSize().div(sell.price()));
+        Fix fixSellAmount = fixMin(sellAmount, sell.maxAuctionSize().div(sell.price()));
+        auction.sellAmount = fixSellAmount.shiftLeft(int8(sell.erc20().decimals())).floor();
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        Fix exactBuyAmount = sellAmount.mul(sell.price()).div(buy.price());
-        auction.minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(maxTradeSlippage));
+        Fix exactBuyAmount = fixSellAmount.mul(sell.price()).div(buy.price());
+        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(maxTradeSlippage));
+        auction.minBuyAmount = minBuyAmount.shiftLeft(int8(buy.erc20().decimals())).ceil();
+        return (true, auction);
     }
 
     /// Assuming we have `maxSellAmount` sell tokens avaialable, prepare an auction to
@@ -109,7 +112,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         Fix idealSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage));
 
         Fix sellAmount = fixMin(idealSellAmount, maxSellAmount);
-        return (true, prepareAuctionSell(sell, buy, sellAmount));
+        return prepareAuctionSell(sell, buy, sellAmount);
     }
 
     /// @return {tok} The least amount of whole tokens ever worth trying to sell
@@ -128,20 +131,14 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         ongoing.buy = prop.buy.erc20();
         ongoing.endTime = Math.max(block.timestamp + auctionLength, latestAuctionEnd);
 
-        console.log("launchAuction");
-        uint256 sellAmount = prop.sellAmount.shiftLeft(int8(prop.sell.erc20().decimals())).floor();
-        uint256 minBuyAmt = prop.minBuyAmount.shiftLeft(int8(prop.buy.erc20().decimals())).ceil();
-        console.log("sell", prop.sellAmount.round(), sellAmount);
-        console.log("buy", prop.minBuyAmount.round(), minBuyAmt);
-
-        ongoing.sell.safeApprove(address(main.market()), sellAmount);
+        ongoing.sell.safeApprove(address(main.market()), prop.sellAmount);
         ongoing.externalId = main.market().initiateAuction(
             ongoing.sell,
             ongoing.buy,
             ongoing.endTime,
             ongoing.endTime,
-            uint96(sellAmount),
-            uint96(minBuyAmt),
+            uint96(prop.sellAmount),
+            uint96(prop.minBuyAmount),
             0,
             0,
             false,
@@ -152,7 +149,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         latestAuctionEnd = ongoing.endTime;
 
         uint256 index = auctions.length - 1;
-        emit AuctionStarted(index, ongoing.sell, ongoing.buy, sellAmount, minBuyAmt);
+        emit AuctionStarted(index, ongoing.sell, ongoing.buy, prop.sellAmount, prop.minBuyAmount);
     }
 
     /// Close auctions[i]:

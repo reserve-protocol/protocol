@@ -9,8 +9,8 @@ import "./IRewardable.sol";
 struct ProposedAuction {
     IAsset sell;
     IAsset buy;
-    Fix sellAmount; // {sellTok}
-    Fix minBuyAmount; // {buyTok}
+    uint256 sellAmount; // {qSellTok}
+    uint256 minBuyAmount; // {qBuyTok}
 }
 
 struct OngoingAuction {

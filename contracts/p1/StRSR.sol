@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/interfaces/IAsset.sol";
@@ -25,7 +25,7 @@ import "contracts/p0/Component.sol";
  */
 // solhint-disable max-states-count
 contract StRSR is IStRSR, Component, EIP712 {
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
 

@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/libraries/Fixed.sol";
@@ -213,9 +214,9 @@ contract MainP0 is Pausable, IMain {
         furnace = val;
     }
 
-    IERC20 public rsr;
+    IERC20Metadata public rsr;
 
-    function setRSR(IERC20 val) public onlyOwner {
+    function setRSR(IERC20Metadata val) public onlyOwner {
         emit RSRSet(rsr, val);
         rsr = val;
     }

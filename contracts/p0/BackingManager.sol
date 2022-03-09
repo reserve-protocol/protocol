@@ -92,15 +92,13 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         IERC20[] memory erc20s = main.assetRegistry().erc20s();
         // Handout excess assets above what is needed, including any newly minted RToken
         for (uint256 i = 0; i < erc20s.length; i++) {
-            IAsset asset = main.assetRegistry().toAsset(erc20s[i]);
-            Fix bal = asset.bal(address(this)); // {tok}
-            Fix neededI = needed.mul(main.basketHandler().quantity(erc20s[i])); // {tok}
+            uint256 bal = erc20s[i].balanceOf(address(this)); // {qTok}
+            uint256 neededI = needed.mul(main.basketHandler().quantity(erc20s[i])).ceil();
 
-            if (bal.gt(neededI)) {
+            if (bal > neededI) {
                 (uint256 rTokenShares, uint256 rsrShares) = main.distributor().totals();
                 uint256 totalShares = rTokenShares + rsrShares;
-                Fix delta = bal.minus(neededI).shiftLeft(int8(asset.erc20().decimals()));
-                uint256 tokensPerShare = delta.floor() / totalShares;
+                uint256 tokensPerShare = (bal - neededI) / totalShares;
                 uint256 toRSR = tokensPerShare * rsrShares;
                 uint256 toRToken = tokensPerShare * rTokenShares;
 
@@ -125,14 +123,14 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         // Of primary concern here is whether we can trust the prices for the assets
         // we are selling. If we cannot, then we should not `prepareAuctionToCoverDeficit`
 
-        bool trade = true;
+        bool trade;
         ProposedAuction memory auction;
         if (
             surplus.isCollateral() &&
             main.assetRegistry().toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
         ) {
-            auction = prepareAuctionSell(surplus, deficit, surplusAmount);
-            auction.minBuyAmount = FIX_ZERO;
+            (trade, auction) = prepareAuctionSell(surplus, deficit, surplusAmount);
+            auction.minBuyAmount = 0;
         } else {
             (trade, auction) = prepareAuctionToCoverDeficit(
                 surplus,
@@ -157,19 +155,19 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         (, ICollateral deficit, , Fix deficitAmount) = largestSurplusAndDeficit(false);
         if (address(deficit) == address(0)) return false;
 
-        Fix rsrBal = rsrAsset.bal(address(this));
-        Fix rsrBalStRSR = rsrAsset.bal(address(stRSR));
+        Fix availableRSR = rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR)));
 
         (bool trade, ProposedAuction memory auction) = prepareAuctionToCoverDeficit(
             rsrAsset,
             deficit,
-            rsrBal.plus(rsrBalStRSR),
+            availableRSR,
             deficitAmount
         );
 
         if (trade) {
-            if (auction.sellAmount.gt(rsrBal)) {
-                stRSR.seizeRSR(auction.sellAmount.minus(rsrBal).ceil());
+            uint256 rsrBal = rsrAsset.balQ(address(this)).floor();
+            if (auction.sellAmount > rsrBal) {
+                stRSR.seizeRSR(auction.sellAmount - rsrBal);
             }
             launchAuction(auction);
         }
@@ -225,8 +223,11 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
             for (uint256 i = 0; i < erc20s.length; i++) {
                 IAsset asset = reg.toAsset(erc20s[i]);
                 if (!asset.isCollateral()) continue;
-                Fix needed = basketTop.mul(basket.quantity(erc20s[i]));
+                Fix needed = basketTop.mul(basket.quantity(erc20s[i])).shiftLeft(
+                    -int8(asset.erc20().decimals())
+                );
                 Fix held = asset.bal(address(this));
+
                 if (held.lt(needed)) {
                     Fix deficitTok = needed.minus(held);
                     tradeVolume = tradeVolume.plus(deficitTok.mul(asset.price()));
@@ -245,23 +246,23 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         for (uint256 i = 0; i < erc20s.length; i++) {
             IAsset asset = reg.toAsset(erc20s[i]);
 
-            // needed: {tok} that Main must hold to meet obligations
+            // needed: {qTok} that Main must hold to meet obligations
             Fix tokenTop;
             Fix tokenBottom;
             if (asset.isCollateral()) {
                 tokenTop = basketTop.mul(basket.quantity(erc20s[i]));
                 tokenBottom = basketBottom.mul(basket.quantity(erc20s[i]));
             }
-            // held: {tok} that Main is already holding
-            Fix held = asset.bal(address(this));
+            // held: {qTok} that Main is already holding
+            Fix held = asset.balQ(address(this));
 
             if (held.gt(tokenTop)) {
                 // {tok} = {qTok} * {tok/qTok}
-                Fix surplusTok = held.minus(tokenTop);
+                Fix surplusTok = held.minus(tokenTop).shiftLeft(-int8(asset.erc20().decimals()));
                 surpluses[i] = surplusTok.mul(asset.price());
             } else if (held.lt(tokenBottom)) {
                 // {tok} = {qTok} * {tok/qTok}
-                Fix deficitTok = tokenBottom.minus(held);
+                Fix deficitTok = tokenBottom.minus(held).shiftLeft(-int8(asset.erc20().decimals()));
                 deficits[i] = deficitTok.mul(asset.price());
             }
         }

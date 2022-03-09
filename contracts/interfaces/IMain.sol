@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -24,7 +25,7 @@ struct ConstructorArgs {
     DeploymentParams params;
     Core core;
     Periphery periphery;
-    IERC20 rsr;
+    IERC20Metadata rsr;
 }
 
 /// The spokes of our hub-and-spoke component model centered around Main
@@ -151,9 +152,9 @@ interface IMain is IPausable {
 
     event RSRSet(IERC20 indexed oldVal, IERC20 indexed newVal);
 
-    function rsr() external view returns (IERC20);
+    function rsr() external view returns (IERC20Metadata);
 
-    function setRSR(IERC20 rsr) external;
+    function setRSR(IERC20Metadata rsr) external;
 
     // ---
     event Initialized();

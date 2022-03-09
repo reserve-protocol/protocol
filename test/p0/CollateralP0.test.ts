@@ -186,7 +186,7 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
       expect(await cTokenCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
       expect(await cTokenCollateral.bal(owner.address)).to.equal(amt)
-      expect(await cTokenCollateral.balQ(owner.address)).to.equal(amt.mul(bn('1e10')))
+      expect(await cTokenCollateral.balQ(owner.address)).to.equal(amt.mul(bn('1e8')))
       expect(await cTokenCollateral.claimAdapter()).to.equal(compoundClaimer.address)
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await cTokenCollateral.targetPerRef()).to.equal(fp('1'))
