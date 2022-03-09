@@ -6,6 +6,7 @@ import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/consta
 import { bn, fp } from '../../common/numbers'
 import {
   AaveOracleMockP0,
+  AavePricedFiatCollateralP0,
   ATokenFiatCollateralP0,
   BackingManagerP0,
   CompoundOracleMockP0,
@@ -41,8 +42,8 @@ describe('CollateralP0 contracts', () => {
   let compToken: ERC20Mock
 
   // Assets
-  let tokenCollateral: Collateral
-  let usdcCollateral: Collateral
+  let tokenCollateral: AavePricedFiatCollateralP0
+  let usdcCollateral: AavePricedFiatCollateralP0
   let aTokenCollateral: ATokenFiatCollateralP0
   let cTokenCollateral: CTokenFiatCollateralP0
 
@@ -90,10 +91,10 @@ describe('CollateralP0 contracts', () => {
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
-    tokenCollateral = basket[0]
-    usdcCollateral = basket[1]
-    aTokenCollateral = basket[2] as ATokenFiatCollateralP0
-    cTokenCollateral = basket[3] as CTokenFiatCollateralP0
+    tokenCollateral = <AavePricedFiatCollateralP0>basket[0]
+    usdcCollateral = <AavePricedFiatCollateralP0>basket[1]
+    aTokenCollateral = <ATokenFiatCollateralP0>basket[2]
+    cTokenCollateral = <CTokenFiatCollateralP0>basket[3]
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenCollateral.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcCollateral.erc20())
     aToken = <StaticATokenMock>(
@@ -126,6 +127,8 @@ describe('CollateralP0 contracts', () => {
       expect(await tokenCollateral.bal(owner.address)).to.equal(amt)
       expect(await tokenCollateral.balQ(owner.address)).to.equal(amt.mul(bn('1e18')))
       expect(await tokenCollateral.price()).to.equal(fp('1'))
+      expect(await tokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+      expect(await tokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
 
       // USDC Fiat Token
       expect(await usdcCollateral.isCollateral()).to.equal(true)
@@ -144,8 +147,11 @@ describe('CollateralP0 contracts', () => {
       expect(await usdcCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await usdcCollateral.pricePerTarget()).to.equal(fp('1'))
       expect(await usdcCollateral.price()).to.equal(fp('1'))
+      expect(await usdcCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+      expect(await usdcCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
 
       // AToken
+
       expect(await aTokenCollateral.isCollateral()).to.equal(true)
       expect(await aTokenCollateral.referenceERC20()).to.equal(token.address)
       expect(await aTokenCollateral.erc20()).to.equal(aToken.address)
@@ -165,6 +171,9 @@ describe('CollateralP0 contracts', () => {
         await aTokenCollateral.refPerTok()
       )
       expect(await aTokenCollateral.price()).to.equal(fp('1'))
+      let calldata = aToken.interface.encodeFunctionData('claimRewardsToSelf', [true])
+      expect(await aTokenCollateral.getClaimCalldata()).to.eql([aToken.address, calldata])
+      expect(await aTokenCollateral.rewardERC20()).to.equal(aaveToken.address)
 
       // CToken
       expect(await cTokenCollateral.isCollateral()).to.equal(true)
@@ -186,6 +195,12 @@ describe('CollateralP0 contracts', () => {
         await cTokenCollateral.refPerTok()
       )
       expect(await cTokenCollateral.price()).to.equal(fp('1'))
+      calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
+      expect(await cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
+        compoundMock.address,
+        calldata,
+      ])
+      expect(await cTokenCollateral.rewardERC20()).to.equal(compToken.address)
     })
   })
 
