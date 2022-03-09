@@ -206,7 +206,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             int8 decimals = int8(basket.erc20s[i].decimals());
 
-            // {qTok} = {BU} * {tok/BU}
+            // {qTok} = {BU} * {tok/BU} * {qTok/tok}
             Fix q = amount.mul(quantity(basket.erc20s[i])).shiftLeft(decimals);
             quantities[i] = q.toUint(rounding);
             erc20s[i] = address(basket.erc20s[i]);
