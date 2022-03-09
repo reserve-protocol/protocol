@@ -94,7 +94,6 @@ describe('AssetsP0 contracts', () => {
       expect(await rsrAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
       expect(await rsrAsset.bal(wallet.address)).to.equal(amt)
       expect(await rsrAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
-      expect(await rsrAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await rsrAsset.price()).to.equal(fp('1'))
 
       // COMP Token
@@ -104,7 +103,6 @@ describe('AssetsP0 contracts', () => {
       expect(await compAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
       expect(await compAsset.bal(wallet.address)).to.equal(amt)
       expect(await compAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
-      expect(await compAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await compAsset.price()).to.equal(fp('1'))
 
       // AAVE Token
@@ -114,7 +112,6 @@ describe('AssetsP0 contracts', () => {
       expect(await aaveAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
       expect(await aaveAsset.bal(wallet.address)).to.equal(amt)
       expect(await aaveAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
-      expect(await aaveAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await aaveAsset.price()).to.equal(fp('1'))
 
       // RToken
@@ -124,7 +121,6 @@ describe('AssetsP0 contracts', () => {
       expect(await rTokenAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
       expect(await rTokenAsset.bal(wallet.address)).to.equal(amt)
       expect(await rTokenAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
-      expect(await rTokenAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await rTokenAsset.price()).to.equal(fp('1'))
       expect(await rTokenAsset.price()).to.equal(await rToken.price())
     })

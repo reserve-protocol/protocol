@@ -3,15 +3,12 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "contracts/plugins/adapters/AaveClaimAdapter.sol";
-import "contracts/plugins/adapters/CompoundClaimAdapter.sol";
 import "contracts/plugins/assets/AavePricedAsset.sol";
 import "contracts/plugins/assets/CompoundPricedAsset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
 import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
 import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IClaimAdapter.sol";
 import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IFurnace.sol";
@@ -40,9 +37,6 @@ contract DeployerP0 is IDeployer {
     IComptroller public immutable comptroller;
     IAaveLendingPool public immutable aaveLendingPool;
 
-    IClaimAdapter public immutable compoundClaimer;
-    IClaimAdapter public immutable aaveClaimer;
-
     IMain[] public deployments;
 
     constructor(
@@ -59,8 +53,6 @@ contract DeployerP0 is IDeployer {
         market = market_;
         comptroller = comptroller_;
         aaveLendingPool = aaveLendingPool_;
-        compoundClaimer = new CompoundClaimAdapterP0(comptroller_, comp_);
-        aaveClaimer = new AaveClaimAdapterP0(aave_);
     }
 
     /// Deploys an instance of the entire system

@@ -29,8 +29,6 @@ abstract contract CollateralP0 is ICollateral, AssetP0, Context {
 
     IERC20Metadata public immutable referenceERC20;
 
-    IClaimAdapter public claimAdapter;
-
     Fix public immutable defaultThreshold; // {%} e.g. 0.05
 
     uint256 public immutable delayUntilDefault; // {s} e.g 86400

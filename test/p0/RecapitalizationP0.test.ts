@@ -177,16 +177,16 @@ describe('MainP0 contract', () => {
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
 
-    collateral0 = basket[0]
-    collateral1 = basket[1]
+    collateral0 = <CollateralP0>basket[0]
+    collateral1 = <CollateralP0>basket[1]
     collateral2 = <ATokenFiatCollateralP0>basket[2]
     collateral3 = <CTokenFiatCollateralP0>basket[3]
 
     // Backup tokens and collaterals - USDT and cUSDT
     backupToken1 = erc20s[2]
-    backupCollateral1 = collateral[2]
+    backupCollateral1 = <CollateralP0>collateral[2]
     backupToken2 = erc20s[9]
-    backupCollateral2 = collateral[9]
+    backupCollateral2 = <CollateralP0>collateral[9]
 
     // Mint initial balances
     initialBal = bn('1000000e18')

@@ -6,12 +6,10 @@ import hre, { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveClaimAdapterP0,
   AaveLendingPoolMockP0,
   AssetP0,
   ATokenFiatCollateralP0,
   CollateralP0,
-  CompoundClaimAdapterP0,
   CompoundPricedAssetP0,
   ComptrollerMockP0,
   CTokenFiatCollateralP0,
@@ -147,8 +145,8 @@ describe('Issuance (previously Issuer contract)', () => {
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
 
-    collateral0 = basket[0]
-    collateral1 = basket[1]
+    collateral0 = <CollateralP0>basket[0]
+    collateral1 = <CollateralP0>basket[1]
     collateral2 = <ATokenFiatCollateralP0>basket[2]
     collateral3 = <CTokenFiatCollateralP0>basket[3]
 

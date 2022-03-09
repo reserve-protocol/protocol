@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
 import "contracts/plugins/assets/abstract/Collateral.sol";
-import "contracts/plugins/adapters/AaveClaimAdapter.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -36,6 +35,7 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
     using SafeERC20 for IERC20Metadata;
 
     Fix public prevReferencePrice; // previous rate, {collateral/reference}
+    IERC20 public immutable override rewardERC20;
 
     constructor(
         IERC20Metadata erc20_,
@@ -45,7 +45,7 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
         IERC20Metadata referenceERC20_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_,
-        AaveClaimAdapterP0 claimAdapter_
+        IERC20 rewardERC20_
     )
         CollateralP0(
             erc20_,
@@ -57,7 +57,7 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
         )
         AaveOracleMixinP0(comptroller_, aaveLendingPool_)
     {
-        claimAdapter = claimAdapter_;
+        rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok();
     }
 
@@ -103,5 +103,13 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
         Fix delta = peg.mul(defaultThreshold);
         Fix p = consultOracle(referenceERC20);
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
+    }
+
+    /// Get the message needed to call in order to claim rewards for holding this asset.
+    /// @return _to The address to send the call to
+    /// @return _cd The calldata to send
+    function getClaimCalldata() external view override returns (address _to, bytes memory _cd) {
+        _to = address(erc20); // this should be a StaticAToken
+        _cd = abi.encodeWithSignature("claimRewardsToSelf(bool)", true);
     }
 }

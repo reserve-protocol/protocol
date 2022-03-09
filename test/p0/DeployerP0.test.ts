@@ -5,13 +5,11 @@ import { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn } from '../../common/numbers'
 import {
-  AaveClaimAdapterP0,
   AaveLendingPoolMockP0,
   AssetP0,
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
-  CompoundClaimAdapterP0,
   ComptrollerMockP0,
   DeployerP0,
   DistributorP0,
@@ -46,11 +44,9 @@ describe('DeployerP0 contract', () => {
   let compToken: ERC20Mock
   let compAsset: AssetP0
   let compoundMock: ComptrollerMockP0
-  let compoundClaimer: CompoundClaimAdapterP0
   let aaveToken: ERC20Mock
   let aaveAsset: AssetP0
   let aaveMock: AaveLendingPoolMockP0
-  let aaveClaimer: AaveClaimAdapterP0
 
   // Market / Facade
   let market: MarketMock
@@ -103,8 +99,6 @@ describe('DeployerP0 contract', () => {
       stRSR,
       market,
       facade,
-      compoundClaimer,
-      aaveClaimer,
       rsrTrader,
       rTokenTrader,
     } = await loadFixture(defaultFixture))
@@ -118,8 +112,6 @@ describe('DeployerP0 contract', () => {
       expect(await deployer.market()).to.equal(market.address)
       expect(await deployer.comptroller()).to.equal(compoundMock.address)
       expect(await deployer.aaveLendingPool()).to.equal(aaveMock.address)
-      expect(await deployer.compoundClaimer()).to.equal(compoundClaimer.address)
-      expect(await deployer.aaveClaimer()).to.equal(aaveClaimer.address)
     })
 
     it('Should deploy required contracts', async () => {
@@ -143,8 +135,6 @@ describe('DeployerP0 contract', () => {
 
       // Other contracts
       expect(facade.address).to.not.equal(ZERO_ADDRESS)
-      expect(compoundClaimer.address).to.not.equal(ZERO_ADDRESS)
-      expect(aaveClaimer.address).to.not.equal(ZERO_ADDRESS)
     })
 
     it('Should emit event', async () => {
