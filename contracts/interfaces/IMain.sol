@@ -24,7 +24,7 @@ struct ConstructorArgs {
     DeploymentParams params;
     Core core;
     Periphery periphery;
-    IERC20Metadata rsr;
+    IERC20 rsr;
 }
 
 /// The spokes of our hub-and-spoke component model centered around Main
@@ -144,9 +144,9 @@ interface IMain is IPausable {
 
     event RSRSet(IERC20 indexed oldVal, IERC20 indexed newVal);
 
-    function rsr() external view returns (IERC20Metadata);
+    function rsr() external view returns (IERC20);
 
-    function setRSR(IERC20Metadata rsr) external;
+    function setRSR(IERC20 rsr) external;
 
     // ---
     event Initialized();
