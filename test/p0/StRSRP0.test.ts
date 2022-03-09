@@ -1,26 +1,25 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { bn, fp, near } from '../../common/numbers'
 import {
-  CTokenMock,
-  ERC20Mock,
-  MainCallerMockP0,
-  MainP0,
-  StaticATokenMock,
-  StRSRP0,
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
-  IssuerP0,
+  CTokenMock,
   DistributorP0,
+  ERC20Mock,
+  MainP0,
+  RTokenP0,
+  StaticATokenMock,
+  StRSRP0,
 } from '../../typechain'
 import { advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
-import { Collateral, defaultFixture } from './utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -34,13 +33,13 @@ describe('StRSRP0 contract', () => {
   // RSR
   let rsr: ERC20Mock
 
-  // Main and AssetManager mocks
+  // Main
   let main: MainP0
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let issuer: IssuerP0
   let distributor: DistributorP0
+  let rToken: RTokenP0
 
   // StRSR
   let stRSR: StRSRP0
@@ -50,11 +49,13 @@ describe('StRSRP0 contract', () => {
   let token1: ERC20Mock
   let token2: StaticATokenMock
   let token3: CTokenMock
-
   let collateral0: Collateral
   let collateral1: Collateral
   let collateral2: Collateral
   let collateral3: Collateral
+
+  // Config
+  let config: IConfig
 
   // Basket
   let basket: Collateral[]
@@ -80,12 +81,13 @@ describe('StRSRP0 contract', () => {
       stRSR,
       basket,
       basketsNeededAmts,
+      config,
       main,
       assetRegistry,
       backingManager,
       basketHandler,
-      issuer,
       distributor,
+      rToken,
     } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
@@ -118,6 +120,11 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.symbol()).to.equal('stRTKNRSR')
       expect(await stRSR.decimals()).to.equal(18)
       expect(await stRSR.totalSupply()).to.equal(0)
+
+      // Governance
+      expect(await stRSR.unstakingDelay()).to.equal(config.unstakingDelay)
+      expect(await stRSR.rewardPeriod()).to.equal(config.rewardPeriod)
+      expect(await stRSR.rewardRatio()).to.equal(config.rewardRatio)
     })
 
     it('Should setup the DomainSeparator for Permit correctly', async () => {
@@ -132,6 +139,66 @@ describe('StRSRP0 contract', () => {
           chainId,
           verifyingContract,
         })
+      )
+    })
+  })
+
+  describe('Configuration / State', () => {
+    it('Should allow to update unstaking delay correctly if Owner and perform validations', async () => {
+      // Setup a new value
+      const newUnstakingDelay: BigNumber = config.rewardPeriod.mul(2).add(1000)
+
+      await expect(stRSR.connect(owner).setUnstakingDelay(newUnstakingDelay))
+        .to.emit(stRSR, 'UnstakingDelaySet')
+        .withArgs(config.unstakingDelay, newUnstakingDelay)
+
+      expect(await stRSR.unstakingDelay()).to.equal(newUnstakingDelay)
+
+      // Try to update again if not owner
+      await expect(stRSR.connect(addr1).setUnstakingDelay(bn('500'))).to.be.revertedWith(
+        'Component: caller is not the owner'
+      )
+
+      // Cannot update with invalid unstaking delay
+      await expect(stRSR.connect(owner).setUnstakingDelay(config.rewardPeriod)).to.be.revertedWith(
+        'unstakingDelay/rewardPeriod incompatible'
+      )
+    })
+
+    it('Should allow to update reward period correctly if Owner and perform validations', async () => {
+      // Setup a new value
+      const newRewardPeriod: BigNumber = bn('100000')
+
+      await expect(stRSR.connect(owner).setRewardPeriod(newRewardPeriod))
+        .to.emit(stRSR, 'RewardPeriodSet')
+        .withArgs(config.rewardPeriod, newRewardPeriod)
+
+      expect(await stRSR.rewardPeriod()).to.equal(newRewardPeriod)
+
+      // Try to update again if not owner
+      await expect(stRSR.connect(addr1).setRewardPeriod(bn('500'))).to.be.revertedWith(
+        'Component: caller is not the owner'
+      )
+
+      // Cannot update with invalid reward period
+      await expect(stRSR.connect(owner).setRewardPeriod(config.unstakingDelay)).to.be.revertedWith(
+        'unstakingDelay/rewardPeriod incompatible'
+      )
+    })
+
+    it('Should allow to update reward ratio correctly if Owner', async () => {
+      // Setup a new value
+      const newRatio: BigNumber = bn('100000')
+
+      await expect(stRSR.connect(owner).setRewardRatio(newRatio))
+        .to.emit(stRSR, 'RewardRatioSet')
+        .withArgs(stRSR.rewardRatio, newRatio)
+
+      expect(await stRSR.rewardRatio()).to.equal(newRatio)
+
+      // Try to update again if not owner
+      await expect(stRSR.connect(addr1).setRewardRatio(bn('0'))).to.be.revertedWith(
+        'Component: caller is not the owner'
       )
     })
   })
@@ -338,14 +405,14 @@ describe('StRSRP0 contract', () => {
         await token3.connect(owner).mint(addr1.address, initialBal)
 
         // Approvals
-        await token0.connect(addr1).approve(issuer.address, initialBal)
-        await token1.connect(addr1).approve(issuer.address, initialBal)
-        await token2.connect(addr1).approve(issuer.address, initialBal)
-        await token3.connect(addr1).approve(issuer.address, initialBal)
+        await token0.connect(addr1).approve(rToken.address, initialBal)
+        await token1.connect(addr1).approve(rToken.address, initialBal)
+        await token2.connect(addr1).approve(rToken.address, initialBal)
+        await token3.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue tokens
         const issueAmount: BigNumber = bn('100e18')
-        await issuer.connect(addr1).issue(issueAmount)
+        await rToken.connect(addr1).issue(issueAmount)
 
         // Get current balance for user
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)
@@ -662,7 +729,8 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3))
-      expect(near(await rsr.balanceOf(stRSR.address), await stRSR.totalSupply(), 1)).to.equal(true)
+      // expect(near(await rsr.balanceOf(stRSR.address), await stRSR.totalSupply(), 1)).to.equal(true)
+      expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(await stRSR.totalSupply(), 1)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
@@ -697,7 +765,8 @@ describe('StRSRP0 contract', () => {
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
-      expect(near(await rsr.balanceOf(stRSR.address), await stRSR.totalSupply(), 1)).to.equal(true)
+      //expect(near(await rsr.balanceOf(stRSR.address), await stRSR.totalSupply(), 1)).to.equal(true)
+      expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(await stRSR.totalSupply(), 1)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
 

@@ -18,7 +18,6 @@ import {
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
-  IssuerP0,
   MainP0,
   MarketMock,
   RTokenAssetP0,
@@ -66,7 +65,6 @@ describe('DeployerP0 contract', () => {
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let issuer: IssuerP0
   let distributor: DistributorP0
   let rsrTrader: TraderP0
   let rTokenTrader: TraderP0
@@ -98,7 +96,6 @@ describe('DeployerP0 contract', () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      issuer,
       distributor,
       rToken,
       rTokenAsset,
@@ -140,7 +137,6 @@ describe('DeployerP0 contract', () => {
       expect(assetRegistry.address).to.not.equal(ZERO_ADDRESS)
       expect(basketHandler.address).to.not.equal(ZERO_ADDRESS)
       expect(backingManager.address).to.not.equal(ZERO_ADDRESS)
-      expect(issuer.address).to.not.equal(ZERO_ADDRESS)
       expect(distributor.address).to.not.equal(ZERO_ADDRESS)
       expect(rsrTrader.address).to.not.equal(ZERO_ADDRESS)
       expect(rTokenTrader.address).to.not.equal(ZERO_ADDRESS)
@@ -190,7 +186,6 @@ describe('DeployerP0 contract', () => {
       expect(await main.hasComponent(assetRegistry.address)).to.equal(true)
       expect(await main.hasComponent(basketHandler.address)).to.equal(true)
       expect(await main.hasComponent(backingManager.address)).to.equal(true)
-      expect(await main.hasComponent(issuer.address)).to.equal(true)
       expect(await main.hasComponent(distributor.address)).to.equal(true)
 
       // Other components

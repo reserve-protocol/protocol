@@ -29,7 +29,6 @@ import {
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
-  IssuerP0,
   DistributorP0,
   USDCMock,
 } from '../../typechain'
@@ -97,7 +96,6 @@ describe('MainP0 contract', () => {
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let issuer: IssuerP0
   let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -131,7 +129,6 @@ describe('MainP0 contract', () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      issuer,
       distributor,
       rToken,
       rTokenAsset,
@@ -261,7 +258,7 @@ describe('MainP0 contract', () => {
       expect(await facade.totalAssetValue()).to.equal(0)
 
       // Check RToken price
-      expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+      expect(await rToken.price()).to.equal(fp('1'))
     })
   })
 
@@ -275,7 +272,6 @@ describe('MainP0 contract', () => {
           assetRegistry: assetRegistry.address,
           basketHandler: basketHandler.address,
           backingManager: backingManager.address,
-          issuer: issuer.address,
           distributor: distributor.address,
           rsrTrader: rsrTrader.address,
           rTokenTrader: rTokenTrader.address,

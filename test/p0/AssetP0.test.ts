@@ -8,7 +8,6 @@ import {
   AssetP0,
   CompoundOracleMockP0,
   ERC20Mock,
-  IssuerP0,
   RTokenAssetP0,
   RTokenP0,
   USDCMock,
@@ -42,8 +41,6 @@ describe('AssetsP0 contracts', () => {
   let config: IConfig
 
   // Main
-  let issuer: IssuerP0
-
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
@@ -69,7 +66,6 @@ describe('AssetsP0 contracts', () => {
       aaveOracleInternal,
       basket,
       config,
-      issuer,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
@@ -130,7 +126,7 @@ describe('AssetsP0 contracts', () => {
       expect(await rTokenAsset.balQ(wallet.address)).to.equal(amt.mul(bn('1e18')))
       expect(await rTokenAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await rTokenAsset.price()).to.equal(fp('1'))
-      expect(await rTokenAsset.price()).to.equal(await issuer.rTokenPrice())
+      expect(await rTokenAsset.price()).to.equal(await rToken.price())
     })
   })
 
@@ -153,7 +149,7 @@ describe('AssetsP0 contracts', () => {
       expect(await compAsset.price()).to.equal(fp('1.1'))
       expect(await aaveAsset.price()).to.equal(fp('1.2'))
       expect(await rTokenAsset.price()).to.equal(fp('1')) // No changes
-      expect(await rTokenAsset.price()).to.equal(await issuer.rTokenPrice())
+      expect(await rTokenAsset.price()).to.equal(await rToken.price())
     })
 
     it('Should calculate RToken price correctly', async () => {
@@ -168,7 +164,7 @@ describe('AssetsP0 contracts', () => {
 
       // Price of RToken should increase by 10%
       expect(await rTokenAsset.price()).to.equal(fp('1.1'))
-      expect(await rTokenAsset.price()).to.equal(await issuer.rTokenPrice())
+      expect(await rTokenAsset.price()).to.equal(await rToken.price())
     })
 
     it('Should revert if price is zero', async () => {

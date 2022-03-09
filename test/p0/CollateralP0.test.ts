@@ -17,7 +17,7 @@ import {
   CTokenMock,
   ERC20Mock,
   FacadeP0,
-  IssuerP0,
+  RTokenP0,
   StaticATokenMock,
   USDCMock,
 } from '../../typechain'
@@ -31,6 +31,8 @@ const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 describe('CollateralP0 contracts', () => {
   let owner: SignerWithAddress
+
+  let rToken: RTokenP0
 
   // Tokens
   let token: ERC20Mock
@@ -58,7 +60,6 @@ describe('CollateralP0 contracts', () => {
 
   // Main
   let backingManager: BackingManagerP0
-  let issuer: IssuerP0
 
   // Facade
   let facade: FacadeP0
@@ -88,7 +89,7 @@ describe('CollateralP0 contracts', () => {
       basket,
       config,
       backingManager,
-      issuer,
+      rToken,
       facade,
       compoundClaimer,
       aaveClaimer,
@@ -230,7 +231,7 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('1'))
 
       // Check RToken price
-      expect(await issuer.rTokenPrice()).to.equal(fp('1.1'))
+      expect(await rToken.price()).to.equal(fp('1.1'))
     })
 
     it('Should calculate price correctly when ATokens and CTokens appreciate', async () => {
@@ -255,7 +256,7 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('2'))
 
       // Check RToken price - Remains the same until Revenues are processed
-      expect(await issuer.rTokenPrice()).to.equal(fp('1'))
+      expect(await rToken.price()).to.equal(fp('1'))
     })
 
     it('Should revert if price is zero', async () => {

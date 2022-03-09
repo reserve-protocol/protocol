@@ -90,9 +90,6 @@ contract MainP0 is Pausable, IMain {
         require(!initialized, "Already initialized");
         initialized = true;
 
-        setIssuer(args.core.issuer);
-        issuer.initComponent(this, args);
-
         setBackingManager(args.core.backingManager);
         backingManager.initComponent(this, args);
 
@@ -171,15 +168,6 @@ contract MainP0 is Pausable, IMain {
         components.remove(address(backingManager));
         components.add(address(val));
         backingManager = val;
-    }
-
-    IIssuer public issuer;
-
-    function setIssuer(IIssuer val) public onlyOwner {
-        emit IssuerSet(issuer, val);
-        components.remove(address(issuer));
-        components.add(address(val));
-        issuer = val;
     }
 
     IDistributor public distributor;

@@ -48,6 +48,12 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
         uint256 indexed endId
     );
 
+    /// Emitted when a redemption of RToken occurs
+    /// @param redeemer The address of the account redeeeming RTokens
+    /// @param amount The quantity of RToken being redeemed
+    /// @param baskets The corresponding number of baskets
+    event Redemption(address indexed redeemer, uint256 indexed amount, Fix indexed baskets);
+
     /// Emitted when the number of baskets needed changes
     /// @param oldBasketsNeeded Previous number of baskets units needed
     /// @param newBasketsNeeded New number of basket units needed
@@ -64,20 +70,11 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
 
     event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
 
-    /// Begins the SlowIssuance process
+    /// Begin a time-delayed issuance of RToken for basket collateral
     /// User Action
-    /// @param account The account issuing the RToken
-    /// @param amtRToken {qRTok}
-    /// @param amtBaskets {BU}
-    /// @param erc20s {address[]}
-    /// @param deposits {qTok[]}
-    function issue(
-        address account,
-        uint256 amtRToken,
-        Fix amtBaskets,
-        address[] memory erc20s,
-        uint256[] memory deposits
-    ) external;
+    /// @param amount {qTok} The quantity of RToken to issue
+    /// @return deposits {qTok} The quantities of collateral tokens transferred in
+    function issue(uint256 amount) external returns (uint256[] memory deposits);
 
     /// Cancels a vesting slow issuance of _msgSender
     /// User Action
@@ -96,15 +93,11 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// Return the highest index that could be completed by a vestIssuances call.
     function endIdForVest(address account) external view returns (uint256);
 
-    /// Burns a quantity of RToken from the callers account
-    /// @param from The account from which RToken should be burned
-    /// @param amount {qRTok} The amount to be burned
-    /// @param baskets {BU}
-    function redeem(
-        address from,
-        uint256 amount,
-        Fix baskets
-    ) external;
+    /// Redeem RToken for basket collateral
+    /// User Action
+    /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
+    /// @return compensation {qTok} The quantities of collateral tokens transferred out
+    function redeem(uint256 amount) external returns (uint256[] memory compensation);
 
     /// Mints a quantity of RToken to the `recipient`
     /// @param recipient The recipient of the newly minted RToken
@@ -122,4 +115,10 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
 
     /// @return {BU} How many baskets are being targeted by the RToken supply
     function basketsNeeded() external view returns (Fix);
+
+    /// @return {qRTok} How much RToken `account` can issue given their current holdings
+    function maxIssuable(address account) external view returns (uint256);
+
+    // {UoA/rTok}
+    function price() external view returns (Fix p);
 }
