@@ -5,11 +5,9 @@ import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveClaimAdapterP0,
   AaveOracleMockP0,
   ATokenFiatCollateralP0,
   BackingManagerP0,
-  CompoundClaimAdapterP0,
   CompoundOracleMockP0,
   CompoundPricedFiatCollateralP0,
   ComptrollerMockP0,
@@ -51,9 +49,7 @@ describe('CollateralP0 contracts', () => {
   // Aave / Compound
   let compoundMock: ComptrollerMockP0
   let compoundOracleInternal: CompoundOracleMockP0
-  let compoundClaimer: CompoundClaimAdapterP0
   let aaveOracleInternal: AaveOracleMockP0
-  let aaveClaimer: AaveClaimAdapterP0
 
   // Config
   let config: IConfig
@@ -89,8 +85,6 @@ describe('CollateralP0 contracts', () => {
       backingManager,
       rToken,
       facade,
-      compoundClaimer,
-      aaveClaimer,
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
@@ -124,7 +118,6 @@ describe('CollateralP0 contracts', () => {
       expect(await tokenCollateral.pricePerTarget()).to.equal(fp('1'))
       expect(await tokenCollateral.toQ(bn('1'))).to.equal(fp('1'))
       expect(await tokenCollateral.fromQ(fp('1'))).to.equal(bn('1'))
-      expect(await tokenCollateral.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await tokenCollateral.price()).to.equal(fp('1'))
 
       // USDC Fiat Token
@@ -140,7 +133,6 @@ describe('CollateralP0 contracts', () => {
       expect(await usdcCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
       expect(await usdcCollateral.toQ(bn('1'))).to.equal(bn('1e6'))
       expect(await usdcCollateral.fromQ(bn('1e6'))).to.equal(bn('1'))
-      expect(await usdcCollateral.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await usdcCollateral.refPerTok()).to.equal(fp('1'))
       expect(await usdcCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await usdcCollateral.pricePerTarget()).to.equal(fp('1'))
@@ -159,7 +151,6 @@ describe('CollateralP0 contracts', () => {
       expect(await aTokenCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
       expect(await aTokenCollateral.toQ(bn('1'))).to.equal(fp('1'))
       expect(await aTokenCollateral.fromQ(fp('1'))).to.equal(bn('1'))
-      expect(await aTokenCollateral.claimAdapter()).to.equal(aaveClaimer.address)
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await aTokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await aTokenCollateral.pricePerTarget()).to.equal(fp('1'))
@@ -181,7 +172,6 @@ describe('CollateralP0 contracts', () => {
       expect(await cTokenCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
       expect(await cTokenCollateral.toQ(bn('1'))).to.equal(bn('1e8'))
       expect(await cTokenCollateral.fromQ(bn('1e8'))).to.equal(bn('1'))
-      expect(await cTokenCollateral.claimAdapter()).to.equal(compoundClaimer.address)
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await cTokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await cTokenCollateral.pricePerTarget()).to.equal(fp('1'))
@@ -522,7 +512,6 @@ describe('CollateralP0 contracts', () => {
       expect(await compoundTokenAsset.pricePerTarget()).to.equal(fp('1'))
       expect(await compoundTokenAsset.toQ(bn('1'))).to.equal(fp('1'))
       expect(await compoundTokenAsset.fromQ(fp('1'))).to.equal(bn('1'))
-      expect(await compoundTokenAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await compoundTokenAsset.price()).to.equal(fp('1'))
 
       // Compound - USDC Fiat Token
@@ -541,7 +530,6 @@ describe('CollateralP0 contracts', () => {
       expect(await compoundUsdcAsset.pricePerTarget()).to.equal(fp('1'))
       expect(await compoundUsdcAsset.toQ(bn('1'))).to.equal(bn('1e6'))
       expect(await compoundUsdcAsset.fromQ(bn('1e6'))).to.equal(bn('1'))
-      expect(await compoundUsdcAsset.claimAdapter()).to.equal(ZERO_ADDRESS)
       expect(await compoundUsdcAsset.price()).to.equal(fp('1'))
     })
 

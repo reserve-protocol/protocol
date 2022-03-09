@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 import "contracts/plugins/assets/abstract/Collateral.sol";
-import "contracts/plugins/adapters/CompoundClaimAdapter.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
@@ -33,6 +32,7 @@ contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     Fix public prevReferencePrice; // previous rate, {collateral/reference}
+    IERC20 public immutable override rewardERC20;
 
     constructor(
         IERC20Metadata erc20_,
@@ -41,7 +41,7 @@ contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         IComptroller comptroller_,
-        CompoundClaimAdapterP0 claimAdapter_
+        IERC20 rewardERC20_
     )
         CollateralP0(
             erc20_,
@@ -53,7 +53,7 @@ contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
         )
         CompoundOracleMixinP0(comptroller_)
     {
-        claimAdapter = claimAdapter_;
+        rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok();
     }
 
@@ -104,5 +104,10 @@ contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
         Fix delta = peg.mul(defaultThreshold);
         Fix p = consultOracle(referenceERC20);
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
+    }
+
+    function getClaimCalldata(IERC20) external view returns (address _to, bytes memory _calldata) {
+        _to = address(comptroller);
+        _calldata = abi.encodeWithSignature("claimComp(address)", msg.sender);
     }
 }

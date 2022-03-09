@@ -34,4 +34,14 @@ abstract contract AssetP0 is IAsset {
     function isCollateral() external pure virtual returns (bool) {
         return false;
     }
+
+    /// (address, calldata) to call in order to claim rewards for holding this asset
+    /// @dev The default impl returns zero values, implying that no reward function exists.
+    // solhint-disable-next-line no-empty-blocks
+    function getClaimCalldata() external view virtual returns (address _to, bytes memory _c) {}
+
+    /// The IERC20 token address that this Asset's rewards are paid in.
+    /// @dev The default impl returns zero values, implying that no reward function exists.
+    // solhint-disable-next-line no-empty-blocks
+    function rewardERC20() external view virtual returns (IERC20 reward) {}
 }

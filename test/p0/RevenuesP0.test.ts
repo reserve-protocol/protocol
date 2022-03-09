@@ -1,5 +1,4 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { CompoundClaimAdapterP0 } from '@typechain/CompoundClaimAdapterP0'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
@@ -995,79 +994,79 @@ describe('Revenues', () => {
       })
     })
 
-    context('With non-valid Claim Adapters', async function () {
-      let issueAmount: BigNumber
-      let newATokenCollateral: ATokenFiatCollateralP0
-      let newCTokenCollateral: CTokenFiatCollateralP0
-      let nonTrustedClaimer: CompoundClaimAdapterP0
+    // context('With non-valid Claim Adapters', async function () {
+    //   let issueAmount: BigNumber
+    //   let newATokenCollateral: ATokenFiatCollateralP0
+    //   let newCTokenCollateral: CTokenFiatCollateralP0
+    //   let nonTrustedClaimer: CompoundClaimAdapterP0
 
-      beforeEach(async function () {
-        issueAmount = bn('100e18')
+    //   beforeEach(async function () {
+    //     issueAmount = bn('100e18')
 
-        // Deploy new AToken with no claim adapter
-        const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateralP0')
-        newATokenCollateral = <ATokenFiatCollateralP0>(
-          await ATokenCollateralFactory.deploy(
-            token2.address,
-            await collateral2.maxAuctionSize(),
-            await collateral2.defaultThreshold(),
-            await collateral2.delayUntilDefault(),
-            token0.address,
-            compoundMock.address,
-            aaveMock.address,
-            ZERO_ADDRESS
-          )
-        )
+    //     // Deploy new AToken with no claim adapter
+    //     const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateralP0')
+    //     newATokenCollateral = <ATokenFiatCollateralP0>(
+    //       await ATokenCollateralFactory.deploy(
+    //         token2.address,
+    //         await collateral2.maxAuctionSize(),
+    //         await collateral2.defaultThreshold(),
+    //         await collateral2.delayUntilDefault(),
+    //         token0.address,
+    //         compoundMock.address,
+    //         aaveMock.address,
+    //         ZERO_ADDRESS
+    //       )
+    //     )
 
-        // Deploy non trusted Compound claimer - with invalid Comptroller address
-        const CompoundClaimAdapterFactory = await ethers.getContractFactory(
-          'CompoundClaimAdapterP0'
-        )
-        nonTrustedClaimer = <CompoundClaimAdapterP0>(
-          await CompoundClaimAdapterFactory.deploy(other.address, await compAsset.erc20())
-        )
+    //     // Deploy non trusted Compound claimer - with invalid Comptroller address
+    //     const CompoundClaimAdapterFactory = await ethers.getContractFactory(
+    //       'CompoundClaimAdapterP0'
+    //     )
+    //     nonTrustedClaimer = <CompoundClaimAdapterP0>(
+    //       await CompoundClaimAdapterFactory.deploy(other.address, await compAsset.erc20())
+    //     )
 
-        // Deploy new CToken with non-trusted claim adapter
-        const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateralP0')
-        newCTokenCollateral = <CTokenFiatCollateralP0>(
-          await CTokenCollateralFactory.deploy(
-            token3.address,
-            await collateral3.maxAuctionSize(),
-            await collateral3.defaultThreshold(),
-            await collateral3.delayUntilDefault(),
-            token0.address,
-            compoundMock.address,
-            nonTrustedClaimer.address
-          )
-        )
-      })
+    //     // Deploy new CToken with non-trusted claim adapter
+    //     const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateralP0')
+    //     newCTokenCollateral = <CTokenFiatCollateralP0>(
+    //       await CTokenCollateralFactory.deploy(
+    //         token3.address,
+    //         await collateral3.maxAuctionSize(),
+    //         await collateral3.defaultThreshold(),
+    //         await collateral3.delayUntilDefault(),
+    //         token0.address,
+    //         compoundMock.address,
+    //         nonTrustedClaimer.address
+    //       )
+    //     )
+    //   })
 
-      it('Should ignore claiming if no adapter defined', async () => {
-        await assetRegistry.swapRegistered(newATokenCollateral.address)
+    //   it('Should ignore claiming if no adapter defined', async () => {
+    //     await assetRegistry.swapRegistered(newATokenCollateral.address)
 
-        // Setup new basket with AToken with no claim adapter
-        await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1')])
-        await basketHandler.connect(owner).switchBasket()
+    //     // Setup new basket with AToken with no claim adapter
+    //     await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1')])
+    //     await basketHandler.connect(owner).switchBasket()
 
-        // Provide approvals
-        await token2.connect(addr1).approve(rToken.address, initialBal)
+    //     // Provide approvals
+    //     await token2.connect(addr1).approve(rToken.address, initialBal)
 
-        // Issue rTokens
-        await rToken.connect(addr1).issue(issueAmount)
+    //     // Issue rTokens
+    //     await rToken.connect(addr1).issue(issueAmount)
 
-        // Advance time to get next reward
-        await advanceTime(config.rewardPeriod.toString())
+    //     // Advance time to get next reward
+    //     await advanceTime(config.rewardPeriod.toString())
 
-        // Set AAVE Rewards
-        await token2.setRewards(backingManager.address, bn('0.5e18'))
+    //     // Set AAVE Rewards
+    //     await token2.setRewards(backingManager.address, bn('0.5e18'))
 
-        // Attempt to claim, no rewards claimed (0 amount)
-        await expect(backingManager.claimAndSweepRewards()).to.emit(
-          backingManager,
-          'RewardsClaimed'
-        )
-      })
-    })
+    //     // Attempt to claim, no rewards claimed (0 amount)
+    //     await expect(backingManager.claimAndSweepRewards()).to.emit(
+    //       backingManager,
+    //       'RewardsClaimed'
+    //     )
+    //   })
+    // })
 
     context('With simple basket of ATokens and CTokens', async function () {
       let issueAmount: BigNumber

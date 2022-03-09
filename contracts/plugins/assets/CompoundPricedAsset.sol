@@ -19,8 +19,4 @@ contract CompoundPricedAssetP0 is CompoundOracleMixinP0, AssetP0 {
     function price() public view virtual override returns (Fix) {
         return consultOracle(erc20);
     }
-
-    function claimAdapter() external view virtual returns (IClaimAdapter) {
-        return IClaimAdapter(address(0));
-    }
 }

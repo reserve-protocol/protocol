@@ -6,12 +6,10 @@ import hre, { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveClaimAdapterP0,
   AaveLendingPoolMockP0,
   AssetP0,
   ATokenFiatCollateralP0,
   CollateralP0,
-  CompoundClaimAdapterP0,
   CompoundPricedAssetP0,
   ComptrollerMockP0,
   CTokenFiatCollateralP0,

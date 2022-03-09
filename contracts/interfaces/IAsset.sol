@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
-import "./IClaimAdapter.sol";
 
 error PriceIsZero(string);
 
@@ -33,8 +32,17 @@ interface IAsset {
     /// @return {UoA}
     function maxAuctionSize() external view returns (Fix);
 
-    /// @return The claim adapter that should be used with this asset, or the zero address
-    function claimAdapter() external view returns (IClaimAdapter);
+    // ==== Rewards ====
+
+    /// Get the message needed to call in order to claim rewards for holding this asset.
+    /// Returns zero values if there is no reward function to call.
+    /// @return _to The address to send the call to
+    /// @return _calldata The calldata to send
+    function getClaimCalldata() external view returns (address _to, bytes memory _calldata);
+
+    /// The ERC20 token address that this Asset's rewards are paid in.
+    /// If there are no rewards, will return a zero value.
+    function rewardERC20() external view returns (IERC20 reward);
 }
 
 enum CollateralStatus {

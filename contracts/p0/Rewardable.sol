@@ -3,7 +3,6 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/interfaces/IClaimAdapter.sol";
 import "contracts/interfaces/IRewardable.sol";
 import "contracts/p0/Component.sol";
 
@@ -27,33 +26,34 @@ abstract contract RewardableP0 is Component, IRewardable {
         uint256 numRewardTokens;
 
         for (uint256 i = 0; i < erc20s.length; i++) {
-            // Does erc20s[i] _have_ an adapter?
-            IClaimAdapter adapter = reg.toAsset(erc20s[i]).claimAdapter();
-            if (address(adapter) == address(0)) continue;
+            // Does erc20s[i] _have_ a reward function and reward token?
+            IAsset asset = reg.toAsset(erc20s[i]);
 
-            IERC20 rewardToken = adapter.rewardERC20();
+            IERC20 rewardToken = asset.rewardERC20();
+            if (address(rewardToken) == address(0)) continue;
 
-            // Save rewardToken address
-            {
-                uint256 rtIndex = 0;
-                while (rtIndex < numRewardTokens && rewardToken != rewardTokens[rtIndex]) rtIndex++;
-                if (rtIndex >= numRewardTokens) {
-                    rewardTokens[rtIndex] = rewardToken;
-                    numRewardTokens++;
-                }
+            (address _to, bytes memory _calldata) = asset.getClaimCalldata();
+            if (_to == address(0)) continue;
+
+            // Save rewardToken address, if new
+            uint256 rtIndex = 0;
+            while (rtIndex < numRewardTokens && rewardToken != rewardTokens[rtIndex]) rtIndex++;
+            if (rtIndex >= numRewardTokens) {
+                rewardTokens[rtIndex] = rewardToken;
+                numRewardTokens++;
             }
-            uint256 oldBal = rewardToken.balanceOf(address(this));
 
             // Claim reward
-            (address _to, bytes memory _calldata) = adapter.getClaimCalldata(erc20s[i]);
-            if (_to != address(0)) {
-                _to.functionCall(_calldata, "rewards claim failed");
-            }
+            uint256 oldBal = rewardToken.balanceOf(address(this));
+
+            _to.functionCall(_calldata, "rewards claim failed");
 
             uint256 bal = rewardToken.balanceOf(address(this));
+
             emit RewardsClaimed(address(rewardToken), bal - oldBal);
         }
 
+        // Sweep reward tokens to the backingManager
         if (address(this) != address(main.backingManager())) {
             for (uint256 i = 0; i < numRewardTokens; i++) {
                 uint256 bal = rewardTokens[i].balanceOf(address(this));

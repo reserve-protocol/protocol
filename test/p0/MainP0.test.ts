@@ -5,12 +5,10 @@ import { ethers, waffle } from 'hardhat'
 import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveClaimAdapterP0,
   AaveLendingPoolMockP0,
   AssetP0,
   ATokenFiatCollateralP0,
   CollateralP0,
-  CompoundClaimAdapterP0,
   CompoundPricedAssetP0,
   ComptrollerMockP0,
   CTokenFiatCollateralP0,
@@ -45,10 +43,6 @@ describe('MainP0 contract', () => {
 
   // Deployer contract
   let deployer: DeployerP0
-
-  // Claim Adapters
-  let compoundClaimer: CompoundClaimAdapterP0
-  let aaveClaimer: AaveClaimAdapterP0
 
   // Assets
   let collateral: Collateral[]
@@ -135,8 +129,6 @@ describe('MainP0 contract', () => {
       furnace,
       stRSR,
       market,
-      compoundClaimer,
-      aaveClaimer,
       facade,
       rsrTrader,
       rTokenTrader,
@@ -279,7 +271,6 @@ describe('MainP0 contract', () => {
         periphery: {
           furnace: furnace.address,
           market: market.address,
-          claimAdapters: [compoundClaimer.address, aaveClaimer.address],
           assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
         },
         rsr: rsr.address,
