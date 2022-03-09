@@ -339,16 +339,6 @@ describe('StRSRP0 contract', () => {
       await expect(stRSR.connect(addr1).unstake(amount)).to.be.revertedWith('Not enough balance')
     })
 
-    it('Should not allow to unstake if Main is paused', async () => {
-      const amount: BigNumber = bn('1000e18')
-
-      // Pause Main
-      await main.connect(owner).pause()
-
-      // Unstake with Main paused
-      await expect(stRSR.connect(addr1).unstake(amount)).to.be.revertedWith('main paused')
-    })
-
     it('Should create Pending withdrawal when unstaking', async () => {
       const amount: BigNumber = bn('1000e18')
 
@@ -443,7 +433,7 @@ describe('StRSRP0 contract', () => {
         await stRSR.connect(addr1).unstake(amount1)
       })
 
-      it('Should revert withdraw if Main is paused', async () => {
+      it('Should revert withdraw/unstake if Main is paused', async () => {
         // Get current balance for user
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)
 
@@ -457,6 +447,9 @@ describe('StRSRP0 contract', () => {
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
           'is paused'
         )
+
+        // You cannot unstake also in this situation
+        await expect(stRSR.connect(addr2).unstake(amount2)).to.be.revertedWith('main paused')
 
         // If unpaused should withdraw OK
         await main.connect(owner).unpause()
