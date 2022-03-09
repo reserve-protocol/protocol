@@ -170,16 +170,13 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         }
     }
 
-    // ==== Internal ====
-
-    /// @return {qTok/BU} The quantity of collateral in the basket
+    /// @return {tok/BU} The quantity of collateral in the basket
     function quantity(IERC20 erc20) public view returns (Fix) {
         IAssetRegistry reg = main.assetRegistry();
         if (!reg.isRegistered(erc20) || !reg.toAsset(erc20).isCollateral()) return FIX_ZERO;
-        ICollateral coll = reg.toColl(erc20);
 
-        // {qTok/BU} = {ref/BU} * {qTok/tok} / {ref/tok}
-        return basket.refAmts[erc20].shiftLeft(int8(coll.erc20().decimals())).div(coll.refPerTok());
+        // {qTok/BU} = {ref/BU} / {ref/tok}
+        return basket.refAmts[erc20].div(reg.toColl(erc20).refPerTok());
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
@@ -191,10 +188,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             ICollateral coll = reg.toColl(erc20);
 
             if (reg.isRegistered(erc20) && coll.status() != CollateralStatus.DISABLED) {
-                Fix q = coll.price().mul(quantity(erc20)).shiftLeft(-int8(erc20.decimals()));
-
-                // {UoA/BU} = {UoA/BU} + {UoA/tok} * {tok/BU}
-                p = p.plus(q);
+                p = p.plus(coll.price().mul(quantity(erc20)));
             }
         }
     }
@@ -210,8 +204,11 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         erc20s = new address[](basket.erc20s.length);
         quantities = new uint256[](basket.erc20s.length);
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
-            // {qTok} = {BU} * {qTok/BU}
-            quantities[i] = amount.mul(quantity(basket.erc20s[i])).toUint(rounding);
+            int8 decimals = int8(basket.erc20s[i].decimals());
+
+            // {qTok} = {BU} * {tok/BU}
+            Fix q = amount.mul(quantity(basket.erc20s[i])).shiftLeft(decimals);
+            quantities[i] = q.toUint(rounding);
             erc20s[i] = address(basket.erc20s[i]);
         }
     }
@@ -225,10 +222,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     function basketsHeldBy(address account) public view returns (Fix baskets) {
         baskets = FIX_MAX;
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
-            Fix bal = main.assetRegistry().toAsset(basket.erc20s[i]).balQ(account); // {qTok}
-            Fix q = quantity(basket.erc20s[i]); // {qTok/BU}
+            Fix bal = main.assetRegistry().toAsset(basket.erc20s[i]).bal(account); // {tok}
+            Fix q = quantity(basket.erc20s[i]); // {tok/BU}
 
-            // baskets {BU} = bal {qTok} / q {qTok/BU}
+            // baskets {BU} = bal {tok} / q {tok/BU}
             if (q.gt(FIX_ZERO)) baskets = fixMin(baskets, bal.div(q));
         }
     }
