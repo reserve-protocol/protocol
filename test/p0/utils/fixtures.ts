@@ -154,6 +154,7 @@ async function collateralFixture(
   comptroller: ComptrollerMockP0,
   aaveLendingPool: AaveLendingPoolMockP0,
   aaveToken: ERC20Mock,
+  compToken: ERC20Mock,
   config: IConfig
 ): Promise<CollateralFixture> {
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
@@ -203,7 +204,8 @@ async function collateralFixture(
   }
   const makeCTokenCollateral = async (
     symbol: string,
-    underlyingAddress: string
+    underlyingAddress: string,
+    compToken: ERC20Mock
   ): Promise<[CTokenMock, CTokenFiatCollateralP0]> => {
     const erc20: CTokenMock = <CTokenMock>(
       await CTokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
@@ -217,14 +219,16 @@ async function collateralFixture(
           defaultThreshold,
           delayUntilDefault,
           underlyingAddress,
-          comptroller.address
+          comptroller.address,
+          compToken.address
         )
       ),
     ]
   }
   const makeATokenCollateral = async (
     symbol: string,
-    underlyingAddress: string
+    underlyingAddress: string,
+    aaveToken: ERC20Mock
   ): Promise<[StaticATokenMock, ATokenFiatCollateralP0]> => {
     const erc20: StaticATokenMock = <StaticATokenMock>(
       await ATokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
@@ -243,7 +247,8 @@ async function collateralFixture(
           delayUntilDefault,
           underlyingAddress,
           comptroller.address,
-          aaveLendingPool.address
+          aaveLendingPool.address,
+          aaveToken.address
         )
       ),
     ]
@@ -254,13 +259,13 @@ async function collateralFixture(
   const usdc = await makeSixDecimalCollateral('USDC')
   const usdt = await makeVanillaCollateral('USDT')
   const busd = await makeVanillaCollateral('BUSD')
-  const cdai = await makeCTokenCollateral('cDAI', dai[0].address)
-  const cusdc = await makeCTokenCollateral('cUSDC', usdc[0].address)
-  const cusdt = await makeCTokenCollateral('cUSDT', usdt[0].address)
-  const adai = await makeATokenCollateral('aDAI', dai[0].address)
-  const ausdc = await makeATokenCollateral('aUSDC', usdc[0].address)
-  const ausdt = await makeATokenCollateral('aUSDT', usdt[0].address)
-  const abusd = await makeATokenCollateral('aBUSD', busd[0].address)
+  const cdai = await makeCTokenCollateral('cDAI', dai[0].address, compToken)
+  const cusdc = await makeCTokenCollateral('cUSDC', usdc[0].address, compToken)
+  const cusdt = await makeCTokenCollateral('cUSDT', usdt[0].address, compToken)
+  const adai = await makeATokenCollateral('aDAI', dai[0].address, aaveToken)
+  const ausdc = await makeATokenCollateral('aUSDC', usdc[0].address, aaveToken)
+  const ausdt = await makeATokenCollateral('aUSDT', usdt[0].address, aaveToken)
+  const abusd = await makeATokenCollateral('aBUSD', busd[0].address, aaveToken)
   const erc20s = [
     dai[0],
     usdc[0],
@@ -426,6 +431,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     compoundMock,
     aaveMock,
     aaveToken,
+    compToken,
     config
   )
 

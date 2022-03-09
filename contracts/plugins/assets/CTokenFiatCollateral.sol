@@ -106,8 +106,11 @@ contract CTokenFiatCollateralP0 is CompoundOracleMixinP0, CollateralP0 {
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }
 
-    function getClaimCalldata(IERC20) external view returns (address _to, bytes memory _calldata) {
+    /// Get the message needed to call in order to claim rewards for holding this asset.
+    /// @return _to The address to send the call to
+    /// @return _cd The calldata to send
+    function getClaimCalldata() external view override returns (address _to, bytes memory _cd) {
         _to = address(comptroller);
-        _calldata = abi.encodeWithSignature("claimComp(address)", msg.sender);
+        _cd = abi.encodeWithSignature("claimComp(address)", msg.sender);
     }
 }

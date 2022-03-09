@@ -107,9 +107,9 @@ contract ATokenFiatCollateralP0 is AaveOracleMixinP0, CollateralP0 {
 
     /// Get the message needed to call in order to claim rewards for holding this asset.
     /// @return _to The address to send the call to
-    /// @return _calldata The calldata to send
-    function getClaimCalldata() external view returns (address _to, bytes memory _calldata) {
+    /// @return _cd The calldata to send
+    function getClaimCalldata() external view override returns (address _to, bytes memory _cd) {
         _to = address(erc20); // this should be a StaticAToken
-        _calldata = abi.encodeWithSignature("claimRewardsToSelf(bool)", true);
+        _cd = abi.encodeWithSignature("claimRewardsToSelf(bool)", true);
     }
 }
