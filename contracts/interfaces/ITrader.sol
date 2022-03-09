@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IAsset.sol";
+import "./IAuction.sol";
 import "./IRewardable.sol";
 
 struct ProposedAuction {
@@ -20,13 +21,13 @@ enum AuctionStatus {
 
 interface ITrader is IRewardable {
     /// Emitted when an auction is started
-    /// @param oneshotAuction The address of the oneshot auction contract
+    /// @param auction The address of the oneshot auction contract
     /// @param sell The token to sell
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
     event AuctionStarted(
-        address indexed oneshotAuction,
+        IAuction indexed auction,
         IERC20 indexed sell,
         IERC20 indexed buy,
         uint256 sellAmount,
@@ -34,11 +35,11 @@ interface ITrader is IRewardable {
     );
 
     /// Emitted after an auction ends
-    /// @param oneshotAuction The address of the oneshot auction contract
+    /// @param auction The address of the oneshot auction contract
     /// @param sellAmount {qSellTok} The quantity of the token sold
     /// @param buyAmount {qBuyTok} The quantity of the token bought
     event AuctionEnded(
-        address indexed oneshotAuction,
+        IAuction indexed auction,
         IERC20 indexed sell,
         IERC20 indexed buy,
         uint256 sellAmount,

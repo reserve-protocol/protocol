@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/interfaces/IAuction.sol";
+import "contracts/libraries/Fixed.sol";
 
 contract Auction is IAuction {
     using FixLib for Fix;
@@ -27,7 +28,7 @@ contract Auction is IAuction {
     function open(
         IMarket market_,
         ProposedAuction memory prop,
-        uint256 endTime
+        uint256 endTime_
     ) external {
         require(state == AuctionState.NOT_STARTED, "auction already started");
 
@@ -35,16 +36,16 @@ contract Auction is IAuction {
         owner = msg.sender;
         market = market_;
 
-        info.sell = prop.sell.erc20();
-        info.buy = prop.buy.erc20();
-        info.worstCasePrice = toFix(prop.minBuyAmount).divu(prop.sellAmount);
-        info.endTime = endTime;
+        sell = prop.sell.erc20();
+        buy = prop.buy.erc20();
+        worstCasePrice = toFix(prop.minBuyAmount).divu(prop.sellAmount);
+        endTime = endTime_;
 
-        info.sell.safeApprove(address(market), prop.sellAmount);
-        info.buy.safeApprove(address(market), prop.buyAmount);
-        info.externalId = market.initiateAuction(
-            info.sell,
-            info.buy,
+        sell.safeApprove(address(market), prop.sellAmount);
+        buy.safeApprove(address(market), prop.buyAmount);
+        externalId = market.initiateAuction(
+            sell,
+            buy,
             endTime,
             endTime,
             uint96(prop.sellAmount),
@@ -59,7 +60,7 @@ contract Auction is IAuction {
 
     /// @return If the auction can be closed successfully
     function canClose() public view returns (bool) {
-        return state == AuctionState.OPEN && block.timestamp >= auction.endTime;
+        return state == AuctionState.OPEN && block.timestamp >= endTime;
     }
 
     /// Close the auction and transfer tokens to the owner
@@ -72,7 +73,7 @@ contract Auction is IAuction {
             uint256 boughtAmt
         )
     {
-        require(canSettle(), "auction not ready yet");
+        require(canClose(), "auction not ready yet");
         require(state == AuctionState.OPEN, "auction not open");
         state = AuctionState.CLOSED;
 
@@ -82,16 +83,16 @@ contract Auction is IAuction {
         // }
 
         // Assert balances indicate an appropriate clearing price
-        sellBal = info.sell.balanceOf(address(this));
-        buyBal = info.buy.balanceOf(address(this));
+        uint256 sellBal = sell.balanceOf(address(this));
+        uint256 buyBal = buy.balanceOf(address(this));
 
         // soldAmt = ...
         // boughtAmt = ...
 
         Fix clearingPrice = toFix(boughtAmt).divu(soldAmt);
-        if (clearingPrice.gte(info.worstCasePrice)) success = true;
+        if (clearingPrice.gte(worstCasePrice)) success = true;
 
-        info.sell.safeTransfer(owner, sellBal);
-        info.buy.safeTransfer(owner, buyBal);
+        sell.safeTransfer(owner, sellBal);
+        buy.safeTransfer(owner, buyBal);
     }
 }

@@ -22,7 +22,6 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     using FixLib for Fix;
     using SafeERC20 for IERC20;
 
-    // this is not yet used in implementation
     uint256 public auctionDelay; // {s} how long to wait until starting auctions after switching
     Fix public backingBuffer; // {%} how much extra backing collateral to keep
 
@@ -43,9 +42,11 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     /// Manage backing funds: maintain the overall backing policy
     /// Collective Action
     function manageFunds() external notPaused {
+        closeDueAuctions();
+        if (status == AuctionStatus.OFF) return;
+
         // Call keepers before
         main.poke();
-        closeDueAuctions();
 
         if (hasOpenAuctions()) return;
 

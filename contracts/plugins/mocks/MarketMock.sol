@@ -14,7 +14,7 @@ interface ITrading {
     function placeBid(uint256 auctionId, Bid memory bid) external;
 }
 
-enum AuctionStatus {
+enum MockAuctionStatus {
     NOT_YET_OPEN,
     OPEN,
     DONE
@@ -31,7 +31,7 @@ struct MockAuction {
     uint256 minBuyAmount; // {qBuyTok}
     uint256 startTime; // {sec}
     uint256 endTime; // {sec}
-    AuctionStatus status;
+    MockAuctionStatus status;
 }
 
 struct Bid {
@@ -73,7 +73,7 @@ contract MarketMock is IMarket, ITrading {
                 minBuyAmount,
                 block.timestamp,
                 auctionEndDate,
-                AuctionStatus.OPEN
+                MockAuctionStatus.OPEN
             )
         );
     }
@@ -88,7 +88,7 @@ contract MarketMock is IMarket, ITrading {
     function settleAuction(uint256 auctionId) external returns (bytes32 encodedOrder) {
         MockAuction storage auction = auctions[auctionId];
         require(msg.sender == auction.origin, "only origin can claim");
-        require(auction.status == AuctionStatus.OPEN, "auction already closed");
+        require(auction.status == MockAuctionStatus.OPEN, "auction already closed");
         require(auction.endTime <= block.timestamp, "too early to close auction");
 
         uint256 clearingSellAmount;
@@ -110,7 +110,7 @@ contract MarketMock is IMarket, ITrading {
         auction.sell.safeTransfer(auction.origin, auction.sellAmount - clearingSellAmount);
         auction.buy.safeTransfer(bid.bidder, bid.buyAmount - clearingBuyAmount);
         auction.buy.safeTransfer(auction.origin, clearingBuyAmount);
-        auction.status = AuctionStatus.DONE;
+        auction.status = MockAuctionStatus.DONE;
         return _encodeOrder(0, uint96(clearingBuyAmount), uint96(clearingSellAmount));
     }
 

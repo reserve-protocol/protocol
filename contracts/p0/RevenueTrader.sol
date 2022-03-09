@@ -22,6 +22,9 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
     /// Close any open auctions and start new ones, for all assets
     /// Collective Action
     function manageFunds() external {
+        closeDueAuctions();
+        if (status == AuctionStatus.OFF) return;
+
         // Call state keepers
         main.poke();
 
@@ -38,8 +41,6 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
 
         require(reg.isRegistered(erc20), "erc20 not registered");
 
-        closeDueAuctions();
-
         uint256 bal = erc20.balanceOf(address(this));
         if (bal == 0) return;
 
@@ -51,7 +52,7 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
 
         // Don't open a second auction if there's already one running.
         for (uint256 i = auctionsStart; i < auctions.length; i++) {
-            if (auctions[i].sell == erc20) return;
+            if (auctions[i].sell() == erc20) return;
         }
 
         // If not dust, trade the non-target asset for the target asset

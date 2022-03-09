@@ -123,12 +123,12 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         require(status == AuctionStatus.ON, "auctions off");
         latestAuctionEnd = Math.max(block.timestamp + auctionLength, latestAuctionEnd);
 
-        auctions.push(new Auction());
-        address auctionAddr = address(auctions[auctions.length - 1]);
-        info.sell.safeTransfer(auctionAddr, prop.sellAmount);
+        IAuction auc = new Auction();
+        auctions.push(auc);
+        info.sell.safeTransfer(address(auc), prop.sellAmount);
 
-        oneshotAuction.open(main.market(), prop, latestAuctionEnd);
-        emit AuctionStarted(auctionAddr, info.sell, info.buy, prop.sellAmount, prop.minBuyAmount);
+        auc.open(main.market(), prop, latestAuctionEnd);
+        emit AuctionStarted(address(auc), info.sell, info.buy, prop.sellAmount, prop.minBuyAmount);
     }
 
     function closeAuction(IAuction auc) private {
