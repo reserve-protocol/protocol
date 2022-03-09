@@ -265,6 +265,8 @@ describe('Issuance (previously Issuer contract)', () => {
 
       // Process issuance
       await advanceBlocks(17)
+      await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x0']) // Temporary fix - Hardhat issue
+
       let endID = await rToken.endIdForVest(addr1.address)
       expect(endID).to.equal(1)
       await rToken.vest(addr1.address, 1)
