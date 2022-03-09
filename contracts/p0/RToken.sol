@@ -19,7 +19,7 @@ struct SlowIssuance {
     uint256 amount; // {qRTok}
     Fix baskets; // {BU}
     address[] erc20s;
-    uint256[] deposits; // {qTok}, same index as vault basket assets
+    uint256[] deposits;
     uint256 basketNonce;
     Fix blockAvailableAt; // {block.number} fractional
     bool processed;
