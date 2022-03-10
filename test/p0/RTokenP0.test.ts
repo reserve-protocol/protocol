@@ -213,24 +213,6 @@ describe('RTokenP0 contract', () => {
       expect(await rToken.totalSupply()).to.equal(bn('0'))
     })
 
-    it('Should not issue RTokens if collateral defaulted', async function () {
-      const issueAmount: BigNumber = bn('1000e18')
-
-      // Default one of the tokens - 50% price reduction and mark default as probable
-      await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
-      await collateral1.forceUpdates()
-      expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
-
-      // Try to issue
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
-        'collateral not sound'
-      )
-
-      //Check values
-      expect(await rToken.totalSupply()).to.equal(bn('0'))
-    })
-
     it('Should issue RTokens with single basket token', async function () {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
 
@@ -275,7 +257,6 @@ describe('RTokenP0 contract', () => {
 
       // Process issuance
       await advanceBlocks(17)
-      await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x0']) // Temporary fix - Hardhat issue
 
       let endID = await rToken.endIdForVest(addr1.address)
       expect(endID).to.equal(1)
@@ -417,6 +398,50 @@ describe('RTokenP0 contract', () => {
 
       // Check asset value
       expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
+    })
+
+    it('Should not issue/vest RTokens if collateral defaulted', async function () {
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Default one of the tokens - 50% price reduction and mark default as probable
+      await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+      await collateral1.forceUpdates()
+      expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
+      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+
+      // Attempt to vest (pending 1 block)
+      advanceBlocks(1)
+      await expect(
+        rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      ).to.be.revertedWith('collateral default')
+
+      // Check previous minting was not processed
+      let [, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
+      expect(sm_proc).to.equal(false)
+      expect(await rToken.totalSupply()).to.equal(bn('0'))
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+      expect(await rToken.balanceOf(main.address)).to.equal(0)
+
+      // Cannot start a new issuance either
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
+        'collateral not sound'
+      )
+
+      //Check values
+      expect(await rToken.totalSupply()).to.equal(bn('0'))
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+      expect(await rToken.balanceOf(main.address)).to.equal(0)
     })
 
     it('Should return maxIssuable correctly', async () => {
