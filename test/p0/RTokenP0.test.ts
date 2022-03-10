@@ -1,22 +1,21 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import {
-  Collateral as AbstractCollateral,
+  AssetRegistryP0,
+  BackingManagerP0,
+  BasketHandlerP0,
   CTokenMock,
+  DistributorP0,
   ERC20Mock,
   MainP0,
   RTokenP0,
   StaticATokenMock,
-  AssetRegistryP0,
-  BackingManagerP0,
-  BasketHandlerP0,
-  DistributorP0,
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
-import { Collateral, defaultFixture } from './utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -47,6 +46,9 @@ describe('RTokenP0 contract', () => {
   // RToken
   let rToken: RTokenP0
 
+  // Config
+  let config: IConfig
+
   // Basket
   let basket: Collateral[]
 
@@ -65,7 +67,7 @@ describe('RTokenP0 contract', () => {
     ;[owner, addr1, mainMock, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, main, rToken, assetRegistry, backingManager, basketHandler, distributor } =
+    ;({ basket, config, main, rToken, assetRegistry, backingManager, basketHandler, distributor } =
       await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
@@ -115,6 +117,29 @@ describe('RTokenP0 contract', () => {
 
       // Check updated value
       expect(await rToken.basketsNeeded()).to.equal(fp('1'))
+    })
+
+    it('Should allow to update issuanceRate if Owner', async () => {
+      const newValue: BigNumber = fp('0.1')
+
+      // Check existing value
+      expect(await rToken.issuanceRate()).to.equal(config.issuanceRate)
+
+      // If not owner cannot update
+      await expect(rToken.connect(other).setIssuanceRate(newValue)).to.be.revertedWith(
+        'Component: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await rToken.issuanceRate()).to.equal(config.issuanceRate)
+
+      // Update with owner
+      await expect(rToken.connect(owner).setIssuanceRate(newValue))
+        .to.emit(rToken, 'IssuanceRateSet')
+        .withArgs(rToken.issuanceRate, newValue)
+
+      // Check value was updated
+      expect(await rToken.issuanceRate()).to.equal(newValue)
     })
   })
 
