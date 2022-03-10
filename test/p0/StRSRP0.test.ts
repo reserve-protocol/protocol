@@ -150,7 +150,7 @@ describe('StRSRP0 contract', () => {
   })
 
   describe('Configuration / State', () => {
-    it('Should allow to update unstaking delay correctly if Owner and perform validations', async () => {
+    it('Should allow to update unstakingDelay if Owner and perform validations', async () => {
       // Setup a new value
       const newUnstakingDelay: BigNumber = config.rewardPeriod.mul(2).add(1000)
 
@@ -171,7 +171,7 @@ describe('StRSRP0 contract', () => {
       )
     })
 
-    it('Should allow to update reward period correctly if Owner and perform validations', async () => {
+    it('Should allow to update rewardPeriod if Owner and perform validations', async () => {
       // Setup a new value
       const newRewardPeriod: BigNumber = bn('100000')
 
@@ -192,7 +192,7 @@ describe('StRSRP0 contract', () => {
       )
     })
 
-    it('Should allow to update reward ratio correctly if Owner', async () => {
+    it('Should allow to update rewardRatio if Owner', async () => {
       // Setup a new value
       const newRatio: BigNumber = bn('100000')
 
