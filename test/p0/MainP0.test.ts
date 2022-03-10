@@ -305,16 +305,10 @@ describe('MainP0 contract', () => {
       // Check if Paused
       expect(await main.paused()).to.equal(true)
 
-      // Cannot pause if already paused
-      await expect(main.connect(addr1).pause()).to.be.revertedWith('paused')
-
       // Unpause with Pauser
       await main.connect(addr1).unpause()
 
       expect(await main.paused()).to.equal(false)
-
-      // Cannot unpause if already paused
-      await expect(main.connect(addr1).unpause()).to.be.revertedWith('not paused')
 
       // Owner should still be able to Pause
       await main.connect(owner).pause()
@@ -337,12 +331,11 @@ describe('MainP0 contract', () => {
       // Check no changes
       expect(await main.paused()).to.equal(false)
 
-      // Pause and attempt to unpause
-      await main.connect(owner).pause()
+      // Attempt to unpause
       await expect(main.connect(other).unpause()).to.be.revertedWith('only pauser or owner')
 
       // Check no changes
-      expect(await main.paused()).to.equal(true)
+      expect(await main.paused()).to.equal(false)
     })
 
     it('Should allow to set Pauser if Owner or Pauser', async () => {
@@ -758,6 +751,19 @@ describe('MainP0 contract', () => {
 
       // Check value was updated
       expect(await main.furnace()).to.equal(newFurnace.address)
+    })
+  })
+
+  describe('Keepers', () => {
+    it('Should not allow to run keepers if paused', async () => {
+      // By default keepers can be run
+      await main.poke()
+
+      // Pause Main
+      await main.connect(owner).pause()
+
+      // Attempt to run keepers again
+      await expect(main.poke()).to.be.revertedWith('paused')
     })
   })
 

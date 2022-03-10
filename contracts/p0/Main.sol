@@ -22,23 +22,18 @@ contract Pausable is Ownable, IPausable {
         paused = true;
     }
 
-    modifier whenNotPaused() {
+    modifier notPaused() {
         require(!paused, "paused");
         _;
     }
 
-    modifier whenPaused() {
-        require(paused, "not paused");
-        _;
-    }
-
-    function pause() external whenNotPaused {
+    function pause() external {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         emit PausedSet(paused, true);
         paused = true;
     }
 
-    function unpause() external whenPaused {
+    function unpause() external {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         emit PausedSet(paused, false);
         paused = false;
@@ -68,9 +63,8 @@ contract MainP0 is Pausable, IMain {
     bool private initialized;
     EnumerableSet.AddressSet private components;
 
-    function poke() external {
+    function poke() external notPaused {
         // We think these are totally order-independent.
-        require(!paused, "paused");
         basketHandler.ensureBasket();
         furnace.melt();
         rsrTrader.closeDueAuctions();
