@@ -305,10 +305,16 @@ describe('MainP0 contract', () => {
       // Check if Paused
       expect(await main.paused()).to.equal(true)
 
+      // Cannot pause if already paused
+      await expect(main.connect(addr1).pause()).to.be.revertedWith('paused')
+
       // Unpause with Pauser
       await main.connect(addr1).unpause()
 
       expect(await main.paused()).to.equal(false)
+
+      // Cannot unpause if already paused
+      await expect(main.connect(addr1).unpause()).to.be.revertedWith('not paused')
 
       // Owner should still be able to Pause
       await main.connect(owner).pause()
@@ -331,10 +337,12 @@ describe('MainP0 contract', () => {
       // Check no changes
       expect(await main.paused()).to.equal(false)
 
+      // Pause and attempt to unpause
+      await main.connect(owner).pause()
       await expect(main.connect(other).unpause()).to.be.revertedWith('only pauser or owner')
 
       // Check no changes
-      expect(await main.paused()).to.equal(false)
+      expect(await main.paused()).to.equal(true)
     })
 
     it('Should allow to set Pauser if Owner or Pauser', async () => {

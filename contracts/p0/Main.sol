@@ -22,18 +22,23 @@ contract Pausable is Ownable, IPausable {
         paused = true;
     }
 
-    modifier notPaused() {
+    modifier whenNotPaused() {
         require(!paused, "paused");
         _;
     }
 
-    function pause() external {
+    modifier whenPaused() {
+        require(paused, "not paused");
+        _;
+    }
+
+    function pause() external whenNotPaused {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         emit PausedSet(paused, true);
         paused = true;
     }
 
-    function unpause() external {
+    function unpause() external whenPaused {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         emit PausedSet(paused, false);
         paused = false;
