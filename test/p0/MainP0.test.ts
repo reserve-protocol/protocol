@@ -2,18 +2,23 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
+import { expectInIndirectReceipt, expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
 import {
   AaveLendingPoolMock,
   Asset,
+  AssetRegistryP0,
   ATokenFiatCollateral,
+  BackingManagerP0,
+  BasketHandlerP0,
   Collateral as AbstractCollateral,
   CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
   DeployerP0,
+  DistributorP0,
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
@@ -24,13 +29,8 @@ import {
   RTokenP0,
   StaticATokenMock,
   StRSRP0,
-  AssetRegistryP0,
-  BackingManagerP0,
-  BasketHandlerP0,
-  DistributorP0,
   USDCMock,
 } from '../../typechain'
-import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -138,9 +138,6 @@ describe('MainP0 contract', () => {
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
     token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
 
-    // Set Aave revenue token
-    await token2.setAaveToken(aaveToken.address)
-
     collateral0 = <Collateral>basket[0]
     collateral1 = <Collateral>basket[1]
     collateral2 = <ATokenFiatCollateral>basket[2]
@@ -166,10 +163,18 @@ describe('MainP0 contract', () => {
       expect(await main.owner()).to.equal(owner.address)
       expect(await main.pauser()).to.equal(owner.address)
 
+      // Components
+      expect(await main.hasComponent(assetRegistry.address)).to.equal(true)
+      expect(await main.hasComponent(basketHandler.address)).to.equal(true)
+      expect(await main.hasComponent(backingManager.address)).to.equal(true)
+      expect(await main.hasComponent(distributor.address)).to.equal(true)
+
       // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)
       expect(await main.furnace()).to.equal(furnace.address)
       expect(await main.market()).to.equal(market.address)
+      expect(await main.rsrTrader()).to.equal(rsrTrader.address)
+      expect(await main.rTokenTrader()).to.equal(rTokenTrader.address)
 
       // Configuration
       let totals = await distributor.totals()
@@ -287,6 +292,69 @@ describe('MainP0 contract', () => {
       await expect(
         deployer.deploy('RTKN RToken', 'RTKN', owner.address, newConfig)
       ).to.be.revertedWith('unstakingDelay/rewardPeriod incompatible')
+    })
+
+    it('Should emit events on init', async () => {
+      // Deploy new system instance
+      const receipt = await (
+        await deployer.deploy('RTKN RToken', 'RTKN', owner.address, config)
+      ).wait()
+
+      const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
+      const newMain: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
+
+      expectInIndirectReceipt(receipt, newMain.interface, 'Initialized')
+      expectInIndirectReceipt(receipt, newMain.interface, 'AssetRegistrySet', {
+        oldVal: ZERO_ADDRESS,
+        newVal: await newMain.assetRegistry(),
+      })
+
+      expectInIndirectReceipt(receipt, newMain.interface, 'BasketHandlerSet', {
+        oldVal: ZERO_ADDRESS,
+        newVal: await newMain.basketHandler(),
+      })
+      expectInIndirectReceipt(receipt, newMain.interface, 'BackingManagerSet', {
+        oldVal: ZERO_ADDRESS,
+        newVal: await newMain.backingManager(),
+      })
+      expectInIndirectReceipt(receipt, newMain.interface, 'DistributorSet', {
+        oldVal: ZERO_ADDRESS,
+        newVal: await newMain.distributor(),
+      })
+
+      expectInIndirectReceipt(receipt, newMain.interface, 'RTokenSet', {
+        oldVal: ZERO_ADDRESS,
+        newVal: await newMain.rToken(),
+      })
+      expectInIndirectReceipt(receipt, newMain.interface, 'StRSRSet', {
+        oldVal: ZERO_ADDRESS,
+        newVal: await newMain.stRSR(),
+      })
+
+      expectInIndirectReceipt(receipt, newMain.interface, 'RSRTraderSet', {
+        oldVal: ZERO_ADDRESS,
+        newVal: await newMain.rsrTrader(),
+      })
+
+      expectInIndirectReceipt(receipt, newMain.interface, 'RTokenTraderSet', {
+        oldVal: ZERO_ADDRESS,
+        newVal: await newMain.rTokenTrader(),
+      })
+
+      expectInIndirectReceipt(receipt, newMain.interface, 'FurnaceSet', {
+        oldVal: ZERO_ADDRESS,
+        newVal: await newMain.furnace(),
+      })
+
+      expectInIndirectReceipt(receipt, newMain.interface, 'MarketSet', {
+        oldVal: ZERO_ADDRESS,
+        newVal: await newMain.market(),
+      })
+
+      expectInIndirectReceipt(receipt, newMain.interface, 'RSRSet', {
+        oldVal: ZERO_ADDRESS,
+        newVal: await newMain.rsr(),
+      })
     })
   })
 
