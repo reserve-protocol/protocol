@@ -717,6 +717,14 @@ describe('MainP0 contract', () => {
         )
       )
 
+      const duplicateAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+        await AssetFactory.deploy(
+          token0.address,
+          await collateral0.maxAuctionSize(),
+          compoundMock.address
+        )
+      )
+
       // Get previous length for assets
       const previousLength = (await assetRegistry.erc20s()).length
 
@@ -725,12 +733,12 @@ describe('MainP0 contract', () => {
         'Component: caller is not the owner'
       )
 
-      // Nothing occurs if attempting to add an existing asset
-      await expect(assetRegistry.connect(owner).register(aaveAsset.address)).to.not.emit(
-        assetRegistry,
-        'AssetRegistered'
-      )
+      // Reverts if attempting to add an existing ERC20 with different asset
+      await expect(
+        assetRegistry.connect(owner).register(duplicateAsset.address)
+      ).to.be.revertedWith('duplicate ERC20 detected')
 
+      // Nothing happens if attempting to register an already registered asset
       await expect(assetRegistry.connect(owner).register(aaveAsset.address)).to.not.emit(
         assetRegistry,
         'AssetRegistered'
