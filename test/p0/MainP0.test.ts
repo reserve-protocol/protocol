@@ -17,6 +17,7 @@ import {
   CTokenMock,
   DeployerP0,
   DistributorP0,
+  ERC20,
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
@@ -730,6 +731,11 @@ describe('MainP0 contract', () => {
         'AssetRegistered'
       )
 
+      await expect(assetRegistry.connect(owner).register(aaveAsset.address)).to.not.emit(
+        assetRegistry,
+        'AssetRegistered'
+      )
+
       // Check nothing changed
       let allERC20s = await assetRegistry.erc20s()
       expect(allERC20s.length).to.equal(previousLength)
@@ -756,6 +762,17 @@ describe('MainP0 contract', () => {
         )
       )
 
+      // Setup new asset with new ERC20
+      const ERC20Factory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
+      const newToken: ERC20Mock = <ERC20Mock>await ERC20Factory.deploy('NewTKN Token', 'NewTKN')
+      const newTokenAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+        await AssetFactory.deploy(
+          newToken.address,
+          await collateral0.maxAuctionSize(),
+          compoundMock.address
+        )
+      )
+
       // Get previous length for assets
       const previousLength = (await assetRegistry.erc20s()).length
 
@@ -773,6 +790,11 @@ describe('MainP0 contract', () => {
       await expect(assetRegistry.connect(owner).unregister(newAsset.address)).to.be.revertedWith(
         'asset not found'
       )
+
+      // Cannot remove asset with non-registered ERC20
+      await expect(
+        assetRegistry.connect(owner).unregister(newTokenAsset.address)
+      ).to.be.revertedWith('no asset to unregister')
 
       // Check nothing changed
       allERC20s = await assetRegistry.erc20s()
