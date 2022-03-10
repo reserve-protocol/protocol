@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { bn, fp } from '../../common/numbers'
@@ -321,7 +321,9 @@ describe('StRSRP0 contract', () => {
       await stRSR.connect(addr1).stake(amount)
 
       // Unstake
-      await stRSR.connect(addr1).unstake(amount)
+      await expect(stRSR.connect(addr1).unstake(amount))
+        .emit(stRSR, 'UnstakingStarted')
+        .withArgs(0, 0, addr1.address, amount, amount)
 
       // Check withdrawal properly registered
       const [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 0)
@@ -353,7 +355,10 @@ describe('StRSRP0 contract', () => {
       await stRSR.connect(addr2).stake(amount3)
 
       // Unstake - Create withdrawal
-      await stRSR.connect(addr1).unstake(amount1)
+      await expect(stRSR.connect(addr1).unstake(amount1))
+        .emit(stRSR, 'UnstakingStarted')
+        .withArgs(0, 0, addr1.address, amount1, amount1)
+
       let [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 0)
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount1)
@@ -362,7 +367,9 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount2)
 
       // Unstake again
-      await stRSR.connect(addr1).unstake(amount2)
+      await expect(stRSR.connect(addr1).unstake(amount2))
+        .emit(stRSR, 'UnstakingStarted')
+        .withArgs(1, 0, addr1.address, amount2, amount2)
       ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 1)
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount2)
@@ -370,8 +377,10 @@ describe('StRSRP0 contract', () => {
       // All staked funds withdrawn upfront
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
 
-      // Unstake again with different user (will withdraw previous stake)
-      await stRSR.connect(addr2).unstake(amount3)
+      // Unstake again with different user
+      await expect(stRSR.connect(addr2).unstake(amount3))
+        .emit(stRSR, 'UnstakingStarted')
+        .withArgs(0, 0, addr2.address, amount3, amount3)
       ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr2.address, 0)
       expect(unstakeAcc).to.equal(addr2.address)
       expect(unstakeAmt).to.equal(amount3)
@@ -614,7 +623,7 @@ describe('StRSRP0 contract', () => {
   })
 
   describe('Add RSR', () => {
-    it('Should not allow to remove RSR if caller is not the Backing Trader', async () => {
+    it('Should not allow to remove RSR if caller is not part of Main', async () => {
       const amount: BigNumber = bn('1e18')
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
 
@@ -930,6 +939,8 @@ describe('StRSRP0 contract', () => {
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount.sub(proportionalAmountToSeize))
     })
+
+    it.skip('Should handle stakes correctly after removing RSR', async () => {})
   })
 
   describe('Transfers', () => {
