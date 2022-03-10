@@ -2,9 +2,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR } from '../../common/constants'
+import { BN_SCALE_FACTOR, CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
+  AaveOracleMock,
   ATokenFiatCollateral,
   BackingManagerP0,
   BasketHandlerP0,
@@ -45,6 +46,8 @@ describe('RTokenP0 contract', () => {
   // Config values
   let config: IConfig
 
+  // Aave / Compound
+  let aaveOracleInternal: AaveOracleMock
   // Main
   let main: MainP0
   let rToken: RTokenP0
@@ -64,8 +67,18 @@ describe('RTokenP0 contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, config, main, rToken, facade, backingManager, basketHandler, rToken, facade } =
-      await loadFixture(defaultFixture))
+    ;({
+      aaveOracleInternal,
+      basket,
+      config,
+      main,
+      rToken,
+      facade,
+      backingManager,
+      basketHandler,
+      rToken,
+      facade,
+    } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
     collateral0 = <Collateral>basket[0]
@@ -197,6 +210,24 @@ describe('RTokenP0 contract', () => {
       await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
         'ERC20: transfer amount exceeds balance'
       )
+      expect(await rToken.totalSupply()).to.equal(bn('0'))
+    })
+
+    it('Should not issue RTokens if collateral defaulted', async function () {
+      const issueAmount: BigNumber = bn('1000e18')
+
+      // Default one of the tokens - 50% price reduction and mark default as probable
+      await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+      await collateral1.forceUpdates()
+      expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
+      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+
+      // Try to issue
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
+        'collateral not sound'
+      )
+
+      //Check values
       expect(await rToken.totalSupply()).to.equal(bn('0'))
     })
 
