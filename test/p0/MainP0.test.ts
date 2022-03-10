@@ -701,7 +701,10 @@ describe('MainP0 contract', () => {
       )
 
       // Nothing occurs if attempting to add an existing asset
-      await assetRegistry.connect(owner).register(aaveAsset.address)
+      await expect(assetRegistry.connect(owner).register(aaveAsset.address)).to.not.emit(
+        assetRegistry,
+        'AssetRegistered'
+      )
 
       // Check nothing changed
       let allERC20s = await assetRegistry.erc20s()
@@ -754,7 +757,9 @@ describe('MainP0 contract', () => {
       expect(allERC20s).to.not.contain(erc20s[5].address)
 
       // Remove asset
-      await assetRegistry.connect(owner).unregister(compAsset.address)
+      await expect(assetRegistry.connect(owner).unregister(compAsset.address))
+        .to.emit(assetRegistry, 'AssetUnregistered')
+        .withArgs(compToken.address, compAsset.address)
 
       // Check if it was removed
       allERC20s = await assetRegistry.erc20s()
@@ -819,7 +824,9 @@ describe('MainP0 contract', () => {
       await expect(assetRegistry.toAsset(other.address)).to.be.revertedWith('erc20 unregistered')
 
       // Reverts if no registered asset - After unregister
-      await assetRegistry.connect(owner).unregister(rsrAsset.address)
+      await expect(assetRegistry.connect(owner).unregister(rsrAsset.address))
+        .to.emit(assetRegistry, 'AssetUnregistered')
+        .withArgs(rsr.address, rsrAsset.address)
       await expect(assetRegistry.toAsset(rsr.address)).to.be.revertedWith('erc20 unregistered')
 
       // Returns correctly the asset
