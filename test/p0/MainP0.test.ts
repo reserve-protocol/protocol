@@ -246,8 +246,10 @@ describe('MainP0 contract', () => {
   })
 
   describe('Initialization', () => {
-    it('Should not allow to initialize Main twice', async () => {
-      const ctorArgs = {
+    let ctorArgs: any
+
+    beforeEach(async () => {
+      ctorArgs = {
         params: config,
         core: {
           rToken: rToken.address,
@@ -266,7 +268,18 @@ describe('MainP0 contract', () => {
         },
         rsr: rsr.address,
       }
+    })
+
+    it('Should not allow to initialize Main twice', async () => {
       await expect(main.init(ctorArgs)).to.be.revertedWith('Already initialized')
+    })
+
+    it('Should not allow to initialize components twice', async () => {
+      // Setup new Main
+      const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
+      const newMain = <MainP0>await MainFactory.deploy()
+
+      await expect(newMain.init(ctorArgs)).to.be.revertedWith('Component: already initialized')
     })
 
     it('Should perform validations on init', async () => {
@@ -657,7 +670,7 @@ describe('MainP0 contract', () => {
     })
   })
 
-  describe('Keepers', () => {
+  describe('Keepers and Actions', () => {
     it('Should not allow to run keepers if paused', async () => {
       // By default keepers can be run
       await main.poke()
@@ -667,6 +680,17 @@ describe('MainP0 contract', () => {
 
       // Attempt to run keepers again
       await expect(main.poke()).to.be.revertedWith('paused')
+    })
+
+    it('Should not allow actions on components if paused', async () => {
+      // Ensure valid basket action
+      await basketHandler.ensureBasket()
+
+      // Pause Main
+      await main.connect(owner).pause()
+
+      // Attempt to run action again
+      await expect(basketHandler.ensureBasket()).to.be.revertedWith('Component: system is paused')
     })
   })
 
