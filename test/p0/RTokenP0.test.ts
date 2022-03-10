@@ -22,7 +22,6 @@ const createFixtureLoader = waffle.createFixtureLoader
 describe('RTokenP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
-  let mainMock: SignerWithAddress
   let other: SignerWithAddress
 
   // Main
@@ -64,7 +63,7 @@ describe('RTokenP0 contract', () => {
   })
 
   beforeEach(async () => {
-    ;[owner, addr1, mainMock, other] = await ethers.getSigners()
+    ;[owner, addr1, other] = await ethers.getSigners()
 
     // Deploy fixture
     ;({ basket, config, main, rToken, assetRegistry, backingManager, basketHandler, distributor } =
