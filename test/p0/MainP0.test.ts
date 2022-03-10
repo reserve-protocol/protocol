@@ -6,13 +6,11 @@ import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { expectInIndirectReceipt, expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveLendingPoolMock,
   Asset,
   AssetRegistryP0,
   ATokenFiatCollateral,
   BackingManagerP0,
   BasketHandlerP0,
-  Collateral as AbstractCollateral,
   CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
@@ -31,7 +29,7 @@ import {
   StRSRP0,
   USDCMock,
 } from '../../typechain'
-import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -55,7 +53,6 @@ describe('MainP0 contract', () => {
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
   let aaveAsset: Asset
-  let aaveMock: AaveLendingPoolMock
 
   // Trading
   let market: MarketMock
@@ -68,17 +65,14 @@ describe('MainP0 contract', () => {
   let token1: USDCMock
   let token2: StaticATokenMock
   let token3: CTokenMock
-  let newToken: ERC20Mock
   let collateral0: Collateral
   let collateral1: Collateral
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
-  let newAsset: Collateral
   let erc20s: ERC20Mock[]
 
   // Config values
   let config: IConfig
-  let dist: IRevenueShare
 
   // Contracts to retrieve after deploy
   let rToken: RTokenP0
@@ -112,13 +106,11 @@ describe('MainP0 contract', () => {
       compAsset,
       aaveAsset,
       compoundMock,
-      aaveMock,
       erc20s,
       collateral,
       basket,
       config,
       deployer,
-      dist,
       main,
       assetRegistry,
       backingManager,
@@ -181,18 +173,12 @@ describe('MainP0 contract', () => {
       expect(totals.rTokenTotal).to.equal(bn(40))
       expect(totals.rsrTotal).to.equal(bn(60))
 
-      // TODO move check out to individual contract where variable is stored
-      // expect(await settings.rewardPeriod()).to.equal(config.rewardPeriod)
-      // expect(await settings.auctionLength()).to.equal(config.auctionLength)
-      // expect(await settings.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
-      // expect(await settings.unstakingDelay()).to.equal(config.unstakingDelay)
-      // expect(await settings.defaultDelay()).to.equal(config.defaultDelay)
-      // expect(await settings.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      // expect(await settings.dustAmount()).to.equal(config.dustAmount)
-      // expect(await settings.backingBuffer()).to.equal(config.backingBuffer)
-      // expect(await settings.issuanceRate()).to.equal(config.issuanceRate)
-      // expect(await settings.defaultThreshold()).to.equal(config.defaultThreshold)
-      // expect(await settings.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
+      // Check configurations for internal components
+      expect(await backingManager.auctionLength()).to.equal(config.auctionLength)
+      expect(await backingManager.auctionDelay()).to.equal(config.auctionDelay)
+      expect(await backingManager.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+      expect(await backingManager.dustAmount()).to.equal(config.dustAmount)
+      expect(await backingManager.backingBuffer()).to.equal(config.backingBuffer)
     })
 
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
@@ -434,272 +420,121 @@ describe('MainP0 contract', () => {
     })
   })
 
-  // TODO Move test into the specific test file for that variable
   describe('Configuration/State', () => {
-    // it('Should allow to update rewardPeriod if Owner', async () => {
-    //   const newValue: BigNumber = bn('360')
-
-    //   // Check existing value
-    //   expect(await settings.rewardPeriod()).to.equal(config.rewardPeriod)
-
-    //   // If not owner cannot update
-    //   await expect(settings.connect(other).setRewardPeriod(newValue)).to.be.revertedWith(
-    //     'Component: caller is not the owner'
-    //   )
+    it('Should allow to update auctionLength if Owner', async () => {
+      const newValue: BigNumber = bn('360')
 
-    //   // Check value did not change
-    //   expect(await settings.rewardPeriod()).to.equal(config.rewardPeriod)
-
-    //   // Update with owner
-    //   await expect(settings.connect(owner).setRewardPeriod(newValue))
-    //     .to.emit(settings, 'RewardPeriodSet')
-    //     .withArgs(config.rewardPeriod, newValue)
+      // Check existing value
+      expect(await backingManager.auctionLength()).to.equal(config.auctionLength)
 
-    //   // Check value was updated
-    //   expect(await settings.rewardPeriod()).to.equal(newValue)
-    // })
-
-    // it('Should allow to update auctionLength if Owner', async () => {
-    //   const newValue: BigNumber = bn('360')
-
-    //   // Check existing value
-    //   expect(await settings.auctionLength()).to.equal(config.auctionLength)
+      // If not owner cannot update
+      await expect(backingManager.connect(other).setAuctionLength(newValue)).to.be.revertedWith(
+        'Component: caller is not the owner'
+      )
 
-    //   // If not owner cannot update
-    //   await expect(settings.connect(other).setAuctionLength(newValue)).to.be.revertedWith(
-    //     'Component: caller is not the owner'
-    //   )
+      // Check value did not change
+      expect(await backingManager.auctionLength()).to.equal(config.auctionLength)
 
-    //   // Check value did not change
-    //   expect(await settings.auctionLength()).to.equal(config.auctionLength)
+      // Update with owner
+      await expect(backingManager.connect(owner).setAuctionLength(newValue))
+        .to.emit(backingManager, 'AuctionLengthSet')
+        .withArgs(config.auctionLength, newValue)
 
-    //   // Update with owner
-    //   await expect(settings.connect(owner).setAuctionLength(newValue))
-    //     .to.emit(settings, 'AuctionLengthSet')
-    //     .withArgs(config.auctionLength, newValue)
+      // Check value was updated
+      expect(await backingManager.auctionLength()).to.equal(newValue)
+    })
 
-    //   // Check value was updated
-    //   expect(await settings.auctionLength()).to.equal(newValue)
-    // })
-
-    // it('Should allow to update stRSRPayPeriod if Owner and perform validations', async () => {
-    //   const newValue: BigNumber = config.stRSRPayPeriod.div(2)
+    it('Should allow to update auctionDelay if Owner', async () => {
+      const newValue: BigNumber = bn('360')
 
-    //   // Check existing value
-    //   expect(await settings.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
+      // Check existing value
+      expect(await backingManager.auctionDelay()).to.equal(config.auctionDelay)
 
-    //   // If not owner cannot update
-    //   await expect(settings.connect(other).setStRSRPayPeriod(newValue)).to.be.revertedWith(
-    //     'Component: caller is not the owner'
-    //   )
+      // If not owner cannot update
+      await expect(backingManager.connect(other).setAuctionDelay(newValue)).to.be.revertedWith(
+        'Component: caller is not the owner'
+      )
 
-    //   // Reverts if the value is too long
-    //   const invalidValue: BigNumber = config.unstakingDelay
-    //   await expect(settings.connect(owner).setStRSRPayPeriod(invalidValue)).to.be.revertedWith(
-    //     'RSR pay period too long'
-    //   )
+      // Check value did not change
+      expect(await backingManager.auctionDelay()).to.equal(config.auctionDelay)
 
-    //   // Check value did not change
-    //   expect(await settings.stRSRPayPeriod()).to.equal(config.stRSRPayPeriod)
+      // Update with owner
+      await expect(backingManager.connect(owner).setAuctionDelay(newValue))
+        .to.emit(backingManager, 'AuctionDelaySet')
+        .withArgs(config.auctionDelay, newValue)
 
-    //   // Update with owner
-    //   await expect(settings.connect(owner).setStRSRPayPeriod(newValue))
-    //     .to.emit(settings, 'StRSRPayPeriodSet')
-    //     .withArgs(config.stRSRPayPeriod, newValue)
+      // Check value was updated
+      expect(await backingManager.auctionDelay()).to.equal(newValue)
+    })
 
-    //   // Check value was updated
-    //   expect(await settings.stRSRPayPeriod()).to.equal(newValue)
-    // })
+    it('Should allow to update maxTradeSlippage if Owner', async () => {
+      const newValue: BigNumber = fp('0.02')
 
-    // it('Should allow to update unstakingDelay if Owner and perform validations', async () => {
-    //   const newValue: BigNumber = config.unstakingDelay.div(2)
+      // Check existing value
+      expect(await backingManager.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
 
-    //   // Check existing value
-    //   expect(await settings.unstakingDelay()).to.equal(config.unstakingDelay)
+      // If not owner cannot update
+      await expect(backingManager.connect(other).setMaxTradeSlippage(newValue)).to.be.revertedWith(
+        'Component: caller is not the owner'
+      )
 
-    //   // If not owner cannot update
-    //   await expect(settings.connect(other).setStRSRWithdrawalDelay(newValue)).to.be.revertedWith(
-    //     'Component: caller is not the owner'
-    //   )
+      // Check value did not change
+      expect(await backingManager.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
 
-    //   // Reverts if the value is too short
-    //   const invalidValue: BigNumber = config.stRSRPayPeriod
-    //   await expect(
-    //     settings.connect(owner).setStRSRWithdrawalDelay(invalidValue)
-    //   ).to.be.revertedWith('RSR withdrawal delay too short')
+      // Update with owner
+      await expect(backingManager.connect(owner).setMaxTradeSlippage(newValue))
+        .to.emit(backingManager, 'MaxTradeSlippageSet')
+        .withArgs(config.maxTradeSlippage, newValue)
 
-    //   // Check value did not change
-    //   expect(await settings.unstakingDelay()).to.equal(config.unstakingDelay)
+      // Check value was updated
+      expect(await backingManager.maxTradeSlippage()).to.equal(newValue)
+    })
 
-    //   // Update with owner
-    //   await expect(settings.connect(owner).setStRSRWithdrawalDelay(newValue))
-    //     .to.emit(settings, 'StRSRWithdrawalDelaySet')
-    //     .withArgs(config.unstakingDelay, newValue)
+    it('Should allow to update dustAmount if Owner', async () => {
+      const newValue: BigNumber = fp('0.02')
 
-    //   // Check value was updated
-    //   expect(await settings.unstakingDelay()).to.equal(newValue)
-    // })
+      // Check existing value
+      expect(await backingManager.dustAmount()).to.equal(config.dustAmount)
 
-    // it('Should allow to update defaultDelay if Owner', async () => {
-    //   const newValue: BigNumber = bn('360')
+      // If not owner cannot update
+      await expect(backingManager.connect(other).setDustAmount(newValue)).to.be.revertedWith(
+        'Component: caller is not the owner'
+      )
 
-    //   // Check existing value
-    //   expect(await settings.defaultDelay()).to.equal(config.defaultDelay)
+      // Check value did not change
+      expect(await backingManager.dustAmount()).to.equal(config.dustAmount)
 
-    //   // If not owner cannot update
-    //   await expect(settings.connect(other).setDefaultDelay(newValue)).to.be.revertedWith(
-    //     'Component: caller is not the owner'
-    //   )
+      // Update with owner
+      await expect(backingManager.connect(owner).setDustAmount(newValue))
+        .to.emit(backingManager, 'DustAmountSet')
+        .withArgs(config.dustAmount, newValue)
 
-    //   // Check value did not change
-    //   expect(await settings.defaultDelay()).to.equal(config.defaultDelay)
+      // Check value was updated
+      expect(await backingManager.dustAmount()).to.equal(newValue)
+    })
 
-    //   // Update with owner
-    //   await expect(settings.connect(owner).setDefaultDelay(newValue))
-    //     .to.emit(settings, 'DefaultDelaySet')
-    //     .withArgs(config.defaultDelay, newValue)
+    it('Should allow to update backingBuffer if Owner', async () => {
+      const newValue: BigNumber = fp('0.02')
 
-    //   // Check value was updated
-    //   expect(await settings.defaultDelay()).to.equal(newValue)
-    // })
+      // Check existing value
+      expect(await backingManager.backingBuffer()).to.equal(config.backingBuffer)
 
-    // it('Should allow to update maxTradeSlippage if Owner', async () => {
-    //   const newValue: BigNumber = fp('0.02')
-
-    //   // Check existing value
-    //   expect(await settings.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-
-    //   // If not owner cannot update
-    //   await expect(settings.connect(other).setMaxTradeSlippage(newValue)).to.be.revertedWith(
-    //     'Component: caller is not the owner'
-    //   )
-
-    //   // Check value did not change
-    //   expect(await settings.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-
-    //   // Update with owner
-    //   await expect(settings.connect(owner).setMaxTradeSlippage(newValue))
-    //     .to.emit(settings, 'MaxTradeSlippageSet')
-    //     .withArgs(config.maxTradeSlippage, newValue)
-
-    //   // Check value was updated
-    //   expect(await settings.maxTradeSlippage()).to.equal(newValue)
-    // })
-
-    // it('Should allow to update dustAmount if Owner', async () => {
-    //   const newValue: BigNumber = fp('0.02')
-
-    //   // Check existing value
-    //   expect(await settings.dustAmount()).to.equal(config.dustAmount)
-
-    //   // If not owner cannot update
-    //   await expect(settings.connect(other).setDustAmount(newValue)).to.be.revertedWith(
-    //     'Component: caller is not the owner'
-    //   )
-
-    //   // Check value did not change
-    //   expect(await settings.dustAmount()).to.equal(config.dustAmount)
-
-    //   // Update with owner
-    //   await expect(settings.connect(owner).setDustAmount(newValue))
-    //     .to.emit(settings, 'DustAmountSet')
-    //     .withArgs(config.dustAmount, newValue)
-
-    //   // Check value was updated
-    //   expect(await settings.dustAmount()).to.equal(newValue)
-    // })
-
-    // it('Should allow to update backingBuffer if Owner', async () => {
-    //   const newValue: BigNumber = fp('0.02')
-
-    //   // Check existing value
-    //   expect(await settings.backingBuffer()).to.equal(config.backingBuffer)
-
-    //   // If not owner cannot update
-    //   await expect(settings.connect(other).setBackingBuffer(newValue)).to.be.revertedWith(
-    //     'Component: caller is not the owner'
-    //   )
-
-    //   // Check value did not change
-    //   expect(await settings.backingBuffer()).to.equal(config.backingBuffer)
-
-    //   // Update with owner
-    //   await expect(settings.connect(owner).setBackingBuffer(newValue))
-    //     .to.emit(settings, 'BackingBufferSet')
-    //     .withArgs(config.backingBuffer, newValue)
-
-    //   // Check value was updated
-    //   expect(await settings.backingBuffer()).to.equal(newValue)
-    // })
-
-    // it('Should allow to update issuanceRate if Owner', async () => {
-    //   const newValue: BigNumber = fp('0.1')
-
-    //   // Check existing value
-    //   expect(await settings.issuanceRate()).to.equal(config.issuanceRate)
-
-    //   // If not owner cannot update
-    //   await expect(settings.connect(other).setIssuanceRate(newValue)).to.be.revertedWith(
-    //     'Component: caller is not the owner'
-    //   )
-
-    //   // Check value did not change
-    //   expect(await settings.issuanceRate()).to.equal(config.issuanceRate)
-
-    //   // Update with owner
-    //   await expect(settings.connect(owner).setIssuanceRate(newValue))
-    //     .to.emit(settings, 'IssuanceRateSet')
-    //     .withArgs(config.issuanceRate, newValue)
-
-    //   // Check value was updated
-    //   expect(await settings.issuanceRate()).to.equal(newValue)
-    // })
-
-    // it('Should allow to update defaultThreshold if Owner', async () => {
-    //   const newValue: BigNumber = fp('0.1')
-
-    //   // Check existing value
-    //   expect(await settings.defaultThreshold()).to.equal(config.defaultThreshold)
-
-    //   // If not owner cannot update
-    //   await expect(settings.connect(other).setDefaultThreshold(newValue)).to.be.revertedWith(
-    //     'Component: caller is not the owner'
-    //   )
-
-    //   // Check value did not change
-    //   expect(await settings.defaultThreshold()).to.equal(config.defaultThreshold)
-
-    //   // Update with owner
-    //   await expect(settings.connect(owner).setDefaultThreshold(newValue))
-    //     .to.emit(settings, 'DefaultThresholdSet')
-    //     .withArgs(config.defaultThreshold, newValue)
-
-    //   // Check value was updated
-    //   expect(await settings.defaultThreshold()).to.equal(newValue)
-    // })
-
-    // it('Should allow to update stRSRPayRatio if Owner', async () => {
-    //   const newValue: BigNumber = config.stRSRPayRatio.div(2)
-
-    //   // Check existing value
-    //   expect(await settings.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
-
-    //   // If not owner cannot update
-    //   await expect(settings.connect(other).setStRSRPayRatio(newValue)).to.be.revertedWith(
-    //     'Component: caller is not the owner'
-    //   )
-
-    //   // Check value did not change
-    //   expect(await settings.stRSRPayRatio()).to.equal(config.stRSRPayRatio)
-
-    //   // Update with owner
-    //   await expect(settings.connect(owner).setStRSRPayRatio(newValue))
-    //     .to.emit(settings, 'StRSRPayRatioSet')
-    //     .withArgs(config.stRSRPayRatio, newValue)
-
-    //   // Check value was updated
-    //   expect(await settings.stRSRPayRatio()).to.equal(newValue)
-    // })
+      // If not owner cannot update
+      await expect(backingManager.connect(other).setBackingBuffer(newValue)).to.be.revertedWith(
+        'Component: caller is not the owner'
+      )
+
+      // Check value did not change
+      expect(await backingManager.backingBuffer()).to.equal(config.backingBuffer)
+
+      // Update with owner
+      await expect(backingManager.connect(owner).setBackingBuffer(newValue))
+        .to.emit(backingManager, 'BackingBufferSet')
+        .withArgs(config.backingBuffer, newValue)
+
+      // Check value was updated
+      expect(await backingManager.backingBuffer()).to.equal(newValue)
+    })
 
     it('Should return backing tokens', async () => {
       expect(await basketHandler.tokens()).to.eql([
