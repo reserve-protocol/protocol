@@ -238,6 +238,27 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
         basketsNeeded = basketsNeeded_;
     }
 
+    /// @return {qRTok} How much RToken `account` can issue given current holdings
+    function maxIssuable(address account) external view returns (uint256) {
+        // {BU}
+        Fix held = main.basketHandler().basketsHeldBy(account);
+
+        // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
+        if (basketsNeeded.eq(FIX_ZERO)) return held.shiftLeft(int8(decimals())).floor();
+
+        // {qRTok} = {BU} * {qRTok} / {BU}
+        return held.mulu(totalSupply()).div(basketsNeeded).floor();
+    }
+
+    /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
+    function price() external view returns (Fix p) {
+        if (totalSupply() == 0) return main.basketHandler().price();
+
+        // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
+        Fix supply = toFixWithShift(totalSupply(), -int8(decimals()));
+        return main.basketHandler().price().mul(basketsNeeded).div(supply);
+    }
+
     /// Tries to vest an issuance
     /// @return issued The total amount of RToken minted
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
@@ -260,27 +281,6 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
             iss.processed = true;
             emit IssuancesCompleted(issuer, index, index);
         }
-    }
-
-    /// @return {qRTok} How much RToken `account` can issue given current holdings
-    function maxIssuable(address account) external view returns (uint256) {
-        // {BU}
-        Fix held = main.basketHandler().basketsHeldBy(account);
-
-        // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
-        if (basketsNeeded.eq(FIX_ZERO)) return held.shiftLeft(int8(decimals())).floor();
-
-        // {qRTok} = {BU} * {qRTok} / {BU}
-        return held.mulu(totalSupply()).div(basketsNeeded).floor();
-    }
-
-    /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
-    function price() external view returns (Fix p) {
-        if (totalSupply() == 0) return main.basketHandler().price();
-
-        // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
-        Fix supply = toFixWithShift(totalSupply(), -int8(decimals()));
-        return main.basketHandler().price().mul(basketsNeeded).div(supply);
     }
 
     /// Returns the block number at which an issuance for *amount* now can complete
