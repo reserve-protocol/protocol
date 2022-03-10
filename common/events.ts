@@ -1,5 +1,6 @@
 import { expect } from 'chai'
 import { BigNumber, ContractReceipt, Event } from 'ethers'
+import { Interface, LogDescription } from 'ethers/lib/utils'
 
 // TODO: Proper typing
 const contains = (args: { [key: string]: any | undefined }, key: string, value: any): any => {
@@ -41,6 +42,51 @@ export const expectInReceipt = (
 
   const exceptions: string[] = []
   const event = events.find(function (e: Event) {
+    for (const [k, v] of Object.entries(eventArgs)) {
+      try {
+        if (e.args == undefined) {
+          throw new Error('Event has no arguments')
+        }
+
+        contains(e.args, k, v)
+      } catch (error) {
+        exceptions.push(error as string)
+        return false
+      }
+    }
+    return true
+  })
+
+  if (event === undefined) {
+    // Each event entry may have failed to match for different reasons,
+    // throw the first one
+    throw exceptions[0]
+  }
+
+  return event
+}
+
+export const expectInIndirectReceipt = (
+  receipt: ContractReceipt,
+  emitter: Interface,
+  eventName: string,
+  eventArgs = {}
+): any => {
+  const decodedEvents = receipt.logs
+    .map((log) => {
+      try {
+        return emitter.parseLog(log)
+      } catch {
+        return undefined
+      }
+    })
+    .filter((e): e is LogDescription => e !== undefined)
+
+  const expectedEvents = decodedEvents.filter((event) => event.name === eventName)
+  expect(expectedEvents.length > 0).to.equal(true, `No '${eventName}' events found`)
+
+  const exceptions: Array<string> = []
+  const event = expectedEvents.find(function (e) {
     for (const [k, v] of Object.entries(eventArgs)) {
       try {
         if (e.args == undefined) {
