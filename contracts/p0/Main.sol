@@ -64,11 +64,9 @@ contract MainP0 is Pausable, IMain {
     EnumerableSet.AddressSet private components;
 
     function poke() external {
-        // We _think_ these are totally order-independent.
+        // We think these are totally order-independent.
         require(!paused, "paused");
-        backingManager.grantAllowances();
         basketHandler.ensureBasket();
-        assetRegistry.forceUpdates();
         furnace.melt();
         rsrTrader.closeDueAuctions();
         rTokenTrader.closeDueAuctions();
