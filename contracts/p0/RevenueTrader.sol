@@ -36,7 +36,7 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
     function manageERC20(IERC20 erc20) internal {
         IAssetRegistry reg = main.assetRegistry();
 
-        require(reg.isRegistered(erc20), "erc20 not registered");
+        assert(reg.isRegistered(erc20));
 
         closeDueAuctions();
 
