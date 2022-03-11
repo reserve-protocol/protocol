@@ -89,6 +89,8 @@ describe('Revenues', () => {
   let collateral3: CTokenFiatCollateral
   let collateral: Collateral[]
   let basketsNeededAmts: BigNumber[]
+  let erc20s: ERC20Mock[]
+  let basket: Collateral[]
 
   // Config values
   let config: IConfig
@@ -116,10 +118,8 @@ describe('Revenues', () => {
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
-    let erc20s: ERC20Mock[]
-    let basket: Collateral[]
 
-      // Deploy fixture
+    // Deploy fixture
     ;({
       rsr,
       rsrAsset,
@@ -149,18 +149,21 @@ describe('Revenues', () => {
       rsrTrader,
       rTokenTrader,
     } = await loadFixture(defaultFixture))
-    token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
-    token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
-    token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
-    token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
 
     // Set backingBuffer to 0 to make math easy
     await backingManager.connect(owner).setBackingBuffer(0)
 
+    // Get assets and tokens
     collateral0 = <Collateral>basket[0]
     collateral1 = <Collateral>basket[1]
     collateral2 = <ATokenFiatCollateral>basket[2]
     collateral3 = <CTokenFiatCollateral>basket[3]
+    token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
+    token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
+    token2 = <StaticATokenMock>(
+      await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
+    )
+    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -1042,81 +1045,38 @@ describe('Revenues', () => {
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
         expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
       })
+
+      it('Should claim properly from multiple assets with the same Reward token', async () => {
+        // Get aUSDT and register
+        const newToken: StaticATokenMock = <StaticATokenMock>erc20s[9]
+        const newATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>collateral[9]
+        await assetRegistry.connect(owner).register(newATokenCollateral.address)
+
+        // Setup new basket with two ATokens (same reward token)
+        await basketHandler
+          .connect(owner)
+          .setPrimeBasket([token2.address, newToken.address], [fp('0.5'), fp('0.5')])
+        await basketHandler.connect(owner).switchBasket()
+
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+        await newToken.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Claim and sweep rewards
+        await expect(backingManager.claimAndSweepRewards()).to.emit(
+          backingManager,
+          'RewardsClaimed'
+        )
+
+        // Check status - should claim both rewards correctly
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE.mul(2))
+      })
     })
-
-    // context('With non-valid Claim Adapters', async function () {
-    //   let issueAmount: BigNumber
-    //   let newATokenCollateral: ATokenFiatCollateral
-    //   let newCTokenCollateral: CTokenFiatCollateral
-    //   let nonTrustedClaimer: CompoundClaimAdapterP0
-
-    //   beforeEach(async function () {
-    //     issueAmount = bn('100e18')
-
-    //     // Deploy new AToken with no claim adapter
-    //     const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
-    //     newATokenCollateral = <ATokenFiatCollateral>(
-    //       await ATokenCollateralFactory.deploy(
-    //         token2.address,
-    //         await collateral2.maxAuctionSize(),
-    //         await collateral2.defaultThreshold(),
-    //         await collateral2.delayUntilDefault(),
-    //         token0.address,
-    //         compoundMock.address,
-    //         aaveMock.address,
-    //         ZERO_ADDRESS
-    //       )
-    //     )
-
-    //     // Deploy non trusted Compound claimer - with invalid Comptroller address
-    //     const CompoundClaimAdapterFactory = await ethers.getContractFactory(
-    //       'CompoundClaimAdapterP0'
-    //     )
-    //     nonTrustedClaimer = <CompoundClaimAdapterP0>(
-    //       await CompoundClaimAdapterFactory.deploy(other.address, await compAsset.erc20())
-    //     )
-
-    //     // Deploy new CToken with non-trusted claim adapter
-    //     const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
-    //     newCTokenCollateral = <CTokenFiatCollateral>(
-    //       await CTokenCollateralFactory.deploy(
-    //         token3.address,
-    //         await collateral3.maxAuctionSize(),
-    //         await collateral3.defaultThreshold(),
-    //         await collateral3.delayUntilDefault(),
-    //         token0.address,
-    //         compoundMock.address,
-    //         nonTrustedClaimer.address
-    //       )
-    //     )
-    //   })
-
-    //   it('Should ignore claiming if no adapter defined', async () => {
-    //     await assetRegistry.swapRegistered(newATokenCollateral.address)
-
-    //     // Setup new basket with AToken with no claim adapter
-    //     await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1')])
-    //     await basketHandler.connect(owner).switchBasket()
-
-    //     // Provide approvals
-    //     await token2.connect(addr1).approve(rToken.address, initialBal)
-
-    //     // Issue rTokens
-    //     await rToken.connect(addr1).issue(issueAmount)
-
-    //     // Advance time to get next reward
-    //     await advanceTime(config.rewardPeriod.toString())
-
-    //     // Set AAVE Rewards
-    //     await token2.setRewards(backingManager.address, bn('0.5e18'))
-
-    //     // Attempt to claim, no rewards claimed (0 amount)
-    //     await expect(backingManager.claimAndSweepRewards()).to.emit(
-    //       backingManager,
-    //       'RewardsClaimed'
-    //     )
-    //   })
-    // })
 
     context('With simple basket of ATokens and CTokens', async function () {
       let issueAmount: BigNumber
