@@ -556,12 +556,12 @@ describe('MainP0 contract', () => {
       ])
     })
 
-    it('Should allow to set Market if Owner', async () => {
+    it('Should allow to set Broker if Owner', async () => {
       // Check existing value
       expect(await main.broker()).to.equal(broker.address)
 
       // If not owner cannot update - use mock address
-      await expect(main.connect(other).setMarket(other.address)).to.be.revertedWith(
+      await expect(main.connect(other).setBroker(other.address)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
 
@@ -569,7 +569,7 @@ describe('MainP0 contract', () => {
       expect(await main.broker()).to.equal(broker.address)
 
       // Update with owner
-      await expect(main.connect(owner).setMarket(other.address))
+      await expect(main.connect(owner).setBroker(other.address))
         .to.emit(main, 'MarketSet')
         .withArgs(broker.address, other.address)
 

@@ -19,6 +19,7 @@ import {
   FacadeP0,
   FurnaceP0,
   MainP0,
+  GnosisTrade,
   GnosisMock,
   RevenueTradingP0,
   RTokenAsset,
@@ -35,23 +36,29 @@ import {
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
-interface ITradeRequestInfo {
+const expectTrade = async (
+  trader: TradingP0,
+  index: number,
+  auctionInfo: Partial<TradeRequest>
+) => {
+  const trade = await getTrade(trader, index)
+  expect(await trade.sell()).to.equal(auctionInfo.sell)
+  expect(await trade.buy()).to.equal(auctionInfo.buy)
+  expect(await trade.endTime()).to.equal(auctionInfo.endTime)
+  expect(await trade.auctionId()).to.equal(auctionInfo.externalId)
+}
+
+// TODO use this in more places
+const getTrade = async (trader: TradingP0, index: number): Promise<GnosisTrade> => {
+  const tradeAddr = await trader.trades(index)
+  return await ethers.getContractAt('GnosisTrade', tradeAddr)
+}
+
+interface TradeRequest {
   sell: string
   buy: string
   endTime: number
   externalId: BigNumber
-}
-
-const expectAuctionInfo = async (
-  trader: TradingP0,
-  index: number,
-  auctionInfo: Partial<ITradeRequestInfo>
-) => {
-  const { sell, buy, endTime, externalId } = await trader.auctions(index)
-  expect(sell).to.equal(auctionInfo.sell)
-  expect(buy).to.equal(auctionInfo.buy)
-  expect(endTime).to.equal(auctionInfo.endTime)
-  expect(externalId).to.equal(auctionInfo.externalId)
 }
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -306,7 +313,7 @@ describe('Revenues', () => {
 
         // Check auctions registered
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -314,7 +321,7 @@ describe('Revenues', () => {
         })
 
         // COMP -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -352,7 +359,7 @@ describe('Revenues', () => {
 
         // Check previous auctions closed
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -360,7 +367,7 @@ describe('Revenues', () => {
         })
 
         // COMP -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -406,7 +413,7 @@ describe('Revenues', () => {
 
         // Check auctions registered
         // AAVE -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: aaveToken.address,
           buy: rsr.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -414,7 +421,7 @@ describe('Revenues', () => {
         })
 
         // AAVE -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -507,7 +514,7 @@ describe('Revenues', () => {
         const auctionTimestamp: number = await getLatestBlockTimestamp()
         // Check auction registered
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -543,7 +550,7 @@ describe('Revenues', () => {
 
         // Check new auction
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 1, {
+        await expectTrade(rsrTrader, 1, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -631,7 +638,7 @@ describe('Revenues', () => {
         const auctionTimestamp: number = await getLatestBlockTimestamp()
         // Check auction registered
         // AAVE -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -666,7 +673,7 @@ describe('Revenues', () => {
           .and.to.not.emit(rsrTrader, 'TradeStarted')
 
         // AAVE -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 1, {
+        await expectTrade(rTokenTrader, 1, {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -750,7 +757,7 @@ describe('Revenues', () => {
         const auctionTimestamp: number = await getLatestBlockTimestamp()
         // Check auctions registered
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -758,7 +765,7 @@ describe('Revenues', () => {
         })
 
         // COMP -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -803,7 +810,7 @@ describe('Revenues', () => {
 
         // Check previous auctions closed
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -811,14 +818,14 @@ describe('Revenues', () => {
         })
 
         // COMP -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
           externalId: bn('1'),
         })
 
-        await expectAuctionInfo(rsrTrader, 1, {
+        await expectTrade(rsrTrader, 1, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -897,7 +904,7 @@ describe('Revenues', () => {
 
         // Check auctions registered
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -905,7 +912,7 @@ describe('Revenues', () => {
         })
 
         // COMP -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -943,7 +950,7 @@ describe('Revenues', () => {
 
         // Check previous auctions closed
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -951,7 +958,7 @@ describe('Revenues', () => {
         })
 
         // COMP -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1140,7 +1147,7 @@ describe('Revenues', () => {
 
         // Check auctions registered
         // AToken -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1148,7 +1155,7 @@ describe('Revenues', () => {
         })
 
         // AToken -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1263,7 +1270,7 @@ describe('Revenues', () => {
 
         // Check auctions registered
         // AToken -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1271,7 +1278,7 @@ describe('Revenues', () => {
         })
 
         // AToken -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1383,7 +1390,7 @@ describe('Revenues', () => {
 
         // Check auctions registered
         // RToken -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: rToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1526,7 +1533,7 @@ describe('Revenues', () => {
 
         // Check auctions registered
         // RToken -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: rToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1534,7 +1541,7 @@ describe('Revenues', () => {
         })
 
         // Collateral -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 1, {
+        await expectTrade(rsrTrader, 1, {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1542,7 +1549,7 @@ describe('Revenues', () => {
         })
 
         // Collateral -> Rtoken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),

@@ -19,6 +19,7 @@ import { Collateral as AbstractCollateral } from '../../../typechain/Collateral'
 import { CompoundOracleMock } from '../../../typechain/CompoundOracleMock'
 import { CompoundPricedAsset } from '../../../typechain/CompoundPricedAsset'
 import { ComptrollerMock } from '../../../typechain/ComptrollerMock'
+import { BrokerP0 } from '../../../typechain/BrokerP0'
 import { DeployerP0 } from '../../../typechain/DeployerP0'
 import { ERC20Mock } from '../../../typechain/ERC20Mock'
 import { FacadeP0 } from '../../../typechain/FacadeP0'
@@ -130,13 +131,13 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
 }
 
 interface ModuleFixture {
-  market: GnosisMock
+  gnosis: GnosisMock
 }
 
-async function marketFixture(): Promise<ModuleFixture> {
+async function gnosisFixture(): Promise<ModuleFixture> {
   const GnosisMockFactory: ContractFactory = await ethers.getContractFactory('GnosisMock')
-  const marketMock: GnosisMock = <GnosisMock>await GnosisMockFactory.deploy()
-  return { market: marketMock }
+  const gnosisMock: GnosisMock = <GnosisMock>await GnosisMockFactory.deploy()
+  return { gnosis: gnosisMock }
 }
 
 interface CollateralFixture {
@@ -325,6 +326,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   furnace: FurnaceP0
   stRSR: StRSRP0
   facade: FacadeP0
+  broker: BrokerP0
   rsrTrader: RevenueTradingP0
   rTokenTrader: RevenueTradingP0
 }
@@ -342,7 +344,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     aaveOracleInternal,
     aaveMock,
   } = await compAaveFixture()
-  const { market } = await marketFixture()
+  const { gnosis } = await gnosisFixture()
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
     rsrDist: bn(60), // 3/5 RSR
@@ -370,7 +372,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       rsr.address,
       compToken.address,
       aaveToken.address,
-      market.address,
+      gnosis.address,
       compoundMock.address,
       aaveMock.address
     )
@@ -414,6 +416,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const rTokenAsset: RTokenAsset = <RTokenAsset>(
     await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
   )
+
+  const broker: BrokerP0 = <BrokerP0>await ethers.getContractAt('BrokerP0', await main.broker())
 
   const furnace: FurnaceP0 = <FurnaceP0>(
     await ethers.getContractAt('FurnaceP0', await main.furnace())
@@ -501,7 +505,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rTokenAsset,
     furnace,
     stRSR,
-    market,
+    broker,
+    gnosis,
     facade,
     rsrTrader,
     rTokenTrader,

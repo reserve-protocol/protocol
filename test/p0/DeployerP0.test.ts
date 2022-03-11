@@ -10,6 +10,7 @@ import {
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
+  BrokerP0,
   ComptrollerMock,
   DeployerP0,
   DistributorP0,
@@ -49,7 +50,8 @@ describe('DeployerP0 contract', () => {
   let aaveMock: AaveLendingPoolMock
 
   // Market / Facade
-  let market: GnosisMock
+  let gnosis: GnosisMock
+  let broker: BrokerP0
   let facade: FacadeP0
 
   // Core contracts
@@ -97,7 +99,8 @@ describe('DeployerP0 contract', () => {
       rTokenAsset,
       furnace,
       stRSR,
-      market,
+      broker,
+      gnosis,
       facade,
       rsrTrader,
       rTokenTrader,
@@ -109,7 +112,7 @@ describe('DeployerP0 contract', () => {
       expect(await deployer.rsr()).to.equal(rsr.address)
       expect(await deployer.comp()).to.equal(compToken.address)
       expect(await deployer.aave()).to.equal(aaveToken.address)
-      expect(await deployer.market()).to.equal(market.address)
+      expect(await deployer.gnosis()).to.equal(gnosis.address)
       expect(await deployer.comptroller()).to.equal(compoundMock.address)
       expect(await deployer.aaveLendingPool()).to.equal(aaveMock.address)
     })
@@ -177,11 +180,17 @@ describe('DeployerP0 contract', () => {
       expect(await main.hasComponent(basketHandler.address)).to.equal(true)
       expect(await main.hasComponent(backingManager.address)).to.equal(true)
       expect(await main.hasComponent(distributor.address)).to.equal(true)
+      expect(await main.hasComponent(broker.address)).to.equal(true)
+      expect(await main.hasComponent(rsrTrader.address)).to.equal(true)
+      expect(await main.hasComponent(rTokenTrader.address)).to.equal(true)
+      expect(await main.hasComponent(stRSR.address)).to.equal(true)
+      expect(await main.hasComponent(rToken.address)).to.equal(true)
+      expect(await main.hasComponent(furnace.address)).to.equal(true)
 
       // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)
       expect(await main.furnace()).to.equal(furnace.address)
-      expect(await main.market()).to.equal(market.address)
+      expect(await main.broker()).to.equal(broker.address)
       expect(await main.rsrTrader()).to.equal(rsrTrader.address)
       expect(await main.rTokenTrader()).to.equal(rTokenTrader.address)
     })
@@ -191,11 +200,36 @@ describe('DeployerP0 contract', () => {
       expect(await rToken.symbol()).to.equal('RTKN')
       expect(await rToken.decimals()).to.equal(18)
       expect(await rToken.totalSupply()).to.equal(bn(0))
+      expect(await rToken.main()).to.equal(main.address)
     })
 
     it('Should setup Furnace correctly', async () => {
-      expect(await furnace.rToken()).to.equal(rToken.address)
-      expect(await furnace.owner()).to.equal(owner.address)
+      expect(await furnace.main()).to.equal(main.address)
+    })
+
+    it('Should setup revenue traders', async () => {
+      expect(await rsrTrader.main()).to.equal(main.address)
+      expect(await rTokenTrader.main()).to.equal(main.address)
+    })
+
+    it('Should setup BackingManager correctly', async () => {
+      expect(await backingManager.main()).to.equal(main.address)
+    })
+
+    it('Should setup AssetRegistry correctly', async () => {
+      expect(await assetRegistry.main()).to.equal(main.address)
+    })
+
+    it('Should setup BasketHandler correctly', async () => {
+      expect(await basketHandler.main()).to.equal(main.address)
+    })
+
+    it('Should setup Distributor correctly', async () => {
+      expect(await distributor.main()).to.equal(main.address)
+    })
+
+    it('Should setup Broker correctly', async () => {
+      expect(await broker.main()).to.equal(main.address)
     })
 
     it('Should setup stRSR correctly', async () => {
@@ -203,6 +237,7 @@ describe('DeployerP0 contract', () => {
       expect(await stRSR.symbol()).to.equal('stRTKNRSR')
       expect(await stRSR.decimals()).to.equal(18)
       expect(await stRSR.totalSupply()).to.equal(0)
+      expect(await stRSR.main()).to.equal(main.address)
     })
 
     it('Should setup Facade correctly', async () => {

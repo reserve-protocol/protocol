@@ -16,6 +16,7 @@ import { CTokenFiatCollateral } from '../../typechain/CTokenFiatCollateral'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
+import { GnosisTrade } from '../../typechain/GnosisTrade'
 import { FacadeP0 } from '../../typechain/FacadeP0'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
@@ -31,19 +32,25 @@ import { AssetRegistryP0, BackingManagerP0, BasketHandlerP0, DistributorP0 } fro
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
-const expectAuctionInfo = async (
+const expectTrade = async (
   trader: TradingP0,
   index: number,
-  auctionInfo: Partial<IOngoingAuctionInfo>
+  auctionInfo: Partial<TradeRequest>
 ) => {
-  const { sell, buy, endTime, externalId } = await trader.auctions(index)
-  expect(sell).to.equal(auctionInfo.sell)
-  expect(buy).to.equal(auctionInfo.buy)
-  expect(endTime).to.equal(auctionInfo.endTime)
-  expect(externalId).to.equal(auctionInfo.externalId)
+  const trade = await getTrade(trader, index)
+  expect(await trade.sell()).to.equal(auctionInfo.sell)
+  expect(await trade.buy()).to.equal(auctionInfo.buy)
+  expect(await trade.endTime()).to.equal(auctionInfo.endTime)
+  expect(await trade.auctionId()).to.equal(auctionInfo.externalId)
 }
 
-interface IOngoingAuctionInfo {
+// TODO use this in more places
+const getTrade = async (trader: TradingP0, index: number): Promise<GnosisTrade> => {
+  const tradeAddr = await trader.trades(index)
+  return await ethers.getContractAt('GnosisTrade', tradeAddr)
+}
+
+interface TradeRequest {
   sell: string
   buy: string
   endTime: number
@@ -77,7 +84,7 @@ describe('MainP0 contract', () => {
   let aaveOracleInternal: AaveOracleMock
 
   // Trading
-  let market: GnosisMock
+  let gnosis: GnosisMock
   let rsrTrader: RevenueTradingP0
   let rTokenTrader: RevenueTradingP0
 
@@ -109,6 +116,7 @@ describe('MainP0 contract', () => {
   let furnace: FurnaceP0
   let main: MainP0
   let facade: FacadeP0
+  let broker: BrokerP0
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
@@ -166,7 +174,8 @@ describe('MainP0 contract', () => {
       rTokenAsset,
       furnace,
       stRSR,
-      market,
+      broker,
+      gnosis,
       facade,
       assetRegistry,
       backingManager,
@@ -525,7 +534,7 @@ describe('MainP0 contract', () => {
 
         // Check auction registered
         // Token0 -> Token1 Auction
-        await expectAuctionInfo(backingManager, 0, {
+        await expectTrade(backingManager, 0, {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -625,7 +634,7 @@ describe('MainP0 contract', () => {
 
         // Check auction registered
         // Token0 -> Token1 Auction
-        await expectAuctionInfo(backingManager, 0, {
+        await expectTrade(backingManager, 0, {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -732,7 +741,7 @@ describe('MainP0 contract', () => {
 
         // Check auction registered
         // Token0 -> Token1 Auction
-        await expectAuctionInfo(backingManager, 0, {
+        await expectTrade(backingManager, 0, {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -783,7 +792,7 @@ describe('MainP0 contract', () => {
         auctionTimestamp = await getLatestBlockTimestamp()
 
         // RSR -> Token1 Auction
-        await expectAuctionInfo(backingManager, 1, {
+        await expectTrade(backingManager, 1, {
           sell: rsr.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -899,7 +908,7 @@ describe('MainP0 contract', () => {
         let auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token0 -> Backup Token Auction
-        await expectAuctionInfo(backingManager, 0, {
+        await expectTrade(backingManager, 0, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1031,7 +1040,7 @@ describe('MainP0 contract', () => {
         let auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token0 -> Backup Token Auction
-        await expectAuctionInfo(backingManager, 0, {
+        await expectTrade(backingManager, 0, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1072,7 +1081,7 @@ describe('MainP0 contract', () => {
 
         // Check new auction
         // Token0 -> Backup Token Auction
-        await expectAuctionInfo(backingManager, 1, {
+        await expectTrade(backingManager, 1, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -1121,7 +1130,7 @@ describe('MainP0 contract', () => {
 
         // Check new auction
         // RSR -> Backup Token Auction
-        await expectAuctionInfo(backingManager, 2, {
+        await expectTrade(backingManager, 2, {
           sell: rsr.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),

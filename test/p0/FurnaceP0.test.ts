@@ -10,6 +10,7 @@ import {
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
+  MainP0,
   RTokenP0,
   StaticATokenMock,
   USDCMock,
@@ -35,6 +36,7 @@ describe('FurnaceP0 contract', () => {
 
   // Contracts
   let FurnaceFactory: ContractFactory
+  let main: MainP0
   let furnace: FurnaceP0
   let rToken: RTokenP0
   let basket: Collateral[]
@@ -68,7 +70,7 @@ describe('FurnaceP0 contract', () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, rToken, furnace, config, facade } = await loadFixture(defaultFixture))
+    ;({ main, basket, rToken, furnace, config, facade } = await loadFixture(defaultFixture))
 
     // Setup issuance of RTokens for users
     initialBal = bn('100e18')
@@ -100,11 +102,10 @@ describe('FurnaceP0 contract', () => {
 
   describe('Deployment', () => {
     it('Deployment should setup Furnace correctly', async () => {
-      expect(await furnace.rToken()).to.equal(rToken.address)
       expect(await furnace.period()).to.equal(config.rewardPeriod)
       expect(await furnace.ratio()).to.equal(config.rewardRatio)
       expect(await furnace.lastPayout()).to.be.gt(0) // A timestamp is set
-      expect(await furnace.owner()).to.equal(owner.address)
+      expect(await furnace.main()).to.equal(main.address)
     })
 
     it('Deployment does not accept empty token', async () => {

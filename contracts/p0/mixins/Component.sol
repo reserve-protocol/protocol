@@ -8,7 +8,7 @@ import "contracts/interfaces/IMain.sol";
  * Abstract superclass for system contracts registered in Main
  */
 abstract contract Component is IComponent, Context {
-    IMain internal main;
+    IMain public main;
     bool private initialized;
 
     function initComponent(IMain main_, ConstructorArgs calldata args) external {
