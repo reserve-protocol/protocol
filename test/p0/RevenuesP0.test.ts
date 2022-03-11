@@ -7,7 +7,6 @@ import { bn, divCeil, fp, near } from '../../common/numbers'
 import {
   AaveLendingPoolMock,
   AavePricedAsset,
-  AavePricedFiatCollateral,
   Asset,
   AssetRegistryP0,
   ATokenFiatCollateral,
@@ -64,12 +63,9 @@ describe('Revenues', () => {
 
   // Non-backing assets
   let rsr: ERC20Mock
-  let rsrAsset: Asset
   let compToken: ERC20Mock
-  let compAsset: Asset
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
-  let aaveAsset: Asset
   let aaveMock: AaveLendingPoolMock
 
   // Trading
@@ -88,17 +84,14 @@ describe('Revenues', () => {
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
   let collateral: Collateral[]
-  let basketsNeededAmts: BigNumber[]
   let erc20s: ERC20Mock[]
   let basket: Collateral[]
 
   // Config values
   let config: IConfig
-  let dist: IRevenueShare
 
   // Contracts to retrieve after deploy
   let rToken: RTokenP0
-  let rTokenAsset: RTokenAsset
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
@@ -122,26 +115,20 @@ describe('Revenues', () => {
     // Deploy fixture
     ;({
       rsr,
-      rsrAsset,
       compToken,
       aaveToken,
-      compAsset,
-      aaveAsset,
       compoundMock,
       aaveMock,
       erc20s,
       collateral,
       basket,
-      basketsNeededAmts,
       config,
-      dist,
       main,
       assetRegistry,
       backingManager,
       basketHandler,
       distributor,
       rToken,
-      rTokenAsset,
       furnace,
       stRSR,
       market,
@@ -1136,9 +1123,6 @@ describe('Revenues', () => {
       })
 
       it('Should sell collateral as it appreciates and handle revenue auction correctly', async () => {
-        // Advance time to get next reward
-        await advanceTime(config.rewardPeriod.toString())
-
         // Check Price and Assets value
         expect(await rToken.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
@@ -1168,7 +1152,7 @@ describe('Revenues', () => {
         let sellAmtRToken: BigNumber = expectedToFurnace // everything is auctioned, below max auction
         let minBuyAmtRToken: BigNumber = sellAmtRToken.mul(2).sub(sellAmtRToken.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken are worth half
 
-        // Call Poke to detect excess and launch auction
+        // Run auctions - Will detect excess
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, token2.address, rsr.address, sellAmt, minBuyAmt)
@@ -1251,12 +1235,7 @@ describe('Revenues', () => {
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      // TODO The rounding has changed slightly here and this test no longer passes
-      // It's very very close. Really we just need someone who understands this test to take a look
-      it.skip('Should handle slight increase in collateral correctly - full cycle', async () => {
-        // Advance time to get next reward
-        await advanceTime(config.rewardPeriod.toString())
-
+      it('Should handle slight increase in collateral correctly - full cycle', async () => {
         // Check Price and Assets value
         expect(await rToken.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
@@ -1291,7 +1270,7 @@ describe('Revenues', () => {
         let buyAmtRToken: BigNumber = divCeil(sellAmtRToken.mul(rate), BN_SCALE_FACTOR) // RToken quantity with no slippage
         let minBuyAmtRToken: BigNumber = buyAmtRToken.sub(buyAmtRToken.div(100)) // due to trade slippage 1%
 
-        // Call Poke to detect excess and launch auction
+        // Run auctions
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, token2.address, rsr.address, sellAmt, minBuyAmt)
@@ -1375,9 +1354,6 @@ describe('Revenues', () => {
       })
 
       it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
-        // Advance time to get next reward
-        await advanceTime(config.rewardPeriod.toString())
-
         // Check Price and Assets value
         expect(await rToken.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
@@ -1471,9 +1447,6 @@ describe('Revenues', () => {
       })
 
       it('Should mint RTokens and handle remainder when collateral appreciates - Uneven quantity', async () => {
-        // Advance time to get next reward
-        await advanceTime(config.rewardPeriod.toString())
-
         // Check Price and Assets value
         expect(await rToken.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
