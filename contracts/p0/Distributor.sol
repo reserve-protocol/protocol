@@ -87,7 +87,7 @@ contract DistributorP0 is Component, IDistributor {
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
         if (dest == ST_RSR) require(share.rTokenDist == 0, "StRSR must get 0% of RToken");
         require(share.rsrDist <= 10000, "RSR distribution too high");
-        require(share.rTokenDist <= 10000, "RSR distribution too high");
+        require(share.rTokenDist <= 10000, "RToken distribution too high");
 
         destinations.add(dest);
         distribution[dest] = share;
