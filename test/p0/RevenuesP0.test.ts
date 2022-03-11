@@ -1076,6 +1076,49 @@ describe('Revenues', () => {
         // Check status - should claim both rewards correctly
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE.mul(2))
       })
+
+      it('Should handle properly assets with invalid claim logic', async () => {
+        // Setup a new aToken with invalid claim data
+        const ATokenCollateralFactory = await ethers.getContractFactory(
+          'InvalidATokenFiatCollateral'
+        )
+        const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
+          await ATokenCollateralFactory.deploy(
+            token2.address,
+            await collateral2.maxAuctionSize(),
+            await collateral2.defaultThreshold(),
+            await collateral2.delayUntilDefault(),
+            token0.address,
+            compoundMock.address,
+            aaveMock.address,
+            aaveToken.address
+          )
+        )
+
+        // Register this new asset
+        await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)
+
+        // Setup new basket with the invalid AToken
+        await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1')])
+        await basketHandler.connect(owner).switchBasket()
+
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Claim and sweep rewards - Should not fail
+        await expect(backingManager.claimAndSweepRewards()).to.emit(
+          backingManager,
+          'RewardsClaimed'
+        )
+
+        // Check status - nothing claimed
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+      })
     })
 
     context('With simple basket of ATokens and CTokens', async function () {
