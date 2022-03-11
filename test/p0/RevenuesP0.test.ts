@@ -263,7 +263,7 @@ describe('Revenues', () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = rewardAmountCOMP.mul(6).div(10) // due to f = 60%
+        let sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
@@ -348,7 +348,7 @@ describe('Revenues', () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = rewardAmountAAVE.mul(6).div(10) // due to f = 60%
+        let sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
@@ -869,6 +869,46 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
+      it('Should not trade dust when claiming rewards', async () => {
+        // Set COMP tokens as reward - Dust
+        rewardAmountCOMP = bn('0.01e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Collect revenue
+        await expect(backingManager.claimAndSweepRewards())
+          .to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(compToken.address, rewardAmountCOMP)
+          .and.to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(aaveToken.address, bn(0))
+
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+
+        // Set expected values, based on f = 0.6
+        const expectedToTrader = rewardAmountCOMP.mul(60).div(100)
+        const expectedToFurnace = rewardAmountCOMP.sub(expectedToTrader)
+
+        // Check status of traders and destinations at this point
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Run auctions - should not start any auctions
+        await expect(facade.runAuctionsForAllTraders())
+          .to.not.emit(rsrTrader, 'AuctionStarted')
+          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+
+        // Check funds sent to traders
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
+        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
+
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
+      })
+
       it('Should not distribute other tokens beyond RSR/RToken', async () => {
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('1e18')
@@ -917,7 +957,7 @@ describe('Revenues', () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = rewardAmountCOMP.mul(6).div(10) // due to f = 60%
+        let sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
