@@ -110,13 +110,12 @@ contract GnosisTrade is ITrade {
     // === Private ===
 
     function atStageSolutionSubmission() private view returns (bool) {
-        (, , , uint256 auctionEndDate, , , , , bytes32 clearingPriceOrder, , , , , ) = gnosis
-            .auctionData(auctionId);
-        return auctionEndDate != 0 && clearingPriceOrder == bytes32(0);
+        GnosisAuctionData memory data = gnosis.auctionData(auctionId);
+        return data.auctionEndDate != 0 && data.clearingPriceOrder == bytes32(0);
     }
 
     function atStageFinished() private view returns (bool) {
-        (, , , , , , , , bytes32 clearingPriceOrder, , , , , ) = gnosis.auctionData(auctionId);
-        return clearingPriceOrder != bytes32(0);
+        GnosisAuctionData memory data = gnosis.auctionData(auctionId);
+        return data.clearingPriceOrder != bytes32(0);
     }
 }

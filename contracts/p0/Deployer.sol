@@ -71,21 +71,21 @@ contract DeployerP0 is IDeployer {
 
         // Components
         Components memory components;
-        components.rToken = new RTokenP0(name, symbol);
-        components.stRSR = new StRSRP0(
-            string(abi.encodePacked("st", symbol, "RSR Token")),
-            string(abi.encodePacked("st", symbol, "RSR"))
-        );
-        components.rToken = new RTokenP0(name, symbol);
-        components.assetRegistry = new AssetRegistryP0();
-        components.basketHandler = new BasketHandlerP0();
-        components.backingManager = new BackingManagerP0();
-        components.distributor = new DistributorP0();
-        components.rsrTrader = new RevenueTraderP0(rsr);
-        components.rTokenTrader = new RevenueTraderP0(components.rToken);
-        components.furnace = new FurnaceP0();
-        components.broker = new BrokerP0();
-
+        {
+            components.rToken = new RTokenP0(name, symbol);
+            string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
+            string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
+            components.stRSR = new StRSRP0(stRSRName, stRSRSymbol);
+            components.rToken = new RTokenP0(name, symbol);
+            components.assetRegistry = new AssetRegistryP0();
+            components.basketHandler = new BasketHandlerP0();
+            components.backingManager = new BackingManagerP0();
+            components.distributor = new DistributorP0();
+            components.rsrTrader = new RevenueTraderP0(rsr);
+            components.rTokenTrader = new RevenueTraderP0(components.rToken);
+            components.furnace = new FurnaceP0();
+            components.broker = new BrokerP0();
+        }
         IAsset[] memory assets = new IAsset[](4);
         assets[0] = new RTokenAsset(components.rToken, params.maxAuctionSize, main);
         assets[1] = new AavePricedAsset(rsr, params.maxAuctionSize, comptroller, aaveLendingPool);

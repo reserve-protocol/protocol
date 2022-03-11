@@ -32,6 +32,13 @@ contract BrokerP0 is Component, IBroker {
     /// @dev Requires setting an allowance in advance
     function initiateTrade(TradeRequest memory req) external returns (ITrade) {
         require(!disabled, "broker disabled");
+        require(
+            msg.sender == address(main.backingManager()) ||
+                msg.sender == address(main.rsrTrader()) ||
+                msg.sender == address(main.rTokenTrader()),
+            "only traders"
+        );
+
         req.sell.erc20().safeTransferFrom(msg.sender, address(this), req.sellAmount);
 
         // In the future we'll have more sophisticated choice logic here, probably by trade size
@@ -44,11 +51,6 @@ contract BrokerP0 is Component, IBroker {
 
     /// Disable the broker
     function snitch() external {
-        require(
-            msg.sender == address(main.backingManager()) ||
-                msg.sender == address(main.rsrTrader()) ||
-                msg.sender == address(main.rTokenTrader())
-        );
         require(trades.contains(msg.sender), "unrecognized trade contract");
         emit TradingDisabled(disabled);
         disabled = true;

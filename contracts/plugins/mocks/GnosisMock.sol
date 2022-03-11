@@ -121,42 +121,9 @@ contract GnosisMock is IGnosisEasyAuction, ITrading {
         return auction.encodedClearingOrder;
     }
 
-    function auctionData(uint256 auctionId)
-        external
-        view
-        returns (
-            IERC20,
-            IERC20,
-            uint256,
-            uint256 auctionEndDate,
-            bytes32,
-            uint256,
-            uint256,
-            bytes32,
-            bytes32 clearingPriceOrder,
-            uint96,
-            bool,
-            bool,
-            uint256,
-            uint256
-        )
-    {
-        return (
-            IERC20(address(0)),
-            IERC20(address(0)),
-            0,
-            auctions[auctionId].endTime,
-            bytes32(0),
-            0,
-            0,
-            bytes32(0),
-            auctions[auctionId].encodedClearingOrder,
-            0,
-            false,
-            false,
-            0,
-            0
-        );
+    function auctionData(uint256 auctionId) external view returns (GnosisAuctionData memory data) {
+        data.auctionEndDate = auctions[auctionId].endTime;
+        data.clearingPriceOrder = auctions[auctionId].encodedClearingOrder;
     }
 
     function numAuctions() external view returns (uint256) {
