@@ -200,9 +200,13 @@ describe('Revenues', () => {
       ).to.be.revertedWith('Component: caller is not the owner')
 
       // Update with owner - Set f = 1
-      await distributor
-        .connect(owner)
-        .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+      )
+        .to.emit(distributor, 'DistributionSet')
+        .withArgs(FURNACE_DEST, bn(0), bn(0))
 
       // Check updated status
       totals = await distributor.totals()
@@ -264,9 +268,6 @@ describe('Revenues', () => {
       })
 
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
-        // Advance time to get next reward
-        await advanceTime(config.rewardPeriod.toString())
-
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('0.8e18')
 
@@ -281,10 +282,11 @@ describe('Revenues', () => {
         let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expect(backingManager.claimAndSweepRewards()).to.emit(
-          backingManager,
-          'RewardsClaimed'
-        )
+        await expect(backingManager.claimAndSweepRewards())
+          .to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(compToken.address, rewardAmountCOMP)
+          .and.to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(aaveToken.address, bn(0))
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -344,23 +346,6 @@ describe('Revenues', () => {
           .and.to.not.emit(rsrTrader, 'AuctionStarted')
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
-        // Check previous auctions closed
-        // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
-          sell: compToken.address,
-          buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
-        })
-
-        // COMP -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
-          sell: compToken.address,
-          buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1'),
-        })
-
         // Check balances sent to corresponding destinations
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
@@ -369,9 +354,6 @@ describe('Revenues', () => {
       })
 
       it('Should claim AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
-        // Advance time to get next reward
-        await advanceTime(config.rewardPeriod.toString())
-
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards
@@ -386,12 +368,17 @@ describe('Revenues', () => {
         let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         // Can also claim through Facade
-        await expect(facade.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
+        await expect(facade.claimRewards())
+          .to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(aaveToken.address, rewardAmountAAVE)
+          .and.to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(compToken.address, bn(0))
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
+        // Run auctions
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
@@ -452,26 +439,32 @@ describe('Revenues', () => {
       })
 
       it('Should handle large auctions using maxAuctionSize with f=1 (RSR only)', async () => {
-        // Advance time to get next reward
-        await advanceTime(config.rewardPeriod.toString())
-
         // Set max auction size for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
         const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
           await AssetFactory.deploy(compToken.address, bn('1e18'), compoundMock.address)
         )
 
-        // Perform swap
+        // Perform asset swap
         await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
 
         // Set f = 1
-        await distributor
-          .connect(owner)
-          .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(FURNACE_DEST, bn(0), bn(0))
+
         // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
-        await distributor
-          .connect(owner)
-          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(STRSR_DEST, bn(0), bn(1))
 
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('2e18')
@@ -484,21 +477,24 @@ describe('Revenues', () => {
         let sellAmt: BigNumber = bn('1e18') // due to max auction size
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        await expect(backingManager.claimAndSweepRewards()).to.emit(
-          backingManager,
-          'RewardsClaimed'
-        )
+        await expect(backingManager.claimAndSweepRewards())
+          .to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(compToken.address, rewardAmountCOMP)
+          .and.to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(aaveToken.address, bn(0))
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
+        // Run auctions
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionStarted')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
+
         // Check auction registered
         // COMP -> RSR Auction
         await expectAuctionInfo(rsrTrader, 0, {
@@ -508,11 +504,11 @@ describe('Revenues', () => {
           externalId: bn('0'),
         })
 
-        // Check funds in Market and still in Trader
+        // Check funds in Market and Trader
         expect(await compToken.balanceOf(market.address)).to.equal(sellAmt)
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(sellAmt)
 
-        // Another call will not create a new auction (only one at a time per pair)
+        // Another call will not create a new auction (we only allow only one at a time per pair)
         await expect(facade.runAuctionsForAllTraders())
           .to.not.emit(rsrTrader, 'AuctionStarted')
           .and.to.not.emit(rTokenTrader, 'AuctionStarted')
@@ -528,6 +524,7 @@ describe('Revenues', () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
+        // Run auctions
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'AuctionEnded')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
@@ -572,9 +569,6 @@ describe('Revenues', () => {
       })
 
       it('Should handle large auctions using maxAuctionSize with f=0 (RToken only)', async () => {
-        // Advance time to get next reward
-        await advanceTime(config.rewardPeriod.toString())
-
         // Set max auction size for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAsset')
         const newAaveAsset: AavePricedAsset = <AavePricedAsset>(
