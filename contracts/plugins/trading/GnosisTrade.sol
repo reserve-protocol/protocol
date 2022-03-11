@@ -99,7 +99,7 @@ contract GnosisTrade is ITrade {
             soldAmt = sellAmount - sellBal;
             Fix clearingPrice = toFix(boughtAmt).divu(soldAmt); // {buyTok/sellTok}
             if (clearingPrice.lt(worstCasePrice)) {
-                broker.reportBadTrade();
+                broker.reportViolation();
             }
         }
 

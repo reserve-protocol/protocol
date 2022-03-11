@@ -17,7 +17,7 @@ contract BrokerP0 is Component, IBroker {
 
     IGnosis public gnosis;
 
-    EnumerableSet.AddressSet private trades;
+    mapping(address => bool) private trades;
 
     uint256 public auctionLength; // {s} the length of an auction
 
@@ -30,28 +30,28 @@ contract BrokerP0 is Component, IBroker {
 
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
-    function initiateTrade(TradeRequest memory req) external returns (ITrade) {
+    function openTrade(TradeRequest memory req) external returns (ITrade) {
         require(!disabled, "broker disabled");
         require(
-            msg.sender == address(main.backingManager()) ||
-                msg.sender == address(main.rsrTrader()) ||
-                msg.sender == address(main.rTokenTrader()),
+            _msgSender() == address(main.backingManager()) ||
+                _msgSender() == address(main.rsrTrader()) ||
+                _msgSender() == address(main.rTokenTrader()),
             "only traders"
         );
 
-        req.sell.erc20().safeTransferFrom(msg.sender, address(this), req.sellAmount);
+        req.sell.erc20().safeTransferFrom(_msgSender(), address(this), req.sellAmount);
 
         // In the future we'll have more sophisticated choice logic here, probably by trade size
         GnosisTrade trade = new GnosisTrade();
-        trades.add(address(trade));
-        trade.init(this, msg.sender, gnosis, auctionLength, req);
+        trades[address(trade)] = true;
+        trade.init(this, _msgSender(), gnosis, auctionLength, req);
         req.sell.erc20().safeTransfer(address(trade), req.sellAmount);
         return trade;
     }
 
     /// Disable the broker until re-enabled by governance
-    function reportBadTrade() external {
-        require(trades.contains(msg.sender), "unrecognized trade contract");
+    function reportViolation() external {
+        require(trades[_msgSender()], "unrecognized trade contract");
         emit TradingDisabled(disabled);
         disabled = true;
     }

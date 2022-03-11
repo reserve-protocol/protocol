@@ -28,11 +28,6 @@ abstract contract Component is IComponent, Context {
         _;
     }
 
-    modifier onlyComponent() {
-        require(main.hasComponent(_msgSender()), "Component: caller is not a component");
-        _;
-    }
-
     // solhint-disable-next-line no-empty-blocks
     function init(ConstructorArgs calldata args) internal virtual {}
 }

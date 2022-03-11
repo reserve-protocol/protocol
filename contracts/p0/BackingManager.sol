@@ -30,7 +30,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     // Give RToken max allowances over all registered tokens
-    function grantAllowances() external notPaused onlyComponent {
+    function grantAllowances() external notPaused {
+        require(_msgSender() == address(main.rToken()), "RToken only");
         IERC20[] memory erc20s = main.assetRegistry().erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
             erc20s[i].approve(address(main.rToken()), type(uint256).max);

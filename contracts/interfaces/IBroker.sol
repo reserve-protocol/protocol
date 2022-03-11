@@ -20,12 +20,10 @@ interface IBroker is IComponent {
 
     /// Request a trade from the broker
     /// @dev Requires setting an allowance in advance
-    function initiateTrade(TradeRequest memory req) external returns (ITrade);
+    function openTrade(TradeRequest memory req) external returns (ITrade);
 
     /// Only callable by one of the trading contracts the broker deploys
-    function reportBadTrade() external;
+    function reportViolation() external;
 
     function disabled() external view returns (bool);
-
-    function auctionLength() external view returns (uint256);
 }

@@ -270,7 +270,8 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
-    function mint(address recipient, uint256 amtRToken) external onlyComponent {
+    function mint(address recipient, uint256 amtRToken) external {
+        require(_msgSender() == address(main.backingManager()), "backing manager only");
         _mint(recipient, amtRToken);
     }
 
@@ -282,7 +283,8 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(Fix basketsNeeded_) external onlyComponent {
+    function setBasketsNeeded(Fix basketsNeeded_) external {
+        require(_msgSender() == address(main.backingManager()), "backing manager only");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }

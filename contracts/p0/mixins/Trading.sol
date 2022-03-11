@@ -118,7 +118,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         if (broker.disabled()) return; // correct interaction with BackingManager/RevenueTrader
 
         req.sell.erc20().approve(address(broker), req.sellAmount);
-        ITrade trade = broker.initiateTrade(req);
+        ITrade trade = broker.openTrade(req);
         latestEndtime = Math.max(trade.endTime(), latestEndtime);
 
         trades.push(trade);
