@@ -12,7 +12,7 @@ struct TradeRequest {
     uint256 minBuyAmount; // {qBuyTok}
 }
 
-/// Deploys standalone trade contracts for Traders to interface with Trading Partners
+/// Maintains a list of trading partners and deploys oneshot trade contracts for traders
 interface IBroker is IComponent {
     event AuctionLengthSet(uint256 indexed oldVal, uint256 indexed newVal);
     event TradingEnabled(bool prevStatus);
@@ -23,7 +23,7 @@ interface IBroker is IComponent {
     function initiateTrade(TradeRequest memory req) external returns (ITrade);
 
     /// Only callable by one of the trading contracts the broker deploys
-    function snitch() external;
+    function reportBadTrade() external;
 
     function disabled() external view returns (bool);
 

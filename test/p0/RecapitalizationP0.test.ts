@@ -20,19 +20,19 @@ import { FacadeP0 } from '../../typechain/FacadeP0'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
 import { GnosisMock } from '../../typechain/GnosisMock'
-import { RevenueTraderP0 } from '../../typechain/RevenueTraderP0'
+import { RevenueTradingP0 } from '../../typechain/RevenueTradingP0'
 import { RTokenAsset } from '../../typechain/RTokenAsset'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
-import { TraderP0 } from '../../typechain/TraderP0'
+import { TradingP0 } from '../../typechain/TradingP0'
 import { USDCMock } from '../../typechain/USDCMock'
 import { AssetRegistryP0, BackingManagerP0, BasketHandlerP0, DistributorP0 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
 const expectAuctionInfo = async (
-  trader: TraderP0,
+  trader: TradingP0,
   index: number,
   auctionInfo: Partial<IOngoingAuctionInfo>
 ) => {
@@ -78,8 +78,8 @@ describe('MainP0 contract', () => {
 
   // Trading
   let market: GnosisMock
-  let rsrTrader: RevenueTraderP0
-  let rTokenTrader: RevenueTraderP0
+  let rsrTrader: RevenueTradingP0
+  let rTokenTrader: RevenueTradingP0
 
   // Tokens and Assets
   let initialBal: BigNumber

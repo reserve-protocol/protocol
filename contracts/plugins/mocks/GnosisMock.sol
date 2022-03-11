@@ -8,22 +8,22 @@ import "contracts/plugins/trading/GnosisTrade.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
-interface ITrading {
+interface IBiddable {
     /// @param auctionId An internal auction id, not the one from AssetManager
     /// @param bid A Bid
     function placeBid(uint256 auctionId, Bid memory bid) external;
 }
 
-enum MockAuctionStatus {
+enum MauctionStatus {
     NOT_YET_OPEN,
     OPEN,
     DONE
 }
 
 /*
- *  Did you mean: Mauction
+ *  Mauction = MockAuction
  */
-struct MockAuction {
+struct Mauction {
     address origin;
     IERC20 sell;
     IERC20 buy;
@@ -31,22 +31,22 @@ struct MockAuction {
     uint256 minBuyAmount; // {qBuyTok}
     uint256 startTime; // {sec}
     uint256 endTime; // {sec}
-    MockAuctionStatus status;
+    MauctionStatus status;
     bytes32 encodedClearingOrder;
 }
 
 struct Bid {
     address bidder;
-    uint256 sellAmount; // MockAuction.sell
-    uint256 buyAmount; // MockAuction.buy
+    uint256 sellAmount; // Mauction.sell
+    uint256 buyAmount; // Mauction.buy
 }
 
 /// A very simple trading partner that only supports 1 bid per auction
-contract GnosisMock is IGnosisEasyAuction, ITrading {
+contract GnosisMock is IGnosis, IBiddable {
     using FixLib for Fix;
     using SafeERC20 for IERC20;
 
-    MockAuction[] public auctions;
+    Mauction[] public auctions;
     mapping(uint256 => Bid) public bids; // auctionId -> Bid
 
     /// @return auctionId The internal auction id
@@ -66,7 +66,7 @@ contract GnosisMock is IGnosisEasyAuction, ITrading {
         auctionId = auctions.length;
         auctioningToken.safeTransferFrom(msg.sender, address(this), auctionedSellAmount);
         auctions.push(
-            MockAuction(
+            Mauction(
                 msg.sender,
                 auctioningToken,
                 biddingToken,
@@ -74,7 +74,7 @@ contract GnosisMock is IGnosisEasyAuction, ITrading {
                 minBuyAmount,
                 block.timestamp,
                 auctionEndDate,
-                MockAuctionStatus.OPEN,
+                MauctionStatus.OPEN,
                 bytes32(0)
             )
         );
@@ -88,9 +88,9 @@ contract GnosisMock is IGnosisEasyAuction, ITrading {
 
     /// Can only be called by the origin of the auction and only after auction.endTime is past
     function settleAuction(uint256 auctionId) external returns (bytes32 encodedOrder) {
-        MockAuction storage auction = auctions[auctionId];
+        Mauction storage auction = auctions[auctionId];
         require(msg.sender == auction.origin, "only origin can claim");
-        require(auction.status == MockAuctionStatus.OPEN, "auction already closed");
+        require(auction.status == MauctionStatus.OPEN, "auction already closed");
         require(auction.endTime <= block.timestamp, "too early to close auction");
 
         uint256 clearingSellAmount;
@@ -112,7 +112,7 @@ contract GnosisMock is IGnosisEasyAuction, ITrading {
         auction.sell.safeTransfer(auction.origin, auction.sellAmount - clearingSellAmount);
         auction.buy.safeTransfer(bid.bidder, bid.buyAmount - clearingBuyAmount);
         auction.buy.safeTransfer(auction.origin, clearingBuyAmount);
-        auction.status = MockAuctionStatus.DONE;
+        auction.status = MauctionStatus.DONE;
         auction.encodedClearingOrder = _encodeOrder(
             0,
             uint96(clearingBuyAmount),

@@ -2,8 +2,8 @@
 pragma solidity 0.8.9;
 
 import "./IComponent.sol";
-import "./ITrader.sol";
+import "./ITrading.sol";
 
-interface IRevenueTrader is IComponent, ITrader {
+interface IRevenueTrader is IComponent, ITrading {
     function manageFunds() external;
 }

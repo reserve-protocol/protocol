@@ -12,7 +12,7 @@ import "contracts/p0/mixins/Component.sol";
 import "contracts/p0/mixins/Rewardable.sol";
 
 // Abstract trader affordances to be extended by our RevenueTraders and BackingManager
-abstract contract TraderP0 is RewardableP0, ITrader {
+abstract contract TradingP0 is RewardableP0, ITrading {
     using FixLib for Fix;
 
     // All trades
@@ -112,6 +112,7 @@ abstract contract TraderP0 is RewardableP0, ITrader {
         return dustAmount.div(asset.price());
     }
 
+    /// Initiate a trade with a trading partner provided by the broker
     function initiateTrade(TradeRequest memory req) internal {
         IBroker broker = main.broker();
         if (broker.disabled()) return; // correct interaction with BackingManager/RevenueTrader

@@ -7,12 +7,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IMain.sol";
 
-/** Contract mixin providing:
- * - The paused flag
- * - A pauser role, modifiable by pauser or owner
- * - Pause and unpause commands, to allow either pauser or owner to set the paused flag.
- * - The `notPaused` modifier.
- */
+/// Only Main is Pausable
 contract Pausable is Ownable, IPausable {
     address private _pauser;
     bool public paused;

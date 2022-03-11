@@ -22,7 +22,7 @@ import {
   FurnaceP0,
   MainP0,
   GnosisMock,
-  RevenueTraderP0,
+  RevenueTradingP0,
   RTokenAsset,
   RTokenP0,
   StaticATokenMock,
@@ -56,8 +56,8 @@ describe('MainP0 contract', () => {
 
   // Trading
   let broker: GnosisMock
-  let rsrTrader: RevenueTraderP0
-  let rTokenTrader: RevenueTraderP0
+  let rsrTrader: RevenueTradingP0
+  let rTokenTrader: RevenueTradingP0
 
   // Tokens and Assets
   let initialBal: BigNumber

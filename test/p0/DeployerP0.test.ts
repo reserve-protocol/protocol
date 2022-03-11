@@ -21,7 +21,7 @@ import {
   RTokenAsset,
   RTokenP0,
   StRSRP0,
-  TraderP0,
+  TradingP0,
 } from '../../typechain'
 import { defaultFixture, IConfig } from './utils/fixtures'
 
@@ -62,8 +62,8 @@ describe('DeployerP0 contract', () => {
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
   let distributor: DistributorP0
-  let rsrTrader: TraderP0
-  let rTokenTrader: TraderP0
+  let rsrTrader: TradingP0
+  let rTokenTrader: TradingP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet

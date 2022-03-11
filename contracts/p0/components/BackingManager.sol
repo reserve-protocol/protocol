@@ -8,14 +8,14 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/p0/mixins/Trader.sol";
+import "contracts/p0/mixins/Trading.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
  * @title BackingManager
  * @notice The backing manager holds + manages the backing for an RToken
  */
-contract BackingManagerP0 is TraderP0, IBackingManager {
+contract BackingManagerP0 is TradingP0, IBackingManager {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20;
@@ -24,7 +24,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     Fix public backingBuffer; // {%} how much extra backing collateral to keep
 
     function init(ConstructorArgs calldata args) internal override {
-        TraderP0.init(args);
+        TradingP0.init(args);
         auctionDelay = args.params.auctionDelay;
         backingBuffer = args.params.backingBuffer;
     }

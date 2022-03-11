@@ -12,35 +12,36 @@ import "./IBackingManager.sol";
 import "./IBasketHandler.sol";
 import "./IBroker.sol";
 import "./IDeployer.sol";
-import "./IGnosisEasyAuction.sol";
+import "./IGnosis.sol";
 import "./IFurnace.sol";
 import "./IDistributor.sol";
 import "./IRToken.sol";
 import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
-import "./ITrader.sol";
+import "./ITrading.sol";
 
 /// Configuration of an entire system instance
 struct ConstructorArgs {
     DeploymentParams params;
     Components components;
     IERC20 rsr;
-    IGnosisEasyAuction gnosis;
+    IGnosis gnosis;
     IAsset[] assets;
 }
 
 /// Components share a single common security domain provisioned by Main.
-/// Components often contain important state or otherwise cannot be easily swapped out.
-/// In the production version of the system these contracts are deployed via proxy (as is Main).
+/// Components often contain important state or cannot be easily swapped out for economic reasons.
 struct Components {
+    // Definitely needs proxy
     IRToken rToken;
     IStRSR stRSR;
     IAssetRegistry assetRegistry;
     IBasketHandler basketHandler;
     IBackingManager backingManager;
     IDistributor distributor;
-    IBroker broker;
     IFurnace furnace;
+    // Does not need proxy but benefits from delegating auth to Main
+    IBroker broker;
     IRevenueTrader rsrTrader;
     IRevenueTrader rTokenTrader;
 }

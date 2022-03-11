@@ -28,7 +28,7 @@ import { GnosisMock } from '../../../typechain/GnosisMock'
 import { RTokenAsset } from '../../../typechain/RTokenAsset'
 import { RTokenP0 } from '../../../typechain/RTokenP0'
 import { DistributorP0 } from '../../../typechain/DistributorP0'
-import { RevenueTraderP0 } from '../../../typechain/RevenueTraderP0'
+import { RevenueTradingP0 } from '../../../typechain/RevenueTradingP0'
 import { StRSRP0 } from '../../../typechain/StRSRP0'
 import { StaticATokenMock } from '../../../typechain/StaticATokenMock'
 import { USDCMock } from '../../../typechain/USDCMock'
@@ -325,8 +325,8 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   furnace: FurnaceP0
   stRSR: StRSRP0
   facade: FacadeP0
-  rsrTrader: RevenueTraderP0
-  rTokenTrader: RevenueTraderP0
+  rsrTrader: RevenueTradingP0
+  rTokenTrader: RevenueTradingP0
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -433,11 +433,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     config
   )
 
-  const rsrTrader = <RevenueTraderP0>(
-    await ethers.getContractAt('RevenueTraderP0', await main.rsrTrader())
+  const rsrTrader = <RevenueTradingP0>(
+    await ethers.getContractAt('RevenueTradingP0', await main.rsrTrader())
   )
-  const rTokenTrader = <RevenueTraderP0>(
-    await ethers.getContractAt('RevenueTraderP0', await main.rTokenTrader())
+  const rTokenTrader = <RevenueTradingP0>(
+    await ethers.getContractAt('RevenueTradingP0', await main.rTokenTrader())
   )
 
   // Set Oracle Prices

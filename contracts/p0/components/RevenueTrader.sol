@@ -4,11 +4,11 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/p0/mixins/Trader.sol";
+import "contracts/p0/mixins/Trading.sol";
 
 /// Trader Component that converts all asset balances at its address to a
 /// single target asset and sends this asset to the Distributor.
-contract RevenueTraderP0 is TraderP0, IRevenueTrader {
+contract RevenueTradingP0 is TradingP0, IRevenueTrader {
     using FixLib for Fix;
 
     IERC20 public immutable tokenToBuy;
@@ -18,7 +18,7 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
     }
 
     function init(ConstructorArgs calldata args) internal override {
-        TraderP0.init(args);
+        TradingP0.init(args);
     }
 
     /// Close any open trades and start new ones, for all assets

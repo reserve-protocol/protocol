@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IBroker.sol";
-import "contracts/interfaces/IGnosisEasyAuction.sol";
+import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
 
 enum TradeStatus {
@@ -19,7 +19,7 @@ contract GnosisTrade is ITrade {
     using FixLib for Fix;
     using SafeERC20 for IERC20;
 
-    IGnosisEasyAuction public gnosis;
+    IGnosis public gnosis;
 
     uint256 public auctionId; // An auction id from gnosis
 
@@ -40,7 +40,7 @@ contract GnosisTrade is ITrade {
     function init(
         IBroker broker_,
         address origin_,
-        IGnosisEasyAuction gnosis_,
+        IGnosis gnosis_,
         uint256 auctionLength,
         TradeRequest memory req
     ) external {
@@ -74,11 +74,12 @@ contract GnosisTrade is ITrade {
         );
     }
 
+    /// @return True if the trade can be settled; should be guaranteed to be true eventually
     function canSettle() public view returns (bool) {
         return status == TradeStatus.OPEN && atStageSolutionSubmission();
     }
 
-    /// Settle trade, transfer tokens to trader, and snitch on the trade mechanism if needed
+    /// Settle trade, transfer tokens to trader, and report bad trade if needed
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
         require(msg.sender == origin, "only origin can settle");
         require(status == TradeStatus.OPEN, "trade not open");
@@ -98,7 +99,7 @@ contract GnosisTrade is ITrade {
             soldAmt = sellAmount - sellBal;
             Fix clearingPrice = toFix(boughtAmt).divu(soldAmt); // {buyTok/sellTok}
             if (clearingPrice.lt(worstCasePrice)) {
-                broker.snitch();
+                broker.reportBadTrade();
             }
         }
 

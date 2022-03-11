@@ -20,12 +20,12 @@ import {
   FurnaceP0,
   MainP0,
   GnosisMock,
-  RevenueTraderP0,
+  RevenueTradingP0,
   RTokenAsset,
   RTokenP0,
   StaticATokenMock,
   StRSRP0,
-  TraderP0,
+  TradingP0,
   AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
@@ -43,7 +43,7 @@ interface ITradeRequestInfo {
 }
 
 const expectAuctionInfo = async (
-  trader: TraderP0,
+  trader: TradingP0,
   index: number,
   auctionInfo: Partial<ITradeRequestInfo>
 ) => {
@@ -80,8 +80,8 @@ describe('Revenues', () => {
 
   // Trading
   let market: GnosisMock
-  let rsrTrader: RevenueTraderP0
-  let rTokenTrader: RevenueTraderP0
+  let rsrTrader: RevenueTradingP0
+  let rTokenTrader: RevenueTradingP0
 
   // Tokens and Assets
   let initialBal: BigNumber

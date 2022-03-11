@@ -22,7 +22,7 @@ struct GnosisAuctionData {
 
 /// The relevant portion of the interface of the live Gnosis EasyAuction contract
 /// https://github.com/gnosis/ido-contracts/blob/main/contracts/EasyAuction.sol
-interface IGnosisEasyAuction {
+interface IGnosis {
     function initiateAuction(
         IERC20 auctioningToken,
         IERC20 biddingToken,

@@ -4,9 +4,9 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IComponent.sol";
-import "./ITrader.sol";
+import "./ITrading.sol";
 
-interface IBackingManager is IComponent, ITrader {
+interface IBackingManager is IComponent, ITrading {
     event AuctionDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
     event BackingBufferSet(Fix indexed oldVal, Fix indexed newVal);
 

@@ -15,7 +15,7 @@ contract BrokerP0 is Component, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20Metadata;
 
-    IGnosisEasyAuction public gnosis;
+    IGnosis public gnosis;
 
     EnumerableSet.AddressSet private trades;
 
@@ -49,8 +49,8 @@ contract BrokerP0 is Component, IBroker {
         return trade;
     }
 
-    /// Disable the broker
-    function snitch() external {
+    /// Disable the broker until re-enabled by governance
+    function reportBadTrade() external {
         require(trades.contains(msg.sender), "unrecognized trade contract");
         emit TradingDisabled(disabled);
         disabled = true;

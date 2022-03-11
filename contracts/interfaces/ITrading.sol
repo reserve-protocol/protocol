@@ -7,7 +7,7 @@ import "./IAsset.sol";
 import "./ITrade.sol";
 import "./IRewardable.sol";
 
-interface ITrader is IRewardable {
+interface ITrading is IRewardable {
     event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
     event DustAmountSet(Fix indexed oldVal, Fix indexed newVal);
 
