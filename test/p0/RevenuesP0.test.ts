@@ -7,14 +7,17 @@ import { bn, divCeil, fp, near } from '../../common/numbers'
 import {
   AaveLendingPoolMock,
   AavePricedAsset,
+  AavePricedFiatCollateral,
   Asset,
+  AssetRegistryP0,
   ATokenFiatCollateral,
-  Collateral as AbstractCollateral,
+  BackingManagerP0,
+  BasketHandlerP0,
   CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
-  DeployerP0,
+  DistributorP0,
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
@@ -26,12 +29,9 @@ import {
   StaticATokenMock,
   StRSRP0,
   TraderP0,
-  AssetRegistryP0,
-  BackingManagerP0,
-  BasketHandlerP0,
-  DistributorP0,
   USDCMock,
 } from '../../typechain'
+import { whileImpersonating } from '../utils/impersonation'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
@@ -62,12 +62,6 @@ describe('Revenues', () => {
   let addr2: SignerWithAddress
   let other: SignerWithAddress
 
-  // Deployer contract
-  let deployer: DeployerP0
-
-  // Assets
-  let collateral: Collateral[]
-
   // Non-backing assets
   let rsr: ERC20Mock
   let rsrAsset: Asset
@@ -93,6 +87,7 @@ describe('Revenues', () => {
   let collateral1: Collateral
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
+  let collateral: Collateral[]
   let basketsNeededAmts: BigNumber[]
 
   // Config values
@@ -139,7 +134,6 @@ describe('Revenues', () => {
       basket,
       basketsNeededAmts,
       config,
-      deployer,
       dist,
       main,
       assetRegistry,
@@ -162,9 +156,6 @@ describe('Revenues', () => {
 
     // Set backingBuffer to 0 to make math easy
     await backingManager.connect(owner).setBackingBuffer(0)
-
-    // Set Aave revenue token
-    await token2.setAaveToken(aaveToken.address)
 
     collateral0 = <Collateral>basket[0]
     collateral1 = <Collateral>basket[1]
@@ -243,7 +234,7 @@ describe('Revenues', () => {
         distributor
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(10001), rsrDist: bn(0) })
-      ).to.be.revertedWith('RSR distribution too high')
+      ).to.be.revertedWith('RToken distribution too high')
     })
   })
 
@@ -852,6 +843,69 @@ describe('Revenues', () => {
         // Check balances at destinations
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.add(minBuyAmtRemainder))
+      })
+
+      it('Should allow anyone to call distribute', async () => {
+        const distAmount: BigNumber = bn('100e18')
+
+        // Transfer some RSR to BackingManager
+        await rsr.connect(addr1).transfer(backingManager.address, distAmount)
+
+        // Set f = 1
+        await distributor
+          .connect(owner)
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        await distributor
+          .connect(owner)
+          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+
+        // Check funds in BackingManager and destinations
+        expect(await rsr.balanceOf(backingManager.address)).to.equal(distAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Distribute the RSR
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await rsr.connect(bmSigner).approve(distributor.address, distAmount)
+        })
+        await distributor.distribute(rsr.address, backingManager.address, distAmount)
+
+        //  Check all funds distributed to StRSR
+        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(distAmount)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+      })
+
+      it('Should not distribute other tokens beyond RSR/RToken', async () => {
+        // Advance time to get next reward
+        await advanceTime(config.rewardPeriod.toString())
+
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('1e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Collect revenue
+        await expect(backingManager.claimAndSweepRewards())
+          .to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(compToken.address, rewardAmountCOMP)
+
+        // Check funds in BackingManager and destinations
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Attempt to distribute COMP token
+        await expect(
+          distributor.distribute(compToken.address, backingManager.address, rewardAmountCOMP)
+        ).to.be.revertedWith('RSR or RToken')
+
+        //  Check nothing changed
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
       it('Should handle custom destinations correctly', async () => {
