@@ -2,19 +2,17 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
   CTokenMock,
   ERC20Mock,
   FacadeP0,
   MainP0,
-  StaticATokenMock,
-  USDCMock,
-  AssetRegistryP0,
   RTokenP0,
-  BackingManagerP0,
-  BasketHandlerP0,
-  DistributorP0,
+  StaticATokenMock,
+  StRSRP0,
+  USDCMock,
 } from '../../typechain'
 import { Collateral, defaultFixture } from './utils/fixtures'
 
@@ -32,6 +30,9 @@ describe('FacadeP0 contract', () => {
   let usdc: USDCMock
   let aToken: StaticATokenMock
   let cToken: CTokenMock
+  let rsr: ERC20Mock
+  let compToken: ERC20Mock
+  let aaveToken: ERC20Mock
   let basket: Collateral[]
 
   // Assets
@@ -46,10 +47,7 @@ describe('FacadeP0 contract', () => {
   // Main
   let main: MainP0
   let rToken: RTokenP0
-  let assetRegistry: AssetRegistryP0
-  let backingManager: BackingManagerP0
-  let basketHandler: BasketHandlerP0
-  let distributor: DistributorP0
+  let stRSR: StRSRP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -63,8 +61,9 @@ describe('FacadeP0 contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, facade, main, rToken, assetRegistry, backingManager, basketHandler, distributor } =
-      await loadFixture(defaultFixture))
+    ;({ rsr, compToken, aaveToken, basket, facade, main, rToken, stRSR } = await loadFixture(
+      defaultFixture
+    ))
 
     // Get assets and tokens
     ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
@@ -85,9 +84,12 @@ describe('FacadeP0 contract', () => {
 
   describe('Views', () => {
     let issueAmount: BigNumber
+    let initialQuotes: BigNumber[]
 
     beforeEach(async () => {
       await rToken.connect(owner).setIssuanceRate(fp('1'))
+
+      initialQuotes = [bn('0.25e18'), bn('0.25e6'), bn('0.25e18'), bn('0.25e8')]
 
       // Mint Tokens
       initialBal = bn('1000e18')
@@ -119,6 +121,48 @@ describe('FacadeP0 contract', () => {
       expect(await facade.callStatic.maxIssuable(addr1.address)).to.equal(bn('3900e18'))
       expect(await facade.callStatic.maxIssuable(addr2.address)).to.equal(bn('4000e18'))
       expect(await facade.callStatic.maxIssuable(other.address)).to.equal(0)
+    })
+
+    it('Should return currentAssets correctly', async () => {
+      const initialQuantities: BigNumber[] = initialQuotes.map((q) => {
+        return q.mul(issueAmount).div(BN_SCALE_FACTOR)
+      })
+
+      const [tokens, quantities] = await facade.callStatic.currentAssets()
+
+      // Get Backing ERC20s addresses
+      const backingERC20Addrs: string[] = await Promise.all(
+        basket.map(async (c): Promise<string> => {
+          return await c.erc20()
+        })
+      )
+
+      // Check token addresses
+      expect(tokens[0]).to.equal(rToken.address)
+      expect(quantities[0]).to.equal(bn(0))
+
+      expect(tokens[1]).to.equal(rsr.address)
+      expect(quantities[1]).to.equal(bn(0))
+
+      expect(tokens[2]).to.equal(aaveToken.address)
+      expect(quantities[2]).to.equal(bn(0))
+
+      expect(tokens[3]).to.equal(compToken.address)
+      expect(quantities[3]).to.equal(bn(0))
+
+      // Backing tokens
+      expect(tokens.slice(4, 8)).to.eql(backingERC20Addrs)
+      expect(quantities.slice(4, 8)).to.eql(initialQuantities)
+    })
+
+    it('Should return stRSRExchangeRate correctly', async () => {
+      expect(await facade.callStatic.stRSRExchangeRate()).to.equal(fp('1'))
+
+      expect(await facade.callStatic.stRSRExchangeRate()).to.equal(await stRSR.exchangeRate())
+    })
+
+    it('Should return totalAssetValue correctly', async () => {
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
     })
   })
 })
