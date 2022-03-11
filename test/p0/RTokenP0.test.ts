@@ -86,7 +86,7 @@ describe('RTokenP0 contract', () => {
     collateral2 = <ATokenFiatCollateral>basket[2]
     collateral3 = <CTokenFiatCollateral>basket[3]
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
-    token1 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral1.erc20())
+    token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )

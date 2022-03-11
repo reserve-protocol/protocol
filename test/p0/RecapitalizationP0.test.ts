@@ -195,7 +195,7 @@ describe('MainP0 contract', () => {
     collateral2 = <ATokenFiatCollateral>basket[2]
     collateral3 = <CTokenFiatCollateral>basket[3]
 
-    // Backup tokens and collaterals - USDT and cUSDT
+    // Backup tokens and collaterals - USDT and aUSDT
     backupToken1 = erc20s[2]
     backupCollateral1 = <Collateral>collateral[2]
     backupToken2 = erc20s[9]
@@ -323,7 +323,7 @@ describe('MainP0 contract', () => {
         await assetRegistry.connect(owner).register(backupCollateral1.address)
         await assetRegistry.connect(owner).register(backupCollateral2.address)
 
-        // Set backup configuration - USDT and cUSDT as backup
+        // Set backup configuration - USDT and aUSDT as backup
         await basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
