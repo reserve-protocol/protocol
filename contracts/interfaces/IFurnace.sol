@@ -2,12 +2,13 @@
 pragma solidity 0.8.9;
 
 import "contracts/libraries/Fixed.sol";
+import "./IComponent.sol";
 
 /**
  * @title IFurnace
  * @notice A helper contract to burn RTokens slowly and permisionlessly.
  */
-interface IFurnace {
+interface IFurnace is IComponent {
     /// Emitted when the melting period is changed
     /// @param oldPeriod The old period
     /// @param newPeriod The new period

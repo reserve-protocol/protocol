@@ -18,7 +18,7 @@ import {
   FacadeP0,
   FurnaceP0,
   MainP0,
-  MarketMock,
+  GnosisMock,
   RevenueTraderP0,
   RTokenAsset,
   RTokenP0,
@@ -58,7 +58,7 @@ describe('MainP0 contract', () => {
   let aaveMock: AaveLendingPoolMock
 
   // Trading
-  let market: MarketMock
+  let broker: GnosisMock
   let rsrTrader: RevenueTraderP0
   let rTokenTrader: RevenueTraderP0
 
@@ -128,7 +128,7 @@ describe('MainP0 contract', () => {
       rTokenAsset,
       furnace,
       stRSR,
-      market,
+      broker,
       facade,
       rsrTrader,
       rTokenTrader,
@@ -169,7 +169,7 @@ describe('MainP0 contract', () => {
       // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)
       expect(await main.furnace()).to.equal(furnace.address)
-      expect(await main.market()).to.equal(market.address)
+      expect(await main.broker()).to.equal(broker.address)
 
       // Configuration
       let totals = await distributor.totals()
@@ -258,7 +258,7 @@ describe('MainP0 contract', () => {
     it('Should not allow to initialize Main twice', async () => {
       const ctorArgs = {
         params: config,
-        core: {
+        components: {
           rToken: rToken.address,
           stRSR: stRSR.address,
           assetRegistry: assetRegistry.address,
@@ -267,12 +267,10 @@ describe('MainP0 contract', () => {
           distributor: distributor.address,
           rsrTrader: rsrTrader.address,
           rTokenTrader: rTokenTrader.address,
-        },
-        periphery: {
           furnace: furnace.address,
-          market: market.address,
-          assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
+          broker: broker.address,
         },
+        assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
         rsr: rsr.address,
       }
       await expect(main.init(ctorArgs)).to.be.revertedWith('Already initialized')
@@ -643,7 +641,7 @@ describe('MainP0 contract', () => {
 
     it('Should allow to set Market if Owner', async () => {
       // Check existing value
-      expect(await main.market()).to.equal(market.address)
+      expect(await main.broker()).to.equal(broker.address)
 
       // If not owner cannot update - use mock address
       await expect(main.connect(other).setMarket(other.address)).to.be.revertedWith(
@@ -651,15 +649,15 @@ describe('MainP0 contract', () => {
       )
 
       // Check value did not change
-      expect(await main.market()).to.equal(market.address)
+      expect(await main.broker()).to.equal(broker.address)
 
       // Update with owner
       await expect(main.connect(owner).setMarket(other.address))
         .to.emit(main, 'MarketSet')
-        .withArgs(market.address, other.address)
+        .withArgs(broker.address, other.address)
 
       // Check value was updated
-      expect(await main.market()).to.equal(other.address)
+      expect(await main.broker()).to.equal(other.address)
     })
 
     it('Should allow to set RSR if Owner', async () => {

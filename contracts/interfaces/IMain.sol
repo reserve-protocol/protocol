@@ -10,9 +10,10 @@ import "./IAsset.sol";
 import "./IAssetRegistry.sol";
 import "./IBackingManager.sol";
 import "./IBasketHandler.sol";
+import "./IBroker.sol";
 import "./IDeployer.sol";
+import "./IGnosisEasyAuction.sol";
 import "./IFurnace.sol";
-import "./IMarket.sol";
 import "./IDistributor.sol";
 import "./IRToken.sol";
 import "./IRevenueTrader.sol";
@@ -22,31 +23,26 @@ import "./ITrader.sol";
 /// Configuration of an entire system instance
 struct ConstructorArgs {
     DeploymentParams params;
-    Core core;
-    Periphery periphery;
+    Components components;
     IERC20 rsr;
+    IGnosisEasyAuction gnosis;
+    IAsset[] assets;
 }
 
-/// The spokes of our hub-and-spoke component model centered around Main
-/// One single security domain
-/// Upgradeable
-struct Core {
+/// Components share a single common security domain provisioned by Main.
+/// Components often contain important state or otherwise cannot be easily swapped out.
+/// In the production version of the system these contracts are deployed via proxy (as is Main).
+struct Components {
     IRToken rToken;
     IStRSR stRSR;
     IAssetRegistry assetRegistry;
     IBasketHandler basketHandler;
     IBackingManager backingManager;
     IDistributor distributor;
+    IBroker broker;
+    IFurnace furnace;
     IRevenueTrader rsrTrader;
     IRevenueTrader rTokenTrader;
-}
-
-/// INVARIANT: Unaware of Main
-/// Not upgradeable, only swappable
-struct Periphery {
-    IMarket market;
-    IFurnace furnace;
-    IAsset[] assets;
 }
 
 interface IPausable {
@@ -136,11 +132,11 @@ interface IMain is IPausable {
 
     function setFurnace(IFurnace furnace) external;
 
-    event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
+    event BrokerSet(IBroker indexed oldVal, IBroker indexed newVal);
 
-    function market() external view returns (IMarket);
+    function broker() external view returns (IBroker);
 
-    function setMarket(IMarket market) external;
+    function setBroker(IBroker broker) external;
 
     event RSRSet(IERC20 indexed oldVal, IERC20 indexed newVal);
 

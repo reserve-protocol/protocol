@@ -2,28 +2,29 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/p0/Trader.sol";
+import "contracts/p0/mixins/Trader.sol";
 
-/// The RevenueTrader converts all asset balances at its address to a single target asset
-/// and sends this asset to the Distributor.
+/// Trader Component that converts all asset balances at its address to a
+/// single target asset and sends this asset to the Distributor.
 contract RevenueTraderP0 is TraderP0, IRevenueTrader {
     using FixLib for Fix;
-    using SafeERC20 for IERC20;
 
     IERC20 public immutable tokenToBuy;
 
-    constructor(IERC20 tokenToBuy_) TraderP0() {
+    constructor(IERC20 tokenToBuy_) {
         tokenToBuy = tokenToBuy_;
     }
 
-    /// Close any open auctions and start new ones, for all assets
+    function init(ConstructorArgs calldata args) internal override {
+        TraderP0.init(args);
+    }
+
+    /// Close any open trades and start new ones, for all assets
     /// Collective Action
     function manageFunds() external {
-        closeDueAuctions();
-        if (status == AuctionStatus.OFF) return;
+        settleTrades();
 
         // Call state keepers
         main.poke();
@@ -35,7 +36,7 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
     }
 
     /// - If we have any of `tokenToBuy` (RSR or RToken), distribute it.
-    /// - If we have any of any other asset, start an auction to sell it for `assetToBuy`
+    /// - If we have any of any other asset, start an trade to sell it for `assetToBuy`
     function manageERC20(IERC20 erc20) internal {
         IAssetRegistry reg = main.assetRegistry();
 
@@ -45,23 +46,23 @@ contract RevenueTraderP0 is TraderP0, IRevenueTrader {
         if (bal == 0) return;
 
         if (erc20 == tokenToBuy) {
-            erc20.safeApprove(address(main.distributor()), bal);
+            erc20.approve(address(main.distributor()), bal);
             main.distributor().distribute(erc20, address(this), bal);
             return;
         }
 
-        // Don't open a second auction if there's already one running.
-        for (uint256 i = auctionsStart; i < auctions.length; i++) {
-            if (auctions[i].sell() == erc20) return;
+        // Don't open a second trade if there's already one running.
+        for (uint256 i = tradesStart; i < trades.length; i++) {
+            if (trades[i].sell() == erc20) return;
         }
 
         // If not dust, trade the non-target asset for the target asset
-        (bool launch, ProposedAuction memory auction) = prepareAuctionSell(
+        (bool launch, TradeRequest memory trade) = prepareTradeSell(
             reg.toAsset(erc20),
             reg.toAsset(tokenToBuy),
             reg.toAsset(erc20).bal(address(this))
         );
 
-        if (launch) launchAuction(auction);
+        if (launch) initiateTrade(trade);
     }
 }

@@ -13,7 +13,7 @@ import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/Component.sol";
+import "contracts/p0/mixins/Component.sol";
 
 /*
  * @title StRSRP0

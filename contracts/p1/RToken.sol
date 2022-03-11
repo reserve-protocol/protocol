@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/Rewardable.sol";
+import "contracts/p0/mixins/Rewardable.sol";
 
 /**
  * @title RToken

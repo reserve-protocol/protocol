@@ -19,7 +19,7 @@ import {
   FacadeP0,
   FurnaceP0,
   MainP0,
-  MarketMock,
+  GnosisMock,
   RevenueTraderP0,
   RTokenAsset,
   RTokenP0,
@@ -58,7 +58,7 @@ describe('Issuance (previously Issuer contract)', () => {
   let aaveMock: AaveLendingPoolMock
 
   // Trading
-  let market: MarketMock
+  let market: GnosisMock
   let rsrTrader: RevenueTraderP0
   let rTokenTrader: RevenueTraderP0
 

@@ -70,9 +70,9 @@ contract MainP0 is Pausable, IMain {
         basketHandler.ensureBasket();
         assetRegistry.forceUpdates();
         furnace.melt();
-        rsrTrader.closeDueAuctions();
-        rTokenTrader.closeDueAuctions();
-        backingManager.closeDueAuctions();
+        rsrTrader.settleTrades();
+        rTokenTrader.settleTrades();
+        backingManager.settleTrades();
         stRSR.payoutRewards();
     }
 
@@ -89,35 +89,37 @@ contract MainP0 is Pausable, IMain {
         require(!initialized, "Already initialized");
         initialized = true;
 
-        setBackingManager(args.core.backingManager);
+        setBackingManager(args.components.backingManager);
         backingManager.initComponent(this, args);
 
-        setBasketHandler(args.core.basketHandler);
+        setBasketHandler(args.components.basketHandler);
         basketHandler.initComponent(this, args);
 
-        setRSRTrader(args.core.rsrTrader);
+        setRSRTrader(args.components.rsrTrader);
         rsrTrader.initComponent(this, args);
 
-        setRTokenTrader(args.core.rTokenTrader);
+        setRTokenTrader(args.components.rTokenTrader);
         rTokenTrader.initComponent(this, args);
 
-        setAssetRegistry(args.core.assetRegistry);
+        setAssetRegistry(args.components.assetRegistry);
         assetRegistry.initComponent(this, args);
 
-        setDistributor(args.core.distributor);
+        setDistributor(args.components.distributor);
         distributor.initComponent(this, args);
 
-        setFurnace(args.periphery.furnace);
+        setFurnace(args.components.furnace);
+        furnace.initComponent(this, args);
 
-        setMarket(args.periphery.market);
+        setBroker(args.components.broker);
+        broker.initComponent(this, args);
 
-        setRSR(args.rsr);
-
-        setStRSR(args.core.stRSR);
+        setStRSR(args.components.stRSR);
         stRSR.initComponent(this, args);
 
-        setRToken(args.core.rToken);
+        setRToken(args.components.rToken);
         rToken.initComponent(this, args);
+
+        setRSR(args.rsr);
 
         emit Initialized();
     }
@@ -182,6 +184,8 @@ contract MainP0 is Pausable, IMain {
 
     function setRSRTrader(IRevenueTrader val) public onlyOwner {
         emit RSRTraderSet(rsrTrader, val);
+        components.remove(address(rsrTrader));
+        components.add(address(val));
         rsrTrader = val;
     }
 
@@ -189,29 +193,35 @@ contract MainP0 is Pausable, IMain {
 
     function setRTokenTrader(IRevenueTrader val) public onlyOwner {
         emit RTokenTraderSet(rTokenTrader, val);
+        components.remove(address(rTokenTrader));
+        components.add(address(val));
         rTokenTrader = val;
     }
-
-    // === Non-components ===
 
     IFurnace public furnace;
 
     function setFurnace(IFurnace val) public onlyOwner {
         emit FurnaceSet(furnace, val);
+        components.remove(address(furnace));
+        components.add(address(val));
         furnace = val;
     }
+
+    IBroker public broker;
+
+    function setBroker(IBroker val) public onlyOwner {
+        emit BrokerSet(broker, val);
+        components.remove(address(broker));
+        components.add(address(val));
+        broker = val;
+    }
+
+    // === Non-components ===
 
     IERC20 public rsr;
 
     function setRSR(IERC20 val) public onlyOwner {
         emit RSRSet(rsr, val);
         rsr = val;
-    }
-
-    IMarket public market;
-
-    function setMarket(IMarket val) public onlyOwner {
-        emit MarketSet(market, val);
-        market = val;
     }
 }

@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "./IComponent.sol";
+import "./IMain.sol";
 
 interface IRewardable is IComponent {
     /// Emitted whenever rewards are claimed

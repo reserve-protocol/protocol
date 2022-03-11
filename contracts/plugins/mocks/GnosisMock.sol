@@ -4,8 +4,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "contracts/plugins/trading/GnosisTrade.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/IMarket.sol";
 import "contracts/libraries/Fixed.sol";
 
 interface ITrading {
@@ -32,6 +32,7 @@ struct MockAuction {
     uint256 startTime; // {sec}
     uint256 endTime; // {sec}
     MockAuctionStatus status;
+    bytes32 encodedClearingOrder;
 }
 
 struct Bid {
@@ -41,7 +42,7 @@ struct Bid {
 }
 
 /// A very simple trading partner that only supports 1 bid per auction
-contract MarketMock is IMarket, ITrading {
+contract GnosisMock is IGnosisEasyAuction, ITrading {
     using FixLib for Fix;
     using SafeERC20 for IERC20;
 
@@ -73,7 +74,8 @@ contract MarketMock is IMarket, ITrading {
                 minBuyAmount,
                 block.timestamp,
                 auctionEndDate,
-                MockAuctionStatus.OPEN
+                MockAuctionStatus.OPEN,
+                bytes32(0)
             )
         );
     }
@@ -111,7 +113,50 @@ contract MarketMock is IMarket, ITrading {
         auction.buy.safeTransfer(bid.bidder, bid.buyAmount - clearingBuyAmount);
         auction.buy.safeTransfer(auction.origin, clearingBuyAmount);
         auction.status = MockAuctionStatus.DONE;
-        return _encodeOrder(0, uint96(clearingBuyAmount), uint96(clearingSellAmount));
+        auction.encodedClearingOrder = _encodeOrder(
+            0,
+            uint96(clearingBuyAmount),
+            uint96(clearingSellAmount)
+        );
+        return auction.encodedClearingOrder;
+    }
+
+    function auctionData(uint256 auctionId)
+        external
+        view
+        returns (
+            IERC20,
+            IERC20,
+            uint256,
+            uint256 auctionEndDate,
+            bytes32,
+            uint256,
+            uint256,
+            bytes32,
+            bytes32 clearingPriceOrder,
+            uint96,
+            bool,
+            bool,
+            uint256,
+            uint256
+        )
+    {
+        return (
+            IERC20(address(0)),
+            IERC20(address(0)),
+            0,
+            auctions[auctionId].endTime,
+            bytes32(0),
+            0,
+            0,
+            bytes32(0),
+            auctions[auctionId].encodedClearingOrder,
+            0,
+            false,
+            false,
+            0,
+            0
+        );
     }
 
     function numAuctions() external view returns (uint256) {

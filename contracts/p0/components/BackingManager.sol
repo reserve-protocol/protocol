@@ -6,11 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
+import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/IMarket.sol";
-import "contracts/p0/Component.sol";
-import "contracts/p0/Trader.sol";
-import "contracts/p0/RevenueTrader.sol";
+import "contracts/p0/mixins/Trader.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
@@ -42,13 +40,12 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
     /// Manage backing funds: maintain the overall backing policy
     /// Collective Action
     function manageFunds() external notPaused {
-        closeDueAuctions();
-        if (status == AuctionStatus.OFF) return;
+        settleTrades();
 
         // Call keepers before
         main.poke();
 
-        if (hasOpenAuctions()) return;
+        if (hasOpenTrades()) return;
 
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + auctionDelay) return;
@@ -125,18 +122,18 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         if (address(surplus) == address(0) || address(deficit) == address(0)) return false;
 
         // Of primary concern here is whether we can trust the prices for the assets
-        // we are selling. If we cannot, then we should not `prepareAuctionToCoverDeficit`
+        // we are selling. If we cannot, then we should not `prepareTradeToCoverDeficit`
 
         bool trade;
-        ProposedAuction memory auction;
+        TradeRequest memory auction;
         if (
             surplus.isCollateral() &&
             main.assetRegistry().toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
         ) {
-            (trade, auction) = prepareAuctionSell(surplus, deficit, surplusAmount);
+            (trade, auction) = prepareTradeSell(surplus, deficit, surplusAmount);
             auction.minBuyAmount = 0;
         } else {
-            (trade, auction) = prepareAuctionToCoverDeficit(
+            (trade, auction) = prepareTradeToCoverDeficit(
                 surplus,
                 deficit,
                 surplusAmount,
@@ -144,14 +141,14 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
             );
         }
 
-        if (trade) launchAuction(auction);
+        if (trade) initiateTrade(auction);
         return trade;
     }
 
     /// Try to seize RSR and sell it for missing collateral
     /// @return Whether an auction was launched
     function sellRSRForCollateral() private returns (bool) {
-        assert(!hasOpenAuctions() && !main.basketHandler().fullyCapitalized());
+        assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
 
         IStRSR stRSR = main.stRSR();
         IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
@@ -161,7 +158,7 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
 
         Fix availableRSR = rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR)));
 
-        (bool trade, ProposedAuction memory auction) = prepareAuctionToCoverDeficit(
+        (bool trade, TradeRequest memory auction) = prepareTradeToCoverDeficit(
             rsrAsset,
             deficit,
             availableRSR,
@@ -173,14 +170,14 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
             if (auction.sellAmount > rsrBal) {
                 stRSR.seizeRSR(auction.sellAmount - rsrBal);
             }
-            launchAuction(auction);
+            initiateTrade(auction);
         }
         return trade;
     }
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
     function giveRTokenHoldersAHaircut() private returns (bool) {
-        assert(!hasOpenAuctions() && !main.basketHandler().fullyCapitalized());
+        assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
         assert(main.basketHandler().fullyCapitalized());
         return true;
@@ -303,23 +300,8 @@ contract BackingManagerP0 is TraderP0, IBackingManager {
         auctionDelay = val;
     }
 
-    function setAuctionLength(uint256 val) external onlyOwner {
-        emit AuctionLengthSet(auctionLength, val);
-        auctionLength = val;
-    }
-
     function setBackingBuffer(Fix val) external onlyOwner {
         emit BackingBufferSet(backingBuffer, val);
         backingBuffer = val;
-    }
-
-    function setMaxTradeSlippage(Fix val) external onlyOwner {
-        emit MaxTradeSlippageSet(maxTradeSlippage, val);
-        maxTradeSlippage = val;
-    }
-
-    function setDustAmount(Fix val) external onlyOwner {
-        emit DustAmountSet(dustAmount, val);
-        dustAmount = val;
     }
 }

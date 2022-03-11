@@ -17,7 +17,7 @@ import {
   FacadeP0,
   FurnaceP0,
   MainP0,
-  MarketMock,
+  GnosisMock,
   RTokenAsset,
   RTokenP0,
   StRSRP0,
@@ -49,7 +49,7 @@ describe('DeployerP0 contract', () => {
   let aaveMock: AaveLendingPoolMock
 
   // Market / Facade
-  let market: MarketMock
+  let market: GnosisMock
   let facade: FacadeP0
 
   // Core contracts

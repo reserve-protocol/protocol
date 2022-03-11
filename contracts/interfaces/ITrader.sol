@@ -4,52 +4,41 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IAsset.sol";
-import "./IAuction.sol";
+import "./ITrade.sol";
 import "./IRewardable.sol";
 
-struct ProposedAuction {
-    IAsset sell;
-    IAsset buy;
-    uint256 sellAmount; // {qSellTok}
-    uint256 minBuyAmount; // {qBuyTok}
-}
-
-enum AuctionStatus {
-    ON,
-    OFF
-}
-
 interface ITrader is IRewardable {
-    /// Emitted when an auction is started
-    /// @param auction The address of the oneshot auction contract
+    event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
+    event DustAmountSet(Fix indexed oldVal, Fix indexed newVal);
+
+    /// Emitted when a trade is started
+    /// @param trade The address of the oneshot trading contract
     /// @param sell The token to sell
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
-    event AuctionStarted(
-        IAuction indexed auction,
+    event TradeStarted(
+        ITrade indexed trade,
         IERC20 indexed sell,
         IERC20 indexed buy,
         uint256 sellAmount,
         uint256 minBuyAmount
     );
 
-    /// Emitted after an auction ends
-    /// @param auction The address of the oneshot auction contract
+    /// Emitted after a trade ends
+    /// @param trade The address of the oneshot trading contract
+    /// @param sell The token to sell
+    /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the token sold
     /// @param buyAmount {qBuyTok} The quantity of the token bought
-    event AuctionEnded(
-        IAuction indexed auction,
+    event TradeSettled(
+        ITrade indexed trade,
         IERC20 indexed sell,
         IERC20 indexed buy,
         uint256 sellAmount,
-        uint256 buyAmount,
-        AuctionStatus status
+        uint256 buyAmount
     );
 
     /// Settle any auctions that are due (past their end time)
-    function closeDueAuctions() external;
-
-    /// @return The current status of the trader
-    function status() external view returns (AuctionStatus);
+    function settleTrades() external;
 }

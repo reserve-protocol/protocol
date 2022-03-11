@@ -24,7 +24,7 @@ import { ERC20Mock } from '../../../typechain/ERC20Mock'
 import { FacadeP0 } from '../../../typechain/FacadeP0'
 import { FurnaceP0 } from '../../../typechain/FurnaceP0'
 import { MainP0 } from '../../../typechain/MainP0'
-import { MarketMock } from '../../../typechain/MarketMock'
+import { GnosisMock } from '../../../typechain/GnosisMock'
 import { RTokenAsset } from '../../../typechain/RTokenAsset'
 import { RTokenP0 } from '../../../typechain/RTokenP0'
 import { DistributorP0 } from '../../../typechain/DistributorP0'
@@ -130,12 +130,12 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
 }
 
 interface ModuleFixture {
-  market: MarketMock
+  market: GnosisMock
 }
 
 async function marketFixture(): Promise<ModuleFixture> {
-  const MarketMockFactory: ContractFactory = await ethers.getContractFactory('MarketMock')
-  const marketMock: MarketMock = <MarketMock>await MarketMockFactory.deploy()
+  const GnosisMockFactory: ContractFactory = await ethers.getContractFactory('GnosisMock')
+  const marketMock: GnosisMock = <GnosisMock>await GnosisMockFactory.deploy()
   return { market: marketMock }
 }
 

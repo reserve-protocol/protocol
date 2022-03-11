@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/Component.sol";
+import "contracts/p0/mixins/Component.sol";
 
 contract DistributorP0 is Component, IDistributor {
     using SafeERC20 for IERC20;

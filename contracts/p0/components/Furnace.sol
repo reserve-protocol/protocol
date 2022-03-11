@@ -1,39 +1,43 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IFurnace.sol";
-import "contracts/interfaces/IRToken.sol";
+import "contracts/p0/mixins/Component.sol";
 
 /**
  * @title FurnaceP0
  * @notice A helper to melt RTokens slowly and permisionlessly.
  */
-contract FurnaceP0 is Ownable, IFurnace {
-    using SafeERC20 for IRToken;
+contract FurnaceP0 is Component, IFurnace {
     using FixLib for Fix;
 
-    IRToken public immutable rToken;
     Fix public ratio; // {1} What fraction of balance to melt each period
     uint256 public period; // {seconds} How often to melt
     uint256 public lastPayout; // {seconds} The last time we did a payout
 
-    constructor(
-        IRToken rToken_,
-        uint256 period_,
-        Fix ratio_
-    ) {
-        require(address(rToken_) != address(0), "rToken is zero address");
-        require(period_ != 0, "period cannot be zero");
-        rToken = rToken_;
-        period = period_;
-        ratio = ratio_;
+    function init(ConstructorArgs calldata args) internal override {
+        period = args.params.rewardPeriod;
+        ratio = args.params.rewardRatio;
         lastPayout = block.timestamp;
+        require(period != 0, "period cannot be zero");
+    }
+
+    /// Performs any melting that has vested since last call. Idempotent
+    function melt() public returns (uint256 amount) {
+        if (block.timestamp < lastPayout + period) return 0;
+
+        // # of whole periods that have passed since lastPayout
+        uint256 numPeriods = (block.timestamp - lastPayout) / period;
+
+        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
+        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
+
+        IRToken rToken = main.rToken();
+        amount = payoutRatio.mulu(rToken.balanceOf(address(this))).floor();
+
+        if (amount > 0) rToken.melt(amount);
+        lastPayout += numPeriods * period;
     }
 
     /// Period setting
@@ -48,21 +52,5 @@ contract FurnaceP0 is Ownable, IFurnace {
         // The ratio can safely be set to 0
         emit RatioSet(ratio, ratio_);
         ratio = ratio_;
-    }
-
-    /// Performs any melting that has vested since last call. Idempotent
-    function melt() public returns (uint256 amount) {
-        if (block.timestamp < lastPayout + period) return 0;
-
-        // # of whole periods that have passed since lastPayout
-        uint256 numPeriods = (block.timestamp - lastPayout) / period;
-
-        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
-
-        amount = payoutRatio.mulu(rToken.balanceOf(address(this))).floor();
-
-        if (amount > 0) rToken.melt(amount);
-        lastPayout += numPeriods * period;
     }
 }
