@@ -909,6 +909,65 @@ describe('Revenues', () => {
         expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
       })
 
+      it('Should revert when auction ends with unacceptable buy amount', async () => {
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Collect revenue
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        let sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+
+        let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+
+        // Claim rewards
+        await expect(facade.claimRewards())
+          .to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(compToken.address, bn(0))
+          .and.to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(aaveToken.address, rewardAmountAAVE)
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Run auctions
+        await expect(facade.runAuctionsForAllTraders())
+          .to.emit(rsrTrader, 'AuctionStarted')
+          .withArgs(0, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
+          .and.to.emit(rTokenTrader, 'AuctionStarted')
+          .withArgs(0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
+
+        // Advance time till auction ended
+        await advanceTime(config.auctionLength.add(100).toString())
+
+        // Mock auction for RSR and RToken - Provide amounts below minBuyAmount
+        await rsr.connect(addr1).approve(market.address, minBuyAmt)
+        await rToken.connect(addr1).approve(market.address, minBuyAmtRToken)
+        await market.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt.sub(1),
+        })
+        await market.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRToken,
+          buyAmount: minBuyAmtRToken.sub(1),
+        })
+
+        // Close auctions
+        await expect(facade.runAuctionsForAllTraders()).to.be.revertedWith(
+          'auction clearing price too low'
+        )
+
+        // Check nothing changed at destinations
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+      })
+
       it('Should not distribute other tokens beyond RSR/RToken', async () => {
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('1e18')
