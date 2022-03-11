@@ -24,7 +24,7 @@ contract AssetRegistryP0 is Component, IAssetRegistry {
     }
 
     /// Force updates in all collateral assets
-    function forceUpdates() external {
+    function forceUpdates() external onlyComponent {
         for (uint256 i = 0; i < _erc20s.length(); i++) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
             if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
