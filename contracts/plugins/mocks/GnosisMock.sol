@@ -113,6 +113,7 @@ contract GnosisMock is IGnosis, IBiddable {
         auction.buy.safeTransfer(bid.bidder, bid.buyAmount - clearingBuyAmount);
         auction.buy.safeTransfer(auction.origin, clearingBuyAmount);
         auction.status = MauctionStatus.DONE;
+        auction.endTime = 0;
         auction.encodedClearingOrder = _encodeOrder(
             0,
             uint96(clearingBuyAmount),

@@ -39,20 +39,18 @@ contract BrokerP0 is Component, IBroker {
             "only traders"
         );
 
-        req.sell.erc20().safeTransferFrom(_msgSender(), address(this), req.sellAmount);
-
         // In the future we'll have more sophisticated choice logic here, probably by trade size
         GnosisTrade trade = new GnosisTrade();
         trades[address(trade)] = true;
+        req.sell.erc20().safeTransferFrom(_msgSender(), address(trade), req.sellAmount);
         trade.init(this, _msgSender(), gnosis, auctionLength, req);
-        req.sell.erc20().safeTransfer(address(trade), req.sellAmount);
         return trade;
     }
 
     /// Disable the broker until re-enabled by governance
     function reportViolation() external {
         require(trades[_msgSender()], "unrecognized trade contract");
-        emit TradingDisabled(disabled);
+        emit DisabledSet(disabled, true);
         disabled = true;
     }
 
@@ -63,8 +61,8 @@ contract BrokerP0 is Component, IBroker {
         auctionLength = newAuctionLength;
     }
 
-    function enable() external onlyOwner {
-        emit TradingEnabled(disabled);
-        disabled = false;
+    function setDisabled(bool disabled_) external onlyOwner {
+        emit DisabledSet(disabled, disabled_);
+        disabled = disabled_;
     }
 }

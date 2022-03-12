@@ -142,7 +142,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             );
         }
 
-        if (trade) initiateTrade(auction);
+        if (trade) executeTrade(auction);
         return trade;
     }
 
@@ -171,7 +171,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             if (auction.sellAmount > rsrBal) {
                 stRSR.seizeRSR(auction.sellAmount - rsrBal);
             }
-            initiateTrade(auction);
+            executeTrade(auction);
         }
         return trade;
     }

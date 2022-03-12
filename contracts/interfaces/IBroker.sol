@@ -15,8 +15,7 @@ struct TradeRequest {
 /// Maintains a list of trading partners and deploys oneshot trade contracts for traders
 interface IBroker is IComponent {
     event AuctionLengthSet(uint256 indexed oldVal, uint256 indexed newVal);
-    event TradingEnabled(bool prevStatus);
-    event TradingDisabled(bool prevStatus);
+    event DisabledSet(bool indexed prevVal, bool indexed newVal);
 
     /// Request a trade from the broker
     /// @dev Requires setting an allowance in advance

@@ -3,7 +3,6 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IMain.sol";
 
@@ -52,11 +51,9 @@ contract Pausable is Ownable, IPausable {
 // solhint-disable max-states-count
 contract MainP0 is Pausable, IMain {
     using FixLib for Fix;
-    using EnumerableSet for EnumerableSet.AddressSet;
 
     // Already initialized?
     bool private initialized;
-    EnumerableSet.AddressSet private components;
 
     function poke() external notPaused {
         // We think these are totally order-independent.
@@ -66,10 +63,6 @@ contract MainP0 is Pausable, IMain {
         rTokenTrader.settleTrades();
         backingManager.settleTrades();
         stRSR.payoutRewards();
-    }
-
-    function hasComponent(address addr) external view returns (bool) {
-        return components.contains(addr);
     }
 
     function owner() public view override(IMain, Ownable) returns (address) {
@@ -122,8 +115,6 @@ contract MainP0 is Pausable, IMain {
 
     function setRToken(IRToken val) public onlyOwner {
         emit RTokenSet(rToken, val);
-        components.remove(address(rToken));
-        components.add(address(val));
         rToken = val;
     }
 
@@ -131,8 +122,6 @@ contract MainP0 is Pausable, IMain {
 
     function setStRSR(IStRSR val) public onlyOwner {
         emit StRSRSet(stRSR, val);
-        components.remove(address(stRSR));
-        components.add(address(val));
         stRSR = val;
     }
 
@@ -140,8 +129,6 @@ contract MainP0 is Pausable, IMain {
 
     function setAssetRegistry(IAssetRegistry val) public onlyOwner {
         emit AssetRegistrySet(assetRegistry, val);
-        components.remove(address(assetRegistry));
-        components.add(address(val));
         assetRegistry = val;
     }
 
@@ -149,8 +136,6 @@ contract MainP0 is Pausable, IMain {
 
     function setBasketHandler(IBasketHandler val) public onlyOwner {
         emit BasketHandlerSet(basketHandler, val);
-        components.remove(address(basketHandler));
-        components.add(address(val));
         basketHandler = val;
     }
 
@@ -158,8 +143,6 @@ contract MainP0 is Pausable, IMain {
 
     function setBackingManager(IBackingManager val) public onlyOwner {
         emit BackingManagerSet(backingManager, val);
-        components.remove(address(backingManager));
-        components.add(address(val));
         backingManager = val;
     }
 
@@ -167,8 +150,6 @@ contract MainP0 is Pausable, IMain {
 
     function setDistributor(IDistributor val) public onlyOwner {
         emit DistributorSet(distributor, val);
-        components.remove(address(distributor));
-        components.add(address(val));
         distributor = val;
     }
 
@@ -176,8 +157,6 @@ contract MainP0 is Pausable, IMain {
 
     function setRSRTrader(IRevenueTrader val) public onlyOwner {
         emit RSRTraderSet(rsrTrader, val);
-        components.remove(address(rsrTrader));
-        components.add(address(val));
         rsrTrader = val;
     }
 
@@ -185,8 +164,6 @@ contract MainP0 is Pausable, IMain {
 
     function setRTokenTrader(IRevenueTrader val) public onlyOwner {
         emit RTokenTraderSet(rTokenTrader, val);
-        components.remove(address(rTokenTrader));
-        components.add(address(val));
         rTokenTrader = val;
     }
 
@@ -194,8 +171,6 @@ contract MainP0 is Pausable, IMain {
 
     function setFurnace(IFurnace val) public onlyOwner {
         emit FurnaceSet(furnace, val);
-        components.remove(address(furnace));
-        components.add(address(val));
         furnace = val;
     }
 
@@ -203,8 +178,6 @@ contract MainP0 is Pausable, IMain {
 
     function setBroker(IBroker val) public onlyOwner {
         emit BrokerSet(broker, val);
-        components.remove(address(broker));
-        components.add(address(val));
         broker = val;
     }
 

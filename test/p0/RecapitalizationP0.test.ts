@@ -8,6 +8,7 @@ import { bn, divCeil, fp, near, toBNDecimals } from '../../common/numbers'
 import { AaveLendingPoolMock } from '../../typechain/AaveLendingPoolMock'
 import { AaveOracleMock } from '../../typechain/AaveOracleMock'
 import { Asset } from '../../typechain/Asset'
+import { BrokerP0 } from '../../typechain/BrokerP0'
 import { ATokenFiatCollateral } from '../../typechain/ATokenFiatCollateral'
 import { Collateral as AbstractCollateral } from '../../typechain/Collateral'
 import { CompoundOracleMock } from '../../typechain/CompoundOracleMock'
@@ -553,16 +554,16 @@ describe('MainP0 contract', () => {
         //  Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
-        // Check Market
-        expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
+        // Check Gnosis
+        expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
 
         //  Another call should not create any new auctions if still ongoing
         await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Get fair price - all tokens
-        await token1.connect(addr1).approve(market.address, toBNDecimals(sellAmt, 6))
-        await market.placeBid(0, {
+        await token1.connect(addr1).approve(gnosis.address, toBNDecimals(sellAmt, 6))
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: toBNDecimals(sellAmt, 6),
@@ -652,16 +653,16 @@ describe('MainP0 contract', () => {
         //  Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
-        // Check Market
-        expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
+        // Check Gnosis
+        expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
 
         //  Another call should not create any new auctions if still ongoing
         await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Only cover minBuyAmount - 10% less
-        await token1.connect(addr1).approve(market.address, toBNDecimals(sellAmt, 6))
-        await market.placeBid(0, {
+        await token1.connect(addr1).approve(gnosis.address, toBNDecimals(sellAmt, 6))
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: toBNDecimals(minBuyAmt, 6),
@@ -760,16 +761,16 @@ describe('MainP0 contract', () => {
         //  Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
-        // Check Market
-        expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
+        // Check Gnosis
+        expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
 
         //  Another call should not create any new auctions if still ongoing
         await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Get fair price - minBuyAmt
-        await token1.connect(addr1).approve(market.address, toBNDecimals(sellAmt, 6))
-        await market.placeBid(0, {
+        await token1.connect(addr1).approve(gnosis.address, toBNDecimals(sellAmt, 6))
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: toBNDecimals(minBuyAmt, 6),
@@ -809,16 +810,16 @@ describe('MainP0 contract', () => {
         //  Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
-        // Check Market
-        expect(await rsr.balanceOf(market.address)).to.equal(sellAmtRSR)
+        // Check Gnosis
+        expect(await rsr.balanceOf(gnosis.address)).to.equal(sellAmtRSR)
 
         //  Another call should not create any new auctions if still ongoing
         await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Cover buyAmtBidRSR which is all the RSR required
-        await token1.connect(addr1).approve(market.address, toBNDecimals(sellAmtRSR, 6))
-        await market.placeBid(1, {
+        await token1.connect(addr1).approve(gnosis.address, toBNDecimals(sellAmtRSR, 6))
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRSR,
           buyAmount: toBNDecimals(buyAmtBidRSR, 6),
@@ -933,8 +934,8 @@ describe('MainP0 contract', () => {
         //  Perform Mock Bids for the new Token (addr1 has balance)
         //  Assume fair price, get half of the tokens (because price reduction was 50%)
         const minBuyAmt: BigNumber = sellAmt.div(2)
-        await backupToken1.connect(addr1).approve(market.address, minBuyAmt)
-        await market.placeBid(0, {
+        await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
@@ -1062,8 +1063,8 @@ describe('MainP0 contract', () => {
         //  Perform Mock Bids (addr1 has balance)
         // Assume fair price, get half of the tokens (because price reduction was 50%)
         const minBuyAmt: BigNumber = sellAmt.div(2)
-        await backupToken1.connect(addr1).approve(market.address, minBuyAmt)
-        await market.placeBid(0, {
+        await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
@@ -1101,8 +1102,8 @@ describe('MainP0 contract', () => {
 
         //  Perform Mock Bids (addr1 has balance)
         // Assume fair price, get half of the tokens (because price reduction was 50%)
-        await backupToken1.connect(addr1).approve(market.address, minBuyAmt)
-        await market.placeBid(1, {
+        await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
@@ -1154,8 +1155,8 @@ describe('MainP0 contract', () => {
 
         //  Perform Mock Bids for RSR (addr1 has balance)
         // Assume fair price RSR = 1 get all of them
-        await backupToken1.connect(addr1).approve(market.address, buyAmtBidRSR)
-        await market.placeBid(2, {
+        await backupToken1.connect(addr1).approve(gnosis.address, buyAmtBidRSR)
+        await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: sellAmtRSR,
           buyAmount: buyAmtBidRSR,

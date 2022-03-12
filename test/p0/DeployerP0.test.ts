@@ -175,18 +175,6 @@ describe('DeployerP0 contract', () => {
       expect(await assetRegistry.toAsset(erc20s[3])).to.equal(compAsset.address)
       expect(erc20s.length).to.eql((await basketHandler.tokens()).length + 4)
 
-      // Components
-      expect(await main.hasComponent(assetRegistry.address)).to.equal(true)
-      expect(await main.hasComponent(basketHandler.address)).to.equal(true)
-      expect(await main.hasComponent(backingManager.address)).to.equal(true)
-      expect(await main.hasComponent(distributor.address)).to.equal(true)
-      expect(await main.hasComponent(broker.address)).to.equal(true)
-      expect(await main.hasComponent(rsrTrader.address)).to.equal(true)
-      expect(await main.hasComponent(rTokenTrader.address)).to.equal(true)
-      expect(await main.hasComponent(stRSR.address)).to.equal(true)
-      expect(await main.hasComponent(rToken.address)).to.equal(true)
-      expect(await main.hasComponent(furnace.address)).to.equal(true)
-
       // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)
       expect(await main.furnace()).to.equal(furnace.address)

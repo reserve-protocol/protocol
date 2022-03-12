@@ -12,13 +12,13 @@ interface ITrading is IRewardable {
     event DustAmountSet(Fix indexed oldVal, Fix indexed newVal);
 
     /// Emitted when a trade is started
-    /// @param trade The address of the oneshot trading contract
+    /// @param index The index of the trade in the trades getter
     /// @param sell The token to sell
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
     event TradeStarted(
-        ITrade indexed trade,
+        uint256 indexed index,
         IERC20 indexed sell,
         IERC20 indexed buy,
         uint256 sellAmount,
@@ -26,13 +26,13 @@ interface ITrading is IRewardable {
     );
 
     /// Emitted after a trade ends
-    /// @param trade The address of the oneshot trading contract
+    /// @param index The index of the trade in the trades getter
     /// @param sell The token to sell
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the token sold
     /// @param buyAmount {qBuyTok} The quantity of the token bought
     event TradeSettled(
-        ITrade indexed trade,
+        uint256 indexed index,
         IERC20 indexed sell,
         IERC20 indexed buy,
         uint256 sellAmount,

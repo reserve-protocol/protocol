@@ -44,7 +44,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         for (; i < trades.length && trades[i].canSettle(); i++) {
             ITrade trade = trades[i];
             (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
-            emit TradeSettled(trade, trade.sell(), trade.buy(), soldAmt, boughtAmt);
+            emit TradeSettled(i, trade.sell(), trade.buy(), soldAmt, boughtAmt);
         }
         tradesStart = i;
     }
@@ -113,7 +113,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     }
 
     /// Initiate a trade with a trading partner provided by the broker
-    function initiateTrade(TradeRequest memory req) internal {
+    function executeTrade(TradeRequest memory req) internal {
         IBroker broker = main.broker();
         if (broker.disabled()) return; // correct interaction with BackingManager/RevenueTrader
 
@@ -122,13 +122,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         latestEndtime = Math.max(trade.endTime(), latestEndtime);
 
         trades.push(trade);
-        emit TradeStarted(
-            trade,
-            req.sell.erc20(),
-            req.buy.erc20(),
-            req.sellAmount,
-            req.minBuyAmount
-        );
+        uint256 i = trades.length - 1;
+        emit TradeStarted(i, req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 
     // === Setters ===
