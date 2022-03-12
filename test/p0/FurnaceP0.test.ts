@@ -10,6 +10,7 @@ import {
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
+  MainP0,
   RTokenP0,
   StaticATokenMock,
   USDCMock,
@@ -35,6 +36,7 @@ describe('FurnaceP0 contract', () => {
 
   // Contracts
   let FurnaceFactory: ContractFactory
+  let main: MainP0
   let furnace: FurnaceP0
   let rToken: RTokenP0
   let basket: Collateral[]
@@ -68,7 +70,7 @@ describe('FurnaceP0 contract', () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ basket, rToken, furnace, config, facade } = await loadFixture(defaultFixture))
+    ;({ main, basket, rToken, furnace, config, facade } = await loadFixture(defaultFixture))
 
     // Setup issuance of RTokens for users
     initialBal = bn('100e18')
@@ -100,22 +102,35 @@ describe('FurnaceP0 contract', () => {
 
   describe('Deployment', () => {
     it('Deployment should setup Furnace correctly', async () => {
-      expect(await furnace.rToken()).to.equal(rToken.address)
       expect(await furnace.period()).to.equal(config.rewardPeriod)
       expect(await furnace.ratio()).to.equal(config.rewardRatio)
       expect(await furnace.lastPayout()).to.be.gt(0) // A timestamp is set
-      expect(await furnace.owner()).to.equal(owner.address)
-    })
-
-    it('Deployment does not accept empty token', async () => {
-      await expect(
-        FurnaceFactory.deploy(ZERO_ADDRESS, config.rewardPeriod, config.rewardRatio)
-      ).to.be.revertedWith('rToken is zero address')
+      expect(await furnace.main()).to.equal(main.address)
     })
 
     it('Deployment does not accept empty period', async () => {
+      const newConfig = JSON.parse(JSON.stringify(config))
+      newConfig.rewardPeriod = bn('0')
+      const newFurnace = await FurnaceFactory.deploy()
       await expect(
-        FurnaceFactory.deploy(rToken.address, bn('0'), config.rewardRatio)
+        newFurnace.initComponent(main.address, {
+          params: newConfig,
+          components: {
+            rToken: ZERO_ADDRESS,
+            stRSR: ZERO_ADDRESS,
+            assetRegistry: ZERO_ADDRESS,
+            basketHandler: ZERO_ADDRESS,
+            backingManager: ZERO_ADDRESS,
+            distributor: ZERO_ADDRESS,
+            rsrTrader: ZERO_ADDRESS,
+            rTokenTrader: ZERO_ADDRESS,
+            furnace: ZERO_ADDRESS,
+            broker: ZERO_ADDRESS,
+          },
+          gnosis: ZERO_ADDRESS,
+          assets: [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
+          rsr: ZERO_ADDRESS,
+        })
       ).to.be.revertedWith('period cannot be zero')
     })
   })
@@ -133,7 +148,7 @@ describe('FurnaceP0 contract', () => {
 
       // Try to update again if not owner
       await expect(furnace.connect(addr1).setPeriod(bn('500'))).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
 
       // Cannot update with period zero
@@ -154,7 +169,7 @@ describe('FurnaceP0 contract', () => {
 
       // Try to update again if not owner
       await expect(furnace.connect(addr1).setRatio(bn('0'))).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+        'Component: caller is not the owner'
       )
     })
   })

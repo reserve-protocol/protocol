@@ -8,6 +8,7 @@ import { bn, divCeil, fp, near, toBNDecimals } from '../../common/numbers'
 import { AaveLendingPoolMock } from '../../typechain/AaveLendingPoolMock'
 import { AaveOracleMock } from '../../typechain/AaveOracleMock'
 import { Asset } from '../../typechain/Asset'
+import { BrokerP0 } from '../../typechain/BrokerP0'
 import { ATokenFiatCollateral } from '../../typechain/ATokenFiatCollateral'
 import { Collateral as AbstractCollateral } from '../../typechain/Collateral'
 import { CompoundOracleMock } from '../../typechain/CompoundOracleMock'
@@ -16,34 +17,41 @@ import { CTokenFiatCollateral } from '../../typechain/CTokenFiatCollateral'
 import { CTokenMock } from '../../typechain/CTokenMock'
 import { DeployerP0 } from '../../typechain/DeployerP0'
 import { ERC20Mock } from '../../typechain/ERC20Mock'
+import { GnosisTrade } from '../../typechain/GnosisTrade'
 import { FacadeP0 } from '../../typechain/FacadeP0'
 import { FurnaceP0 } from '../../typechain/FurnaceP0'
 import { MainP0 } from '../../typechain/MainP0'
-import { MarketMock } from '../../typechain/MarketMock'
-import { RevenueTraderP0 } from '../../typechain/RevenueTraderP0'
+import { GnosisMock } from '../../typechain/GnosisMock'
+import { RevenueTradingP0 } from '../../typechain/RevenueTradingP0'
 import { RTokenAsset } from '../../typechain/RTokenAsset'
 import { RTokenP0 } from '../../typechain/RTokenP0'
 import { StaticATokenMock } from '../../typechain/StaticATokenMock'
 import { StRSRP0 } from '../../typechain/StRSRP0'
-import { TraderP0 } from '../../typechain/TraderP0'
+import { TradingP0 } from '../../typechain/TradingP0'
 import { USDCMock } from '../../typechain/USDCMock'
 import { AssetRegistryP0, BackingManagerP0, BasketHandlerP0, DistributorP0 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
-const expectAuctionInfo = async (
-  trader: TraderP0,
+const expectTrade = async (
+  trader: TradingP0,
   index: number,
-  auctionInfo: Partial<IOngoingAuctionInfo>
+  auctionInfo: Partial<TradeRequest>
 ) => {
-  const { sell, buy, endTime, externalId } = await trader.auctions(index)
-  expect(sell).to.equal(auctionInfo.sell)
-  expect(buy).to.equal(auctionInfo.buy)
-  expect(endTime).to.equal(auctionInfo.endTime)
-  expect(externalId).to.equal(auctionInfo.externalId)
+  const trade = await getTrade(trader, index)
+  expect(await trade.sell()).to.equal(auctionInfo.sell)
+  expect(await trade.buy()).to.equal(auctionInfo.buy)
+  expect(await trade.endTime()).to.equal(auctionInfo.endTime)
+  expect(await trade.auctionId()).to.equal(auctionInfo.externalId)
 }
 
-interface IOngoingAuctionInfo {
+// TODO use this in more places
+const getTrade = async (trader: TradingP0, index: number): Promise<GnosisTrade> => {
+  const tradeAddr = await trader.trades(index)
+  return await ethers.getContractAt('GnosisTrade', tradeAddr)
+}
+
+interface TradeRequest {
   sell: string
   buy: string
   endTime: number
@@ -77,9 +85,9 @@ describe('MainP0 contract', () => {
   let aaveOracleInternal: AaveOracleMock
 
   // Trading
-  let market: MarketMock
-  let rsrTrader: RevenueTraderP0
-  let rTokenTrader: RevenueTraderP0
+  let gnosis: GnosisMock
+  let rsrTrader: RevenueTradingP0
+  let rTokenTrader: RevenueTradingP0
 
   // Tokens and Assets
   let initialBal: BigNumber
@@ -109,6 +117,7 @@ describe('MainP0 contract', () => {
   let furnace: FurnaceP0
   let main: MainP0
   let facade: FacadeP0
+  let broker: BrokerP0
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
@@ -166,7 +175,8 @@ describe('MainP0 contract', () => {
       rTokenAsset,
       furnace,
       stRSR,
-      market,
+      broker,
+      gnosis,
       facade,
       assetRegistry,
       backingManager,
@@ -518,14 +528,14 @@ describe('MainP0 contract', () => {
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionStarted')
+          .to.emit(backingManager, 'TradeStarted')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // Token0 -> Token1 Auction
-        await expectAuctionInfo(backingManager, 0, {
+        await expectTrade(backingManager, 0, {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -544,19 +554,16 @@ describe('MainP0 contract', () => {
         //  Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
-        // Check Market
-        expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
+        // Check Gnosis
+        expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
 
         //  Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders()).to.not.emit(
-          backingManager,
-          'AuctionStarted'
-        )
+        await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Get fair price - all tokens
-        await token1.connect(addr1).approve(market.address, toBNDecimals(sellAmt, 6))
-        await market.placeBid(0, {
+        await token1.connect(addr1).approve(gnosis.address, toBNDecimals(sellAmt, 6))
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: toBNDecimals(sellAmt, 6),
@@ -567,9 +574,9 @@ describe('MainP0 contract', () => {
 
         //  End current auction, should  not start any new auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionEnded')
+          .to.emit(backingManager, 'TradeSettled')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6))
-          .and.to.not.emit(backingManager, 'AuctionStarted')
+          .and.to.not.emit(backingManager, 'TradeStarted')
 
         // Check state - Order restablished
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -621,14 +628,14 @@ describe('MainP0 contract', () => {
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionStarted')
+          .to.emit(backingManager, 'TradeStarted')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // Token0 -> Token1 Auction
-        await expectAuctionInfo(backingManager, 0, {
+        await expectTrade(backingManager, 0, {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -646,19 +653,16 @@ describe('MainP0 contract', () => {
         //  Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
-        // Check Market
-        expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
+        // Check Gnosis
+        expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
 
         //  Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders()).to.not.emit(
-          backingManager,
-          'AuctionStarted'
-        )
+        await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Only cover minBuyAmount - 10% less
-        await token1.connect(addr1).approve(market.address, toBNDecimals(sellAmt, 6))
-        await market.placeBid(0, {
+        await token1.connect(addr1).approve(gnosis.address, toBNDecimals(sellAmt, 6))
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: toBNDecimals(minBuyAmt, 6),
@@ -669,9 +673,9 @@ describe('MainP0 contract', () => {
 
         //  End current auction, should  not start any new auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionEnded')
+          .to.emit(backingManager, 'TradeSettled')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
-          .and.to.not.emit(backingManager, 'AuctionStarted')
+          .and.to.not.emit(backingManager, 'TradeStarted')
 
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -731,14 +735,14 @@ describe('MainP0 contract', () => {
         let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionStarted')
+          .to.emit(backingManager, 'TradeStarted')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         let auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // Token0 -> Token1 Auction
-        await expectAuctionInfo(backingManager, 0, {
+        await expectTrade(backingManager, 0, {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -757,19 +761,16 @@ describe('MainP0 contract', () => {
         //  Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
-        // Check Market
-        expect(await token0.balanceOf(market.address)).to.equal(issueAmount)
+        // Check Gnosis
+        expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
 
         //  Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders()).to.not.emit(
-          backingManager,
-          'AuctionStarted'
-        )
+        await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Get fair price - minBuyAmt
-        await token1.connect(addr1).approve(market.address, toBNDecimals(sellAmt, 6))
-        await market.placeBid(0, {
+        await token1.connect(addr1).approve(gnosis.address, toBNDecimals(sellAmt, 6))
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: toBNDecimals(minBuyAmt, 6),
@@ -784,15 +785,15 @@ describe('MainP0 contract', () => {
         let sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')) // Due to trade slippage 1% - Calculation to match Solidity
 
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionEnded')
+          .to.emit(backingManager, 'TradeSettled')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
-          .and.to.emit(backingManager, 'AuctionStarted')
+          .and.to.emit(backingManager, 'TradeStarted')
           .withArgs(1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6))
 
         auctionTimestamp = await getLatestBlockTimestamp()
 
         // RSR -> Token1 Auction
-        await expectAuctionInfo(backingManager, 1, {
+        await expectTrade(backingManager, 1, {
           sell: rsr.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -809,19 +810,16 @@ describe('MainP0 contract', () => {
         //  Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
-        // Check Market
-        expect(await rsr.balanceOf(market.address)).to.equal(sellAmtRSR)
+        // Check Gnosis
+        expect(await rsr.balanceOf(gnosis.address)).to.equal(sellAmtRSR)
 
         //  Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders()).to.not.emit(
-          backingManager,
-          'AuctionStarted'
-        )
+        await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Cover buyAmtBidRSR which is all the RSR required
-        await token1.connect(addr1).approve(market.address, toBNDecimals(sellAmtRSR, 6))
-        await market.placeBid(1, {
+        await token1.connect(addr1).approve(gnosis.address, toBNDecimals(sellAmtRSR, 6))
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRSR,
           buyAmount: toBNDecimals(buyAmtBidRSR, 6),
@@ -832,9 +830,9 @@ describe('MainP0 contract', () => {
 
         //  End current auction, should  not start any new auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionEnded')
+          .to.emit(backingManager, 'TradeSettled')
           .withArgs(1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6))
-          .and.to.not.emit(backingManager, 'AuctionStarted')
+          .and.to.not.emit(backingManager, 'TradeStarted')
 
         // Check state - Order restablished
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -873,10 +871,7 @@ describe('MainP0 contract', () => {
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
 
         // Running auctions will not trigger recapitalization until collateral defauls
-        await expect(facade.runAuctionsForAllTraders()).to.not.emit(
-          backingManager,
-          'AuctionStarted'
-        )
+        await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Mark default as probable
         await collateral0.forceUpdates()
@@ -908,13 +903,13 @@ describe('MainP0 contract', () => {
         let sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
 
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionStarted')
+          .to.emit(backingManager, 'TradeStarted')
           .withArgs(0, token0.address, backupToken1.address, sellAmt, bn('0'))
 
         let auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token0 -> Backup Token Auction
-        await expectAuctionInfo(backingManager, 0, {
+        await expectTrade(backingManager, 0, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -922,10 +917,7 @@ describe('MainP0 contract', () => {
         })
 
         // Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders()).to.not.emit(
-          backingManager,
-          'AuctionStarted'
-        )
+        await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -942,8 +934,8 @@ describe('MainP0 contract', () => {
         //  Perform Mock Bids for the new Token (addr1 has balance)
         //  Assume fair price, get half of the tokens (because price reduction was 50%)
         const minBuyAmt: BigNumber = sellAmt.div(2)
-        await backupToken1.connect(addr1).approve(market.address, minBuyAmt)
-        await market.placeBid(0, {
+        await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
@@ -954,9 +946,9 @@ describe('MainP0 contract', () => {
 
         // Run auctions - will end current, will not open any new auctions (no RSR)
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionEnded')
+          .to.emit(backingManager, 'TradeSettled')
           .withArgs(0, token0.address, backupToken1.address, sellAmt, minBuyAmt)
-          .and.not.to.emit(backingManager, 'AuctionStarted')
+          .and.not.to.emit(backingManager, 'TradeStarted')
 
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1043,13 +1035,13 @@ describe('MainP0 contract', () => {
         let sellAmt: BigNumber = (await token0.balanceOf(backingManager.address)).div(2)
 
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionStarted')
+          .to.emit(backingManager, 'TradeStarted')
           .withArgs(0, token0.address, backupToken1.address, sellAmt, bn('0'))
 
         let auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token0 -> Backup Token Auction
-        await expectAuctionInfo(backingManager, 0, {
+        await expectTrade(backingManager, 0, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1071,8 +1063,8 @@ describe('MainP0 contract', () => {
         //  Perform Mock Bids (addr1 has balance)
         // Assume fair price, get half of the tokens (because price reduction was 50%)
         const minBuyAmt: BigNumber = sellAmt.div(2)
-        await backupToken1.connect(addr1).approve(market.address, minBuyAmt)
-        await market.placeBid(0, {
+        await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
@@ -1083,14 +1075,14 @@ describe('MainP0 contract', () => {
 
         // Run auctions - will end current, and will open a new auction for the other half
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionEnded')
+          .to.emit(backingManager, 'TradeSettled')
           .withArgs(0, token0.address, backupToken1.address, sellAmt, minBuyAmt)
-          .and.to.emit(backingManager, 'AuctionStarted')
+          .and.to.emit(backingManager, 'TradeStarted')
           .withArgs(1, token0.address, backupToken1.address, sellAmt, bn('0'))
 
         // Check new auction
         // Token0 -> Backup Token Auction
-        await expectAuctionInfo(backingManager, 1, {
+        await expectTrade(backingManager, 1, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -1110,8 +1102,8 @@ describe('MainP0 contract', () => {
 
         //  Perform Mock Bids (addr1 has balance)
         // Assume fair price, get half of the tokens (because price reduction was 50%)
-        await backupToken1.connect(addr1).approve(market.address, minBuyAmt)
-        await market.placeBid(1, {
+        await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
@@ -1130,16 +1122,16 @@ describe('MainP0 contract', () => {
         let sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')) // Due to trade slippage 1% - Calculation to match Solidity
 
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionEnded')
+          .to.emit(backingManager, 'TradeSettled')
           .withArgs(1, token0.address, backupToken1.address, sellAmt, minBuyAmt)
-          .and.to.emit(backingManager, 'AuctionStarted')
+          .and.to.emit(backingManager, 'TradeStarted')
           .withArgs(2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR)
 
         auctionTimestamp = await getLatestBlockTimestamp()
 
         // Check new auction
         // RSR -> Backup Token Auction
-        await expectAuctionInfo(backingManager, 2, {
+        await expectTrade(backingManager, 2, {
           sell: rsr.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1163,8 +1155,8 @@ describe('MainP0 contract', () => {
 
         //  Perform Mock Bids for RSR (addr1 has balance)
         // Assume fair price RSR = 1 get all of them
-        await backupToken1.connect(addr1).approve(market.address, buyAmtBidRSR)
-        await market.placeBid(2, {
+        await backupToken1.connect(addr1).approve(gnosis.address, buyAmtBidRSR)
+        await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: sellAmtRSR,
           buyAmount: buyAmtBidRSR,
@@ -1175,9 +1167,9 @@ describe('MainP0 contract', () => {
 
         // End current auction
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'AuctionEnded')
+          .to.emit(backingManager, 'TradeSettled')
           .withArgs(2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR)
-          .and.to.not.emit(backingManager, 'AuctionStarted')
+          .and.to.not.emit(backingManager, 'TradeStarted')
 
         //  Should have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount.sub(sellAmtRSR)) // Sent to market (auction)

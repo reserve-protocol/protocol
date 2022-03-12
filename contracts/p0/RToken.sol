@@ -12,8 +12,8 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/Rewardable.sol";
-
+import "contracts/p0/mixins/Component.sol";
+import "contracts/p0/mixins/Rewardable.sol";
 struct SlowIssuance {
     address issuer;
     uint256 amount; // {qRTok}
@@ -29,7 +29,7 @@ struct SlowIssuance {
  * @title RTokenP0
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
+contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for Fix;
     using SafeERC20 for IERC20;
@@ -221,7 +221,8 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
-    function mint(address recipient, uint256 amount) external onlyComponent {
+    function mint(address recipient, uint256 amount) external {
+        require(_msgSender() == address(main.backingManager()), "backing manager only");
         _mint(recipient, amount);
     }
 
@@ -233,7 +234,8 @@ contract RTokenP0 is RewardableP0, ERC20Permit, IRToken {
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(Fix basketsNeeded_) external onlyComponent {
+    function setBasketsNeeded(Fix basketsNeeded_) external {
+        require(_msgSender() == address(main.backingManager()), "backing manager only");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }

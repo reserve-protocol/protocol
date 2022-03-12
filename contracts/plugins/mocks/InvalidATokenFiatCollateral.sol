@@ -40,12 +40,12 @@ contract InvalidATokenFiatCollateral is AaveOracleMixin, Collateral {
     }
 
     /// Dummy implementation
-    function isReferenceDepegged() private view returns (bool) {
+    function isReferenceDepegged() private pure returns (bool) {
         return false;
     }
 
     /// Invalid claim calldata
-    function getClaimCalldata() external view override returns (address _to, bytes memory _cd) {
+    function getClaimCalldata() external pure override returns (address _to, bytes memory _cd) {
         _to = address(0);
         _cd = abi.encodeWithSignature("claimRewardsToSelf(bool)", true);
     }

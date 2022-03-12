@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/p0/Component.sol";
+import "contracts/p0/mixins/Component.sol";
 import "contracts/libraries/Fixed.sol";
 
 struct BackupConfig {

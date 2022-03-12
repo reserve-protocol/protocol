@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/p0/Component.sol";
+import "contracts/p0/mixins/Component.sol";
 
 /// The AssetRegistry provides the mapping from ERC20 to Asset, allowing the rest of Main
 /// to think in terms of ERC20 tokens and target/ref units.
@@ -18,13 +18,14 @@ contract AssetRegistryP0 is Component, IAssetRegistry {
     mapping(IERC20 => IAsset) private assets;
 
     function init(ConstructorArgs calldata args) internal virtual override {
-        for (uint256 i = 0; i < args.periphery.assets.length; i++) {
-            _register(args.periphery.assets[i]);
+        for (uint256 i = 0; i < args.assets.length; i++) {
+            _register(args.assets[i]);
         }
     }
 
     /// Force updates in all collateral assets
-    function forceUpdates() external onlyComponent {
+    function forceUpdates() external {
+        require(_msgSender() == address(main.basketHandler()), "basket handler only");
         for (uint256 i = 0; i < _erc20s.length(); i++) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
             if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();

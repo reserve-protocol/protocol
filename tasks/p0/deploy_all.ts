@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { MarketMock } from '@typechain/MarketMock'
+import { GnosisMock } from '@typechain/GnosisMock'
 import { BigNumber, ContractFactory } from 'ethers'
 import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
@@ -89,8 +89,8 @@ const deployDependencies = async (hre: HardhatRuntimeEnvironment, deployer: Sign
   await aaveMock.deployed()
 
   // Market
-  const MarketMockFactory: ContractFactory = await hre.ethers.getContractFactory('MarketMock')
-  const marketMock: MarketMock = <MarketMock>await MarketMockFactory.deploy()
+  const GnosisMockFactory: ContractFactory = await hre.ethers.getContractFactory('GnosisMock')
+  const marketMock: GnosisMock = <GnosisMock>await GnosisMockFactory.deploy()
 
   return {
     weth,

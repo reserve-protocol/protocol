@@ -121,16 +121,25 @@ describe('RTokenP0 contract', () => {
   })
 
   describe('Configuration', () => {
-    it('Should allow to set basketsNeeded only from Main components', async () => {
+    it('Should allow to set basketsNeeded only from BackingManager', async () => {
       // Check initial status
       expect(await rToken.basketsNeeded()).to.equal(0)
 
-      // Try to update value if not a Main component
+      // Try to update value if not BackingManager
       await expect(rToken.connect(owner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
-        'Component: caller is not a component'
+        'backing manager only'
       )
 
-      await whileImpersonating(basketHandler.address, async (bhSigner) => {
+      await whileImpersonating(main.address, async (bhSigner) => {
+        await expect(rToken.connect(bhSigner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
+          'backing manager only'
+        )
+      })
+
+      // Check value not updated
+      expect(await rToken.basketsNeeded()).to.equal(0)
+
+      await whileImpersonating(backingManager.address, async (bhSigner) => {
         await expect(rToken.connect(bhSigner).setBasketsNeeded(fp('1')))
           .to.emit(rToken, 'BasketsNeededChanged')
           .withArgs(0, fp('1'))
@@ -1048,7 +1057,7 @@ describe('RTokenP0 contract', () => {
 
       // Trying to mint with another account will fail
       await expect(rToken.connect(other).mint(addr1.address, mintAmount)).to.be.revertedWith(
-        'Component: caller is not a component'
+        'backing manager only'
       )
     })
   })

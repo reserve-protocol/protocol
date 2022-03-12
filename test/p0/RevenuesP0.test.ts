@@ -12,6 +12,7 @@ import {
   ATokenFiatCollateral,
   BackingManagerP0,
   BasketHandlerP0,
+  BrokerP0,
   CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
@@ -21,36 +22,43 @@ import {
   FacadeP0,
   FurnaceP0,
   MainP0,
-  MarketMock,
-  RevenueTraderP0,
+  GnosisTrade,
+  GnosisMock,
+  RevenueTradingP0,
   RTokenAsset,
   RTokenP0,
   StaticATokenMock,
   StRSRP0,
-  TraderP0,
+  TradingP0,
   USDCMock,
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
 
-interface IProposedAuctionInfo {
+const expectTrade = async (
+  trader: TradingP0,
+  index: number,
+  auctionInfo: Partial<TradeRequest>
+) => {
+  const trade = await getTrade(trader, index)
+  expect(await trade.sell()).to.equal(auctionInfo.sell)
+  expect(await trade.buy()).to.equal(auctionInfo.buy)
+  expect(await trade.endTime()).to.equal(auctionInfo.endTime)
+  expect(await trade.auctionId()).to.equal(auctionInfo.externalId)
+}
+
+// TODO use this in more places
+const getTrade = async (trader: TradingP0, index: number): Promise<GnosisTrade> => {
+  const tradeAddr = await trader.trades(index)
+  return await ethers.getContractAt('GnosisTrade', tradeAddr)
+}
+
+interface TradeRequest {
   sell: string
   buy: string
   endTime: number
   externalId: BigNumber
-}
-
-const expectAuctionInfo = async (
-  trader: TraderP0,
-  index: number,
-  auctionInfo: Partial<IProposedAuctionInfo>
-) => {
-  const { sell, buy, endTime, externalId } = await trader.auctions(index)
-  expect(sell).to.equal(auctionInfo.sell)
-  expect(buy).to.equal(auctionInfo.buy)
-  expect(endTime).to.equal(auctionInfo.endTime)
-  expect(externalId).to.equal(auctionInfo.externalId)
 }
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -69,9 +77,10 @@ describe('Revenues', () => {
   let aaveMock: AaveLendingPoolMock
 
   // Trading
-  let market: MarketMock
-  let rsrTrader: RevenueTraderP0
-  let rTokenTrader: RevenueTraderP0
+  let gnosis: GnosisMock
+  let broker: BrokerP0
+  let rsrTrader: RevenueTradingP0
+  let rTokenTrader: RevenueTradingP0
 
   // Tokens and Assets
   let initialBal: BigNumber
@@ -131,7 +140,8 @@ describe('Revenues', () => {
       rToken,
       furnace,
       stRSR,
-      market,
+      gnosis,
+      broker,
       facade,
       rsrTrader,
       rTokenTrader,
@@ -280,16 +290,16 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -297,7 +307,7 @@ describe('Revenues', () => {
         })
 
         // COMP -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -305,20 +315,20 @@ describe('Revenues', () => {
         })
 
         // Check funds in Market
-        expect(await compToken.balanceOf(market.address)).to.equal(rewardAmountCOMP)
+        expect(await compToken.balanceOf(gnosis.address)).to.equal(rewardAmountCOMP)
 
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
-        await rsr.connect(addr1).approve(market.address, minBuyAmt)
-        await rToken.connect(addr1).approve(market.address, minBuyAmtRToken)
-        await market.placeBid(0, {
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
         })
-        await market.placeBid(1, {
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
           buyAmount: minBuyAmtRToken,
@@ -326,12 +336,12 @@ describe('Revenues', () => {
 
         // Close auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionEnded')
+          .and.to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.not.emit(rsrTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'TradeStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check balances sent to corresponding destinations
         // StRSR
@@ -367,14 +377,14 @@ describe('Revenues', () => {
 
         // Run auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check auctions registered
         // AAVE -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: aaveToken.address,
           buy: rsr.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -382,7 +392,7 @@ describe('Revenues', () => {
         })
 
         // AAVE -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -390,20 +400,20 @@ describe('Revenues', () => {
         })
 
         // Check funds in Market
-        expect(await aaveToken.balanceOf(market.address)).to.equal(rewardAmountAAVE)
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
 
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
-        await rsr.connect(addr1).approve(market.address, minBuyAmt)
-        await rToken.connect(addr1).approve(market.address, minBuyAmtRToken)
-        await market.placeBid(0, {
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
         })
-        await market.placeBid(1, {
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
           buyAmount: minBuyAmtRToken,
@@ -411,12 +421,12 @@ describe('Revenues', () => {
 
         // Close auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionEnded')
+          .and.to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.not.emit(rsrTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'TradeStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check balances sent to corresponding destinations
         // StRSR
@@ -476,15 +486,15 @@ describe('Revenues', () => {
 
         // Run auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -492,17 +502,17 @@ describe('Revenues', () => {
         })
 
         // Check funds in Market and Trader
-        expect(await compToken.balanceOf(market.address)).to.equal(sellAmt)
+        expect(await compToken.balanceOf(gnosis.address)).to.equal(sellAmt)
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(sellAmt)
 
         // Another call will not create a new auction (we only allow only one at a time per pair)
         await expect(facade.runAuctionsForAllTraders())
-          .to.not.emit(rsrTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Perform Mock Bids for RSR (addr1 has balance)
-        await rsr.connect(addr1).approve(market.address, minBuyAmt)
-        await market.placeBid(0, {
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
@@ -513,15 +523,15 @@ describe('Revenues', () => {
 
         // Run auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rsrTrader, 'AuctionStarted')
+          .and.to.emit(rsrTrader, 'TradeStarted')
           .withArgs(1, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check new auction
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 1, {
+        await expectTrade(rsrTrader, 1, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -529,12 +539,12 @@ describe('Revenues', () => {
         })
 
         // Check now all funds in Market
-        expect(await compToken.balanceOf(market.address)).to.equal(sellAmt)
+        expect(await compToken.balanceOf(gnosis.address)).to.equal(sellAmt)
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
 
         // Perform Mock Bids for RSR (addr1 has balance)
-        await rsr.connect(addr1).approve(market.address, minBuyAmt)
-        await market.placeBid(1, {
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
@@ -545,10 +555,10 @@ describe('Revenues', () => {
 
         // Close auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(1, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.not.emit(rsrTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'TradeStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         //  Check balances sent to corresponding destinations
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.mul(2))
@@ -609,15 +619,15 @@ describe('Revenues', () => {
 
         // Run auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rTokenTrader, 'AuctionStarted')
+          .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, aaveToken.address, rToken.address, sellAmt, minBuyAmt)
-          .and.to.not.emit(rsrTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'TradeStarted')
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // AAVE -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -629,12 +639,12 @@ describe('Revenues', () => {
         let minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
 
         // Check funds in Market and Trader
-        expect(await aaveToken.balanceOf(market.address)).to.equal(sellAmt)
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(sellAmt)
         expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(sellAmtRemainder)
 
         // Perform Mock Bids for RToken (addr1 has balance)
-        await rToken.connect(addr1).approve(market.address, minBuyAmt)
-        await market.placeBid(0, {
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
@@ -645,15 +655,15 @@ describe('Revenues', () => {
 
         // Another call will create a new auction and close existing
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rTokenTrader, 'AuctionEnded')
+          .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, aaveToken.address, rToken.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder)
-          .and.to.not.emit(rsrTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'TradeStarted')
 
         // Check new auction
         // AAVE -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 1, {
+        await expectTrade(rTokenTrader, 1, {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -661,8 +671,8 @@ describe('Revenues', () => {
         })
 
         // Perform Mock Bids for RToken (addr1 has balance)
-        await rToken.connect(addr1).approve(market.address, minBuyAmtRemainder)
-        await market.placeBid(1, {
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRemainder)
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRemainder,
           buyAmount: minBuyAmtRemainder,
@@ -673,10 +683,10 @@ describe('Revenues', () => {
 
         // Close auction
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rTokenTrader, 'AuctionEnded')
+          .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder)
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
-          .and.to.not.emit(rsrTrader, 'AuctionStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .and.to.not.emit(rsrTrader, 'TradeStarted')
 
         // Check balances in destinations
         // StRSR
@@ -738,16 +748,16 @@ describe('Revenues', () => {
 
         // Run auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -755,7 +765,7 @@ describe('Revenues', () => {
         })
 
         // COMP -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -766,14 +776,14 @@ describe('Revenues', () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
-        await rsr.connect(addr1).approve(market.address, minBuyAmt)
-        await rToken.connect(addr1).approve(market.address, minBuyAmtRToken)
-        await market.placeBid(0, {
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
         })
-        await market.placeBid(1, {
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
           buyAmount: minBuyAmtRToken,
@@ -785,19 +795,19 @@ describe('Revenues', () => {
         let minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
 
         // Check funds in Market and Traders
-        expect(await compToken.balanceOf(market.address)).to.equal(sellAmt.add(sellAmtRToken))
+        expect(await compToken.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(sellAmtRemainder)
         expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Run auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionEnded')
+          .and.to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.emit(rsrTrader, 'AuctionStarted')
+          .and.to.emit(rsrTrader, 'TradeStarted')
           .withArgs(1, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder)
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check destinations at this stage
         // StRSR
@@ -810,18 +820,18 @@ describe('Revenues', () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
-        await rsr.connect(addr1).approve(market.address, minBuyAmtRemainder)
-        await market.placeBid(2, {
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmtRemainder)
+        await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: sellAmtRemainder,
           buyAmount: minBuyAmtRemainder,
         })
 
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(1, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder)
-          .and.to.not.emit(rsrTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'TradeStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check balances at destinations
         // StRSR
@@ -1036,16 +1046,16 @@ describe('Revenues', () => {
 
         // Run auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
         // COMP -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1053,7 +1063,7 @@ describe('Revenues', () => {
         })
 
         // COMP -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1061,20 +1071,20 @@ describe('Revenues', () => {
         })
 
         // Check funds in Market
-        expect(await compToken.balanceOf(market.address)).to.equal(rewardAmountCOMP)
+        expect(await compToken.balanceOf(gnosis.address)).to.equal(rewardAmountCOMP)
 
         // Advance time till auctions ended
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
-        await rsr.connect(addr1).approve(market.address, minBuyAmt)
-        await rToken.connect(addr1).approve(market.address, minBuyAmtRToken)
-        await market.placeBid(0, {
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
         })
-        await market.placeBid(1, {
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
           buyAmount: minBuyAmtRToken,
@@ -1082,12 +1092,12 @@ describe('Revenues', () => {
 
         // Close auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionEnded')
+          .and.to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.not.emit(rsrTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'TradeStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check balances sent to corresponding destinations
         // StRSR - 50% to StRSR, 50% to other
@@ -1253,9 +1263,9 @@ describe('Revenues', () => {
 
         // Run auctions - Will detect excess
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, token2.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
@@ -1271,7 +1281,7 @@ describe('Revenues', () => {
 
         // Check auctions registered
         // AToken -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1279,7 +1289,7 @@ describe('Revenues', () => {
         })
 
         // AToken -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1287,7 +1297,7 @@ describe('Revenues', () => {
         })
 
         // Check funds in Market and Traders
-        expect(await token2.balanceOf(market.address)).to.equal(sellAmt.add(sellAmtRToken))
+        expect(await token2.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(expectedToTrader.sub(sellAmt))
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(
           expectedToFurnace.sub(sellAmtRToken)
@@ -1297,14 +1307,14 @@ describe('Revenues', () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
-        await rsr.connect(addr1).approve(market.address, minBuyAmt)
-        await rToken.connect(addr1).approve(market.address, minBuyAmtRToken)
-        await market.placeBid(0, {
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
         })
-        await market.placeBid(1, {
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
           buyAmount: minBuyAmtRToken,
@@ -1312,12 +1322,12 @@ describe('Revenues', () => {
 
         // Close auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, token2.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionEnded')
+          .and.to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.not.emit(rsrTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'TradeStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check Price (unchanged) and Assets value (unchanged)
         expect(await rToken.price()).to.equal(fp('1'))
@@ -1329,7 +1339,7 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
 
         // Check no more funds in Market and Traders
-        expect(await token2.balanceOf(market.address)).to.equal(0)
+        expect(await token2.balanceOf(gnosis.address)).to.equal(0)
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
       })
@@ -1371,9 +1381,9 @@ describe('Revenues', () => {
 
         // Run auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, token2.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
@@ -1389,7 +1399,7 @@ describe('Revenues', () => {
 
         // Check auctions registered
         // AToken -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1397,7 +1407,7 @@ describe('Revenues', () => {
         })
 
         // AToken -> RToken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1405,8 +1415,8 @@ describe('Revenues', () => {
         })
 
         // Check funds in Market and Traders
-        expect(near(await token2.balanceOf(market.address), excessQuantity, 1)).to.equal(true)
-        expect(await token2.balanceOf(market.address)).to.equal(sellAmt.add(sellAmtRToken))
+        expect(near(await token2.balanceOf(gnosis.address), excessQuantity, 1)).to.equal(true)
+        expect(await token2.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(expectedToTrader.sub(sellAmt))
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(
@@ -1418,14 +1428,14 @@ describe('Revenues', () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
-        await rsr.connect(addr1).approve(market.address, minBuyAmt)
-        await rToken.connect(addr1).approve(market.address, minBuyAmtRToken)
-        await market.placeBid(0, {
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
         })
-        await market.placeBid(1, {
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
           buyAmount: minBuyAmtRToken,
@@ -1433,12 +1443,12 @@ describe('Revenues', () => {
 
         // Close auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, token2.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionEnded')
+          .and.to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.not.emit(rsrTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'TradeStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         //  Check Price (unchanged) and Assets value (unchanged)
         expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
@@ -1486,7 +1496,7 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rToken, 'Transfer')
           .withArgs(ZERO_ADDRESS, main.address, issueAmount)
-          .and.to.emit(rsrTrader, 'AuctionStarted')
+          .and.to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, rToken.address, rsr.address, sellAmt, minBuyAmt)
 
         // Check Price (unchanged) and Assets value - Supply has doubled
@@ -1500,13 +1510,13 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(expectedToFurnace)
 
         // Check funds in Market
-        expect(await rToken.balanceOf(market.address)).to.equal(sellAmt)
+        expect(await rToken.balanceOf(gnosis.address)).to.equal(sellAmt)
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
         // RToken -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: rToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1514,8 +1524,8 @@ describe('Revenues', () => {
         })
 
         // Perform Mock Bids for RSR(addr1 has balance)
-        await rsr.connect(addr1).approve(market.address, minBuyAmt)
-        await market.placeBid(0, {
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt,
@@ -1526,9 +1536,9 @@ describe('Revenues', () => {
 
         //  End current auction - will not start new one
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, rToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.not.emit(rsrTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'TradeStarted')
 
         // Check Price and Assets value - RToken price increases due to melting
         let updatedRTokenPrice: BigNumber = newTotalSupply
@@ -1538,7 +1548,7 @@ describe('Revenues', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
 
         // Check no funds in Market
-        expect(await rToken.balanceOf(market.address)).to.equal(0)
+        expect(await rToken.balanceOf(gnosis.address)).to.equal(0)
 
         // Check destinations after newly minted tokens
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
@@ -1599,9 +1609,9 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rToken, 'Transfer')
           .withArgs(ZERO_ADDRESS, main.address, excessRToken)
-          .and.to.emit(rsrTrader, 'AuctionStarted')
+          .and.to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken)
-          .and.to.emit(rsrTrader, 'AuctionStarted')
+          .and.to.emit(rsrTrader, 'TradeStarted')
           .withArgs(
             1,
             token2.address,
@@ -1609,7 +1619,7 @@ describe('Revenues', () => {
             sellAmtRSRFromCollateral,
             minBuyAmtRSRFromCollateral
           )
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(
             0,
             token2.address,
@@ -1637,8 +1647,8 @@ describe('Revenues', () => {
         )
 
         // Check funds in Market
-        expect(await rToken.balanceOf(market.address)).to.equal(sellAmtFromRToken)
-        expect(await token2.balanceOf(market.address)).to.equal(
+        expect(await rToken.balanceOf(gnosis.address)).to.equal(sellAmtFromRToken)
+        expect(await token2.balanceOf(gnosis.address)).to.equal(
           sellAmtRSRFromCollateral.add(sellAmtRTokenFromCollateral)
         )
 
@@ -1646,7 +1656,7 @@ describe('Revenues', () => {
 
         // Check auctions registered
         // RToken -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 0, {
+        await expectTrade(rsrTrader, 0, {
           sell: rToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1654,7 +1664,7 @@ describe('Revenues', () => {
         })
 
         // Collateral -> RSR Auction
-        await expectAuctionInfo(rsrTrader, 1, {
+        await expectTrade(rsrTrader, 1, {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1662,7 +1672,7 @@ describe('Revenues', () => {
         })
 
         // Collateral -> Rtoken Auction
-        await expectAuctionInfo(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, 0, {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1672,21 +1682,21 @@ describe('Revenues', () => {
         //  Perform Mock Bids for RSR/RToken (addr1 has balance)
         await rsr
           .connect(addr1)
-          .approve(market.address, minBuyAmtFromRToken.add(minBuyAmtRSRFromCollateral))
-        await rToken.connect(addr1).approve(market.address, minBuyAmtRTokenFromCollateral)
-        await market.placeBid(0, {
+          .approve(gnosis.address, minBuyAmtFromRToken.add(minBuyAmtRSRFromCollateral))
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRTokenFromCollateral)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmtFromRToken,
           buyAmount: minBuyAmtFromRToken,
         })
 
-        await market.placeBid(1, {
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRSRFromCollateral,
           buyAmount: minBuyAmtRSRFromCollateral,
         })
 
-        await market.placeBid(2, {
+        await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: sellAmtRTokenFromCollateral,
           buyAmount: minBuyAmtRTokenFromCollateral,
@@ -1697,9 +1707,9 @@ describe('Revenues', () => {
 
         // End current auction, should start a new one with same amount
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionEnded')
+          .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken)
-          .and.to.emit(rsrTrader, 'AuctionEnded')
+          .and.to.emit(rsrTrader, 'TradeSettled')
           .withArgs(
             1,
             token2.address,
@@ -1707,7 +1717,7 @@ describe('Revenues', () => {
             sellAmtRSRFromCollateral,
             minBuyAmtRSRFromCollateral
           )
-          .and.to.emit(rTokenTrader, 'AuctionEnded')
+          .and.to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(
             0,
             token2.address,
@@ -1715,12 +1725,12 @@ describe('Revenues', () => {
             sellAmtRTokenFromCollateral,
             minBuyAmtRTokenFromCollateral
           )
-          .and.to.not.emit(rsrTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.not.emit(rsrTrader, 'TradeStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check no funds in Market
-        expect(await rToken.balanceOf(market.address)).to.equal(0)
-        expect(await token2.balanceOf(market.address)).to.equal(0)
+        expect(await rToken.balanceOf(gnosis.address)).to.equal(0)
+        expect(await token2.balanceOf(gnosis.address)).to.equal(0)
 
         //  Check Price and Assets value - RToken price increases due to melting
         let updatedRTokenPrice: BigNumber = newTotalSupply

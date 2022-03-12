@@ -627,7 +627,7 @@ describe('StRSRP0 contract', () => {
       const amount: BigNumber = bn('1e18')
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
 
-      await expect(stRSR.connect(other).seizeRSR(amount)).to.be.revertedWith('not main')
+      await expect(stRSR.connect(other).seizeRSR(amount)).to.be.revertedWith('not backing manager')
       expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
     })
 

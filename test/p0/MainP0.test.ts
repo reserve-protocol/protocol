@@ -11,6 +11,8 @@ import {
   ATokenFiatCollateral,
   BackingManagerP0,
   BasketHandlerP0,
+  BrokerP0,
+  Collateral as AbstractCollateral,
   CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
@@ -22,8 +24,8 @@ import {
   FacadeP0,
   FurnaceP0,
   MainP0,
-  MarketMock,
-  RevenueTraderP0,
+  GnosisMock,
+  RevenueTradingP0,
   RTokenAsset,
   RTokenP0,
   StaticATokenMock,
@@ -56,9 +58,10 @@ describe('MainP0 contract', () => {
   let aaveAsset: Asset
 
   // Trading
-  let market: MarketMock
-  let rsrTrader: RevenueTraderP0
-  let rTokenTrader: RevenueTraderP0
+  let gnosis: GnosisMock
+  let broker: BrokerP0
+  let rsrTrader: RevenueTradingP0
+  let rTokenTrader: RevenueTradingP0
 
   // Tokens and Assets
   let initialBal: BigNumber
@@ -121,7 +124,8 @@ describe('MainP0 contract', () => {
       rTokenAsset,
       furnace,
       stRSR,
-      market,
+      gnosis,
+      broker,
       facade,
       rsrTrader,
       rTokenTrader,
@@ -157,15 +161,14 @@ describe('MainP0 contract', () => {
       expect(await main.pauser()).to.equal(owner.address)
 
       // Components
-      expect(await main.hasComponent(assetRegistry.address)).to.equal(true)
-      expect(await main.hasComponent(basketHandler.address)).to.equal(true)
-      expect(await main.hasComponent(backingManager.address)).to.equal(true)
-      expect(await main.hasComponent(distributor.address)).to.equal(true)
-
-      // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)
+      expect(await main.rToken()).to.equal(rToken.address)
+      expect(await main.assetRegistry()).to.equal(assetRegistry.address)
+      expect(await main.basketHandler()).to.equal(basketHandler.address)
+      expect(await main.backingManager()).to.equal(backingManager.address)
+      expect(await main.distributor()).to.equal(distributor.address)
       expect(await main.furnace()).to.equal(furnace.address)
-      expect(await main.market()).to.equal(market.address)
+      expect(await main.broker()).to.equal(broker.address)
       expect(await main.rsrTrader()).to.equal(rsrTrader.address)
       expect(await main.rTokenTrader()).to.equal(rTokenTrader.address)
 
@@ -175,7 +178,6 @@ describe('MainP0 contract', () => {
       expect(totals.rsrTotal).to.equal(bn(60))
 
       // Check configurations for internal components
-      expect(await backingManager.auctionLength()).to.equal(config.auctionLength)
       expect(await backingManager.auctionDelay()).to.equal(config.auctionDelay)
       expect(await backingManager.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
       expect(await backingManager.dustAmount()).to.equal(config.dustAmount)
@@ -252,7 +254,7 @@ describe('MainP0 contract', () => {
     beforeEach(async () => {
       ctorArgs = {
         params: config,
-        core: {
+        components: {
           rToken: rToken.address,
           stRSR: stRSR.address,
           assetRegistry: assetRegistry.address,
@@ -261,12 +263,11 @@ describe('MainP0 contract', () => {
           distributor: distributor.address,
           rsrTrader: rsrTrader.address,
           rTokenTrader: rTokenTrader.address,
-        },
-        periphery: {
           furnace: furnace.address,
-          market: market.address,
-          assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
+          broker: broker.address,
         },
+        assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
+        gnosis: gnosis.address,
         rsr: rsr.address,
       }
     })
@@ -346,9 +347,9 @@ describe('MainP0 contract', () => {
         newVal: await newMain.furnace(),
       })
 
-      expectInIndirectReceipt(receipt, newMain.interface, 'MarketSet', {
+      expectInIndirectReceipt(receipt, newMain.interface, 'BrokerSet', {
         oldVal: ZERO_ADDRESS,
-        newVal: await newMain.market(),
+        newVal: await newMain.broker(),
       })
 
       expectInIndirectReceipt(receipt, newMain.interface, 'RSRSet', {
@@ -435,29 +436,6 @@ describe('MainP0 contract', () => {
   })
 
   describe('Configuration/State', () => {
-    it('Should allow to update auctionLength if Owner', async () => {
-      const newValue: BigNumber = bn('360')
-
-      // Check existing value
-      expect(await backingManager.auctionLength()).to.equal(config.auctionLength)
-
-      // If not owner cannot update
-      await expect(backingManager.connect(other).setAuctionLength(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
-      )
-
-      // Check value did not change
-      expect(await backingManager.auctionLength()).to.equal(config.auctionLength)
-
-      // Update with owner
-      await expect(backingManager.connect(owner).setAuctionLength(newValue))
-        .to.emit(backingManager, 'AuctionLengthSet')
-        .withArgs(config.auctionLength, newValue)
-
-      // Check value was updated
-      expect(await backingManager.auctionLength()).to.equal(newValue)
-    })
-
     it('Should allow to update auctionDelay if Owner', async () => {
       const newValue: BigNumber = bn('360')
 
@@ -559,25 +537,25 @@ describe('MainP0 contract', () => {
       ])
     })
 
-    it('Should allow to set Market if Owner', async () => {
+    it('Should allow to set Broker if Owner', async () => {
       // Check existing value
-      expect(await main.market()).to.equal(market.address)
+      expect(await main.broker()).to.equal(broker.address)
 
       // If not owner cannot update - use mock address
-      await expect(main.connect(other).setMarket(other.address)).to.be.revertedWith(
+      await expect(main.connect(other).setBroker(other.address)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       )
 
       // Check value did not change
-      expect(await main.market()).to.equal(market.address)
+      expect(await main.broker()).to.equal(broker.address)
 
       // Update with owner
-      await expect(main.connect(owner).setMarket(other.address))
-        .to.emit(main, 'MarketSet')
-        .withArgs(market.address, other.address)
+      await expect(main.connect(owner).setBroker(other.address))
+        .to.emit(main, 'BrokerSet')
+        .withArgs(broker.address, other.address)
 
       // Check value was updated
-      expect(await main.market()).to.equal(other.address)
+      expect(await main.broker()).to.equal(other.address)
     })
 
     it('Should allow to set RSR if Owner', async () => {
@@ -646,9 +624,7 @@ describe('MainP0 contract', () => {
     it('Should allow to set Furnace if Owner and perform validations', async () => {
       // Setup test furnaces
       const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')
-      const newFurnace = <FurnaceP0>(
-        await FurnaceFactory.deploy(rToken.address, config.rewardPeriod, config.rewardRatio)
-      )
+      const newFurnace = <FurnaceP0>await FurnaceFactory.deploy()
 
       // Check existing value
       expect(await main.furnace()).to.equal(furnace.address)

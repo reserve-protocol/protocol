@@ -4,44 +4,35 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IAsset.sol";
+import "./ITrade.sol";
 import "./IRewardable.sol";
 
-struct ProposedAuction {
-    IAsset sell;
-    IAsset buy;
-    uint256 sellAmount; // {qSellTok}
-    uint256 minBuyAmount; // {qBuyTok}
-}
+interface ITrading is IRewardable {
+    event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
+    event DustAmountSet(Fix indexed oldVal, Fix indexed newVal);
 
-struct OngoingAuction {
-    IERC20 sell;
-    IERC20 buy;
-    uint256 minBuyAmount; // {qBuyTok}
-    uint256 endTime; // {sec}
-    uint256 externalId;
-}
-
-interface ITrader is IRewardable {
-    /// Emitted when an auction is started
-    /// @param auctionId The index of the AssetManager.auctions array
+    /// Emitted when a trade is started
+    /// @param index The index of the trade in the trades getter
     /// @param sell The token to sell
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
-    event AuctionStarted(
-        uint256 indexed auctionId,
+    event TradeStarted(
+        uint256 indexed index,
         IERC20 indexed sell,
         IERC20 indexed buy,
         uint256 sellAmount,
         uint256 minBuyAmount
     );
 
-    /// Emitted after an auction ends
-    /// @param auctionId The index of the AssetManager.auctions array
+    /// Emitted after a trade ends
+    /// @param index The index of the trade in the trades getter
+    /// @param sell The token to sell
+    /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the token sold
     /// @param buyAmount {qBuyTok} The quantity of the token bought
-    event AuctionEnded(
-        uint256 indexed auctionId,
+    event TradeSettled(
+        uint256 indexed index,
         IERC20 indexed sell,
         IERC20 indexed buy,
         uint256 sellAmount,
@@ -49,5 +40,5 @@ interface ITrader is IRewardable {
     );
 
     /// Settle any auctions that are due (past their end time)
-    function closeDueAuctions() external;
+    function settleTrades() external;
 }

@@ -8,7 +8,6 @@ import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/p0/Main.sol";
-import "contracts/p0/RevenueTrader.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**

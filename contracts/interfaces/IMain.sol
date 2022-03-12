@@ -10,43 +10,40 @@ import "./IAsset.sol";
 import "./IAssetRegistry.sol";
 import "./IBackingManager.sol";
 import "./IBasketHandler.sol";
+import "./IBroker.sol";
 import "./IDeployer.sol";
+import "./IGnosis.sol";
 import "./IFurnace.sol";
-import "./IMarket.sol";
 import "./IDistributor.sol";
 import "./IRToken.sol";
 import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
-import "./ITrader.sol";
+import "./ITrading.sol";
 
 /// Configuration of an entire system instance
 struct ConstructorArgs {
     DeploymentParams params;
-    Core core;
-    Periphery periphery;
+    Components components;
     IERC20 rsr;
+    IGnosis gnosis;
+    IAsset[] assets;
 }
 
-/// The spokes of our hub-and-spoke component model centered around Main
-/// One single security domain
-/// Upgradeable
-struct Core {
+/// Components share a single common security domain provisioned by Main.
+/// Components often contain important state or cannot be easily swapped out for economic reasons.
+struct Components {
+    // Definitely needs proxy
     IRToken rToken;
     IStRSR stRSR;
     IAssetRegistry assetRegistry;
     IBasketHandler basketHandler;
     IBackingManager backingManager;
     IDistributor distributor;
+    IFurnace furnace;
+    // Does not need proxy but benefits from delegating auth to Main
+    IBroker broker;
     IRevenueTrader rsrTrader;
     IRevenueTrader rTokenTrader;
-}
-
-/// INVARIANT: Unaware of Main
-/// Not upgradeable, only swappable
-struct Periphery {
-    IMarket market;
-    IFurnace furnace;
-    IAsset[] assets;
 }
 
 interface IPausable {
@@ -136,11 +133,11 @@ interface IMain is IPausable {
 
     function setFurnace(IFurnace furnace) external;
 
-    event MarketSet(IMarket indexed oldVal, IMarket indexed newVal);
+    event BrokerSet(IBroker indexed oldVal, IBroker indexed newVal);
 
-    function market() external view returns (IMarket);
+    function broker() external view returns (IBroker);
 
-    function setMarket(IMarket market) external;
+    function setBroker(IBroker broker) external;
 
     event RSRSet(IERC20 indexed oldVal, IERC20 indexed newVal);
 
@@ -152,8 +149,6 @@ interface IMain is IPausable {
     event Initialized();
 
     function init(ConstructorArgs calldata args) external;
-
-    function hasComponent(address addr) external view returns (bool);
 
     function owner() external view returns (address);
 }
