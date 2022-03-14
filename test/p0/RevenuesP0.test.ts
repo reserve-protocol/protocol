@@ -11,6 +11,7 @@ import {
   ATokenFiatCollateral,
   BackingManagerP0,
   BasketHandlerP0,
+  BrokerP0,
   CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
@@ -51,6 +52,7 @@ describe('Revenues', () => {
   let gnosis: GnosisMock
   let rsrTrader: RevenueTradingP0
   let rTokenTrader: RevenueTradingP0
+  let broker: BrokerP0
 
   // Tokens and Assets
   let initialBal: BigNumber
@@ -110,6 +112,7 @@ describe('Revenues', () => {
       rToken,
       furnace,
       stRSR,
+      broker,
       gnosis,
       facade,
       rsrTrader,
@@ -251,7 +254,7 @@ describe('Revenues', () => {
         await expect(backingManager.claimAndSweepRewards())
           .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(compToken.address, rewardAmountCOMP)
-          .and.to.emit(backingManager, 'RewardsClaimed')
+          .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(aaveToken.address, bn(0))
 
         // Check status of destinations at this point
@@ -261,7 +264,7 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeStarted')
+          .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -307,10 +310,10 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeSettled')
+          .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.not.emit(rsrTrader, 'TradeStarted')
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check balances sent to corresponding destinations
         // StRSR
@@ -337,7 +340,7 @@ describe('Revenues', () => {
         await expect(facade.claimRewards())
           .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(compToken.address, bn(0))
-          .and.to.emit(backingManager, 'RewardsClaimed')
+          .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(aaveToken.address, rewardAmountAAVE)
 
         // Check status of destinations at this point
@@ -348,7 +351,7 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeStarted')
+          .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check auctions registered
@@ -392,10 +395,10 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeSettled')
+          .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.not.emit(rsrTrader, 'TradeStarted')
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check balances sent to corresponding destinations
         // StRSR
@@ -446,7 +449,7 @@ describe('Revenues', () => {
         await expect(backingManager.claimAndSweepRewards())
           .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(compToken.address, rewardAmountCOMP)
-          .and.to.emit(backingManager, 'RewardsClaimed')
+          .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(aaveToken.address, bn(0))
 
         // Check status of destinations at this point
@@ -457,7 +460,7 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
@@ -477,7 +480,7 @@ describe('Revenues', () => {
         // Another call will not create a new auction (we only allow only one at a time per pair)
         await expect(facade.runAuctionsForAllTraders())
           .to.not.emit(rsrTrader, 'TradeStarted')
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Perform Mock Bids for RSR (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -494,9 +497,9 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rsrTrader, 'TradeStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(1, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check new auction
         // COMP -> RSR Auction
@@ -526,8 +529,8 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(1, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.not.emit(rsrTrader, 'TradeStarted')
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         //  Check balances sent to corresponding destinations
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.mul(2))
@@ -579,7 +582,7 @@ describe('Revenues', () => {
         await expect(backingManager.claimAndSweepRewards())
           .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(compToken.address, bn(0))
-          .and.to.emit(backingManager, 'RewardsClaimed')
+          .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(aaveToken.address, rewardAmountAAVE)
 
         // Check status of destinations at this point
@@ -590,7 +593,7 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, aaveToken.address, rToken.address, sellAmt, minBuyAmt)
-          .and.to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
@@ -626,9 +629,9 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, aaveToken.address, rToken.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeStarted')
+          .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder)
-          .and.to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
 
         // Check new auction
         // AAVE -> RToken Auction
@@ -654,8 +657,8 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder)
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
-          .and.to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
 
         // Check balances in destinations
         // StRSR
@@ -708,7 +711,7 @@ describe('Revenues', () => {
         await expect(backingManager.claimAndSweepRewards())
           .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(compToken.address, rewardAmountCOMP)
-          .and.to.emit(backingManager, 'RewardsClaimed')
+          .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(aaveToken.address, bn(0))
 
         // Check status of destinations at this point
@@ -719,7 +722,7 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeStarted')
+          .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -772,11 +775,11 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeSettled')
+          .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.emit(rsrTrader, 'TradeStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(1, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder)
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check destinations at this stage
         // StRSR
@@ -799,8 +802,8 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(1, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder)
-          .and.to.not.emit(rsrTrader, 'TradeStarted')
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check balances at destinations
         // StRSR
@@ -859,7 +862,7 @@ describe('Revenues', () => {
         await expect(backingManager.claimAndSweepRewards())
           .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(compToken.address, rewardAmountCOMP)
-          .and.to.emit(backingManager, 'RewardsClaimed')
+          .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(aaveToken.address, bn(0))
 
         expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
@@ -877,7 +880,7 @@ describe('Revenues', () => {
         // Run auctions - should not start any auctions
         await expect(facade.runAuctionsForAllTraders())
           .to.not.emit(rsrTrader, 'TradeStarted')
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check funds sent to traders
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
@@ -888,7 +891,7 @@ describe('Revenues', () => {
         expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
       })
 
-      it.skip('Should revert when auction ends with unacceptable buy amount', async () => {
+      it('Should report violation when auction behaves incorrectly', async () => {
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards
@@ -906,7 +909,7 @@ describe('Revenues', () => {
         await expect(facade.claimRewards())
           .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(compToken.address, bn(0))
-          .and.to.emit(backingManager, 'RewardsClaimed')
+          .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(aaveToken.address, rewardAmountAAVE)
 
         // Check status of destinations at this point
@@ -917,10 +920,10 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeStarted')
+          .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
-        const auctionTimestamp: number = await getLatestBlockTimestamp()
+        let auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
         // AAVE -> RSR Auction
@@ -943,26 +946,35 @@ describe('Revenues', () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
-        // Provide amounts below minBuyAmt
+        // In order to force deactivation we provide an amount below minBuyAmt, this will represent for our tests an invalid behavior although in a real scenario would retrigger auction
+        // NOTE: DIFFERENT BEHAVIOR WILL BE OBSERVED ON PRODUCTION GNOSIS AUCTIONS
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
         await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt.sub(1),
+          buyAmount: minBuyAmt.sub(10), // Forces in our mock an invalid behavior
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken.sub(1),
+          buyAmount: minBuyAmtRToken.sub(10), // Forces in our mock an invalid behavior
         })
 
-        // Close auctions - auction clearing price too low
-        await expect(facade.runAuctionsForAllTraders()).to.be.reverted
+        // Close auctions - Will end trades and also report violation
+        await expect(facade.runAuctionsForAllTraders())
+          .to.emit(broker, 'DisabledSet')
+          .withArgs(false, true)
+          .to.emit(rsrTrader, 'TradeSettled')
+          .withArgs(0, aaveToken.address, rsr.address, sellAmt, minBuyAmt.sub(10))
+          .to.emit(rTokenTrader, 'TradeSettled')
+          .withArgs(0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken.sub(10))
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
-        // Check nothing changed at destinations
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+        // Check funds at destinations
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt.sub(10), 50)
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken.sub(10), 50)
       })
 
       it('Should not distribute other tokens beyond RSR/RToken', async () => {
@@ -976,7 +988,7 @@ describe('Revenues', () => {
         await expect(backingManager.claimAndSweepRewards())
           .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(compToken.address, rewardAmountCOMP)
-          .and.to.emit(backingManager, 'RewardsClaimed')
+          .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(aaveToken.address, bn(0))
 
         // Check funds in Backing Manager and destinations
@@ -1022,7 +1034,7 @@ describe('Revenues', () => {
         await expect(backingManager.claimAndSweepRewards())
           .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(compToken.address, rewardAmountCOMP)
-          .and.to.emit(backingManager, 'RewardsClaimed')
+          .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(aaveToken.address, bn(0))
 
         // Check status of destinations at this point
@@ -1035,7 +1047,7 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeStarted')
+          .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -1081,10 +1093,10 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeSettled')
+          .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.not.emit(rsrTrader, 'TradeStarted')
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check balances sent to corresponding destinations
         // StRSR - 50% to StRSR, 50% to other
@@ -1110,7 +1122,7 @@ describe('Revenues', () => {
         await expect(rsrTrader.claimAndSweepRewards())
           .to.emit(rsrTrader, 'RewardsClaimed')
           .withArgs(compToken.address, bn(0))
-          .and.to.emit(rsrTrader, 'RewardsClaimed')
+          .to.emit(rsrTrader, 'RewardsClaimed')
           .withArgs(aaveToken.address, rewardAmountAAVE)
 
         // Check rewards sent to Main
@@ -1142,9 +1154,9 @@ describe('Revenues', () => {
         await expect(backingManager.claimAndSweepRewards())
           .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(compToken.address, bn(0))
-          .and.to.emit(backingManager, 'RewardsClaimed')
+          .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(aaveToken.address, rewardAmountAAVE)
-          .and.to.emit(backingManager, 'RewardsClaimed')
+          .to.emit(backingManager, 'RewardsClaimed')
           .withArgs(aaveToken.address, rewardAmountAAVE.add(1))
 
         // Check status - should claim both rewards correctly
@@ -1252,7 +1264,7 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, token2.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeStarted')
+          .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
@@ -1311,10 +1323,10 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, token2.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeSettled')
+          .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.not.emit(rsrTrader, 'TradeStarted')
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check Price (unchanged) and Assets value (unchanged)
         expect(await rToken.price()).to.equal(fp('1'))
@@ -1370,7 +1382,7 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, token2.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeStarted')
+          .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
@@ -1432,10 +1444,10 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, token2.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'TradeSettled')
+          .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
-          .and.to.not.emit(rsrTrader, 'TradeStarted')
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         //  Check Price (unchanged) and Assets value (unchanged)
         expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
@@ -1483,7 +1495,7 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rToken, 'Transfer')
           .withArgs(ZERO_ADDRESS, main.address, issueAmount)
-          .and.to.emit(rsrTrader, 'TradeStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, rToken.address, rsr.address, sellAmt, minBuyAmt)
 
         // Check Price (unchanged) and Assets value - Supply has doubled
@@ -1525,7 +1537,7 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, rToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
 
         // Check Price and Assets value - RToken price increases due to melting
         let updatedRTokenPrice: BigNumber = newTotalSupply
@@ -1596,9 +1608,9 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rToken, 'Transfer')
           .withArgs(ZERO_ADDRESS, main.address, excessRToken)
-          .and.to.emit(rsrTrader, 'TradeStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken)
-          .and.to.emit(rsrTrader, 'TradeStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(
             1,
             token2.address,
@@ -1606,7 +1618,7 @@ describe('Revenues', () => {
             sellAmtRSRFromCollateral,
             minBuyAmtRSRFromCollateral
           )
-          .and.to.emit(rTokenTrader, 'TradeStarted')
+          .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(
             0,
             token2.address,
@@ -1696,7 +1708,7 @@ describe('Revenues', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(0, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken)
-          .and.to.emit(rsrTrader, 'TradeSettled')
+          .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(
             1,
             token2.address,
@@ -1704,7 +1716,7 @@ describe('Revenues', () => {
             sellAmtRSRFromCollateral,
             minBuyAmtRSRFromCollateral
           )
-          .and.to.emit(rTokenTrader, 'TradeSettled')
+          .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(
             0,
             token2.address,
@@ -1712,8 +1724,8 @@ describe('Revenues', () => {
             sellAmtRTokenFromCollateral,
             minBuyAmtRTokenFromCollateral
           )
-          .and.to.not.emit(rsrTrader, 'TradeStarted')
-          .and.to.not.emit(rTokenTrader, 'TradeStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check no funds in Market
         expect(await rToken.balanceOf(gnosis.address)).to.equal(0)
