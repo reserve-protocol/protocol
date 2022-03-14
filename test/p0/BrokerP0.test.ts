@@ -179,26 +179,23 @@ describe('BrokerP0 contract', () => {
       await token0.connect(addr1).approve(broker.address, amount)
       await expect(broker.connect(addr1).openTrade(tradeRequest)).to.be.revertedWith('only traders')
 
-      // Open from traders -  Should work
+      // Open from traders - Should work
       // Backing Manager
       await whileImpersonating(backingManager.address, async (bmSigner) => {
         await token0.connect(bmSigner).approve(broker.address, amount)
-        await broker.connect(bmSigner).callStatic.openTrade(tradeRequest)
-        //    await expect(broker.connect(bmSigner).callStatic.openTrade(tradeRequest)).to.not.be.reverted
+        await expect(broker.connect(bmSigner).openTrade(tradeRequest)).to.not.be.reverted
       })
 
       // RSR Trader
       await whileImpersonating(rsrTrader.address, async (rsrSigner) => {
         await token0.connect(rsrSigner).approve(broker.address, amount)
-        await expect(broker.connect(rsrSigner).callStatic.openTrade(tradeRequest)).to.not.be
-          .reverted
+        await expect(broker.connect(rsrSigner).openTrade(tradeRequest)).to.not.be.reverted
       })
 
       // RToken Trader
       await whileImpersonating(rTokenTrader.address, async (rtokSigner) => {
         await token0.connect(rtokSigner).approve(broker.address, amount)
-        await expect(broker.connect(rtokSigner).callStatic.openTrade(tradeRequest)).to.not.be
-          .reverted
+        await expect(broker.connect(rtokSigner).openTrade(tradeRequest)).to.not.be.reverted
       })
     })
   })
