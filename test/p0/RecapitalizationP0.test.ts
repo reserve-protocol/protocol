@@ -83,7 +83,7 @@ describe('MainP0 contract', () => {
   }
 
   const expectCurrentBacking = async (backingInfo: Partial<IBackingInfo>) => {
-    const tokens = await basketHandler.tokens()
+    const tokens = await facade.basketTokens()
     expect(tokens).to.eql(backingInfo.tokens)
 
     for (let i: number = 0; i < tokens.length; i++) {

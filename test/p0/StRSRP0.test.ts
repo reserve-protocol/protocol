@@ -13,6 +13,7 @@ import {
   CTokenMock,
   DistributorP0,
   ERC20Mock,
+  FacadeP0,
   MainP0,
   RTokenP0,
   StaticATokenMock,
@@ -42,6 +43,7 @@ describe('StRSRP0 contract', () => {
   let basketHandler: BasketHandlerP0
   let distributor: DistributorP0
   let rToken: RTokenP0
+  let facade: FacadeP0
 
   // StRSR
   let stRSR: StRSRP0
@@ -94,6 +96,7 @@ describe('StRSRP0 contract', () => {
       basketHandler,
       distributor,
       rToken,
+      facade,
     } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
@@ -478,7 +481,7 @@ describe('StRSRP0 contract', () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Save backing tokens
-        const erc20s = await basketHandler.tokens()
+        const erc20s = await facade.basketTokens()
 
         // Set not fully capitalized by changing basket
         await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1e18')])

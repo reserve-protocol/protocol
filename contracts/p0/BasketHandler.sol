@@ -210,11 +210,6 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         }
     }
 
-    /// @return tokens_ The addresses of the ERC20s backing the RToken
-    function tokens() public view returns (address[] memory tokens_) {
-        (tokens_, ) = quote(FIX_ONE, RoundingApproach.ROUND);
-    }
-
     /// @return baskets {BU} The balance of basket units held by `account`
     function basketsHeldBy(address account) public view returns (Fix baskets) {
         baskets = FIX_MAX;

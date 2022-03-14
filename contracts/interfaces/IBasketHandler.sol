@@ -57,7 +57,5 @@ interface IBasketHandler is IComponent {
 
     function price() external view returns (Fix price);
 
-    function tokens() external view returns (address[] memory);
-
     function lastSet() external view returns (uint256, uint256);
 }
