@@ -5,6 +5,7 @@ import "./IAsset.sol";
 import "./IComponent.sol";
 import "./ITrade.sol";
 
+/// The data format that describes a request for trade with the Broker
 struct TradeRequest {
     IAsset sell;
     IAsset buy;
@@ -12,7 +13,11 @@ struct TradeRequest {
     uint256 minBuyAmount; // {qBuyTok}
 }
 
-/// Maintains a list of trading partners and deploys oneshot trade contracts for traders
+/**
+ * @title IBroker
+ * @notice The Broker deploys oneshot Trade contracts for Traders and monitors
+ *   the continued proper functioning of trading platforms.
+ */
 interface IBroker is IComponent {
     event AuctionLengthSet(uint256 indexed oldVal, uint256 indexed newVal);
     event DisabledSet(bool indexed prevVal, bool indexed newVal);
