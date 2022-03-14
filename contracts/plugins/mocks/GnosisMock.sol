@@ -93,8 +93,8 @@ contract GnosisMock is IGnosis, IBiddable {
         require(auction.status == MauctionStatus.OPEN, "auction already closed");
         require(auction.endTime <= block.timestamp, "too early to close auction");
 
-        uint256 clearingSellAmount;
-        uint256 clearingBuyAmount;
+        uint256 clearingSellAmount; // auction.sell token
+        uint256 clearingBuyAmount; // auction.buy token
         Bid storage bid = bids[auctionId];
         if (bid.sellAmount > 0) {
             Fix a = toFix(auction.minBuyAmount).divu(auction.sellAmount);
@@ -104,6 +104,7 @@ contract GnosisMock is IGnosis, IBiddable {
             if (a.lte(b)) {
                 clearingSellAmount = Math.min(bid.sellAmount, auction.sellAmount);
                 clearingBuyAmount = b.mulu(clearingSellAmount).round();
+                // .ceil() would be safer but we should simulate an uncaring auction mechanism
             }
         }
 
@@ -114,10 +115,11 @@ contract GnosisMock is IGnosis, IBiddable {
         auction.buy.safeTransfer(auction.origin, clearingBuyAmount);
         auction.status = MauctionStatus.DONE;
         auction.endTime = 0;
+
         auction.encodedClearingOrder = _encodeOrder(
             0,
-            uint96(clearingBuyAmount),
-            uint96(clearingSellAmount)
+            uint96(clearingBuyAmount == 0 ? auction.sellAmount : clearingSellAmount),
+            uint96(clearingBuyAmount == 0 ? auction.minBuyAmount : clearingBuyAmount)
         );
         return auction.encodedClearingOrder;
     }
@@ -133,9 +135,9 @@ contract GnosisMock is IGnosis, IBiddable {
 
     function _encodeOrder(
         uint64 userId,
-        uint96 buyAmount,
-        uint96 sellAmount
+        uint96 sellAmount,
+        uint96 buyAmount
     ) internal pure returns (bytes32) {
-        return bytes32((uint256(userId) << 192) + (uint256(buyAmount) << 96) + uint256(sellAmount));
+        return bytes32((uint256(userId) << 192) + (uint256(sellAmount) << 96) + uint256(buyAmount));
     }
 }

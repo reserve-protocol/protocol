@@ -76,8 +76,7 @@ contract GnosisTrade is ITrade {
 
     /// @return True if the trade can be settled; should be guaranteed to be true eventually
     function canSettle() public view returns (bool) {
-        return
-            status == TradeStatus.OPEN && endTime <= block.timestamp && atStageSolutionSubmission();
+        return status == TradeStatus.OPEN && endTime <= block.timestamp;
     }
 
     /// Settle trade, transfer tokens to trader, and report bad trade if needed
