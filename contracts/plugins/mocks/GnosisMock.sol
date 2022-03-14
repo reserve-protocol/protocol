@@ -82,6 +82,8 @@ contract GnosisMock is IGnosis, IBiddable {
 
     /// @dev Requires allowances
     function placeBid(uint256 auctionId, Bid memory bid) external {
+        require(bid.sellAmount <= auctions[auctionId].sellAmount, "invalid bid sell");
+        require(bid.buyAmount > 0, "zero volume bid");
         auctions[auctionId].buy.safeTransferFrom(bid.bidder, address(this), bid.buyAmount);
         bids[auctionId] = bid;
     }
@@ -89,38 +91,21 @@ contract GnosisMock is IGnosis, IBiddable {
     /// Can only be called by the origin of the auction and only after auction.endTime is past
     function settleAuction(uint256 auctionId) external returns (bytes32 encodedOrder) {
         Mauction storage auction = auctions[auctionId];
-        require(msg.sender == auction.origin, "only origin can claim");
         require(auction.status == MauctionStatus.OPEN, "auction already closed");
         require(auction.endTime <= block.timestamp, "too early to close auction");
 
-        uint256 clearingSellAmount; // auction.sell token
-        uint256 clearingBuyAmount; // auction.buy token
-        Bid storage bid = bids[auctionId];
-        if (bid.sellAmount > 0) {
-            Fix a = toFix(auction.minBuyAmount).divu(auction.sellAmount);
-            Fix b = toFix(bid.buyAmount).divu(bid.sellAmount);
-
-            // The bid is at an acceptable price
-            if (a.lte(b)) {
-                clearingSellAmount = Math.min(bid.sellAmount, auction.sellAmount);
-                clearingBuyAmount = b.mulu(clearingSellAmount).round();
-                // .ceil() would be safer but we should simulate an uncaring auction mechanism
-            }
-        }
-
         // Transfer tokens
-        auction.sell.safeTransfer(bid.bidder, clearingSellAmount);
-        auction.sell.safeTransfer(auction.origin, auction.sellAmount - clearingSellAmount);
-        auction.buy.safeTransfer(bid.bidder, bid.buyAmount - clearingBuyAmount);
-        auction.buy.safeTransfer(auction.origin, clearingBuyAmount);
+        Bid storage bid = bids[auctionId];
+        auction.sell.safeTransfer(bid.bidder, bid.sellAmount);
+        auction.buy.safeTransfer(auction.origin, bid.buyAmount);
+        if (auction.sellAmount > bid.sellAmount) {
+            auction.sell.safeTransfer(auction.origin, auction.sellAmount - bid.sellAmount);
+        }
         auction.status = MauctionStatus.DONE;
         auction.endTime = 0;
 
-        auction.encodedClearingOrder = _encodeOrder(
-            0,
-            uint96(clearingBuyAmount == 0 ? auction.sellAmount : clearingSellAmount),
-            uint96(clearingBuyAmount == 0 ? auction.minBuyAmount : clearingBuyAmount)
-        );
+        // Encode clearing order
+        auction.encodedClearingOrder = _encodeOrder(0, bid.sellAmount, bid.buyAmount);
         return auction.encodedClearingOrder;
     }
 
@@ -134,10 +119,10 @@ contract GnosisMock is IGnosis, IBiddable {
     }
 
     function _encodeOrder(
-        uint64 userId,
-        uint96 sellAmount,
-        uint96 buyAmount
+        uint256 userId,
+        uint256 sellAmount,
+        uint256 buyAmount
     ) internal pure returns (bytes32) {
-        return bytes32((uint256(userId) << 192) + (uint256(sellAmount) << 96) + uint256(buyAmount));
+        return bytes32((userId << 192) + (sellAmount << 96) + buyAmount);
     }
 }
