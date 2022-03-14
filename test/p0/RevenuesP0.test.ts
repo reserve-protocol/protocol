@@ -907,8 +907,8 @@ describe('Revenues', () => {
 
         // Run auctions - should not start any auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.not.emit(rsrTrader, 'AuctionStarted')
-          .and.to.not.emit(rTokenTrader, 'AuctionStarted')
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .and.to.not.emit(rTokenTrader, 'TradeStarted')
 
         // Check funds sent to traders
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
@@ -919,7 +919,7 @@ describe('Revenues', () => {
         expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
       })
 
-      it('Should revert when auction ends with unacceptable buy amount', async () => {
+      it.skip('Should revert when auction ends with unacceptable buy amount', async () => {
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards
@@ -946,23 +946,43 @@ describe('Revenues', () => {
 
         // Run auctions
         await expect(facade.runAuctionsForAllTraders())
-          .to.emit(rsrTrader, 'AuctionStarted')
+          .to.emit(rsrTrader, 'TradeStarted')
           .withArgs(0, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
-          .and.to.emit(rTokenTrader, 'AuctionStarted')
+          .and.to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
+
+        const auctionTimestamp: number = await getLatestBlockTimestamp()
+
+        // Check auctions registered
+        // AAVE -> RSR Auction
+        await expectTrade(rsrTrader, 0, {
+          sell: aaveToken.address,
+          buy: rsr.address,
+          endTime: auctionTimestamp + Number(config.auctionLength),
+          externalId: bn('0'),
+        })
+
+        // AAVE -> RToken Auction
+        await expectTrade(rTokenTrader, 0, {
+          sell: aaveToken.address,
+          buy: rToken.address,
+          endTime: auctionTimestamp + Number(config.auctionLength),
+          externalId: bn('1'),
+        })
 
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        // Mock auction for RSR and RToken - Provide amounts below minBuyAmount
-        await rsr.connect(addr1).approve(market.address, minBuyAmt)
-        await rToken.connect(addr1).approve(market.address, minBuyAmtRToken)
-        await market.placeBid(0, {
+        // Perform Mock Bids for RSR and RToken (addr1 has balance)
+        // Provide amounts below minBuyAmt
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+        await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
           buyAmount: minBuyAmt.sub(1),
         })
-        await market.placeBid(1, {
+        await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
           buyAmount: minBuyAmtRToken.sub(1),
