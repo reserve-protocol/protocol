@@ -3,8 +3,18 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { bn } from '../../common/numbers'
-import { BrokerP0, ERC20Mock, MainP0, GnosisMock } from '../../typechain'
+import {
+  BackingManagerP0,
+  BrokerP0,
+  ERC20Mock,
+  GnosisMock,
+  MainP0,
+  RevenueTradingP0,
+  USDCMock,
+} from '../../typechain'
+import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+import { ITradeRequest } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -14,7 +24,11 @@ describe('BrokerP0 contract', () => {
   let addr2: SignerWithAddress
   let other: SignerWithAddress
 
-  // Assets
+  // Assets / Tokens
+  let collateral0: Collateral
+  let collateral1: Collateral
+  let token0: ERC20Mock
+  let token1: ERC20Mock
   let collateral: Collateral[]
 
   // Trading
@@ -26,8 +40,11 @@ describe('BrokerP0 contract', () => {
   // Config values
   let config: IConfig
 
-  // Contracts to retrieve after deploy
+  // Main contracts
   let main: MainP0
+  let backingManager: BackingManagerP0
+  let rsrTrader: RevenueTradingP0
+  let rTokenTrader: RevenueTradingP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -41,9 +58,24 @@ describe('BrokerP0 contract', () => {
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
     // Deploy fixture
-    ;({ erc20s, collateral, basket, config, main, gnosis, broker } = await loadFixture(
-      defaultFixture
-    ))
+    ;({
+      erc20s,
+      collateral,
+      basket,
+      config,
+      main,
+      backingManager,
+      broker,
+      gnosis,
+      rsrTrader,
+      rTokenTrader,
+    } = await loadFixture(defaultFixture))
+
+    // Get assets
+    ;[collateral0, collateral1, ,] = basket
+
+    token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
+    token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
   })
 
   describe('Deployment', () => {
@@ -106,6 +138,68 @@ describe('BrokerP0 contract', () => {
 
       // Check value was updated
       expect(await broker.disabled()).to.equal(false)
+    })
+  })
+
+  describe('Trades', () => {
+    it('Should not allow to open trade if Disabled', async () => {
+      // Disable Broker
+      await expect(broker.connect(owner).setDisabled(true))
+        .to.emit(broker, 'DisabledSet')
+        .withArgs(false, true)
+
+      // Attempt to open trade
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: bn('100e18'),
+        minBuyAmount: bn('0'),
+      }
+
+      await expect(broker.openTrade(tradeRequest)).to.be.revertedWith('broker disabled')
+    })
+
+    it('Should not allow to open trade if not from trader', async () => {
+      const amount: BigNumber = bn('100e18')
+
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: bn('100e18'),
+        minBuyAmount: bn('0'),
+      }
+
+      // Mint required tokens
+      await token0.connect(owner).mint(backingManager.address, amount)
+      await token0.connect(owner).mint(rsrTrader.address, amount)
+      await token0.connect(owner).mint(rTokenTrader.address, amount)
+      await token0.connect(owner).mint(addr1.address, amount)
+
+      // Attempt to open trade from non-trader
+      await token0.connect(addr1).approve(broker.address, amount)
+      await expect(broker.connect(addr1).openTrade(tradeRequest)).to.be.revertedWith('only traders')
+
+      // Open from traders -  Should work
+      // Backing Manager
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await token0.connect(bmSigner).approve(broker.address, amount)
+        await broker.connect(bmSigner).callStatic.openTrade(tradeRequest)
+        //    await expect(broker.connect(bmSigner).callStatic.openTrade(tradeRequest)).to.not.be.reverted
+      })
+
+      // RSR Trader
+      await whileImpersonating(rsrTrader.address, async (rsrSigner) => {
+        await token0.connect(rsrSigner).approve(broker.address, amount)
+        await expect(broker.connect(rsrSigner).callStatic.openTrade(tradeRequest)).to.not.be
+          .reverted
+      })
+
+      // RToken Trader
+      await whileImpersonating(rTokenTrader.address, async (rtokSigner) => {
+        await token0.connect(rtokSigner).approve(broker.address, amount)
+        await expect(broker.connect(rtokSigner).callStatic.openTrade(tradeRequest)).to.not.be
+          .reverted
+      })
     })
   })
 })

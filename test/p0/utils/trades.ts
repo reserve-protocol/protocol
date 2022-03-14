@@ -6,7 +6,7 @@ import { TradingP0, GnosisTrade } from '../../../typechain'
 export const expectTrade = async (
   trader: TradingP0,
   index: number,
-  auctionInfo: Partial<TradeInfo>
+  auctionInfo: Partial<ITradeInfo>
 ) => {
   const trade = await getTrade(trader, index)
   expect(await trade.sell()).to.equal(auctionInfo.sell)
@@ -21,9 +21,16 @@ export const getTrade = async (trader: TradingP0, index: number): Promise<Gnosis
   return await ethers.getContractAt('GnosisTrade', tradeAddr)
 }
 
-export interface TradeInfo {
+export interface ITradeInfo {
   sell: string
   buy: string
   endTime: number
   externalId: BigNumber
+}
+
+export interface ITradeRequest {
+  sell: string
+  buy: string
+  sellAmount: BigNumber
+  minBuyAmount: BigNumber
 }
