@@ -148,9 +148,10 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         rsrBacking -= rsrAmount;
 
         // Create the corresponding withdrawal ticket
+        uint256 index = withdrawals[account].length;
         uint256 availableAt = block.timestamp + unstakingDelay;
         withdrawals[account].push(Withdrawal(account, rsrAmount, availableAt));
-        emit UnstakingStarted(withdrawals[account].length - 1, 0, account, rsrAmount, stakeAmount);
+        emit UnstakingStarted(index, 0, account, rsrAmount, stakeAmount, availableAt);
     }
 
     /// Complete delayed staking for an account, up to but not including draft ID `endId`

@@ -36,7 +36,8 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
         uint256 indexed draftEra,
         address indexed staker,
         uint256 rsrAmount,
-        uint256 stRSRAmount
+        uint256 stRSRAmount,
+        uint256 availableAt
     );
 
     /// Emitted when RSR is unstaked

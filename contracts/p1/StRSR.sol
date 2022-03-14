@@ -357,7 +357,8 @@ contract StRSR is IStRSR, Component, EIP712 {
             era,
             account,
             rsrAmount,
-            stakeAmount
+            stakeAmount,
+            block.timestamp + unstakingDelay
         );
     }
 

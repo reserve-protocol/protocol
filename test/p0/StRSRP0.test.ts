@@ -18,7 +18,7 @@ import {
   StaticATokenMock,
   StRSRP0,
 } from '../../typechain'
-import { advanceTime } from '../utils/time'
+import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 import { CollateralStatus } from '../../common/constants'
@@ -319,11 +319,12 @@ describe('StRSRP0 contract', () => {
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
       await stRSR.connect(addr1).stake(amount)
+      let availableAt = (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
 
       // Unstake
       await expect(stRSR.connect(addr1).unstake(amount))
         .emit(stRSR, 'UnstakingStarted')
-        .withArgs(0, 0, addr1.address, amount, amount)
+        .withArgs(0, 0, addr1.address, amount, amount, availableAt)
 
       // Check withdrawal properly registered
       const [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 0)
@@ -354,10 +355,12 @@ describe('StRSRP0 contract', () => {
       await stRSR.connect(addr1).stake(amount2)
       await stRSR.connect(addr2).stake(amount3)
 
+      let availableAt = (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
+
       // Unstake - Create withdrawal
       await expect(stRSR.connect(addr1).unstake(amount1))
         .emit(stRSR, 'UnstakingStarted')
-        .withArgs(0, 0, addr1.address, amount1, amount1)
+        .withArgs(0, 0, addr1.address, amount1, amount1, availableAt)
 
       let [unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 0)
       expect(unstakeAcc).to.equal(addr1.address)
@@ -366,10 +369,12 @@ describe('StRSRP0 contract', () => {
       // All staked funds withdrawn upfront
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount2)
 
+      availableAt = (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
+
       // Unstake again
       await expect(stRSR.connect(addr1).unstake(amount2))
         .emit(stRSR, 'UnstakingStarted')
-        .withArgs(1, 0, addr1.address, amount2, amount2)
+        .withArgs(1, 0, addr1.address, amount2, amount2, availableAt)
       ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr1.address, 1)
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount2)
@@ -377,10 +382,12 @@ describe('StRSRP0 contract', () => {
       // All staked funds withdrawn upfront
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
 
+      availableAt = (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
+
       // Unstake again with different user
       await expect(stRSR.connect(addr2).unstake(amount3))
         .emit(stRSR, 'UnstakingStarted')
-        .withArgs(0, 0, addr2.address, amount3, amount3)
+        .withArgs(0, 0, addr2.address, amount3, amount3, availableAt)
       ;[unstakeAcc, unstakeAmt] = await stRSR.withdrawals(addr2.address, 0)
       expect(unstakeAcc).to.equal(addr2.address)
       expect(unstakeAmt).to.equal(amount3)
