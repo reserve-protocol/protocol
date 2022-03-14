@@ -22,7 +22,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     using FixLib for Fix;
     using SafeERC20 for IERC20;
 
-    Fix public constant MIN_ISS_RATE = Fix.wrap(1e40); // {qRTok/block} 10k whole RTok
+    Fix public constant MIN_ISS_RATE = toFix(1e22); // {qRTok/block} 10k whole RTok
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
     Fix public lastIssRate; // {qRTok/block}

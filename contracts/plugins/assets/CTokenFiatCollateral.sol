@@ -27,7 +27,7 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
     using SafeERC20 for IERC20Metadata;
 
     // cToken initial exchange rate is 0.02
-    Fix public constant COMPOUND_BASE = Fix.wrap(2e16);
+    Fix public constant COMPOUND_BASE = toFixWithShift(2, -2);
 
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 

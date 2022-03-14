@@ -38,7 +38,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
     // TODO: simplify
     mapping(uint256 => Fix) private blockIssuanceRates; // block.number => {qRTok/block}
 
-    Fix public constant MIN_ISSUANCE_RATE = Fix.wrap(1e40); // {qRTok/block} 10k whole RTok
+    Fix public constant MIN_ISSUANCE_RATE = 1e40; // {qRTok/block} 10k whole RTok
 
     // List of accounts. If issuances[user].length > 0 then (user is in accounts)
     EnumerableSet.AddressSet internal accounts;
