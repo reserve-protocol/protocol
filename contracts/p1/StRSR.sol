@@ -71,7 +71,7 @@ contract StRSR is IStRSR, Component, EIP712 {
     // Delayed drafts
     struct CumulativeDraft {
         uint256 drafts; // Total amount of drafts that will become available
-        uint256 startedAt; // When the last of those drafts started
+        uint256 availableAt; // When the last of the drafts will become available
     }
 
     // ==== Gov Params ====
@@ -132,8 +132,7 @@ contract StRSR is IStRSR, Component, EIP712 {
         CumulativeDraft[] storage queue = draftQueues[era][account];
         require(endId <= queue.length, "index out-of-bounds");
 
-        uint256 time = block.timestamp - unstakingDelay;
-        require(queue[endId - 1].startedAt <= time, "withdrawal unavailable");
+        require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
         _withdraw(account, endId);
     }
 
@@ -208,7 +207,7 @@ contract StRSR is IStRSR, Component, EIP712 {
     /// TODO: experiment! For what values of queue.length - firstId is this actually cheaper
     ///     than linear search?
     function endIdForWithdraw(address account) external view returns (uint256) {
-        uint256 time = block.timestamp - unstakingDelay;
+        uint256 time = block.timestamp;
         CumulativeDraft[] storage queue = draftQueues[era][account];
 
         // Bounds our search for the current cumulative draft
@@ -216,14 +215,14 @@ contract StRSR is IStRSR, Component, EIP712 {
 
         // If there are no drafts to be found, return 0 drafts
         if (left >= right) return right;
-        if (queue[left].startedAt > time) return left;
+        if (queue[left].availableAt > time) return left;
 
-        // Otherwise, there *are* drafts with left <= index < right and startedAt <= time.
-        // Binary search, keeping true that (queue[left].startedAt <= time) and
-        //   (right == queue.length or queue[right].startedAt > time)
+        // Otherwise, there *are* drafts with left <= index < right and availableAt <= time.
+        // Binary search, keeping true that (queue[left].availableAt <= time) and
+        //   (right == queue.length or queue[right].availableAt > time)
         while (left < right - 1) {
             uint256 test = (left + right) / 2;
-            if (queue[test].startedAt <= time) left = test;
+            if (queue[test].availableAt <= time) left = test;
             else right = test;
         }
         return right;
@@ -351,14 +350,14 @@ contract StRSR is IStRSR, Component, EIP712 {
 
         // Push drafts into account's draft queue
         pushDrafts(account, draftAmount);
-
+        uint256 index = draftQueues[era][account].length - 1;
         emit UnstakingStarted(
-            draftQueues[era][account].length - 1,
+            index,
             era,
             account,
             rsrAmount,
             stakeAmount,
-            block.timestamp + unstakingDelay
+            draftQueues[era][account][index].availableAt
         );
     }
 
@@ -386,13 +385,13 @@ contract StRSR is IStRSR, Component, EIP712 {
         emit UnstakingCompleted(firstId, endId, era, account, rsrAmount);
     }
 
-    /// Add a cumulative draft to account's draft queue (at the current time).
+    /// Add a cumulative draft to account's draft queue (from the current time).
     function pushDrafts(address account, uint256 draftAmount) internal {
         CumulativeDraft[] storage queue = draftQueues[era][account];
 
         uint256 oldDrafts = queue.length > 0 ? queue[queue.length - 1].drafts : 0;
 
-        queue.push(CumulativeDraft(oldDrafts + draftAmount, block.timestamp));
+        queue.push(CumulativeDraft(oldDrafts + draftAmount, block.timestamp + unstakingDelay));
     }
 
     // ==== end Internal Functions ====
