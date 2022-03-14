@@ -198,5 +198,25 @@ describe('BrokerP0 contract', () => {
         await expect(broker.connect(rtokSigner).openTrade(tradeRequest)).to.not.be.reverted
       })
     })
+
+    it('Should allow trade contract to report violation', async () => {
+      // Check not disabled
+      expect(await broker.disabled()).to.equal(false)
+
+      // Should not allow to report violation from any address
+      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith(
+        'unrecognized trade contract'
+      )
+
+      // Same should happen with Backing Manager
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await expect(broker.connect(bmSigner).reportViolation()).to.be.revertedWith(
+          'unrecognized trade contract'
+        )
+      })
+
+      // Check nothing changed
+      expect(await broker.disabled()).to.equal(false)
+    })
   })
 })
