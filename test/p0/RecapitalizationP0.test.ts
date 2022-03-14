@@ -2,61 +2,28 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-
-import { BN_SCALE_FACTOR, CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
-import { bn, divCeil, fp, near, toBNDecimals } from '../../common/numbers'
-import { AaveLendingPoolMock } from '../../typechain/AaveLendingPoolMock'
-import { AaveOracleMock } from '../../typechain/AaveOracleMock'
-import { Asset } from '../../typechain/Asset'
-import { BrokerP0 } from '../../typechain/BrokerP0'
-import { ATokenFiatCollateral } from '../../typechain/ATokenFiatCollateral'
-import { Collateral as AbstractCollateral } from '../../typechain/Collateral'
-import { CompoundOracleMock } from '../../typechain/CompoundOracleMock'
-import { ComptrollerMock } from '../../typechain/ComptrollerMock'
-import { CTokenFiatCollateral } from '../../typechain/CTokenFiatCollateral'
-import { CTokenMock } from '../../typechain/CTokenMock'
-import { DeployerP0 } from '../../typechain/DeployerP0'
-import { ERC20Mock } from '../../typechain/ERC20Mock'
-import { GnosisTrade } from '../../typechain/GnosisTrade'
-import { FacadeP0 } from '../../typechain/FacadeP0'
-import { FurnaceP0 } from '../../typechain/FurnaceP0'
-import { MainP0 } from '../../typechain/MainP0'
-import { GnosisMock } from '../../typechain/GnosisMock'
-import { RevenueTradingP0 } from '../../typechain/RevenueTradingP0'
-import { RTokenAsset } from '../../typechain/RTokenAsset'
-import { RTokenP0 } from '../../typechain/RTokenP0'
-import { StaticATokenMock } from '../../typechain/StaticATokenMock'
-import { StRSRP0 } from '../../typechain/StRSRP0'
-import { TradingP0 } from '../../typechain/TradingP0'
-import { USDCMock } from '../../typechain/USDCMock'
+import { BN_SCALE_FACTOR, CollateralStatus } from '../../common/constants'
+import { bn, fp, toBNDecimals } from '../../common/numbers'
+import {
+  AaveLendingPoolMock,
+  AaveOracleMock,
+  ATokenFiatCollateral,
+  CompoundOracleMock,
+  ComptrollerMock,
+  CTokenFiatCollateral,
+  CTokenMock,
+  ERC20Mock,
+  FacadeP0,
+  GnosisMock,
+  RTokenP0,
+  StaticATokenMock,
+  StRSRP0,
+  USDCMock,
+} from '../../typechain'
 import { AssetRegistryP0, BackingManagerP0, BasketHandlerP0, DistributorP0 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
-
-const expectTrade = async (
-  trader: TradingP0,
-  index: number,
-  auctionInfo: Partial<TradeRequest>
-) => {
-  const trade = await getTrade(trader, index)
-  expect(await trade.sell()).to.equal(auctionInfo.sell)
-  expect(await trade.buy()).to.equal(auctionInfo.buy)
-  expect(await trade.endTime()).to.equal(auctionInfo.endTime)
-  expect(await trade.auctionId()).to.equal(auctionInfo.externalId)
-}
-
-// TODO use this in more places
-const getTrade = async (trader: TradingP0, index: number): Promise<GnosisTrade> => {
-  const tradeAddr = await trader.trades(index)
-  return await ethers.getContractAt('GnosisTrade', tradeAddr)
-}
-
-interface TradeRequest {
-  sell: string
-  buy: string
-  endTime: number
-  externalId: BigNumber
-}
+import { expectTrade } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -66,28 +33,19 @@ describe('MainP0 contract', () => {
   let addr2: SignerWithAddress
   let other: SignerWithAddress
 
-  // Deployer contract
-  let deployer: DeployerP0
-
   // Assets
   let collateral: Collateral[]
 
   // Non-backing assets
   let rsr: ERC20Mock
-  let rsrAsset: Asset
-  let compToken: ERC20Mock
-  let compAsset: Asset
   let compoundMock: ComptrollerMock
   let compoundOracleInternal: CompoundOracleMock
   let aaveToken: ERC20Mock
-  let aaveAsset: Asset
   let aaveMock: AaveLendingPoolMock
   let aaveOracleInternal: AaveOracleMock
 
   // Trading
   let gnosis: GnosisMock
-  let rsrTrader: RevenueTradingP0
-  let rTokenTrader: RevenueTradingP0
 
   // Tokens and Assets
   let initialBal: BigNumber
@@ -103,25 +61,18 @@ describe('MainP0 contract', () => {
   let collateral3: CTokenFiatCollateral
   let backupCollateral1: Collateral
   let backupCollateral2: Collateral
-  let basketsNeededAmts: BigNumber[]
   let basket: Collateral[]
 
   // Config values
   let config: IConfig
-  let dist: IRevenueShare
 
   // Contracts to retrieve after deploy
   let rToken: RTokenP0
-  let rTokenAsset: RTokenAsset
   let stRSR: StRSRP0
-  let furnace: FurnaceP0
-  let main: MainP0
   let facade: FacadeP0
-  let broker: BrokerP0
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -154,11 +105,7 @@ describe('MainP0 contract', () => {
       // Deploy fixture
     ;({
       rsr,
-      rsrAsset,
-      compToken,
       aaveToken,
-      compAsset,
-      aaveAsset,
       compoundMock,
       aaveMock,
       compoundOracleInternal,
@@ -166,22 +113,14 @@ describe('MainP0 contract', () => {
       erc20s,
       collateral,
       basket,
-      basketsNeededAmts,
       config,
-      deployer,
-      dist,
-      main,
       rToken,
-      rTokenAsset,
-      furnace,
       stRSR,
-      broker,
       gnosis,
       facade,
       assetRegistry,
       backingManager,
       basketHandler,
-      distributor,
     } = await loadFixture(defaultFixture))
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
