@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -149,7 +150,8 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
 
         // Create the corresponding withdrawal ticket
         uint256 index = withdrawals[account].length;
-        uint256 availableAt = block.timestamp + unstakingDelay;
+        uint256 lastAvailableAt = index > 0 ? withdrawals[account][index - 1].availableAt : 0;
+        uint256 availableAt = Math.max(block.timestamp + unstakingDelay, lastAvailableAt);
         withdrawals[account].push(Withdrawal(account, rsrAmount, availableAt));
         emit UnstakingStarted(index, 0, account, rsrAmount, stakeAmount, availableAt);
     }

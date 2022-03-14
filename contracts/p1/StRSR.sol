@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -349,8 +350,8 @@ contract StRSR is IStRSR, Component, EIP712 {
         draftRSR += rsrAmount;
 
         // Push drafts into account's draft queue
+        uint256 index = draftQueues[era][account].length;
         pushDrafts(account, draftAmount);
-        uint256 index = draftQueues[era][account].length - 1;
         emit UnstakingStarted(
             index,
             era,
@@ -390,8 +391,10 @@ contract StRSR is IStRSR, Component, EIP712 {
         CumulativeDraft[] storage queue = draftQueues[era][account];
 
         uint256 oldDrafts = queue.length > 0 ? queue[queue.length - 1].drafts : 0;
+        uint256 lastAvailableAt = queue.length > 0 ? queue[queue.length - 1].availableAt : 0;
+        uint256 availableAt = Math.max(block.timestamp + unstakingDelay, lastAvailableAt);
 
-        queue.push(CumulativeDraft(oldDrafts + draftAmount, block.timestamp + unstakingDelay));
+        queue.push(CumulativeDraft(oldDrafts + draftAmount, availableAt));
     }
 
     // ==== end Internal Functions ====
