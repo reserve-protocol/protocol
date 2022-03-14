@@ -836,7 +836,7 @@ describe('MainP0 contract', () => {
       await expect(assetRegistry.connect(owner).swapRegistered(newAsset.address))
         .to.emit(main, 'AssetUnregistered')
         .withArgs(token0.address, collateral0.address)
-        .and.to.emit(assetRegistry, 'AssetRegistered')
+        .to.emit(assetRegistry, 'AssetRegistered')
         .withArgs(token0.address, newAsset.address)
 
       // Check length is not modified and erc20 remains registered
