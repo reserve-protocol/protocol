@@ -68,7 +68,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
-    /// User Action
+    /// @custom:user-action
     /// @param amount {qTok} The quantity of RToken to issue
     /// @return deposits {qTok} The quantities of collateral tokens transferred in
     function issue(uint256 amount) external notPaused returns (uint256[] memory deposits) {
@@ -127,7 +127,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
     }
 
     /// Cancels a vesting slow issuance
-    /// User Action
+    /// @custom:user-action
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One end of the range of issuance IDs to cancel
@@ -174,7 +174,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
     }
 
     /// Redeem RToken for basket collateral
-    /// User Action
+    /// @custom:user-action
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @return withdrawals {qTok} The quantities of collateral tokens transferred out
     function redeem(uint256 amount) external returns (uint256[] memory withdrawals) {

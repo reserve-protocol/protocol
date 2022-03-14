@@ -10,8 +10,8 @@ import "./IRewardable.sol";
 
 /**
  * @title IRToken
- * @notice An ERC20 with an elastic supply.
- * @dev The p0-specific IRToken
+ * @notice An RToken is an ERC20 that is permissionlessly issuable/redeemable and tracks an
+ *   exchange rate against a single unit: baskets, or {BU} in our type notation.
  */
 interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// Emitted when issuance is started, at the point collateral is taken in
@@ -59,7 +59,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// @param newBasketsNeeded New number of basket units needed
     event BasketsNeededChanged(Fix oldBasketsNeeded, Fix newBasketsNeeded);
 
-    /// Emitted when RToken is melted, which causes the basketRate to increase
+    /// Emitted when RToken is melted, i.e the RToken supply is decreased but basketsNeeded is not
     /// @param amount {qRTok}
     event Melted(uint256 amount);
 
@@ -68,55 +68,58 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// @param newMain The new address of Main
     event MainSet(IMain indexed oldMain, IMain indexed newMain);
 
+    /// Emitted when the IssuanceRate is set
     event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
 
     /// Begin a time-delayed issuance of RToken for basket collateral
-    /// User Action
-    /// @param amount {qTok} The quantity of RToken to issue
-    /// @return deposits {qTok} The quantities of collateral tokens transferred in
+    /// @param amount {qRTok} The quantity of RToken to issue
+    /// @return deposits {qRTok} The quantities of collateral tokens transferred in
+    /// @custom:user-action
     function issue(uint256 amount) external returns (uint256[] memory deposits);
 
     /// Cancels a vesting slow issuance of _msgSender
-    /// User Action
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One edge of the issuance range to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
+    /// @custom:user-action
     function cancel(uint256 endId, bool earliest) external returns (uint256[] memory deposits);
 
     /// Completes vested slow issuances for the account, up to endId.
-    /// User Action, callable by anyone
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amount of RToken quanta vested
+    /// @custom:user-action
     function vest(address account, uint256 endId) external returns (uint256 vested);
 
     /// Return the highest index that could be completed by a vestIssuances call.
+    /// @dev Use with `vest`
     function endIdForVest(address account) external view returns (uint256);
 
     /// Redeem RToken for basket collateral
-    /// User Action
-    /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    /// @return compensation {qTok} The quantities of collateral tokens transferred out
+    /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
+    /// @return compensation {qRTok} The quantities of collateral tokens transferred out
+    /// @custom:user-action
     function redeem(uint256 amount) external returns (uint256[] memory compensation);
 
-    /// Mints a quantity of RToken to the `recipient`
+    /// Mints a quantity of RToken to the `recipient`, callable only by main.backingManager
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
     function mint(address recipient, uint256 amount) external;
 
-    /// Melt a quantity of RToken from the caller's account, increasing the basketRate
-    /// @param amount {qTok} The amount to be melted
+    /// Melt a quantity of RToken from the caller's account
+    /// @param amount {qRTok} The amount to be melted
     function melt(uint256 amount) external;
 
-    /// An affordance of last resort for Main in order to ensure re-capitalization
+    /// Set the number of baskets needed directly, callable only by main.backingManager
+    /// @param basketsNeeded {BU} The number of baskets to target
     function setBasketsNeeded(Fix basketsNeeded) external;
 
-    /// @return {BU} How many baskets are being targeted by the RToken supply
+    /// @return {BU} How many baskets are being targeted
     function basketsNeeded() external view returns (Fix);
 
     /// @return {qRTok} How much RToken `account` can issue given their current holdings
     function maxIssuable(address account) external view returns (uint256);
 
-    // {UoA/rTok}
+    /// @return p {UoA/rTok} The price of 1 whole RToken in the unit of account
     function price() external view returns (Fix p);
 }

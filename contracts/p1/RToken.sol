@@ -91,7 +91,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
-    /// User Action
+    /// @custom:user-action
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @return deposits {qTok} The quantities of collateral tokens transferred in
     function issue(uint256 amtRToken) external notPaused returns (uint256[] memory deposits) {
@@ -223,7 +223,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     }
 
     /// Redeem RToken for basket collateral
-    /// User Action
+    /// @custom:user-action
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @return withdrawals {qTok} The quantities of collateral tokens transferred out
     function redeem(uint256 amount) external returns (uint256[] memory withdrawals) {
