@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IComponent.sol";
 
 struct RevenueShare {
-    uint16 rTokenDist; // {revShare}
-    uint16 rsrDist; // {revShare}
+    uint16 rTokenDist; // {revShare} A value between [0, 10,000]
+    uint16 rsrDist; // {revShare} A value between [0, 10,000]
 }
 
 /**
@@ -23,7 +23,7 @@ interface IDistributor is IComponent {
 
     function setDistribution(address dest, RevenueShare memory share) external;
 
-    /// Distribute the `erc20` token across all revenue destinations according to the table
+    /// Distribute the `erc20` token across all revenue destinations
     function distribute(
         IERC20 erc20,
         address from,
