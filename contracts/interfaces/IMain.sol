@@ -20,7 +20,7 @@ import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
 import "./ITrading.sol";
 
-/// Configuration of an entire system instance
+/// Arguments for configuration of an entire system instance
 struct ConstructorArgs {
     DeploymentParams params;
     Components components;
@@ -29,10 +29,16 @@ struct ConstructorArgs {
     IAsset[] assets;
 }
 
-/// Components share a single common security domain provisioned by Main.
-/// Components often contain important state or cannot be easily swapped out for economic reasons.
+/**
+ * Main is a central hub that maintains a list of Component contracts.
+ *
+ * Components:
+ *   - perform a specific function
+ *   - defer auth to Main
+ *   - usually (but not always) contain sizeable state that require a proxy
+ */
 struct Components {
-    // Definitely needs proxy
+    // Definitely need proxy
     IRToken rToken;
     IStRSR stRSR;
     IAssetRegistry assetRegistry;
@@ -40,7 +46,7 @@ struct Components {
     IBackingManager backingManager;
     IDistributor distributor;
     IFurnace furnace;
-    // Does not need proxy but benefits from delegating auth to Main
+    // Does not need proxy
     IBroker broker;
     IRevenueTrader rsrTrader;
     IRevenueTrader rTokenTrader;
@@ -57,27 +63,18 @@ interface IPausable {
     /// @param newPauser The address of the new pauser
     event PauserSet(address oldPauser, address newPauser);
 
-    function pause() external;
-
-    function unpause() external;
-
     function paused() external returns (bool);
-
-    function pauser() external view returns (address);
-
-    function setPauser(address pauser_) external;
 }
 
 /**
  * @title IMain
- * @notice The central coordinator for the entire system, as well as the external interface.
- * @dev The p0-specific IMain
+ * @notice The central hub for the entire system. Maintains components and an owner singleton role
  */
 interface IMain is IPausable {
     /// Call all collective state keepers
     function poke() external;
 
-    // ---
+    // === Component setters/getters ===
 
     event RTokenSet(IRToken indexed oldVal, IRToken indexed newVal);
 
@@ -145,7 +142,8 @@ interface IMain is IPausable {
 
     function setRSR(IERC20 rsr) external;
 
-    // ---
+    // === Initialization/ownership ===
+
     event Initialized();
 
     function init(ConstructorArgs calldata args) external;
