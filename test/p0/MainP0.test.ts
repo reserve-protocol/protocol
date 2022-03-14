@@ -12,14 +12,12 @@ import {
   BackingManagerP0,
   BasketHandlerP0,
   BrokerP0,
-  Collateral as AbstractCollateral,
   CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
   DeployerP0,
   DistributorP0,
-  ERC20,
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
@@ -32,6 +30,7 @@ import {
   StRSRP0,
   USDCMock,
 } from '../../typechain'
+import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -647,15 +646,15 @@ describe('MainP0 contract', () => {
     })
   })
 
-  describe('Keepers and Actions', () => {
-    it('Should not allow to run keepers if paused', async () => {
-      // By default keepers can be run
+  describe('Actions / Refreshers / Completions / Others', () => {
+    it('Should not allow to run functions if paused', async () => {
+      // By default functions can be run
       await main.poke()
 
       // Pause Main
       await main.connect(owner).pause()
 
-      // Attempt to run keepers again
+      // Attempt to run functions again
       await expect(main.poke()).to.be.revertedWith('paused')
     })
 
@@ -884,6 +883,18 @@ describe('MainP0 contract', () => {
       expect(await assetRegistry.toColl(token1.address)).to.equal(collateral1.address)
       expect(await assetRegistry.toColl(token2.address)).to.equal(collateral2.address)
       expect(await assetRegistry.toColl(token3.address)).to.equal(collateral3.address)
+    })
+
+    it('Should allow to forceUpdates on assetRegistry only from basketHandler', async () => {
+      // Basket handler can run forceUpdates
+      await whileImpersonating(basketHandler.address, async (bhsigner) => {
+        await assetRegistry.connect(bhsigner).forceUpdates()
+      })
+
+      // Attempt to run from another account
+      await expect(assetRegistry.connect(other).forceUpdates()).to.be.revertedWith(
+        'basket handler only'
+      )
     })
   })
 
