@@ -515,7 +515,7 @@ describe('MainP0 contract', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeSettled')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6))
-          .and.to.not.emit(backingManager, 'TradeStarted')
+          .to.not.emit(backingManager, 'TradeStarted')
 
         // Check state - Order restablished
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -614,7 +614,7 @@ describe('MainP0 contract', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeSettled')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
-          .and.to.not.emit(backingManager, 'TradeStarted')
+          .to.not.emit(backingManager, 'TradeStarted')
 
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -726,7 +726,7 @@ describe('MainP0 contract', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeSettled')
           .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
-          .and.to.emit(backingManager, 'TradeStarted')
+          .to.emit(backingManager, 'TradeStarted')
           .withArgs(1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6))
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -771,7 +771,7 @@ describe('MainP0 contract', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeSettled')
           .withArgs(1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6))
-          .and.to.not.emit(backingManager, 'TradeStarted')
+          .to.not.emit(backingManager, 'TradeStarted')
 
         // Check state - Order restablished
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -887,7 +887,7 @@ describe('MainP0 contract', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeSettled')
           .withArgs(0, token0.address, backupToken1.address, sellAmt, minBuyAmt)
-          .and.not.to.emit(backingManager, 'TradeStarted')
+          .to.not.emit(backingManager, 'TradeStarted')
 
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1016,7 +1016,7 @@ describe('MainP0 contract', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeSettled')
           .withArgs(0, token0.address, backupToken1.address, sellAmt, minBuyAmt)
-          .and.to.emit(backingManager, 'TradeStarted')
+          .to.emit(backingManager, 'TradeStarted')
           .withArgs(1, token0.address, backupToken1.address, sellAmt, bn('0'))
 
         // Check new auction
@@ -1063,7 +1063,7 @@ describe('MainP0 contract', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeSettled')
           .withArgs(1, token0.address, backupToken1.address, sellAmt, minBuyAmt)
-          .and.to.emit(backingManager, 'TradeStarted')
+          .to.emit(backingManager, 'TradeStarted')
           .withArgs(2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR)
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -1108,7 +1108,7 @@ describe('MainP0 contract', () => {
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeSettled')
           .withArgs(2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR)
-          .and.to.not.emit(backingManager, 'TradeStarted')
+          .to.not.emit(backingManager, 'TradeStarted')
 
         //  Should have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount.sub(sellAmtRSR)) // Sent to market (auction)
