@@ -7,12 +7,10 @@ import { bn, divCeil, fp, near } from '../../common/numbers'
 import {
   AaveLendingPoolMock,
   AavePricedAsset,
-  Asset,
   AssetRegistryP0,
   ATokenFiatCollateral,
   BackingManagerP0,
   BasketHandlerP0,
-  BrokerP0,
   CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
@@ -22,44 +20,17 @@ import {
   FacadeP0,
   FurnaceP0,
   MainP0,
-  GnosisTrade,
   GnosisMock,
   RevenueTradingP0,
-  RTokenAsset,
   RTokenP0,
   StaticATokenMock,
   StRSRP0,
-  TradingP0,
   USDCMock,
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
-
-const expectTrade = async (
-  trader: TradingP0,
-  index: number,
-  auctionInfo: Partial<TradeRequest>
-) => {
-  const trade = await getTrade(trader, index)
-  expect(await trade.sell()).to.equal(auctionInfo.sell)
-  expect(await trade.buy()).to.equal(auctionInfo.buy)
-  expect(await trade.endTime()).to.equal(auctionInfo.endTime)
-  expect(await trade.auctionId()).to.equal(auctionInfo.externalId)
-}
-
-// TODO use this in more places
-const getTrade = async (trader: TradingP0, index: number): Promise<GnosisTrade> => {
-  const tradeAddr = await trader.trades(index)
-  return await ethers.getContractAt('GnosisTrade', tradeAddr)
-}
-
-interface TradeRequest {
-  sell: string
-  buy: string
-  endTime: number
-  externalId: BigNumber
-}
+import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+import { expectTrade } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -78,7 +49,6 @@ describe('Revenues', () => {
 
   // Trading
   let gnosis: GnosisMock
-  let broker: BrokerP0
   let rsrTrader: RevenueTradingP0
   let rTokenTrader: RevenueTradingP0
 
@@ -141,7 +111,6 @@ describe('Revenues', () => {
       furnace,
       stRSR,
       gnosis,
-      broker,
       facade,
       rsrTrader,
       rTokenTrader,
@@ -990,7 +959,7 @@ describe('Revenues', () => {
 
         // Close auctions - auction clearing price too low
         await expect(facade.runAuctionsForAllTraders()).to.be.reverted
-    
+
         // Check nothing changed at destinations
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
