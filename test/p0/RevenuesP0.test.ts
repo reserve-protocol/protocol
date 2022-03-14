@@ -988,11 +988,9 @@ describe('Revenues', () => {
           buyAmount: minBuyAmtRToken.sub(1),
         })
 
-        // Close auctions
-        await expect(facade.runAuctionsForAllTraders()).to.be.revertedWith(
-          'auction clearing price too low'
-        )
-
+        // Close auctions - auction clearing price too low
+        await expect(facade.runAuctionsForAllTraders()).to.be.reverted
+    
         // Check nothing changed at destinations
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
