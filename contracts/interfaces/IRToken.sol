@@ -26,10 +26,10 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
         address indexed issuer,
         uint256 indexed index,
         uint256 indexed amount,
-        Fix baskets,
+        int192 baskets,
         address[] erc20s,
         uint256[] quantities,
-        Fix blockAvailableAt
+        int192 blockAvailableAt
     );
 
     /// Emitted when an RToken issuance is canceled, such as during a default
@@ -52,12 +52,12 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// @param redeemer The address of the account redeeeming RTokens
     /// @param amount The quantity of RToken being redeemed
     /// @param baskets The corresponding number of baskets
-    event Redemption(address indexed redeemer, uint256 indexed amount, Fix indexed baskets);
+    event Redemption(address indexed redeemer, uint256 indexed amount, int192 indexed baskets);
 
     /// Emitted when the number of baskets needed changes
     /// @param oldBasketsNeeded Previous number of baskets units needed
     /// @param newBasketsNeeded New number of basket units needed
-    event BasketsNeededChanged(Fix oldBasketsNeeded, Fix newBasketsNeeded);
+    event BasketsNeededChanged(int192 oldBasketsNeeded, int192 newBasketsNeeded);
 
     /// Emitted when RToken is melted, which causes the basketRate to increase
     /// @param amount {qRTok}
@@ -68,7 +68,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// @param newMain The new address of Main
     event MainSet(IMain indexed oldMain, IMain indexed newMain);
 
-    event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
+    event IssuanceRateSet(int192 indexed oldVal, int192 indexed newVal);
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// User Action
@@ -109,14 +109,14 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     function melt(uint256 amount) external;
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(Fix basketsNeeded) external;
+    function setBasketsNeeded(int192 basketsNeeded) external;
 
     /// @return {BU} How many baskets are being targeted by the RToken supply
-    function basketsNeeded() external view returns (Fix);
+    function basketsNeeded() external view returns (int192);
 
     /// @return {qRTok} How much RToken `account` can issue given their current holdings
     function maxIssuable(address account) external view returns (uint256);
 
     // {UoA/rTok}
-    function price() external view returns (Fix p);
+    function price() external view returns (int192 p);
 }

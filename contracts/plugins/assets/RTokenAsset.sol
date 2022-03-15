@@ -10,14 +10,14 @@ contract RTokenAsset is Asset {
 
     constructor(
         IERC20Metadata erc20_,
-        Fix maxAuctionSize_,
+        int192 maxAuctionSize_,
         IMain main_
     ) Asset(erc20_, maxAuctionSize_) {
         main = main_;
     }
 
     /// @return {UoA/rTok}
-    function price() public view override returns (Fix) {
+    function price() public view override returns (int192) {
         return main.rToken().price();
     }
 }

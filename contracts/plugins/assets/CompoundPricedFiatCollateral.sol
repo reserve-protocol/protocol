@@ -9,8 +9,8 @@ contract CompoundPricedFiatCollateral is CompoundOracleMixin, Collateral {
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
-        Fix maxAuctionSize_,
-        Fix defaultThreshold_,
+        int192 maxAuctionSize_,
+        int192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IComptroller comptroller_
     )
@@ -28,7 +28,7 @@ contract CompoundPricedFiatCollateral is CompoundOracleMixin, Collateral {
     // solhint-enable no-empty-blocks
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (Fix) {
+    function price() public view virtual override returns (int192) {
         return consultOracle(erc20);
     }
 }

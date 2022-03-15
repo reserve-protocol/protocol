@@ -8,7 +8,7 @@ import "./ITrading.sol";
 
 interface IBackingManager is IComponent, ITrading {
     event AuctionDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
-    event BackingBufferSet(Fix indexed oldVal, Fix indexed newVal);
+    event BackingBufferSet(int192 indexed oldVal, int192 indexed newVal);
 
     function grantAllowances() external;
 

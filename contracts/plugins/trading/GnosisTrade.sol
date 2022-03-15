@@ -16,7 +16,7 @@ enum TradeStatus {
 
 /// Trade contract against the Gnosis EasyAuction mechanism
 contract GnosisTrade is ITrade {
-    using FixLib for Fix;
+    using FixLib for int192;
     using SafeERC20 for IERC20;
 
     IGnosis public gnosis;
@@ -33,7 +33,7 @@ contract GnosisTrade is ITrade {
     IERC20 public buy;
     uint256 public sellAmount; // {qTok}
     uint256 public endTime;
-    Fix public worstCasePrice; // {buyTok/sellTok}
+    int192 public worstCasePrice; // {buyTok/sellTok}
 
     /// Constructor function, can only be called once
     /// @dev Expects sell tokens to already be present
@@ -98,7 +98,7 @@ contract GnosisTrade is ITrade {
         boughtAmt = buy.balanceOf(address(this));
         if (sellBal < sellAmount) {
             soldAmt = sellAmount - sellBal;
-            Fix clearingPrice = toFix(boughtAmt).divu(soldAmt); // {buyTok/sellTok}
+            int192 clearingPrice = toFix(boughtAmt).divu(soldAmt); // {buyTok/sellTok}
             if (clearingPrice.lt(worstCasePrice)) {
                 broker.reportViolation();
             }
