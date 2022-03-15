@@ -977,6 +977,46 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken.sub(10), 50)
       })
 
+      it('Should not perform auction if Broker is disabled', async () => {
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Claim rewards
+        await expect(facade.claimRewards())
+          .to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(compToken.address, bn(0))
+          .to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(aaveToken.address, rewardAmountAAVE)
+
+        // Check status of destinations and traders
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Disable broker
+        await broker.connect(owner).setDisabled(true)
+
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        let sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+
+        // Attempt to run auctions
+        await expect(facade.runAuctionsForAllTraders())
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
+
+        // Check funds - remain in traders
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(sellAmt)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(sellAmtRToken)
+      })
+
       it('Should not distribute other tokens beyond RSR/RToken', async () => {
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('1e18')
