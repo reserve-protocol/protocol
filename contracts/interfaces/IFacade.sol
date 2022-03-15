@@ -8,10 +8,8 @@ import "./IRToken.sol";
  * @title IFacade
  * @notice A UX-friendly layer for non-governance protocol interactions
  *
- * @dev
- * - @custom:action - Bundle multiple transactions to make sure they run on the same block
  * - @custom:static-call - Use ethers callStatic() in order to get result after update
- * - @custom:view - Just expose a abstraction layer for getting protocol view data
+ * - @custom:view - Regular view
  */
 interface IFacade {
     /// Prompt all traders to run auctions
