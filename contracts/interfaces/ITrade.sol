@@ -3,7 +3,11 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// All Trade contracts deployed by the Broker must adhere to this interface.
+/**
+ * Simple generalized trading interface for all Trade contracts to obey
+ *
+ * Usage: if (canSettle()) settle()
+ */
 interface ITrade {
     function sell() external view returns (IERC20);
 
@@ -17,5 +21,7 @@ interface ITrade {
     function canSettle() external view returns (bool);
 
     /// Complete the trade and transfer tokens back to the origin trader
+    /// @return soldAmt {qSellTok} The quantity of tokens sold
+    /// @return boughtAmt {qBuyTok} The quantity of tokens bought
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt);
 }
