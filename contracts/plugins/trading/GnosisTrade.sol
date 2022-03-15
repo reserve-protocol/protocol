@@ -83,8 +83,8 @@ contract GnosisTrade is ITrade {
     /// Settle trade, transfer tokens to trader, and report bad trade if needed
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
         require(msg.sender == origin, "only origin can settle");
-        require(status == TradeStatus.OPEN, "trade not open");
-        require(canSettle(), "can't settle yet");
+        assert(status == TradeStatus.OPEN);
+        require(canSettle(), "cannot settle yet");
         status = TradeStatus.CLOSED;
 
         // In case asset is unregistered between `init` and now, return the funds and halt
