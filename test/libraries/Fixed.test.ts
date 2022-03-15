@@ -57,11 +57,11 @@ describe('In FixLib,', async () => {
 
   describe('intToFix', async () => {
     it('correctly converts int values', async () => {
-      fixable_ints.forEach(async (x) => expect(await caller.intToFix(x), `${x}`).to.equal(fp(x)))
+      fixable_ints.forEach(async (x) => expect(await caller.intToFix_(x), `${x}`).to.equal(fp(x)))
     })
     it('fails on values outside its domain', async () => {
       ;[MAX_FIX_INT.add(1), MIN_FIX_INT.sub(1), MAX_FIX_INT.mul(25)].forEach(
-        async (x) => await expect(caller.intToFix(x)).to.be.revertedWith('IntOutOfBounds')
+        async (x) => await expect(caller.intToFix_(x)).to.be.revertedWith('IntOutOfBounds')
       )
     })
   })
@@ -70,12 +70,12 @@ describe('In FixLib,', async () => {
     it('correctly converts uint values', async () => {
       ;[0, 1, 2, '38326665875765560393', MAX_FIX_INT.sub(1), MAX_FIX_INT]
         .map(bn)
-        .forEach(async (x) => expect(await caller.toFix(x), `${x}`).to.equal(fp(x)))
+        .forEach(async (x) => expect(await caller.toFix_(x), `${x}`).to.equal(fp(x)))
     })
 
     it('fails on inputs outside its domain', async () => {
-      await expect(caller.toFix(MAX_FIX_INT.add(1))).to.be.revertedWith('UIntOutOfBounds')
-      await expect(caller.toFix(MAX_FIX_INT.mul(17))).to.be.revertedWith('UIntOutOfBounds')
+      await expect(caller.toFix_(MAX_FIX_INT.add(1))).to.be.revertedWith('UIntOutOfBounds')
+      await expect(caller.toFix_(MAX_FIX_INT.mul(17))).to.be.revertedWith('UIntOutOfBounds')
     })
   })
 
@@ -83,7 +83,9 @@ describe('In FixLib,', async () => {
     it('correctly converts uint values with no shifting', async () => {
       ;[0, 1, 2, '38326665875765560393', MAX_FIX_INT.sub(1), MAX_FIX_INT]
         .map(bn)
-        .forEach(async (x) => expect(await caller.toFixWithShift(x, bn(0)), `${x}`).to.equal(fp(x)))
+        .forEach(async (x) =>
+          expect(await caller.toFixWithShift_(x, bn(0)), `${x}`).to.equal(fp(x))
+        )
     })
 
     it('correctly converts uint values with some shifting', async () => {
@@ -103,7 +105,7 @@ describe('In FixLib,', async () => {
       ]
         .map(([x, s]) => [bn(x), bn(s)])
         .forEach(async ([x, s]) =>
-          expect(await caller.toFixWithShift(x, s), `toFixWithShift(${x}, ${s})`).to.equal(
+          expect(await caller.toFixWithShift_(x, s), `toFixWithShift(${x}, ${s})`).to.equal(
             s.gte(0) ? fp(x).mul(pow10(s)) : fp(x).div(pow10(neg(s)))
           )
         )
@@ -123,7 +125,7 @@ describe('In FixLib,', async () => {
         [bn('-5e56'), 2],
       ].forEach(
         async ([x, s]) =>
-          await expect(caller.toFixWithShift(x, s), `toFix(${x}, ${s})`).to.be.reverted
+          await expect(caller.toFixWithShift_(x, s), `toFix(${x}, ${s})`).to.be.reverted
       )
     })
   })
@@ -135,7 +137,7 @@ describe('In FixLib,', async () => {
         .flatMap(([x, y, z]) => [[x, y, z], [x, -y, -z], [x, z, y], [x, -z, -y],])
         .concat([[0, 1, 0], [0, -1, 0],])
         .forEach(async ([x, y, result]) =>
-          expect(await caller.divFix(x, fp(y)), `divFix(${x}, ${y}) == ${result}`).to.equal(fp(result))
+          expect(await caller.divFix_(x, fp(y)), `divFix(${x}, ${y}) == ${result}`).to.equal(fp(result))
         )
     })
 
@@ -153,18 +155,18 @@ describe('In FixLib,', async () => {
         [bn('8e60'), fp('-2e30'), fp('-4e30')],
         [bn('5e75'), fp('-2.5e39'), fp('-2e36')],
       ].forEach(async ([x, y, result]) =>
-        expect(await caller.divFix(x, y), `divFix(${x}, ${y}) == ${result}`).to.equal(result)
+        expect(await caller.divFix_(x, y), `divFix(${x}, ${y}) == ${result}`).to.equal(result)
       )
     })
 
     it('fails when results fall outside its range', async () => {
-      await expect(caller.divFix(MAX_INT192.add(1), fp(1))).to.be.reverted
-      await expect(caller.divFix(MAX_INT192.div(5), fp('0.199'))).to.be.reverted
+      await expect(caller.divFix_(MAX_INT192.add(1), fp(1))).to.be.reverted
+      await expect(caller.divFix_(MAX_INT192.div(5), fp('0.199'))).to.be.reverted
     })
     it('fails on division by zero', async () => {
-      await expect(caller.divFix(17, fp(0))).to.be.revertedWith('panic code 0x12')
-      await expect(caller.divFix(0, fp(0))).to.be.revertedWith('panic code 0x12')
-      await expect(caller.divFix(MAX_INT192, fp(0))).to.be.revertedWith('panic code 0x12')
+      await expect(caller.divFix_(17, fp(0))).to.be.revertedWith('panic code 0x12')
+      await expect(caller.divFix_(0, fp(0))).to.be.revertedWith('panic code 0x12')
+      await expect(caller.divFix_(MAX_INT192, fp(0))).to.be.revertedWith('panic code 0x12')
     })
   })
 
@@ -215,12 +217,12 @@ describe('In FixLib,', async () => {
       ]
         .map(([x, s]) => [bn(x), bn(s)])
         .forEach(async ([x, s]) => {
-          const xFix = await caller.toFix(x)
+          const xFix = await caller.toFix_(x)
           const a = await caller.shiftLeft(xFix, s)
-          const b = await caller.toFixWithShift(x, s)
+          const b = await caller.toFixWithShift_(x, s)
 
           await expect(await caller.shiftLeft(xFix, s), `toFix(${x}).shiftLeft(${s})`).to.equal(
-            await caller.toFixWithShift(x, s)
+            await caller.toFixWithShift_(x, s)
           )
         })
     })
@@ -908,7 +910,7 @@ describe('In FixLib,', async () => {
     it('correctly evaluates min', async () => {
       int192s.forEach(async (a) =>
         int192s.forEach(async (b) =>
-          expect(await caller.fixMin(a, b), `fixMin(${a}, ${b})`).to.equal(a.lt(b) ? a : b)
+          expect(await caller.fixMin_(a, b), `fixMin(${a}, ${b})`).to.equal(a.lt(b) ? a : b)
         )
       )
     })
@@ -917,7 +919,7 @@ describe('In FixLib,', async () => {
     it('correctly evaluates max', async () => {
       int192s.forEach(async (a) =>
         int192s.forEach(async (b) =>
-          expect(await caller.fixMax(a, b), `fixMax(${a}, ${b})`).to.equal(a.gt(b) ? a : b)
+          expect(await caller.fixMax_(a, b), `fixMax(${a}, ${b})`).to.equal(a.gt(b) ? a : b)
         )
       )
     })

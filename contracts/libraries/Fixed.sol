@@ -17,9 +17,9 @@ pragma solidity ^0.8.9;
 */
 
 // An int value passed to this library was out of bounds for int192 operations
-error IntOutOfBounds(int256 value);
+error IntOutOfBounds();
 // A uint value passed to this library was out of bounds for int192 operations
-error UIntOutOfBounds(uint256 value);
+error UIntOutOfBounds();
 
 // If a particular int192 is represented by the int192 n, then the int192 represents the
 // value n/FIX_SCALE.
@@ -56,13 +56,13 @@ enum RoundingApproach {
 
 /// Explicitly convert an int256 to an int192. Revert if the input is out of bounds.
 function _safe_wrap(int256 x) pure returns (int192) {
-    if (x < type(int192).min || type(int192).max < x) revert IntOutOfBounds(x);
+    if (x < type(int192).min || type(int192).max < x) revert IntOutOfBounds();
     return int192(x);
 }
 
 /// Convert a uint to its int192 representation. Fails if x is outside int192's representable range.
 function toFix(uint256 x) pure returns (int192) {
-    if (uint192(FIX_MAX_INT) < x) revert UIntOutOfBounds(x);
+    if (uint192(FIX_MAX_INT) < x) revert UIntOutOfBounds();
     return int192(uint192(x)) * FIX_SCALE;
 }
 
@@ -70,14 +70,14 @@ function toFix(uint256 x) pure returns (int192) {
 /// Fails if the shifted value is outside int192's representable range.
 function toFixWithShift(uint256 x, int8 shiftLeft) pure returns (int192) {
     if (x == 0 || shiftLeft < -95) return 0; // shift would clear a uint256; 0 -> 0
-    if (59 < shiftLeft) revert IntOutOfBounds(shiftLeft); // would unconditionally overflow x
+    if (59 < shiftLeft) revert IntOutOfBounds(); // would unconditionally overflow x
 
     shiftLeft += 18;
     uint256 shifted = (shiftLeft >= 0)
         ? x * 10**uint256(uint8(shiftLeft))
         : x / 10**(uint256(uint8(-shiftLeft)));
 
-    if (uint192(type(int192).max) < shifted) revert UIntOutOfBounds(shifted);
+    if (uint192(type(int192).max) < shifted) revert UIntOutOfBounds();
     return int192(uint192(shifted));
 }
 
@@ -168,14 +168,14 @@ library FixLib {
     /// Convert this int192 to a uint. Fail if x is negative. Round the fractional part towards zero.
     function floor(int192 x) internal pure returns (uint192) {
         int192 n = x;
-        if (n < 0) revert IntOutOfBounds(n);
+        if (n < 0) revert IntOutOfBounds();
         return uint192(n) / FIX_SCALE_U;
     }
 
     /// Convert this int192 to a uint with standard rounding to the nearest integer.
     function round(int192 x) internal pure returns (uint192) {
         int192 n = x;
-        if (n < 0) revert IntOutOfBounds(n);
+        if (n < 0) revert IntOutOfBounds();
         return uint192(intRound(x));
     }
 
@@ -215,8 +215,7 @@ library FixLib {
         int256 x_ = x;
         int256 adjustment = x_ >= 0 ? FIX_SCALE / 2 : -FIX_SCALE / 2;
         int256 rounded = (x_ + adjustment) / FIX_SCALE;
-        if (rounded < type(int192).min || type(int192).max < rounded)
-            revert IntOutOfBounds(rounded);
+        if (rounded < type(int192).min || type(int192).max < rounded) revert IntOutOfBounds();
         return int192(rounded);
     }
 
@@ -227,7 +226,7 @@ library FixLib {
 
     /// Add a uint to this int192.
     function plusu(int192 x, uint256 y) internal pure returns (int192) {
-        if (y > type(uint256).max / 2) revert UIntOutOfBounds(y);
+        if (y > type(uint256).max / 2) revert UIntOutOfBounds();
         int256 y_ = int256(y);
         return _safe_wrap(x + y_ * FIX_SCALE);
     }
@@ -239,7 +238,7 @@ library FixLib {
 
     /// Subtract a uint from this int192.
     function minusu(int192 x, uint256 y) internal pure returns (int192) {
-        if (y > type(uint256).max / 2) revert UIntOutOfBounds(y);
+        if (y > type(uint256).max / 2) revert UIntOutOfBounds();
 
         return _safe_wrap(int256(x) - int256(y * FIX_SCALE_U));
     }
@@ -254,7 +253,7 @@ library FixLib {
 
     /// Multiply this int192 by a uint.
     function mulu(int192 x, uint256 y) internal pure returns (int192) {
-        if (y > type(uint256).max / 2) revert UIntOutOfBounds(y);
+        if (y > type(uint256).max / 2) revert UIntOutOfBounds();
         return _safe_wrap(x * int256(y));
     }
 
