@@ -94,19 +94,26 @@ contract GnosisMock is IGnosis, IBiddable {
         Mauction storage auction = auctions[auctionId];
         require(auction.status == MauctionStatus.OPEN, "auction already closed");
         require(auction.endTime <= block.timestamp, "too early to close auction");
+        auction.status = MauctionStatus.DONE;
+        auction.endTime = 0;
+
+        Bid storage bid = bids[auctionId];
+
+        // No-bid case
+        if (bid.bidder == address(0)) {
+            auction.encodedClearingOrder = _encodeOrder(0, auction.sellAmount, 0);
+            return auction.encodedClearingOrder;
+        }
 
         // Transfer tokens
-        Bid storage bid = bids[auctionId];
         auction.sell.safeTransfer(bid.bidder, bid.sellAmount);
         auction.buy.safeTransfer(auction.origin, bid.buyAmount);
         if (auction.sellAmount > bid.sellAmount) {
             auction.sell.safeTransfer(auction.origin, auction.sellAmount - bid.sellAmount);
         }
-        auction.status = MauctionStatus.DONE;
-        auction.endTime = 0;
 
         // Encode clearing order
-        auction.encodedClearingOrder = _encodeOrder(1, bid.sellAmount, bid.buyAmount);
+        auction.encodedClearingOrder = _encodeOrder(0, bid.sellAmount, bid.buyAmount);
         return auction.encodedClearingOrder;
     }
 

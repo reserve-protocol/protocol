@@ -105,8 +105,8 @@ contract GnosisTrade is ITrade {
         }
 
         // Transfer balances to origin, ending our watch
-        sell.safeTransfer(origin, sellBal);
-        buy.safeTransfer(origin, boughtAmt);
+        if (sellBal > 0) sell.safeTransfer(origin, sellBal);
+        if (boughtAmt > 0) buy.safeTransfer(origin, boughtAmt);
     }
 
     // === Private ===
