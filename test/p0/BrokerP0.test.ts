@@ -1,19 +1,23 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { bn } from '../../common/numbers'
+import { TradeStatus } from '../../common/constants'
+import { bn, toBNDecimals } from '../../common/numbers'
 import {
   BackingManagerP0,
   BrokerP0,
+  ComptrollerMock,
   ERC20Mock,
   GnosisMock,
+  GnosisTrade,
   MainP0,
   RevenueTradingP0,
   USDCMock,
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { ITradeRequest } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -30,6 +34,9 @@ describe('BrokerP0 contract', () => {
   let token0: ERC20Mock
   let token1: ERC20Mock
   let collateral: Collateral[]
+
+  // Aave / Compound
+  let compoundMock: ComptrollerMock
 
   // Trading
   let gnosis: GnosisMock
@@ -141,7 +148,7 @@ describe('BrokerP0 contract', () => {
     })
   })
 
-  describe('Trades', () => {
+  describe('Trade Management', () => {
     it('Should not allow to open trade if Disabled', async () => {
       // Disable Broker
       await expect(broker.connect(owner).setDisabled(true))
@@ -199,7 +206,7 @@ describe('BrokerP0 contract', () => {
       })
     })
 
-    it('Should allow trade contract to report violation', async () => {
+    it('Should not allow to report violation if not trade contract', async () => {
       // Check not disabled
       expect(await broker.disabled()).to.equal(false)
 
@@ -217,6 +224,170 @@ describe('BrokerP0 contract', () => {
 
       // Check nothing changed
       expect(await broker.disabled()).to.equal(false)
+    })
+  })
+
+  describe('Trades', () => {
+    it('Should initialize trade correctly - only once', async () => {
+      const amount: BigNumber = bn('100e18')
+
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
+      // Check state
+      expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
+
+      // Initialize trade - simulate from backingManager
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: amount,
+        minBuyAmount: bn('0'),
+      }
+
+      // Fund trade and initialize
+      await token0.connect(owner).mint(trade.address, amount)
+      await expect(
+        trade.init(
+          broker.address,
+          backingManager.address,
+          gnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      ).to.not.be.reverted
+
+      // Check trade values
+      expect(await trade.gnosis()).to.equal(gnosis.address)
+      expect(await trade.auctionId()).to.equal(0)
+      expect(await trade.status()).to.equal(TradeStatus.OPEN)
+      expect(await trade.broker()).to.equal(broker.address)
+      expect(await trade.origin()).to.equal(backingManager.address)
+      expect(await trade.sell()).to.equal(token0.address)
+      expect(await trade.buy()).to.equal(token1.address)
+      expect(await trade.sellAmount()).to.equal(amount)
+      expect(await trade.endTime()).to.equal(
+        (await getLatestBlockTimestamp()) + Number(config.auctionLength)
+      )
+      expect(await trade.worstCasePrice()).to.equal(bn('0'))
+      expect(await trade.canSettle()).to.equal(false)
+
+      // Attempt to initialize again
+      await expect(
+        trade.init(
+          await trade.broker(),
+          await trade.origin(),
+          await trade.gnosis(),
+          await broker.auctionLength(),
+          tradeRequest
+        )
+      ).to.be.revertedWith('trade already started')
+    })
+
+    it('Should not allow to initialize an unfunded trade', async () => {
+      const amount: BigNumber = bn('100e18')
+
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
+      // Check state
+      expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
+
+      // Initialize trade - simulate from backingManager
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: amount,
+        minBuyAmount: bn('0'),
+      }
+
+      // Attempt to initialize without funding
+      await expect(
+        trade.init(
+          broker.address,
+          backingManager.address,
+          gnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      ).to.be.revertedWith('unfunded trade')
+    })
+
+    it('Should be able to settle a trade - performing validations', async () => {
+      const amount: BigNumber = bn('100e18')
+
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
+      // Check state - cannot be settled
+      expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
+      expect(await trade.canSettle()).to.equal(false)
+
+      // Initialize trade - simulate from backingManager
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: amount,
+        minBuyAmount: bn('0'),
+      }
+
+      // Attempt to settle - will fail as origin is not set
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await expect(trade.connect(bmSigner).settle()).to.be.revertedWith('only origin can settle')
+      })
+
+      // Fund trade and initialize
+      await token0.connect(owner).mint(trade.address, amount)
+      await expect(
+        trade.init(
+          broker.address,
+          backingManager.address,
+          gnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      ).to.not.be.reverted
+
+      // Check trade is initialized but still cannot be settled
+      expect(await trade.status()).to.equal(TradeStatus.OPEN)
+      expect(await trade.canSettle()).to.equal(false)
+
+      // Attempt to settle from origin - Cannot settle yet
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await expect(trade.connect(bmSigner).settle()).to.be.revertedWith('cannot settle yet')
+      })
+
+      // Advance time till trade can be settled
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // Check status - can be settled now
+      expect(await trade.status()).to.equal(TradeStatus.OPEN)
+      expect(await trade.canSettle()).to.equal(true)
+
+      // Attempt to settle from other address (not origin)
+      await expect(trade.connect(addr1).settle()).to.be.revertedWith('only origin can settle')
+
+      // Perform mock bid (required to be able to settle)
+      const minBuyAmt: BigNumber = toBNDecimals(amount, 6)
+      await token1.connect(owner).mint(addr1.address, minBuyAmt)
+      await token1.connect(addr1).approve(gnosis.address, minBuyAmt)
+      await gnosis.placeBid(0, {
+        bidder: addr1.address,
+        sellAmount: amount,
+        buyAmount: minBuyAmt,
+      })
+
+      // Settle trade
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await expect(trade.connect(bmSigner).settle()).to.not.be.reverted
+      })
+
+      // Check status
+      expect(await trade.status()).to.equal(TradeStatus.CLOSED)
+      expect(await trade.canSettle()).to.equal(false)
     })
   })
 })

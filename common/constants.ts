@@ -32,5 +32,12 @@ export enum RoundingApproach {
   CEIL,
 }
 
+// @dev Must match `GnosisTrade.TradeStatus`.
+export enum TradeStatus {
+  NOT_STARTED,
+  OPEN,
+  CLOSED,
+}
+
 export const FURNACE_DEST = '0x0000000000000000000000000000000000000001'
 export const STRSR_DEST = '0x0000000000000000000000000000000000000002'
