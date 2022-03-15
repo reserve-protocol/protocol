@@ -21,9 +21,6 @@ error IntOutOfBounds(int256 value);
 // A uint value passed to this library was out of bounds for int192 operations
 error UIntOutOfBounds(uint256 value);
 
-// The central type this library provides. You'll declare values of this type.
-type int192 is int192;
-
 // If a particular int192 is represented by the int192 n, then the int192 represents the
 // value n/FIX_SCALE.
 int64 constant FIX_SCALE = 1e18;
@@ -186,7 +183,7 @@ library FixLib {
     function ceil(int192 x) internal pure returns (uint192) {
         uint192 u = floor(x);
         if (uint192(x) == u * FIX_SCALE_U) return u;
-        return u+1;
+        return u + 1;
     }
 
     /// Convert this int192 to a uint, applying the rounding approach described by the enum
@@ -204,7 +201,6 @@ library FixLib {
         return x / FIX_SCALE;
     }
 
-
     /// Return the int192 shifted to the left by `decimal` digits
     /// Similar to a bitshift but in base 10
     /// Equivalent to multiplying `x` by `10**decimal`
@@ -219,13 +215,14 @@ library FixLib {
         int256 x_ = x;
         int256 adjustment = x_ >= 0 ? FIX_SCALE / 2 : -FIX_SCALE / 2;
         int256 rounded = (x_ + adjustment) / FIX_SCALE;
-        if (rounded < type(int192).min || type(int192).max < rounded) revert IntOutOfBounds(rounded);
+        if (rounded < type(int192).min || type(int192).max < rounded)
+            revert IntOutOfBounds(rounded);
         return int192(rounded);
     }
 
     /// Add a int192 to this int192.
     function plus(int192 x, int192 y) internal pure returns (int192) {
-        return x+y;
+        return x + y;
     }
 
     /// Add a uint to this int192.
@@ -236,7 +233,7 @@ library FixLib {
 
     /// Subtract a int192 from this int192.
     function minus(int192 x, int192 y) internal pure returns (int192) {
-        return x-y;
+        return x - y;
     }
 
     /// Subtract a uint from this int192.
@@ -281,7 +278,7 @@ library FixLib {
         int256 x = int256(x_);
         int8 sign = (x < 0) ? -1 : int8(1);
         x *= sign;
-        return _safe_wrap((x + y/2) / y * sign);
+        return _safe_wrap(((x + y / 2) / y) * sign);
     }
 
     /// Compute 1 / (this int192).

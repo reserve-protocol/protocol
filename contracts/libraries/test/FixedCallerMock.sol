@@ -2,161 +2,161 @@
 pragma solidity ^0.8.9;
 
 import "../Fixed.sol" as FixGlobals;
-import { Fix, FixLib, RoundingApproach } from "../Fixed.sol";
+import { FixLib, RoundingApproach } from "../Fixed.sol";
 
 // Simple mock for Fixed library.
 contract FixedCallerMock {
-    function toFix(uint256 x) public pure returns (Fix) {
+    function toFix(uint256 x) public pure returns (int192) {
         return FixGlobals.toFix(x);
     }
 
-    function toFixWithShift(uint256 x, int8 shiftLeft_) public pure returns (Fix) {
+    function toFixWithShift(uint256 x, int8 shiftLeft_) public pure returns (int192) {
         return FixGlobals.toFixWithShift(x, shiftLeft_);
     }
 
-    function intToFix(int256 x) public pure returns (Fix) {
+    function intToFix(int256 x) public pure returns (int192) {
         return FixGlobals.intToFix(x);
     }
 
-    function divFix(uint256 x, Fix y) public pure returns (Fix) {
+    function divFix(uint256 x, int192 y) public pure returns (int192) {
         return FixGlobals.divFix(x, y);
     }
 
-    function fixMin(Fix x, Fix y) public pure returns (Fix) {
+    function fixMin(int192 x, int192 y) public pure returns (int192) {
         return FixGlobals.fixMin(x, y);
     }
 
-    function fixMax(Fix x, Fix y) public pure returns (Fix) {
+    function fixMax(int192 x, int192 y) public pure returns (int192) {
         return FixGlobals.fixMax(x, y);
     }
 
-    function toInt(Fix x) public pure returns (int192) {
+    function toInt(int192 x) public pure returns (int192) {
         return FixLib.toInt(x);
     }
 
-    function toUint(Fix x, RoundingApproach rounding) public pure returns (uint192) {
+    function toUint(int192 x, RoundingApproach rounding) public pure returns (uint192) {
         return FixLib.toUint(x, rounding);
     }
 
-    function floor(Fix x) public pure returns (uint192) {
+    function floor(int192 x) public pure returns (uint192) {
         return FixLib.floor(x);
     }
 
-    function round(Fix x) public pure returns (uint192) {
+    function round(int192 x) public pure returns (uint192) {
         return FixLib.round(x);
     }
 
-    function ceil(Fix x) public pure returns (uint192) {
+    function ceil(int192 x) public pure returns (uint192) {
         return FixLib.ceil(x);
     }
 
-    function shiftLeft(Fix x, int8 shiftLeft_) public pure returns (Fix) {
+    function shiftLeft(int192 x, int8 shiftLeft_) public pure returns (int192) {
         return FixLib.shiftLeft(x, shiftLeft_);
     }
 
-    function intRound(Fix x) public pure returns (int192) {
+    function intRound(int192 x) public pure returns (int192) {
         return FixLib.intRound(x);
     }
 
-    function plus(Fix x, Fix y) public pure returns (Fix) {
+    function plus(int192 x, int192 y) public pure returns (int192) {
         return FixLib.plus(x, y);
     }
 
-    function plusi(Fix x, int256 y) public pure returns (Fix) {
+    function plusi(int192 x, int256 y) public pure returns (int192) {
         return FixLib.plusi(x, y);
     }
 
-    function plusu(Fix x, uint256 y) public pure returns (Fix) {
+    function plusu(int192 x, uint256 y) public pure returns (int192) {
         return FixLib.plusu(x, y);
     }
 
-    function minus(Fix x, Fix y) public pure returns (Fix) {
+    function minus(int192 x, int192 y) public pure returns (int192) {
         return FixLib.minus(x, y);
     }
 
-    function minusi(Fix x, int256 y) public pure returns (Fix) {
+    function minusi(int192 x, int256 y) public pure returns (int192) {
         return FixLib.minusi(x, y);
     }
 
-    function minusu(Fix x, uint256 y) public pure returns (Fix) {
+    function minusu(int192 x, uint256 y) public pure returns (int192) {
         return FixLib.minusu(x, y);
     }
 
-    function mul(Fix x, Fix y) public pure returns (Fix) {
+    function mul(int192 x, int192 y) public pure returns (int192) {
         return FixLib.mul(x, y);
     }
 
-    function muli(Fix x, int256 y) public pure returns (Fix) {
+    function muli(int192 x, int256 y) public pure returns (int192) {
         return FixLib.muli(x, y);
     }
 
-    function mulu(Fix x, uint256 y) public pure returns (Fix) {
+    function mulu(int192 x, uint256 y) public pure returns (int192) {
         return FixLib.mulu(x, y);
     }
 
-    function div(Fix x, Fix y) public pure returns (Fix) {
+    function div(int192 x, int192 y) public pure returns (int192) {
         return FixLib.div(x, y);
     }
 
-    function divi(Fix x, int256 y) public pure returns (Fix) {
+    function divi(int192 x, int256 y) public pure returns (int192) {
         return FixLib.divi(x, y);
     }
 
-    function divu(Fix x, uint256 y) public pure returns (Fix) {
+    function divu(int192 x, uint256 y) public pure returns (int192) {
         return FixLib.divu(x, y);
     }
 
-    function divuRound(Fix x, uint256 y) public pure returns (Fix) {
+    function divuRound(int192 x, uint256 y) public pure returns (int192) {
         return FixLib.divuRound(x, y);
     }
 
-    function inv(Fix x) public pure returns (Fix) {
+    function inv(int192 x) public pure returns (int192) {
         return FixLib.inv(x);
     }
 
-    function powu(Fix x, uint256 y) public pure returns (Fix) {
+    function powu(int192 x, uint256 y) public pure returns (int192) {
         return FixLib.powu(x, y);
     }
 
-    function increment(Fix x) public pure returns (Fix) {
+    function increment(int192 x) public pure returns (int192) {
         return FixLib.increment(x);
     }
 
-    function lt(Fix x, Fix y) public pure returns (bool) {
+    function lt(int192 x, int192 y) public pure returns (bool) {
         return FixLib.lt(x, y);
     }
 
-    function lte(Fix x, Fix y) public pure returns (bool) {
+    function lte(int192 x, int192 y) public pure returns (bool) {
         return FixLib.lte(x, y);
     }
 
-    function gt(Fix x, Fix y) public pure returns (bool) {
+    function gt(int192 x, int192 y) public pure returns (bool) {
         return FixLib.gt(x, y);
     }
 
-    function gte(Fix x, Fix y) public pure returns (bool) {
+    function gte(int192 x, int192 y) public pure returns (bool) {
         return FixLib.gte(x, y);
     }
 
-    function eq(Fix x, Fix y) public pure returns (bool) {
+    function eq(int192 x, int192 y) public pure returns (bool) {
         return FixLib.eq(x, y);
     }
 
-    function neq(Fix x, Fix y) public pure returns (bool) {
+    function neq(int192 x, int192 y) public pure returns (bool) {
         return FixLib.neq(x, y);
     }
 
-    /// Return whether or not this Fix is within epsilon of y.
+    /// Return whether or not this int192 is within epsilon of y.
     function near(
-        Fix x,
-        Fix y,
-        Fix epsilon
+        int192 x,
+        int192 y,
+        int192 epsilon
     ) public pure returns (bool) {
         return FixLib.near(x, y, epsilon);
     }
 
     // Nonview version for gas estimation in test framework
-    function powu_nonview(Fix x, uint256 y) public pure {
+    function powu_nonview(int192 x, uint256 y) public pure {
         FixLib.powu(x, y);
     }
 }
