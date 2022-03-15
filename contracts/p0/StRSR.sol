@@ -215,7 +215,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
             for (uint256 i = 0; i < accounts.length(); i++) {
                 address account = accounts.at(i);
                 delete withdrawals[account];
-                _transfer(account, address(0), balances[account]);
+                balances[account] = 0;
             }
             totalStaked = 0;
         } else {

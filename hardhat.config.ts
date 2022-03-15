@@ -2,7 +2,7 @@ import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
-//import 'hardhat-gas-reporter'
+import 'hardhat-gas-reporter'
 import 'solidity-coverage'
 
 import dotenv from 'dotenv'
@@ -24,10 +24,11 @@ export default <HardhatUserConfig>{
   defaultNetwork: 'hardhat',
   networks: {
     hardhat: {
-      // // To do Mainnet Forking, uncomment this section
-      // forking: {
-      //   url: MAINNET_RPC_URL
-      // }
+      forking: {
+        url: MAINNET_RPC_URL,
+        blockNumber: 14393847,
+        enabled: !!process.env.FORK,
+      },
       gas: 999999999999,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
@@ -72,5 +73,9 @@ export default <HardhatUserConfig>{
     strict: false,
     only: [],
     except: ['Extension'],
+  },
+  gasReporter: {
+    currency: 'USD',
+    gasPrice: 100,
   },
 }
