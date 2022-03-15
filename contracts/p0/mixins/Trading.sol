@@ -13,7 +13,7 @@ import "contracts/p0/mixins/Rewardable.sol";
 
 // Abstract trader affordances to be extended by our RevenueTraders and BackingManager
 abstract contract TradingP0 is RewardableP0, ITrading {
-    using FixLib for Fix;
+    using FixLib for int192;
 
     // All trades
     ITrade[] public trades;
@@ -25,8 +25,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     uint256 private latestEndtime;
 
     // === Governance params ===
-    Fix public maxTradeSlippage; // {%}
-    Fix public dustAmount; // {UoA}
+    int192 public maxTradeSlippage; // {%}
+    int192 public dustAmount; // {UoA}
 
     function init(ConstructorArgs calldata args) internal virtual override {
         maxTradeSlippage = args.params.maxTradeSlippage;
@@ -57,7 +57,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     function prepareTradeSell(
         IAsset sell,
         IAsset buy,
-        Fix sellAmount
+        int192 sellAmount
     ) internal view returns (bool notDust, TradeRequest memory trade) {
         assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
         trade.sell = sell;
@@ -67,12 +67,12 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         if (sellAmount.lt(dustThreshold(sell))) return (false, trade);
 
         // {sellTok}
-        Fix fixSellAmount = fixMin(sellAmount, sell.maxAuctionSize().div(sell.price()));
+        int192 fixSellAmount = fixMin(sellAmount, sell.maxAuctionSize().div(sell.price()));
         trade.sellAmount = fixSellAmount.shiftLeft(int8(sell.erc20().decimals())).floor();
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        Fix exactBuyAmount = fixSellAmount.mul(sell.price()).div(buy.price());
-        Fix minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(maxTradeSlippage));
+        int192 exactBuyAmount = fixSellAmount.mul(sell.price()).div(buy.price());
+        int192 minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(maxTradeSlippage));
         trade.minBuyAmount = minBuyAmount.shiftLeft(int8(buy.erc20().decimals())).ceil();
         return (true, trade);
     }
@@ -86,8 +86,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     function prepareTradeToCoverDeficit(
         IAsset sell,
         IAsset buy,
-        Fix maxSellAmount,
-        Fix deficitAmount
+        int192 maxSellAmount,
+        int192 deficitAmount
     ) internal view returns (bool notDust, TradeRequest memory trade) {
         // Don't sell dust.
         if (maxSellAmount.lt(dustThreshold(sell))) return (false, trade);
@@ -96,18 +96,18 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         deficitAmount = fixMax(deficitAmount, dustThreshold(buy));
 
         // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
-        Fix exactSellAmount = deficitAmount.mul(buy.price()).div(sell.price());
+        int192 exactSellAmount = deficitAmount.mul(buy.price()).div(sell.price());
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
-        Fix idealSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage));
+        int192 idealSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage));
 
-        Fix sellAmount = fixMin(idealSellAmount, maxSellAmount);
+        int192 sellAmount = fixMin(idealSellAmount, maxSellAmount);
         return prepareTradeSell(sell, buy, sellAmount);
     }
 
     /// @return {tok} The least amount of whole tokens ever worth trying to sell
-    function dustThreshold(IAsset asset) internal view returns (Fix) {
+    function dustThreshold(IAsset asset) internal view returns (int192) {
         // {tok} = {UoA} / {UoA/tok}
         return dustAmount.div(asset.price());
     }
@@ -128,12 +128,12 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     // === Setters ===
 
-    function setMaxTradeSlippage(Fix val) external onlyOwner {
+    function setMaxTradeSlippage(int192 val) external onlyOwner {
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }
 
-    function setDustAmount(Fix val) external onlyOwner {
+    function setDustAmount(int192 val) external onlyOwner {
         emit DustAmountSet(dustAmount, val);
         dustAmount = val;
     }

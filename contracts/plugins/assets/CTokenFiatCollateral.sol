@@ -23,21 +23,21 @@ interface ICToken {
 // ==== End External Interfaces ====
 
 contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
-    using FixLib for Fix;
+    using FixLib for int192;
     using SafeERC20 for IERC20Metadata;
 
     // cToken initial exchange rate is 0.02
-    Fix public constant COMPOUND_BASE = toFixWithShift(2, -2);
+    int192 public constant COMPOUND_BASE = toFixWithShift(2, -2);
 
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
-    Fix public prevReferencePrice; // previous rate, {collateral/reference}
+    int192 public prevReferencePrice; // previous rate, {collateral/reference}
     IERC20 public immutable override rewardERC20;
 
     constructor(
         IERC20Metadata erc20_,
-        Fix maxAuctionSize_,
-        Fix defaultThreshold_,
+        int192 maxAuctionSize_,
+        int192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         IComptroller comptroller_,
@@ -58,7 +58,7 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual returns (Fix) {
+    function price() public view virtual returns (int192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         return consultOracle(referenceERC20).mul(refPerTok());
     }
@@ -74,7 +74,7 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
         ICToken(address(erc20)).exchangeRateCurrent();
 
         // Check invariants
-        Fix p = refPerTok();
+        int192 p = refPerTok();
         if (p.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
@@ -91,18 +91,18 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view override returns (Fix) {
+    function refPerTok() public view override returns (int192) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20.decimals()) - 18;
-        Fix rateNow = toFixWithShift(rate, shiftLeft);
+        int192 rateNow = toFixWithShift(rate, shiftLeft);
         return rateNow.div(COMPOUND_BASE);
     }
 
     function isReferenceDepegged() private view returns (bool) {
         // {UoA/ref} = {UoA/target} * {target/ref}
-        Fix peg = pricePerTarget().mul(targetPerRef());
-        Fix delta = peg.mul(defaultThreshold);
-        Fix p = consultOracle(referenceERC20);
+        int192 peg = pricePerTarget().mul(targetPerRef());
+        int192 delta = peg.mul(defaultThreshold);
+        int192 p = consultOracle(referenceERC20);
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }
 

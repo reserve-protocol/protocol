@@ -10,9 +10,9 @@ import "contracts/p0/mixins/Component.sol";
  * @notice A helper to melt RTokens slowly and permisionlessly.
  */
 contract FurnaceP0 is Component, IFurnace {
-    using FixLib for Fix;
+    using FixLib for int192;
 
-    Fix public ratio; // {1} What fraction of balance to melt each period
+    int192 public ratio; // {1} What fraction of balance to melt each period
     uint256 public period; // {seconds} How often to melt
     uint256 public lastPayout; // {seconds} The last time we did a payout
 
@@ -31,7 +31,7 @@ contract FurnaceP0 is Component, IFurnace {
         uint256 numPeriods = (block.timestamp - lastPayout) / period;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
+        int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
 
         IRToken rToken = main.rToken();
         amount = payoutRatio.mulu(rToken.balanceOf(address(this))).floor();
@@ -48,7 +48,7 @@ contract FurnaceP0 is Component, IFurnace {
     }
 
     /// Ratio setting
-    function setRatio(Fix ratio_) external onlyOwner {
+    function setRatio(int192 ratio_) external onlyOwner {
         // The ratio can safely be set to 0
         emit RatioSet(ratio, ratio_);
         ratio = ratio_;

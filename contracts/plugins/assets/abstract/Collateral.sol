@@ -14,7 +14,7 @@ import "./Asset.sol";
  * @notice A general non-appreciating collateral type to be extended.
  */
 abstract contract Collateral is ICollateral, Asset, Context {
-    using FixLib for Fix;
+    using FixLib for int192;
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -29,14 +29,14 @@ abstract contract Collateral is ICollateral, Asset, Context {
 
     IERC20Metadata public immutable referenceERC20;
 
-    Fix public immutable defaultThreshold; // {%} e.g. 0.05
+    int192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     constructor(
         IERC20Metadata erc20_,
-        Fix maxAuctionSize_,
-        Fix defaultThreshold_,
+        int192 maxAuctionSize_,
+        int192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         bytes32 targetName_
@@ -83,25 +83,25 @@ abstract contract Collateral is ICollateral, Asset, Context {
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view virtual returns (Fix) {
+    function refPerTok() public view virtual returns (int192) {
         return FIX_ONE;
     }
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
-    function targetPerRef() public view virtual returns (Fix) {
+    function targetPerRef() public view virtual returns (int192) {
         return FIX_ONE;
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view virtual returns (Fix) {
+    function pricePerTarget() public view virtual returns (int192) {
         return FIX_ONE;
     }
 
     function isDepegged() internal view returns (bool) {
         // {UoA/ref} = {UoA/target} * {target/ref}
-        Fix peg = pricePerTarget().mul(targetPerRef());
-        Fix delta = peg.mul(defaultThreshold);
-        Fix p = price();
+        int192 peg = pricePerTarget().mul(targetPerRef());
+        int192 delta = peg.mul(defaultThreshold);
+        int192 p = price();
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }
 }

@@ -18,7 +18,7 @@ struct BasketConfig {
     // The collateral erc20s in the prime (explicitly governance-set) basket
     IERC20[] erc20s;
     // Amount of target units per basket for each prime collateral token. {target/BU}
-    mapping(IERC20 => Fix) targetAmts;
+    mapping(IERC20 => int192) targetAmts;
     // Backup configurations, per target name.
     mapping(bytes32 => BackupConfig) backups;
 }
@@ -27,7 +27,7 @@ struct BasketConfig {
 struct Basket {
     // Invariant: all reference basket collateral must be registered with the registry
     IERC20[] erc20s;
-    mapping(IERC20 => Fix) refAmts; // {ref/BU}
+    mapping(IERC20 => int192) refAmts; // {ref/BU}
     uint256 nonce;
     uint256 timestamp;
 }
@@ -37,7 +37,7 @@ struct Basket {
  */
 library BasketLib {
     using BasketLib for Basket;
-    using FixLib for Fix;
+    using FixLib for int192;
 
     // Empty self
     function empty(Basket storage self) internal {
@@ -64,7 +64,7 @@ library BasketLib {
     function add(
         Basket storage self,
         IERC20 tok,
-        Fix weight
+        int192 weight
     ) internal {
         if (self.refAmts[tok].eq(FIX_ZERO)) {
             self.erc20s.push(tok);
@@ -85,7 +85,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     using BasketLib for Basket;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
-    using FixLib for Fix;
+    using FixLib for int192;
 
     BasketConfig private config;
     Basket private basket;
@@ -102,7 +102,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    function setPrimeBasket(IERC20[] memory erc20s, Fix[] memory targetAmts) public onlyOwner {
+    function setPrimeBasket(IERC20[] memory erc20s, int192[] memory targetAmts) public onlyOwner {
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
@@ -168,7 +168,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     }
 
     /// @return {tok/BU} The quantity of collateral in the basket
-    function quantity(IERC20 erc20) public view returns (Fix) {
+    function quantity(IERC20 erc20) public view returns (int192) {
         IAssetRegistry reg = main.assetRegistry();
         if (!reg.isRegistered(erc20) || !reg.toAsset(erc20).isCollateral()) return FIX_ZERO;
 
@@ -177,7 +177,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
-    function price() public view returns (Fix p) {
+    function price() public view returns (int192 p) {
         IAssetRegistry reg = main.assetRegistry();
 
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
@@ -193,7 +193,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
-    function quote(Fix amount, RoundingApproach rounding)
+    function quote(int192 amount, RoundingApproach rounding)
         public
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
@@ -204,18 +204,18 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             uint8 decimals = main.assetRegistry().toAsset(basket.erc20s[i]).erc20().decimals();
 
             // {qTok} = {BU} * {tok/BU} * {qTok/tok}
-            Fix q = amount.mul(quantity(basket.erc20s[i])).shiftLeft(int8(decimals));
+            int192 q = amount.mul(quantity(basket.erc20s[i])).shiftLeft(int8(decimals));
             quantities[i] = q.toUint(rounding);
             erc20s[i] = address(basket.erc20s[i]);
         }
     }
 
     /// @return baskets {BU} The balance of basket units held by `account`
-    function basketsHeldBy(address account) public view returns (Fix baskets) {
+    function basketsHeldBy(address account) public view returns (int192 baskets) {
         baskets = FIX_MAX;
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
-            Fix bal = main.assetRegistry().toAsset(basket.erc20s[i]).bal(account); // {tok}
-            Fix q = quantity(basket.erc20s[i]); // {tok/BU}
+            int192 bal = main.assetRegistry().toAsset(basket.erc20s[i]).bal(account); // {tok}
+            int192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
             // baskets {BU} = bal {tok} / q {tok/BU}
             if (q.gt(FIX_ZERO)) baskets = fixMin(baskets, bal.div(q));
@@ -244,10 +244,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         // goodWeights and totalWeights are in index-correspondence with targetNames
 
         // {target/BU} total target weight of good, prime collateral with target i
-        Fix[] memory goodWeights = new Fix[](targetNames.length());
+        int192[] memory goodWeights = new int192[](targetNames.length());
 
         // {target/BU} total target weight of all prime collateral with target i
-        Fix[] memory totalWeights = new Fix[](targetNames.length());
+        int192[] memory totalWeights = new int192[](targetNames.length());
 
         // For each prime collateral token:
         for (uint256 i = 0; i < config.erc20s.length; i++) {
@@ -265,7 +265,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
             // Set basket weights for good, prime collateral,
             // and accumulate the values of goodWeights and targetWeights
-            Fix targetWeight = config.targetAmts[erc20];
+            int192 targetWeight = config.targetAmts[erc20];
             totalWeights[targetIndex] = totalWeights[targetIndex].plus(targetWeight);
 
             if (coll.status() != CollateralStatus.DISABLED) {
@@ -315,7 +315,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         basket.copy(newBasket);
 
         // Keep records, emit event
-        Fix[] memory refAmts = new Fix[](basket.erc20s.length);
+        int192[] memory refAmts = new int192[](basket.erc20s.length);
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }

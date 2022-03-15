@@ -21,11 +21,11 @@ interface IFurnace is IComponent {
     /// Emitted when the melting ratio is changed
     /// @param oldRatio The old ratio
     /// @param newRatio The new ratio
-    event RatioSet(Fix indexed oldRatio, Fix indexed newRatio);
+    event RatioSet(int192 indexed oldRatio, int192 indexed newRatio);
 
-    function ratio() external view returns (Fix);
+    function ratio() external view returns (int192);
 
-    function setRatio(Fix) external;
+    function setRatio(int192) external;
 
     /// Performs any RToken melting that has vested since the last payout. Idempotent.
     /// @return amount How much RToken was melted

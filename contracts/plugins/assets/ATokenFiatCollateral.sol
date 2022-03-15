@@ -31,16 +31,16 @@ interface AToken {
 // ==== End External ====
 
 contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
-    using FixLib for Fix;
+    using FixLib for int192;
     using SafeERC20 for IERC20Metadata;
 
-    Fix public prevReferencePrice; // previous rate, {collateral/reference}
+    int192 public prevReferencePrice; // previous rate, {collateral/reference}
     IERC20 public immutable override rewardERC20;
 
     constructor(
         IERC20Metadata erc20_,
-        Fix maxAuctionSize_,
-        Fix defaultThreshold_,
+        int192 maxAuctionSize_,
+        int192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         IComptroller comptroller_,
@@ -62,7 +62,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual returns (Fix) {
+    function price() public view virtual returns (int192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         return consultOracle(referenceERC20).mul(refPerTok());
     }
@@ -75,7 +75,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
         uint256 cached = whenDefault;
 
         // Check invariants
-        Fix p = refPerTok();
+        int192 p = refPerTok();
         if (p.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
@@ -92,16 +92,16 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view override returns (Fix) {
+    function refPerTok() public view override returns (int192) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray ref/tok}
         return toFixWithShift(rateInRAYs, -27);
     }
 
     function isReferenceDepegged() private view returns (bool) {
         // {UoA/ref} = {UoA/target} * {target/ref}
-        Fix peg = pricePerTarget().mul(targetPerRef());
-        Fix delta = peg.mul(defaultThreshold);
-        Fix p = consultOracle(referenceERC20);
+        int192 peg = pricePerTarget().mul(targetPerRef());
+        int192 delta = peg.mul(defaultThreshold);
+        int192 p = consultOracle(referenceERC20);
         return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }
 

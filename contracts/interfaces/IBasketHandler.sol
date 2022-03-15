@@ -10,12 +10,12 @@ interface IBasketHandler is IComponent {
     /// Emitted when the prime basket is set
     /// @param erc20s The collateral tokens for the prime basket
     /// @param targetAmts {target/BU} A list of quantities of target unit per basket unit
-    event PrimeBasketSet(IERC20[] erc20s, Fix[] targetAmts);
+    event PrimeBasketSet(IERC20[] erc20s, int192[] targetAmts);
 
     /// Emitted when the reference basket is set
     /// @param erc20s The list of collateral tokens in the reference basket
     /// @param refAmts {ref/BU} The reference amounts of the basket collateral tokens
-    event BasketSet(IERC20[] erc20s, Fix[] refAmts);
+    event BasketSet(IERC20[] erc20s, int192[] refAmts);
 
     /// Emitted when a backup config is set for a target unit
     /// @param targetName The name of the target unit as a bytes32
@@ -26,7 +26,7 @@ interface IBasketHandler is IComponent {
     /// Set the prime basket
     /// @param erc20s The collateral tokens for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    function setPrimeBasket(IERC20[] memory erc20s, Fix[] memory targetAmts) external;
+    function setPrimeBasket(IERC20[] memory erc20s, int192[] memory targetAmts) external;
 
     /// Set the backup configuration for a given target
     /// @param targetName The name of the target as a bytes32
@@ -46,16 +46,16 @@ interface IBasketHandler is IComponent {
 
     function status() external view returns (CollateralStatus status);
 
-    function quantity(IERC20 erc20) external view returns (Fix);
+    function quantity(IERC20 erc20) external view returns (int192);
 
-    function quote(Fix amount, RoundingApproach rounding)
+    function quote(int192 amount, RoundingApproach rounding)
         external
         view
         returns (address[] memory erc20s, uint256[] memory quantities);
 
-    function basketsHeldBy(address account) external view returns (Fix baskets);
+    function basketsHeldBy(address account) external view returns (int192 baskets);
 
-    function price() external view returns (Fix price);
+    function price() external view returns (int192 price);
 
     function lastSet() external view returns (uint256, uint256);
 }

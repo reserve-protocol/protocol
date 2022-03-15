@@ -21,7 +21,7 @@ import "contracts/libraries/Fixed.sol";
  * - `view` - Just expose a abstraction layer for getting protocol view data
  */
 contract FacadeP0 is IFacade {
-    using FixLib for Fix;
+    using FixLib for int192;
 
     MainP0 public main;
 
@@ -74,14 +74,14 @@ contract FacadeP0 is IFacade {
     }
 
     /// `staticCall`
-    function stRSRExchangeRate() external returns (Fix) {
+    function stRSRExchangeRate() external returns (int192) {
         main.poke();
         return main.stRSR().exchangeRate();
     }
 
     /// `staticCall`
     /// @return total {UoA} An estimate of the total value of all assets held
-    function totalAssetValue() external returns (Fix total) {
+    function totalAssetValue() external returns (int192 total) {
         main.poke();
         IAssetRegistry reg = main.assetRegistry();
         address backingManager = address(main.backingManager());
