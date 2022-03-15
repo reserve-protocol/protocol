@@ -658,11 +658,11 @@ describe('StRSRP0 contract', () => {
       // TODO Smoothing tests
       // Add RSR
       // await rsr.connect(owner).transfer(stRSR.address, amount2)
-      // await stRSR.connect(owner).notifyOfDeposit(rsr.address)
+      // await stRSR.payoutRewards()
 
-      // // Check balances and stakes
+      // Check balances and stakes
       // expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.add(amount2))
-      // expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      // expect(await rsr.balanceOf(stRSR.address)).to.be.gt(await stRSR.totalSupply())
       // expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       // expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.add(amount2))
     })
@@ -844,6 +844,38 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr3.address)).to.equal(amount)
+    })
+
+    it('Should seize all RSR if required - Mayhem scenario', async () => {
+      const amount: BigNumber = bn('10e18')
+
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, amount)
+      await stRSR.connect(addr1).stake(amount)
+
+      await rsr.connect(addr2).approve(stRSR.address, amount)
+      await stRSR.connect(addr2).stake(amount)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2))
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
+
+      // Seize RSR
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await stRSR.connect(signer).seizeRSR(amount.mul(2).add(bn('1e18')))
+      })
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+      expect(await stRSR.totalSupply()).to.equal(0)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
     })
 
     it('Should remove RSR from Withdrawers', async () => {
