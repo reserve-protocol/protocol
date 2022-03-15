@@ -5,6 +5,7 @@ import { ethers, waffle } from 'hardhat'
 import { TradeStatus } from '../../common/constants'
 import { bn, toBNDecimals } from '../../common/numbers'
 import {
+  AssetRegistryP0,
   BackingManagerP0,
   BrokerP0,
   ComptrollerMock,
@@ -49,6 +50,7 @@ describe('BrokerP0 contract', () => {
 
   // Main contracts
   let main: MainP0
+  let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let rsrTrader: RevenueTradingP0
   let rTokenTrader: RevenueTradingP0
@@ -71,6 +73,7 @@ describe('BrokerP0 contract', () => {
       basket,
       config,
       main,
+      assetRegistry,
       backingManager,
       broker,
       gnosis,
@@ -388,6 +391,72 @@ describe('BrokerP0 contract', () => {
       // Check status
       expect(await trade.status()).to.equal(TradeStatus.CLOSED)
       expect(await trade.canSettle()).to.equal(false)
+
+      // Funds transfered to origin
+      expect(await token1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
+    })
+
+    it.skip('Should handle unregistered assets before settlement', async () => {
+      const amount: BigNumber = bn('100e18')
+
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
+      // Initialize trade - simulate from backingManager
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: amount,
+        minBuyAmount: bn('0'),
+      }
+
+      // Fund trade and initialize
+      await token0.connect(owner).mint(trade.address, amount)
+      await expect(
+        trade.init(
+          broker.address,
+          backingManager.address,
+          gnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      ).to.not.be.reverted
+
+      // Advance time till trade can be settled
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // Check status - can be settled now
+      expect(await trade.status()).to.equal(TradeStatus.OPEN)
+      expect(await trade.canSettle()).to.equal(true)
+
+      // Unregister asset
+      await assetRegistry.connect(owner).unregister(collateral0.address)
+
+      // // Perform mock bid (required to be able to settle)
+      // const minBuyAmt: BigNumber = toBNDecimals(amount, 6)
+      // await token1.connect(owner).mint(addr1.address, minBuyAmt)
+      // await token1.connect(addr1).approve(gnosis.address, minBuyAmt)
+      // await gnosis.placeBid(0, {
+      //   bidder: addr1.address,
+      //   sellAmount: amount,
+      //   buyAmount: minBuyAmt,
+      // })
+
+      // Settle trade
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        const result = await trade.connect(bmSigner).callStatic.settle()
+        expect(result).to.eql([bn('0'), bn('0')])
+        await expect(trade.connect(bmSigner).settle()).to.not.be.reverted
+      })
+
+      // Check status
+      expect(await trade.status()).to.equal(TradeStatus.CLOSED)
+      expect(await trade.canSettle()).to.equal(false)
+
+      // Funds returned to origin
+      expect(await token1.balanceOf(backingManager.address)).to.equal(0)
+      // expect(await token0.balanceOf(backingManager.address)).to.equal(amount)
     })
   })
 })
