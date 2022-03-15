@@ -373,15 +373,78 @@ describe('BrokerP0 contract', () => {
       // Attempt to settle from other address (not origin)
       await expect(trade.connect(addr1).settle()).to.be.revertedWith('only origin can settle')
 
-      // Perform mock bid (required to be able to settle)
-      const minBuyAmt: BigNumber = toBNDecimals(amount, 6)
+      // Settle trade
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await expect(trade.connect(bmSigner).settle()).to.not.be.reverted
+      })
+
+      // Check status
+      expect(await trade.status()).to.equal(TradeStatus.CLOSED)
+      expect(await trade.canSettle()).to.equal(false)
+    })
+
+    it('Should be able to settle a trade - handles arbitrary funds being sent to trade', async () => {
+      const amount: BigNumber = bn('100e18')
+
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
+      // Check state - cannot be settled
+      expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
+      expect(await trade.canSettle()).to.equal(false)
+
+      // Initialize trade - simulate from backingManager
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: amount,
+        minBuyAmount: bn('0'),
+      }
+
+      // Fund trade and initialize
+      await token0.connect(owner).mint(trade.address, amount)
+      await expect(
+        trade.init(
+          broker.address,
+          backingManager.address,
+          gnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      ).to.not.be.reverted
+
+      // Check trade is initialized but still cannot be settled
+      expect(await trade.status()).to.equal(TradeStatus.OPEN)
+      expect(await trade.canSettle()).to.equal(false)
+
+      // Advance time till trade can be settled
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // Check status - can be settled now
+      expect(await trade.status()).to.equal(TradeStatus.OPEN)
+      expect(await trade.canSettle()).to.equal(true)
+
+      // Perform mock bid - do not cover full amount
+      const bidAmount: BigNumber = amount.sub(bn('1e18'))
+      const minBuyAmt: BigNumber = toBNDecimals(bidAmount, 6)
       await token1.connect(owner).mint(addr1.address, minBuyAmt)
       await token1.connect(addr1).approve(gnosis.address, minBuyAmt)
       await gnosis.placeBid(0, {
         bidder: addr1.address,
-        sellAmount: amount,
+        sellAmount: bidAmount,
         buyAmount: minBuyAmt,
       })
+
+      // Settle auction directly in Gnosis
+      await gnosis.settleAuction(0)
+
+      // Send tokens to the trade to try to disable it (Potential attack)
+      const additionalFundsSell: BigNumber = amount
+      const additionalFundsBuy: BigNumber = toBNDecimals(amount.div(2), 6)
+
+      await token0.connect(owner).mint(trade.address, amount)
+      await token1.connect(owner).mint(trade.address, toBNDecimals(amount.div(2), 6))
 
       // Settle trade
       await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -392,8 +455,16 @@ describe('BrokerP0 contract', () => {
       expect(await trade.status()).to.equal(TradeStatus.CLOSED)
       expect(await trade.canSettle()).to.equal(false)
 
-      // Funds transfered to origin
-      expect(await token1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
+      // Additional funds transfered to origin
+      expect(await token0.balanceOf(backingManager.address)).to.equal(
+        bn('1e18').add(additionalFundsSell)
+      )
+      expect(await token1.balanceOf(backingManager.address)).to.equal(
+        minBuyAmt.add(additionalFundsBuy)
+      )
+
+      // Funds sent to bidder
+      expect(await token0.balanceOf(addr1.address)).to.equal(bidAmount)
     })
   })
 })
