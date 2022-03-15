@@ -63,6 +63,7 @@ contract GnosisMock is IGnosis, IBiddable {
         address,
         bytes memory
     ) external returns (uint256 auctionId) {
+        require(auctionedSellAmount > 0, "sell amount is zero");
         auctionId = auctions.length;
         auctioningToken.safeTransferFrom(msg.sender, address(this), auctionedSellAmount);
         auctions.push(
@@ -105,7 +106,7 @@ contract GnosisMock is IGnosis, IBiddable {
         auction.endTime = 0;
 
         // Encode clearing order
-        auction.encodedClearingOrder = _encodeOrder(0, bid.sellAmount, bid.buyAmount);
+        auction.encodedClearingOrder = _encodeOrder(1, bid.sellAmount, bid.buyAmount);
         return auction.encodedClearingOrder;
     }
 
