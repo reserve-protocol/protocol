@@ -5,6 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IAsset.sol";
 import "./IComponent.sol";
 
+/**
+ * @title IAssetRegistry
+ * @notice The AssetRegistry is in charge of maintaining the ERC20 tokens eligible
+ *   to be handled by the rest of the system. If an asset is in the registry, this means:
+ *      1. Its ERC20 contract has been vetted
+ *      2. The asset is the only asset for that ERC20
+ *      3. The asset can be priced in the UoA, usually via an oracle
+ */
 interface IAssetRegistry is IComponent {
     /// Emitted when an asset is added to the registry
     /// @param erc20 The ERC20 contract for the asset
@@ -16,13 +24,19 @@ interface IAssetRegistry is IComponent {
     /// @param asset The asset contract removed from the registry
     event AssetUnregistered(IERC20 indexed erc20, IAsset indexed asset);
 
+    /// Force an update of all exchange rates and prices for all assets
+    /// @custom:refresher
     function forceUpdates() external;
 
+    /// @return The corresponding asset for ERC20, or reverts if not registered
     function toAsset(IERC20 erc20) external view returns (IAsset);
 
+    /// @return The corresponding collateral, or reverts if unregistered or not collateral
     function toColl(IERC20 erc20) external view returns (ICollateral);
 
+    /// @return If the ERC20 is registered
     function isRegistered(IERC20 erc20) external view returns (bool);
 
+    /// @return A list of all registered ERC20s
     function erc20s() external view returns (IERC20[] memory);
 }

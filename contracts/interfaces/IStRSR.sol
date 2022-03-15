@@ -6,18 +6,18 @@ import "contracts/libraries/Fixed.sol";
 import "./IComponent.sol";
 import "./IMain.sol";
 
-/*
+/**
  * @title IStRSR
- * A token representing shares of the staked RSR pool. The AssetManager is entitled
- * to seize that staked RSR when needed.
- * @dev The p0-specific IStRSR
+ * @notice An ERC20 token representing shares of the RSR insurance pool.
+ *
+ * StRSR permits the BackingManager to take RSR in times of need. In return, the BackingManager
+ * benefits the StRSR pool with RSR rewards purchased with a portion of its revenue.
+ *
+ * In the absence of collateral default or losses due to slippage, StRSR should have a
+ * monotonically increasing exchange rate with respect to RSR, meaning that over time
+ * StRSR is redeemable for more RSR. It is non-rebasing.
  */
 interface IStRSR is IERC20Permit, IERC20, IComponent {
-    /// Emitted when Main is set
-    /// @param oldMain The old address of Main
-    /// @param newMain The new address of Main
-    event MainSet(IMain indexed oldMain, IMain indexed newMain);
-
     /// Emitted when RSR is staked
     /// @param staker The address of the staker
     /// @param rsrAmount {qRSR} How much RSR was staked
@@ -76,13 +76,16 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param amount {qRSR}
+    /// @custom:action
     function stake(uint256 amount) external;
 
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param amount {qRSR}
+    /// @custom:action
     function unstake(uint256 amount) external;
 
     /// Complete delayed unstaking for the account, up to (but not including!) `endId`.
+    /// @custom:completion
     function withdraw(address account, uint256 endId) external;
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
@@ -92,6 +95,7 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
     function seizeRSR(uint256 amount) external returns (uint256 seizedRSR);
 
     /// Gather and payout rewards from rsrTrader. State Keeper.
+    /// @custom:refresher
     function payoutRewards() external;
 
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR

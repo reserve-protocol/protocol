@@ -6,6 +6,11 @@ import "contracts/libraries/Fixed.sol";
 import "./IAsset.sol";
 import "./IComponent.sol";
 
+/**
+ * @title IBasketHandler
+ * @notice The BasketHandler maintains a notion of the reference basket that it evolves
+ *   over time according to the rules described by the prime basket and backup configurations.
+ */
 interface IBasketHandler is IComponent {
     /// Emitted when the prime basket is set
     /// @param erc20s The collateral tokens for the prime basket
@@ -26,36 +31,52 @@ interface IBasketHandler is IComponent {
     /// Set the prime basket
     /// @param erc20s The collateral tokens for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    /// @custom:governance
     function setPrimeBasket(IERC20[] memory erc20s, int192[] memory targetAmts) external;
 
     /// Set the backup configuration for a given target
     /// @param targetName The name of the target as a bytes32
     /// @param max The maximum number of collateral tokens to use from this target
     /// @param erc20s A list of ordered backup collateral tokens
+    /// @custom:governance
     function setBackupConfig(
         bytes32 targetName,
         uint256 max,
         IERC20[] calldata erc20s
     ) external;
 
+    /// Try to ensure the current basket is valid, causing underlying updates
+    /// @custom:ensure-basket
     function ensureBasket() external;
 
+    /// Governance-controlled setter to cause a basket switch explicitly
+    /// @custom:governance
     function switchBasket() external returns (bool);
 
+    /// @return If the BackingManager has sufficient collateral to redeem the entire RToken supply
     function fullyCapitalized() external view returns (bool);
 
+    /// @return status The worst CollateralStatus of all collateral in the basket
     function status() external view returns (CollateralStatus status);
 
+    /// @return {tok/BU} The whole token quantity of token in the reference basket
     function quantity(IERC20 erc20) external view returns (int192);
 
+    /// @param amount {BU}
+    /// @return erc20s The addresses of the ERC20 tokens in the reference basket
+    /// @return quantities {qTok} The quantity of each ERC20 token to issue `amount` baskets
     function quote(int192 amount, RoundingApproach rounding)
         external
         view
         returns (address[] memory erc20s, uint256[] memory quantities);
 
+    /// @return baskets {BU} The quantity of complete baskets at an address. A balance for BUs
     function basketsHeldBy(address account) external view returns (int192 baskets);
 
-    function price() external view returns (int192 price);
+    /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
+    function price() external view returns (int192 p);
 
-    function lastSet() external view returns (uint256, uint256);
+    /// @return nonce The basket nonce, a monotonically increasing unique identifier
+    /// @return timestamp The timestamp at which the basket was last set
+    function lastSet() external view returns (uint256 nonce, uint256 timestamp);
 }

@@ -16,6 +16,7 @@ interface IFurnace is IComponent {
 
     function period() external view returns (uint256);
 
+    /// @custom:governance
     function setPeriod(uint256) external;
 
     /// Emitted when the melting ratio is changed
@@ -25,9 +26,11 @@ interface IFurnace is IComponent {
 
     function ratio() external view returns (int192);
 
+    /// @custom:governance
     function setRatio(int192) external;
 
-    /// Performs any RToken melting that has vested since the last payout. Idempotent.
+    /// Performs any RToken melting that has vested since the last payout.
     /// @return amount How much RToken was melted
+    /// @custom:refresher
     function melt() external returns (uint256 amount);
 }

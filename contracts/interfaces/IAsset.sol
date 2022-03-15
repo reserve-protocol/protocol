@@ -5,12 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 
+/// Raised if the oracle does not contain a price
 error PriceIsZero(string);
 
 /**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,
- * whether it is used as RToken backing, or not. Any token that can report a price in the UoA
+ * whether it is used as RToken backing or not. Any token that can report a price in the UoA
  * is eligible to be an asset.
  */
 interface IAsset {

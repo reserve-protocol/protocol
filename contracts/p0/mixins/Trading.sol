@@ -11,7 +11,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p0/mixins/Component.sol";
 import "contracts/p0/mixins/Rewardable.sol";
 
-// Abstract trader affordances to be extended by our RevenueTraders and BackingManager
+// Abstract trading mixin for all Traders
 abstract contract TradingP0 is RewardableP0, ITrading {
     using FixLib for int192;
 
@@ -39,6 +39,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     }
 
     /// Settle any trades that can be settled
+    /// @custom:refresher
     function settleTrades() public {
         uint256 i = tradesStart;
         for (; i < trades.length && trades[i].canSettle(); i++) {

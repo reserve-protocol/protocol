@@ -66,7 +66,7 @@ contract DeployerP0 is IDeployer {
         address owner,
         DeploymentParams memory params
     ) external returns (address) {
-        IMain main = new MainP0();
+        MainP0 main = new MainP0();
         deployments.push(main);
 
         // Components

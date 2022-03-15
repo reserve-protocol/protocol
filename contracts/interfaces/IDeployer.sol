@@ -7,6 +7,11 @@ import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./IDistributor.sol";
 
+/**
+ * @title DeploymentParams
+ * @notice The set of protocol params needed to configure a new system deployment.
+ * meaning that after deployment there is freedom to allow parametrizations to deviate.
+ */
 struct DeploymentParams {
     // === RSR/RToken/AAVE/COMP ===
     int192 maxAuctionSize; // {UoA}
@@ -34,7 +39,7 @@ struct DeploymentParams {
 
 /**
  * @title IDeployer
- * @notice The deployer for the entire system.
+ * @notice Factory contract for an RToken system instance
  */
 interface IDeployer {
     /// Emitted when a new RToken and accompanying system is deployed
