@@ -6,7 +6,7 @@ import "./IMain.sol";
 
 /**
  * @title IRewardable
- * @notice A simple component mixin to support claiming + monetization of COMP/AAVE rewards
+ * @notice A simple component mixin interface to support claiming + monetization of rewards
  */
 interface IRewardable is IComponent {
     /// Emitted whenever rewards are claimed

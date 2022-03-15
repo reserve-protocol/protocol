@@ -7,6 +7,10 @@ import "./IAsset.sol";
 import "./ITrade.sol";
 import "./IRewardable.sol";
 
+/**
+ * @title ITrading
+ * @notice Common events and refresher function for all Trading contracts
+ */
 interface ITrading is IRewardable {
     event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
     event DustAmountSet(Fix indexed oldVal, Fix indexed newVal);
@@ -39,6 +43,6 @@ interface ITrading is IRewardable {
         uint256 buyAmount
     );
 
-    /// Settle any auctions that are due (past their end time)
+    /// Settle any auctions that can be settled
     function settleTrades() external;
 }
