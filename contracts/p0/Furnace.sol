@@ -23,7 +23,7 @@ contract FurnaceP0 is Component, IFurnace {
         require(period != 0, "period cannot be zero");
     }
 
-    /// Performs any melting that has vested since last call. Idempotent
+    /// Performs any melting that has vested since last call.
     function melt() public returns (uint256 amount) {
         if (block.timestamp < lastPayout + period) return 0;
 

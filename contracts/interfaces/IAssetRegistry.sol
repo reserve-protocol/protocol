@@ -25,7 +25,6 @@ interface IAssetRegistry is IComponent {
     event AssetUnregistered(IERC20 indexed erc20, IAsset indexed asset);
 
     /// Force an update of all exchange rates and prices for all assets
-    /// Idempotent within the block
     /// @custom:refresher
     function forceUpdates() external;
 
