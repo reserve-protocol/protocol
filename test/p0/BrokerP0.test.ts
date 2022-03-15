@@ -5,10 +5,8 @@ import { ethers, waffle } from 'hardhat'
 import { TradeStatus } from '../../common/constants'
 import { bn, toBNDecimals } from '../../common/numbers'
 import {
-  AssetRegistryP0,
   BackingManagerP0,
   BrokerP0,
-  ComptrollerMock,
   ERC20Mock,
   GnosisMock,
   GnosisTrade,
@@ -26,7 +24,6 @@ const createFixtureLoader = waffle.createFixtureLoader
 describe('BrokerP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
-  let addr2: SignerWithAddress
   let other: SignerWithAddress
 
   // Assets / Tokens
@@ -34,23 +31,16 @@ describe('BrokerP0 contract', () => {
   let collateral1: Collateral
   let token0: ERC20Mock
   let token1: ERC20Mock
-  let collateral: Collateral[]
-
-  // Aave / Compound
-  let compoundMock: ComptrollerMock
 
   // Trading
   let gnosis: GnosisMock
   let broker: BrokerP0
-
-  let erc20s: ERC20Mock[]
 
   // Config values
   let config: IConfig
 
   // Main contracts
   let main: MainP0
-  let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let rsrTrader: RevenueTradingP0
   let rTokenTrader: RevenueTradingP0
@@ -65,21 +55,10 @@ describe('BrokerP0 contract', () => {
   })
 
   beforeEach(async () => {
-    ;[owner, addr1, addr2, other] = await ethers.getSigners()
+    ;[owner, addr1, other] = await ethers.getSigners()
     // Deploy fixture
-    ;({
-      erc20s,
-      collateral,
-      basket,
-      config,
-      main,
-      assetRegistry,
-      backingManager,
-      broker,
-      gnosis,
-      rsrTrader,
-      rTokenTrader,
-    } = await loadFixture(defaultFixture))
+    ;({ basket, config, main, backingManager, broker, gnosis, rsrTrader, rTokenTrader } =
+      await loadFixture(defaultFixture))
 
     // Get assets
     ;[collateral0, collateral1, ,] = basket
