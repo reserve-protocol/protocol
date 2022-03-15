@@ -4,9 +4,10 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/interfaces/IBroker.sol";
+import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
+import "contracts/p0/Broker.sol";
 
 enum TradeStatus {
     NOT_STARTED,
@@ -25,7 +26,7 @@ contract GnosisTrade is ITrade {
 
     TradeStatus public status;
 
-    IBroker public broker;
+    BrokerP0 public broker;
 
     // === Pricing ===
     address public origin;
@@ -38,7 +39,7 @@ contract GnosisTrade is ITrade {
     /// Constructor function, can only be called once
     /// @dev Expects sell tokens to already be present
     function init(
-        IBroker broker_,
+        BrokerP0 broker_,
         address origin_,
         IGnosis gnosis_,
         uint256 auctionLength,
@@ -85,6 +86,13 @@ contract GnosisTrade is ITrade {
         require(status == TradeStatus.OPEN, "trade not open");
         require(canSettle(), "can't settle yet");
         status = TradeStatus.CLOSED;
+
+        // In case asset is unregistered between `init` and now, return the funds and halt
+        IAssetRegistry assetRegistry = broker.main().assetRegistry();
+        if (!assetRegistry.isRegistered(sell) || !assetRegistry.isRegistered(buy)) {
+            sell.safeTransfer(origin, sell.balanceOf(address(this)));
+            return;
+        }
 
         // Optionally process settlement of the auction in Gnosis
         if (atStageSolutionSubmission()) {
