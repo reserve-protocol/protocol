@@ -12,4 +12,7 @@ import "./IMain.sol";
 interface IComponent {
     /// Support uniform construction
     function initComponent(IMain main, ConstructorArgs calldata args) external;
+
+    /// The address of the Main hub
+    function main() external view returns (IMain);
 }

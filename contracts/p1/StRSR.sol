@@ -124,7 +124,7 @@ contract StRSR is IStRSR, Component, EIP712 {
     }
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
-    /// @custom:user-action.
+    /// @custom:user-action
     function withdraw(address account, uint256 endId) external notPaused {
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");

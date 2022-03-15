@@ -5,9 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
+import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
-import "contracts/p0/Broker.sol";
 
 enum TradeStatus {
     NOT_STARTED,
@@ -26,7 +26,7 @@ contract GnosisTrade is ITrade {
 
     TradeStatus public status;
 
-    BrokerP0 public broker;
+    IBroker public broker;
 
     // === Pricing ===
     address public origin;
@@ -39,7 +39,7 @@ contract GnosisTrade is ITrade {
     /// Constructor function, can only be called once
     /// @dev Expects sell tokens to already be present
     function init(
-        BrokerP0 broker_,
+        IBroker broker_,
         address origin_,
         IGnosis gnosis_,
         uint256 auctionLength,
@@ -91,7 +91,7 @@ contract GnosisTrade is ITrade {
         IAssetRegistry assetRegistry = broker.main().assetRegistry();
         if (!assetRegistry.isRegistered(sell) || !assetRegistry.isRegistered(buy)) {
             sell.safeTransfer(origin, sell.balanceOf(address(this)));
-            return;
+            return (0, 0);
         }
 
         // Optionally process settlement of the auction in Gnosis
