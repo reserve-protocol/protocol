@@ -233,6 +233,14 @@ Otherwise, the unit is assumed to be whole. The meaning of a "whole" token chang
 - {BU} = whole basket unit
 - {UoA} = whole unit of the Unit of Account (which is probably USD)
 
+# Some Input Ranges and Granularities
+
+Minimum ranges for covering entire spans:
+
+- Token balances: [0, 1e18] by 1e-18 steps: 128 bits
+- RSR balances: [0, 1e29] qTokens: 104 bits
+- Times in seconds: uint40 (maybe uint32 if it really helps?)
+
 # System Tokens
 
 ## Token Balances
