@@ -28,7 +28,7 @@ import "contracts/p0/mixins/Component.sol";
 contract StRSR is IStRSR, Component, EIP712 {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-    using FixLib for Fix;
+    using FixLib for int192;
 
     // ==== ERC20Permit ====
 
@@ -78,7 +78,7 @@ contract StRSR is IStRSR, Component, EIP712 {
     // ==== Gov Params ====
     uint256 public unstakingDelay;
     uint256 public rewardPeriod;
-    Fix public rewardRatio;
+    int192 public rewardRatio;
 
     constructor(string memory name_, string memory symbol_) EIP712(name_, "1") Component() {
         _name = name_;
@@ -189,7 +189,7 @@ contract StRSR is IStRSR, Component, EIP712 {
         uint256 numPeriods = (block.timestamp - payoutLastPaid) / rewardPeriod;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        Fix payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
+        int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
         uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
 
         // Apply payout to RSR backing
@@ -199,7 +199,7 @@ contract StRSR is IStRSR, Component, EIP712 {
         emit RSRRewarded(payout, numPeriods);
     }
 
-    function exchangeRate() external view returns (Fix) {
+    function exchangeRate() external view returns (int192) {
         return toFix(stakeRSR).divu(totalStakes);
     }
 
@@ -457,7 +457,7 @@ contract StRSR is IStRSR, Component, EIP712 {
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardRatio(Fix val) external onlyOwner {
+    function setRewardRatio(int192 val) external onlyOwner {
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
     }

@@ -9,7 +9,7 @@ import "contracts/p0/mixins/Trading.sol";
 /// Trader Component that converts all asset balances at its address to a
 /// single target asset and sends this asset to the Distributor.
 contract RevenueTradingP0 is TradingP0, IRevenueTrader {
-    using FixLib for Fix;
+    using FixLib for int192;
 
     IERC20 public immutable tokenToBuy;
 

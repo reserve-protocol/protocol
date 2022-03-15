@@ -72,7 +72,7 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
 
     event UnstakingDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
     event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
-    event RewardRatioSet(Fix indexed oldVal, Fix indexed newVal);
+    event RewardRatioSet(int192 indexed oldVal, int192 indexed newVal);
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param amount {qRSR}
@@ -99,5 +99,5 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
     function payoutRewards() external;
 
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
-    function exchangeRate() external view returns (Fix);
+    function exchangeRate() external view returns (int192);
 }

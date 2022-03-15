@@ -17,11 +17,11 @@ import "contracts/p0/mixins/Rewardable.sol";
 struct SlowIssuance {
     address issuer;
     uint256 amount; // {qRTok}
-    Fix baskets; // {BU}
+    int192 baskets; // {BU}
     address[] erc20s;
     uint256[] deposits;
     uint256 basketNonce;
-    Fix blockAvailableAt; // {block.number} fractional
+    int192 blockAvailableAt; // {block.number} fractional
     bool processed;
 }
 
@@ -31,23 +31,24 @@ struct SlowIssuance {
  */
 contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
-    using FixLib for Fix;
+    using FixLib for int192;
     using SafeERC20 for IERC20;
 
     // To enforce a fixed issuanceRate throughout the entire block
     // TODO: simplify
-    mapping(uint256 => Fix) private blockIssuanceRates; // block.number => {qRTok/block}
+    mapping(uint256 => int192) private blockIssuanceRates; // block.number => {qRTok/block}
 
-    Fix public constant MIN_ISSUANCE_RATE = Fix.wrap(1e40); // {qRTok/block} 10k whole RTok
+    // MIN_ISSUANCE_RATE: {qRTok/block} 10k whole RTok
+    int192 public constant MIN_ISSUANCE_RATE = 10_000 * 1e18 * int192(FIX_SCALE);
 
     // List of accounts. If issuances[user].length > 0 then (user is in accounts)
     EnumerableSet.AddressSet internal accounts;
 
     mapping(address => SlowIssuance[]) public issuances;
 
-    Fix public basketsNeeded; //  {BU}
+    int192 public basketsNeeded; //  {BU}
 
-    Fix public issuanceRate; // {%} of RToken supply to issue per block
+    int192 public issuanceRate; // {%} of RToken supply to issue per block
 
     // solhint-disable no-empty-blocks
     constructor(string memory name_, string memory symbol_)
@@ -62,7 +63,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
         emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }
 
-    function setIssuanceRate(Fix val) external onlyOwner {
+    function setIssuanceRate(int192 val) external onlyOwner {
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
     }
@@ -82,7 +83,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
         address issuer = _msgSender();
 
         // Compute # of baskets to create `amount` qRTok
-        Fix baskets = (totalSupply() > 0) // {BU}
+        int192 baskets = (totalSupply() > 0) // {BU}
             ? basketsNeeded.mulu(amount).divuRound(totalSupply()) // {BU * qRTok / qRTok}
             : toFixWithShift(amount, -int8(decimals())); // {qRTok / qRTok}
 
@@ -166,7 +167,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
     /// Return the highest index that could be completed by a vestIssuances call.
     function endIdForVest(address account) external view returns (uint256) {
         uint256 i;
-        Fix currBlock = toFix(block.number);
+        int192 currBlock = toFix(block.number);
         SlowIssuance[] storage queue = issuances[account];
 
         while (i < queue.length && queue[i].blockAvailableAt.lte(currBlock)) i++;
@@ -186,14 +187,14 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
 
         // {BU} = {BU} * {qRTok} / {qRTok}
-        Fix baskets = basketsNeeded.mulu(amount).divuRound(totalSupply());
+        int192 baskets = basketsNeeded.mulu(amount).divuRound(totalSupply());
         assert(baskets.lte(basketsNeeded));
 
         address[] memory erc20s;
         (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingApproach.FLOOR);
 
         // {1} = {qRTok} / {qRTok}
-        Fix prorate = toFix(amount).divu(totalSupply());
+        int192 prorate = toFix(amount).divu(totalSupply());
 
         // Accept and burn RToken
         _burn(_msgSender(), amount);
@@ -234,7 +235,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(Fix basketsNeeded_) external {
+    function setBasketsNeeded(int192 basketsNeeded_) external {
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
@@ -243,7 +244,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
     /// @return {qRTok} How much RToken `account` can issue given current holdings
     function maxIssuable(address account) external view returns (uint256) {
         // {BU}
-        Fix held = main.basketHandler().basketsHeldBy(account);
+        int192 held = main.basketHandler().basketsHeldBy(account);
 
         // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
         if (basketsNeeded.eq(FIX_ZERO)) return held.shiftLeft(int8(decimals())).floor();
@@ -253,11 +254,11 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
     }
 
     /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
-    function price() external view returns (Fix p) {
+    function price() external view returns (int192 p) {
         if (totalSupply() == 0) return main.basketHandler().price();
 
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
-        Fix supply = toFixWithShift(totalSupply(), -int8(decimals()));
+        int192 supply = toFixWithShift(totalSupply(), -int8(decimals()));
         return main.basketHandler().price().mul(basketsNeeded).div(supply);
     }
 
@@ -286,8 +287,8 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
     }
 
     /// Returns the block number at which an issuance for *amount* now can complete
-    function nextIssuanceBlockAvailable(uint256 amount) private returns (Fix) {
-        Fix before = toFix(block.number - 1);
+    function nextIssuanceBlockAvailable(uint256 amount) private returns (int192) {
+        int192 before = toFix(block.number - 1);
 
         // Calculate the issuance rate if this is the first issue in the block
         if (blockIssuanceRates[block.number].eq(FIX_ZERO)) {
@@ -296,7 +297,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
                 issuanceRate.mulu(totalSupply())
             );
         }
-        Fix perBlock = blockIssuanceRates[block.number];
+        int192 perBlock = blockIssuanceRates[block.number];
 
         for (uint256 i = 0; i < accounts.length(); i++) {
             SlowIssuance[] storage queue = issuances[accounts.at(i)];

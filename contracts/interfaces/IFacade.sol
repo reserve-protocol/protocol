@@ -33,11 +33,11 @@ interface IFacade {
 
     /// @return The exchange rate between StRSR and RSR as a Fix
     /// @custom:static-call
-    function stRSRExchangeRate() external returns (Fix);
+    function stRSRExchangeRate() external returns (int192);
 
     /// @return total {UoA} An estimate of the total value of all assets held at BackingManager
     /// @custom:static-call
-    function totalAssetValue() external returns (Fix total);
+    function totalAssetValue() external returns (int192 total);
 
     /// @return tokens The addresses of the ERC20s backing the RToken
     /// @custom:view

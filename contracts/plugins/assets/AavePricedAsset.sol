@@ -9,7 +9,7 @@ contract AavePricedAsset is AaveOracleMixin, Asset {
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
-        Fix maxAuctionSize_,
+        int192 maxAuctionSize_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_
     ) AaveOracleMixin(comptroller_, aaveLendingPool_) Asset(erc20_, maxAuctionSize_) {}
@@ -17,7 +17,7 @@ contract AavePricedAsset is AaveOracleMixin, Asset {
     // solhint-enable no-empty-blocks
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (Fix) {
+    function price() public view virtual override returns (int192) {
         return consultOracle(erc20);
     }
 }

@@ -12,8 +12,8 @@ import "./IRewardable.sol";
  * @notice Common events and refresher function for all Trading contracts
  */
 interface ITrading is IRewardable {
-    event MaxTradeSlippageSet(Fix indexed oldVal, Fix indexed newVal);
-    event DustAmountSet(Fix indexed oldVal, Fix indexed newVal);
+    event MaxTradeSlippageSet(int192 indexed oldVal, int192 indexed newVal);
+    event DustAmountSet(int192 indexed oldVal, int192 indexed newVal);
 
     /// Emitted when a trade is started
     /// @param index The index of the trade in the trades getter

@@ -27,7 +27,7 @@ interface IAaveOracle {
 // ==== End External Interfaces ====
 
 abstract contract AaveOracleMixin is CompoundOracleMixin {
-    using FixLib for Fix;
+    using FixLib for int192;
 
     IAaveLendingPool public immutable aaveLendingPool;
 
@@ -38,7 +38,7 @@ abstract contract AaveOracleMixin is CompoundOracleMixin {
     }
 
     /// @return {UoA/erc20}
-    function consultOracle(IERC20Metadata erc20_) internal view override returns (Fix) {
+    function consultOracle(IERC20Metadata erc20_) internal view override returns (int192) {
         // Aave keeps their prices in terms of ETH
         IAaveOracle aaveOracle = aaveLendingPool.getAddressesProvider().getPriceOracle();
         uint256 p = aaveOracle.getAssetPrice(address(erc20_));
@@ -47,9 +47,9 @@ abstract contract AaveOracleMixin is CompoundOracleMixin {
             revert PriceIsZero(erc20_.symbol());
         }
 
-        Fix inETH = toFix(p); // {qETH/tok}
-        Fix ethNorm = toFix(aaveOracle.getAssetPrice(aaveOracle.WETH())); // {qETH/ETH}
-        Fix ethInUsd = toFix(comptroller.oracle().price("ETH")); // {microUoA/ETH}
+        int192 inETH = toFix(p); // {qETH/tok}
+        int192 ethNorm = toFix(aaveOracle.getAssetPrice(aaveOracle.WETH())); // {qETH/ETH}
+        int192 ethInUsd = toFix(comptroller.oracle().price("ETH")); // {microUoA/ETH}
 
         // {UoA/tok} = {qETH/tok} * {microUoA/ETH} / {qETH/ETH} / {microUoA/UoA}
         return inETH.mul(ethInUsd).div(ethNorm).shiftLeft(-6);

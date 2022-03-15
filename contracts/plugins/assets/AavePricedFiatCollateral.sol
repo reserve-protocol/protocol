@@ -9,8 +9,8 @@ contract AavePricedFiatCollateral is AaveOracleMixin, Collateral {
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
-        Fix maxAuctionSize_,
-        Fix defaultThreshold_,
+        int192 maxAuctionSize_,
+        int192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_
@@ -29,7 +29,7 @@ contract AavePricedFiatCollateral is AaveOracleMixin, Collateral {
     // solhint-enable no-empty-blocks
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual returns (Fix) {
+    function price() public view virtual returns (int192) {
         return consultOracle(erc20);
     }
 }

@@ -21,7 +21,7 @@ interface ICompoundOracle {
 // ==== End External Interfaces ====
 
 abstract contract CompoundOracleMixin {
-    using FixLib for Fix;
+    using FixLib for int192;
 
     IComptroller public immutable comptroller;
 
@@ -30,7 +30,7 @@ abstract contract CompoundOracleMixin {
     }
 
     /// @return {UoA/erc20}
-    function consultOracle(IERC20Metadata erc20) internal view virtual returns (Fix) {
+    function consultOracle(IERC20Metadata erc20) internal view virtual returns (int192) {
         // Compound stores prices with 6 decimals of precision
 
         uint256 p = comptroller.oracle().price(erc20.symbol());

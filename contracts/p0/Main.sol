@@ -50,7 +50,7 @@ contract Pausable is Ownable, IPausable {
  */
 // solhint-disable max-states-count
 contract MainP0 is Pausable, IMain {
-    using FixLib for Fix;
+    using FixLib for int192;
 
     // Already initialized?
     bool private initialized;

@@ -12,14 +12,14 @@ import "./IDistributor.sol";
 /// meaning that after deployment there is freedom to allow parametrizations to deviate.
 struct DeploymentParams {
     // === RSR/RToken/AAVE/COMP ===
-    Fix maxAuctionSize; // {UoA}
+    int192 maxAuctionSize; // {UoA}
     //
     // === Revenue sharing ===
     RevenueShare dist; // revenue sharing splits between RToken and RSR
     //
     // === Rewards (Furnace + StRSR) ===
     uint256 rewardPeriod; // {s} the atomic unit of rewards, determines # of exponential rounds
-    Fix rewardRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
+    int192 rewardRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
     //
     // === StRSR ===
     uint256 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
@@ -27,12 +27,12 @@ struct DeploymentParams {
     // === BackingManager ===
     uint256 auctionDelay; // {s} how long to wait until starting auctions after switching basket
     uint256 auctionLength; // {s} the length of an auction
-    Fix backingBuffer; // {%} how much extra backing collateral to keep
-    Fix maxTradeSlippage; // {%} max slippage acceptable in a trade
-    Fix dustAmount; // {UoA} value below which we don't bother handling some tokens
+    int192 backingBuffer; // {%} how much extra backing collateral to keep
+    int192 maxTradeSlippage; // {%} max slippage acceptable in a trade
+    int192 dustAmount; // {UoA} value below which we don't bother handling some tokens
     //
     // === RToken ===
-    Fix issuanceRate; // {%} number of RToken to issue per block / (RToken value)
+    int192 issuanceRate; // {%} number of RToken to issue per block / (RToken value)
 }
 
 /**
