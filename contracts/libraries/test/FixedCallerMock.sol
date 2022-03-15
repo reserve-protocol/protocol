@@ -62,20 +62,12 @@ contract FixedCallerMock {
         return FixLib.plus(x, y);
     }
 
-    function plusi(int192 x, int256 y) public pure returns (int192) {
-        return FixLib.plusi(x, y);
-    }
-
     function plusu(int192 x, uint256 y) public pure returns (int192) {
         return FixLib.plusu(x, y);
     }
 
     function minus(int192 x, int192 y) public pure returns (int192) {
         return FixLib.minus(x, y);
-    }
-
-    function minusi(int192 x, int256 y) public pure returns (int192) {
-        return FixLib.minusi(x, y);
     }
 
     function minusu(int192 x, uint256 y) public pure returns (int192) {
@@ -86,20 +78,12 @@ contract FixedCallerMock {
         return FixLib.mul(x, y);
     }
 
-    function muli(int192 x, int256 y) public pure returns (int192) {
-        return FixLib.muli(x, y);
-    }
-
     function mulu(int192 x, uint256 y) public pure returns (int192) {
         return FixLib.mulu(x, y);
     }
 
     function div(int192 x, int192 y) public pure returns (int192) {
         return FixLib.div(x, y);
-    }
-
-    function divi(int192 x, int256 y) public pure returns (int192) {
-        return FixLib.divi(x, y);
     }
 
     function divu(int192 x, uint256 y) public pure returns (int192) {

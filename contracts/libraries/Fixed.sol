@@ -228,7 +228,8 @@ library FixLib {
     /// Add a uint to this int192.
     function plusu(int192 x, uint256 y) internal pure returns (int192) {
         if (y > type(uint256).max / 2) revert UIntOutOfBounds(y);
-        return _safe_wrap(x + y * FIX_SCALE);
+        int256 y_ = int256(y);
+        return _safe_wrap(x + y_ * FIX_SCALE);
     }
 
     /// Subtract a int192 from this int192.
