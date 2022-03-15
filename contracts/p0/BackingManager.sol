@@ -26,7 +26,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     using FixLib for int192;
     using SafeERC20 for IERC20;
 
-    RecapitalizationSaga public next;
+    // basketNonce -> RecapitalizationSaga
+    mapping(uint256 => RecapitalizationSaga) public sagas;
 
     uint256 public tradingDelay; // {s} how long to wait until resuming trading after switching
     int192 public backingBuffer; // {%} how much extra backing collateral to keep
@@ -52,20 +53,21 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // Call keepers before
         main.poke();
 
-        (, uint256 basketTimestamp) = main.basketHandler().lastSet();
+        (uint256 basketNonce, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
         while (!hasOpenTrades() && !main.basketHandler().fullyCapitalized()) {
-            runRecapitalizationSaga();
+            runRecapitalizationSaga(basketNonce);
         }
 
         if (!hasOpenTrades() && main.basketHandler().fullyCapitalized()) {
+            sagas[basketNonce] = RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED;
             handoutExcessAssets();
         }
     }
 
-    /// Execute one step of the recapitalization saga indicated by `next`
-    function runRecapitalizationSaga() private {
+    /// Execute one step of the recapitalization sagas for this basket
+    function runRecapitalizationSaga(uint256 basketNonce) private {
         /* Recapitalization Saga:
          *   1. Sell all surplus assets at BackingManager for deficit collateral
          *   2. When there is no more surplus, seize RSR from StRSR and sell that for collateral
@@ -74,30 +76,36 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
          */
 
         if (
-            next == RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED &&
+            sagas[basketNonce] == RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED &&
             !sellSurplusAssetsForCollateral(false)
         ) {
-            next = RecapitalizationSaga.RSR_FOR_BASKETS_NEEDED;
-        } else if (next == RecapitalizationSaga.RSR_FOR_BASKETS_NEEDED && !sellRSRForCollateral()) {
-            next = RecapitalizationSaga.ASSETS_FOR_COMPROMISE_TARGET;
+            sagas[basketNonce] = RecapitalizationSaga.RSR_FOR_BASKETS_NEEDED;
         } else if (
-            next == RecapitalizationSaga.ASSETS_FOR_COMPROMISE_TARGET &&
+            sagas[basketNonce] == RecapitalizationSaga.RSR_FOR_BASKETS_NEEDED &&
+            !sellRSRForCollateral()
+        ) {
+            sagas[basketNonce] = RecapitalizationSaga.ASSETS_FOR_COMPROMISE_TARGET;
+        } else if (
+            sagas[basketNonce] == RecapitalizationSaga.ASSETS_FOR_COMPROMISE_TARGET &&
             !sellSurplusAssetsForCollateral(true)
         ) {
             giveRTokenHoldersAHaircut();
-            next = RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED;
+            sagas[basketNonce] = RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED;
         }
     }
 
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
-        next = RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED; // reset saga
-        IRToken rToken = main.rToken();
-
-        int192 held = main.basketHandler().basketsHeldBy(address(this));
-        int192 needed = rToken.basketsNeeded();
+        // Special-case RSR to forward to StRSR pool
+        uint256 rsrBal = main.rsr().balanceOf(address(this));
+        if (rsrBal > 0) {
+            main.rsr().safeTransfer(address(main.rsrTrader()), rsrBal);
+        }
 
         // Mint revenue RToken
+        IRToken rToken = main.rToken();
+        int192 held = main.basketHandler().basketsHeldBy(address(this));
+        int192 needed = rToken.basketsNeeded();
         if (held.gt(needed)) {
             // {qRTok} = {(BU - BU) * qRTok / BU}
             uint256 qRTok = held.minus(needed).mulu(rToken.totalSupply()).div(needed).floor();
