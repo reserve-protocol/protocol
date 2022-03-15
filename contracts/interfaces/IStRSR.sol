@@ -18,11 +18,6 @@ import "./IMain.sol";
  * StRSR is redeemable for more RSR. It is non-rebasing.
  */
 interface IStRSR is IERC20Permit, IERC20, IComponent {
-    /// Emitted when Main is set
-    /// @param oldMain The old address of Main
-    /// @param newMain The new address of Main
-    event MainSet(IMain indexed oldMain, IMain indexed newMain);
-
     /// Emitted when RSR is staked
     /// @param staker The address of the staker
     /// @param rsrAmount {qRSR} How much RSR was staked
@@ -81,13 +76,16 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param amount {qRSR}
+    /// @custom:action
     function stake(uint256 amount) external;
 
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param amount {qRSR}
+    /// @custom:action
     function unstake(uint256 amount) external;
 
     /// Complete delayed unstaking for the account, up to (but not including!) `endId`.
+    /// @custom:completion
     function withdraw(address account, uint256 endId) external;
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
@@ -97,6 +95,7 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
     function seizeRSR(uint256 amount) external returns (uint256 seizedRSR);
 
     /// Gather and payout rewards from rsrTrader. State Keeper.
+    /// @custom:refresher
     function payoutRewards() external;
 
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR

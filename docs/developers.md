@@ -235,9 +235,9 @@ Otherwise, the unit is assumed to be whole. The meaning of a "whole" token chang
 
 # System Tokens
 
-## Token Balances (at least true for P0, pending confirmation it remains the same in P3)
+## Token Balances
 
-- `Main`: Holds all backing for the RToken
+- `BackingManager`: Holds all backing for the RToken
 - `RToken`: Holds collateral tokens during SlowIssuance
 - `Furnace`: holds revenue RToken to be melted
 - `stRSR`: holds staked RSR
@@ -245,13 +245,17 @@ Otherwise, the unit is assumed to be whole. The meaning of a "whole" token chang
 
 ## RToken Lifecycle
 
-1. During SlowIssuance, `Main` transfers collateral tokens from the issuer's address to the `RToken`.
-2. At the end of SlowIssuance, the `RToken` contract mints new RToken to the issuer and transfers the held collateral to `Main`. If `Main` has updated the basket since issuance began, then the collateral is instead returned to the user and no RToken is minted.
-3. During redemption, RToken is burnt from the redeemer's account and they are transferred collateral from `Main`.
+1. During SlowIssuance, the `RToken` transfers collateral tokens from the issuer's address into itself.
+2. At vesting time, the `RToken` contract mints new RToken to the issuer and transfers the held collateral to the `BackingManager`. If the `BasketHandler` has updated the basket since issuance began, then the collateral is instead returned to the user and no RToken is minted.
+3. During redemption, RToken is burnt from the redeemer's account and they are transferred a prorata share of backing collateral from the `BackingManager`.
 
 # Kinds of Functions
 
+These kinds will be important to consider when reasoning about MEV in the future.
+
 ## Actions
+
+`@custom:action`
 
 The following are functions I'm thinking of as "actions":
 
@@ -264,9 +268,9 @@ The following are functions I'm thinking of as "actions":
 
 The actions on stRSR and rToken are _User Actions_; the actions on the traders are _Collective Actions_ which may launch new auctions. All of these may cause economically significant state changes; the exact time and sequence in which these functions are called can cause substantial differences in the resulting state.
 
-In particular, for reasoning about MEV, it's important to notice
-
 ## `ensureBasket`
+
+`@custom:ensure-basket`
 
 `basketHandler.ensureBasket` is unavoidably in a function class by itself. It can launch auctions, change the contents of the basket, and change the entire state of the system relatively radically. Its checks _should_ happen frequently, and especially when Actions are being called.
 
@@ -277,11 +281,13 @@ Moreover, the conditions it watches for should be continuously monitored by exte
 
 ## Refreshers
 
+`@custom:refresher`
+
 The following are all refreshers:
 
 - furnace.melt()
 - stRSR.payoutRewards()
-- {rsrTrader, rTokenTrader, backingManager}.closeDueAuctions()
+- {rsrTrader, rTokenTrader, backingManager}.settleTrades()
 
 Refreshers share a sort of time-dependent idempotency:
 
@@ -295,6 +301,8 @@ Why does this matter? In a strong sense, refreshers are always _safe_ to call. F
 We get this easily in P0 -- since we aren't worrying about gas optimization there, we just call every refresher at the start of every action. Main.poke() is around, in P0, to call every function that's always correct to call, which includes `ensureBasket` and all of the refreshers
 
 ## Completions
+
+`@custom:completion`
 
 The following are _completions_, function calls that complete delayed transactions:
 

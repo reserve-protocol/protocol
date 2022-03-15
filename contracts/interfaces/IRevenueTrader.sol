@@ -12,5 +12,6 @@ import "./ITrading.sol";
  */
 interface IRevenueTrader is IComponent, ITrading {
     /// Run the central RevenueTrader loop; unpermissioned
+    /// @custom:action
     function manageFunds() external;
 }

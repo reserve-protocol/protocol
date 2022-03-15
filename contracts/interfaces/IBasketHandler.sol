@@ -31,12 +31,14 @@ interface IBasketHandler is IComponent {
     /// Set the prime basket
     /// @param erc20s The collateral tokens for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    /// @custom:governance
     function setPrimeBasket(IERC20[] memory erc20s, Fix[] memory targetAmts) external;
 
     /// Set the backup configuration for a given target
     /// @param targetName The name of the target as a bytes32
     /// @param max The maximum number of collateral tokens to use from this target
     /// @param erc20s A list of ordered backup collateral tokens
+    /// @custom:governance
     function setBackupConfig(
         bytes32 targetName,
         uint256 max,
@@ -44,9 +46,11 @@ interface IBasketHandler is IComponent {
     ) external;
 
     /// Try to ensure the current basket is valid, causing underlying updates
+    /// @custom:ensure-basket
     function ensureBasket() external;
 
     /// Governance-controlled setter to cause a basket switch explicitly
+    /// @custom:governance
     function switchBasket() external returns (bool);
 
     /// @return If the BackingManager has sufficient collateral to redeem the entire RToken supply

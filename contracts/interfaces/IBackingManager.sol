@@ -17,9 +17,10 @@ interface IBackingManager is IComponent, ITrading {
     event BackingBufferSet(Fix indexed oldVal, Fix indexed newVal);
 
     // Give RToken max allowances over all registered tokens
+    /// @custom:refresher
     function grantAllowances() external;
 
     /// Manage backing funds: maintain the overall backing policy
-    /// Collective Action
+    /// @custom:action
     function manageFunds() external;
 }

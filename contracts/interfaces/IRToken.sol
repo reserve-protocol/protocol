@@ -63,18 +63,13 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// @param amount {qRTok}
     event Melted(uint256 amount);
 
-    /// Emitted when Main is set
-    /// @param oldMain The old address of Main
-    /// @param newMain The new address of Main
-    event MainSet(IMain indexed oldMain, IMain indexed newMain);
-
     /// Emitted when the IssuanceRate is set
     event IssuanceRateSet(Fix indexed oldVal, Fix indexed newVal);
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @return deposits {qRTok} The quantities of collateral tokens transferred in
-    /// @custom:user-action
+    /// @custom:action
     function issue(uint256 amount) external returns (uint256[] memory deposits);
 
     /// Cancels a vesting slow issuance of _msgSender
@@ -82,13 +77,13 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One edge of the issuance range to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    /// @custom:user-action
+    /// @custom:action
     function cancel(uint256 endId, bool earliest) external returns (uint256[] memory deposits);
 
     /// Completes vested slow issuances for the account, up to endId.
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amount of RToken quanta vested
-    /// @custom:user-action
+    /// @custom:completion
     function vest(address account, uint256 endId) external returns (uint256 vested);
 
     /// Return the highest index that could be completed by a vestIssuances call.
@@ -98,7 +93,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// Redeem RToken for basket collateral
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @return compensation {qRTok} The quantities of collateral tokens transferred out
-    /// @custom:user-action
+    /// @custom:action
     function redeem(uint256 amount) external returns (uint256[] memory compensation);
 
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager

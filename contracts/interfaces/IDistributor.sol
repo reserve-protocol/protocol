@@ -21,9 +21,11 @@ interface IDistributor is IComponent {
     /// @param rsrDist The distribution of RSR that should go to `dest`
     event DistributionSet(address dest, uint16 rTokenDist, uint16 rsrDist);
 
+    /// @custom:governance
     function setDistribution(address dest, RevenueShare memory share) external;
 
     /// Distribute the `erc20` token across all revenue destinations
+    /// @custom:action
     function distribute(
         IERC20 erc20,
         address from,

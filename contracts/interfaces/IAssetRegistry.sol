@@ -26,6 +26,7 @@ interface IAssetRegistry is IComponent {
 
     /// Force an update of all exchange rates and prices for all assets
     /// Idempotent within the block
+    /// @custom:refresher
     function forceUpdates() external;
 
     /// @return The corresponding asset for ERC20, or reverts if not registered

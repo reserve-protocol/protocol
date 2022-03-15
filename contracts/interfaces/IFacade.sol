@@ -9,17 +9,17 @@ import "./IRToken.sol";
  * @notice A UX-friendly layer for non-governance protocol interactions
  *
  * @dev
- * - @custom:bundle-action - Bundle multiple transactions to make sure they run on the same block
+ * - @custom:action - Bundle multiple transactions to make sure they run on the same block
  * - @custom:static-call - Use ethers callStatic() in order to get result after update
  * - @custom:view - Just expose a abstraction layer for getting protocol view data
  */
 interface IFacade {
     /// Prompt all traders to run auctions
-    /// @custom:bundle-action
+    /// @custom:action
     function runAuctionsForAllTraders() external;
 
     /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager
-    /// @custom:bundle-action
+    /// @custom:action
     function claimRewards() external;
 
     /// @return How many RToken `account` can issue given current holdings

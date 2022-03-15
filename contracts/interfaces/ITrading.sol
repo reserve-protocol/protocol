@@ -44,5 +44,6 @@ interface ITrading is IRewardable {
     );
 
     /// Settle any auctions that can be settled
+    /// @custom:refresher
     function settleTrades() external;
 }
