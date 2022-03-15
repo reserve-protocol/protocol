@@ -107,6 +107,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
 
     /// Set the number of baskets needed directly, callable only by the BackingManager
     /// @param basketsNeeded {BU} The number of baskets to target
+    ///                      needed range: pretty interesting
     function setBasketsNeeded(int192 basketsNeeded) external;
 
     /// @return {BU} How many baskets are being targeted

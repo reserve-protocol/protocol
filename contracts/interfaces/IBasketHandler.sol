@@ -31,12 +31,14 @@ interface IBasketHandler is IComponent {
     /// Set the prime basket
     /// @param erc20s The collateral tokens for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    ///                   required range: 1e9 values; absolute range irrelevant.
     /// @custom:governance
     function setPrimeBasket(IERC20[] memory erc20s, int192[] memory targetAmts) external;
 
     /// Set the backup configuration for a given target
     /// @param targetName The name of the target as a bytes32
     /// @param max The maximum number of collateral tokens to use from this target
+    ///            Required range: 1-255
     /// @param erc20s A list of ordered backup collateral tokens
     /// @custom:governance
     function setBackupConfig(

@@ -33,5 +33,6 @@ interface IDistributor is IComponent {
 
     /// @return rTokenTotal {revShare} The total of all RToken destinations
     /// @return rsrTotal {revShare} The total of all RSR destinations
+    ///     These are both uint24s, assuming no more than 1024 independent distributions.
     function totals() external view returns (uint256 rTokenTotal, uint256 rsrTotal);
 }

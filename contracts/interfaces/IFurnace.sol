@@ -27,6 +27,7 @@ interface IFurnace is IComponent {
     function ratio() external view returns (int192);
 
     /// @custom:governance
+    ///    Needed value range: [0, 1], granularity 1e-9
     function setRatio(int192) external;
 
     /// Performs any RToken melting that has vested since the last payout.
