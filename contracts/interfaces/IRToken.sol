@@ -101,7 +101,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// @custom:user-action
     function redeem(uint256 amount) external returns (uint256[] memory compensation);
 
-    /// Mints a quantity of RToken to the `recipient`, callable only by main.backingManager
+    /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
     function mint(address recipient, uint256 amount) external;
@@ -110,7 +110,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// @param amount {qRTok} The amount to be melted
     function melt(uint256 amount) external;
 
-    /// Set the number of baskets needed directly, callable only by main.backingManager
+    /// Set the number of baskets needed directly, callable only by the BackingManager
     /// @param basketsNeeded {BU} The number of baskets to target
     function setBasketsNeeded(Fix basketsNeeded) external;
 

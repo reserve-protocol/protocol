@@ -6,11 +6,16 @@ import "contracts/libraries/Fixed.sol";
 import "./IComponent.sol";
 import "./IMain.sol";
 
-/*
+/**
  * @title IStRSR
- * A token representing shares of the staked RSR pool. The AssetManager is entitled
- * to seize that staked RSR when needed.
- * @dev The p0-specific IStRSR
+ * @notice An ERC20 token representing shares of the RSR insurance pool.
+ *
+ * StRSR permits the BackingManager to take RSR in times of need. In return, the BackingManager
+ * benefits the StRSR pool with RSR rewards purchased with a portion of its revenue.
+ *
+ * In the absence of collateral default or losses due to slippage, StRSR should have a
+ * monotonically increasing exchange rate with respect to RSR, meaning that over time
+ * StRSR is redeemable for more RSR. It is non-rebasing.
  */
 interface IStRSR is IERC20Permit, IERC20, IComponent {
     /// Emitted when Main is set
