@@ -255,7 +255,7 @@ These kinds will be important to consider when reasoning about MEV in the future
 
 ## Actions
 
-`@custom:action`
+Annotation: `@custom:action`
 
 The following are functions I'm thinking of as "actions":
 
@@ -270,7 +270,7 @@ The actions on stRSR and rToken are _User Actions_; the actions on the traders a
 
 ## `ensureBasket`
 
-`@custom:ensure-basket`
+Annotation: `@custom:ensure-basket`
 
 `basketHandler.ensureBasket` is unavoidably in a function class by itself. It can launch auctions, change the contents of the basket, and change the entire state of the system relatively radically. Its checks _should_ happen frequently, and especially when Actions are being called.
 
@@ -281,7 +281,7 @@ Moreover, the conditions it watches for should be continuously monitored by exte
 
 ## Refreshers
 
-`@custom:refresher`
+Annotation: `@custom:refresher`
 
 The following are all refreshers:
 
@@ -302,7 +302,7 @@ We get this easily in P0 -- since we aren't worrying about gas optimization ther
 
 ## Completions
 
-`@custom:completion`
+Annotation: `@custom:completion`
 
 The following are _completions_, function calls that complete delayed transactions:
 
@@ -323,3 +323,5 @@ Other externally-callable functions are either:
 - initialization functions, not callable after initialization.
 
 In either case, public users are prevented from calling them, so they present far less attack surface to attackers and MEV searchers. We should still think, for instance, about sandwich attacks on governance functions, but MEV miners cannot call governance functions themselves.
+
+Annotation: `@custom:governance`

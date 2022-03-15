@@ -24,7 +24,7 @@ interface IFacade {
     /// @custom:static-call
     function maxIssuable(address account) external returns (uint256);
 
-    /// @return tokens Array of all known ERC20 asset addreses.
+    /// @return tokens Array of all known ERC20 asset addreses
     /// @return amounts {qTok} Array of balance that the protocol holds of this current asset
     /// @custom:static-call
     function currentAssets() external returns (address[] memory tokens, uint256[] memory amounts);

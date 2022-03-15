@@ -92,9 +92,9 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
-    /// @custom:user-action
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @return deposits {qTok} The quantities of collateral tokens transferred in
+    /// @custom:action
     function issue(uint256 amtRToken) external notPaused returns (uint256[] memory deposits) {
         // ==== Basic Setup ====
         // Call collective state keepers.
@@ -173,6 +173,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// Callable by anyone!
     /// @param account The address of the account to vest issuances for
     /// @return vested {qRTok} The total amtRToken of RToken quanta vested
+    /// @custom:completion
     function vest(address account, uint256 endId) external notPaused returns (uint256 vested) {
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
@@ -224,9 +225,9 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     }
 
     /// Redeem RToken for basket collateral
-    /// @custom:user-action
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @return withdrawals {qTok} The quantities of collateral tokens transferred out
+    /// @custom:action
     function redeem(uint256 amount) external returns (uint256[] memory withdrawals) {
         require(amount > 0, "Cannot redeem zero");
         // Call collective state keepers

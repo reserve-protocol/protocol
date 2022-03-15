@@ -96,8 +96,8 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
-    /// @custom:user-action
     /// @param rsrAmount {qRSR}
+    /// @custom:action
     function stake(uint256 rsrAmount) external {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
@@ -123,8 +123,8 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     /// Begins a delayed unstaking for `amount` stRSR
-    /// @custom:user-action
     /// @param stakeAmount {qRSR}
+    /// @custom:action
     function unstake(uint256 stakeAmount) external {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
@@ -157,7 +157,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     /// Complete delayed staking for an account, up to but not including draft ID `endId`
-    /// @custom:user-action
+    /// @custom:action
     function withdraw(address account, uint256 endId) external notPaused {
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");

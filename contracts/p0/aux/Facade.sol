@@ -15,7 +15,6 @@ import "contracts/libraries/Fixed.sol";
  * @notice A UX-friendly layer for non-governance protocol interactions
  *
  * @dev
- * - @custom:bundle-action - Bundle multiple transactions to make sure they run on the same block
  * - @custom:static-call - Use ethers callStatic() in order to get result after update
  * - @custom:view - Just expose a abstraction layer for getting protocol view data
  */
@@ -29,7 +28,7 @@ contract FacadeP0 is IFacade {
     }
 
     /// Prompt all traders to run auctions
-    /// @custom:bundle-action
+    /// @custom:action
     function runAuctionsForAllTraders() external {
         main.backingManager().manageFunds();
         main.rsrTrader().manageFunds();
@@ -37,7 +36,7 @@ contract FacadeP0 is IFacade {
     }
 
     /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager
-    /// @custom:bundle-action
+    /// @custom:action
     function claimRewards() external {
         main.backingManager().claimAndSweepRewards();
         main.rsrTrader().claimAndSweepRewards();
