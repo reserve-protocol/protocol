@@ -11,6 +11,12 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/p0/mixins/Trading.sol";
 import "contracts/libraries/Fixed.sol";
 
+enum RecapitalizationSaga {
+    ASSETS_FOR_BASKETS_NEEDED,
+    RSR_FOR_BASKETS_NEEDED,
+    ASSETS_FOR_COMPROMISE_TARGET
+}
+
 /**
  * @title BackingManager
  * @notice The backing manager holds + manages the backing for an RToken
@@ -20,12 +26,14 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     using FixLib for int192;
     using SafeERC20 for IERC20;
 
-    uint256 public auctionDelay; // {s} how long to wait until starting auctions after switching
+    RecapitalizationSaga public next;
+
+    uint256 public tradingDelay; // {s} how long to wait until resuming trading after switching
     int192 public backingBuffer; // {%} how much extra backing collateral to keep
 
     function init(ConstructorArgs calldata args) internal override {
         TradingP0.init(args);
-        auctionDelay = args.params.auctionDelay;
+        tradingDelay = args.params.tradingDelay;
         backingBuffer = args.params.backingBuffer;
     }
 
@@ -41,36 +49,49 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// Manage backing funds: maintain the overall backing policy
     /// Collective Action
     function manageFunds() external notPaused {
-        settleTrades();
-
         // Call keepers before
         main.poke();
 
-        if (hasOpenTrades()) return;
-
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
-        if (block.timestamp < basketTimestamp + auctionDelay) return;
+        if (block.timestamp < basketTimestamp + tradingDelay) return;
 
-        if (main.basketHandler().fullyCapitalized()) {
-            handoutExcessAssets();
-            return;
+        while (!hasOpenTrades() && !main.basketHandler().fullyCapitalized()) {
+            runRecapitalizationSaga();
         }
 
-        /* Recapitalization:
-         *   1. Sell all surplus assets at Main for deficit collateral
-         *   2. When there is no more surplus, seize RSR and sell that for collateral
+        if (!hasOpenTrades() && main.basketHandler().fullyCapitalized()) {
+            handoutExcessAssets();
+        }
+    }
+
+    /// Execute one step of the recapitalization saga indicated by `next`
+    function runRecapitalizationSaga() private {
+        /* Recapitalization Saga:
+         *   1. Sell all surplus assets at BackingManager for deficit collateral
+         *   2. When there is no more surplus, seize RSR from StRSR and sell that for collateral
          *   3. When there is no more RSR, pick a new basket target, and sell assets for deficits
-         *   3. When all trades are dust, give RToken holders a haircut
+         *   4. When all trades are dust, give RToken holders a haircut
          */
 
-        sellSurplusAssetsForCollateral(false) ||
-            sellRSRForCollateral() ||
-            sellSurplusAssetsForCollateral(true) ||
+        if (
+            next == RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED &&
+            !sellSurplusAssetsForCollateral(false)
+        ) {
+            next = RecapitalizationSaga.RSR_FOR_BASKETS_NEEDED;
+        } else if (next == RecapitalizationSaga.RSR_FOR_BASKETS_NEEDED && !sellRSRForCollateral()) {
+            next = RecapitalizationSaga.ASSETS_FOR_COMPROMISE_TARGET;
+        } else if (
+            next == RecapitalizationSaga.ASSETS_FOR_COMPROMISE_TARGET &&
+            !sellSurplusAssetsForCollateral(true)
+        ) {
             giveRTokenHoldersAHaircut();
+            next = RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED;
+        }
     }
 
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
+        next = RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED; // reset saga
         IRToken rToken = main.rToken();
 
         int192 held = main.basketHandler().basketsHeldBy(address(this));
@@ -113,8 +134,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         }
     }
 
-    /// Try to launch a surplus-asset-for-collateral auction
-    /// @return Whether an auction was launched
+    /// Try to launch a surplus-asset-for-collateral trade
+    /// @return Whether a Trade was launched
     function sellSurplusAssetsForCollateral(bool pickTarget) private returns (bool) {
         (
             IAsset surplus,
@@ -129,15 +150,15 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // we are selling. If we cannot, then we should not `prepareTradeToCoverDeficit`
 
         bool trade;
-        TradeRequest memory auction;
+        TradeRequest memory req;
         if (
             surplus.isCollateral() &&
             main.assetRegistry().toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
         ) {
-            (trade, auction) = prepareTradeSell(surplus, deficit, surplusAmount);
-            auction.minBuyAmount = 0;
+            (trade, req) = prepareTradeSell(surplus, deficit, surplusAmount);
+            req.minBuyAmount = 0;
         } else {
-            (trade, auction) = prepareTradeToCoverDeficit(
+            (trade, req) = prepareTradeToCoverDeficit(
                 surplus,
                 deficit,
                 surplusAmount,
@@ -145,12 +166,12 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             );
         }
 
-        if (trade) executeTrade(auction);
+        if (trade) executeTrade(req);
         return trade;
     }
 
     /// Try to seize RSR and sell it for missing collateral
-    /// @return Whether an auction was launched
+    /// @return Whether a Trade was launched
     function sellRSRForCollateral() private returns (bool) {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
 
@@ -162,7 +183,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         int192 availableRSR = rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR)));
 
-        (bool trade, TradeRequest memory auction) = prepareTradeToCoverDeficit(
+        (bool trade, TradeRequest memory req) = prepareTradeToCoverDeficit(
             rsrAsset,
             deficit,
             availableRSR,
@@ -171,20 +192,19 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         if (trade) {
             uint256 rsrBal = rsrAsset.balQ(address(this)).floor();
-            if (auction.sellAmount > rsrBal) {
-                stRSR.seizeRSR(auction.sellAmount - rsrBal);
+            if (req.sellAmount > rsrBal) {
+                stRSR.seizeRSR(req.sellAmount - rsrBal);
             }
-            executeTrade(auction);
+            executeTrade(req);
         }
         return trade;
     }
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
-    function giveRTokenHoldersAHaircut() private returns (bool) {
+    function giveRTokenHoldersAHaircut() private {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
         assert(main.basketHandler().fullyCapitalized());
-        return true;
     }
 
     /// Compute the largest asset-token-for-collateral-token trade by identifying
@@ -300,8 +320,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     // === Setters ===
 
     function setAuctionDelay(uint256 val) external onlyOwner {
-        emit AuctionDelaySet(auctionDelay, val);
-        auctionDelay = val;
+        emit AuctionDelaySet(tradingDelay, val);
+        tradingDelay = val;
     }
 
     function setBackingBuffer(int192 val) external onlyOwner {
