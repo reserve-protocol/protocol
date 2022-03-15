@@ -26,7 +26,7 @@ export default <HardhatUserConfig>{
     hardhat: {
       forking: {
         url: MAINNET_RPC_URL,
-        blockNumber: 14000388,
+        blockNumber: 14393847,
         enabled: !!process.env.FORK,
       },
       gas: 999999999999,

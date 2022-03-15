@@ -17,6 +17,8 @@ const defaultThreshold = fp('0.05') // 5%
 const delayUntilDefault = bn('86400') // 24h
 const AAVE_ADDRESS = '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9'
 const COMP_ADDRESS = '0xc00e94cb662c3520282e6f5717214004a7f26888'
+const COMPTROLLER_ADDRESS = '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9'
+const AAVE_LENDING_ADDRESS = '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9'
 
 // Setup Config
 const config: IConfig = {
@@ -45,6 +47,7 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
     // TODO: Real market
     const GnosisMockFactory: ContractFactory = await hre.ethers.getContractFactory('GnosisMock')
     const marketMock: GnosisMock = <GnosisMock>await GnosisMockFactory.deploy()
+    await marketMock.deployed()
 
     console.log('Deploying RToken deployer...')
     // Create Deployer
@@ -54,13 +57,12 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
       COMP_ADDRESS, // COMP
       AAVE_ADDRESS, // AAVE
       marketMock.address, // Mock Market (Auctions)
-      '0x02557a5E05DeFeFFD4cAe6D83eA3d173B272c904', // COMP ORACLE
-      '0xA50ba011c48153De246E5192C8f9258A2ba79Ca9' // AAVE ORACLE
+      COMPTROLLER_ADDRESS, // COMPTROLLER
+      AAVE_LENDING_ADDRESS // AAVE LENDING POOL
     )
     await rtokenDeployer.deployed()
 
     console.log('Deploying RToken...')
-    // Deploy actual contracts
     const receipt = await (
       await rtokenDeployer.deploy('Reserve Dollar Plus', 'RSDP', deployer.address, config)
     ).wait()
@@ -114,7 +116,7 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
       if (i === 0) {
         collateral = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy(
           ...params,
-          '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9', // Aave lending pool
+          AAVE_LENDING_ADDRESS, // Aave lending pool
           AAVE_ADDRESS
         )
       } else {
