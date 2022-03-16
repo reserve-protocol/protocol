@@ -1008,7 +1008,7 @@ describe('StRSRP0 contract', () => {
     it.skip('Should handle stakes correctly after removing RSR', async () => {})
   })
 
-  describe.only('Transfers', () => {
+  describe('Transfers', () => {
     let amount: BigNumber
 
     beforeEach(async function () {
