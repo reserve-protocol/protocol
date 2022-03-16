@@ -14,7 +14,7 @@ async function main() {
   console.log(`Starting full deployment on network ${hre.network.name} (${chainId})`)
   console.log(`Deployer account: ${deployer.address}\n`)
 
-  await hre.run('Proto0-deployAll')
+  await hre.run('P0-deploy')
 }
 
 main()
