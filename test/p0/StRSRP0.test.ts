@@ -678,12 +678,15 @@ describe('StRSRP0 contract', () => {
       // Add RSR
       await rsr.connect(owner).transfer(stRSR.address, addedAmount)
 
-      await expect(stRSR.payoutRewards()).to.not.emit(stRSR, 'RSRRewarded')
+      // Advance to the end of noop period
+      await advanceTime(Number(config.rewardPeriod) + 1)
+
+      await expect(stRSR.payoutRewards()).to.emit(stRSR, 'RSRRewarded').withArgs(0, 1)
 
       // Check exchange rate - steady
       expect(await stRSR.exchangeRate()).to.equal(fp('1'))
 
-      // Advance to the end of period to get payout rewards
+      // Advance to the end of next period to get payout rewards
       await advanceTime(Number(config.rewardPeriod) + 1)
 
       // Calculate payout amount
