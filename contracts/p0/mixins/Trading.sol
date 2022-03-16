@@ -8,7 +8,7 @@ import "contracts/interfaces/ITrade.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/mixins/Rewardable.sol";
 
-// Abstract trading mixin for all Traders
+/// Abstract trading mixin for all Traders, to be paired with TradingLib
 abstract contract TradingP0 is RewardableP0, ITrading {
     using FixLib for int192;
 
@@ -51,78 +51,15 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         tradesStart = i;
     }
 
-    /// Prepare an trade to sell `sellAmount` that guarantees a reasonable closing price,
-    /// without explicitly aiming at a particular quantity to purchase.
-    /// @param sellAmount {sellTok}
-    /// @return notDust True when the trade is larger than the dust amount
-    /// @return trade The prepared trade
-    function prepareTradeSell(
-        IAsset sell,
-        IAsset buy,
-        int192 sellAmount
-    ) internal view returns (bool notDust, TradeRequest memory trade) {
-        assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
-        trade.sell = sell;
-        trade.buy = buy;
-
-        // Don't buy dust.
-        if (sellAmount.lt(dustThreshold(sell))) return (false, trade);
-
-        // {sellTok}
-        int192 fixSellAmount = fixMin(sellAmount, sell.maxAuctionSize().div(sell.price()));
-        trade.sellAmount = fixSellAmount.shiftLeft(int8(sell.erc20().decimals())).floor();
-
-        // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        int192 exactBuyAmount = fixSellAmount.mul(sell.price()).div(buy.price());
-        int192 minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(maxTradeSlippage));
-        trade.minBuyAmount = minBuyAmount.shiftLeft(int8(buy.erc20().decimals())).ceil();
-        return (true, trade);
-    }
-
-    /// Assuming we have `maxSellAmount` sell tokens avaialable, prepare an trade to
-    /// cover as much of our deficit as possible, given expected trade slippage.
-    /// @param maxSellAmount {sellTok}
-    /// @param deficitAmount {buyTok}
-    /// @return notDust Whether the prepared trade is large enough to be worth trading
-    /// @return trade The prepared trade
-    function prepareTradeToCoverDeficit(
-        IAsset sell,
-        IAsset buy,
-        int192 maxSellAmount,
-        int192 deficitAmount
-    ) internal view returns (bool notDust, TradeRequest memory trade) {
-        // Don't sell dust.
-        if (maxSellAmount.lt(dustThreshold(sell))) return (false, trade);
-
-        // Don't buy dust.
-        deficitAmount = fixMax(deficitAmount, dustThreshold(buy));
-
-        // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
-        int192 exactSellAmount = deficitAmount.mul(buy.price()).div(sell.price());
-        // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
-
-        // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
-        int192 idealSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage));
-
-        int192 sellAmount = fixMin(idealSellAmount, maxSellAmount);
-        return prepareTradeSell(sell, buy, sellAmount);
-    }
-
-    /// @return {tok} The least amount of whole tokens ever worth trying to sell
-    function dustThreshold(IAsset asset) internal view returns (int192) {
-        // {tok} = {UoA} / {UoA/tok}
-        return dustAmount.div(asset.price());
-    }
-
     /// Try to initiate a trade with a trading partner provided by the broker
     /// @dev Can fail silently if broker is disable or reverting
-    function tryTradeWithBroker(TradeRequest memory req) internal {
+    function tryOpenTrade(TradeRequest memory req) internal {
         IBroker broker = main.broker();
         if (broker.disabled()) return; // correct interaction with BackingManager/RevenueTrader
 
         req.sell.erc20().approve(address(broker), req.sellAmount);
         try broker.openTrade(req) returns (ITrade trade) {
-            latestEndtime = Math.max(trade.endTime(), latestEndtime);
+            if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
 
             trades.push(trade);
             uint256 i = trades.length - 1;

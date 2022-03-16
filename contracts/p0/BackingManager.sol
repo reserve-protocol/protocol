@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/p0/libraries/TradingLib.sol";
+import "contracts/p0/mixins/TradingLib.sol";
 import "contracts/p0/mixins/Trading.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
@@ -11,10 +11,10 @@ import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
-enum RecapitalizationSaga {
-    ASSETS_FOR_BASKETS_NEEDED,
-    RSR_FOR_BASKETS_NEEDED,
-    ASSETS_FOR_COMPROMISE_TARGET
+enum Tranche {
+    RTOKEN,
+    RSR,
+    EMPTY
 }
 
 /**
@@ -25,8 +25,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     using FixLib for int192;
     using SafeERC20 for IERC20;
 
-    // basketNonce -> RecapitalizationSaga
-    mapping(uint256 => RecapitalizationSaga) public sagas;
+    // key: basket nonce
+    mapping(uint256 => Tranche) public activeTranche;
 
     uint256 public tradingDelay; // {s} how long to wait until resuming trading after switching
     int192 public backingBuffer; // {%} how much extra backing collateral to keep
@@ -55,41 +55,42 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         (uint256 basketNonce, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
-        while (!hasOpenTrades() && !main.basketHandler().fullyCapitalized()) {
-            runRecapitalizationSaga(basketNonce);
-        }
-
-        if (!hasOpenTrades() && main.basketHandler().fullyCapitalized()) {
-            sagas[basketNonce] = RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED;
-            handoutExcessAssets();
-        }
-    }
-
-    /// Execute one step of the recapitalization sagas for this basket
-    function runRecapitalizationSaga(uint256 basketNonce) private {
-        /* Recapitalization Saga:
+        /* Recapitalization strategy:
          *   1. Sell all surplus assets at BackingManager for deficit collateral
          *   2. When there is no more surplus, seize RSR from StRSR and sell that for collateral
          *   3. When there is no more RSR, pick a new basket target, and sell assets for deficits
          *   4. When all trades are dust, give RToken holders a haircut
          */
 
-        if (
-            sagas[basketNonce] == RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED &&
-            !sellSurplusAssetsForCollateral(false)
-        ) {
-            sagas[basketNonce] = RecapitalizationSaga.RSR_FOR_BASKETS_NEEDED;
-        } else if (
-            sagas[basketNonce] == RecapitalizationSaga.RSR_FOR_BASKETS_NEEDED &&
-            !sellRSRForCollateral()
-        ) {
-            sagas[basketNonce] = RecapitalizationSaga.ASSETS_FOR_COMPROMISE_TARGET;
-        } else if (
-            sagas[basketNonce] == RecapitalizationSaga.ASSETS_FOR_COMPROMISE_TARGET &&
-            !sellSurplusAssetsForCollateral(true)
-        ) {
-            giveRTokenHoldersAHaircut();
-            sagas[basketNonce] = RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED;
+        if (main.basketHandler().fullyCapitalized()) {
+            activeTranche[basketNonce] = Tranche.RTOKEN;
+            handoutExcessAssets();
+        } else if (!hasOpenTrades()) {
+            bool doTrade;
+            TradeRequest memory req;
+            Tranche tranche = activeTranche[basketNonce];
+
+            if (tranche == Tranche.RTOKEN) {
+                (doTrade, req) = assetsForCollateral(false);
+                if (!doTrade) tranche = Tranche.RSR;
+            }
+
+            if (!doTrade && tranche == Tranche.RSR) {
+                (doTrade, req) = insuranceForCollateral();
+                if (!doTrade) tranche = Tranche.EMPTY;
+            }
+
+            if (!doTrade && tranche == Tranche.EMPTY) {
+                // At this point there will be loss RToken holders
+                (doTrade, req) = assetsForCollateral(true);
+                if (!doTrade) {
+                    acceptHaircut();
+                    tranche = Tranche.RTOKEN;
+                }
+            }
+
+            activeTranche[basketNonce] = tranche;
+            if (doTrade) tryOpenTrade(req);
         }
     }
 
@@ -140,30 +141,36 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     /// Try to launch a surplus-asset-for-collateral trade
-    /// @return Whether this step produced a TradeRequest for the Broker
-    function sellSurplusAssetsForCollateral(bool pickTarget) private returns (bool) {
+    /// @param pickTarget When true, compromise the BU target instead of pursuing basketsNeeded
+    /// @return doTrade Whether this step produced a TradeRequest for the Broker
+    /// @return req The prepared trade request
+    function assetsForCollateral(bool pickTarget)
+        private
+        view
+        returns (bool doTrade, TradeRequest memory req)
+    {
+        assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
+
         (
             IAsset surplus,
             ICollateral deficit,
             int192 surplusAmount,
             int192 deficitAmount
-        ) = TradingLibP0.largestSurplusAndDeficit(main, maxTradeSlippage, pickTarget);
+        ) = TradingLibP0.largestSurplusAndDeficit(pickTarget);
 
-        if (address(surplus) == address(0) || address(deficit) == address(0)) return false;
+        if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
 
         // Of primary concern here is whether we can trust the prices for the assets
         // we are selling. If we cannot, then we should not `prepareTradeToCoverDeficit`
 
-        bool trade;
-        TradeRequest memory req;
         if (
             surplus.isCollateral() &&
             main.assetRegistry().toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
         ) {
-            (trade, req) = prepareTradeSell(surplus, deficit, surplusAmount);
+            (doTrade, req) = TradingLibP0.prepareTradeSell(surplus, deficit, surplusAmount);
             req.minBuyAmount = 0;
         } else {
-            (trade, req) = prepareTradeToCoverDeficit(
+            (doTrade, req) = TradingLibP0.prepareTradeToCoverDeficit(
                 surplus,
                 deficit,
                 surplusAmount,
@@ -171,46 +178,43 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             );
         }
 
-        if (trade) tryTradeWithBroker(req);
-        return trade;
+        return (doTrade, req);
     }
 
     /// Try to seize RSR and sell it for missing collateral
-    /// @return Whether this step produced a TradeRequest for the Broker
-    function sellRSRForCollateral() private returns (bool) {
+    /// @return doTrade Whether the trade should be performed
+    /// @return req The prepared trade request
+    function insuranceForCollateral() private returns (bool doTrade, TradeRequest memory req) {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
 
         IStRSR stRSR = main.stRSR();
         IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
 
         (, ICollateral deficit, , int192 deficitAmount) = TradingLibP0.largestSurplusAndDeficit(
-            main,
-            maxTradeSlippage,
             false
         );
-        if (address(deficit) == address(0)) return false;
+        if (address(deficit) == address(0)) return (false, req);
 
         int192 availableRSR = rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR)));
 
-        (bool trade, TradeRequest memory req) = prepareTradeToCoverDeficit(
+        (doTrade, req) = TradingLibP0.prepareTradeToCoverDeficit(
             rsrAsset,
             deficit,
             availableRSR,
             deficitAmount
         );
 
-        if (trade) {
+        if (doTrade) {
             uint256 rsrBal = rsrAsset.balQ(address(this)).floor();
             if (req.sellAmount > rsrBal) {
                 stRSR.seizeRSR(req.sellAmount - rsrBal);
             }
-            tryTradeWithBroker(req);
         }
-        return trade;
+        return (doTrade, req);
     }
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
-    function giveRTokenHoldersAHaircut() private {
+    function acceptHaircut() private {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
         assert(main.basketHandler().fullyCapitalized());
