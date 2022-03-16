@@ -1,10 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import Big from 'big.js'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../../common/constants'
-import { bn, fp } from '../../common/numbers'
+import { bn } from '../../common/numbers'
 import {
   CTokenMock,
   ERC20Mock,
@@ -17,17 +16,9 @@ import {
 } from '../../typechain'
 import { advanceTime } from '../utils/time'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+import { makeDecayFn } from './utils/rewards'
 
 const createFixtureLoader = waffle.createFixtureLoader
-
-const makeDecayFn = (ratio: BigNumber) => {
-  return (amtRToken: BigNumber, numPeriods: number) => {
-    // Use Big.js library for exponential
-    const expBase = new Big(fp('1').sub(ratio).toString()).div(new Big('1e18'))
-    const result = new Big(amtRToken.toString()).mul(expBase.pow(numPeriods).toString())
-    return result.toString()
-  }
-}
 
 describe('FurnaceP0 contract', () => {
   let owner: SignerWithAddress
