@@ -57,17 +57,16 @@ solc-select use 0.8.9
 
 ### Slither
 
-NOTE: Right now, slither chokes on our code. We're hoping they update to working over solidity 0.8.9 sometime soon; until then, I guess we're just not using this. D:
-
-Slither depends on `solc-select`. Once it's set up, install slither with:
+Slither depends on `solc-select`. Once that's set up, we need to get slither _from its latest github repository_, as we're using language features that aren't supported in its most recent pacakaging release. The easiest way I've found to ensure this works right is to first uninstall any previous versions. You can do all of this as follows:
 
 ```bash
-pip3 install slither-analyzer
+pip uninstall slither-analyzer --yes
+pip3 install -U https://github.com/crytic/slither/archive/refs/heads/master.zip
 ```
 
 ### Echidna
 
-Echidna depends on both `solc-select` and `slither`. To handle recent Solidity language changes, we'll need Echidna 2.0, which is still in beta. Unless you have a Haskell toolchain all set up, you should install Echidna through precompiled binaries.
+Echidna depends on both `solc-select` and `slither`. To handle recent Solidity language changes, we'll need Echidna 2.0. Unless you have a Haskell toolchain all set up, you should install Echidna through precompiled binaries.
 
 Until Echidna 2.0 is fully released, you can get precompiled binaries from that repo's [latest binary build](https://github.com/crytic/echidna/actions/runs/1119937162).
 
