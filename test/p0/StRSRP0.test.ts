@@ -764,7 +764,12 @@ describe('StRSRP0 contract', () => {
       const zero: BigNumber = bn('0')
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
 
-      await expect(stRSR.connect(other).seizeRSR(zero)).to.be.revertedWith('Amount cannot be zero')
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSR.connect(signer).seizeRSR(zero)).to.be.revertedWith(
+          'Amount cannot be zero'
+        )
+      })
+
       expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
     })
 
@@ -1114,6 +1119,47 @@ describe('StRSRP0 contract', () => {
         .to.emit(stRSR, 'Approval')
         .withArgs(addr1.address, addr2.address, amount)
       expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(amount)
+    })
+
+    it('Should perform validations on "Permit"', async () => {
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
+
+      // Set invalid signature
+      const permit = await signERC2612Permit(
+        addr1,
+        stRSR.address,
+        addr1.address,
+        addr2.address,
+        amount.add(1).toString()
+      )
+
+      // Attempt to run permit with invalid signature
+      await expect(
+        stRSR.permit(
+          addr1.address,
+          addr2.address,
+          amount,
+          permit.deadline,
+          permit.v,
+          permit.r,
+          permit.s
+        )
+      ).to.be.revertedWith('ERC20Permit: invalid signature')
+
+      // Attempt to run permit with expired deadline
+      await expect(
+        stRSR.permit(
+          addr1.address,
+          addr2.address,
+          amount,
+          (await getLatestBlockTimestamp()) - 1,
+          permit.v,
+          permit.r,
+          permit.s
+        )
+      ).to.be.revertedWith('ERC20Permit: expired deadline')
+
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
     })
 
     it('Should not transferFrom stakes if sender is zero address', async function () {
