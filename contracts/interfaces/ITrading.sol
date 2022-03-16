@@ -62,4 +62,10 @@ interface ITrading is IRewardable {
     /// Settle any auctions that can be settled
     /// @custom:refresher
     function settleTrades() external;
+
+    /// @return {%} The maximum trade slippage acceptable
+    function maxTradeSlippage() external view returns (int192);
+
+    /// @return {UoA} The smallest amount of value worth trading
+    function dustAmount() external view returns (int192);
 }

@@ -109,6 +109,13 @@ contract GnosisTrade is ITrade {
         if (boughtAmt > 0) buy.safeTransfer(origin, boughtAmt);
     }
 
+    /// Anyone can transfer any ERC20 back to the origin after the trade has been closed
+    /// @dev Escape hatch for when trading partner freezes up, or other unexpected events
+    function transferToOriginAfterTradeComplete(IERC20 erc20) external {
+        require(status == TradeStatus.CLOSED, "only after trade is closed");
+        erc20.safeTransfer(origin, erc20.balanceOf(address(this)));
+    }
+
     // === Private ===
 
     function atStageSolutionSubmission() private view returns (bool) {

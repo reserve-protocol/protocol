@@ -21,6 +21,7 @@ import { CompoundPricedAsset } from '../../../typechain/CompoundPricedAsset'
 import { ComptrollerMock } from '../../../typechain/ComptrollerMock'
 import { BrokerP0 } from '../../../typechain/BrokerP0'
 import { DeployerP0 } from '../../../typechain/DeployerP0'
+import { TradingLibP0 } from '../../../typechain/TradingLibP0'
 import { ERC20Mock } from '../../../typechain/ERC20Mock'
 import { FacadeP0 } from '../../../typechain/FacadeP0'
 import { FurnaceP0 } from '../../../typechain/FurnaceP0'
@@ -365,8 +366,14 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
   }
 
+  // Deploy TradingLib external library
+  const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
+  const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
+
   // Create Deployer
-  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0')
+  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
+    libraries: { TradingLibP0: tradingLib.address },
+  })
   const deployer: DeployerP0 = <DeployerP0>(
     await DeployerFactory.deploy(
       rsr.address,

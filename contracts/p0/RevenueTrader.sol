@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/p0/mixins/Trading.sol";
+import "contracts/p0/mixins/TradingLib.sol";
 
 /// Trader Component that converts all asset balances at its address to a
 /// single target asset and sends this asset to the Distributor.
@@ -55,12 +56,12 @@ contract RevenueTradingP0 is TradingP0, IRevenueTrader {
         }
 
         // If not dust, trade the non-target asset for the target asset
-        (bool launch, TradeRequest memory trade) = prepareTradeSell(
+        (bool launch, TradeRequest memory trade) = TradingLibP0.prepareTradeSell(
             reg.toAsset(erc20),
             reg.toAsset(tokenToBuy),
             reg.toAsset(erc20).bal(address(this))
         );
 
-        if (launch) tryTradeWithBroker(trade);
+        if (launch) tryOpenTrade(trade);
     }
 }
