@@ -226,6 +226,32 @@ describe('FurnaceP0 contract', () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(0)
     })
 
+    it('Should melt 0 for first period, even if funds available', async () => {
+      const hndAmt: BigNumber = bn('10e18')
+      const period: number = 60 * 60 * 24 // 1 day
+
+      // Set time period
+      await furnace.connect(owner).setPeriod(period)
+
+      // Transfer
+      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
+
+      // Advance one period
+      await advanceTime(period + 1)
+
+      // Melt
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+
+      // Another call to melt should also have no impact
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
+    })
+
     it('Should allow melt - one period', async () => {
       const hndAmt: BigNumber = bn('10e18')
       const period: number = 60 * 60 * 24 // 1 day
@@ -235,6 +261,10 @@ describe('FurnaceP0 contract', () => {
 
       // Transfer
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      // Get past first noop melt
+      await advanceTime(period + 1)
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
@@ -267,6 +297,10 @@ describe('FurnaceP0 contract', () => {
       // Transfer
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
 
+      // Get past first noop melt
+      await advanceTime(period + 1)
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
@@ -291,6 +325,10 @@ describe('FurnaceP0 contract', () => {
 
       // Transfer
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      // Get past first noop melt
+      await advanceTime(period + 1)
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
