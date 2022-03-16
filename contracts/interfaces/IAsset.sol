@@ -6,7 +6,7 @@ import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 
 /// Raised if the oracle does not contain a price
-error PriceIsZero(string);
+error PriceIsZero();
 
 /**
  * @title IAsset

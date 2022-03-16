@@ -180,15 +180,15 @@ describe('AssetsP0 contracts', () => {
       // Check new prices
       // RSR
       let symbol: string = await rsr.symbol()
-      await expect(rsrAsset.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
+      await expect(rsrAsset.price()).to.be.revertedWith(`PriceIsZero()`)
 
       // COMP
       symbol = await compToken.symbol()
-      await expect(compAsset.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
+      await expect(compAsset.price()).to.be.revertedWith(`PriceIsZero()`)
 
       // AAVE
       symbol = await aaveToken.symbol()
-      await expect(aaveAsset.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
+      await expect(aaveAsset.price()).to.be.revertedWith(`PriceIsZero()`)
     })
   })
 })

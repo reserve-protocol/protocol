@@ -1,33 +1,32 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity ^0.8.9;
 
-import "../Fixed.sol" as FixGlobals;
-import { FixLib, RoundingApproach } from "../Fixed.sol";
+import { FixLib, RoundingApproach, toFix, toFixWithShift, intToFix, divFix, fixMin, fixMax } from "../Fixed.sol";
 
 // Simple mock for Fixed library.
 contract FixedCallerMock {
-    function toFix(uint256 x) public pure returns (int192) {
-        return FixGlobals.toFix(x);
+    function toFix_(uint256 x) public pure returns (int192) {
+        return toFix(x);
     }
 
-    function toFixWithShift(uint256 x, int8 shiftLeft_) public pure returns (int192) {
-        return FixGlobals.toFixWithShift(x, shiftLeft_);
+    function toFixWithShift_(uint256 x, int8 shiftLeft_) public pure returns (int192) {
+        return toFixWithShift(x, shiftLeft_);
     }
 
-    function intToFix(int256 x) public pure returns (int192) {
-        return FixGlobals.intToFix(x);
+    function intToFix_(int256 x) public pure returns (int192) {
+        return intToFix(x);
     }
 
-    function divFix(uint256 x, int192 y) public pure returns (int192) {
-        return FixGlobals.divFix(x, y);
+    function divFix_(uint256 x, int192 y) public pure returns (int192) {
+        return divFix(x, y);
     }
 
-    function fixMin(int192 x, int192 y) public pure returns (int192) {
-        return FixGlobals.fixMin(x, y);
+    function fixMin_(int192 x, int192 y) public pure returns (int192) {
+        return fixMin(x, y);
     }
 
-    function fixMax(int192 x, int192 y) public pure returns (int192) {
-        return FixGlobals.fixMax(x, y);
+    function fixMax_(int192 x, int192 y) public pure returns (int192) {
+        return fixMax(x, y);
     }
 
     function toInt(int192 x) public pure returns (int192) {
