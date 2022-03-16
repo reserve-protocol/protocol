@@ -1,4 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import Big from 'big.js'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, Wallet } from 'ethers'
@@ -19,10 +20,11 @@ import {
   StaticATokenMock,
   StRSRP0,
 } from '../../typechain'
+import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
-import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
+import { makeDecayFn } from './utils/rewards'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -341,6 +343,9 @@ describe('StRSRP0 contract', () => {
       // All staked funds withdrawn upfront
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       expect(await stRSR.totalSupply()).to.equal(0)
+
+      // Exchange rate remains steady
+      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
     })
 
     it('Should allow multiple unstakes/withdrawals in RSR', async () => {
@@ -397,6 +402,9 @@ describe('StRSRP0 contract', () => {
 
       // All staked funds withdrawn upfront
       expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
+
+      // Exchange rate remains steady
+      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
     })
 
     context('With deposits and withdrawals', async () => {
@@ -593,6 +601,9 @@ describe('StRSRP0 contract', () => {
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
         // All staked funds withdrawn upfront
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+
+        // Exchange rate remains steady
+        expect(await stRSR.exchangeRate()).to.equal(fp('1'))
       })
 
       it('Should store weights and calculate balance correctly', async () => {
@@ -642,14 +653,17 @@ describe('StRSRP0 contract', () => {
           prevAddr2Balance.add(amount2).add(amount3)
         )
         expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
+
+        // Exchange rate remains steady
+        expect(await stRSR.exchangeRate()).to.equal(fp('1'))
       })
     })
   })
 
-  describe('Add RSR / Payouts', () => {
+  describe('Add RSR / Rewards', () => {
     it('Should allow to add RSR - Single staker', async () => {
       const amount: BigNumber = bn('1e18')
-      const amount2: BigNumber = bn('10e18')
+      const addedAmount: BigNumber = bn('10e18')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -662,16 +676,33 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
 
       // Add RSR
-      await rsr.connect(owner).transfer(stRSR.address, amount2)
-      await stRSR.payoutRewards()
+      await rsr.connect(owner).transfer(stRSR.address, addedAmount)
+
+      await expect(stRSR.payoutRewards()).to.not.emit(stRSR, 'RSRRewarded')
+
+      // Check exchange rate - steady
+      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
+
+      // Advance to the end of period to get payout rewards
+      await advanceTime(Number(config.rewardPeriod) + 1)
+
+      // Calculate payout amount
+      const decayFn = makeDecayFn(await stRSR.rewardRatio())
+      const expAmt = decayFn(addedAmount, 1) // 1 period
+      const payoutAmount: BigNumber = addedAmount.sub(expAmt)
+
+      // Payout rewards
+      await expect(stRSR.payoutRewards()).to.emit(stRSR, 'RSRRewarded').withArgs(payoutAmount, 1)
 
       // Check exchange rate
+      expect(await stRSR.exchangeRate()).to.equal(fp('1').add(payoutAmount))
 
-      // Check balances and stakes
-      // expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.add(amount2))
-      // expect(await rsr.balanceOf(stRSR.address)).to.be.gt(await stRSR.totalSupply())
-      // expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      // expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.add(amount2))
+      // Check new balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.add(addedAmount))
+      expect(await rsr.balanceOf(stRSR.address)).to.be.gt(await stRSR.totalSupply())
+      // No change for stakers
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
     it('Should allow to add RSR - Two stakers - Rounded values', async () => {
