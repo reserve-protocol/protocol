@@ -35,7 +35,7 @@ abstract contract CompoundOracleMixin {
 
         uint256 p = comptroller.oracle().price(erc20.symbol());
         if (p == 0) {
-            revert PriceIsZero(erc20.symbol());
+            revert PriceIsZero();
         }
 
         // {UoA/tok} = {microUoA/tok} / {microUoA/UoA}

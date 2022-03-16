@@ -44,7 +44,7 @@ abstract contract AaveOracleMixin is CompoundOracleMixin {
         uint256 p = aaveOracle.getAssetPrice(address(erc20_));
 
         if (p == 0) {
-            revert PriceIsZero(erc20_.symbol());
+            revert PriceIsZero();
         }
 
         int192 inETH = toFix(p); // {qETH/tok}
