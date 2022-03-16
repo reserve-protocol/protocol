@@ -11,12 +11,6 @@ import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
-enum Tranche {
-    RTOKEN,
-    RSR,
-    EMPTY
-}
-
 /**
  * @title BackingManager
  * @notice The backing manager holds + manages the backing for an RToken
@@ -24,9 +18,6 @@ enum Tranche {
 contract BackingManagerP0 is TradingP0, IBackingManager {
     using FixLib for int192;
     using SafeERC20 for IERC20;
-
-    // key: basket nonce
-    mapping(uint256 => Tranche) public activeTranche;
 
     uint256 public tradingDelay; // {s} how long to wait until resuming trading after switching
     int192 public backingBuffer; // {%} how much extra backing collateral to keep
@@ -52,7 +43,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // Call keepers before
         main.poke();
 
-        (uint256 basketNonce, uint256 basketTimestamp) = main.basketHandler().lastSet();
+        (, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
         /* Recapitalization strategy:
@@ -63,34 +54,23 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
          */
 
         if (main.basketHandler().fullyCapitalized()) {
-            activeTranche[basketNonce] = Tranche.RTOKEN;
             handoutExcessAssets();
         } else if (!hasOpenTrades()) {
-            bool doTrade;
-            TradeRequest memory req;
-            Tranche tranche = activeTranche[basketNonce];
+            (bool doTrade, TradeRequest memory req) = assetsForCollateral(false);
 
-            if (tranche == Tranche.RTOKEN) {
-                (doTrade, req) = assetsForCollateral(false);
-                if (!doTrade) tranche = Tranche.RSR;
-            }
-
-            if (!doTrade && tranche == Tranche.RSR) {
+            if (!doTrade) {
                 (doTrade, req) = insuranceForCollateral();
-                if (!doTrade) tranche = Tranche.EMPTY;
             }
 
-            if (!doTrade && tranche == Tranche.EMPTY) {
-                // At this point there will be loss RToken holders
+            if (!doTrade) {
                 (doTrade, req) = assetsForCollateral(true);
-                if (!doTrade) {
-                    acceptHaircut();
-                    tranche = Tranche.RTOKEN;
-                }
             }
 
-            activeTranche[basketNonce] = tranche;
-            if (doTrade) tryOpenTrade(req);
+            if (doTrade) {
+                tryOpenTrade(req);
+            } else {
+                takeHaircut();
+            }
         }
     }
 
@@ -214,7 +194,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
-    function acceptHaircut() private {
+    function takeHaircut() private {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
         assert(main.basketHandler().fullyCapitalized());
