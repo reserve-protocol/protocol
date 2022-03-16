@@ -2,13 +2,10 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/ITrade.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/mixins/Component.sol";
 import "contracts/p0/mixins/Rewardable.sol";
 
 // Abstract trading mixin for all Traders
@@ -120,7 +117,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
         req.sell.erc20().approve(address(broker), req.sellAmount);
         ITrade trade = broker.openTrade(req);
-        latestEndtime = Math.max(trade.endTime(), latestEndtime);
+        if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
 
         trades.push(trade);
         uint256 i = trades.length - 1;
