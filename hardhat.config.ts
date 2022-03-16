@@ -29,11 +29,13 @@ export default <HardhatUserConfig>{
         blockNumber: 14393847,
         enabled: !!process.env.FORK,
       },
-      blockGasLimit: 0x1ffffffff,
+      gas: 0x1ffffffff,
+      blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
     },
     localhost: {
-      blockGasLimit: 0x1ffffffff,
+      gas: 0x1ffffffff,
+      blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
     },
     ropsten: {
