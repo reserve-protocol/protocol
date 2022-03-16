@@ -570,7 +570,21 @@ describe('StRSRP0 contract', () => {
         // Move forward past stakingWithdrawalDelay
         await advanceTime(stkWithdrawalDelay + 1)
 
-        // Withdraw
+        // Attempt to withdraw with zero index, nothing happens
+        await stRSR.connect(addr1).withdraw(addr1.address, 0)
+
+        // Attempt to withdraw with index > number of withdrawals
+        await expect(stRSR.connect(addr1).withdraw(addr1.address, 5)).to.be.revertedWith(
+          'index out-of-bounds'
+        )
+
+        // Nothing compsleted still
+        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
+        expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance)
+        // All staked funds withdrawn upfront
+        expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+
+        // Withdraw with correct index
         await stRSR.connect(addr1).withdraw(addr1.address, 1)
 
         // Withdrawal was completed
