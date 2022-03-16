@@ -1,7 +1,7 @@
 import { ContractFactory } from 'ethers'
 import { task } from 'hardhat/config'
 import { expectInReceipt } from '../../common/events'
-import { AssetRegistryP0, BasketHandlerP0, DeployerP0, MainP0 } from '../../typechain'
+import { AssetRegistryP0, BasketHandlerP0, DeployerP0, MainP0, TradingLibP0 } from '../../typechain'
 import {
   AAVE_ADDRESS,
   AAVE_LENDING_ADDRESS,
@@ -20,8 +20,15 @@ task('P0-deploy', 'Deploys all Protocol components and an RToken').setAction(
     // TODO: Replace for real gnosis market deployment
     const mockMarketAddress = await deployMarket(hre)
 
+    // Deploy TradingLib external library
+    const TradingLibFactory = await hre.ethers.getContractFactory('TradingLibP0')
+    const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
+    await tradingLib.deployed()
+
     console.log('Deploying RToken deployer...')
-    const DeployerFactory = <ContractFactory>await hre.ethers.getContractFactory('DeployerP0')
+    const DeployerFactory = <ContractFactory>await hre.ethers.getContractFactory('DeployerP0', {
+      libraries: { TradingLibP0: tradingLib.address },
+    })
     const rtokenDeployer = <DeployerP0>await DeployerFactory.connect(deployer).deploy(
       RSR_ADDRESS, // RSR
       COMP_ADDRESS, // COMP TOKEN
