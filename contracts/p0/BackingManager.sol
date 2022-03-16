@@ -3,31 +3,21 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "contracts/p0/mixins/TradingLib.sol";
+import "contracts/p0/mixins/Trading.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/p0/mixins/Trading.sol";
 import "contracts/libraries/Fixed.sol";
-
-enum RecapitalizationSaga {
-    ASSETS_FOR_BASKETS_NEEDED,
-    RSR_FOR_BASKETS_NEEDED,
-    ASSETS_FOR_COMPROMISE_TARGET
-}
 
 /**
  * @title BackingManager
  * @notice The backing manager holds + manages the backing for an RToken
  */
 contract BackingManagerP0 is TradingP0, IBackingManager {
-    using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
     using SafeERC20 for IERC20;
-
-    // basketNonce -> RecapitalizationSaga
-    mapping(uint256 => RecapitalizationSaga) public sagas;
 
     uint256 public tradingDelay; // {s} how long to wait until resuming trading after switching
     int192 public backingBuffer; // {%} how much extra backing collateral to keep
@@ -53,44 +43,34 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // Call keepers before
         main.poke();
 
-        (uint256 basketNonce, uint256 basketTimestamp) = main.basketHandler().lastSet();
+        (, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
-        while (!hasOpenTrades() && !main.basketHandler().fullyCapitalized()) {
-            runRecapitalizationSaga(basketNonce);
-        }
-
-        if (!hasOpenTrades() && main.basketHandler().fullyCapitalized()) {
-            sagas[basketNonce] = RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED;
-            handoutExcessAssets();
-        }
-    }
-
-    /// Execute one step of the recapitalization sagas for this basket
-    function runRecapitalizationSaga(uint256 basketNonce) private {
-        /* Recapitalization Saga:
+        /* Recapitalization strategy:
          *   1. Sell all surplus assets at BackingManager for deficit collateral
          *   2. When there is no more surplus, seize RSR from StRSR and sell that for collateral
          *   3. When there is no more RSR, pick a new basket target, and sell assets for deficits
          *   4. When all trades are dust, give RToken holders a haircut
          */
 
-        if (
-            sagas[basketNonce] == RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED &&
-            !sellSurplusAssetsForCollateral(false)
-        ) {
-            sagas[basketNonce] = RecapitalizationSaga.RSR_FOR_BASKETS_NEEDED;
-        } else if (
-            sagas[basketNonce] == RecapitalizationSaga.RSR_FOR_BASKETS_NEEDED &&
-            !sellRSRForCollateral()
-        ) {
-            sagas[basketNonce] = RecapitalizationSaga.ASSETS_FOR_COMPROMISE_TARGET;
-        } else if (
-            sagas[basketNonce] == RecapitalizationSaga.ASSETS_FOR_COMPROMISE_TARGET &&
-            !sellSurplusAssetsForCollateral(true)
-        ) {
-            giveRTokenHoldersAHaircut();
-            sagas[basketNonce] = RecapitalizationSaga.ASSETS_FOR_BASKETS_NEEDED;
+        if (main.basketHandler().fullyCapitalized()) {
+            handoutExcessAssets();
+        } else if (!hasOpenTrades()) {
+            (bool doTrade, TradeRequest memory req) = assetsForCollateral(false);
+
+            if (!doTrade) {
+                (doTrade, req) = insuranceForCollateral();
+            }
+
+            if (!doTrade) {
+                (doTrade, req) = assetsForCollateral(true);
+            }
+
+            if (doTrade) {
+                tryOpenTrade(req);
+            } else {
+                takeHaircut();
+            }
         }
     }
 
@@ -126,13 +106,11 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             int192 neededI = needed.mul(main.basketHandler().quantity(erc20s[i]));
 
             if (bal.gt(neededI)) {
-                (uint256 rTokenShares, uint256 rsrShares) = main.distributor().totals();
-                uint256 totalShares = rTokenShares + rsrShares;
-
                 // delta: {qTok}
                 int192 delta = bal.minus(neededI).shiftLeft(int8(asset.erc20().decimals()));
+                (uint256 rTokenShares, uint256 rsrShares) = main.distributor().totals();
 
-                uint256 tokensPerShare = delta.floor() / totalShares;
+                uint256 tokensPerShare = delta.floor() / (rTokenShares + rsrShares);
                 uint256 toRSR = tokensPerShare * rsrShares;
                 uint256 toRToken = tokensPerShare * rTokenShares;
 
@@ -143,30 +121,36 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     /// Try to launch a surplus-asset-for-collateral trade
-    /// @return Whether this step produced a TradeRequest for the Broker
-    function sellSurplusAssetsForCollateral(bool pickTarget) private returns (bool) {
+    /// @param pickTarget When true, compromise the BU target instead of pursuing basketsNeeded
+    /// @return doTrade Whether this step produced a TradeRequest for the Broker
+    /// @return req The prepared trade request
+    function assetsForCollateral(bool pickTarget)
+        private
+        view
+        returns (bool doTrade, TradeRequest memory req)
+    {
+        assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
+
         (
             IAsset surplus,
             ICollateral deficit,
             int192 surplusAmount,
             int192 deficitAmount
-        ) = largestSurplusAndDeficit(pickTarget);
+        ) = TradingLibP0.largestSurplusAndDeficit(pickTarget);
 
-        if (address(surplus) == address(0) || address(deficit) == address(0)) return false;
+        if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
 
         // Of primary concern here is whether we can trust the prices for the assets
         // we are selling. If we cannot, then we should not `prepareTradeToCoverDeficit`
 
-        bool trade;
-        TradeRequest memory req;
         if (
             surplus.isCollateral() &&
             main.assetRegistry().toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
         ) {
-            (trade, req) = prepareTradeSell(surplus, deficit, surplusAmount);
+            (doTrade, req) = TradingLibP0.prepareTradeSell(surplus, deficit, surplusAmount);
             req.minBuyAmount = 0;
         } else {
-            (trade, req) = prepareTradeToCoverDeficit(
+            (doTrade, req) = TradingLibP0.prepareTradeToCoverDeficit(
                 surplus,
                 deficit,
                 surplusAmount,
@@ -174,155 +158,46 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             );
         }
 
-        if (trade) tryTradeWithBroker(req);
-        return trade;
+        return (doTrade, req);
     }
 
     /// Try to seize RSR and sell it for missing collateral
-    /// @return Whether this step produced a TradeRequest for the Broker
-    function sellRSRForCollateral() private returns (bool) {
+    /// @return doTrade Whether the trade should be performed
+    /// @return req The prepared trade request
+    function insuranceForCollateral() private returns (bool doTrade, TradeRequest memory req) {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
 
         IStRSR stRSR = main.stRSR();
         IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
 
-        (, ICollateral deficit, , int192 deficitAmount) = largestSurplusAndDeficit(false);
-        if (address(deficit) == address(0)) return false;
+        (, ICollateral deficit, , int192 deficitAmount) = TradingLibP0.largestSurplusAndDeficit(
+            false
+        );
+        if (address(deficit) == address(0)) return (false, req);
 
         int192 availableRSR = rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR)));
 
-        (bool trade, TradeRequest memory req) = prepareTradeToCoverDeficit(
+        (doTrade, req) = TradingLibP0.prepareTradeToCoverDeficit(
             rsrAsset,
             deficit,
             availableRSR,
             deficitAmount
         );
 
-        if (trade) {
+        if (doTrade) {
             uint256 rsrBal = rsrAsset.balQ(address(this)).floor();
             if (req.sellAmount > rsrBal) {
                 stRSR.seizeRSR(req.sellAmount - rsrBal);
             }
-            tryTradeWithBroker(req);
         }
-        return trade;
+        return (doTrade, req);
     }
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
-    function giveRTokenHoldersAHaircut() private {
+    function takeHaircut() private {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
         assert(main.basketHandler().fullyCapitalized());
-    }
-
-    /// Compute the largest asset-token-for-collateral-token trade by identifying
-    /// the most in-surplus and most in-deficit tokens relative to their basket refAmts,
-    /// using the unit of account for interconversion.
-    /// @param pickTarget If true, compute surplus relative to asset average;
-    ///                   if false, just use basketsNeeded
-    /// @return surplus Surplus asset OR address(0)
-    /// @return deficit Deficit collateral OR address(0)
-    /// @return sellAmount {sellTok} Surplus amount (whole tokens)
-    /// @return buyAmount {buyTok} Deficit amount (whole tokens)
-    function largestSurplusAndDeficit(bool pickTarget)
-        private
-        view
-        returns (
-            IAsset surplus,
-            ICollateral deficit,
-            int192 sellAmount,
-            int192 buyAmount
-        )
-    {
-        IAssetRegistry reg = main.assetRegistry();
-        IBasketHandler basket = main.basketHandler();
-        IERC20[] memory erc20s = reg.erc20s();
-
-        // Compute basketTop and basketBottom
-        // basketTop is the lowest number of BUs to which we'll try to sell surplus assets
-        // basketBottom is the greatest number of BUs to which we'll try to buy deficit assets
-        int192 basketTop = main.rToken().basketsNeeded(); // {BU}
-        int192 basketBottom = basketTop;
-
-        if (pickTarget) {
-            int192 totalValue; // {UoA}
-            for (uint256 i = 0; i < erc20s.length; i++) {
-                IAsset asset = reg.toAsset(erc20s[i]);
-                totalValue = totalValue.plus(asset.bal(address(this)).mul(asset.price())); // {UoA}
-            }
-            basketTop = totalValue.div(basket.price());
-
-            int192 tradeVolume; // {UoA}
-            for (uint256 i = 0; i < erc20s.length; i++) {
-                IAsset asset = reg.toAsset(erc20s[i]);
-                if (!asset.isCollateral()) continue;
-                int192 needed = basketTop.mul(basket.quantity(erc20s[i]));
-                int192 held = asset.bal(address(this));
-
-                if (held.lt(needed)) {
-                    int192 deficitTok = needed.minus(held);
-                    tradeVolume = tradeVolume.plus(deficitTok.mul(asset.price()));
-                }
-            }
-
-            basketBottom = basketTop.mul(
-                FIX_ONE.minus(maxTradeSlippage.mul(tradeVolume).div(totalValue))
-            ); // {BU}
-        }
-
-        // Compute supluses relative to basketTop and deficits relative to basketBottom
-        int192[] memory surpluses = new int192[](erc20s.length); // {UoA}
-        int192[] memory deficits = new int192[](erc20s.length); // {UoA}
-
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            IAsset asset = reg.toAsset(erc20s[i]);
-
-            // needed: {tok} that Main must hold to meet obligations
-            int192 tokenTop;
-            int192 tokenBottom;
-            if (asset.isCollateral()) {
-                tokenTop = basketTop.mul(basket.quantity(erc20s[i]));
-                tokenBottom = basketBottom.mul(basket.quantity(erc20s[i]));
-            }
-            // held: {tok} that Main is already holding
-            int192 held = asset.bal(address(this));
-
-            if (held.gt(tokenTop)) {
-                // {UoA} = {tok} * {UoA/tok}
-                surpluses[i] = held.minus(tokenTop).mul(asset.price());
-            } else if (held.lt(tokenBottom)) {
-                // {UoA} = {tok} * {UoA/tok}
-                deficits[i] = tokenBottom.minus(held).mul(asset.price());
-            }
-        }
-
-        // Calculate the maximums.
-        uint256 surplusIndex;
-        uint256 deficitIndex;
-        int192 surplusMax; // {UoA}
-        int192 deficitMax; // {UoA}
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            if (surpluses[i].gt(surplusMax)) {
-                surplusMax = surpluses[i];
-                surplusIndex = i;
-            }
-            if (deficits[i].gt(deficitMax)) {
-                deficitMax = deficits[i];
-                deficitIndex = i;
-            }
-        }
-
-        if (surplusMax.gt(FIX_ZERO)) {
-            // {tok} = {UoA} / {UoA/tok}
-            surplus = reg.toAsset(erc20s[surplusIndex]);
-            sellAmount = surplusMax.div(surplus.price());
-        }
-
-        if (deficitMax.gt(FIX_ZERO)) {
-            // {tok} = {UoA} / {UoA/tok}
-            deficit = reg.toColl(erc20s[deficitIndex]);
-            buyAmount = deficitMax.div(deficit.price());
-        }
     }
 
     // === Setters ===
