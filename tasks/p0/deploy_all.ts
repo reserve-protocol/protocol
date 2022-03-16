@@ -34,7 +34,13 @@ task('P0-deploy', 'Deploys all Protocol components and an RToken').setAction(
 
     console.log('Deploying RToken...')
     const receipt = await (
-      await rtokenDeployer.deploy('Reserve Dollar Plus', 'RSDP', deployer.address, config)
+      await rtokenDeployer.deploy(
+        'Reserve Dollar Plus',
+        'RSDP',
+        'constitution',
+        deployer.address,
+        config
+      )
     ).wait()
 
     // Get main and facade addresses
