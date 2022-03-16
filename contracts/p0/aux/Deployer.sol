@@ -57,12 +57,14 @@ contract DeployerP0 is IDeployer {
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
+    /// @param constitutionURI An IPFS URI for the immutable constitution the RToken adheres to
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param params Deployment params
     /// @return The address of the newly deployed Main instance.
     function deploy(
         string memory name,
         string memory symbol,
+        string memory constitutionURI,
         address owner,
         DeploymentParams memory params
     ) external returns (address) {
@@ -71,11 +73,10 @@ contract DeployerP0 is IDeployer {
 
         // Components
         Components memory components;
-        components.rToken = new RTokenP0(name, symbol);
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
         string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
         components.stRSR = new StRSRP0(stRSRName, stRSRSymbol);
-        components.rToken = new RTokenP0(name, symbol);
+        components.rToken = new RTokenP0(name, symbol, constitutionURI);
         components.assetRegistry = new AssetRegistryP0();
         components.basketHandler = new BasketHandlerP0();
         components.backingManager = new BackingManagerP0();
