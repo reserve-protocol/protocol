@@ -42,7 +42,7 @@ export interface IConfig {
   rewardPeriod: BigNumber
   rewardRatio: BigNumber
   unstakingDelay: BigNumber
-  auctionDelay: BigNumber
+  tradingDelay: BigNumber
   auctionLength: BigNumber
   backingBuffer: BigNumber
   maxTradeSlippage: BigNumber
@@ -357,7 +357,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rewardPeriod: bn('604800'), // 1 week
     rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
     unstakingDelay: bn('1209600'), // 2 weeks
-    auctionDelay: bn('0'), // (the delay _after_ default has been confirmed)
+    tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     auctionLength: bn('1800'), // 30 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
@@ -379,7 +379,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
 
   // Deploy actual contracts
-  const receipt = await (await deployer.deploy('RTKN RToken', 'RTKN', owner.address, config)).wait()
+  const receipt = await (
+    await deployer.deploy('RTKN RToken', 'RTKN', 'constitution', owner.address, config)
+  ).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
   const facadeAddr = expectInReceipt(receipt, 'RTokenCreated').args.facade

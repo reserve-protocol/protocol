@@ -177,7 +177,7 @@ describe('MainP0 contract', () => {
       expect(totals.rsrTotal).to.equal(bn(60))
 
       // Check configurations for internal components
-      expect(await backingManager.auctionDelay()).to.equal(config.auctionDelay)
+      expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
       expect(await backingManager.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
       expect(await backingManager.dustAmount()).to.equal(config.dustAmount)
       expect(await backingManager.backingBuffer()).to.equal(config.backingBuffer)
@@ -290,14 +290,14 @@ describe('MainP0 contract', () => {
 
       // Deploy new system instance
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', owner.address, newConfig)
+        deployer.deploy('RTKN RToken', 'RTKN', 'constitution', owner.address, newConfig)
       ).to.be.revertedWith('unstakingDelay/rewardPeriod incompatible')
     })
 
     it('Should emit events on init', async () => {
       // Deploy new system instance
       const receipt = await (
-        await deployer.deploy('RTKN RToken', 'RTKN', owner.address, config)
+        await deployer.deploy('RTKN RToken', 'RTKN', 'constitution', owner.address, config)
       ).wait()
 
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
@@ -435,11 +435,11 @@ describe('MainP0 contract', () => {
   })
 
   describe('Configuration/State', () => {
-    it('Should allow to update auctionDelay if Owner', async () => {
+    it('Should allow to update tradingDelay if Owner', async () => {
       const newValue: BigNumber = bn('360')
 
       // Check existing value
-      expect(await backingManager.auctionDelay()).to.equal(config.auctionDelay)
+      expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
 
       // If not owner cannot update
       await expect(backingManager.connect(other).setAuctionDelay(newValue)).to.be.revertedWith(
@@ -447,15 +447,15 @@ describe('MainP0 contract', () => {
       )
 
       // Check value did not change
-      expect(await backingManager.auctionDelay()).to.equal(config.auctionDelay)
+      expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
 
       // Update with owner
       await expect(backingManager.connect(owner).setAuctionDelay(newValue))
         .to.emit(backingManager, 'AuctionDelaySet')
-        .withArgs(config.auctionDelay, newValue)
+        .withArgs(config.tradingDelay, newValue)
 
       // Check value was updated
-      expect(await backingManager.auctionDelay()).to.equal(newValue)
+      expect(await backingManager.tradingDelay()).to.equal(newValue)
     })
 
     it('Should allow to update maxTradeSlippage if Owner', async () => {

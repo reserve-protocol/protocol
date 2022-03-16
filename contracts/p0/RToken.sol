@@ -34,6 +34,9 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
     using FixLib for int192;
     using SafeERC20 for IERC20;
 
+    /// Expected to be an IPFS hash
+    string public constitutionURI;
+
     // To enforce a fixed issuanceRate throughout the entire block
     // TODO: simplify
     mapping(uint256 => int192) private blockIssuanceRates; // block.number => {qRTok/block}
@@ -50,11 +53,13 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
 
     int192 public issuanceRate; // {%} of RToken supply to issue per block
 
-    // solhint-disable no-empty-blocks
-    constructor(string memory name_, string memory symbol_)
-        ERC20(name_, symbol_)
-        ERC20Permit(name_)
-    {}
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        string memory constitutionURI_
+    ) ERC20(name_, symbol_) ERC20Permit(name_) {
+        constitutionURI = constitutionURI_;
+    }
 
     // solhint-enable no-empty-blocks
 

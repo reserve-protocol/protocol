@@ -1,4 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import Big from 'big.js'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, Wallet } from 'ethers'
@@ -19,10 +20,11 @@ import {
   StaticATokenMock,
   StRSRP0,
 } from '../../typechain'
+import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
-import { CollateralStatus } from '../../common/constants'
+import { makeDecayFn } from './utils/rewards'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -341,6 +343,9 @@ describe('StRSRP0 contract', () => {
       // All staked funds withdrawn upfront
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       expect(await stRSR.totalSupply()).to.equal(0)
+
+      // Exchange rate remains steady
+      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
     })
 
     it('Should allow multiple unstakes/withdrawals in RSR', async () => {
@@ -397,6 +402,9 @@ describe('StRSRP0 contract', () => {
 
       // All staked funds withdrawn upfront
       expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
+
+      // Exchange rate remains steady
+      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
     })
 
     context('With deposits and withdrawals', async () => {
@@ -570,7 +578,21 @@ describe('StRSRP0 contract', () => {
         // Move forward past stakingWithdrawalDelay
         await advanceTime(stkWithdrawalDelay + 1)
 
-        // Withdraw
+        // Attempt to withdraw with zero index, nothing happens
+        await stRSR.connect(addr1).withdraw(addr1.address, 0)
+
+        // Attempt to withdraw with index > number of withdrawals
+        await expect(stRSR.connect(addr1).withdraw(addr1.address, 5)).to.be.revertedWith(
+          'index out-of-bounds'
+        )
+
+        // Nothing compsleted still
+        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
+        expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance)
+        // All staked funds withdrawn upfront
+        expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+
+        // Withdraw with correct index
         await stRSR.connect(addr1).withdraw(addr1.address, 1)
 
         // Withdrawal was completed
@@ -579,6 +601,9 @@ describe('StRSRP0 contract', () => {
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
         // All staked funds withdrawn upfront
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+
+        // Exchange rate remains steady
+        expect(await stRSR.exchangeRate()).to.equal(fp('1'))
       })
 
       it('Should store weights and calculate balance correctly', async () => {
@@ -628,22 +653,17 @@ describe('StRSRP0 contract', () => {
           prevAddr2Balance.add(amount2).add(amount3)
         )
         expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
+
+        // Exchange rate remains steady
+        expect(await stRSR.exchangeRate()).to.equal(fp('1'))
       })
     })
   })
 
-  describe('Add RSR', () => {
-    it('Should not allow to remove RSR if caller is not part of Main', async () => {
-      const amount: BigNumber = bn('1e18')
-      const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
-
-      await expect(stRSR.connect(other).seizeRSR(amount)).to.be.revertedWith('not backing manager')
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
-    })
-
+  describe('Add RSR / Rewards', () => {
     it('Should allow to add RSR - Single staker', async () => {
       const amount: BigNumber = bn('1e18')
-      const amount2: BigNumber = bn('10e18')
+      const addedAmount: BigNumber = bn('10e18')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -655,16 +675,37 @@ describe('StRSRP0 contract', () => {
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
 
-      // TODO Smoothing tests
       // Add RSR
-      // await rsr.connect(owner).transfer(stRSR.address, amount2)
-      // await stRSR.payoutRewards()
+      await rsr.connect(owner).transfer(stRSR.address, addedAmount)
 
-      // Check balances and stakes
-      // expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.add(amount2))
-      // expect(await rsr.balanceOf(stRSR.address)).to.be.gt(await stRSR.totalSupply())
-      // expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      // expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.add(amount2))
+      // Advance to the end of noop period
+      await advanceTime(Number(config.rewardPeriod) + 1)
+
+      await expect(stRSR.payoutRewards()).to.emit(stRSR, 'RSRRewarded').withArgs(0, 1)
+
+      // Check exchange rate - steady
+      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
+
+      // Advance to the end of next period to get payout rewards
+      await advanceTime(Number(config.rewardPeriod) + 1)
+
+      // Calculate payout amount
+      const decayFn = makeDecayFn(await stRSR.rewardRatio())
+      const expAmt = decayFn(addedAmount, 1) // 1 period
+      const payoutAmount: BigNumber = addedAmount.sub(expAmt)
+
+      // Payout rewards
+      await expect(stRSR.payoutRewards()).to.emit(stRSR, 'RSRRewarded').withArgs(payoutAmount, 1)
+
+      // Check exchange rate
+      expect(await stRSR.exchangeRate()).to.equal(fp('1').add(payoutAmount))
+
+      // Check new balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.add(addedAmount))
+      expect(await rsr.balanceOf(stRSR.address)).to.be.gt(await stRSR.totalSupply())
+      // No change for stakers
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
     it('Should allow to add RSR - Two stakers - Rounded values', async () => {
@@ -745,6 +786,27 @@ describe('StRSRP0 contract', () => {
   })
 
   describe('Remove RSR', () => {
+    it('Should not allow to remove RSR if caller is not part of Main', async () => {
+      const amount: BigNumber = bn('1e18')
+      const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
+
+      await expect(stRSR.connect(other).seizeRSR(amount)).to.be.revertedWith('not backing manager')
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
+    })
+
+    it('Should not allow to remove RSR if amount is zero', async () => {
+      const zero: BigNumber = bn('0')
+      const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
+
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSR.connect(signer).seizeRSR(zero)).to.be.revertedWith(
+          'Amount cannot be zero'
+        )
+      })
+
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
+    })
+
     it('Should allow to remove RSR - Single staker', async () => {
       const amount: BigNumber = bn('10e18')
       const amount2: BigNumber = bn('1e18')
@@ -1022,6 +1084,24 @@ describe('StRSRP0 contract', () => {
         'ERC20: transfer amount exceeds balance'
       )
 
+      // Nothing transferred
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
+      expect(await stRSR.totalSupply()).to.equal(totalSupplyPrev)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+    })
+
+    it('Should not transfer stakes to zero address', async function () {
+      const addr1BalancePrev = await stRSR.balanceOf(addr1.address)
+      const addr2BalancePrev = await stRSR.balanceOf(addr2.address)
+      const totalSupplyPrev = await stRSR.totalSupply()
+
+      // Attempt to send to zero address
+      await expect(stRSR.connect(addr1).transfer(ZERO_ADDRESS, amount)).to.be.revertedWith(
+        'ERC20: transfer to the zero address'
+      )
+
+      // Nothing transferred
       expect(await stRSR.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
       expect(await stRSR.totalSupply()).to.equal(totalSupplyPrev)
@@ -1075,6 +1155,66 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(amount)
     })
 
+    it('Should perform validations on "Permit"', async () => {
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
+
+      // Set invalid signature
+      const permit = await signERC2612Permit(
+        addr1,
+        stRSR.address,
+        addr1.address,
+        addr2.address,
+        amount.add(1).toString()
+      )
+
+      // Attempt to run permit with invalid signature
+      await expect(
+        stRSR.permit(
+          addr1.address,
+          addr2.address,
+          amount,
+          permit.deadline,
+          permit.v,
+          permit.r,
+          permit.s
+        )
+      ).to.be.revertedWith('ERC20Permit: invalid signature')
+
+      // Attempt to run permit with expired deadline
+      await expect(
+        stRSR.permit(
+          addr1.address,
+          addr2.address,
+          amount,
+          (await getLatestBlockTimestamp()) - 1,
+          permit.v,
+          permit.r,
+          permit.s
+        )
+      ).to.be.revertedWith('ERC20Permit: expired deadline')
+
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
+    })
+
+    it('Should not transferFrom stakes if sender is zero address', async function () {
+      const addr1BalancePrev = await stRSR.balanceOf(addr1.address)
+      const addr2BalancePrev = await stRSR.balanceOf(addr2.address)
+      const totalSupplyPrev = await stRSR.totalSupply()
+
+      // Set allowance and transfer
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
+      await expect(
+        stRSR.connect(addr2).transferFrom(ZERO_ADDRESS, other.address, amount)
+      ).to.be.revertedWith('ERC20: transfer from the zero address')
+
+      // Nothing transferred
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
+      expect(await stRSR.balanceOf(other.address)).to.equal(0)
+      expect(await stRSR.totalSupply()).to.equal(totalSupplyPrev)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+    })
+
     it('Should not transferFrom stakes if no allowance', async function () {
       const addr1BalancePrev = await stRSR.balanceOf(addr1.address)
       const addr2BalancePrev = await stRSR.balanceOf(addr2.address)
@@ -1085,11 +1225,34 @@ describe('StRSRP0 contract', () => {
       await expect(
         stRSR.connect(addr2).transferFrom(addr1.address, other.address, amount)
       ).to.be.revertedWith('ERC20: transfer amount exceeds allowance')
+
+      // Nothing transferred
       expect(await stRSR.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
       expect(await stRSR.balanceOf(other.address)).to.equal(0)
       expect(await stRSR.totalSupply()).to.equal(totalSupplyPrev)
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+    })
+
+    it('Should perform validations on approvals', async function () {
+      expect(await stRSR.allowance(addr1.address, ZERO_ADDRESS)).to.equal(0)
+      expect(await stRSR.allowance(ZERO_ADDRESS, addr2.address)).to.equal(0)
+
+      // Attempt to set allowance to zero address
+      await expect(stRSR.connect(addr1).approve(ZERO_ADDRESS, amount)).to.be.revertedWith(
+        'ERC20: approve to the zero address'
+      )
+
+      // Attempt set allowance from zero address - Impersonation is the only way to get to this validation
+      await whileImpersonating(ZERO_ADDRESS, async (signer) => {
+        await expect(stRSR.connect(signer).approve(addr2.address, amount)).to.be.revertedWith(
+          'ERC20: approve from the zero address'
+        )
+      })
+
+      // Nothing set
+      expect(await stRSR.allowance(addr1.address, ZERO_ADDRESS)).to.equal(0)
+      expect(await stRSR.allowance(ZERO_ADDRESS, addr2.address)).to.equal(0)
     })
   })
 })

@@ -271,7 +271,7 @@ describe('Collateral contracts', () => {
       await aaveOracleInternal.setPrice(token.address, bn('0'))
 
       // Check price of token
-      await expect(tokenCollateral.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
+      await expect(tokenCollateral.price()).to.be.revertedWith(`PriceIsZero()`)
     })
   })
 
@@ -574,12 +574,12 @@ describe('Collateral contracts', () => {
       // Fiat token
       symbol = await token.symbol()
       await compoundOracleInternal.setPrice(symbol, bn(0))
-      await expect(compoundTokenAsset.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
+      await expect(compoundTokenAsset.price()).to.be.revertedWith(`PriceIsZero()`)
 
       // Usdc (6 decimals)
       symbol = await usdc.symbol()
       await compoundOracleInternal.setPrice(symbol, bn(0))
-      await expect(compoundUsdcAsset.price()).to.be.revertedWith(`PriceIsZero("${symbol}")`)
+      await expect(compoundUsdcAsset.price()).to.be.revertedWith(`PriceIsZero()`)
     })
   })
 })

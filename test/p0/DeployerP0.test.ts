@@ -141,10 +141,9 @@ describe('DeployerP0 contract', () => {
     })
 
     it('Should emit event', async () => {
-      await expect(deployer.deploy('RTKN RToken', 'RTKN', owner.address, config)).to.emit(
-        deployer,
-        'RTokenCreated'
-      )
+      await expect(
+        deployer.deploy('RTKN RToken', 'RTKN', 'constitution', owner.address, config)
+      ).to.emit(deployer, 'RTokenCreated')
     })
 
     it('Should register deployment', async () => {

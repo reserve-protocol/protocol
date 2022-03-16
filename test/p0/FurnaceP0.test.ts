@@ -1,10 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import Big from 'big.js'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../../common/constants'
-import { bn, fp } from '../../common/numbers'
+import { bn } from '../../common/numbers'
 import {
   CTokenMock,
   ERC20Mock,
@@ -17,17 +16,9 @@ import {
 } from '../../typechain'
 import { advanceTime } from '../utils/time'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+import { makeDecayFn } from './utils/rewards'
 
 const createFixtureLoader = waffle.createFixtureLoader
-
-const makeDecayFn = (ratio: BigNumber) => {
-  return (amtRToken: BigNumber, numPeriods: number) => {
-    // Use Big.js library for exponential
-    const expBase = new Big(fp('1').sub(ratio).toString()).div(new Big('1e18'))
-    const result = new Big(amtRToken.toString()).mul(expBase.pow(numPeriods).toString())
-    return result.toString()
-  }
-}
 
 describe('FurnaceP0 contract', () => {
   let owner: SignerWithAddress
@@ -235,6 +226,32 @@ describe('FurnaceP0 contract', () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(0)
     })
 
+    it('Should melt 0 for first period, even if funds available', async () => {
+      const hndAmt: BigNumber = bn('10e18')
+      const period: number = 60 * 60 * 24 // 1 day
+
+      // Set time period
+      await furnace.connect(owner).setPeriod(period)
+
+      // Transfer
+      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
+
+      // Advance one period
+      await advanceTime(period + 1)
+
+      // Melt
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+
+      // Another call to melt should also have no impact
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
+    })
+
     it('Should allow melt - one period', async () => {
       const hndAmt: BigNumber = bn('10e18')
       const period: number = 60 * 60 * 24 // 1 day
@@ -244,6 +261,10 @@ describe('FurnaceP0 contract', () => {
 
       // Transfer
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      // Get past first noop melt
+      await advanceTime(period + 1)
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
@@ -276,6 +297,10 @@ describe('FurnaceP0 contract', () => {
       // Transfer
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
 
+      // Get past first noop melt
+      await advanceTime(period + 1)
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
@@ -300,6 +325,10 @@ describe('FurnaceP0 contract', () => {
 
       // Transfer
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      // Get past first noop melt
+      await advanceTime(period + 1)
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)

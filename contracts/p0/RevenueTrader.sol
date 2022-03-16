@@ -24,8 +24,6 @@ contract RevenueTradingP0 is TradingP0, IRevenueTrader {
     /// Close any open trades and start new ones, for all assets
     /// Collective Action
     function manageFunds() external {
-        settleTrades();
-
         // Call state keepers
         main.poke();
 
@@ -63,6 +61,6 @@ contract RevenueTradingP0 is TradingP0, IRevenueTrader {
             reg.toAsset(erc20).bal(address(this))
         );
 
-        if (launch) executeTrade(trade);
+        if (launch) tryTradeWithBroker(trade);
     }
 }
