@@ -64,6 +64,9 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     // {seconds} The last time stRSR paid out rewards to stakers
     uint256 internal payoutLastPaid;
 
+    // {qRSR} How much reward RSR was held the last time rewards were paid out
+    uint256 internal rsrRewardsAtLastPayout;
+
     // The momentary stake/unstake rate is rsrBacking/totalStaked {RSR/stRSR}
     // That rate is locked in when slow unstaking *begins*
 
@@ -258,11 +261,12 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
-        uint256 payout = payoutRatio.mulu(rsrRewards()).floor();
+        uint256 payout = payoutRatio.mulu(rsrRewardsAtLastPayout).floor();
 
         // Apply payout to RSR backing
         rsrBacking += payout;
         payoutLastPaid += numPeriods * rewardPeriod;
+        rsrRewardsAtLastPayout = rsrRewards();
 
         emit RSRRewarded(payout, numPeriods);
     }

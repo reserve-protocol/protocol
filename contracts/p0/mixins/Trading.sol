@@ -41,8 +41,12 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         uint256 i = tradesStart;
         for (; i < trades.length && trades[i].canSettle(); i++) {
             ITrade trade = trades[i];
-            (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
-            emit TradeSettled(i, trade.sell(), trade.buy(), soldAmt, boughtAmt);
+            try trade.settle() returns (uint256 soldAmt, uint256 boughtAmt) {
+                emit TradeSettled(i, trade.sell(), trade.buy(), soldAmt, boughtAmt);
+            } catch {
+                // Pass over the Trade so it does not block future trading
+                emit TradeSettlementBlocked(i);
+            }
         }
         tradesStart = i;
     }
@@ -110,18 +114,29 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         return dustAmount.div(asset.price());
     }
 
-    /// Initiate a trade with a trading partner provided by the broker
-    function executeTrade(TradeRequest memory req) internal {
+    /// Try to initiate a trade with a trading partner provided by the broker
+    /// @dev Can fail silently if broker is disable or reverting
+    function tryTradeWithBroker(TradeRequest memory req) internal {
         IBroker broker = main.broker();
         if (broker.disabled()) return; // correct interaction with BackingManager/RevenueTrader
 
         req.sell.erc20().approve(address(broker), req.sellAmount);
-        ITrade trade = broker.openTrade(req);
-        if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
+        try broker.openTrade(req) returns (ITrade trade) {
+            latestEndtime = Math.max(trade.endTime(), latestEndtime);
 
-        trades.push(trade);
-        uint256 i = trades.length - 1;
-        emit TradeStarted(i, req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
+            trades.push(trade);
+            uint256 i = trades.length - 1;
+            emit TradeStarted(
+                i,
+                req.sell.erc20(),
+                req.buy.erc20(),
+                req.sellAmount,
+                req.minBuyAmount
+            );
+        } catch {
+            req.sell.erc20().approve(address(broker), 0);
+            emit TradeBlocked(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
+        }
     }
 
     // === Setters ===

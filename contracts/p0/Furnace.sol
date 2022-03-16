@@ -15,6 +15,7 @@ contract FurnaceP0 is Component, IFurnace {
     int192 public ratio; // {1} What fraction of balance to melt each period
     uint256 public period; // {seconds} How often to melt
     uint256 public lastPayout; // {seconds} The last time we did a payout
+    uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
 
     function init(ConstructorArgs calldata args) internal override {
         period = args.params.rewardPeriod;
@@ -34,10 +35,11 @@ contract FurnaceP0 is Component, IFurnace {
         int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
 
         IRToken rToken = main.rToken();
-        amount = payoutRatio.mulu(rToken.balanceOf(address(this))).floor();
+        amount = payoutRatio.mulu(lastPayoutBal).floor();
 
         if (amount > 0) rToken.melt(amount);
         lastPayout += numPeriods * period;
+        lastPayoutBal = rToken.balanceOf(address(this));
     }
 
     /// Period setting

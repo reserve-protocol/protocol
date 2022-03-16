@@ -140,7 +140,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     /// Try to launch a surplus-asset-for-collateral trade
-    /// @return Whether a Trade was launched
+    /// @return Whether this step produced a TradeRequest for the Broker
     function sellSurplusAssetsForCollateral(bool pickTarget) private returns (bool) {
         (
             IAsset surplus,
@@ -171,12 +171,12 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             );
         }
 
-        if (trade) executeTrade(req);
+        if (trade) tryTradeWithBroker(req);
         return trade;
     }
 
     /// Try to seize RSR and sell it for missing collateral
-    /// @return Whether a Trade was launched
+    /// @return Whether this step produced a TradeRequest for the Broker
     function sellRSRForCollateral() private returns (bool) {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
 
@@ -204,7 +204,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             if (req.sellAmount > rsrBal) {
                 stRSR.seizeRSR(req.sellAmount - rsrBal);
             }
-            executeTrade(req);
+            tryTradeWithBroker(req);
         }
         return trade;
     }

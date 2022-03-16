@@ -290,14 +290,14 @@ describe('MainP0 contract', () => {
 
       // Deploy new system instance
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', owner.address, newConfig)
+        deployer.deploy('RTKN RToken', 'RTKN', 'constitution', owner.address, newConfig)
       ).to.be.revertedWith('unstakingDelay/rewardPeriod incompatible')
     })
 
     it('Should emit events on init', async () => {
       // Deploy new system instance
       const receipt = await (
-        await deployer.deploy('RTKN RToken', 'RTKN', owner.address, config)
+        await deployer.deploy('RTKN RToken', 'RTKN', 'constitution', owner.address, config)
       ).wait()
 
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
