@@ -976,5 +976,16 @@ describe('MainP0 contract', () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facade.callStatic.totalAssetValue()).to.equal(0)
     })
+
+    it('Should detect unregistered collateral when checking status', async () => {
+      // Check status
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+      // Unregister one of the basket collaterals
+      await assetRegistry.connect(owner).unregister(collateral1.address)
+
+      // Check status again
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+    })
   })
 })
