@@ -125,9 +125,12 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     ) public onlyOwner {
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
-
         delete conf.erc20s;
+        IAssetRegistry reg = main.assetRegistry();
+
         for (uint256 i = 0; i < erc20s.length; i++) {
+            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+
             conf.erc20s.push(erc20s[i]);
         }
         emit BackupConfigSet(targetName, max, erc20s);

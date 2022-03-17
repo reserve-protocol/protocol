@@ -932,6 +932,14 @@ describe('MainP0 contract', () => {
       ).to.be.revertedWith('Component: caller is not the owner')
     })
 
+    it('Should not allow to set backup Config with non-collateral tokens', async () => {
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [compToken.address])
+      ).to.be.revertedWith('token is not collateral')
+    })
+
     it('Should allow to set backup Config if Owner', async () => {
       // Set basket
       await expect(
