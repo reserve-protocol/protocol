@@ -1099,6 +1099,76 @@ describe('Revenues', () => {
         expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(sellAmtRToken)
       })
 
+      it('Should try/catch errors when settling an auction', async () => {
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('0.8e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Collect revenue
+        // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
+        let sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
+        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+
+        let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
+        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+
+        await expect(backingManager.claimAndSweepRewards())
+          .to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(compToken.address, rewardAmountCOMP)
+          .to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(aaveToken.address, bn(0))
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        await expect(facade.runAuctionsForAllTraders())
+          .to.emit(rsrTrader, 'TradeStarted')
+          .withArgs(0, compToken.address, rsr.address, sellAmt, minBuyAmt)
+          .to.emit(rTokenTrader, 'TradeStarted')
+          .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
+
+        // Check funds in Market
+        expect(await compToken.balanceOf(gnosis.address)).to.equal(rewardAmountCOMP)
+
+        // Advance time till auction ended
+        await advanceTime(config.auctionLength.add(100).toString())
+
+        // Perform Mock Bids for RSR and RToken (addr1 has balance)
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+        await gnosis.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
+        await gnosis.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRToken,
+          buyAmount: minBuyAmtRToken,
+        })
+
+        // Cause failure by arbitrary removing the RSR obtained from market
+        await rsr.connect(owner).burn(gnosis.address, minBuyAmt)
+
+        // Close auctions - Will revert but catch errors
+        await expect(facade.runAuctionsForAllTraders())
+          .to.emit(rsrTrader, 'TradeSettlementBlocked')
+          .withArgs(0)
+          .to.emit(rTokenTrader, 'TradeSettled')
+          .withArgs(0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
+          .to.not.emit(rsrTrader, 'TradeSettled')
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
+
+        // Check balances - no changes on StRSR
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        // Furnace
+        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+      })
+
       it('Should not distribute other tokens beyond RSR/RToken', async () => {
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('1e18')
