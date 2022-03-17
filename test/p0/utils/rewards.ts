@@ -3,6 +3,7 @@ import { BigNumber } from 'ethers'
 import { fp } from '../../../common/numbers'
 
 export const makeDecayFn = (ratio: BigNumber) => {
+  // Calculate the amount of amtRToken left numPeriods rounds of decay has occurred
   return (amtRToken: BigNumber, numPeriods: number) => {
     // Use Big.js library for exponential
     const expBase = new Big(fp('1').sub(ratio).toString()).div(new Big('1e18'))

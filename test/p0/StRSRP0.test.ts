@@ -660,7 +660,7 @@ describe('StRSRP0 contract', () => {
     })
   })
 
-  describe('Add RSR / Rewards', () => {
+  describe('Add RSR / Rewards', async () => {
     it('Should allow to add RSR - Single staker', async () => {
       const amount: BigNumber = bn('1e18')
       const addedAmount: BigNumber = bn('10e18')
@@ -681,7 +681,9 @@ describe('StRSRP0 contract', () => {
       // Advance to the end of noop period
       await advanceTime(Number(config.rewardPeriod) + 1)
 
-      await expect(stRSR.payoutRewards()).to.emit(stRSR, 'RSRRewarded').withArgs(0, 1)
+      await expect(stRSR.payoutRewards())
+        .to.emit(stRSR, 'ExchangeRateSet')
+        .withArgs(fp('1'), fp('1'))
 
       // Check exchange rate - steady
       expect(await stRSR.exchangeRate()).to.equal(fp('1'))
@@ -695,7 +697,9 @@ describe('StRSRP0 contract', () => {
       const payoutAmount: BigNumber = addedAmount.sub(expAmt)
 
       // Payout rewards
-      await expect(stRSR.payoutRewards()).to.emit(stRSR, 'RSRRewarded').withArgs(payoutAmount, 1)
+      await expect(stRSR.payoutRewards())
+        .to.emit(stRSR, 'ExchangeRateSet')
+        .withArgs(fp('1'), fp('1').add(payoutAmount))
 
       // Check exchange rate
       expect(await stRSR.exchangeRate()).to.equal(fp('1').add(payoutAmount))
@@ -821,9 +825,13 @@ describe('StRSRP0 contract', () => {
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
 
+      const newRate = fp(amount.sub(amount2)).div(amount)
+
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
-        await stRSR.connect(signer).seizeRSR(amount2)
+        await expect(stRSR.connect(signer).seizeRSR(amount2))
+          .to.emit(stRSR, 'ExchangeRateSet')
+          .withArgs(fp('1'), newRate)
       })
 
       // Check balances and stakes
@@ -852,9 +860,13 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
 
+      const newRate = fp(amount.mul(2).sub(amount2)).div(amount.mul(2))
+
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
-        await stRSR.connect(signer).seizeRSR(amount2)
+        await expect(stRSR.connect(signer).seizeRSR(amount2))
+          .to.emit(stRSR, 'ExchangeRateSet')
+          .withArgs(fp('1'), newRate)
       })
 
       // Check balances and stakes
@@ -891,11 +903,14 @@ describe('StRSRP0 contract', () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr3.address)).to.equal(amount)
 
+      const newRate = fp(amount.mul(3).sub(amount2)).div(amount.mul(3))
+
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
-        await stRSR.connect(signer).seizeRSR(amount2)
+        await expect(stRSR.connect(signer).seizeRSR(amount2))
+          .to.emit(stRSR, 'ExchangeRateSet')
+          .withArgs(fp('1'), newRate)
       })
-
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3).sub(amount2))
       expect(await stRSR.totalSupply()).to.equal(amount.mul(3))
@@ -928,7 +943,9 @@ describe('StRSRP0 contract', () => {
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
-        await stRSR.connect(signer).seizeRSR(amount.mul(2).add(bn('1e18')))
+        await expect(stRSR.connect(signer).seizeRSR(amount.mul(2).add(bn('1e18'))))
+          .to.emit(stRSR, 'ExchangeRateSet')
+          .withArgs(fp('1'), fp('1'))
       })
 
       // Check balances and stakes
