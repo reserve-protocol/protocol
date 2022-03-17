@@ -6,7 +6,7 @@ import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
 import "contracts/plugins/assets/abstract/Collateral.sol";
 import "contracts/libraries/Fixed.sol";
 
-contract InvalidATokenFiatCollateral is AaveOracleMixin, Collateral {
+contract InvalidATokenFiatCollateralMock is AaveOracleMixin, Collateral {
     using FixLib for int192;
 
     IERC20 public immutable override rewardERC20;

@@ -7,6 +7,7 @@ import { bn, divCeil, fp, near } from '../../common/numbers'
 import {
   AaveLendingPoolMock,
   AavePricedAsset,
+  Asset,
   AssetRegistryP0,
   ATokenFiatCollateral,
   BackingManagerP0,
@@ -23,6 +24,7 @@ import {
   MainP0,
   GnosisMock,
   RevenueTradingP0,
+  RTokenAsset,
   RTokenP0,
   StaticATokenMock,
   StRSRP0,
@@ -43,9 +45,12 @@ describe('Revenues', () => {
 
   // Non-backing assets
   let rsr: ERC20Mock
+  let rsrAsset: Asset
   let compToken: ERC20Mock
+  let compAsset: Asset
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
+  let aaveAsset: Asset
   let aaveMock: AaveLendingPoolMock
 
   // Trading
@@ -73,6 +78,7 @@ describe('Revenues', () => {
 
   // Contracts to retrieve after deploy
   let rToken: RTokenP0
+  let rTokenAsset: RTokenAsset
   let stRSR: StRSRP0
   let furnace: FurnaceP0
   let main: MainP0
@@ -96,8 +102,11 @@ describe('Revenues', () => {
     // Deploy fixture
     ;({
       rsr,
+      rsrAsset,
       compToken,
       aaveToken,
+      compAsset,
+      aaveAsset,
       compoundMock,
       aaveMock,
       erc20s,
@@ -110,6 +119,7 @@ describe('Revenues', () => {
       basketHandler,
       distributor,
       rToken,
+      rTokenAsset,
       furnace,
       stRSR,
       broker,
@@ -1017,6 +1027,78 @@ describe('Revenues', () => {
         expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(sellAmtRToken)
       })
 
+      it('Should try/catch errors when opening trade on Broker', async () => {
+        // Set an invalid Broker that reverts
+        const InvalidBrokerFactory: ContractFactory = await ethers.getContractFactory(
+          'InvalidBrokerMock'
+        )
+        const invalidBroker: BrokerP0 = <BrokerP0>await InvalidBrokerFactory.deploy()
+
+        const ctorArgs = {
+          params: config,
+          components: {
+            rToken: rToken.address,
+            stRSR: stRSR.address,
+            assetRegistry: assetRegistry.address,
+            basketHandler: basketHandler.address,
+            backingManager: backingManager.address,
+            distributor: distributor.address,
+            rsrTrader: rsrTrader.address,
+            rTokenTrader: rTokenTrader.address,
+            furnace: furnace.address,
+            broker: invalidBroker.address,
+          },
+          assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
+          gnosis: gnosis.address,
+          rsr: rsr.address,
+        }
+
+        // Set broker
+        await invalidBroker.initComponent(main.address, ctorArgs)
+        await main.connect(owner).setBroker(invalidBroker.address)
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Claim rewards
+        await expect(facade.claimRewards())
+          .to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(compToken.address, bn(0))
+          .to.emit(backingManager, 'RewardsClaimed')
+          .withArgs(aaveToken.address, rewardAmountAAVE)
+
+        // Check status of destinations and traders
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        let sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+
+        // Attempt to run auctions - should catch exception
+        await expect(facade.runAuctionsForAllTraders())
+          .to.emit(rsrTrader, 'TradeBlocked')
+          .withArgs(aaveToken.address, rsr.address, sellAmt, minBuyAmt)
+          .to.emit(rTokenTrader, 'TradeBlocked')
+          .withArgs(aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
+          .to.not.emit(rsrTrader, 'TradeStarted')
+          .to.not.emit(rTokenTrader, 'TradeStarted')
+
+        // Check funds - remain in traders
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(sellAmt)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(sellAmtRToken)
+      })
+
       it('Should not distribute other tokens beyond RSR/RToken', async () => {
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('1e18')
@@ -1208,7 +1290,7 @@ describe('Revenues', () => {
       it('Should handle properly assets with invalid claim logic', async () => {
         // Setup a new aToken with invalid claim data
         const ATokenCollateralFactory = await ethers.getContractFactory(
-          'InvalidATokenFiatCollateral'
+          'InvalidATokenFiatCollateralMock'
         )
         const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
           await ATokenCollateralFactory.deploy(
