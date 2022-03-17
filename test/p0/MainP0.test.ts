@@ -6,12 +6,14 @@ import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { expectInIndirectReceipt, expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
 import {
+  AaveOracleMock,
   Asset,
   AssetRegistryP0,
   ATokenFiatCollateral,
   BackingManagerP0,
   BasketHandlerP0,
   BrokerP0,
+  CompoundOracleMock,
   CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
@@ -32,6 +34,7 @@ import {
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+import { advanceTime } from '../utils/time'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -55,6 +58,8 @@ describe('MainP0 contract', () => {
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
   let aaveAsset: Asset
+  let compoundOracleInternal: CompoundOracleMock
+  let aaveOracleInternal: AaveOracleMock
 
   // Trading
   let gnosis: GnosisMock
@@ -109,6 +114,8 @@ describe('MainP0 contract', () => {
       compAsset,
       aaveAsset,
       compoundMock,
+      compoundOracleInternal,
+      aaveOracleInternal,
       erc20s,
       collateral,
       basket,
@@ -240,6 +247,7 @@ describe('MainP0 contract', () => {
       // Check other values
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.price()).to.equal(fp('1'))
       expect(await facade.callStatic.totalAssetValue()).to.equal(0)
 
       // Check RToken price
@@ -977,7 +985,7 @@ describe('MainP0 contract', () => {
       expect(await facade.callStatic.totalAssetValue()).to.equal(0)
     })
 
-    it('Should detect unregistered collateral when checking status', async () => {
+    it('Should handle unregistered collateral when checking status', async () => {
       // Check status
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
@@ -986,6 +994,30 @@ describe('MainP0 contract', () => {
 
       // Check status again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+    })
+
+    it('Should exclude defaulted collateral when checking price', async () => {
+      // Check status and price
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.price()).to.equal(fp('1'))
+
+      // Default one of the collaterals
+      // Set Token1 to default - 50% price reduction
+      await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+      await compoundOracleInternal.setPrice(await token1.symbol(), bn('0.5e6'))
+
+      // Mark default as probable
+      await collateral1.forceUpdates()
+
+      // Advance time post delayUntilDefault
+      await advanceTime((await collateral0.delayUntilDefault()).toString())
+
+      // Mark default as confirmed
+      await collateral1.forceUpdates()
+
+      // Check status and price again
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await basketHandler.price()).to.equal(fp('0.75')) // disabled collateral is ignored
     })
   })
 })
