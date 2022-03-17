@@ -917,7 +917,7 @@ describe('MainP0 contract', () => {
       ).to.be.revertedWith('token is not collateral')
     })
 
-     it('Should allow to set prime Basket if Owner', async () => {
+    it('Should allow to set prime Basket if Owner', async () => {
       // Set basket
       await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
         .to.emit(basketHandler, 'PrimeBasketSet')
