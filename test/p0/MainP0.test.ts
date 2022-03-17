@@ -901,14 +901,20 @@ describe('MainP0 contract', () => {
   describe('Basket Handling', () => {
     it('Should not allow to set prime Basket if not Owner', async () => {
       await expect(
-        basketHandler.connect(other).setPrimeBasket([collateral0.address], [fp('1')])
+        basketHandler.connect(other).setPrimeBasket([token0.address], [fp('1')])
       ).to.be.revertedWith('Component: caller is not the owner')
     })
 
     it('Should not allow to set prime Basket with invalid length', async () => {
       await expect(
-        basketHandler.connect(owner).setPrimeBasket([collateral0.address], [])
+        basketHandler.connect(owner).setPrimeBasket([token0.address], [])
       ).to.be.revertedWith('must be same length')
+    })
+
+    it('Should not allow to set prime Basket with non-collateral tokens', async () => {
+      await expect(
+        basketHandler.connect(owner).setPrimeBasket([compToken.address], [fp('1')])
+      ).to.be.revertedWith('token is not collateral')
     })
 
     it('Should allow to set prime Basket if Owner', async () => {
@@ -922,7 +928,7 @@ describe('MainP0 contract', () => {
       await expect(
         basketHandler
           .connect(other)
-          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [collateral0.address])
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [token0.address])
       ).to.be.revertedWith('Component: caller is not the owner')
     })
 
@@ -931,10 +937,10 @@ describe('MainP0 contract', () => {
       await expect(
         basketHandler
           .connect(owner)
-          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [collateral0.address])
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [token0.address])
       )
         .to.emit(basketHandler, 'BackupConfigSet')
-        .withArgs(ethers.utils.formatBytes32String('USD'), bn(1), [collateral0.address])
+        .withArgs(ethers.utils.formatBytes32String('USD'), bn(1), [token0.address])
     })
 
     it('Should not allow to switch basket if not Owner', async () => {
