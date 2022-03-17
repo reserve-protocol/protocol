@@ -187,7 +187,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             IERC20 erc20 = basket.erc20s[i];
             ICollateral coll = reg.toColl(erc20);
 
-            if (reg.isRegistered(erc20) && coll.status() != CollateralStatus.DISABLED) {
+            if (coll.status() != CollateralStatus.DISABLED) {
                 p = p.plus(coll.price().mul(quantity(erc20)));
             }
         }
