@@ -74,11 +74,12 @@ library TradingLibP0 {
     }
 
     // Compute max surpluse relative to basketTop and max deficit relative to basketBottom
+    /// @param compromiseTarget When true, trade towards a reduced BU target
     /// @return surplus Surplus asset OR address(0)
     /// @return deficit Deficit collateral OR address(0)
     /// @return sellAmount {sellTok} Surplus amount (whole tokens)
     /// @return buyAmount {buyTok} Deficit amount (whole tokens)
-    function largestSurplusAndDeficit(bool pickTarget)
+    function largestSurplusAndDeficit(bool compromiseTarget)
         external
         view
         returns (
@@ -96,7 +97,7 @@ library TradingLibP0 {
         int192 basketTop = rToken().basketsNeeded(); // {BU}
         int192 basketBottom = basketTop;
 
-        if (pickTarget) {
+        if (compromiseTarget) {
             int192 tradeVolume;
             int192 totalValue;
             for (uint256 i = 0; i < erc20s.length; i++) {
