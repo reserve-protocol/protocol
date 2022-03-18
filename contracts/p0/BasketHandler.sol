@@ -108,6 +108,8 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         IAssetRegistry reg = main.assetRegistry();
 
         for (uint256 i = 0; i < erc20s.length; i++) {
+            // This is a nice catch to have, but in general it is possible for
+            // an ERC20 in the prime basket to have its asset unregistered.
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
 
             config.erc20s.push(erc20s[i]);
@@ -129,6 +131,8 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         IAssetRegistry reg = main.assetRegistry();
 
         for (uint256 i = 0; i < erc20s.length; i++) {
+            // This is a nice catch to have, but in general it is possible for
+            // an ERC20 in the backup config to have its asset unregistered.
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
 
             conf.erc20s.push(erc20s[i]);
@@ -160,12 +164,12 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             IERC20 erc20 = basket.erc20s[i];
             CollateralStatus statusI;
-            if (!reg.isRegistered(erc20)) statusI = CollateralStatus.DISABLED;
-            else statusI = reg.toColl(erc20).status();
+            if (!reg.isRegistered(erc20) || !reg.toAsset(erc20).isCollateral()) {
+                return CollateralStatus.DISABLED;
+            } else statusI = reg.toColl(erc20).status();
 
             if (uint256(statusI) > uint256(status_)) {
                 status_ = statusI;
-                if (status_ == CollateralStatus.DISABLED) return status_;
             }
         }
     }
@@ -185,10 +189,13 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             IERC20 erc20 = basket.erc20s[i];
-            ICollateral coll = reg.toColl(erc20);
 
-            if (coll.status() != CollateralStatus.DISABLED) {
-                p = p.plus(coll.price().mul(quantity(erc20)));
+            if (
+                reg.isRegistered(erc20) &&
+                reg.toAsset(erc20).isCollateral() &&
+                reg.toColl(erc20).status() != CollateralStatus.DISABLED
+            ) {
+                p = p.plus(reg.toColl(erc20).price().mul(quantity(erc20)));
             }
         }
     }
@@ -204,6 +211,8 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         erc20s = new address[](basket.erc20s.length);
         quantities = new uint256[](basket.erc20s.length);
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
+            if (!main.assetRegistry().isRegistered(basket.erc20s[i])) continue;
+
             uint8 decimals = main.assetRegistry().toAsset(basket.erc20s[i]).erc20().decimals();
 
             // {qTok} = {BU} * {tok/BU} * {qTok/tok}
@@ -217,6 +226,8 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     function basketsHeldBy(address account) public view returns (int192 baskets) {
         baskets = FIX_MAX;
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
+            if (!main.assetRegistry().isRegistered(basket.erc20s[i])) continue;
+
             int192 bal = main.assetRegistry().toAsset(basket.erc20s[i]).bal(account); // {tok}
             int192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
@@ -240,7 +251,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
         // Count unique targets
         for (uint256 i = 0; i < config.erc20s.length; i++) {
-            targetNames.add(reg.toColl(config.erc20s[i]).targetName());
+            if (reg.isRegistered(config.erc20s[i])) {
+                IAsset asset = reg.toAsset(config.erc20s[i]);
+                if (asset.isCollateral()) targetNames.add(ICollateral(address(asset)).targetName());
+            }
         }
 
         // Here, "good" collateral is non-defaulted collateral; any status other than DISABLED
@@ -255,6 +269,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         // For each prime collateral token:
         for (uint256 i = 0; i < config.erc20s.length; i++) {
             IERC20 erc20 = config.erc20s[i];
+            if (!reg.isRegistered(erc20) || !reg.toAsset(erc20).isCollateral()) {
+                continue;
+            }
+
             ICollateral coll = reg.toColl(erc20);
 
             // Find coll's targetName index
@@ -288,6 +306,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
                 IERC20 erc20 = backup.erc20s[j];
                 if (
                     reg.isRegistered(erc20) &&
+                    reg.toAsset(erc20).isCollateral() &&
                     reg.toColl(erc20).status() != CollateralStatus.DISABLED
                 ) {
                     size++;
@@ -304,12 +323,18 @@ contract BasketHandlerP0 is Component, IBasketHandler {
                 IERC20 erc20 = backup.erc20s[j];
                 if (
                     reg.isRegistered(erc20) &&
+                    reg.toAsset(erc20).isCollateral() &&
                     reg.toColl(erc20).status() != CollateralStatus.DISABLED
                 ) {
                     newBasket.add(erc20, totalWeights[i].minus(goodWeights[i]).divu(size));
                     assigned++;
                 }
             }
+        }
+
+        // We may end up with an empty basket
+        if (newBasket.erc20s.length == 0) {
+            return false;
         }
 
         // If we haven't already given up, then commit the new basket!

@@ -993,10 +993,25 @@ describe('MainP0 contract', () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.quantity(token1.address)).to.equal(basketsNeededAmts[1])
 
-      // Unregister one of the basket collaterals
-      await assetRegistry.connect(owner).unregister(collateral1.address)
+      // Unregister the basket collaterals
+      await expect(assetRegistry.connect(owner).unregister(collateral0.address)).to.emit(
+        basketHandler,
+        'BasketSet'
+      )
+      await expect(assetRegistry.connect(owner).unregister(collateral1.address)).to.emit(
+        basketHandler,
+        'BasketSet'
+      )
+      await expect(assetRegistry.connect(owner).unregister(collateral2.address)).to.emit(
+        basketHandler,
+        'BasketSet'
+      )
+      await expect(assetRegistry.connect(owner).unregister(collateral3.address)).to.not.emit(
+        basketHandler,
+        'BasketSet'
+      )
 
-      // Check status again
+      // Final basket should contain disabled collateral
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
     })

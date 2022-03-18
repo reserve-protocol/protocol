@@ -87,7 +87,8 @@ contract FacadeP0 is IFacade {
             IAsset asset = reg.toAsset(erc20s[i]);
             // Exclude collateral that has defaulted
             if (
-                !asset.isCollateral() || reg.toColl(erc20s[i]).status() != CollateralStatus.DISABLED
+                asset.isCollateral() &&
+                ICollateral(address(asset)).status() != CollateralStatus.DISABLED
             ) {
                 total = total.plus(asset.bal(backingManager).mul(asset.price()));
             }

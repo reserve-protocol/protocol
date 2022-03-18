@@ -40,11 +40,14 @@ contract AssetRegistryP0 is Component, IAssetRegistry {
 
     /// Swap an asset that shares an ERC20 with a presently-registered asset, de-registering it
     /// Fails if there is not an asset already registered for the ERC20
-    /// @return If the asset was swapped for a previously-registered asset
-    function swapRegistered(IAsset asset) external onlyOwner returns (bool) {
+    /// @return swapped If the asset was swapped for a previously-registered asset
+    function swapRegistered(IAsset asset) external onlyOwner returns (bool swapped) {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
         assert(assets[asset.erc20()] != IAsset(address(0)));
-        return _registerIgnoringCollisions(asset);
+        swapped = _registerIgnoringCollisions(asset);
+
+        // Ensure valid basket after swap
+        main.basketHandler().ensureBasket();
     }
 
     /// Unregister an asset, requiring that it is already registered
@@ -54,6 +57,9 @@ contract AssetRegistryP0 is Component, IAssetRegistry {
         _erc20s.remove(address(asset.erc20()));
         assets[asset.erc20()] = IAsset(address(0));
         emit AssetUnregistered(asset.erc20(), asset);
+
+        // Ensure valid basket after deregistration
+        main.basketHandler().ensureBasket();
     }
 
     /// Return the Asset modelling this ERC20, or revert

@@ -558,7 +558,7 @@ describe('MainP0 contract', () => {
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[1], initialQuotes[3], bn('0.25e18')])
       })
 
-      it('Should not be able to switch basket if there are unregistered assets', async () => {
+      it('Should switch basket ignoring unregistered backup collateral', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
 
@@ -585,8 +585,8 @@ describe('MainP0 contract', () => {
         // Unregister an asset in basket
         await assetRegistry.connect(owner).unregister(collateral3.address)
 
-        // Basket should not be able to switch switch
-        await expect(basketHandler.ensureBasket()).to.be.revertedWith('erc20 unregistered')
+        // Check state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       })
     })
 
