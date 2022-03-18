@@ -453,6 +453,46 @@ describe('MainP0 contract', () => {
         expect(quotes).to.eql([bn('0.5e18'), initialQuotes[1], initialQuotes[2]])
       })
 
+      it('Should handle not having a valid backup', async () => {
+        // Check initial state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        await expectCurrentBacking({
+          tokens: initialTokens,
+          quantities: initialQuantities,
+        })
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        expect(quotes).to.eql(initialQuotes)
+
+        // Set Token1 to default - 50% price reduction
+        await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+
+        // Mark default as probable
+        await collateral1.forceUpdates()
+
+        // Advance time post delayUntilDefault
+        await advanceTime((await collateral1.delayUntilDefault()).toString())
+
+        // Confirm default
+        await collateral1.forceUpdates()
+
+        // Basket cannot switch because there is no valid backup
+        await expect(basketHandler.ensureBasket()).to.not.emit(basketHandler, 'BasketSet')
+
+        // Check state - Basket remains the same
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        await expectCurrentBacking({
+          tokens: initialTokens,
+          quantities: initialQuantities,
+        })
+
+        // Cannot issue because collateral is not sound
+        await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith(
+          'collateral not sound'
+        )
+      })
+
       it('Should not be able to switch basket if there are unregistered assets', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
@@ -605,6 +645,63 @@ describe('MainP0 contract', () => {
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], bn('0.5e18')])
+      })
+
+      it('Should handle not having a valid backup for a specific target', async () => {
+        // Register Collateral
+        await assetRegistry.connect(owner).register(backupEURCollateral.address)
+
+        // Set backup configuration - Backup EUR Collateral as backup
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('EUR'), bn(1), [backupToken1.address])
+
+        // Check initial state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        await expectCurrentBacking({
+          tokens: initialTokens,
+          quantities: initialQuantities,
+        })
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        expect(quotes).to.eql(initialQuotes)
+
+        // Set the USD Token to default - 50% price reduction
+        await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
+
+        // Mark default as probable
+        await collateral0.forceUpdates()
+
+        // Advance time post delayUntilDefault
+        await advanceTime((await collateral0.delayUntilDefault()).toString())
+
+        // Confirm default
+        await collateral0.forceUpdates()
+
+        // Check state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await facade.callStatic.totalAssetValue()).to.equal(bn('50e18')) // 50% defaulted, value = 0
+        await expectCurrentBacking({
+          tokens: initialTokens,
+          quantities: initialQuantities,
+        })
+
+        //  Basket cannot switch because there is no USD backup
+        await expect(basketHandler.ensureBasket()).to.not.emit(basketHandler, 'BasketSet')
+
+        // Check state - Basket remains the same
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        await expectCurrentBacking({
+          tokens: initialTokens,
+          quantities: initialQuantities,
+        })
+
+        // Cannot issue because collateral is not sound
+        await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith(
+          'collateral not sound'
+        )
       })
     })
   })
