@@ -1010,7 +1010,7 @@ describe('MainP0 contract', () => {
       await collateral1.forceUpdates()
 
       // Advance time post delayUntilDefault
-      await advanceTime((await collateral0.delayUntilDefault()).toString())
+      await advanceTime((await collateral1.delayUntilDefault()).toString())
 
       // Mark default as confirmed
       await collateral1.forceUpdates()
@@ -1018,6 +1018,47 @@ describe('MainP0 contract', () => {
       // Check status and price again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       expect(await basketHandler.price()).to.equal(fp('0.75')) // disabled collateral is ignored
+    })
+
+    it('Should return baskets held by an account correctly', async () => {
+      // Check values
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
+      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
+      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+
+      // Swap a token for a non-collateral asset
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
+      const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+        await AssetFactory.deploy(
+          token1.address,
+          await collateral1.maxAuctionSize(),
+          compoundMock.address
+        )
+      )
+      // Swap Asset
+      await expect(assetRegistry.connect(owner).swapRegistered(newAsset.address))
+        .to.emit(main, 'AssetUnregistered')
+        .withArgs(token1.address, collateral1.address)
+        .to.emit(assetRegistry, 'AssetRegistered')
+        .withArgs(token1.address, newAsset.address)
+
+      // Check values - No changes, asset in basket is ignored - REVIEW
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
+      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4))
+      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+
+      // Set new prime basket
+      await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
+        .to.emit(basketHandler, 'PrimeBasketSet')
+        .withArgs([token0.address], [fp('1')])
+
+      // Switch basket
+      await expect(basketHandler.connect(owner).switchBasket()).to.emit(basketHandler, 'BasketSet')
+
+      // Check values
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal) // a full unit is required
+      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal) // a full unit is required
+      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
     })
   })
 })
