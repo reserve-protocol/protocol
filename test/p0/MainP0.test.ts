@@ -698,7 +698,7 @@ describe('MainP0 contract', () => {
       const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
         await AssetFactory.deploy(
           erc20s[5].address,
-          await collateral0.maxAuctionSize(),
+          await collateral0.maxTradeVolume(),
           compoundMock.address
         )
       )
@@ -706,7 +706,7 @@ describe('MainP0 contract', () => {
       const duplicateAsset: CompoundPricedAsset = <CompoundPricedAsset>(
         await AssetFactory.deploy(
           token0.address,
-          await collateral0.maxAuctionSize(),
+          await collateral0.maxTradeVolume(),
           compoundMock.address
         )
       )
@@ -751,7 +751,7 @@ describe('MainP0 contract', () => {
       const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
         await AssetFactory.deploy(
           token0.address,
-          await collateral0.maxAuctionSize(),
+          await collateral0.maxTradeVolume(),
           compoundMock.address
         )
       )
@@ -762,7 +762,7 @@ describe('MainP0 contract', () => {
       const newTokenAsset: CompoundPricedAsset = <CompoundPricedAsset>(
         await AssetFactory.deploy(
           newToken.address,
-          await collateral0.maxAuctionSize(),
+          await collateral0.maxTradeVolume(),
           compoundMock.address
         )
       )
@@ -813,7 +813,7 @@ describe('MainP0 contract', () => {
       const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
         await AssetFactory.deploy(
           token0.address,
-          await collateral0.maxAuctionSize(),
+          await collateral0.maxTradeVolume(),
           compoundMock.address
         )
       )
@@ -822,7 +822,7 @@ describe('MainP0 contract', () => {
       const invalidAssetForSwap: CompoundPricedAsset = <CompoundPricedAsset>(
         await AssetFactory.deploy(
           erc20s[5].address,
-          await collateral0.maxAuctionSize(),
+          await collateral0.maxTradeVolume(),
           compoundMock.address
         )
       )
@@ -1068,7 +1068,7 @@ describe('MainP0 contract', () => {
       const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
         await AssetFactory.deploy(
           token1.address,
-          await collateral1.maxAuctionSize(),
+          await collateral1.maxTradeVolume(),
           compoundMock.address
         )
       )

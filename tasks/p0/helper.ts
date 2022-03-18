@@ -17,7 +17,7 @@ export const AAVE_LENDING_ADDRESS = '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9'
 
 // Setup Config
 export const config: IConfig = {
-  maxAuctionSize: fp('1e6'), // $1M
+  maxTradeVolume: fp('1e6'), // $1M
   dist: {
     rTokenDist: bn(40), // 2/5 RToken
     rsrDist: bn(60), // 3/5 RSR
@@ -52,7 +52,7 @@ const createATokenCollateral = async (
   // Create token collateral
   const collateral = await ATokenCollateralFactory.deploy(
     erc20.address,
-    config.maxAuctionSize,
+    config.maxTradeVolume,
     defaultThreshold,
     delayUntilDefault,
     underlyingAddress,
@@ -83,7 +83,7 @@ const createCTokenCollateral = async (
   // Create token collateral
   const collateral = await CTokenCollateralFactory.deploy(
     erc20.address,
-    config.maxAuctionSize,
+    config.maxTradeVolume,
     defaultThreshold,
     delayUntilDefault,
     underlyingAddress,

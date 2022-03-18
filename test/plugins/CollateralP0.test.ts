@@ -120,7 +120,7 @@ describe('Collateral contracts', () => {
       expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await tokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await tokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await tokenCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await tokenCollateral.maxTradeVolume()).to.equal(config.maxTradeVolume)
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await tokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await tokenCollateral.pricePerTarget()).to.equal(fp('1'))
@@ -140,7 +140,7 @@ describe('Collateral contracts', () => {
       expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await usdcCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await usdcCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await usdcCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await usdcCollateral.maxTradeVolume()).to.equal(config.maxTradeVolume)
       expect(await usdcCollateral.bal(owner.address)).to.equal(amt)
       expect(await usdcCollateral.balQ(owner.address)).to.equal(amt.mul(bn('1e6')))
       expect(await usdcCollateral.refPerTok()).to.equal(fp('1'))
@@ -161,7 +161,7 @@ describe('Collateral contracts', () => {
       expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await aTokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await aTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await aTokenCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await aTokenCollateral.maxTradeVolume()).to.equal(config.maxTradeVolume)
       expect(await aTokenCollateral.bal(owner.address)).to.equal(amt)
       expect(await aTokenCollateral.balQ(owner.address)).to.equal(amt.mul(bn('1e18')))
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
@@ -185,7 +185,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await cTokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await cTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await cTokenCollateral.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await cTokenCollateral.maxTradeVolume()).to.equal(config.maxTradeVolume)
       expect(await cTokenCollateral.bal(owner.address)).to.equal(amt)
       expect(await cTokenCollateral.balQ(owner.address)).to.equal(amt.mul(bn('1e8')))
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('1'))
@@ -498,7 +498,7 @@ describe('Collateral contracts', () => {
       compoundTokenAsset = <CompoundPricedFiatCollateral>(
         await CompoundFiatCollFactory.deploy(
           token.address,
-          await tokenCollateral.maxAuctionSize(),
+          await tokenCollateral.maxTradeVolume(),
           await tokenCollateral.defaultThreshold(),
           await tokenCollateral.delayUntilDefault(),
           await compoundMock.address
@@ -507,7 +507,7 @@ describe('Collateral contracts', () => {
       compoundUsdcAsset = <CompoundPricedFiatCollateral>(
         await CompoundFiatCollFactory.deploy(
           usdc.address,
-          await usdcCollateral.maxAuctionSize(),
+          await usdcCollateral.maxTradeVolume(),
           await usdcCollateral.defaultThreshold(),
           await usdcCollateral.delayUntilDefault(),
           compoundMock.address
@@ -528,7 +528,7 @@ describe('Collateral contracts', () => {
       expect(await compoundTokenAsset.whenDefault()).to.equal(MAX_UINT256)
       expect(await compoundTokenAsset.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await compoundTokenAsset.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await compoundTokenAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await compoundTokenAsset.maxTradeVolume()).to.equal(config.maxTradeVolume)
       expect(await compoundTokenAsset.refPerTok()).to.equal(fp('1'))
       expect(await compoundTokenAsset.targetPerRef()).to.equal(fp('1'))
       expect(await compoundTokenAsset.pricePerTarget()).to.equal(fp('1'))
@@ -546,7 +546,7 @@ describe('Collateral contracts', () => {
       expect(await compoundUsdcAsset.whenDefault()).to.equal(MAX_UINT256)
       expect(await compoundUsdcAsset.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await compoundUsdcAsset.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await compoundUsdcAsset.maxAuctionSize()).to.equal(config.maxAuctionSize)
+      expect(await compoundUsdcAsset.maxTradeVolume()).to.equal(config.maxTradeVolume)
       expect(await compoundUsdcAsset.refPerTok()).to.equal(fp('1'))
       expect(await compoundUsdcAsset.targetPerRef()).to.equal(fp('1'))
       expect(await compoundUsdcAsset.pricePerTarget()).to.equal(fp('1'))

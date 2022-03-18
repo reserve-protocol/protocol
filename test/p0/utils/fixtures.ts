@@ -37,7 +37,7 @@ import {
 export type Collateral = AbstractCollateral | CTokenFiatCollateral | ATokenFiatCollateral
 
 export interface IConfig {
-  maxAuctionSize: BigNumber
+  maxTradeVolume: BigNumber
   dist: IRevenueShare
   rewardPeriod: BigNumber
   rewardRatio: BigNumber
@@ -176,7 +176,7 @@ async function collateralFixture(
       <Collateral>(
         await AaveCollateralFactory.deploy(
           erc20.address,
-          config.maxAuctionSize,
+          config.maxTradeVolume,
           defaultThreshold,
           delayUntilDefault,
           comptroller.address,
@@ -192,7 +192,7 @@ async function collateralFixture(
       <Collateral>(
         await AaveCollateralFactory.deploy(
           erc20.address,
-          config.maxAuctionSize,
+          config.maxTradeVolume,
           defaultThreshold,
           delayUntilDefault,
           comptroller.address,
@@ -214,7 +214,7 @@ async function collateralFixture(
       <CTokenFiatCollateral>(
         await CTokenCollateralFactory.deploy(
           erc20.address,
-          config.maxAuctionSize,
+          config.maxTradeVolume,
           defaultThreshold,
           delayUntilDefault,
           underlyingAddress,
@@ -241,7 +241,7 @@ async function collateralFixture(
       <ATokenFiatCollateral>(
         await ATokenCollateralFactory.deploy(
           erc20.address,
-          config.maxAuctionSize,
+          config.maxTradeVolume,
           defaultThreshold,
           delayUntilDefault,
           underlyingAddress,
@@ -352,13 +352,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Setup Config
   const config: IConfig = {
-    maxAuctionSize: fp('1e6'), // $1M
+    maxTradeVolume: fp('1e6'), // $1M
     dist: dist,
     rewardPeriod: bn('604800'), // 1 week
     rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
     unstakingDelay: bn('1209600'), // 2 weeks
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
-    auctionLength: bn('1800'), // 30 minutes
+    auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
     dustAmount: fp('0.01'), // 0.01 UoA (USD)

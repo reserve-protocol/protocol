@@ -611,7 +611,7 @@ describe('MainP0 contract', () => {
         newEURCollateral = <Collateral>(
           await EURCollateralFactory.deploy(
             token1.address,
-            await collateral1.maxAuctionSize(),
+            await collateral1.maxTradeVolume(),
             await collateral1.defaultThreshold(),
             await collateral1.delayUntilDefault(),
             compoundMock.address,
@@ -622,7 +622,7 @@ describe('MainP0 contract', () => {
         backupEURCollateral = <Collateral>(
           await EURCollateralFactory.deploy(
             backupToken1.address,
-            await backupCollateral1.maxAuctionSize(),
+            await backupCollateral1.maxTradeVolume(),
             await backupCollateral1.defaultThreshold(),
             await backupCollateral1.delayUntilDefault(),
             compoundMock.address,

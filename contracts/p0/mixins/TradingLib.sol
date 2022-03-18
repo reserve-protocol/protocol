@@ -34,7 +34,7 @@ library TradingLibP0 {
         if (sellAmount.lt(dustThreshold(sell))) return (false, trade);
 
         // {sellTok}
-        int192 fixSellAmount = fixMin(sellAmount, sell.maxAuctionSize().div(sell.price()));
+        int192 fixSellAmount = fixMin(sellAmount, sell.maxTradeVolume().div(sell.price()));
         trade.sellAmount = fixSellAmount.shiftLeft(int8(sell.erc20().decimals())).floor();
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}

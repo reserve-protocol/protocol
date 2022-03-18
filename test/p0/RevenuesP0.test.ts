@@ -417,7 +417,7 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
       })
 
-      it('Should handle large auctions using maxAuctionSize with f=1 (RSR only)', async () => {
+      it('Should handle large auctions using maxTradeVolume with f=1 (RSR only)', async () => {
         // Set max auction size for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
         const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
@@ -547,7 +547,7 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
-      it('Should handle large auctions using maxAuctionSize with f=0 (RToken only)', async () => {
+      it('Should handle large auctions using maxTradeVolume with f=0 (RToken only)', async () => {
         // Set max auction size for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAsset')
         const newAaveAsset: AavePricedAsset = <AavePricedAsset>(
@@ -677,7 +677,7 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmt.add(minBuyAmtRemainder))
       })
 
-      it('Should handle large auctions using maxAuctionSize with revenue split RSR/RToken', async () => {
+      it('Should handle large auctions using maxTradeVolume with revenue split RSR/RToken', async () => {
         // Set max auction size for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
         const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
@@ -1365,7 +1365,7 @@ describe('Revenues', () => {
         const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
           await ATokenCollateralFactory.deploy(
             token2.address,
-            await collateral2.maxAuctionSize(),
+            await collateral2.maxTradeVolume(),
             await collateral2.defaultThreshold(),
             await collateral2.delayUntilDefault(),
             token0.address,

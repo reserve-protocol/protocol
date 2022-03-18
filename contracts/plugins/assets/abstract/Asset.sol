@@ -10,11 +10,11 @@ abstract contract Asset is IAsset {
 
     IERC20Metadata public immutable erc20;
 
-    int192 public immutable maxAuctionSize; // {UoA}
+    int192 public immutable maxTradeVolume; // {UoA}
 
-    constructor(IERC20Metadata erc20_, int192 maxAuctionSize_) {
+    constructor(IERC20Metadata erc20_, int192 maxTradeVolume_) {
         erc20 = erc20_;
-        maxAuctionSize = maxAuctionSize_;
+        maxTradeVolume = maxTradeVolume_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA

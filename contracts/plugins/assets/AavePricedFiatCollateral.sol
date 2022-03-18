@@ -9,7 +9,7 @@ contract AavePricedFiatCollateral is AaveOracleMixin, Collateral {
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
-        int192 maxAuctionSize_,
+        int192 maxTradeVolume_,
         int192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IComptroller comptroller_,
@@ -17,7 +17,7 @@ contract AavePricedFiatCollateral is AaveOracleMixin, Collateral {
     )
         Collateral(
             erc20_,
-            maxAuctionSize_,
+            maxTradeVolume_,
             defaultThreshold_,
             delayUntilDefault_,
             erc20_,
