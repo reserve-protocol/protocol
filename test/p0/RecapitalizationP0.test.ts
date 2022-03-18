@@ -7,7 +7,10 @@ import { bn, fp, toBNDecimals } from '../../common/numbers'
 import {
   AaveLendingPoolMock,
   AaveOracleMock,
+  AssetRegistryP0,
   ATokenFiatCollateral,
+  BackingManagerP0,
+  BasketHandlerP0,
   CompoundOracleMock,
   ComptrollerMock,
   CTokenFiatCollateral,
@@ -20,9 +23,8 @@ import {
   StRSRP0,
   USDCMock,
 } from '../../typechain'
-import { AssetRegistryP0, BackingManagerP0, BasketHandlerP0, DistributorP0 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { Collateral, defaultFixture, IConfig, IRevenueShare } from './utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 import { expectTrade } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -62,6 +64,7 @@ describe('MainP0 contract', () => {
   let backupCollateral1: Collateral
   let backupCollateral2: Collateral
   let basket: Collateral[]
+  let basketsNeededAmts: BigNumber[]
 
   // Config values
   let config: IConfig
@@ -89,6 +92,7 @@ describe('MainP0 contract', () => {
     for (let i: number = 0; i < tokens.length; i++) {
       const tok = await ethers.getContractAt('ERC20Mock', tokens[i])
       const q = backingInfo.quantities ? backingInfo.quantities[i] : 0
+
       expect(await tok.balanceOf(backingManager.address)).to.eql(q)
     }
   }
@@ -113,6 +117,7 @@ describe('MainP0 contract', () => {
       erc20s,
       collateral,
       basket,
+      basketsNeededAmts,
       config,
       rToken,
       stRSR,
@@ -210,7 +215,7 @@ describe('MainP0 contract', () => {
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
-        // Set Token0 to default - 50% price reduction
+        // Set Token1 to default - 50% price reduction
         await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
 
         // Mark default as probable
@@ -245,14 +250,28 @@ describe('MainP0 contract', () => {
         })
 
         // Basket should switch
-        await expect(basketHandler.ensureBasket()).to.emit(basketHandler, 'BasketSet')
+        const newTokens = [
+          initialTokens[0],
+          initialTokens[2],
+          initialTokens[3],
+          backupToken1.address,
+        ]
+        const newQuantities = [
+          initialQuantities[0],
+          initialQuantities[2],
+          initialQuantities[3],
+          bn('0'),
+        ]
+        await expect(basketHandler.ensureBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(newTokens, basketsNeededAmts)
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking({
-          tokens: [initialTokens[0], initialTokens[2], initialTokens[3], backupToken1.address],
-          quantities: [initialQuantities[0], initialQuantities[2], initialQuantities[3], bn('0')],
+          tokens: newTokens,
+          quantities: newQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[2], initialQuotes[3], bn('0.25e18')])
@@ -285,26 +304,38 @@ describe('MainP0 contract', () => {
         await token2.setExchangeRate(fp('0.99'))
 
         // Basket should switch as default is detected immediately
-        await expect(basketHandler.ensureBasket()).to.emit(basketHandler, 'BasketSet')
+        const newTokens = [
+          initialTokens[0],
+          initialTokens[1],
+          initialTokens[3],
+          backupToken1.address,
+          backupToken2.address,
+        ]
+        const newQuantities = [
+          initialQuantities[0],
+          initialQuantities[1],
+          initialQuantities[3],
+          bn('0'),
+          bn('0'),
+        ]
+
+        const newRefAmounts = [
+          basketsNeededAmts[0],
+          basketsNeededAmts[1],
+          basketsNeededAmts[3],
+          fp('0.125'),
+          fp('0.125'),
+        ]
+        await expect(basketHandler.ensureBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(newTokens, newRefAmounts)
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking({
-          tokens: [
-            initialTokens[0],
-            initialTokens[1],
-            initialTokens[3],
-            backupToken1.address,
-            backupToken2.address,
-          ],
-          quantities: [
-            initialQuantities[0],
-            initialQuantities[1],
-            initialQuantities[3],
-            bn('0'),
-            bn('0'),
-          ],
+          tokens: newTokens,
+          quantities: newQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([
@@ -357,14 +388,20 @@ describe('MainP0 contract', () => {
         await advanceTime((await collateral0.delayUntilDefault()).toString())
 
         // Basket should switch, default is confirmed
-        await expect(basketHandler.ensureBasket()).to.emit(basketHandler, 'BasketSet')
+        const newTokens = [initialTokens[1], backupToken1.address]
+        const newQuantities = [initialQuantities[1], bn('0')]
+        const newRefAmounts = [basketsNeededAmts[1], fp('0.75')]
+
+        await expect(basketHandler.ensureBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(newTokens, newRefAmounts)
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking({
-          tokens: [initialTokens[1], backupToken1.address],
-          quantities: [initialQuantities[1], bn('0')],
+          tokens: newTokens,
+          quantities: newQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[1], bn('0.75e18')])
@@ -393,18 +430,181 @@ describe('MainP0 contract', () => {
         await token3.setExchangeRate(fp('0.8'))
 
         // Basket should switch as default is detected immediately
-        await expect(basketHandler.ensureBasket()).to.emit(basketHandler, 'BasketSet')
+        const newTokens = [initialTokens[0], initialTokens[1], initialTokens[2]]
+        const newQuantities = [initialQuantities[0], initialQuantities[1], initialQuantities[2]]
+        const newRefAmounts = [
+          basketsNeededAmts[0].mul(2),
+          basketsNeededAmts[1],
+          basketsNeededAmts[2],
+        ]
+        await expect(basketHandler.ensureBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(newTokens, newRefAmounts)
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking({
-          tokens: [initialTokens[0], initialTokens[1], initialTokens[2]],
-          quantities: [initialQuantities[0], initialQuantities[1], initialQuantities[2]],
+          tokens: newTokens,
+          quantities: newQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         // Incremented the weight for token0
         expect(quotes).to.eql([bn('0.5e18'), initialQuotes[1], initialQuotes[2]])
+      })
+
+      it('Should not be able to switch basket if there are unregistered assets', async () => {
+        // Register Collateral
+        await assetRegistry.connect(owner).register(backupCollateral1.address)
+
+        // Set backup configuration - USDT as backup
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
+
+        // Set Token1 to default - 50% price reduction
+        await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+
+        // Mark default as probable
+        await collateral1.forceUpdates()
+
+        // Advance time post delayUntilDefault
+        await advanceTime((await collateral1.delayUntilDefault()).toString())
+
+        // Confirm default
+        await collateral1.forceUpdates()
+
+        // Check state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+
+        // Unregister an asset in basket
+        await assetRegistry.connect(owner).unregister(collateral3.address)
+
+        // Basket should not be able to switch switch
+        await expect(basketHandler.ensureBasket()).to.be.revertedWith('erc20 unregistered')
+      })
+    })
+
+    context('With multiple targets', async function () {
+      let issueAmount: BigNumber
+      let newEURCollateral: Collateral
+      let backupEURCollateral: Collateral
+      let initialTokens: string[]
+      let initialQuantities: BigNumber[]
+      let initialQuotes: BigNumber[]
+      let quotes: BigNumber[]
+
+      beforeEach(async function () {
+        // Issue some RTokens to user
+        issueAmount = bn('100e18')
+
+        // Swap asset to have EUR target for token1
+        const EURCollateralFactory: ContractFactory = await ethers.getContractFactory(
+          'EURAavePricedFiatCollateral'
+        )
+
+        newEURCollateral = <Collateral>(
+          await EURCollateralFactory.deploy(
+            token1.address,
+            await collateral1.maxAuctionSize(),
+            await collateral1.defaultThreshold(),
+            await collateral1.delayUntilDefault(),
+            compoundMock.address,
+            aaveMock.address
+          )
+        )
+
+        backupEURCollateral = <Collateral>(
+          await EURCollateralFactory.deploy(
+            backupToken1.address,
+            await backupCollateral1.maxAuctionSize(),
+            await backupCollateral1.defaultThreshold(),
+            await backupCollateral1.delayUntilDefault(),
+            compoundMock.address,
+            aaveMock.address
+          )
+        )
+
+        // Swap asset
+        await assetRegistry.swapRegistered(newEURCollateral.address)
+
+        // Setup new basket with two tokens with different targets
+        initialTokens = [token0.address, token1.address]
+        await basketHandler.connect(owner).setPrimeBasket(initialTokens, [fp('0.5'), fp('0.5')])
+        await basketHandler.connect(owner).switchBasket()
+
+        // Set initial values
+        initialQuotes = [bn('0.5e18'), bn('0.5e6')]
+        initialQuantities = initialQuotes.map((q) => {
+          return q.mul(issueAmount).div(BN_SCALE_FACTOR)
+        })
+
+        // Provide approvals
+        await token0.connect(addr1).approve(rToken.address, initialBal)
+        await token1.connect(addr1).approve(rToken.address, initialBal)
+        await backupToken1.connect(addr1).approve(rToken.address, initialBal)
+
+        // Issue rTokens
+        await rToken.connect(addr1).issue(issueAmount)
+      })
+
+      it('Should select backup config correctly - EUR token', async () => {
+        // Register Collateral
+        await assetRegistry.connect(owner).register(backupEURCollateral.address)
+
+        // Set backup configuration - Backup EUR Collateral as backup
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('EUR'), bn(1), [backupToken1.address])
+
+        // Check initial state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        await expectCurrentBacking({
+          tokens: initialTokens,
+          quantities: initialQuantities,
+        })
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        expect(quotes).to.eql(initialQuotes)
+
+        // Set new EUR Token to default - 50% price reduction
+        await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+
+        // Mark default as probable
+        await newEURCollateral.forceUpdates()
+
+        // Advance time post delayUntilDefault
+        await advanceTime((await newEURCollateral.delayUntilDefault()).toString())
+
+        // Confirm default
+        await newEURCollateral.forceUpdates()
+
+        // Check state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await facade.callStatic.totalAssetValue()).to.equal(bn('50e18')) // 50% defaulted, value = 0
+        await expectCurrentBacking({
+          tokens: initialTokens,
+          quantities: initialQuantities,
+        })
+
+        //  Basket should switch
+        const newTokens = [initialTokens[0], backupToken1.address]
+        const newQuantities = [initialQuantities[0], bn('0')]
+        const newRefAmounts = [fp('0.5'), fp('0.5')]
+        await expect(basketHandler.ensureBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(newTokens, newRefAmounts)
+
+        // Check state - Basket switch in EUR targets
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        await expectCurrentBacking({
+          tokens: newTokens,
+          quantities: newQuantities,
+        })
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        expect(quotes).to.eql([initialQuotes[0], bn('0.5e18')])
       })
     })
   })
