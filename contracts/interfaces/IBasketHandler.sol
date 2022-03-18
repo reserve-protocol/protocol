@@ -15,7 +15,8 @@ interface IBasketHandler is IComponent {
     /// Emitted when the prime basket is set
     /// @param erc20s The collateral tokens for the prime basket
     /// @param targetAmts {target/BU} A list of quantities of target unit per basket unit
-    event PrimeBasketSet(IERC20[] erc20s, int192[] targetAmts);
+    /// @param targetNames Each collateral token's targetName
+    event PrimeBasketSet(IERC20[] erc20s, int192[] targetAmts, bytes32[] targetNames);
 
     /// Emitted when the reference basket is set
     /// @param erc20s The list of collateral tokens in the reference basket
