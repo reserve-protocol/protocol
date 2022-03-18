@@ -493,6 +493,71 @@ describe('MainP0 contract', () => {
         )
       })
 
+      it('Should handle having invalid tokens in the backup configuration', async () => {
+        // Register Collateral
+        await assetRegistry.connect(owner).register(backupCollateral1.address)
+        await assetRegistry.connect(owner).register(backupCollateral2.address)
+
+        // Set backup configuration - USDT and aUSDT as backup
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
+            backupToken1.address,
+            backupToken2.address,
+          ])
+
+        // Unregister one of the tokens
+        await assetRegistry.connect(owner).unregister(backupCollateral1.address)
+
+        // Check initial state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        await expectCurrentBacking({
+          tokens: initialTokens,
+          quantities: initialQuantities,
+        })
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        expect(quotes).to.eql(initialQuotes)
+
+        // Set Token2 to hard default - Decrease rate
+        await token2.setExchangeRate(fp('0.99'))
+
+        // Basket should switch as default is detected immediately
+        // Should ignore the unregistered one and only use the valid one
+        const newTokens = [
+          initialTokens[0],
+          initialTokens[1],
+          initialTokens[3],
+          backupToken2.address,
+        ]
+        const newQuantities = [
+          initialQuantities[0],
+          initialQuantities[1],
+          initialQuantities[3],
+          bn('0'),
+        ]
+
+        const newRefAmounts = [
+          basketsNeededAmts[0],
+          basketsNeededAmts[1],
+          basketsNeededAmts[3],
+          fp('0.25'),
+        ]
+        await expect(basketHandler.ensureBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(newTokens, newRefAmounts)
+
+        // Check state - Basket switch
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        await expectCurrentBacking({
+          tokens: newTokens,
+          quantities: newQuantities,
+        })
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        expect(quotes).to.eql([initialQuotes[0], initialQuotes[1], initialQuotes[3], bn('0.25e18')])
+      })
+
       it('Should not be able to switch basket if there are unregistered assets', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
