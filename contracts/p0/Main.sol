@@ -53,9 +53,9 @@ contract MainP0 is Pausable, IMain {
     using FixLib for int192;
 
     // Already initialized?
-    bool private initialized;
+    bool internal initialized;
 
-    function poke() external notPaused {
+    function poke() external virtual notPaused {
         // We think these are totally order-independent.
         basketHandler.ensureBasket();
         furnace.melt();
@@ -70,7 +70,7 @@ contract MainP0 is Pausable, IMain {
     }
 
     /// Initializer
-    function init(ConstructorArgs calldata args) public onlyOwner {
+    function init(ConstructorArgs calldata args) public virtual onlyOwner {
         require(!initialized, "Already initialized");
         initialized = true;
 
