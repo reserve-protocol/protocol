@@ -255,8 +255,6 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         // For each prime collateral token:
         for (uint256 i = 0; i < config.erc20s.length; i++) {
             IERC20 erc20 = config.erc20s[i];
-            if (!reg.isRegistered(erc20)) continue; // skip unregistered collateral erc20s
-
             ICollateral coll = reg.toColl(erc20);
 
             // Find coll's targetName index
