@@ -35,6 +35,7 @@ import {
 import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 import { advanceTime } from '../utils/time'
+import { basketsNeededAmts } from '../../tasks/p0/helper'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -78,6 +79,7 @@ describe('MainP0 contract', () => {
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
   let erc20s: ERC20Mock[]
+  let basketsNeededAmts: BigNumber[]
 
   // Config values
   let config: IConfig
@@ -119,6 +121,7 @@ describe('MainP0 contract', () => {
       erc20s,
       collateral,
       basket,
+      basketsNeededAmts,
       config,
       deployer,
       main,
@@ -988,12 +991,14 @@ describe('MainP0 contract', () => {
     it('Should handle unregistered collateral when checking status', async () => {
       // Check status
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.quantity(token1.address)).to.equal(basketsNeededAmts[1])
 
       // Unregister one of the basket collaterals
       await assetRegistry.connect(owner).unregister(collateral1.address)
 
       // Check status again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await basketHandler.quantity(token1.address)).to.equal(0)
     })
 
     it('Should exclude defaulted collateral when checking price', async () => {
@@ -1046,6 +1051,9 @@ describe('MainP0 contract', () => {
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
       expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4))
       expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+
+      // Check quantity for non-collateral asset
+      expect(await basketHandler.quantity(token1.address)).to.equal(0)
 
       // Set new prime basket
       await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
