@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IAsset.sol";
@@ -216,9 +217,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         erc20s = new address[](basket.erc20s.length);
         quantities = new uint256[](basket.erc20s.length);
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
-            if (!main.assetRegistry().isRegistered(basket.erc20s[i])) continue;
-
-            uint8 decimals = main.assetRegistry().toAsset(basket.erc20s[i]).erc20().decimals();
+            uint8 decimals = IERC20Metadata(address(basket.erc20s[i])).decimals();
 
             // {qTok} = {BU} * {tok/BU} * {qTok/tok}
             int192 q = amount.mul(quantity(basket.erc20s[i])).shiftLeft(int8(decimals));
@@ -231,9 +230,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     function basketsHeldBy(address account) public view returns (int192 baskets) {
         baskets = FIX_MAX;
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
-            if (!main.assetRegistry().isRegistered(basket.erc20s[i])) continue;
+            uint8 decimals = IERC20Metadata(address(basket.erc20s[i])).decimals();
 
-            int192 bal = main.assetRegistry().toAsset(basket.erc20s[i]).bal(account); // {tok}
+            // {tok}
+            int192 bal = toFix(basket.erc20s[i].balanceOf(account)).shiftLeft(-int8(decimals));
             int192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
             // baskets {BU} = bal {tok} / q {tok/BU}
@@ -320,6 +320,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
             // Set backup basket weights
             uint256 assigned = 0;
+            int192 needed = totalWeights[i].minus(goodWeights[i]);
             for (uint256 j = 0; j < backup.erc20s.length && assigned < size; j++) {
                 IERC20 erc20 = backup.erc20s[j];
                 if (
@@ -327,15 +328,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
                     reg.toAsset(erc20).isCollateral() &&
                     reg.toColl(erc20).status() != CollateralStatus.DISABLED
                 ) {
-                    newBasket.add(erc20, totalWeights[i].minus(goodWeights[i]).divu(size));
+                    newBasket.add(erc20, needed.divu(size).div(reg.toColl(erc20).targetPerRef()));
                     assigned++;
                 }
             }
-        }
-
-        // We may end up with an empty basket
-        if (newBasket.erc20s.length == 0) {
-            return false;
         }
 
         // If we haven't already given up, then commit the new basket!

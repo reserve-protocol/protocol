@@ -932,7 +932,7 @@ describe('MainP0 contract', () => {
       // Set basket
       await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
         .to.emit(basketHandler, 'PrimeBasketSet')
-        .withArgs([token0.address], [fp('1')])
+        .withArgs([token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
     })
 
     it('Should not allow to set backup Config if not Owner', async () => {
@@ -988,16 +988,17 @@ describe('MainP0 contract', () => {
       expect(await facade.callStatic.totalAssetValue()).to.equal(0)
     })
 
-    it('Should handle unregistered collateral when checking status', async () => {
+    it('Should handle collateral deregistration', async () => {
       // Check status
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.quantity(token1.address)).to.equal(basketsNeededAmts[1])
 
-      // Unregister the basket collaterals
-      await expect(assetRegistry.connect(owner).unregister(collateral0.address)).to.emit(
-        basketHandler,
-        'BasketSet'
-      )
+      // Set backup configuration
+      await basketHandler
+        .connect(owner)
+        .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [token0.address])
+
+      // Unregister the basket collaterals, skipping collateral0
       await expect(assetRegistry.connect(owner).unregister(collateral1.address)).to.emit(
         basketHandler,
         'BasketSet'
@@ -1006,7 +1007,18 @@ describe('MainP0 contract', () => {
         basketHandler,
         'BasketSet'
       )
-      await expect(assetRegistry.connect(owner).unregister(collateral3.address)).to.not.emit(
+      await expect(assetRegistry.connect(owner).unregister(collateral3.address)).to.emit(
+        basketHandler,
+        'BasketSet'
+      )
+
+      // Basket should be 100% collateral0
+      let toks = await facade.basketTokens()
+      expect(toks.length).to.equal(1)
+      expect(toks[0]).to.equal(token0.address)
+
+      // Basket should not be set, as collateral0 is the only backup
+      await expect(assetRegistry.connect(owner).unregister(collateral0.address)).to.not.emit(
         basketHandler,
         'BasketSet'
       )
@@ -1014,6 +1026,11 @@ describe('MainP0 contract', () => {
       // Final basket should contain disabled collateral
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
+
+      // Shouldn't have changed
+      toks = await facade.basketTokens()
+      expect(toks.length).to.equal(1)
+      expect(toks[0]).to.equal(token0.address)
     })
 
     it('Should exclude defaulted collateral when checking price', async () => {
@@ -1073,7 +1090,7 @@ describe('MainP0 contract', () => {
       // Set new prime basket
       await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
         .to.emit(basketHandler, 'PrimeBasketSet')
-        .withArgs([token0.address], [fp('1')])
+        .withArgs([token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
 
       // Switch basket
       await expect(basketHandler.connect(owner).switchBasket()).to.emit(basketHandler, 'BasketSet')
