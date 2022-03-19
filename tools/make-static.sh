@@ -8,6 +8,8 @@ while [ ! -d .git -a `pwd` != "/" ]; do cd ..; done
 DYNLIBS="contracts/p0/mixins/TradingLib.sol"
 
 for lib in ${DYNLIBS}; do
+  # Don't do anything if this lib has already been made static.
+  if (head -n 10 ${lib} | grep -q DO_NOT_COMMIT) ; then continue; fi
   # Copy over lib
   cp ${lib} ${lib}.original
   rm ${lib}

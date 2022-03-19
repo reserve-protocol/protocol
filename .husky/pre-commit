@@ -2,4 +2,4 @@
 . "$(dirname "$0")/_/husky.sh"
 
 # Do not commit if any solidity files contain the phrase DO_NOT_COMMIT in the first 10 lines
-! (git ls-files | grep --color=no .sol$ | xargs head -n 10 | grep -q DO_NOT_COMMIT)
+! (git ls-files | grep .sol$ | xargs head -n 10 | grep -q DO_NOT_COMMIT)
