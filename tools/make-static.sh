@@ -1,11 +1,11 @@
-#!/bin/bash -euxo pipefail
+#!/bin/bash -euo pipefail
 # Make known dynamic libraries static, by processing them with make-static-lib.py
 
-# There's just one right now. Separate further entries with spaces.
-DYNLIBS='contracts/p0/mixins/TradingLib.sol'
-
-# cd to root
+# cd to project root
 while [ ! -d .git -a `pwd` != "/" ]; do cd ..; done
+
+# Add further dynamic libs here, separated by any amount of whitespace or newlines
+DYNLIBS="contracts/p0/mixins/TradingLib.sol"
 
 for lib in ${DYNLIBS}; do
   # Copy over lib

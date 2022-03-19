@@ -24,3 +24,5 @@ typechain/
 
 \#*\#
 .\#*
+
+*.sol.original
