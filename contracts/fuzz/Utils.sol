@@ -41,18 +41,3 @@ function defaultCtorArgs(DeploymentParams memory params)
         assets: assets
     });
 }
-
-/* function mockP0(address owner, DeploymentParams params) returns (IMain main) { */
-/*     IERC20Metadata rsr = IERC20Metadata(address(ERC20Mock("RSR", "Reserve Rights"))); */
-/*     IERC20Metadata comp = IERC20Metadata(address(ERC20Mock("COMP", "Compound"))); */
-/*     IERC20Metadata aave = IERC20Metadata(address(ERC20Mock("AAVE", "Aave"))); */
-/*     IGnosis gnosis = GnosisMock(); */
-/*     IComptroller comptroller = ComptrollerMock(); */
-/*     IAaveLendingPool aaveLP = AaveLendingPoolMock(AaveLendingAddrProviderMock); */
-
-/*     DeployerP0 deployer = DeployerP0(rsr, comp, aave, gnosis, comptroller, aaveLP); */
-
-/*     main = IMain( */
-/*         deployer.deploy("Token Token Token", "TKTKTK", "https://reserve.org", owner, params) */
-/*     ); */
-/* } */

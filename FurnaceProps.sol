@@ -8,10 +8,25 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/plugins/mocks/ERC20Mock.sol";
 import "contracts/fuzz/Mocks.sol";
 
+contract RTokenMock is ERC20Mock {
+    uint256 totalMelted = 0;
+
+    // solhint-disable-next-line no-empty-blocks
+    constructor() ERC20Mock("RToken Mock", "RTM") {}
+
+    event Melt(address who, uint256 amount);
+
+    function melt(uint256 amount) external {
+        emit Melt(_msgSender(), amount);
+        _burn(_msgSender(), amount);
+        totalMelted += amount;
+    }
+}
+
 contract FurnaceP0TestProps {
     using FixLib for int192;
 
-    MainForFurnace main;
+    MainMock main;
     FurnaceP0 furn1;
     FurnaceP0 furn2;
     ERC20Mock token;
@@ -25,7 +40,7 @@ contract FurnaceP0TestProps {
         params.rewardRatio = toFix(1).divu(2);
         ConstructorArgs memory ctorArgs = defaultCtorArgs(params);
 
-        main = new MainForFurnace(); // makes this be main.owner
+        main = new MainMock(); // makes this be main.owner
         main.init(ctorArgs);
         furn1 = new FurnaceP0();
         furn2 = new FurnaceP0();
