@@ -6,9 +6,9 @@ import "contracts/libraries/Fixed.sol";
 contract FixProps {
     using FixLib for int192;
 
-    int192 base = FIX_ONE;
-    uint256 a = 1;
-    uint256 b = 1;
+    int192 public base = FIX_ONE;
+    uint256 public a = 1;
+    uint256 public b = 1;
 
     function setBase(int192 base_) external {
         base = base_ % 1e18;
@@ -24,19 +24,19 @@ contract FixProps {
 
     event Values(int192, int192);
 
-    int192 constant eps = 2;
+    int192 public constant EPS = 2;
 
     function echidna_powu_additive_law() external returns (bool) {
         int192 val1 = base.powu(a).mul(base.powu(b));
         int192 val2 = base.powu(a + b);
         emit Values(val1, val2);
-        return val1.near(val2, eps);
+        return val1.near(val2, EPS);
     }
 
     function echidna_powu_multiplicative_law() external returns (bool) {
         int192 val1 = base.powu(a).powu(b);
         int192 val2 = base.powu(a * b);
         emit Values(val1, val2);
-        return val1.near(val2, eps);
+        return val1.near(val2, EPS);
     }
 }
