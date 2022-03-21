@@ -1,11 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import Big from 'big.js'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
-import { bn, fp } from '../../common/numbers'
+import { bn, fp, near, lte } from '../../common/numbers'
 import {
   AaveOracleMock,
   AssetRegistryP0,
@@ -661,132 +660,171 @@ describe('StRSRP0 contract', () => {
   })
 
   describe('Add RSR / Rewards', async () => {
-    it('Should allow to add RSR - Single staker', async () => {
-      const amount: BigNumber = bn('1e18')
-      const addedAmount: BigNumber = bn('10e18')
+    const initialRate = fp('1')
+    const stake: BigNumber = bn('1e18')
+    const amountAdded: BigNumber = bn('10e18')
+    let decayFn: (a: BigNumber, b: number) => BigNumber
 
-      // Stake
-      await rsr.connect(addr1).approve(stRSR.address, amount)
-      await stRSR.connect(addr1).stake(amount)
-
-      // Check balances and stakes
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+    beforeEach(async () => {
+      // Should start with coherent exchange rate even at no stake
+      expect(await stRSR.exchangeRate()).to.equal(initialRate)
 
       // Add RSR
-      await rsr.connect(owner).transfer(stRSR.address, addedAmount)
+      await rsr.connect(owner).transfer(stRSR.address, amountAdded)
+
+      // Check RSR balance
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amountAdded)
+
+      // Check exchange rate
+      expect(await stRSR.exchangeRate()).to.equal(initialRate)
 
       // Advance to the end of noop period
       await advanceTime(Number(config.rewardPeriod) + 1)
 
       await expect(stRSR.payoutRewards())
         .to.emit(stRSR, 'ExchangeRateSet')
-        .withArgs(fp('1'), fp('1'))
+        .withArgs(initialRate, initialRate)
 
-      // Check exchange rate - steady
-      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
+      // Check exchange rate remains static
+      expect(await stRSR.exchangeRate()).to.equal(initialRate)
 
-      // Advance to the end of next period to get payout rewards
+      decayFn = makeDecayFn(await stRSR.rewardRatio())
+    })
+
+    it('Rewards should not be handed out in same period they were added', async () => {
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, stake)
+      await stRSR.connect(addr1).stake(stake)
+
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake))
+      expect(await stRSR.exchangeRate()).to.equal(initialRate)
+    })
+
+    it('Should allow to add RSR - Single staker', async () => {
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, stake)
+      await stRSR.connect(addr1).stake(stake)
+
+      // Advance to get 1 round of rewards
       await advanceTime(Number(config.rewardPeriod) + 1)
 
       // Calculate payout amount
-      const decayFn = makeDecayFn(await stRSR.rewardRatio())
-      const expAmt = decayFn(addedAmount, 1) // 1 period
-      const payoutAmount: BigNumber = addedAmount.sub(expAmt)
+      const expAmt = decayFn(amountAdded, 1) // 1 round
+      const newRate: BigNumber = initialRate.add(amountAdded.sub(expAmt))
 
       // Payout rewards
       await expect(stRSR.payoutRewards())
         .to.emit(stRSR, 'ExchangeRateSet')
-        .withArgs(fp('1'), fp('1').add(payoutAmount))
+        .withArgs(initialRate, newRate)
 
       // Check exchange rate
-      expect(await stRSR.exchangeRate()).to.equal(fp('1').add(payoutAmount))
+      expect(await stRSR.exchangeRate()).to.equal(newRate)
 
       // Check new balances and stakes
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.add(addedAmount))
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
       expect(await rsr.balanceOf(stRSR.address)).to.be.gt(await stRSR.totalSupply())
       // No change for stakers
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
     })
 
-    it('Should allow to add RSR - Two stakers - Rounded values', async () => {
-      const amount: BigNumber = bn('1e18')
-      const amount2: BigNumber = bn('10e18')
+    it('Should treat two stakers same as one', async () => {
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, stake.div(2))
+      await stRSR.connect(addr1).stake(stake.div(2))
 
       // Stake
-      await rsr.connect(addr1).approve(stRSR.address, amount)
-      await stRSR.connect(addr1).stake(amount)
-
-      await rsr.connect(addr2).approve(stRSR.address, amount)
-      await stRSR.connect(addr2).stake(amount)
+      await rsr.connect(addr2).approve(stRSR.address, stake.div(2))
+      await stRSR.connect(addr2).stake(stake.div(2))
 
       // Check balances and stakes
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2))
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
-      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
+      expect(await rsr.balanceOf(stRSR.address)).to.be.gt(await stRSR.totalSupply())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake.div(2)))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(stake.div(2)))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake.div(2))
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(stake.div(2))
 
-      // TODO Smoothing tests
-      // Add RSR
-      // await rsr.connect(owner).transfer(stRSR.address, amount2)
-      // await stRSR.connect(owner).notifyOfDeposit(rsr.address)
+      // Advance to get 1 round of rewards
+      await advanceTime(Number(config.rewardPeriod) + 1)
 
-      // // Check balances and stakes
-      // expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2).add(amount2))
-      // expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-      // expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      // expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
-      // expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.add(amount2.div(2)))
-      // expect(await stRSR.balanceOf(addr2.address)).to.equal(amount.add(amount2.div(2)))
+      // Calculate payout amount
+      const expAmt = decayFn(amountAdded, 1) // 1 round
+      const newRate: BigNumber = initialRate.add(amountAdded.sub(expAmt))
+
+      // Payout rewards
+      await expect(stRSR.payoutRewards())
+        .to.emit(stRSR, 'ExchangeRateSet')
+        .withArgs(initialRate, newRate)
+
+      // Check exchange rate
+      expect(await stRSR.exchangeRate()).to.equal(newRate)
+
+      // Check new balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
+      expect(await rsr.balanceOf(stRSR.address)).to.be.gt(await stRSR.totalSupply())
+      // No change for stakers
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake.div(2)))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(stake.div(2)))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake.div(2))
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(stake.div(2))
     })
 
-    it('Should allow to add RSR - Three stakers - Check Precision', async () => {
-      const amount: BigNumber = bn('1e18')
-      const amount2: BigNumber = bn('10e18')
-
+    it('Many discrete payouts should approximate true closed form for n = 100', async () => {
       // Stake
-      await rsr.connect(addr1).approve(stRSR.address, amount)
-      await stRSR.connect(addr1).stake(amount)
+      await rsr.connect(addr1).approve(stRSR.address, stake)
+      await stRSR.connect(addr1).stake(stake)
 
-      await rsr.connect(addr2).approve(stRSR.address, amount)
-      await stRSR.connect(addr2).stake(amount)
+      const decayFn = makeDecayFn(await stRSR.rewardRatio())
+      for (let i = 0; i < 100; i++) {
+        // Advance to get 1 round of rewards
+        await advanceTime(Number(config.rewardPeriod) + 1)
 
-      await rsr.connect(addr3).approve(stRSR.address, amount)
-      await stRSR.connect(addr3).stake(amount)
+        // Calculate payout amount as if it were a closed form calculation from start
+        const expAmt = decayFn(amountAdded, i + 1)
+        const newRate: BigNumber = initialRate.add(amountAdded.sub(expAmt))
 
-      // Check balances and stakes
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3))
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
-      expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
-      expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
-      expect(await stRSR.balanceOf(addr3.address)).to.equal(amount)
+        // Payout rewards
+        await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
 
-      // TODO Smoothing tests
-      // Add RSR
-      // await rsr.connect(owner).transfer(stRSR.address, amount2)
-      // await stRSR.connect(owner).notifyOfDeposit(rsr.address)
+        // Check exchange rate is lower by at-most half
+        expect(lte(await stRSR.exchangeRate(), newRate, (i / 2).toFixed())).to.equal(true)
 
-      // // Check balances and stakes
-      // expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3).add(amount2))
-      // expect(near(await rsr.balanceOf(stRSR.address), await stRSR.totalSupply(), 1)).to.equal(true)
-      // expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      // expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
-      // expect(await rsr.balanceOf(addr3.address)).to.equal(initialBal.sub(amount))
-
-      // expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.add(amount2.div(3)))
-      // expect(await stRSR.balanceOf(addr2.address)).to.equal(amount.add(amount2.div(3)))
-      // expect(await stRSR.balanceOf(addr3.address)).to.equal(amount.add(amount2.div(3)))
+        // Check new balances and stakes
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
+        expect(await rsr.balanceOf(stRSR.address)).to.be.gt(await stRSR.totalSupply())
+        // No change for stakers
+        expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake))
+        expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
+      }
     })
 
-    it.skip('Should handle stakes correctly after adding RSR', async () => {})
+    it.skip('Single payout for n = 100 rounds should approximate true closed form', async () => {
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, stake)
+      await stRSR.connect(addr1).stake(stake)
+
+      // Advance to get 1 round of rewards
+      await advanceTime(100 * Number(config.rewardPeriod) + 1)
+
+      // Calculate payout amount as if it were a closed form calculation from start
+      const expAmt = decayFn(amountAdded, 100)
+      const newRate: BigNumber = initialRate.add(amountAdded.sub(expAmt))
+
+      // Payout rewards
+      await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
+
+      // Check exchange rate is lower by at-most half
+      expect(lte(await stRSR.exchangeRate(), newRate, 50)).to.equal(true)
+
+      // Check new balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
+      expect(await rsr.balanceOf(stRSR.address)).to.be.gt(await stRSR.totalSupply())
+      // No change for stakers
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
+    })
   })
 
   describe('Remove RSR', () => {
@@ -1060,8 +1098,6 @@ describe('StRSRP0 contract', () => {
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount.sub(proportionalAmountToSeize))
     })
-
-    it.skip('Should handle stakes correctly after removing RSR', async () => {})
   })
 
   describe('Transfers', () => {
