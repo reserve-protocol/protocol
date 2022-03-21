@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
-import { expectInIndirectReceipt, expectInReceipt } from '../../common/events'
+import { expectInIndirectReceipt, expectInReceipt, expectMultipleEvents } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
 import {
   AaveOracleMock,
@@ -35,7 +35,6 @@ import {
 import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
 import { advanceTime } from '../utils/time'
-import { basketsNeededAmts } from '../../tasks/p0/helper'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -844,11 +843,20 @@ describe('MainP0 contract', () => {
       expect(await assetRegistry.toAsset(token0.address)).to.equal(collateral0.address)
 
       // Swap Asset
-      await expect(assetRegistry.connect(owner).swapRegistered(newAsset.address))
-        .to.emit(main, 'AssetUnregistered')
-        .withArgs(token0.address, collateral0.address)
-        .to.emit(assetRegistry, 'AssetRegistered')
-        .withArgs(token0.address, newAsset.address)
+      await expectMultipleEvents(assetRegistry.connect(owner).swapRegistered(newAsset.address), [
+        {
+          contract: assetRegistry,
+          name: 'AssetUnregistered',
+          args: [token0.address, collateral0.address],
+          emitted: true,
+        },
+        {
+          contract: assetRegistry,
+          name: 'AssetRegistered',
+          args: [token0.address, newAsset.address],
+          emitted: true,
+        },
+      ])
 
       // Check length is not modified and erc20 remains registered
       let allERC20s = await assetRegistry.erc20s()
@@ -1073,12 +1081,21 @@ describe('MainP0 contract', () => {
         )
       )
       // Swap Asset
-      await expect(assetRegistry.connect(owner).swapRegistered(newAsset.address))
-        .to.emit(main, 'AssetUnregistered')
-        .withArgs(token1.address, collateral1.address)
-        .to.emit(assetRegistry, 'AssetRegistered')
-        .withArgs(token1.address, newAsset.address)
-        .to.not.emit(basketHandler, 'BasketSet')
+      await expectMultipleEvents(assetRegistry.connect(owner).swapRegistered(newAsset.address), [
+        {
+          contract: assetRegistry,
+          name: 'AssetUnregistered',
+          args: [token1.address, collateral1.address],
+          emitted: true,
+        },
+        {
+          contract: assetRegistry,
+          name: 'AssetRegistered',
+          args: [token1.address, newAsset.address],
+          emitted: true,
+        },
+        { contract: basketHandler, name: 'BasketSet', emitted: false },
+      ])
 
       // Check values - No changes
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
