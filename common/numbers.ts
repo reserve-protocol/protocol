@@ -43,11 +43,6 @@ export const near = (x: BigNumber, y: BigNumber, z: BigNumberish): boolean => {
   return x.sub(y).lte(z)
 }
 
-// Whether x <= y by up to z
-export const lte = (x: BigNumber, y: BigNumber, z: BigNumberish): boolean => {
-  if (y.lt(x)) return false
-  return y.sub(x).lte(z)
-}
 // _parseScientific(s, scale) returns a BigNumber with value (s * 10**scale),
 // where s is a string in decimal or scientific notation,
 // and scale is a BigNumberish indicating a number of additional zeroes to add to the right,

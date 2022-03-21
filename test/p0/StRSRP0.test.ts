@@ -4,7 +4,7 @@ import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
-import { bn, fp, near, lte } from '../../common/numbers'
+import { bn, fp, near } from '../../common/numbers'
 import {
   AaveOracleMock,
   AssetRegistryP0,
@@ -23,7 +23,7 @@ import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
-import { makeDecayFn } from './utils/rewards'
+import { makeDecayFn, calcErr } from './utils/rewards'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -777,6 +777,7 @@ describe('StRSRP0 contract', () => {
       await stRSR.connect(addr1).stake(stake)
 
       const decayFn = makeDecayFn(await stRSR.rewardRatio())
+      let error = bn('0')
       for (let i = 0; i < 100; i++) {
         // Advance to get 1 round of rewards
         await advanceTime(Number(config.rewardPeriod) + 1)
@@ -788,8 +789,10 @@ describe('StRSRP0 contract', () => {
         // Payout rewards
         await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
 
-        // Check exchange rate is lower by at-most half
-        expect(lte(await stRSR.exchangeRate(), newRate, (i / 2).toFixed())).to.equal(true)
+        error = error.add(calcErr(1)) // this is just adding 1 each time
+
+        // Check exchange rate does not exceed max possible cumulative error
+        expect(near(await stRSR.exchangeRate(), newRate, error)).to.equal(true)
 
         // Check new balances and stakes
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
@@ -800,7 +803,7 @@ describe('StRSRP0 contract', () => {
       }
     })
 
-    it.skip('Single payout for n = 100 rounds should approximate true closed form', async () => {
+    it('Single payout for n = 100 rounds should approximate true closed form', async () => {
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)
       await stRSR.connect(addr1).stake(stake)
@@ -814,9 +817,10 @@ describe('StRSRP0 contract', () => {
 
       // Payout rewards
       await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
+      const error = calcErr(100)
 
       // Check exchange rate is lower by at-most half
-      expect(lte(await stRSR.exchangeRate(), newRate, 50)).to.equal(true)
+      expect(await stRSR.exchangeRate()).to.equal(newRate.add(error)) // exact check!
 
       // Check new balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
