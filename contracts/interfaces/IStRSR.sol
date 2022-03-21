@@ -57,15 +57,8 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
         uint256 rsrAmount
     );
 
-    /// Emitted when dividend RSR is applied to the staking pool
-    /// @param amount {qRSR} The amount of RSR rewarded to the staking pool
-    /// @param numPeriods How many reward periods were paid out at once
-    event RSRRewarded(uint256 indexed amount, uint256 indexed numPeriods);
-
-    /// Emitted when insurance RSR is seized from the pool
-    /// @param from The address that seized the staked RSR (should only be the AssetManager)
-    /// @param amount {qRSR} The quantity of RSR seized
-    event RSRSeized(address indexed from, uint256 indexed amount);
+    /// Emitted whenever the exchange rate changes
+    event ExchangeRateSet(int192 indexed oldVal, int192 indexed newVal);
 
     /// Emitted if all the RSR in the staking pool is seized and all balances are reset to zero.
     event AllBalancesReset(uint256 indexed newEra);

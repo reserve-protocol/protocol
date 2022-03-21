@@ -39,7 +39,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
 
     constructor(
         IERC20Metadata erc20_,
-        int192 maxAuctionSize_,
+        int192 maxTradeVolume_,
         int192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
@@ -49,7 +49,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     )
         Collateral(
             erc20_,
-            maxAuctionSize_,
+            maxTradeVolume_,
             defaultThreshold_,
             delayUntilDefault_,
             referenceERC20_,

@@ -445,5 +445,74 @@ describe('BrokerP0 contract', () => {
       // Funds sent to bidder
       expect(await token0.balanceOf(addr1.address)).to.equal(bidAmount)
     })
+
+    it('Should allow anyone to transfer to origin after a trade is complete', async () => {
+      const amount: BigNumber = bn('100e18')
+
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
+      // Initialize trade - simulate from backingManager
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: amount,
+        minBuyAmount: bn('0'),
+      }
+
+      // Fund trade and initialize
+      await token0.connect(owner).mint(trade.address, amount)
+      await expect(
+        trade.init(
+          broker.address,
+          backingManager.address,
+          gnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      ).to.not.be.reverted
+
+      // Check balances on Trade and Origin
+      expect(await token0.balanceOf(trade.address)).to.equal(0)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+
+      // Attempt to transfer the new funds to origin while the Trade is still open
+      await expect(trade.transferToOriginAfterTradeComplete(token0.address)).to.be.revertedWith(
+        'only after trade is closed'
+      )
+
+      // Advance time till trade can be settled
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // Settle trade
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await expect(trade.connect(bmSigner).settle()).to.not.be.reverted
+      })
+
+      // Check status
+      expect(await trade.status()).to.equal(TradeStatus.CLOSED)
+
+      // Check balances on Trade and Origin
+      expect(await token0.balanceOf(trade.address)).to.equal(0)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+
+      // Send arbitrary funds to Trade
+      const newFunds: BigNumber = amount.div(2)
+      await token0.connect(owner).mint(trade.address, newFunds)
+
+      // Check balances again
+      expect(await token0.balanceOf(trade.address)).to.equal(newFunds)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+
+      // Transfer to origin
+      await expect(trade.transferToOriginAfterTradeComplete(token0.address))
+        .to.emit(token0, 'Transfer')
+        .withArgs(trade.address, backingManager.address, newFunds)
+
+      // Check balances again - funds sent to origin
+      expect(await token0.balanceOf(trade.address)).to.equal(0)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(newFunds)
+    })
   })
 })

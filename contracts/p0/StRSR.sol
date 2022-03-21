@@ -207,6 +207,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     function seizeRSR(uint256 rsrAmount) external returns (uint256 seizedRSR) {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
+        int192 initialExchangeRate = exchangeRate();
         uint256 rewards = rsrRewards();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
 
@@ -247,7 +248,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
 
         // Transfer RSR to caller
         main.rsr().safeTransfer(_msgSender(), seizedRSR);
-        emit RSRSeized(_msgSender(), seizedRSR);
+        emit ExchangeRateSet(initialExchangeRate, exchangeRate());
     }
 
     /// Assign reward payouts to the staker pool
@@ -256,6 +257,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     /// value of rsrRewards()
     function payoutRewards() public {
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
+        int192 initialExchangeRate = exchangeRate();
 
         uint256 numPeriods = (block.timestamp - payoutLastPaid) / rewardPeriod;
 
@@ -268,10 +270,10 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 
-        emit RSRRewarded(payout, numPeriods);
+        emit ExchangeRateSet(initialExchangeRate, exchangeRate());
     }
 
-    function exchangeRate() external view returns (int192) {
+    function exchangeRate() public view returns (int192) {
         if (totalStaked == 0) {
             return FIX_ONE;
         }

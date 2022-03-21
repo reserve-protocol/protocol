@@ -1,44 +1,43 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
-
 import { expectInReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
-import { ATokenFiatCollateral } from '../../../typechain/ATokenFiatCollateral'
-import { AaveLendingAddrProviderMock } from '../../../typechain/AaveLendingAddrProviderMock'
-import { AaveLendingPoolMock } from '../../../typechain/AaveLendingPoolMock'
-import { AaveOracleMock } from '../../../typechain/AaveOracleMock'
-import { AavePricedAsset } from '../../../typechain/AavePricedAsset'
-import { Asset } from '../../../typechain/Asset'
-import { AssetRegistryP0 } from '../../../typechain/AssetRegistryP0'
-import { BackingManagerP0 } from '../../../typechain/BackingManagerP0'
-import { BasketHandlerP0 } from '../../../typechain/BasketHandlerP0'
-import { CTokenFiatCollateral } from '../../../typechain/CTokenFiatCollateral'
-import { CTokenMock } from '../../../typechain/CTokenMock'
-import { Collateral as AbstractCollateral } from '../../../typechain/Collateral'
-import { CompoundOracleMock } from '../../../typechain/CompoundOracleMock'
-import { CompoundPricedAsset } from '../../../typechain/CompoundPricedAsset'
-import { ComptrollerMock } from '../../../typechain/ComptrollerMock'
-import { BrokerP0 } from '../../../typechain/BrokerP0'
-import { DeployerP0 } from '../../../typechain/DeployerP0'
-import { TradingLibP0 } from '../../../typechain/TradingLibP0'
-import { ERC20Mock } from '../../../typechain/ERC20Mock'
-import { FacadeP0 } from '../../../typechain/FacadeP0'
-import { FurnaceP0 } from '../../../typechain/FurnaceP0'
-import { MainP0 } from '../../../typechain/MainP0'
-import { GnosisMock } from '../../../typechain/GnosisMock'
-import { RTokenAsset } from '../../../typechain/RTokenAsset'
-import { RTokenP0 } from '../../../typechain/RTokenP0'
-import { DistributorP0 } from '../../../typechain/DistributorP0'
-import { RevenueTradingP0 } from '../../../typechain/RevenueTradingP0'
-import { StRSRP0 } from '../../../typechain/StRSRP0'
-import { StaticATokenMock } from '../../../typechain/StaticATokenMock'
-import { USDCMock } from '../../../typechain/USDCMock'
+import {
+  AaveLendingAddrProviderMock,
+  AaveLendingPoolMock,
+  AaveOracleMock,
+  Asset,
+  AssetRegistryP0,
+  ATokenFiatCollateral,
+  BackingManagerP0,
+  BasketHandlerP0,
+  BrokerP0,
+  Collateral as AbstractCollateral,
+  CompoundOracleMock,
+  ComptrollerMock,
+  CTokenFiatCollateral,
+  CTokenMock,
+  ERC20Mock,
+  DeployerP0,
+  DistributorP0,
+  FacadeP0,
+  FurnaceP0,
+  GnosisMock,
+  MainP0,
+  RevenueTradingP0,
+  RTokenAsset,
+  RTokenP0,
+  StRSRP0,
+  StaticATokenMock,
+  TradingLibP0,
+  USDCMock,
+} from '../../../typechain'
 
 export type Collateral = AbstractCollateral | CTokenFiatCollateral | ATokenFiatCollateral
 
 export interface IConfig {
-  maxAuctionSize: BigNumber
+  maxTradeVolume: BigNumber
   dist: IRevenueShare
   rewardPeriod: BigNumber
   rewardRatio: BigNumber
@@ -177,7 +176,7 @@ async function collateralFixture(
       <Collateral>(
         await AaveCollateralFactory.deploy(
           erc20.address,
-          config.maxAuctionSize,
+          config.maxTradeVolume,
           defaultThreshold,
           delayUntilDefault,
           comptroller.address,
@@ -193,7 +192,7 @@ async function collateralFixture(
       <Collateral>(
         await AaveCollateralFactory.deploy(
           erc20.address,
-          config.maxAuctionSize,
+          config.maxTradeVolume,
           defaultThreshold,
           delayUntilDefault,
           comptroller.address,
@@ -215,7 +214,7 @@ async function collateralFixture(
       <CTokenFiatCollateral>(
         await CTokenCollateralFactory.deploy(
           erc20.address,
-          config.maxAuctionSize,
+          config.maxTradeVolume,
           defaultThreshold,
           delayUntilDefault,
           underlyingAddress,
@@ -242,7 +241,7 @@ async function collateralFixture(
       <ATokenFiatCollateral>(
         await ATokenCollateralFactory.deploy(
           erc20.address,
-          config.maxAuctionSize,
+          config.maxTradeVolume,
           defaultThreshold,
           delayUntilDefault,
           underlyingAddress,
@@ -353,13 +352,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Setup Config
   const config: IConfig = {
-    maxAuctionSize: fp('1e6'), // $1M
+    maxTradeVolume: fp('1e6'), // $1M
     dist: dist,
     rewardPeriod: bn('604800'), // 1 week
     rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
     unstakingDelay: bn('1209600'), // 2 weeks
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
-    auctionLength: bn('1800'), // 30 minutes
+    auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
     dustAmount: fp('0.01'), // 0.01 UoA (USD)

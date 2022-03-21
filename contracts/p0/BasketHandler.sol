@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IAsset.sol";
@@ -19,6 +20,8 @@ struct BasketConfig {
     IERC20[] erc20s;
     // Amount of target units per basket for each prime collateral token. {target/BU}
     mapping(IERC20 => int192) targetAmts;
+    // Cached view of the target unit for each erc20 upon setup
+    mapping(IERC20 => bytes32) targetNames;
     // Backup configurations, per target name.
     mapping(bytes32 => BackupConfig) backups;
 }
@@ -106,15 +109,20 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
+        bytes32[] memory names = new bytes32[](erc20s.length);
 
         for (uint256 i = 0; i < erc20s.length; i++) {
+            // This is a nice catch to have, but in general it is possible for
+            // an ERC20 in the prime basket to have its asset unregistered.
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
+            names[i] = reg.toColl(erc20s[i]).targetName();
+            config.targetNames[erc20s[i]] = names[i];
         }
 
-        emit PrimeBasketSet(erc20s, targetAmts);
+        emit PrimeBasketSet(erc20s, targetAmts, names);
     }
 
     /// Set the backup configuration for some target name.
@@ -125,9 +133,14 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     ) public onlyOwner {
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
-
         delete conf.erc20s;
+        IAssetRegistry reg = main.assetRegistry();
+
         for (uint256 i = 0; i < erc20s.length; i++) {
+            // This is a nice catch to have, but in general it is possible for
+            // an ERC20 in the backup config to have its asset unregistered.
+            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+
             conf.erc20s.push(erc20s[i]);
         }
         emit BackupConfigSet(targetName, max, erc20s);
@@ -157,12 +170,12 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             IERC20 erc20 = basket.erc20s[i];
             CollateralStatus statusI;
-            if (!reg.isRegistered(erc20)) statusI = CollateralStatus.DISABLED;
-            else statusI = reg.toColl(erc20).status();
+            if (!reg.isRegistered(erc20) || !reg.toAsset(erc20).isCollateral()) {
+                return CollateralStatus.DISABLED;
+            } else statusI = reg.toColl(erc20).status();
 
             if (uint256(statusI) > uint256(status_)) {
                 status_ = statusI;
-                if (status_ == CollateralStatus.DISABLED) return status_;
             }
         }
     }
@@ -182,10 +195,13 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             IERC20 erc20 = basket.erc20s[i];
-            ICollateral coll = reg.toColl(erc20);
 
-            if (reg.isRegistered(erc20) && coll.status() != CollateralStatus.DISABLED) {
-                p = p.plus(coll.price().mul(quantity(erc20)));
+            if (
+                reg.isRegistered(erc20) &&
+                reg.toAsset(erc20).isCollateral() &&
+                reg.toColl(erc20).status() != CollateralStatus.DISABLED
+            ) {
+                p = p.plus(reg.toColl(erc20).price().mul(quantity(erc20)));
             }
         }
     }
@@ -201,7 +217,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         erc20s = new address[](basket.erc20s.length);
         quantities = new uint256[](basket.erc20s.length);
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
-            uint8 decimals = main.assetRegistry().toAsset(basket.erc20s[i]).erc20().decimals();
+            uint8 decimals = IERC20Metadata(address(basket.erc20s[i])).decimals();
 
             // {qTok} = {BU} * {tok/BU} * {qTok/tok}
             int192 q = amount.mul(quantity(basket.erc20s[i])).shiftLeft(int8(decimals));
@@ -214,7 +230,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     function basketsHeldBy(address account) public view returns (int192 baskets) {
         baskets = FIX_MAX;
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
-            int192 bal = main.assetRegistry().toAsset(basket.erc20s[i]).bal(account); // {tok}
+            uint8 decimals = IERC20Metadata(address(basket.erc20s[i])).decimals();
+
+            // {tok}
+            int192 bal = toFix(basket.erc20s[i].balanceOf(account)).shiftLeft(-int8(decimals));
             int192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
             // baskets {BU} = bal {tok} / q {tok/BU}
@@ -237,7 +256,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
         // Count unique targets
         for (uint256 i = 0; i < config.erc20s.length; i++) {
-            targetNames.add(reg.toColl(config.erc20s[i]).targetName());
+            targetNames.add(config.targetNames[config.erc20s[i]]);
         }
 
         // Here, "good" collateral is non-defaulted collateral; any status other than DISABLED
@@ -252,14 +271,11 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         // For each prime collateral token:
         for (uint256 i = 0; i < config.erc20s.length; i++) {
             IERC20 erc20 = config.erc20s[i];
-            if (!reg.isRegistered(erc20)) continue; // skip unregistered collateral erc20s
 
-            ICollateral coll = reg.toColl(erc20);
-
-            // Find coll's targetName index
+            // Find collateral's targetName index
             uint256 targetIndex;
             for (targetIndex = 0; targetIndex < targetNames.length(); targetIndex++) {
-                if (targetNames.at(targetIndex) == coll.targetName()) break;
+                if (targetNames.at(targetIndex) == config.targetNames[erc20]) break;
             }
             assert(targetIndex < targetNames.length());
 
@@ -268,9 +284,13 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             int192 targetWeight = config.targetAmts[erc20];
             totalWeights[targetIndex] = totalWeights[targetIndex].plus(targetWeight);
 
-            if (coll.status() != CollateralStatus.DISABLED) {
+            if (
+                reg.isRegistered(erc20) &&
+                reg.toAsset(erc20).isCollateral() &&
+                reg.toColl(erc20).status() != CollateralStatus.DISABLED
+            ) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
-                newBasket.add(erc20, targetWeight.div(coll.targetPerRef()));
+                newBasket.add(erc20, targetWeight.div(reg.toColl(erc20).targetPerRef()));
             }
         }
 
@@ -287,6 +307,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
                 IERC20 erc20 = backup.erc20s[j];
                 if (
                     reg.isRegistered(erc20) &&
+                    reg.toAsset(erc20).isCollateral() &&
                     reg.toColl(erc20).status() != CollateralStatus.DISABLED
                 ) {
                     size++;
@@ -299,13 +320,15 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
             // Set backup basket weights
             uint256 assigned = 0;
+            int192 needed = totalWeights[i].minus(goodWeights[i]);
             for (uint256 j = 0; j < backup.erc20s.length && assigned < size; j++) {
                 IERC20 erc20 = backup.erc20s[j];
                 if (
                     reg.isRegistered(erc20) &&
+                    reg.toAsset(erc20).isCollateral() &&
                     reg.toColl(erc20).status() != CollateralStatus.DISABLED
                 ) {
-                    newBasket.add(erc20, totalWeights[i].minus(goodWeights[i]).divu(size));
+                    newBasket.add(erc20, needed.divu(size).div(reg.toColl(erc20).targetPerRef()));
                     assigned++;
                 }
             }

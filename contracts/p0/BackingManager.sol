@@ -47,30 +47,32 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
         /* Recapitalization strategy:
-         *   1. Sell all surplus assets at BackingManager for deficit collateral
-         *   2. When there is no more surplus, seize RSR from StRSR and sell that for collateral
-         *   3. When there is no more RSR, pick a new basket target, and sell assets for deficits
-         *   4. When all trades are dust, give RToken holders a haircut
+         *   1. Liquidate surplus assets for needed deficits as long as possible
+         *   2. When there are no more surplus assets, begin liquidating RSR instead
+         *   3. When there is no more RSR, apply (1) to a reduced basket target
+         *   4. When all trades are dust, compromise on basketsNeeded and reduce it
          */
 
-        if (main.basketHandler().fullyCapitalized()) {
-            handoutExcessAssets();
-        } else if (!hasOpenTrades()) {
-            (bool doTrade, TradeRequest memory req) = assetsForCollateral(false);
+        if (!hasOpenTrades() && !main.basketHandler().fullyCapitalized()) {
+            (bool doTrade, TradeRequest memory req) = liquidateBackingTrade(false);
 
             if (!doTrade) {
-                (doTrade, req) = insuranceForCollateral();
+                (doTrade, req) = liquidateInsuranceTrade();
             }
 
             if (!doTrade) {
-                (doTrade, req) = assetsForCollateral(true);
+                (doTrade, req) = liquidateBackingTrade(true);
             }
 
             if (doTrade) {
                 tryOpenTrade(req);
             } else {
-                takeHaircut();
+                compromiseBasketsNeeded();
             }
+        }
+
+        if (main.basketHandler().fullyCapitalized()) {
+            handoutExcessAssets();
         }
     }
 
@@ -120,11 +122,11 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         }
     }
 
-    /// Try to launch a surplus-asset-for-collateral trade
-    /// @param pickTarget When true, compromise the BU target instead of pursuing basketsNeeded
-    /// @return doTrade Whether this step produced a TradeRequest for the Broker
+    /// Prepare asset-for-collateral trade
+    /// @param compromiseTarget When true, trade towards a reduced BU target
+    /// @return doTrade If the trade request should be performed
     /// @return req The prepared trade request
-    function assetsForCollateral(bool pickTarget)
+    function liquidateBackingTrade(bool compromiseTarget)
         private
         view
         returns (bool doTrade, TradeRequest memory req)
@@ -136,7 +138,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             ICollateral deficit,
             int192 surplusAmount,
             int192 deficitAmount
-        ) = TradingLibP0.largestSurplusAndDeficit(pickTarget);
+        ) = TradingLibP0.largestSurplusAndDeficit(compromiseTarget);
 
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
 
@@ -161,10 +163,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         return (doTrade, req);
     }
 
-    /// Try to seize RSR and sell it for missing collateral
-    /// @return doTrade Whether the trade should be performed
+    /// Prepare a trade with seized RSR to buy for missing collateral
+    /// @return doTrade If the trade request should be performed
     /// @return req The prepared trade request
-    function insuranceForCollateral() private returns (bool doTrade, TradeRequest memory req) {
+    function liquidateInsuranceTrade() private returns (bool doTrade, TradeRequest memory req) {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
 
         IStRSR stRSR = main.stRSR();
@@ -194,7 +196,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
-    function takeHaircut() private {
+    function compromiseBasketsNeeded() private {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
         assert(main.basketHandler().fullyCapitalized());

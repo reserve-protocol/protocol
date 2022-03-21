@@ -9,9 +9,9 @@ contract CompoundPricedAsset is CompoundOracleMixin, Asset {
     // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
-        int192 maxAuctionSize_,
+        int192 maxTradeVolume_,
         IComptroller comptroller_
-    ) CompoundOracleMixin(comptroller_) Asset(erc20_, maxAuctionSize_) {}
+    ) CompoundOracleMixin(comptroller_) Asset(erc20_, maxTradeVolume_) {}
 
     // solhint-enable no-empty-blocks
 

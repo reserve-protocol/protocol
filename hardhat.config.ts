@@ -2,7 +2,7 @@ import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-waffle'
 import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
-import 'hardhat-gas-reporter'
+//import 'hardhat-gas-reporter'
 import 'solidity-coverage'
 
 import dotenv from 'dotenv'
@@ -29,12 +29,12 @@ export default <HardhatUserConfig>{
         blockNumber: 14393847,
         enabled: !!process.env.FORK,
       },
-      gas: 999999999999,
+      gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
     },
     localhost: {
-      gas: 999999999999,
+      gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
     },
@@ -73,9 +73,5 @@ export default <HardhatUserConfig>{
     strict: false,
     only: [],
     except: ['Extension'],
-  },
-  gasReporter: {
-    currency: 'USD',
-    gasPrice: 100,
   },
 }

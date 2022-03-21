@@ -35,7 +35,7 @@ export const divCeil = (x: BigNumber, y: BigNumber): BigNumber =>
   // ceil(x/y) == (x + y - 1) / y
   x.add(y).sub(1).div(y)
 
-// Wheter the absolute difference between x and y is less than z
+// Whether the absolute difference between x and y is less than z
 export const near = (x: BigNumber, y: BigNumber, z: BigNumberish): boolean => {
   if (x.lt(y)) {
     return y.sub(x).lte(z)

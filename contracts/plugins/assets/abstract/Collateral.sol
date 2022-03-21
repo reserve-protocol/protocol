@@ -35,12 +35,12 @@ abstract contract Collateral is ICollateral, Asset, Context {
 
     constructor(
         IERC20Metadata erc20_,
-        int192 maxAuctionSize_,
+        int192 maxTradeVolume_,
         int192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         bytes32 targetName_
-    ) Asset(erc20_, maxAuctionSize_) {
+    ) Asset(erc20_, maxTradeVolume_) {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         referenceERC20 = referenceERC20_;

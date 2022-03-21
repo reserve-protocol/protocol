@@ -14,7 +14,7 @@ import "./IDistributor.sol";
  */
 struct DeploymentParams {
     // === RSR/RToken/AAVE/COMP ===
-    int192 maxAuctionSize; // {UoA}
+    int192 maxTradeVolume; // {UoA}
     //
     // === Revenue sharing ===
     RevenueShare dist; // revenue sharing splits between RToken and RSR
@@ -31,7 +31,7 @@ struct DeploymentParams {
     uint256 auctionLength; // {s} the length of an auction
     int192 backingBuffer; // {%} how much extra backing collateral to keep
     int192 maxTradeSlippage; // {%} max slippage acceptable in a trade
-    int192 dustAmount; // {UoA} value below which we don't bother handling some tokens
+    int192 dustAmount; // {UoA} value below which it is not worth wasting time trading
     //
     // === RToken ===
     int192 issuanceRate; // {%} number of RToken to issue per block / (RToken value)

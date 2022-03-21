@@ -87,10 +87,10 @@ contract DeployerP0 is IDeployer {
         components.broker = new BrokerP0();
 
         IAsset[] memory assets = new IAsset[](4);
-        assets[0] = new RTokenAsset(components.rToken, params.maxAuctionSize, main);
-        assets[1] = new AavePricedAsset(rsr, params.maxAuctionSize, comptroller, aaveLendingPool);
-        assets[2] = new AavePricedAsset(aave, params.maxAuctionSize, comptroller, aaveLendingPool);
-        assets[3] = new CompoundPricedAsset(comp, params.maxAuctionSize, comptroller);
+        assets[0] = new RTokenAsset(components.rToken, params.maxTradeVolume, main);
+        assets[1] = new AavePricedAsset(rsr, params.maxTradeVolume, comptroller, aaveLendingPool);
+        assets[2] = new AavePricedAsset(aave, params.maxTradeVolume, comptroller, aaveLendingPool);
+        assets[3] = new CompoundPricedAsset(comp, params.maxTradeVolume, comptroller);
 
         // ConstructorArgs
         ConstructorArgs memory ctorArgs = ConstructorArgs(params, components, rsr, gnosis, assets);

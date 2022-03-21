@@ -1,62 +1,39 @@
-import { GnosisMock } from '@typechain/GnosisMock'
 import { ContractFactory } from 'ethers'
 import { task } from 'hardhat/config'
 import { expectInReceipt } from '../../common/events'
-import { bn, fp } from '../../common/numbers'
-import { IConfig } from '../../test/p0/utils/fixtures'
+import { AssetRegistryP0, BasketHandlerP0, DeployerP0, MainP0, TradingLibP0 } from '../../typechain'
 import {
-  AssetRegistryP0,
-  ATokenFiatCollateral,
-  BasketHandlerP0,
-  CTokenFiatCollateral,
-  DeployerP0,
-  MainP0,
-} from '../../typechain'
+  AAVE_ADDRESS,
+  AAVE_LENDING_ADDRESS,
+  basketsNeededAmts,
+  COMPTROLLER_ADDRESS,
+  COMP_ADDRESS,
+  config,
+  deployCollaterals,
+  deployMarket,
+  RSR_ADDRESS,
+} from './helper'
 
-const defaultThreshold = fp('0.05') // 5%
-const delayUntilDefault = bn('86400') // 24h
-const AAVE_ADDRESS = '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9'
-const COMP_ADDRESS = '0xc00e94cb662c3520282e6f5717214004a7f26888'
-const COMPTROLLER_ADDRESS = '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9'
-const AAVE_LENDING_ADDRESS = '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9'
-
-// Setup Config
-const config: IConfig = {
-  maxAuctionSize: fp('1e6'), // $1M
-  dist: {
-    rTokenDist: bn(40), // 2/5 RToken
-    rsrDist: bn(60), // 3/5 RSR
-  },
-  rewardPeriod: bn('604800'), // 1 week
-  rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
-  unstakingDelay: bn('1209600'), // 2 weeks
-  auctionDelay: bn('0'), // (the delay _after_ default has been confirmed)
-  auctionLength: bn('1800'), // 30 minutes
-  backingBuffer: fp('0.0001'), // 0.01%
-  maxTradeSlippage: fp('0.01'), // 1%
-  dustAmount: fp('0.01'), // 0.01 UoA (USD)
-  issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-}
-
-task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction(
+task('P0-deploy', 'Deploys all Protocol components and an RToken').setAction(
   async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
-    // Dependencies
-    console.log('Deploying market mock')
-    // Market
-    // TODO: Real market
-    const GnosisMockFactory: ContractFactory = await hre.ethers.getContractFactory('GnosisMock')
-    const marketMock: GnosisMock = <GnosisMock>await GnosisMockFactory.deploy()
-    await marketMock.deployed()
+    // TODO: Replace for real gnosis market deployment
+    const mockMarketAddress = await deployMarket(hre)
+
+    // Deploy TradingLib external library
+    const TradingLibFactory = await hre.ethers.getContractFactory('TradingLibP0')
+    const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
+    await tradingLib.deployed()
 
     console.log('Deploying RToken deployer...')
-    // Create Deployer
-    const DeployerFactory = <ContractFactory>await hre.ethers.getContractFactory('DeployerP0')
+    const DeployerFactory = <ContractFactory>await hre.ethers.getContractFactory('DeployerP0', {
+      libraries: { TradingLibP0: tradingLib.address },
+    })
     const rtokenDeployer = <DeployerP0>await DeployerFactory.connect(deployer).deploy(
-      '0x320623b8e4ff03373931769a31fc52a4e78b5d70', // RSR
-      COMP_ADDRESS, // COMP
-      AAVE_ADDRESS, // AAVE
-      marketMock.address, // Mock Market (Auctions)
+      RSR_ADDRESS, // RSR
+      COMP_ADDRESS, // COMP TOKEN
+      AAVE_ADDRESS, // AAVE TOKEN
+      mockMarketAddress, // Mock Market (Auctions)
       COMPTROLLER_ADDRESS, // COMPTROLLER
       AAVE_LENDING_ADDRESS // AAVE LENDING POOL
     )
@@ -64,7 +41,13 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
 
     console.log('Deploying RToken...')
     const receipt = await (
-      await rtokenDeployer.deploy('Reserve Dollar Plus', 'RSDP', deployer.address, config)
+      await rtokenDeployer.deploy(
+        'Reserve Dollar Plus',
+        'RSDP',
+        'constitution',
+        deployer.address,
+        config
+      )
     ).wait()
 
     // Get main and facade addresses
@@ -81,62 +64,22 @@ task('Proto0-deployAll', 'Deploys all p0 contracts and a mock RToken').setAction
       await hre.ethers.getContractAt('BasketHandlerP0', await main.basketHandler())
     )
 
-    const ATokenCollateralFactory = await hre.ethers.getContractFactory('ATokenFiatCollateral')
-    const CTokenCollateralFactory = await hre.ethers.getContractFactory('CTokenFiatCollateral')
-
-    const basket = [
-      '0xfC1E690f61EFd961294b3e1Ce3313fBD8aa4f85d', // aDAI
-      '0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9', // cUSDT
-      '0x39aa39c021dfbae8fac545936693ac917d5e7563', // cUSDC
-    ]
-
-    const fiat = [
-      '0x6b175474e89094c44da98b954eedeac495271d0f', // DAI
-      '0x6b175474e89094c44da98b954eedeac495271d0f', // USDC
-      '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', // USDC
-    ]
-
-    const basketsNeededAmts = [fp('0.33'), fp('0.33'), fp('0.34')]
-
-    const collaterals: string[] = []
-
     console.log('Deploying basket collaterals...')
-    // Deploy collaterals
-    for (let i = 0; i < basket.length; i++) {
-      let collateral: ATokenFiatCollateral | CTokenFiatCollateral
-      const params = [
-        basket[i],
-        config.maxAuctionSize,
-        defaultThreshold,
-        delayUntilDefault,
-        fiat[i],
-        '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B', // comptroller
-      ] as const
-
-      if (i === 0) {
-        collateral = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy(
-          ...params,
-          AAVE_LENDING_ADDRESS, // Aave lending pool
-          AAVE_ADDRESS
-        )
-      } else {
-        collateral = <CTokenFiatCollateral>(
-          await CTokenCollateralFactory.deploy(...params, COMP_ADDRESS)
-        )
-      }
-
-      await collateral.deployed()
-      collaterals.push(collateral.address)
-    }
+    const basketCollaterals = await deployCollaterals(hre)
 
     console.log('Setting basket...')
     // Register prime collateral
-    for (let i = 0; i < basket.length; i++) {
-      await assetRegistry.connect(deployer).register(collaterals[i])
-    }
+    await Promise.all(
+      basketCollaterals.map(([, collateralAddress]) =>
+        assetRegistry.connect(deployer).register(collateralAddress)
+      )
+    )
 
     // Set non-empty basket
-    await basketHandler.connect(deployer).setPrimeBasket(basket, basketsNeededAmts)
+    await basketHandler.connect(deployer).setPrimeBasket(
+      basketCollaterals.map(([erc20Address]) => erc20Address),
+      basketsNeededAmts
+    )
     await basketHandler.connect(deployer).switchBasket()
 
     console.log('Unpausing...')

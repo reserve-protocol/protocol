@@ -31,7 +31,7 @@ interface IAsset {
     function isCollateral() external view returns (bool);
 
     /// @return {UoA}
-    function maxAuctionSize() external view returns (int192);
+    function maxTradeVolume() external view returns (int192);
 
     // ==== Rewards ====
 
