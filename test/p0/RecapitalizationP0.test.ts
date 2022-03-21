@@ -558,7 +558,7 @@ describe('MainP0 contract', () => {
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[1], initialQuotes[3], bn('0.25e18')])
       })
 
-      it('Should switch basket ignoring unregistered backup collateral', async () => {
+      it('Should switch basket if collateral in basket is unregistered', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
 
@@ -567,26 +567,44 @@ describe('MainP0 contract', () => {
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
 
-        // Set Token1 to default - 50% price reduction
-        await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+        // Check initial state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        await expectCurrentBacking({
+          tokens: initialTokens,
+          quantities: initialQuantities,
+        })
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        expect(quotes).to.eql(initialQuotes)
 
-        // Mark default as probable
-        await collateral1.forceUpdates()
-
-        // Advance time post delayUntilDefault
-        await advanceTime((await collateral1.delayUntilDefault()).toString())
-
-        // Confirm default
-        await collateral1.forceUpdates()
-
-        // Check state
-        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+        // Basket should switch
+        const newTokens = [
+          initialTokens[0],
+          initialTokens[2],
+          initialTokens[3],
+          backupToken1.address,
+        ]
+        const newQuantities = [
+          initialQuantities[0],
+          initialQuantities[2],
+          initialQuantities[3],
+          bn('0'),
+        ]
 
         // Unregister an asset in basket
-        await assetRegistry.connect(owner).unregister(collateral3.address)
+        await expect(assetRegistry.connect(owner).unregister(collateral1.address))
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(newTokens, basketsNeededAmts)
 
-        // Check state
+        // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        await expectCurrentBacking({
+          tokens: newTokens,
+          quantities: newQuantities,
+        })
+        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        expect(quotes).to.eql([initialQuotes[0], initialQuotes[2], initialQuotes[3], bn('0.25e18')])
       })
     })
 
