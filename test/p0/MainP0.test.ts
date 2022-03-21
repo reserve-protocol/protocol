@@ -1057,7 +1057,7 @@ describe('MainP0 contract', () => {
       expect(await basketHandler.price()).to.equal(fp('0.75')) // disabled collateral is ignored
     })
 
-    it('Should return baskets held by an account correctly', async () => {
+    it('Should return baskets held by an account and quantity correctly', async () => {
       // Check values
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
       expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
@@ -1078,14 +1078,35 @@ describe('MainP0 contract', () => {
         .withArgs(token1.address, collateral1.address)
         .to.emit(assetRegistry, 'AssetRegistered')
         .withArgs(token1.address, newAsset.address)
+        .to.not.emit(basketHandler, 'BasketSet')
 
-      // Check values - No changes, asset in basket is ignored - REVIEW
+      // Check values - No changes
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
       expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4))
       expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
 
-      // Check quantity for non-collateral asset
+      // Check quantities for non-collateral asset
+      expect(await basketHandler.quantity(token0.address)).to.equal(basketsNeededAmts[0])
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
+      expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
+      expect(await basketHandler.quantity(token3.address)).to.equal(basketsNeededAmts[3])
+
+      // Unregister a token from the basket
+      await expect(assetRegistry.connect(owner).unregister(newAsset.address)).to.not.emit(
+        basketHandler,
+        'BasketSet'
+      )
+
+      // Check values - No changes
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
+      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4))
+      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+
+      // Check quantities for non-collateral asset
+      expect(await basketHandler.quantity(token0.address)).to.equal(basketsNeededAmts[0])
+      expect(await basketHandler.quantity(token1.address)).to.equal(0)
+      expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
+      expect(await basketHandler.quantity(token3.address)).to.equal(basketsNeededAmts[3])
 
       // Set new prime basket
       await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
@@ -1099,6 +1120,11 @@ describe('MainP0 contract', () => {
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal) // a full unit is required
       expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal) // a full unit is required
       expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+
+      expect(await basketHandler.quantity(token0.address)).to.equal(fp('1'))
+      expect(await basketHandler.quantity(token1.address)).to.equal(0)
+      expect(await basketHandler.quantity(token2.address)).to.equal(0)
+      expect(await basketHandler.quantity(token3.address)).to.equal(0)
     })
   })
 })
