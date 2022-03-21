@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { BigNumber, ContractReceipt, Event } from 'ethers'
+import { BigNumber, Contract, ContractReceipt, ContractTransaction, Event } from 'ethers'
 import { Interface, LogDescription } from 'ethers/lib/utils'
 
 // TODO: Proper typing
@@ -109,4 +109,32 @@ export const expectInIndirectReceipt = (
   }
 
   return event
+}
+
+export interface IEvent {
+  contract: Contract
+  name: string
+  args?: any[]
+  emitted: boolean
+}
+
+// Checks for multiple events when executing a transaction `tx`
+// This is required due to a limitation in Waffle when chaining multiple .to.emits
+export const expectMultipleEvents = async (
+  tx: Promise<ContractTransaction>,
+  events: Array<IEvent>
+) => {
+  for (const evt of events) {
+    if (evt.emitted) {
+      if (evt.args) {
+        await expect(tx)
+          .to.emit(evt.contract, evt.name)
+          .withArgs(...evt.args)
+      } else {
+        await expect(tx).to.emit(evt.contract, evt.name)
+      }
+    } else {
+      await expect(tx).to.not.emit(evt.contract, evt.name)
+    }
+  }
 }
