@@ -9,7 +9,7 @@ import "contracts/plugins/mocks/AaveLendingPoolMock.sol";
 import "contracts/plugins/mocks/AaveLendingAddrProviderMock.sol";
 import "contracts/p0/aux/Deployer.sol";
 
-function defaultParams() external pure returns (DeploymentParams memory params) {
+function defaultParams() pure returns (DeploymentParams memory params) {
     params = DeploymentParams({
         maxAuctionSize: toFix(1e6),
         dist: RevenueShare({ rTokenDist: 2, rsrDist: 3 }),
@@ -26,7 +26,6 @@ function defaultParams() external pure returns (DeploymentParams memory params) 
 }
 
 function defaultCtorArgs(DeploymentParams memory params)
-    external
     pure
     returns (ConstructorArgs memory args)
 {
