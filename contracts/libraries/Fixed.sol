@@ -339,7 +339,7 @@ library FixLib {
     ) internal pure returns (bool) {
         int256 x = x_;
         int256 y = y_;
-        int256 diff = (x <= y) ? (y - x) : (x - y);
-        return diff < epsilon;
+        int256 diff = x - y;
+        return -epsilon < diff && diff < epsilon;
     }
 }
