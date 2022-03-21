@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
-import { expectInIndirectReceipt, expectInReceipt, expectMultipleEvents } from '../../common/events'
+import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
 import {
   AaveOracleMock,
@@ -843,7 +843,7 @@ describe('MainP0 contract', () => {
       expect(await assetRegistry.toAsset(token0.address)).to.equal(collateral0.address)
 
       // Swap Asset
-      await expectMultipleEvents(assetRegistry.connect(owner).swapRegistered(newAsset.address), [
+      await expectEvents(assetRegistry.connect(owner).swapRegistered(newAsset.address), [
         {
           contract: assetRegistry,
           name: 'AssetUnregistered',
@@ -1081,7 +1081,7 @@ describe('MainP0 contract', () => {
         )
       )
       // Swap Asset
-      await expectMultipleEvents(assetRegistry.connect(owner).swapRegistered(newAsset.address), [
+      await expectEvents(assetRegistry.connect(owner).swapRegistered(newAsset.address), [
         {
           contract: assetRegistry,
           name: 'AssetUnregistered',

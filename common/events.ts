@@ -120,10 +120,7 @@ export interface IEvent {
 
 // Checks for multiple events when executing a transaction `tx`
 // This is required due to a limitation in Waffle when chaining multiple .to.emits
-export const expectMultipleEvents = async (
-  tx: Promise<ContractTransaction>,
-  events: Array<IEvent>
-) => {
+export const expectEvents = async (tx: Promise<ContractTransaction>, events: Array<IEvent>) => {
   for (const evt of events) {
     if (evt.emitted) {
       if (evt.args) {
