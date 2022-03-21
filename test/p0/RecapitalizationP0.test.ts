@@ -3,6 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../../common/constants'
+import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
 import {
   AaveLendingPoolMock,
@@ -827,10 +828,9 @@ describe('MainP0 contract', () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Switch Basket
-        await expect(basketHandler.connect(owner).switchBasket()).to.emit(
-          basketHandler,
-          'BasketSet'
-        )
+        await expect(basketHandler.connect(owner).switchBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs([token1.address], [fp('1')])
 
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -892,10 +892,15 @@ describe('MainP0 contract', () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         //  End current auction, should  not start any new auctions
-        await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6))
-          .to.not.emit(backingManager, 'TradeStarted')
+        await expectEvents(facade.runAuctionsForAllTraders(), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [0, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6)],
+            emitted: true,
+          },
+          { contract: backingManager, name: 'TradeStarted', emitted: false },
+        ])
 
         // Check state - Order restablished
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -927,10 +932,9 @@ describe('MainP0 contract', () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Switch Basket
-        await expect(basketHandler.connect(owner).switchBasket()).to.emit(
-          basketHandler,
-          'BasketSet'
-        )
+        await expect(basketHandler.connect(owner).switchBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs([token1.address], [fp('1')])
 
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -991,10 +995,15 @@ describe('MainP0 contract', () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         //  End current auction, should  not start any new auctions
-        await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
-          .to.not.emit(backingManager, 'TradeStarted')
+        await expectEvents(facade.runAuctionsForAllTraders(), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
+            emitted: true,
+          },
+          { contract: backingManager, name: 'TradeStarted', emitted: false },
+        ])
 
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1033,10 +1042,9 @@ describe('MainP0 contract', () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(stkAmount)
 
         // Switch Basket
-        await expect(basketHandler.connect(owner).switchBasket()).to.emit(
-          basketHandler,
-          'BasketSet'
-        )
+        await expect(basketHandler.connect(owner).switchBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs([token1.address], [fp('1')])
 
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1103,11 +1111,21 @@ describe('MainP0 contract', () => {
         let buyAmtBidRSR: BigNumber = sellAmt.sub(minBuyAmt)
         let sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')) // Due to trade slippage 1% - Calculation to match Solidity
 
-        await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
-          .to.emit(backingManager, 'TradeStarted')
-          .withArgs(1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6))
+        await expectEvents(facade.runAuctionsForAllTraders(), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
+            emitted: true,
+          },
+
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
+            args: [1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6)],
+            emitted: true,
+          },
+        ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
 
@@ -1148,10 +1166,19 @@ describe('MainP0 contract', () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         //  End current auction, should  not start any new auctions
-        await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6))
-          .to.not.emit(backingManager, 'TradeStarted')
+        await expectEvents(facade.runAuctionsForAllTraders(), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6)],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
 
         // Check state - Order restablished
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1264,10 +1291,19 @@ describe('MainP0 contract', () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - will end current, will not open any new auctions (no RSR)
-        await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(0, token0.address, backupToken1.address, sellAmt, minBuyAmt)
-          .to.not.emit(backingManager, 'TradeStarted')
+        await expectEvents(facade.runAuctionsForAllTraders(), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [0, token0.address, backupToken1.address, sellAmt, minBuyAmt],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
 
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1393,11 +1429,20 @@ describe('MainP0 contract', () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - will end current, and will open a new auction for the other half
-        await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(0, token0.address, backupToken1.address, sellAmt, minBuyAmt)
-          .to.emit(backingManager, 'TradeStarted')
-          .withArgs(1, token0.address, backupToken1.address, sellAmt, bn('0'))
+        await expectEvents(facade.runAuctionsForAllTraders(), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [0, token0.address, backupToken1.address, sellAmt, minBuyAmt],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
+            args: [1, token0.address, backupToken1.address, sellAmt, bn('0')],
+            emitted: true,
+          },
+        ])
 
         // Check new auction
         // Token0 -> Backup Token Auction
@@ -1440,11 +1485,20 @@ describe('MainP0 contract', () => {
         let buyAmtBidRSR: BigNumber = sellAmt
         let sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')) // Due to trade slippage 1% - Calculation to match Solidity
 
-        await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(1, token0.address, backupToken1.address, sellAmt, minBuyAmt)
-          .to.emit(backingManager, 'TradeStarted')
-          .withArgs(2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR)
+        await expectEvents(facade.runAuctionsForAllTraders(), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [1, token0.address, backupToken1.address, sellAmt, minBuyAmt],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
+            args: [2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            emitted: true,
+          },
+        ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
 
@@ -1485,10 +1539,19 @@ describe('MainP0 contract', () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction
-        await expect(facade.runAuctionsForAllTraders())
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR)
-          .to.not.emit(backingManager, 'TradeStarted')
+        await expectEvents(facade.runAuctionsForAllTraders(), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
 
         //  Should have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount.sub(sellAmtRSR)) // Sent to market (auction)
