@@ -19,7 +19,7 @@
         "test:parallel": "npx hardhat test --parallel",
         "test:serial": "npx hardhat test",
         "test:recompile": "npx hardhat compile --force && mocha --require hardhat/register --recursive --exit",
-        "lint": "npx solhint 'contracts/**/*.sol'",
+        "lint": "bash tools/lint.sh",
         "prettier": "npx prettier --write 'contracts/**/*.sol' '{test,common,scripts,tasks,types,}/**/{*.ts,*.json}' '*.ts' '*.json'",
         "mythril": "./mythril.sh",
         "echidna": "rm -rf crytic-export && ./echidna.sh",

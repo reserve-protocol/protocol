@@ -1,0 +1,12 @@
+#!/bin/bash -eu
+
+# cd to project root
+while [ ! -d .git -a `pwd` != "/" ]; do cd ..; done
+# strictly solhint system code
+find contracts -name '*.sol' | \
+  xargs yarn exec solhint
+# more-gently solhint test code
+find contracts/fuzz -name '*.sol' | \
+  xargs yarn exec solhint \
+        --config contracts/fuzz/.solhint.json \
+        --ignore-path contracts/fuzz/.solhintignore

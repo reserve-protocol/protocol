@@ -1,9 +1,4 @@
 node_modules
 
-# Ignore the style of pure-test contracts
-test/
-mocks/
-fuzz/
-
 # The Fixed library defines a custom type and crashes the solhint parser
 contracts/libraries/Fixed.sol
