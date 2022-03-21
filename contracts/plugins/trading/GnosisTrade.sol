@@ -93,9 +93,13 @@ contract GnosisTrade is ITrade {
 
         assert(atStageFinished());
 
-        // Check clearing prices
+        // Transfer balances to origin
         uint256 sellBal = sell.balanceOf(address(this));
         boughtAmt = buy.balanceOf(address(this));
+        if (sellBal > 0) sell.safeTransfer(origin, sellBal);
+        if (boughtAmt > 0) buy.safeTransfer(origin, boughtAmt);
+
+        // Check clearing prices
         if (sellBal < sellAmount) {
             soldAmt = sellAmount - sellBal;
             int192 clearingPrice = toFix(boughtAmt).divu(soldAmt); // {buyTok/sellTok}
@@ -103,10 +107,6 @@ contract GnosisTrade is ITrade {
                 broker.reportViolation();
             }
         }
-
-        // Transfer balances to origin, ending our watch
-        if (sellBal > 0) sell.safeTransfer(origin, sellBal);
-        if (boughtAmt > 0) buy.safeTransfer(origin, boughtAmt);
     }
 
     /// Anyone can transfer any ERC20 back to the origin after the trade has been closed
