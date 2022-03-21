@@ -788,8 +788,8 @@ describe('StRSRP0 contract', () => {
         // Payout rewards
         await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
 
-        // Check exchange rate is off by at most half of the number of rounds
-        expect(lte(await stRSR.exchangeRate(), newRate, (i / 2 + 1).toFixed())).to.equal(true)
+        // Check exchange rate is lower by at-most half
+        expect(lte(await stRSR.exchangeRate(), newRate, (i / 2).toFixed())).to.equal(true)
 
         // Check new balances and stakes
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
@@ -800,7 +800,7 @@ describe('StRSRP0 contract', () => {
       }
     })
 
-    it.skip('Single payout for n = 100 rounds should be up to 10 below true closed form', async () => {
+    it.skip('Single payout for n = 100 rounds should approximate true closed form', async () => {
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)
       await stRSR.connect(addr1).stake(stake)
@@ -815,8 +815,8 @@ describe('StRSRP0 contract', () => {
       // Payout rewards
       await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
 
-      // Check exchange rate is at most 10 less than closed form exchange rate
-      expect(lte(await stRSR.exchangeRate(), newRate, 10)).to.equal(true)
+      // Check exchange rate is lower by at-most half
+      expect(lte(await stRSR.exchangeRate(), newRate, 50)).to.equal(true)
 
       // Check new balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
@@ -1098,8 +1098,6 @@ describe('StRSRP0 contract', () => {
       expect(unstakeAcc).to.equal(addr1.address)
       expect(unstakeAmt).to.equal(amount.sub(proportionalAmountToSeize))
     })
-
-    it.skip('Should handle stakes correctly after removing RSR', async () => {})
   })
 
   describe('Transfers', () => {
