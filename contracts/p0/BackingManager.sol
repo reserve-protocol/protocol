@@ -43,6 +43,9 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // Call keepers before
         main.poke();
 
+        // Do not trade when DISABLED or IFFY
+        if (main.basketHandler().status() != CollateralStatus.SOUND) return;
+
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
@@ -78,6 +81,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
+        assert(main.basketHandler().status() == CollateralStatus.SOUND);
+
         // Special-case RSR to forward to StRSR pool
         uint256 rsrBal = main.rsr().balanceOf(address(this));
         if (rsrBal > 0) {

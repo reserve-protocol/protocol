@@ -996,7 +996,7 @@ describe('MainP0 contract', () => {
       expect(await facade.callStatic.totalAssetValue()).to.equal(0)
     })
 
-    it('Should handle collateral deregistration', async () => {
+    it('Should handle full collateral deregistration and reduce to empty basket', async () => {
       // Check status
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.quantity(token1.address)).to.equal(basketsNeededAmts[1])
@@ -1025,20 +1025,16 @@ describe('MainP0 contract', () => {
       expect(toks.length).to.equal(1)
       expect(toks[0]).to.equal(token0.address)
 
-      // Basket should not be set, as collateral0 is the only backup
-      await expect(assetRegistry.connect(owner).unregister(collateral0.address)).to.not.emit(
-        basketHandler,
-        'BasketSet'
-      )
+      // Basket should be set to the empty basket, and be defaulted
+      await expect(assetRegistry.connect(owner).unregister(collateral0.address))
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs([], [], true)
 
-      // Final basket should contain disabled collateral
+      // Final basket should be empty
+      toks = await facade.basketTokens()
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
-
-      // Shouldn't have changed
-      toks = await facade.basketTokens()
-      expect(toks.length).to.equal(1)
-      expect(toks[0]).to.equal(token0.address)
+      expect(toks.length).to.equal(0)
     })
 
     it('Should exclude defaulted collateral when checking price', async () => {
@@ -1094,7 +1090,7 @@ describe('MainP0 contract', () => {
           args: [token1.address, newAsset.address],
           emitted: true,
         },
-        { contract: basketHandler, name: 'BasketSet', emitted: false },
+        { contract: basketHandler, name: 'BasketSet', args: [[], [], true], emitted: true },
       ])
 
       // Check values - No changes
@@ -1109,10 +1105,9 @@ describe('MainP0 contract', () => {
       expect(await basketHandler.quantity(token3.address)).to.equal(basketsNeededAmts[3])
 
       // Unregister a token from the basket
-      await expect(assetRegistry.connect(owner).unregister(newAsset.address)).to.not.emit(
-        basketHandler,
-        'BasketSet'
-      )
+      await expect(assetRegistry.connect(owner).unregister(newAsset.address))
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs([], [], true)
 
       // Check values - No changes
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
@@ -1131,7 +1126,9 @@ describe('MainP0 contract', () => {
         .withArgs([token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
 
       // Switch basket
-      await expect(basketHandler.connect(owner).switchBasket()).to.emit(basketHandler, 'BasketSet')
+      await expect(basketHandler.connect(owner).switchBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs([token0.address], [fp('1')], false)
 
       // Check values
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal) // a full unit is required

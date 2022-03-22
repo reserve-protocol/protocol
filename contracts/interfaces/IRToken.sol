@@ -113,9 +113,6 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// @return {BU} How many baskets are being targeted
     function basketsNeeded() external view returns (int192);
 
-    /// @return {qRTok} How much RToken `account` can issue given their current holdings
-    function maxIssuable(address account) external view returns (uint256);
-
     /// @return p {UoA/rTok} The price of 1 whole RToken in the unit of account
     function price() external view returns (int192 p);
 }
