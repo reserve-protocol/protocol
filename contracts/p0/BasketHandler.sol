@@ -26,9 +26,9 @@ struct BasketConfig {
     mapping(bytes32 => BackupConfig) backups;
 }
 
-/// A specific definition of a BU that evolves over time according to the BasketConfig
+/// A reference basket specific definition of a BU that evolves over time according to the BasketConfig
 struct Basket {
-    // Invariant: all reference basket collateral must be registered with the registry
+    // Invariant: no defaulted or unregistered collateral
     IERC20[] erc20s;
     mapping(IERC20 => int192) refAmts; // {ref/BU}
     uint256 nonce;

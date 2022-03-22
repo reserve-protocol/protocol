@@ -8,8 +8,12 @@ import "./IComponent.sol";
 
 /**
  * @title IBasketHandler
- * @notice The BasketHandler maintains a notion of the reference basket that it evolves
- *   over time according to the rules described by the prime basket and backup configurations.
+ * @notice The BasketHandler aims to maintain a reference basket of constant target unit amounts.
+ *   When a collateral token defaults, it automatically swaps the bad collateral for backup collateral.
+ *   When _all_ collateral tokens default for a target unit, only then is the value of the basket
+ *   allowed to change in terms of target unit amounts.
+ *
+ * View functions should ignore bad collateral.
  */
 interface IBasketHandler is IComponent {
     /// Emitted when the prime basket is set
@@ -74,9 +78,11 @@ interface IBasketHandler is IComponent {
         returns (address[] memory erc20s, uint256[] memory quantities);
 
     /// @return baskets {BU} The quantity of complete baskets at an address. A balance for BUs
+    /// Excludes defaulted/unregistered collateral
     function basketsHeldBy(address account) external view returns (int192 baskets);
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
+    /// Excludes defaulted/unregistered collateral
     function price() external view returns (int192 p);
 
     /// @return nonce The basket nonce, a monotonically increasing unique identifier
