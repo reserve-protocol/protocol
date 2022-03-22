@@ -14,10 +14,10 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p0/mixins/Rewardable.sol";
 
 /**
- * @title RToken
+ * @title RTokenP1
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RToken is RewardableP0, ERC20Permit, IRToken {
+contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
     using SafeERC20 for IERC20;
@@ -142,6 +142,10 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         for (uint256 i = 0; i < deposits.length; i++) {
             curr.deposits[i] = prev.deposits[i] + deposits[i];
         }
+
+        // Configure queue
+        queue.basketNonce = basketNonce;
+        queue.tokens = erc20s;
         queue.right++;
 
         emit IssuanceStarted(
