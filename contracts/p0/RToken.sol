@@ -14,6 +14,7 @@ import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/mixins/Component.sol";
 import "contracts/p0/mixins/Rewardable.sol";
+
 struct SlowIssuance {
     address issuer;
     uint256 amount; // {qRTok}
@@ -61,9 +62,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
         constitutionURI = constitutionURI_;
     }
 
-    // solhint-enable no-empty-blocks
-
-    function init(ConstructorArgs memory args) internal override {
+    function init(ConstructorArgs calldata args) internal override {
         issuanceRate = args.params.issuanceRate;
         emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }

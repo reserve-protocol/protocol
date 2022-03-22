@@ -2,8 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR, CollateralStatus } from '../../common/constants'
-import { bn, fp } from '../../common/numbers'
+import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
+import { bn, fp } from '../common/numbers'
 import {
   AaveOracleMock,
   ATokenFiatCollateral,
@@ -14,17 +14,17 @@ import {
   ERC20Mock,
   FacadeP0,
   MainP0,
-  RTokenP0,
+  IRToken,
   StaticATokenMock,
   USDCMock,
-} from '../../typechain'
-import { whileImpersonating } from '../utils/impersonation'
-import { advanceTime, advanceBlocks, getLatestBlockNumber } from '../utils/time'
-import { Collateral, defaultFixture, IConfig } from '../fixtures'
+} from '../typechain'
+import { whileImpersonating } from './utils/impersonation'
+import { advanceTime, advanceBlocks, getLatestBlockNumber } from './utils/time'
+import { Collateral, defaultFixture, IConfig } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('RTokenP0 contract', () => {
+describe('RToken contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -50,7 +50,7 @@ describe('RTokenP0 contract', () => {
   let aaveOracleInternal: AaveOracleMock
   // Main
   let main: MainP0
-  let rToken: RTokenP0
+  let rToken: IRToken
   let facade: FacadeP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0

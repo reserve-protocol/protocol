@@ -2,9 +2,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
-import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../../common/events'
-import { bn, fp } from '../../common/numbers'
+import { CollateralStatus, ZERO_ADDRESS } from '../common/constants'
+import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
+import { bn, fp } from '../common/numbers'
 import {
   AaveOracleMock,
   Asset,
@@ -18,7 +18,7 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
-  DeployerP0,
+  IDeployer,
   DistributorP0,
   ERC20Mock,
   FacadeP0,
@@ -27,14 +27,14 @@ import {
   GnosisMock,
   RevenueTradingP0,
   RTokenAsset,
-  RTokenP0,
+  IRToken,
   StaticATokenMock,
-  StRSRP0,
+  IStRSR,
   USDCMock,
-} from '../../typechain'
-import { whileImpersonating } from '../utils/impersonation'
-import { Collateral, defaultFixture, IConfig } from '../fixtures'
-import { advanceTime } from '../utils/time'
+} from '../typechain'
+import { whileImpersonating } from './utils/impersonation'
+import { Collateral, defaultFixture, IConfig } from './fixtures'
+import { advanceTime } from './utils/time'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -45,7 +45,7 @@ describe('MainP0 contract', () => {
   let other: SignerWithAddress
 
   // Deployer contract
-  let deployer: DeployerP0
+  let deployer: IDeployer
 
   // Assets
   let collateral: Collateral[]
@@ -84,9 +84,9 @@ describe('MainP0 contract', () => {
   let config: IConfig
 
   // Contracts to retrieve after deploy
-  let rToken: RTokenP0
+  let rToken: IRToken
   let rTokenAsset: RTokenAsset
-  let stRSR: StRSRP0
+  let stRSR: IStRSR
   let furnace: FurnaceP0
   let main: MainP0
   let facade: FacadeP0
