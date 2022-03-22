@@ -20,7 +20,7 @@ import {
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 import { advanceTime, advanceBlocks, getLatestBlockNumber } from '../utils/time'
-import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 

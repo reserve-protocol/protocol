@@ -22,8 +22,8 @@ import {
 import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
-import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
-import { makeDecayFn, calcErr } from './utils/rewards'
+import { Collateral, defaultFixture, IConfig } from '../fixtures'
+import { makeDecayFn, calcErr } from '../utils/rewards'
 
 const createFixtureLoader = waffle.createFixtureLoader
 

@@ -25,8 +25,8 @@ import {
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
-import { expectTrade } from './utils/trades'
+import { Collateral, defaultFixture, IConfig } from '../fixtures'
+import { expectTrade } from '../utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
