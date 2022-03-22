@@ -13,11 +13,11 @@ import "contracts/p0/AssetRegistry.sol";
 import "contracts/p0/BackingManager.sol";
 import "contracts/p0/BasketHandler.sol";
 import "contracts/p0/Broker.sol";
-import "contracts/p0/RToken.sol";
 import "contracts/p0/Distributor.sol";
 import "contracts/p0/RevenueTrader.sol";
-import "contracts/p0/StRSR.sol";
 import "contracts/p0/Furnace.sol";
+import "contracts/p1/RToken.sol";
+import "contracts/p1/StRSR.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IFacade.sol";
@@ -25,10 +25,10 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/p0/Main.sol";
 
 /**
- * @title DeployerP0
- * @notice The factory contract that deploys the entire P0 system.
+ * @title DeployerP1
+ * @notice The factory contract that deploys the entire P1 system.
  */
-contract DeployerP0 is IDeployer {
+contract DeployerP1 is IDeployer {
     IERC20Metadata public immutable rsr;
     IERC20Metadata public immutable comp;
     IERC20Metadata public immutable aave;
@@ -75,8 +75,8 @@ contract DeployerP0 is IDeployer {
         Components memory components;
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
         string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
-        components.stRSR = new StRSRP0(stRSRName, stRSRSymbol);
-        components.rToken = new RTokenP0(name, symbol, constitutionURI);
+        components.stRSR = new StRSR(stRSRName, stRSRSymbol);
+        components.rToken = new RToken(name, symbol, constitutionURI);
         components.assetRegistry = new AssetRegistryP0();
         components.basketHandler = new BasketHandlerP0();
         components.backingManager = new BackingManagerP0();

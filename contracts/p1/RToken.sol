@@ -76,7 +76,6 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
 
     int192 public issuanceRate; // {%} of RToken supply to issue per block
 
-    // solhint-disable no-empty-blocks
     constructor(
         string memory name_,
         string memory symbol_,
@@ -85,9 +84,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         constitutionURI = constitutionURI_;
     }
 
-    // solhint-enable no-empty-blocks
-
-    function init(ConstructorArgs memory args) internal override {
+    function init(ConstructorArgs calldata args) internal override {
         issuanceRate = args.params.issuanceRate;
         emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }

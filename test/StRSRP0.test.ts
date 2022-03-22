@@ -3,8 +3,8 @@ import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { getChainId } from '../../common/blockchain-utils'
-import { bn, fp, near } from '../../common/numbers'
+import { getChainId } from '../common/blockchain-utils'
+import { bn, fp, near } from '../common/numbers'
 import {
   AaveOracleMock,
   AssetRegistryP0,
@@ -15,19 +15,19 @@ import {
   ERC20Mock,
   FacadeP0,
   MainP0,
-  RTokenP0,
+  IRToken,
   StaticATokenMock,
-  StRSRP0,
-} from '../../typechain'
-import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
-import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { whileImpersonating } from '../utils/impersonation'
-import { Collateral, defaultFixture, IConfig } from '../fixtures'
-import { makeDecayFn, calcErr } from '../utils/rewards'
+  IStRSR,
+} from '../typechain'
+import { CollateralStatus, ZERO_ADDRESS } from '../common/constants'
+import { advanceTime, getLatestBlockTimestamp } from './utils/time'
+import { whileImpersonating } from './utils/impersonation'
+import { Collateral, defaultFixture, IConfig } from './fixtures'
+import { makeDecayFn, calcErr } from './utils/rewards'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('StRSRP0 contract', () => {
+describe('StRSR contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -43,11 +43,11 @@ describe('StRSRP0 contract', () => {
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
   let distributor: DistributorP0
-  let rToken: RTokenP0
+  let rToken: IRToken
   let facade: FacadeP0
 
   // StRSR
-  let stRSR: StRSRP0
+  let stRSR: IStRSR
 
   // Tokens/Assets
   let token0: ERC20Mock
