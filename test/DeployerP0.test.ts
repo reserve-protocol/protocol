@@ -24,7 +24,7 @@ import {
   StRSRP0,
   TradingP0,
 } from '../../typechain'
-import { defaultFixture, IConfig } from './utils/fixtures'
+import { defaultFixture, IConfig } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 

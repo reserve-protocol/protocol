@@ -1,6 +1,6 @@
 import Big from 'big.js'
 import { BigNumber } from 'ethers'
-import { fp } from '../../../common/numbers'
+import { fp } from '../../common/numbers'
 
 export const makeDecayFn = (ratio: BigNumber) => {
   // Calculate the amount of amtRToken left numPeriods rounds of decay has occurred,

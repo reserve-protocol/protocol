@@ -1,8 +1,8 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
-import { expectInReceipt } from '../../../common/events'
-import { bn, fp } from '../../../common/numbers'
+import { expectInReceipt } from '../common/events'
+import { bn, fp } from '../common/numbers'
 import {
   AaveLendingAddrProviderMock,
   AaveLendingPoolMock,
@@ -32,7 +32,7 @@ import {
   StaticATokenMock,
   TradingLibP0,
   USDCMock,
-} from '../../../typechain'
+} from '../typechain'
 
 export type Collateral = AbstractCollateral | CTokenFiatCollateral | ATokenFiatCollateral
 

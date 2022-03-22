@@ -33,7 +33,7 @@ import {
   USDCMock,
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
-import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from '../fixtures'
 import { advanceTime } from '../utils/time'
 
 const createFixtureLoader = waffle.createFixtureLoader

@@ -1,7 +1,7 @@
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
-import { TradingP0, GnosisTrade } from '../../../typechain'
+import { TradingP0, GnosisTrade } from '../../typechain'
 
 export const expectTrade = async (
   trader: TradingP0,

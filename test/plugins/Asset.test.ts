@@ -12,7 +12,7 @@ import {
   RTokenP0,
   USDCMock,
 } from '../../typechain'
-import { Collateral, defaultFixture, IConfig } from '../p0/utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 

@@ -14,7 +14,7 @@ import {
   StRSRP0,
   USDCMock,
 } from '../../typechain'
-import { Collateral, defaultFixture } from './utils/fixtures'
+import { Collateral, defaultFixture } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 

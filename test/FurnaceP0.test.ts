@@ -15,8 +15,8 @@ import {
   USDCMock,
 } from '../../typechain'
 import { advanceTime } from '../utils/time'
-import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
-import { makeDecayFn } from './utils/rewards'
+import { Collateral, defaultFixture, IConfig } from '../fixtures'
+import { makeDecayFn } from '../utils/rewards'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
