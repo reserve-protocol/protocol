@@ -44,11 +44,20 @@ contract FacadeP0 is IFacade {
         main.rToken().claimAndSweepRewards();
     }
 
-    /// @return How many RToken `account` can issue given current holdings
+    /// @return {qRTok} How many RToken `account` can issue given current holdings
     /// @custom:static-call
     function maxIssuable(address account) external returns (uint256) {
         main.poke();
-        return main.rToken().maxIssuable(account);
+
+        // {BU}
+        int192 held = main.basketHandler().basketsHeldBy(account);
+        int192 needed = main.rToken().basketsNeeded();
+
+        // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
+        if (needed.eq(FIX_ZERO)) return held.shiftLeft(int8(main.rToken().decimals())).floor();
+
+        // {qRTok} = {BU} * {qRTok} / {BU}
+        return held.mulu(main.rToken().totalSupply()).div(needed).floor();
     }
 
     /// @return tokens Array of all known ERC20 asset addreses.

@@ -8,8 +8,10 @@ import "./IComponent.sol";
 
 /**
  * @title IBasketHandler
- * @notice The BasketHandler maintains a notion of the reference basket that it evolves
- *   over time according to the rules described by the prime basket and backup configurations.
+ * @notice The BasketHandler aims to maintain a reference basket of constant target unit amounts.
+ * When a collateral token defaults, a new reference basket of equal target units is set.
+ * When _all_ collateral tokens default for a target unit, only then is the basket allowed to fall
+ *   in terms of target unit amounts. The basket is considered defaulted in this case.
  */
 interface IBasketHandler is IComponent {
     /// Emitted when the prime basket is set
@@ -21,7 +23,8 @@ interface IBasketHandler is IComponent {
     /// Emitted when the reference basket is set
     /// @param erc20s The list of collateral tokens in the reference basket
     /// @param refAmts {ref/BU} The reference amounts of the basket collateral tokens
-    event BasketSet(IERC20[] erc20s, int192[] refAmts);
+    /// @param defaulted True when there is no more backup collateral for a target
+    event BasketSet(IERC20[] erc20s, int192[] refAmts, bool defaulted);
 
     /// Emitted when a backup config is set for a target unit
     /// @param targetName The name of the target unit as a bytes32
