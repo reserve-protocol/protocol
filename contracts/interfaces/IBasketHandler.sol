@@ -6,6 +6,8 @@ import "contracts/libraries/Fixed.sol";
 import "./IAsset.sol";
 import "./IComponent.sol";
 
+error EmptyBasket();
+
 /**
  * @title IBasketHandler
  * @notice The BasketHandler aims to maintain a reference basket of constant target unit amounts.
