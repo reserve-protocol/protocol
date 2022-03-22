@@ -261,7 +261,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
 
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
-        backingMgr.grantAllowances();
+        backingMgr.grantAllowances(); // TODO optimize
 
         for (uint256 i = 0; i < erc20s.length; i++) {
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
@@ -333,7 +333,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
 
         // transfer deposits
         for (uint256 i = 0; i < queue.tokens.length; i++) {
-            IERC20(queue.tokens[i]).safeTransfer(address(main), deposits[i]);
+            IERC20(queue.tokens[i]).safeTransfer(account, deposits[i]);
         }
 
         // emit issuancesCanceled
@@ -355,7 +355,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         if (queue.left == 0) {
             for (uint256 i = 0; i < queue.tokens.length; i++) {
                 uint256 amtDeposit = rightItem.deposits[i];
-                IERC20(queue.tokens[i]).safeTransfer(address(main), amtDeposit);
+                IERC20(queue.tokens[i]).safeTransfer(address(main.backingManager()), amtDeposit);
             }
             amtRTokenToMint = rightItem.amtRToken;
             newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets);
@@ -363,7 +363,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
             IssueItem storage leftItem = queue.items[queue.left - 1];
             for (uint256 i = 0; i < queue.tokens.length; i++) {
                 uint256 amtDeposit = rightItem.deposits[i] - leftItem.deposits[i];
-                IERC20(queue.tokens[i]).safeTransfer(address(main), amtDeposit);
+                IERC20(queue.tokens[i]).safeTransfer(address(main.backingManager()), amtDeposit);
             }
             amtRTokenToMint = rightItem.amtRToken - leftItem.amtRToken;
             newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets).minus(leftItem.amtBaskets);
