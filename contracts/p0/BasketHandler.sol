@@ -29,12 +29,12 @@ struct BasketConfig {
 /// A reference basket that provides a dynamic definition of a basket unit (BU)
 /// Can be empty if all collateral defaults
 struct Basket {
-    IERC20[] erc20s; // Invariant: no defaulted or unregistered collateral
+    IERC20[] erc20s; // Weak Invariant: after `ensureBasket`, no bad collateral
     mapping(IERC20 => int192) refAmts; // {ref/BU}
     uint256 nonce;
     uint256 timestamp;
     bool defaulted;
-    // Invariant: defaulted XOR targetAmts == refAmts.map(amt => amt * coll.targetPerRef()
+    // Invariant: defaulted XOR targetAmts == refAmts.map(amt => amt * coll.targetPerRef())
 }
 
 /*
@@ -168,7 +168,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         timestamp = basket.timestamp;
     }
 
-    /// @return status_ The maximum CollateralStatus among basket collateral
+    /// @return status_ The status of the basket
     function status() public view returns (CollateralStatus status_) {
         if (basket.defaulted) return CollateralStatus.DISABLED;
 
@@ -209,15 +209,26 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
     {
-        erc20s = new address[](basket.erc20s.length);
-        quantities = new uint256[](basket.erc20s.length);
+        uint256 size;
+        address[] memory erc20sBig = new address[](basket.erc20s.length);
+        uint256[] memory quantitiesBig = new uint256[](basket.erc20s.length);
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
+            if (!goodCollateral(basket.erc20s[i])) continue;
+
             uint8 decimals = IERC20Metadata(address(basket.erc20s[i])).decimals();
 
             // {qTok} = {BU} * {tok/BU} * {qTok/tok}
             int192 q = amount.mul(quantity(basket.erc20s[i])).shiftLeft(int8(decimals));
-            quantities[i] = q.toUint(rounding);
-            erc20s[i] = address(basket.erc20s[i]);
+            quantitiesBig[size] = q.toUint(rounding);
+            erc20sBig[size] = address(basket.erc20s[i]);
+            size++;
+        }
+
+        erc20s = new address[](size);
+        quantities = new uint256[](size);
+        for (uint256 i = 0; i < size; i++) {
+            erc20s[i] = erc20sBig[i];
+            quantities[i] = quantitiesBig[i];
         }
     }
 
@@ -232,6 +243,8 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             // baskets {BU} = bal {tok} / q {tok/BU}
             if (q.gt(FIX_ZERO)) baskets = fixMin(baskets, bal.div(q));
         }
+
+        if (baskets == FIX_MAX) revert EmptyBasket();
     }
 
     // These are effectively local variables of _switchBasket. Nothing should use its value
@@ -324,7 +337,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         return true;
     }
 
-    /// Good collateral is both (i) registered, and (2) not CollateralStatus.DISABLED
+    /// Good collateral is both (i) registered, (ii) collateral, and (3) not DISABLED
     function goodCollateral(IERC20 erc20) private view returns (bool) {
         IAssetRegistry reg = main.assetRegistry();
         return

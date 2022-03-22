@@ -246,8 +246,8 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue()).to.equal(bn('75e18')) // 25% defaulted, value = 0
         await expectCurrentBacking({
-          tokens: initialTokens,
-          quantities: initialQuantities,
+          tokens: [initialTokens[0], initialTokens[2], initialTokens[3]],
+          quantities: [initialQuantities[0], initialQuantities[2], initialQuantities[3]],
         })
 
         // Basket should switch
@@ -712,8 +712,8 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue()).to.equal(bn('50e18')) // 50% defaulted, value = 0
         await expectCurrentBacking({
-          tokens: initialTokens,
-          quantities: initialQuantities,
+          tokens: [initialTokens[0]],
+          quantities: [initialQuantities[0]],
         })
 
         //  Basket should switch
@@ -771,8 +771,8 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue()).to.equal(bn('50e18')) // 50% defaulted, value = 0
         await expectCurrentBacking({
-          tokens: initialTokens,
-          quantities: initialQuantities,
+          tokens: [initialTokens[1]],
+          quantities: [initialQuantities[1]],
         })
 
         //  Basket should switch to empty and defaulted
