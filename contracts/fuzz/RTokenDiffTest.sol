@@ -13,7 +13,10 @@ import "contracts/fuzz/Utils.sol";
 contract MockBackingManager is IBackingManager, ComponentMock {
     function grantAllowances() external {}
 
-    function manageFunds() external {} // should this... do... anything?
+    function manageFunds() external {}
+
+    /// Settle any auctions that can be settled
+    function settleTrades() external virtual override {}
 
     function mintThrough(address recipient, uint256 amount) external {
         main.rToken().mint(recipient, amount);
@@ -22,6 +25,16 @@ contract MockBackingManager is IBackingManager, ComponentMock {
     function setBasketsNeededThrough(int192 basketsNeeded) external {
         main.rToken().setBasketsNeeded(basketsNeeded);
     }
+
+    function claimAndSweepRewards() external virtual override { }
+
+
+    /// @return {%} The maximum trade slippage acceptable
+    function maxTradeSlippage() external view virtual override returns (int192) { return 1e16; }
+
+    /// @return {UoA} The smallest amount of value worth trading
+    function dustAmount() external view virtual override returns (int192) { return 2e20; }
+
 }
 
 contract MockBasketHandler is IBasketHandler, ComponentMock {
@@ -47,7 +60,7 @@ contract RTokenTestSystem is MainMock {
         rToken.initComponent(this, args);
     }
 
-    function poke() public override {
+    function poke() public virtual override {
         basketHandler.ensureBasket(); // maaaaaaybe
         backingManager.settleTraders(); // maaaaaybe?
         // sometimes tokens
@@ -168,8 +181,4 @@ contract RTokenDiffTest {
         return p0.rToken().price() == p1.rToken().price();
     }
 
-    // Invariant: the observable rtoken issuable quantities are equal
-    function echidna_max_issuables_equal() external returns (bool) {
-        return p0.rToken().maxIssuable(USERS[0]) == p1.rToken().maxIssuable(USERS[0]);
-    }
 }
