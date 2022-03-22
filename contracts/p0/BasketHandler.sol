@@ -29,7 +29,7 @@ struct BasketConfig {
 /// A reference basket that provides a dynamic definition of a basket unit (BU)
 /// Can be empty if all collateral defaults
 struct Basket {
-    IERC20[] erc20s; // Weakly Invariant: after `ensureBasket`, no defaulted or unregistered collateral
+    IERC20[] erc20s; // Weak Invariant: after `ensureBasket`, no bad collateral
     mapping(IERC20 => int192) refAmts; // {ref/BU}
     uint256 nonce;
     uint256 timestamp;
@@ -209,17 +209,26 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
     {
-        // TODO remove busted erc20s
-
-        erc20s = new address[](basket.erc20s.length);
-        quantities = new uint256[](basket.erc20s.length);
+        uint256 size;
+        address[] memory erc20sBig = new address[](basket.erc20s.length);
+        uint256[] memory quantitiesBig = new uint256[](basket.erc20s.length);
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
+            if (!goodCollateral(basket.erc20s[i])) continue;
+
             uint8 decimals = IERC20Metadata(address(basket.erc20s[i])).decimals();
 
             // {qTok} = {BU} * {tok/BU} * {qTok/tok}
             int192 q = amount.mul(quantity(basket.erc20s[i])).shiftLeft(int8(decimals));
-            quantities[i] = q.toUint(rounding);
-            erc20s[i] = address(basket.erc20s[i]);
+            quantitiesBig[size] = q.toUint(rounding);
+            erc20sBig[size] = address(basket.erc20s[i]);
+            size++;
+        }
+
+        erc20s = new address[](size);
+        quantities = new uint256[](size);
+        for (uint256 i = 0; i < size; i++) {
+            erc20s[i] = erc20sBig[i];
+            quantities[i] = quantitiesBig[i];
         }
     }
 
