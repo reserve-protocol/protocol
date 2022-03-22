@@ -9,11 +9,9 @@ import "./IComponent.sol";
 /**
  * @title IBasketHandler
  * @notice The BasketHandler aims to maintain a reference basket of constant target unit amounts.
- *   When a collateral token defaults, it automatically swaps the bad collateral for backup collateral.
- *   When _all_ collateral tokens default for a target unit, only then is the value of the basket
- *   allowed to change in terms of target unit amounts.
- *
- * View functions should ignore bad collateral.
+ * When a collateral token defaults, a new reference basket of equal target units is set.
+ * When _all_ collateral tokens default for a target unit, only then is the basket allowed to fall
+ *   in terms of target unit amounts. The basket is considered defaulted in this case.
  */
 interface IBasketHandler is IComponent {
     /// Emitted when the prime basket is set
@@ -25,7 +23,8 @@ interface IBasketHandler is IComponent {
     /// Emitted when the reference basket is set
     /// @param erc20s The list of collateral tokens in the reference basket
     /// @param refAmts {ref/BU} The reference amounts of the basket collateral tokens
-    event BasketSet(IERC20[] erc20s, int192[] refAmts);
+    /// @param defaulted True when there is no more backup collateral for a target
+    event BasketSet(IERC20[] erc20s, int192[] refAmts, bool defaulted);
 
     /// Emitted when a backup config is set for a target unit
     /// @param targetName The name of the target unit as a bytes32
@@ -78,11 +77,9 @@ interface IBasketHandler is IComponent {
         returns (address[] memory erc20s, uint256[] memory quantities);
 
     /// @return baskets {BU} The quantity of complete baskets at an address. A balance for BUs
-    /// Excludes defaulted/unregistered collateral
     function basketsHeldBy(address account) external view returns (int192 baskets);
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
-    /// Excludes defaulted/unregistered collateral
     function price() external view returns (int192 p);
 
     /// @return nonce The basket nonce, a monotonically increasing unique identifier

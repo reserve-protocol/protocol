@@ -265,7 +265,7 @@ describe('MainP0 contract', () => {
         ]
         await expect(basketHandler.ensureBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(newTokens, basketsNeededAmts)
+          .withArgs(newTokens, basketsNeededAmts, false)
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -329,7 +329,7 @@ describe('MainP0 contract', () => {
         ]
         await expect(basketHandler.ensureBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(newTokens, newRefAmounts)
+          .withArgs(newTokens, newRefAmounts, false)
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -395,7 +395,7 @@ describe('MainP0 contract', () => {
 
         await expect(basketHandler.ensureBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(newTokens, newRefAmounts)
+          .withArgs(newTokens, newRefAmounts, false)
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -440,7 +440,7 @@ describe('MainP0 contract', () => {
         ]
         await expect(basketHandler.ensureBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(newTokens, newRefAmounts)
+          .withArgs(newTokens, newRefAmounts, false)
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -477,15 +477,19 @@ describe('MainP0 contract', () => {
         // Confirm default
         await collateral1.forceUpdates()
 
-        // Basket cannot switch because there is no valid backup
-        await expect(basketHandler.ensureBasket()).to.not.emit(basketHandler, 'BasketSet')
+        // Basket switches to empty basket
+        await expect(basketHandler.ensureBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs([], [], true)
 
-        // Check state - Basket remains the same
+        // Check state - Basket is disabled even though fully capitalized
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
+
+        // Should exclude bad token
         await expectCurrentBacking({
-          tokens: initialTokens,
-          quantities: initialQuantities,
+          tokens: [initialTokens[0], initialTokens[2], initialTokens[3]],
+          quantities: [initialQuantities[0], initialQuantities[2], initialQuantities[3]],
         })
 
         // Cannot issue because collateral is not sound
@@ -546,7 +550,7 @@ describe('MainP0 contract', () => {
         ]
         await expect(basketHandler.ensureBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(newTokens, newRefAmounts)
+          .withArgs(newTokens, newRefAmounts, false)
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -595,7 +599,7 @@ describe('MainP0 contract', () => {
         // Unregister an asset in basket
         await expect(assetRegistry.connect(owner).unregister(collateral1.address))
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(newTokens, basketsNeededAmts)
+          .withArgs(newTokens, basketsNeededAmts, false)
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -718,7 +722,7 @@ describe('MainP0 contract', () => {
         const newRefAmounts = [fp('0.5'), fp('0.5')]
         await expect(basketHandler.ensureBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(newTokens, newRefAmounts)
+          .withArgs(newTokens, newRefAmounts, false)
 
         // Check state - Basket switch in EUR targets
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -771,15 +775,19 @@ describe('MainP0 contract', () => {
           quantities: initialQuantities,
         })
 
-        //  Basket cannot switch because there is no USD backup
-        await expect(basketHandler.ensureBasket()).to.not.emit(basketHandler, 'BasketSet')
+        //  Basket should switch to empty and defaulted
+        await expect(basketHandler.ensureBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs([], [], true)
 
-        // Check state - Basket remains the same
+        // Check state - Basket is disabled but fully capitalized
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
+
+        // Should exclude bad token
         await expectCurrentBacking({
-          tokens: initialTokens,
-          quantities: initialQuantities,
+          tokens: [initialTokens[1]],
+          quantities: [initialQuantities[1]],
         })
 
         // Cannot issue because collateral is not sound
@@ -830,7 +838,7 @@ describe('MainP0 contract', () => {
         // Switch Basket
         await expect(basketHandler.connect(owner).switchBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs([token1.address], [fp('1')])
+          .withArgs([token1.address], [fp('1')], false)
 
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -934,7 +942,7 @@ describe('MainP0 contract', () => {
         // Switch Basket
         await expect(basketHandler.connect(owner).switchBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs([token1.address], [fp('1')])
+          .withArgs([token1.address], [fp('1')], false)
 
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1044,7 +1052,7 @@ describe('MainP0 contract', () => {
         // Switch Basket
         await expect(basketHandler.connect(owner).switchBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs([token1.address], [fp('1')])
+          .withArgs([token1.address], [fp('1')], false)
 
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
