@@ -110,7 +110,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    function setPrimeBasket(IERC20[] memory erc20s, int192[] memory targetAmts) public onlyOwner {
+    function setPrimeBasket(IERC20[] memory erc20s, int192[] memory targetAmts) external onlyOwner {
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
@@ -135,7 +135,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         bytes32 targetName,
         uint256 max,
         IERC20[] memory erc20s
-    ) public onlyOwner {
+    ) external onlyOwner {
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
         delete conf.erc20s;
@@ -191,7 +191,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
-    function price() public view returns (int192 p) {
+    function price() external view returns (int192 p) {
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             if (!goodCollateral(basket.erc20s[i])) continue;
 
@@ -204,7 +204,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
     function quote(int192 amount, RoundingApproach rounding)
-        public
+        external
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
     {

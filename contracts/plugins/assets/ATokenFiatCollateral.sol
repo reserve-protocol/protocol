@@ -68,7 +68,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     }
 
     /// Default checks
-    function forceUpdates() public virtual override {
+    function forceUpdates() external virtual override {
         if (whenDefault <= block.timestamp) {
             return;
         }

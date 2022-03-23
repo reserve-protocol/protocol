@@ -25,7 +25,7 @@ contract FurnaceP0 is Component, IFurnace {
     }
 
     /// Performs any melting that has vested since last call.
-    function melt() public returns (uint256 amount) {
+    function melt() external returns (uint256 amount) {
         if (block.timestamp < lastPayout + period) return 0;
 
         // # of whole periods that have passed since lastPayout

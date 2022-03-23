@@ -281,15 +281,15 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     // ==== ERC20 Interface ====
-    function name() public view returns (string memory) {
+    function name() external view returns (string memory) {
         return _name;
     }
 
-    function symbol() public view returns (string memory) {
+    function symbol() external view returns (string memory) {
         return _symbol;
     }
 
-    function decimals() public pure returns (uint8) {
+    function decimals() external pure returns (uint8) {
         return 18;
     }
 

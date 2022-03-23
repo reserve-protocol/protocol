@@ -21,7 +21,7 @@ contract InvalidBrokerMock is Component, IBroker {
 
     uint256 public auctionLength; // {s} the length of an auction
 
-    bool public disabled;
+    bool public disabled = false;
 
     function init(ConstructorArgs memory args) internal override {
         gnosis = args.gnosis;

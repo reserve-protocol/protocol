@@ -51,7 +51,7 @@ abstract contract Collateral is ICollateral, Asset, Context {
     /// @dev This default check assumes that the collateral's price() value is expected
     /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
     /// collateral you're defining, you MUST  this function!
-    function forceUpdates() public virtual {
+    function forceUpdates() external virtual {
         uint256 cached = whenDefault;
 
         if (whenDefault > block.timestamp) {

@@ -64,7 +64,7 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
     }
 
     /// Default checks
-    function forceUpdates() public virtual override {
+    function forceUpdates() external virtual override {
         if (whenDefault <= block.timestamp) {
             return;
         }
