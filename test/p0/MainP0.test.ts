@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
 import {
@@ -537,32 +537,47 @@ describe('MainP0 contract', () => {
       expect(await backingManager.backingBuffer()).to.equal(newValue)
     })
 
-    // it('Should perform validations on for granting allowances', async () => {
+    it('Should perform validations on for granting allowances', async () => {
+      // Check allowances for some of the tokens in Asset Registry
+      expect(await token0.allowance(backingManager.address, rToken.address)).to.equal(0)
+      expect(await token1.allowance(backingManager.address, rToken.address)).to.equal(0)
+      expect(await token2.allowance(backingManager.address, rToken.address)).to.equal(0)
+      expect(await token3.allowance(backingManager.address, rToken.address)).to.equal(0)
+      expect(await compToken.allowance(backingManager.address, rToken.address)).to.equal(0)
+      expect(await aaveToken.allowance(backingManager.address, rToken.address)).to.equal(0)
+      expect(await rsr.allowance(backingManager.address, rToken.address)).to.equal(0)
 
-    // //   function grantAllowances() external notPaused {
-    // //     require(_msgSender() == address(main.rToken()), "RToken only");
-    // //     IERC20[] memory erc20s = main.assetRegistry().erc20s();
-    // //     for (uint256 i = 0; i < erc20s.length; i++) {
-    // //         erc20s[i].approve(address(main.rToken()), type(uint256).max);
-    // //     }
-    // // }
-    //   // Check allowances
+      // Cannot grant allowance if paused
+      await main.connect(owner).pause()
+      await expect(backingManager.connect(owner).grantAllowances()).to.be.revertedWith(
+        'Component: system is paused'
+      )
+      await main.connect(owner).unpause()
 
-    //   // Cannot grant allowance if paused
+      // Cannot grant allowance if not RToken
+      // Attempt to run with another account
+      await expect(backingManager.connect(owner).grantAllowances()).to.be.revertedWith(
+        'RToken only'
+      )
 
-    //   // Cannot grant allowance if not RToken
-    //   // Attempt to run with another account
-    //   await expect(backingManager.connect(owner).grantAllowances()).to.be.revertedWith('RToken only')
+      // Run with RToken
+      await whileImpersonating(rToken.address, async (rtoksigner) => {
+        await backingManager.connect(rtoksigner).grantAllowances()
+      })
 
-    //   // Run with RToken
-    //   await expect(backingManager.connect(owner).setBackingBuffer(newValue))
-    //     .to.emit(backingManager, 'BackingBufferSet')
-    //     .withArgs(config.backingBuffer, newValue)
-
-    //   // Check allowances were updated
-
-    //   expect(await backingManager.backingBuffer()).to.equal(newValue)
-    // })
+      // Check allowances were updated
+      expect(await token0.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+      expect(await token1.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+      expect(await token2.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+      expect(await token3.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+      expect(await compToken.allowance(backingManager.address, rToken.address)).to.equal(
+        MAX_UINT256
+      )
+      expect(await aaveToken.allowance(backingManager.address, rToken.address)).to.equal(
+        MAX_UINT256
+      )
+      expect(await rsr.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+    })
 
     it('Should return backing tokens', async () => {
       expect(await facade.basketTokens()).to.eql([
