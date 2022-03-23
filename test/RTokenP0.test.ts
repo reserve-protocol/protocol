@@ -71,27 +71,35 @@ describe('RToken contract', () => {
   const expectIssuance = async (account: string, index: number, issuance: Partial<IIssuance>) => {
     if (IMPLEMENTATION == Implementation.P0) {
       const rTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', rToken.address)
-      const [issuer, amount, baskets, basketNonce, blockAvailableAt, processed] =
-        await rTokenP0.issuances(account, index)
+      const [amount, baskets, basketNonce, blockAvailableAt, processed] = await rTokenP0.issuances(
+        account,
+        index
+      )
 
       if (issuance.amount) expect(amount).to.eql(issuance.amount)
       if (issuance.baskets) expect(baskets).to.eql(issuance.baskets)
       if (issuance.basketNonce) expect(basketNonce).to.eql(issuance.basketNonce)
       if (issuance.blockAvailableAt) expect(blockAvailableAt).to.eql(issuance.blockAvailableAt)
-      if (issuance.processed) expect(processed).to.eql(issuance.processed)
+      if (issuance.processed !== undefined) expect(processed).to.eql(issuance.processed)
     } else if (IMPLEMENTATION == Implementation.P1) {
       const rTokenP1 = <RTokenP1>await ethers.getContractAt('RTokenP1', rToken.address)
-      const [basketNonce, left, right] = await rTokenP1.issueQueues(account)
-      const [whenLeft, amtRTokenLeft, amtBasketsLeft] = await rTokenP1.issueItem(account, left)
-      const [whenRight, amtRTokenRight, amtBasketsRight] = await rTokenP1.issueItem(account, index)
+      const [basketNonce, left] = await rTokenP1.issueQueues(account)
+      const [whenPrev, amtRTokenPrev, amtBasketsPrev] = await rTokenP1.issueItem(
+        account,
+        index == 0 ? index : index - 1
+      )
+      const [whenCurr, amtRTokenCurr, amtBasketsCurr] = await rTokenP1.issueItem(account, index)
 
-      const amt = !left.eq(index) ? amtRTokenLeft : amtRTokenRight.sub(amtRTokenLeft)
-      const baskets = !left.eq(index) ? amtBasketsLeft : amtBasketsRight.sub(amtBasketsLeft)
+      const amt = index == 0 ? amtRTokenPrev : amtRTokenCurr.sub(amtRTokenPrev)
+      const baskets = index == 0 ? amtBasketsPrev : amtBasketsCurr.sub(amtBasketsPrev)
       if (issuance.amount) expect(amt).to.eql(issuance.amount)
       if (issuance.baskets) expect(baskets).to.eql(issuance.baskets)
       if (issuance.basketNonce) expect(basketNonce).to.eql(issuance.basketNonce)
-      if (issuance.blockAvailableAt) expect(whenRight).to.eql(issuance.blockAvailableAt)
-      if (issuance.processed) expect(index).to.gte(right)
+      if (issuance.blockAvailableAt) expect(whenCurr.mul(fp('1'))).to.eql(issuance.blockAvailableAt)
+      if (issuance.processed !== undefined && issuance.processed) expect(left).to.gt(index)
+      if (issuance.processed !== undefined && !issuance.processed) expect(left).to.lte(index)
+    } else {
+      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
     }
   }
 
@@ -259,7 +267,7 @@ describe('RToken contract', () => {
       expect(await rToken.totalSupply()).to.equal(bn('0'))
     })
 
-    it.only('Should issue RTokens with single basket token', async function () {
+    it('Should issue RTokens with single basket token', async function () {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
 
       // Set basket
@@ -291,7 +299,7 @@ describe('RToken contract', () => {
       // Check if minting was registered
       const currentBlockNumber = await getLatestBlockNumber()
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      expectIssuance(addr1.address, 0, {
+      await expectIssuance(addr1.address, 0, {
         amount: issueAmount,
         basketNonce: initialBasketNonce.add(2),
         blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
@@ -306,7 +314,7 @@ describe('RToken contract', () => {
       await rToken.vest(addr1.address, 1)
 
       // Check minting is confirmed
-      expectIssuance(addr1.address, 0, { processed: true })
+      await expectIssuance(addr1.address, 0, { processed: true })
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
@@ -314,133 +322,129 @@ describe('RToken contract', () => {
       expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
     })
 
-    // it('Should issue RTokens correctly for more complex basket multiple users', async function () {
-    //   const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
+    it('Should issue RTokens correctly for more complex basket multiple users', async function () {
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
 
-    //   // Provide approvals
-    //   await token0.connect(addr1).approve(rToken.address, initialBal)
-    //   await token1.connect(addr1).approve(rToken.address, initialBal)
-    //   await token2.connect(addr1).approve(rToken.address, initialBal)
-    //   await token3.connect(addr1).approve(rToken.address, initialBal)
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
 
-    //   const quotes: BigNumber[] = await rToken.connect(addr1).callStatic.issue(issueAmount)
+      const quotes: BigNumber[] = await rToken.connect(addr1).callStatic.issue(issueAmount)
 
-    //   // check balances before
-    //   expect(await token0.balanceOf(main.address)).to.equal(0)
-    //   expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+      // check balances before
+      expect(await token0.balanceOf(main.address)).to.equal(0)
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
 
-    //   expect(await token1.balanceOf(main.address)).to.equal(0)
-    //   expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token1.balanceOf(main.address)).to.equal(0)
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
 
-    //   expect(await token2.balanceOf(main.address)).to.equal(0)
-    //   expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token2.balanceOf(main.address)).to.equal(0)
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
 
-    //   expect(await token3.balanceOf(main.address)).to.equal(0)
-    //   expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await token3.balanceOf(main.address)).to.equal(0)
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
-    //   expect(await rToken.balanceOf(main.address)).to.equal(0)
-    //   expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-    //   expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
-    //   // Issue rTokens
-    //   await rToken.connect(addr1).issue(issueAmount)
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
 
-    //   // Check Balances after
-    //   const expectedTkn0: BigNumber = quotes[0]
-    //   expect(await token0.balanceOf(rToken.address)).to.equal(expectedTkn0)
-    //   expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
+      // Check Balances after
+      const expectedTkn0: BigNumber = quotes[0]
+      expect(await token0.balanceOf(rToken.address)).to.equal(expectedTkn0)
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
 
-    //   const expectedTkn1: BigNumber = quotes[1]
-    //   expect(await token1.balanceOf(rToken.address)).to.equal(expectedTkn1)
-    //   expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
+      const expectedTkn1: BigNumber = quotes[1]
+      expect(await token1.balanceOf(rToken.address)).to.equal(expectedTkn1)
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
 
-    //   const expectedTkn2: BigNumber = quotes[2]
-    //   expect(await token2.balanceOf(rToken.address)).to.equal(expectedTkn2)
-    //   expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
+      const expectedTkn2: BigNumber = quotes[2]
+      expect(await token2.balanceOf(rToken.address)).to.equal(expectedTkn2)
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
 
-    //   const expectedTkn3: BigNumber = quotes[3]
-    //   expect(await token3.balanceOf(rToken.address)).to.equal(expectedTkn3)
-    //   expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
+      const expectedTkn3: BigNumber = quotes[3]
+      expect(await token3.balanceOf(rToken.address)).to.equal(expectedTkn3)
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
 
-    //   expect(await rToken.balanceOf(main.address)).to.equal(0)
-    //   expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-    //   expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
-    //   // Check if minting was registered
-    //   let currentBlockNumber = await getLatestBlockNumber()
-    //   let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
-    //     addr1.address,
-    //     0
-    //   )
+      // Check if minting was registered
+      let currentBlockNumber = await getLatestBlockNumber()
+      const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
+      await expectIssuance(addr1.address, 0, {
+        amount: issueAmount,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
+        processed: false,
+      })
 
-    //   const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-    //   expect(sm_basketNonce).to.equal(initialBasketNonce)
-    //   expect(sm_amt).to.equal(issueAmount)
-    //   expect(sm_minter).to.equal(addr1.address)
-    //   expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
-    //   expect(sm_proc).to.equal(false)
+      // Issue new RTokens with different user
+      // This will also process the previous minting and send funds to the minter
+      // Provide approvals
+      await token0.connect(addr2).approve(rToken.address, initialBal)
+      await token1.connect(addr2).approve(rToken.address, initialBal)
+      await token2.connect(addr2).approve(rToken.address, initialBal)
+      await token3.connect(addr2).approve(rToken.address, initialBal)
+      advanceBlocks(1)
+      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
 
-    //   // Issue new RTokens with different user
-    //   // This will also process the previous minting and send funds to the minter
-    //   // Provide approvals
-    //   await token0.connect(addr2).approve(rToken.address, initialBal)
-    //   await token1.connect(addr2).approve(rToken.address, initialBal)
-    //   await token2.connect(addr2).approve(rToken.address, initialBal)
-    //   await token3.connect(addr2).approve(rToken.address, initialBal)
-    //   advanceBlocks(1)
-    //   await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      // Check previous minting was processed and funds sent to minter
+      await expectIssuance(addr1.address, 0, {
+        processed: true,
+      })
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+      expect(await rToken.balanceOf(main.address)).to.equal(0)
 
-    //   // Check previous minting was processed and funds sent to minter
-    //   ;[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
-    //   expect(sm_proc).to.equal(true)
-    //   expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-    //   expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-    //   expect(await rToken.balanceOf(main.address)).to.equal(0)
+      // Check asset value at this point
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
 
-    //   // Check asset value at this point
-    //   expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
+      // Issue rTokens
+      await rToken.connect(addr2).issue(issueAmount)
 
-    //   // Issue rTokens
-    //   await rToken.connect(addr2).issue(issueAmount)
+      // Check Balances after
+      expect(await token0.balanceOf(backingManager.address)).to.equal(expectedTkn0)
+      expect(await token1.balanceOf(backingManager.address)).to.equal(expectedTkn1)
+      expect(await token2.balanceOf(backingManager.address)).to.equal(expectedTkn2)
+      expect(await token3.balanceOf(backingManager.address)).to.equal(expectedTkn3)
+      expect(await token0.balanceOf(rToken.address)).to.equal(expectedTkn0)
+      expect(await token1.balanceOf(rToken.address)).to.equal(expectedTkn1)
+      expect(await token2.balanceOf(rToken.address)).to.equal(expectedTkn2)
+      expect(await token3.balanceOf(rToken.address)).to.equal(expectedTkn3)
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+      expect(await rToken.balanceOf(backingManager.address)).to.equal(0)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(addr2.address)).to.equal(0)
 
-    //   // Check Balances after
-    //   expect(await token0.balanceOf(backingManager.address)).to.equal(expectedTkn0)
-    //   expect(await token1.balanceOf(backingManager.address)).to.equal(expectedTkn1)
-    //   expect(await token2.balanceOf(backingManager.address)).to.equal(expectedTkn2)
-    //   expect(await token3.balanceOf(backingManager.address)).to.equal(expectedTkn3)
-    //   expect(await token0.balanceOf(rToken.address)).to.equal(expectedTkn0)
-    //   expect(await token1.balanceOf(rToken.address)).to.equal(expectedTkn1)
-    //   expect(await token2.balanceOf(rToken.address)).to.equal(expectedTkn2)
-    //   expect(await token3.balanceOf(rToken.address)).to.equal(expectedTkn3)
-    //   expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-    //   expect(await rToken.balanceOf(backingManager.address)).to.equal(0)
-    //   expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-    //   expect(await rToken.balanceOf(addr2.address)).to.equal(0)
+      // Check the new issuance is not processed
+      currentBlockNumber = await getLatestBlockNumber()
 
-    //   // Check the new issuance is not processed
-    //   currentBlockNumber = await getLatestBlockNumber()
-    //   ;[sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
-    //     addr2.address,
-    //     0
-    //   )
-    //   expect(sm_basketNonce).to.equal(initialBasketNonce)
-    //   expect(sm_amt).to.equal(issueAmount)
-    //   expect(sm_minter).to.equal(addr2.address)
-    //   expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
-    //   expect(sm_proc).to.equal(false)
+      await expectIssuance(addr2.address, 0, {
+        amount: issueAmount,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
+        processed: false,
+      })
 
-    //   // Complete 2nd issuance
-    //   advanceBlocks(1)
-    //   await rToken.vest(addr2.address, await rToken.endIdForVest(addr2.address))
+      // Complete 2nd issuance
+      advanceBlocks(1)
+      await rToken.vest(addr2.address, await rToken.endIdForVest(addr2.address))
 
-    //   // Check issuance is confirmed
-    //   ;[, , , , , sm_proc] = await rToken.issuances(addr2.address, 0)
-    //   expect(sm_proc).to.equal(true)
-    //   expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmount)
+      // Check issuance is confirmed
+      await expectIssuance(addr2.address, 0, {
+        processed: true,
+      })
+      expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmount)
 
-    //   // Check asset value
-    //   expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
-    // })
+      // Check asset value
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
+    })
 
     // it('Should not issue/vest RTokens if collateral defaulted', async function () {
     //   const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
