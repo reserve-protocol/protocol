@@ -98,7 +98,18 @@ describe('StRSR contract', () => {
         expect(availableAt.toString()).to.eql(withdrawal.availableAt.toString())
       }
     } else if (IMPLEMENTATION == Implementation.P1) {
-      // TODO
+      const stRSRP1 = <StRSRP1>await ethers.getContractAt('StRSRP1', stRSR.address)
+      const [drafts, availableAt] = await stRSRP1.draftQueues(0, address, index)
+      let rsrAmount = drafts
+
+      if (index > 0) {
+        const [draftsPrev] = await stRSRP1.draftQueues(0, address, index - 1)
+        rsrAmount = drafts.sub(draftsPrev)
+      }
+      if (withdrawal.rsrAmount) expect(rsrAmount.toString()).to.eql(withdrawal.rsrAmount.toString())
+      if (withdrawal.availableAt) {
+        expect(availableAt.toString()).to.eql(withdrawal.availableAt.toString())
+      }
     } else {
       throw new Error('PROTO_IMPL must be set to either `0` or `1`')
     }
