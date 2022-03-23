@@ -13,7 +13,7 @@ import "./ITrading.sol";
  *   - If already capitalized, excess assets are transferred to RevenueTraders.
  */
 interface IBackingManager is IComponent, ITrading {
-    event AuctionDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
+    event TradingDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
     event BackingBufferSet(int192 indexed oldVal, int192 indexed newVal);
 
     // Give RToken max allowances over all registered tokens

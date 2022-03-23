@@ -209,8 +209,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     // === Setters ===
 
-    function setAuctionDelay(uint256 val) external onlyOwner {
-        emit AuctionDelaySet(tradingDelay, val);
+    function setTradingDelay(uint256 val) external onlyOwner {
+        emit TradingDelaySet(tradingDelay, val);
         tradingDelay = val;
     }
 
