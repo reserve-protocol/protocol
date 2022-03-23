@@ -101,6 +101,7 @@ contract GnosisMock is IGnosis, IBiddable {
 
         // No-bid case
         if (bid.bidder == address(0)) {
+            auction.sell.safeTransfer(auction.origin, auction.sellAmount);
             auction.encodedClearingOrder = _encodeOrder(0, auction.sellAmount, 0);
             return auction.encodedClearingOrder;
         }
