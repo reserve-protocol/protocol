@@ -9,7 +9,7 @@ import {
   CompoundOracleMock,
   ERC20Mock,
   RTokenAsset,
-  IRToken,
+  TestIRToken,
   USDCMock,
 } from '../../typechain'
 import { Collateral, defaultFixture, IConfig } from '../fixtures'
@@ -21,7 +21,7 @@ describe('AssetsP0 contracts', () => {
   let rsr: ERC20Mock
   let compToken: ERC20Mock
   let aaveToken: ERC20Mock
-  let rToken: IRToken
+  let rToken: TestIRToken
 
   // Tokens/Assets
   let token0: ERC20Mock

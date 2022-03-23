@@ -19,9 +19,9 @@ import {
   ERC20Mock,
   FacadeP0,
   GnosisMock,
-  IRToken,
+  TestIRToken,
   StaticATokenMock,
-  IStRSR,
+  TestIStRSR,
   USDCMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
@@ -71,8 +71,8 @@ describe('MainP0 contract', () => {
   let config: IConfig
 
   // Contracts to retrieve after deploy
-  let rToken: IRToken
-  let stRSR: IStRSR
+  let rToken: TestIRToken
+  let stRSR: TestIStRSR
   let facade: FacadeP0
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0

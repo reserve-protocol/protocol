@@ -115,7 +115,9 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
 
     /// @return p {UoA/rTok} The price of 1 whole RToken in the unit of account
     function price() external view returns (int192 p);
+}
 
+interface TestIRToken is IRToken {
     /// Set the issuance rate as a % of RToken supply
     function setIssuanceRate(int192) external;
 

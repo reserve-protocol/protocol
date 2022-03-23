@@ -95,3 +95,17 @@ interface IStRSR is IERC20Permit, IERC20Metadata, IComponent {
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
     function exchangeRate() external view returns (int192);
 }
+
+interface TestIStRSR is IStRSR {
+    function rewardPeriod() external view returns (uint256);
+
+    function setRewardPeriod(uint256) external;
+
+    function rewardRatio() external view returns (int192);
+
+    function setRewardRatio(int192) external;
+
+    function unstakingDelay() external view returns (uint256);
+
+    function setUnstakingDelay(uint256) external;
+}

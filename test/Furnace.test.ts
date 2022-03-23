@@ -10,7 +10,7 @@ import {
   FacadeP0,
   FurnaceP0,
   MainP0,
-  IRToken,
+  TestIRToken,
   StaticATokenMock,
   USDCMock,
 } from '../typechain'
@@ -29,7 +29,7 @@ describe('FurnaceP0 contract', () => {
   let FurnaceFactory: ContractFactory
   let main: MainP0
   let furnace: FurnaceP0
-  let rToken: IRToken
+  let rToken: TestIRToken
   let basket: Collateral[]
   let facade: FacadeP0
 

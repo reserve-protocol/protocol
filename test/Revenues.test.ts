@@ -26,9 +26,9 @@ import {
   GnosisMock,
   RevenueTradingP0,
   RTokenAsset,
-  IRToken,
+  TestIRToken,
   StaticATokenMock,
-  IStRSR,
+  TestIStRSR,
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
@@ -78,9 +78,9 @@ describe('Revenues', () => {
   let config: IConfig
 
   // Contracts to retrieve after deploy
-  let rToken: IRToken
+  let rToken: TestIRToken
   let rTokenAsset: RTokenAsset
-  let stRSR: IStRSR
+  let stRSR: TestIStRSR
   let furnace: FurnaceP0
   let main: MainP0
   let facade: FacadeP0

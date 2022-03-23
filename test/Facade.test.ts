@@ -9,9 +9,9 @@ import {
   ERC20Mock,
   FacadeP0,
   MainP0,
-  IRToken,
+  TestIRToken,
   StaticATokenMock,
-  IStRSR,
+  TestIStRSR,
   USDCMock,
 } from '../typechain'
 import { Collateral, defaultFixture } from './fixtures'
@@ -46,8 +46,8 @@ describe('FacadeP0 contract', () => {
 
   // Main
   let main: MainP0
-  let rToken: IRToken
-  let stRSR: IStRSR
+  let rToken: TestIRToken
+  let stRSR: TestIStRSR
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet

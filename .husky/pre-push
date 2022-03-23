@@ -3,5 +3,4 @@
 
 yarn lint
 yarn compile
-yarn test:p0
-yarn test:p1
+yarn test
