@@ -322,7 +322,6 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
 
     // ==== private ====
     /// Refund all deposits in the span [left, right)
-    /// This does *not* fixup queue.left and queue.right!
     function refundSpan(
         address account,
         uint256 left,
@@ -350,6 +349,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         for (uint256 i = 0; i < queue.tokens.length; i++) {
             IERC20(queue.tokens[i]).safeTransfer(account, deposits[i]);
         }
+        queue.left = right;
 
         // emit issuancesCanceled
         emit IssuancesCanceled(account, left, right);
