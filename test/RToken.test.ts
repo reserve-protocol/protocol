@@ -935,7 +935,7 @@ describe('RToken contract', () => {
 
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       await expectIssuance(addr1.address, 0, {
-        processed: false,
+        processed: true,
       })
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 

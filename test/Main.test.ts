@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { CollateralStatus, ZERO_ADDRESS } from '../common/constants'
+import { CollateralStatus, ZERO_ADDRESS, MAX_UINT256 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
 import { bn, fp } from '../common/numbers'
 import {
