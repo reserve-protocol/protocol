@@ -452,7 +452,7 @@ describe('MainP0 contract', () => {
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
 
       // If not owner cannot update
-      await expect(backingManager.connect(other).setAuctionDelay(newValue)).to.be.revertedWith(
+      await expect(backingManager.connect(other).setTradingDelay(newValue)).to.be.revertedWith(
         'Component: caller is not the owner'
       )
 
@@ -460,8 +460,8 @@ describe('MainP0 contract', () => {
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
 
       // Update with owner
-      await expect(backingManager.connect(owner).setAuctionDelay(newValue))
-        .to.emit(backingManager, 'AuctionDelaySet')
+      await expect(backingManager.connect(owner).setTradingDelay(newValue))
+        .to.emit(backingManager, 'TradingDelaySet')
         .withArgs(config.tradingDelay, newValue)
 
       // Check value was updated
