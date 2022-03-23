@@ -9,10 +9,10 @@ import {
   CompoundOracleMock,
   ERC20Mock,
   RTokenAsset,
-  RTokenP0,
+  TestIRToken,
   USDCMock,
 } from '../../typechain'
-import { Collateral, defaultFixture, IConfig } from '../p0/utils/fixtures'
+import { Collateral, defaultFixture, IConfig } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -21,7 +21,7 @@ describe('AssetsP0 contracts', () => {
   let rsr: ERC20Mock
   let compToken: ERC20Mock
   let aaveToken: ERC20Mock
-  let rToken: RTokenP0
+  let rToken: TestIRToken
 
   // Tokens/Assets
   let token0: ERC20Mock

@@ -2,19 +2,19 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR } from '../../common/constants'
-import { bn, fp } from '../../common/numbers'
+import { BN_SCALE_FACTOR } from '../common/constants'
+import { bn, fp } from '../common/numbers'
 import {
   CTokenMock,
   ERC20Mock,
   FacadeP0,
   MainP0,
-  RTokenP0,
+  TestIRToken,
   StaticATokenMock,
-  StRSRP0,
+  TestIStRSR,
   USDCMock,
-} from '../../typechain'
-import { Collateral, defaultFixture } from './utils/fixtures'
+} from '../typechain'
+import { Collateral, defaultFixture } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -46,8 +46,8 @@ describe('FacadeP0 contract', () => {
 
   // Main
   let main: MainP0
-  let rToken: RTokenP0
-  let stRSR: StRSRP0
+  let rToken: TestIRToken
+  let stRSR: TestIStRSR
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet

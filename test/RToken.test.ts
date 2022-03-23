@@ -2,8 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR, CollateralStatus } from '../../common/constants'
-import { bn, fp } from '../../common/numbers'
+import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
+import { bn, fp } from '../common/numbers'
 import {
   AaveOracleMock,
   ATokenFiatCollateral,
@@ -14,17 +14,19 @@ import {
   ERC20Mock,
   FacadeP0,
   MainP0,
+  TestIRToken,
   RTokenP0,
+  RTokenP1,
   StaticATokenMock,
   USDCMock,
-} from '../../typechain'
-import { whileImpersonating } from '../utils/impersonation'
-import { advanceTime, advanceBlocks, getLatestBlockNumber } from '../utils/time'
-import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+} from '../typechain'
+import { whileImpersonating } from './utils/impersonation'
+import { advanceTime, advanceBlocks, getLatestBlockNumber } from './utils/time'
+import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('RTokenP0 contract', () => {
+describe('RToken contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -50,13 +52,66 @@ describe('RTokenP0 contract', () => {
   let aaveOracleInternal: AaveOracleMock
   // Main
   let main: MainP0
-  let rToken: RTokenP0
+  let rToken: TestIRToken
   let facade: FacadeP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
+
+  interface IIssuance {
+    amount: BigNumber
+    baskets: BigNumber
+    basketNonce: BigNumber
+    blockAvailableAt: BigNumber
+    processed: boolean
+  }
+
+  // Implementation-agnostic testing interface for issuances
+  const expectIssuance = async (account: string, index: number, issuance: Partial<IIssuance>) => {
+    if (IMPLEMENTATION == Implementation.P0) {
+      const rTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', rToken.address)
+      const [, amount, baskets, basketNonce, blockAvailableAt, processed] =
+        await rTokenP0.issuances(account, index)
+
+      if (issuance.amount) expect(amount.toString()).to.eql(issuance.amount.toString())
+      if (issuance.baskets) expect(baskets.toString()).to.eql(issuance.baskets.toString())
+      if (issuance.basketNonce) {
+        expect(basketNonce.toString()).to.eql(issuance.basketNonce.toString())
+      }
+
+      if (issuance.blockAvailableAt) {
+        expect(blockAvailableAt.toString()).to.eql(issuance.blockAvailableAt.toString())
+      }
+      if (issuance.processed !== undefined) expect(processed).to.eql(issuance.processed)
+    } else if (IMPLEMENTATION == Implementation.P1) {
+      const rTokenP1 = <RTokenP1>await ethers.getContractAt('RTokenP1', rToken.address)
+      const [basketNonce, left] = await rTokenP1.issueQueues(account)
+      const [, amtRTokenPrev, amtBasketsPrev] = await rTokenP1.issueItem(
+        account,
+        index == 0 ? index : index - 1
+      )
+
+      const [when, amtRToken, amtBaskets] = await rTokenP1.issueItem(account, index)
+
+      const amt = index == 0 ? amtRTokenPrev : amtRToken.sub(amtRTokenPrev)
+      const baskets = index == 0 ? amtBasketsPrev : amtBaskets.sub(amtBasketsPrev)
+
+      if (issuance.amount) expect(amt.toString()).to.eql(issuance.amount.toString())
+      if (issuance.baskets) expect(baskets.toString()).to.eql(issuance.baskets.toString())
+      if (issuance.basketNonce) {
+        expect(basketNonce.toString()).to.eql(issuance.basketNonce.toString())
+      }
+      if (issuance.blockAvailableAt) {
+        expect(when.toString()).to.eql(issuance.blockAvailableAt.toString())
+      }
+      if (issuance.processed !== undefined && issuance.processed) expect(left).to.gt(index)
+      if (issuance.processed !== undefined && !issuance.processed) expect(left).to.lte(index)
+    } else {
+      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+    }
+  }
 
   before('create fixture loader', async () => {
     ;[wallet] = await (ethers as any).getSigners()
@@ -253,16 +308,13 @@ describe('RTokenP0 contract', () => {
 
       // Check if minting was registered
       const currentBlockNumber = await getLatestBlockNumber()
-      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
-        addr1.address,
-        0
-      )
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      expect(sm_basketNonce).to.equal(initialBasketNonce.add(2))
-      expect(sm_amt).to.equal(issueAmount)
-      expect(sm_minter).to.equal(addr1.address)
-      expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
-      expect(sm_proc).to.equal(false)
+      await expectIssuance(addr1.address, 0, {
+        amount: issueAmount,
+        basketNonce: initialBasketNonce.add(2),
+        blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
+        processed: false,
+      })
 
       // Process issuance
       await advanceBlocks(17)
@@ -272,8 +324,7 @@ describe('RTokenP0 contract', () => {
       await rToken.vest(addr1.address, 1)
 
       // Check minting is confirmed
-      ;[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
-      expect(sm_proc).to.equal(true)
+      await expectIssuance(addr1.address, 0, { processed: true })
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
@@ -335,17 +386,13 @@ describe('RTokenP0 contract', () => {
 
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
-        addr1.address,
-        0
-      )
-
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      expect(sm_basketNonce).to.equal(initialBasketNonce)
-      expect(sm_amt).to.equal(issueAmount)
-      expect(sm_minter).to.equal(addr1.address)
-      expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
-      expect(sm_proc).to.equal(false)
+      await expectIssuance(addr1.address, 0, {
+        amount: issueAmount,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
+        processed: false,
+      })
 
       // Issue new RTokens with different user
       // This will also process the previous minting and send funds to the minter
@@ -358,8 +405,9 @@ describe('RTokenP0 contract', () => {
       await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
-      ;[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
-      expect(sm_proc).to.equal(true)
+      await expectIssuance(addr1.address, 0, {
+        processed: true,
+      })
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(main.address)).to.equal(0)
@@ -386,23 +434,21 @@ describe('RTokenP0 contract', () => {
 
       // Check the new issuance is not processed
       currentBlockNumber = await getLatestBlockNumber()
-      ;[sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
-        addr2.address,
-        0
-      )
-      expect(sm_basketNonce).to.equal(initialBasketNonce)
-      expect(sm_amt).to.equal(issueAmount)
-      expect(sm_minter).to.equal(addr2.address)
-      expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
-      expect(sm_proc).to.equal(false)
+      await expectIssuance(addr2.address, 0, {
+        amount: issueAmount,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
+        processed: false,
+      })
 
       // Complete 2nd issuance
       advanceBlocks(1)
       await rToken.vest(addr2.address, await rToken.endIdForVest(addr2.address))
 
       // Check issuance is confirmed
-      ;[, , , , , sm_proc] = await rToken.issuances(addr2.address, 0)
-      expect(sm_proc).to.equal(true)
+      await expectIssuance(addr2.address, 0, {
+        processed: true,
+      })
       expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmount)
 
       // Check asset value
@@ -434,8 +480,9 @@ describe('RTokenP0 contract', () => {
       ).to.be.revertedWith('collateral default')
 
       // Check previous minting was not processed
-      let [, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
-      expect(sm_proc).to.equal(false)
+      await expectIssuance(addr1.address, 0, {
+        processed: false,
+      })
       expect(await rToken.totalSupply()).to.equal(bn('0'))
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -522,15 +569,12 @@ describe('RTokenP0 contract', () => {
 
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
-        addr1.address,
-        0
-      )
-      expect(sm_basketNonce).to.equal(initialBasketNonce)
-      expect(sm_amt).to.equal(issueAmount)
-      expect(sm_minter).to.equal(addr1.address)
-      expect(sm_availableAt).to.equal(fp(currentBlockNumber + 3))
-      expect(sm_proc).to.equal(false)
+      await expectIssuance(addr1.address, 0, {
+        amount: issueAmount,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: fp(currentBlockNumber + 3),
+        processed: false,
+      })
 
       // Nothing should process
       expect(
@@ -539,7 +583,10 @@ describe('RTokenP0 contract', () => {
       await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check previous minting was not processed[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
-      expect(sm_proc).to.equal(false)
+      await expectIssuance(addr1.address, 0, {
+        processed: false,
+      })
+
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check asset value at this point (still nothing issued)
@@ -552,8 +599,9 @@ describe('RTokenP0 contract', () => {
       await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
-      ;[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
-      expect(sm_proc).to.equal(true)
+      await expectIssuance(addr1.address, 0, {
+        processed: true,
+      })
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
 
@@ -598,17 +646,14 @@ describe('RTokenP0 contract', () => {
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
 
-      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
-        addr1.address,
-        1
-      )
-      const blockAddPct: BigNumber = newIssuanceAmt.mul(BN_SCALE_FACTOR).div(ISSUANCE_PER_BLOCK)
-      expect(sm_basketNonce).to.equal(initialBasketNonce)
-      expect(sm_amt).to.equal(newIssuanceAmt)
-      expect(sm_minter).to.equal(addr1.address)
       // Using issuance rate of 50% = 2 blocks
-      expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
-      expect(sm_proc).to.equal(false)
+      const blockAddPct: BigNumber = newIssuanceAmt.mul(BN_SCALE_FACTOR).div(ISSUANCE_PER_BLOCK)
+      await expectIssuance(addr1.address, 1, {
+        amount: newIssuanceAmt,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
+        processed: false,
+      })
 
       // Should not process
       expect(
@@ -617,8 +662,9 @@ describe('RTokenP0 contract', () => {
       await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check previous minting was not processed
-      // [, , , , , sm_proc] = await rToken.issuances(addr1.address, 1)
-      expect(sm_proc).to.equal(false)
+      await expectIssuance(addr1.address, 1, {
+        processed: false,
+      })
       expect(await rToken.totalSupply()).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -631,8 +677,9 @@ describe('RTokenP0 contract', () => {
       await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
-      ;[, , , , , sm_proc] = await rToken.issuances(addr1.address, 1)
-      expect(sm_proc).to.equal(true)
+      await expectIssuance(addr1.address, 1, {
+        processed: true,
+      })
       expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssuanceAmt))
@@ -703,28 +750,21 @@ describe('RTokenP0 contract', () => {
       // Check mintings
       // First minting
       let currentBlockNumber = await getLatestBlockNumber()
-      let [sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
-        addr1.address,
-        0
-      )
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      expect(sm_basketNonce).to.equal(initialBasketNonce)
-      expect(sm_amt).to.equal(issueAmount)
-      expect(sm_minter).to.equal(addr1.address)
-      expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(blockAddPct))
-      expect(sm_proc).to.equal(true)
+      await expectIssuance(addr1.address, 0, {
+        amount: issueAmount,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
+        processed: true,
+      })
 
       // Second minting
-      ;[sm_minter, sm_amt, , sm_basketNonce, sm_availableAt, sm_proc] = await rToken.issuances(
-        addr1.address,
-        1
-      )
-      expect(sm_basketNonce).to.equal(initialBasketNonce)
-      expect(sm_amt).to.equal(issueAmount)
-      expect(sm_minter).to.equal(addr1.address)
-      expect(sm_availableAt).to.equal(fp(currentBlockNumber - 1).add(fp('1')))
-      expect(sm_proc).to.equal(true)
-
+      await expectIssuance(addr1.address, 1, {
+        amount: issueAmount,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: fp(currentBlockNumber - 1).add(fp('1')),
+        processed: true,
+      })
       // Check both slow mintings are confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.mul(2))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -804,8 +844,9 @@ describe('RTokenP0 contract', () => {
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
 
       // Check initial state
-      let [, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
-      expect(sm_proc).to.equal(false)
+      await expectIssuance(addr1.address, 0, {
+        processed: false,
+      })
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Cancel with issuer
@@ -814,8 +855,9 @@ describe('RTokenP0 contract', () => {
         .withArgs(addr1.address, 0, 1)
 
       // Check minting was cancelled but not tokens minted
-      ;[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
-      expect(sm_proc).to.equal(true)
+      await expectIssuance(addr1.address, 0, {
+        processed: true,
+      })
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check balances returned to user
@@ -892,9 +934,9 @@ describe('RTokenP0 contract', () => {
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      let sm_proc
-      ;[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
-      expect(sm_proc).to.equal(true)
+      await expectIssuance(addr1.address, 0, {
+        processed: true,
+      })
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check total asset value did not change

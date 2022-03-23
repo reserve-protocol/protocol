@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
+
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IComponent.sol";
 import "./IMain.sol";
@@ -17,7 +18,7 @@ import "./IMain.sol";
  * monotonically increasing exchange rate with respect to RSR, meaning that over time
  * StRSR is redeemable for more RSR. It is non-rebasing.
  */
-interface IStRSR is IERC20Permit, IERC20, IComponent {
+interface IStRSR is IERC20Permit, IERC20Metadata, IComponent {
     /// Emitted when RSR is staked
     /// @param staker The address of the staker
     /// @param rsrAmount {qRSR} How much RSR was staked
@@ -93,4 +94,18 @@ interface IStRSR is IERC20Permit, IERC20, IComponent {
 
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
     function exchangeRate() external view returns (int192);
+}
+
+interface TestIStRSR is IStRSR {
+    function rewardPeriod() external view returns (uint256);
+
+    function setRewardPeriod(uint256) external;
+
+    function rewardRatio() external view returns (int192);
+
+    function setRewardRatio(int192) external;
+
+    function unstakingDelay() external view returns (uint256);
+
+    function setUnstakingDelay(uint256) external;
 }

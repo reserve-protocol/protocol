@@ -2,9 +2,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../../common/constants'
-import { expectEvents } from '../../common/events'
-import { bn, divCeil, fp, near } from '../../common/numbers'
+import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
+import { expectEvents } from '../common/events'
+import { bn, divCeil, fp, near } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AavePricedAsset,
@@ -26,14 +26,14 @@ import {
   GnosisMock,
   RevenueTradingP0,
   RTokenAsset,
-  RTokenP0,
+  TestIRToken,
   StaticATokenMock,
-  StRSRP0,
+  TestIStRSR,
   USDCMock,
-} from '../../typechain'
-import { whileImpersonating } from '../utils/impersonation'
-import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+} from '../typechain'
+import { whileImpersonating } from './utils/impersonation'
+import { advanceTime, getLatestBlockTimestamp } from './utils/time'
+import { Collateral, defaultFixture, IConfig } from './fixtures'
 import { expectTrade } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -78,9 +78,9 @@ describe('Revenues', () => {
   let config: IConfig
 
   // Contracts to retrieve after deploy
-  let rToken: RTokenP0
+  let rToken: TestIRToken
   let rTokenAsset: RTokenAsset
-  let stRSR: StRSRP0
+  let stRSR: TestIStRSR
   let furnace: FurnaceP0
   let main: MainP0
   let facade: FacadeP0

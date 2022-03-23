@@ -74,6 +74,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     struct Withdrawal {
         address account;
         uint256 rsrAmount; // How much rsr this withdrawal will be redeemed for, if none is seized
+        uint256 stakeAmount; // How much stRSR this withdrawal represents; immutable after creation
         uint256 availableAt;
     }
 
@@ -101,10 +102,9 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
     /// @custom:action
-    function stake(uint256 rsrAmount) external {
+    function stake(uint256 rsrAmount) external notPaused {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
-        require(!main.paused(), "main paused");
 
         // Run state keepers
         main.poke();
@@ -128,11 +128,10 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param stakeAmount {qRSR}
     /// @custom:action
-    function unstake(uint256 stakeAmount) external {
+    function unstake(uint256 stakeAmount) external notPaused {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
-        require(!main.paused(), "main paused");
 
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
@@ -155,7 +154,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         uint256 index = withdrawals[account].length;
         uint256 lastAvailableAt = index > 0 ? withdrawals[account][index - 1].availableAt : 0;
         uint256 availableAt = Math.max(block.timestamp + unstakingDelay, lastAvailableAt);
-        withdrawals[account].push(Withdrawal(account, rsrAmount, availableAt));
+        withdrawals[account].push(Withdrawal(account, rsrAmount, stakeAmount, availableAt));
         emit UnstakingStarted(index, 0, account, rsrAmount, stakeAmount, availableAt);
     }
 
@@ -185,6 +184,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         for (i; i < endId && queue[i].availableAt <= block.timestamp; i++) {
             total += queue[i].rsrAmount;
             queue[i].rsrAmount = 0;
+            queue[i].stakeAmount = 0;
         }
 
         // Execute accumulated withdrawals
@@ -274,10 +274,11 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     function exchangeRate() public view returns (int192) {
-        if (totalStaked == 0) {
-            return FIX_ONE;
-        }
-        return toFix(rsrBacking).divu(totalStaked);
+        uint256 numerator = rsrBacking + rsrBeingWithdrawn();
+        uint256 denominator = totalStaked + stakeBeingWithdrawn();
+        if (numerator == 0 || denominator == 0) return FIX_ONE;
+
+        return toFix(numerator).divu(denominator);
     }
 
     // ==== ERC20 Interface ====
@@ -357,6 +358,15 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     // ==== end ERC20 Interface ====
 
     // ==== Internal Functions ====
+    /// @return total {qStakes} Total amount of qStRSR being withdrawn
+    function stakeBeingWithdrawn() internal view returns (uint256 total) {
+        for (uint256 i = 0; i < accounts.length(); i++) {
+            for (uint256 j = 0; j < withdrawals[accounts.at(i)].length; j++) {
+                total += withdrawals[accounts.at(i)][j].stakeAmount;
+            }
+        }
+    }
+
     /// @return total {qRSR} Total amount of qRSR being withdrawn
     function rsrBeingWithdrawn() internal view returns (uint256 total) {
         for (uint256 i = 0; i < accounts.length(); i++) {

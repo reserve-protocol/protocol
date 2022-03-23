@@ -37,4 +37,4 @@ jobs:
         run: yarn lint
 
       - name: Run unit tests
-        run: yarn test:parallel
+        run: yarn test

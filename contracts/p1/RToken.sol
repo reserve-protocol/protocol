@@ -14,10 +14,10 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p0/mixins/Rewardable.sol";
 
 /**
- * @title RToken
+ * @title RTokenP1
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RToken is RewardableP0, ERC20Permit, IRToken {
+contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
     using SafeERC20 for IERC20;
@@ -38,7 +38,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
 
     // IssueItem: One edge of an issuance
     struct IssueItem {
-        uint256 when; // {block number}
+        int192 when; // {block number} fractional
         uint256 amtRToken; // {qRTok} Total amount of RTokens that have vested by `when`
         int192 amtBaskets; // {BU} Total amount of baskets that should back those RTokens
         uint256[] deposits; // {qTok}, Total amounts of basket collateral deposited for vesting
@@ -76,7 +76,6 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
 
     int192 public issuanceRate; // {%} of RToken supply to issue per block
 
-    // solhint-disable no-empty-blocks
     constructor(
         string memory name_,
         string memory symbol_,
@@ -84,8 +83,6 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     ) ERC20(name_, symbol_) ERC20Permit(name_) {
         constitutionURI = constitutionURI_;
     }
-
-    // solhint-enable no-empty-blocks
 
     function init(ConstructorArgs memory args) internal override {
         issuanceRate = args.params.issuanceRate;
@@ -102,6 +99,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     /// @return deposits {qTok} The quantities of collateral tokens transferred in
     /// @custom:action
     function issue(uint256 amtRToken) external notPaused returns (uint256[] memory deposits) {
+        require(amtRToken > 0, "Cannot issue zero");
         // ==== Basic Setup ====
         // Call collective state keepers.
         main.poke(); // TODO: only call what you really need, there should be no en-masse poke()!
@@ -134,17 +132,25 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         int192 vestingEnd = whenFinished(amtRToken);
 
         // Push issuance onto queue
-        IssueItem storage prev = queue.items[queue.right - 1];
         IssueItem storage curr = (
             queue.items.length == queue.right ? queue.items.push() : queue.items[queue.right]
         );
-
-        curr.when = vestingEnd.floor();
-        curr.amtRToken = prev.amtRToken + amtRToken;
-        curr.amtBaskets = prev.amtBaskets.plus(amtBaskets);
-        for (uint256 i = 0; i < deposits.length; i++) {
-            curr.deposits[i] = prev.deposits[i] + deposits[i];
+        curr.when = vestingEnd;
+        curr.amtRToken = amtRToken;
+        curr.amtBaskets = amtBaskets;
+        curr.deposits = deposits;
+        if (queue.right > 0) {
+            IssueItem storage prev = queue.items[queue.right - 1];
+            curr.amtRToken = prev.amtRToken + amtRToken;
+            curr.amtBaskets = prev.amtBaskets.plus(amtBaskets);
+            for (uint256 i = 0; i < deposits.length; i++) {
+                curr.deposits[i] = prev.deposits[i] + deposits[i];
+            }
         }
+
+        // Configure queue
+        queue.basketNonce = basketNonce;
+        queue.tokens = erc20s;
         queue.right++;
 
         emit IssuanceStarted(
@@ -158,7 +164,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         );
 
         // Vest immediately if the vesting fits into this block.
-        if (curr.when <= block.number) vestUpTo(issuer, queue.right);
+        if (curr.when.lte(toFix(block.number))) vestUpTo(issuer, queue.right);
     }
 
     /// Add amtRToken's worth of issuance delay to allVestAt, and return the resulting finish time.
@@ -171,7 +177,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         }
 
         // Add amtRToken's worth of issuance delay to allVestAt
-        finished = fixMin(allVestAt, toFix(block.number - 1)).plus(divFix(amtRToken, lastIssRate));
+        finished = fixMax(allVestAt, toFix(block.number - 1)).plus(divFix(amtRToken, lastIssRate));
         allVestAt = finished;
     }
 
@@ -188,13 +194,15 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         return vestUpTo(account, endId);
     }
 
+    /// @return A non-inclusive ending index
     function endIdForVest(address account) external view returns (uint256) {
         IssueQueue storage queue = issueQueues[account];
+        int192 blockNumber = toFix(block.number);
 
         // Handle common edge cases in O(1)
         if (queue.left == queue.right) return queue.left;
-        if (block.timestamp < queue.items[queue.left].when) return queue.left;
-        if (queue.items[queue.right].when <= block.timestamp) return queue.right;
+        if (blockNumber.lt(queue.items[queue.left].when)) return queue.left;
+        if (queue.items[queue.right - 1].when.lte(blockNumber)) return queue.right;
 
         // find left and right (using binary search where always left <= right) such that:
         //     left == right - 1
@@ -204,7 +212,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         uint256 right = queue.right;
         while (left < right - 1) {
             uint256 test = (left + right) / 2;
-            if (queue.items[test].when <= block.timestamp) left = test;
+            if (queue.items[test].when < blockNumber) left = test;
             else right = test;
         }
         return right;
@@ -219,7 +227,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
-        require(queue.left <= endId && endId < queue.right, "'endId' is out of range");
+        require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
 
         if (earliest) {
             deposits = refundSpan(account, queue.left, endId);
@@ -260,7 +268,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
 
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
-        backingMgr.grantAllowances();
+        backingMgr.grantAllowances(); // TODO optimize
 
         for (uint256 i = 0; i < erc20s.length; i++) {
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
@@ -306,15 +314,21 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         return main.basketHandler().price().mul(basketsNeeded).div(supply);
     }
 
+    /// @dev This function is only here because solidity can't autogenerate our getter
+    function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
+        return issueQueues[account].items[index];
+    }
+
     // ==== private ====
     /// Refund all deposits in the span [left, right)
-    /// This does *not* fixup queue.left and queue.right!
     function refundSpan(
         address account,
         uint256 left,
         uint256 right
     ) private returns (uint256[] memory deposits) {
         IssueQueue storage queue = issueQueues[account];
+        assert(queue.left <= left && right <= queue.right);
+        deposits = new uint256[](queue.tokens.length);
         if (left >= right) return deposits;
 
         // compute total deposits
@@ -324,7 +338,7 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
                 deposits[i] = rightItem.deposits[i];
             }
         } else {
-            IssueItem storage leftItem = queue.items[queue.left - 1];
+            IssueItem storage leftItem = queue.items[queue.left];
             for (uint256 i = 0; i < queue.tokens.length; i++) {
                 deposits[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
@@ -332,14 +346,15 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
 
         // transfer deposits
         for (uint256 i = 0; i < queue.tokens.length; i++) {
-            IERC20(queue.tokens[i]).safeTransfer(address(main), deposits[i]);
+            IERC20(queue.tokens[i]).safeTransfer(account, deposits[i]);
         }
+        queue.left = right;
 
         // emit issuancesCanceled
         emit IssuancesCanceled(account, left, right);
     }
 
-    /// Vest all RToken issuance in queue = queues[account], from queue.left through index `through`
+    /// Vest all RToken issuance in queue = queues[account], from queue.left to < endId
     /// This *does* fixup queue.left and queue.right!
     function vestUpTo(address account, uint256 endId) private returns (uint256 amtRToken) {
         IssueQueue storage queue = issueQueues[account];
@@ -349,12 +364,12 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
         // Vest the span up to `endId`.
         uint256 amtRTokenToMint;
         int192 newBasketsNeeded;
-        IssueItem storage rightItem = queue.items[endId];
+        IssueItem storage rightItem = queue.items[endId - 1];
 
         if (queue.left == 0) {
             for (uint256 i = 0; i < queue.tokens.length; i++) {
                 uint256 amtDeposit = rightItem.deposits[i];
-                IERC20(queue.tokens[i]).safeTransfer(address(main), amtDeposit);
+                IERC20(queue.tokens[i]).safeTransfer(address(main.backingManager()), amtDeposit);
             }
             amtRTokenToMint = rightItem.amtRToken;
             newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets);
@@ -362,15 +377,15 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
             IssueItem storage leftItem = queue.items[queue.left - 1];
             for (uint256 i = 0; i < queue.tokens.length; i++) {
                 uint256 amtDeposit = rightItem.deposits[i] - leftItem.deposits[i];
-                IERC20(queue.tokens[i]).safeTransfer(address(main), amtDeposit);
+                IERC20(queue.tokens[i]).safeTransfer(address(main.backingManager()), amtDeposit);
             }
             amtRTokenToMint = rightItem.amtRToken - leftItem.amtRToken;
             newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets).minus(leftItem.amtBaskets);
         }
 
         _mint(account, amtRTokenToMint);
-        basketsNeeded = newBasketsNeeded;
         emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
+        basketsNeeded = newBasketsNeeded;
 
         emit IssuancesCompleted(account, queue.left, endId);
         queue.left = endId;

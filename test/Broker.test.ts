@@ -2,8 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { TradeStatus } from '../../common/constants'
-import { bn, toBNDecimals } from '../../common/numbers'
+import { TradeStatus } from '../common/constants'
+import { bn, toBNDecimals } from '../common/numbers'
 import {
   BackingManagerP0,
   BrokerP0,
@@ -13,10 +13,10 @@ import {
   MainP0,
   RevenueTradingP0,
   USDCMock,
-} from '../../typechain'
-import { whileImpersonating } from '../utils/impersonation'
-import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
-import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
+} from '../typechain'
+import { whileImpersonating } from './utils/impersonation'
+import { Collateral, defaultFixture, IConfig } from './fixtures'
+import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader

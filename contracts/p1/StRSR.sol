@@ -16,7 +16,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p0/mixins/Component.sol";
 
 /*
- * @title StRSR
+ * @title StRSRP1
  * @notice The StRSR is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken.
  *
@@ -25,7 +25,7 @@ import "contracts/p0/mixins/Component.sol";
  * stakes that are in the process of being withdrawn and those that are not.
  */
 // solhint-disable max-states-count
-contract StRSR is IStRSR, Component, EIP712 {
+contract StRSRP1 is IStRSR, Component, EIP712 {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
@@ -134,6 +134,7 @@ contract StRSR is IStRSR, Component, EIP712 {
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
         CumulativeDraft[] storage queue = draftQueues[era][account];
+        if (endId == 0) return;
         require(endId <= queue.length, "index out-of-bounds");
 
         require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
@@ -145,7 +146,7 @@ contract StRSR is IStRSR, Component, EIP712 {
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR might be smaller than rsrAmount if we're out of RSR.
     function seizeRSR(uint256 rsrAmount) external returns (uint256 seizedRSR) {
-        require(_msgSender() == address(main), "not main");
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initialExchangeRate = exchangeRate();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
@@ -158,10 +159,13 @@ contract StRSR is IStRSR, Component, EIP712 {
             // Zero all stakes and withdrawals
             stakeRSR = 0;
             draftRSR = 0;
+            totalStakes = 0;
             era++;
 
             emit AllBalancesReset(era);
         } else {
+            uint256 rewards = rsrRewards();
+
             // Remove RSR evenly from stakeRSR, draftRSR, and the reward pool
             uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             stakeRSR -= stakeRSRToTake;
@@ -172,7 +176,7 @@ contract StRSR is IStRSR, Component, EIP712 {
             seizedRSR += draftRSRToTake;
 
             // Removing from unpaid rewards is implicit
-            uint256 rewardsToTake = (rsrRewards() * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+            uint256 rewardsToTake = (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             seizedRSR += rewardsToTake;
 
             assert(rsrAmount <= seizedRSR);
@@ -205,7 +209,11 @@ contract StRSR is IStRSR, Component, EIP712 {
     }
 
     function exchangeRate() public view returns (int192) {
-        return toFix(stakeRSR).divu(totalStakes);
+        uint256 numerator = draftRSR + stakeRSR;
+        uint256 denominator = totalDrafts + totalStakes;
+        if (numerator == 0 || denominator == 0) return FIX_ONE;
+
+        return toFix(numerator).divu(denominator);
     }
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
