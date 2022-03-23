@@ -184,11 +184,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
     /// @return {tok/BU} The quantity of an ERC20 token in the basket; 0 if not in the basket
     function quantity(IERC20 erc20) public view returns (int192) {
-        IAssetRegistry reg = main.assetRegistry();
-        if (!reg.isRegistered(erc20) || !reg.toAsset(erc20).isCollateral()) return FIX_ZERO;
+        if (!goodCollateral(erc20)) return FIX_ZERO;
 
         // {qTok/BU} = {ref/BU} / {ref/tok}
-        return basket.refAmts[erc20].div(reg.toColl(erc20).refPerTok());
+        return basket.refAmts[erc20].div(main.assetRegistry().toColl(erc20).refPerTok());
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
