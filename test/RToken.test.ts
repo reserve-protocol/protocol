@@ -93,10 +93,10 @@ describe('RToken contract', () => {
         index == 0 ? index : index - 1
       )
 
-      const [whenCurr, amtRTokenCurr, amtBasketsCurr] = await rTokenP1.issueItem(account, index)
+      const [when, amtRToken, amtBaskets] = await rTokenP1.issueItem(account, index)
 
-      const amt = index == 0 ? amtRTokenPrev : amtRTokenCurr.sub(amtRTokenPrev)
-      const baskets = index == 0 ? amtBasketsPrev : amtBasketsCurr.sub(amtBasketsPrev)
+      const amt = index == 0 ? amtRTokenPrev : amtRToken.sub(amtRTokenPrev)
+      const baskets = index == 0 ? amtBasketsPrev : amtBaskets.sub(amtBasketsPrev)
 
       if (issuance.amount) expect(amt.toString()).to.eql(issuance.amount.toString())
       if (issuance.baskets) expect(baskets.toString()).to.eql(issuance.baskets.toString())
@@ -104,7 +104,7 @@ describe('RToken contract', () => {
         expect(basketNonce.toString()).to.eql(issuance.basketNonce.toString())
       }
       if (issuance.blockAvailableAt) {
-        expect(whenCurr.toString()).to.eql(issuance.blockAvailableAt.toString())
+        expect(when.toString()).to.eql(issuance.blockAvailableAt.toString())
       }
       if (issuance.processed !== undefined && issuance.processed) expect(left).to.gt(index)
       if (issuance.processed !== undefined && !issuance.processed) expect(left).to.lte(index)

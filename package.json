@@ -14,7 +14,7 @@
         "devchain": "yarn exec hardhat node",
         "test": "yarn test:p0 && yarn test:p1",
         "test:p0": "PROTO_IMPL=0 yarn exec hardhat test test/*.test.ts --parallel",
-        "test:p1": "PROTO_IMPL=1 yarn exec hardhat test test/RToken.test.ts test/Deployer.test.ts --parallel",
+        "test:p1": "PROTO_IMPL=1 yarn exec hardhat test test/RToken.test.ts test/StRSR.test.ts test/Deployer.test.ts --parallel",
         "test:coverage": "yarn exec hardhat coverage --temp artifacts",
         "test:serial": "yarn exec hardhat test",
         "test:recompile": "yarn exec hardhat compile --force && mocha --require hardhat/register --recursive --exit",

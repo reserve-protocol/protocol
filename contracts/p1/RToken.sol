@@ -314,7 +314,6 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         return main.basketHandler().price().mul(basketsNeeded).div(supply);
     }
 
-    /// TODO Consider getting rid of this function and changing the underlying data structure
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
         return issueQueues[account].items[index];
