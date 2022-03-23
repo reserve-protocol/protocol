@@ -11,6 +11,27 @@ import "contracts/plugins/mocks/ERC20Mock.sol";
 import "contracts/fuzz/Mocks.sol";
 import "contracts/fuzz/Utils.sol";
 
+/* TODO: Here's a few of the many ways that this test could be improved:
+
+   - Decorate basically everything with events for clues about test failures
+
+   - Have the MockBasketHandler and MockBackingManager save an "event" log, representing the
+     state-change events that they've been issued, so that we can ensure the equivalence of the
+     function call sequence that each RToken emits
+
+   - Get these mocks to be more active, so they exercise more of the RToken space.
+       - In particular, make the referesher functions do more of what they're intended to do
+       - Have the mock contracts act wildly, possibly represented by more actions from the
+         RTokenDiffTest contract, to mock out changes that might effect the RToken (but that the
+         RToken probably doesn't model directly)
+
+   - Change the mock basket model from "token A" to "switches between token A and token B" or use
+       - Or something yet more ambitious? This could be practically anything we can drive from
+         random actions.
+
+   - It *might* be that these mocked-out component models are really useful for other fuzz tests too272
+ */
+
 contract MockBackingManager is IBackingManager, ComponentMock {
     function grantAllowances() external {}
 
@@ -78,12 +99,12 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
     }
 
     /// @return If the BackingManager has sufficient collateral to redeem the entire RToken supply
-    function fullyCapitalized() external view returns (bool) {
+    function fullyCapitalized() external pure returns (bool) {
         return true;
     }
 
     /// @return status The worst CollateralStatus of all collateral in the basket
-    function status() external view returns (CollateralStatus) {
+    function status() external pure returns (CollateralStatus) {
         return CollateralStatus.SOUND;
     }
 
@@ -112,7 +133,7 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
-    function price() external view returns (int192 p) {
+    function price() external pure returns (int192 p) {
         return FIX_ONE;
     }
 
@@ -213,8 +234,6 @@ contract RTokenDiffTest {
     }
 
     // Actions and state modifiers
-    // TODO: assert that all return values are correct (or at least matcing?)
-    // TODO: decorate with events for clues about test failures?
 
     // ==== user actions, performed by 0x[123]0000. Melt
     function issue(uint256 amount) external fromSender returns (uint256[] memory deposits) {
@@ -250,7 +269,10 @@ contract RTokenDiffTest {
         compensation = p0.rToken().redeem(amount);
         uint256[] memory compensation1 = p1.rToken().redeem(amount);
 
-        assert(compensation == compensation1);
+        assert(compensation.length == compensation1.length);
+        for (uint256 i = 0; i < compensation.length; i++) {
+            assert(compensation[i] == compensation1[i]);
+        }
     }
 
     function melt(uint256 amount) external fromSender {
