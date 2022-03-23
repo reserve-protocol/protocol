@@ -215,7 +215,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
             if (queue.items[test].when < blockNumber) left = test;
             else right = test;
         }
-        return right + 1;
+        return right;
     }
 
     /// Cancel some vesting issuance(s)
