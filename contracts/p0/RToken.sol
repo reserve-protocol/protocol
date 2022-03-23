@@ -62,7 +62,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
         constitutionURI = constitutionURI_;
     }
 
-    function init(ConstructorArgs calldata args) internal override {
+    function init(ConstructorArgs memory args) internal override {
         issuanceRate = args.params.issuanceRate;
         emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }
