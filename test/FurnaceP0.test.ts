@@ -2,21 +2,21 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { ZERO_ADDRESS } from '../../common/constants'
-import { bn } from '../../common/numbers'
+import { ZERO_ADDRESS } from '../common/constants'
+import { bn } from '../common/numbers'
 import {
   CTokenMock,
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
   MainP0,
-  RTokenP0,
+  IRToken,
   StaticATokenMock,
   USDCMock,
-} from '../../typechain'
-import { advanceTime } from '../utils/time'
-import { Collateral, defaultFixture, IConfig } from '../fixtures'
-import { makeDecayFn } from '../utils/rewards'
+} from '../typechain'
+import { advanceTime } from './utils/time'
+import { Collateral, defaultFixture, IConfig } from './fixtures'
+import { makeDecayFn } from './utils/rewards'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -29,7 +29,7 @@ describe('FurnaceP0 contract', () => {
   let FurnaceFactory: ContractFactory
   let main: MainP0
   let furnace: FurnaceP0
-  let rToken: RTokenP0
+  let rToken: IRToken
   let basket: Collateral[]
   let facade: FacadeP0
 
