@@ -71,10 +71,8 @@ describe('RToken contract', () => {
   const expectIssuance = async (account: string, index: number, issuance: Partial<IIssuance>) => {
     if (IMPLEMENTATION == Implementation.P0) {
       const rTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', rToken.address)
-      const [amount, baskets, basketNonce, blockAvailableAt, processed] = await rTokenP0.issuances(
-        account,
-        index
-      )
+      const [, amount, baskets, basketNonce, blockAvailableAt, processed] =
+        await rTokenP0.issuances(account, index)
 
       if (issuance.amount) expect(amount).to.eql(issuance.amount)
       if (issuance.baskets) expect(baskets).to.eql(issuance.baskets)
@@ -84,7 +82,7 @@ describe('RToken contract', () => {
     } else if (IMPLEMENTATION == Implementation.P1) {
       const rTokenP1 = <RTokenP1>await ethers.getContractAt('RTokenP1', rToken.address)
       const [basketNonce, left] = await rTokenP1.issueQueues(account)
-      const [whenPrev, amtRTokenPrev, amtBasketsPrev] = await rTokenP1.issueItem(
+      const [, amtRTokenPrev, amtBasketsPrev] = await rTokenP1.issueItem(
         account,
         index == 0 ? index : index - 1
       )
