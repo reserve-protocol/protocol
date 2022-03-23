@@ -22,7 +22,7 @@ contract DistributorP0 is Component, IDistributor {
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
 
-    function init(ConstructorArgs calldata args) internal override {
+    function init(ConstructorArgs memory args) internal override {
         _setDistribution(FURNACE, RevenueShare(args.params.dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, args.params.dist.rsrDist));
     }

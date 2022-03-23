@@ -156,7 +156,7 @@ interface IMain is IPausable {
 
     event Initialized();
 
-    function init(ConstructorArgs calldata args) external;
+    function init(ConstructorArgs memory args) external;
 
     function owner() external view returns (address);
 }

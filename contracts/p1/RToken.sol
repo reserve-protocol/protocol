@@ -22,6 +22,9 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     using FixLib for int192;
     using SafeERC20 for IERC20;
 
+    /// Expected to be an IPFS hash
+    string public constitutionURI;
+
     // MIN_ISS_RATE: {qRTok/block} 10k whole RTok
     int192 public constant MIN_ISS_RATE = 10_000 * 1e18 * int192(FIX_SCALE);
 
@@ -74,14 +77,17 @@ contract RToken is RewardableP0, ERC20Permit, IRToken {
     int192 public issuanceRate; // {%} of RToken supply to issue per block
 
     // solhint-disable no-empty-blocks
-    constructor(string memory name_, string memory symbol_)
-        ERC20(name_, symbol_)
-        ERC20Permit(name_)
-    {}
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        string memory constitutionURI_
+    ) ERC20(name_, symbol_) ERC20Permit(name_) {
+        constitutionURI = constitutionURI_;
+    }
 
     // solhint-enable no-empty-blocks
 
-    function init(ConstructorArgs calldata args) internal override {
+    function init(ConstructorArgs memory args) internal override {
         issuanceRate = args.params.issuanceRate;
         emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }

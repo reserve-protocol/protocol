@@ -17,7 +17,7 @@ contract AssetRegistryP0 is Component, IAssetRegistry {
     // Registered Assets
     mapping(IERC20 => IAsset) private assets;
 
-    function init(ConstructorArgs calldata args) internal virtual override {
+    function init(ConstructorArgs memory args) internal virtual override {
         for (uint256 i = 0; i < args.assets.length; i++) {
             _register(args.assets[i]);
         }

@@ -70,7 +70,7 @@ contract MainP0 is Pausable, IMain {
     }
 
     /// Initializer
-    function init(ConstructorArgs calldata args) public virtual onlyOwner {
+    function init(ConstructorArgs memory args) public virtual onlyOwner {
         require(!initialized, "Already initialized");
         initialized = true;
 

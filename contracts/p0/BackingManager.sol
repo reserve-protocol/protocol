@@ -22,7 +22,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     uint256 public tradingDelay; // {s} how long to wait until resuming trading after switching
     int192 public backingBuffer; // {%} how much extra backing collateral to keep
 
-    function init(ConstructorArgs calldata args) internal override {
+    function init(ConstructorArgs memory args) internal override {
         TradingP0.init(args);
         tradingDelay = args.params.tradingDelay;
         backingBuffer = args.params.backingBuffer;

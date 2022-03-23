@@ -11,7 +11,7 @@ abstract contract Component is IComponent, Context {
     IMain public main;
     bool private initialized;
 
-    function initComponent(IMain main_, ConstructorArgs calldata args) external {
+    function initComponent(IMain main_, ConstructorArgs memory args) external {
         require(!initialized, "Component: already initialized");
         main = main_;
         init(args);
@@ -29,5 +29,5 @@ abstract contract Component is IComponent, Context {
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function init(ConstructorArgs calldata args) internal virtual {}
+    function init(ConstructorArgs memory args) internal virtual {}
 }

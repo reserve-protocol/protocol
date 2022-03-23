@@ -90,7 +90,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         _symbol = symbol_;
     }
 
-    function init(ConstructorArgs calldata args) internal override {
+    function init(ConstructorArgs memory args) internal override {
         payoutLastPaid = block.timestamp;
         unstakingDelay = args.params.unstakingDelay;
         rewardPeriod = args.params.rewardPeriod;
