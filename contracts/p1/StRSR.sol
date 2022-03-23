@@ -16,7 +16,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p0/mixins/Component.sol";
 
 /*
- * @title StRSR
+ * @title StRSRP1
  * @notice The StRSR is where people can stake their RSR in order to provide insurance and
  * benefit from the supply expansion of an RToken.
  *
@@ -25,7 +25,7 @@ import "contracts/p0/mixins/Component.sol";
  * stakes that are in the process of being withdrawn and those that are not.
  */
 // solhint-disable max-states-count
-contract StRSR is IStRSR, Component, EIP712 {
+contract StRSRP1 is IStRSR, Component, EIP712 {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
