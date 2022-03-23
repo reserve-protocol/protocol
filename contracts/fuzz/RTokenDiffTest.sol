@@ -213,7 +213,7 @@ contract RTokenDiffTest {
     }
 
     // Actions and state modifiers
-    // TODO: assert that all return values are correct
+    // TODO: assert that all return values are correct (or at least matcing?)
     // TODO: decorate with events for clues about test failures?
 
     // ==== user actions, performed by 0x[123]0000. Melt
@@ -228,22 +228,29 @@ contract RTokenDiffTest {
         for (uint256 i = 0; i < deposits.length; i++) assert(deposits[i] == deposits1[i]);
     }
 
-    function cancel(uint256 endId, bool e) external fromSender returns (uint256[] memory ds) {
-        p0.rToken().cancel(endId, e);
-        p1.rToken().cancel(endId, e);
+    function cancel(uint256 endId, bool e) external fromSender returns (uint256[] memory deposits) {
+        deposits = p0.rToken().cancel(endId, e);
+        uint256[] memory deposits1 = p1.rToken().cancel(endId, e);
+
+        assert(deposits.length == deposits1.length);
+        for (uint256 i = 0; i < deposits.length; i++) assert(deposits[i] == deposits1[i]);
     }
 
     function vest(address acct, uint256 endId) external fromSender returns (uint256 vested) {
-        p0.rToken().vest(acct, endId);
-        p1.rToken().vest(acct, endId);
+        vested = p0.rToken().vest(acct, endId);
+        uint256 vested1 = p1.rToken().vest(acct, endId);
+        assert(vested == vested1);
     }
 
     // TODO: Add "cancel" and "vest" variations that are likely to succeed too
     // i.e, ones that have valid endIDs
     function redeem(uint256 amount) external fromSender returns (uint256[] memory compensation) {
         amount %= 1e36;
-        p0.rToken().redeem(amount);
-        p1.rToken().redeem(amount);
+
+        compensation = p0.rToken().redeem(amount);
+        uint256[] memory compensation1 = p1.rToken().redeem(amount);
+
+        assert(compensation == compensation1);
     }
 
     function melt(uint256 amount) external fromSender {
@@ -260,7 +267,7 @@ contract RTokenDiffTest {
     }
 
     function setBasketsNeeded(int192 basketsNeeded) external fromBackingMgr {
-        basketsNeeded %= 1e52;
+        basketsNeeded %= 1e36;
         p0.rToken().setBasketsNeeded(basketsNeeded);
         p1.rToken().setBasketsNeeded(basketsNeeded);
     }
