@@ -2,8 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { ZERO_ADDRESS } from '../../common/constants'
-import { bn } from '../../common/numbers'
+import { ZERO_ADDRESS } from '../common/constants'
+import { bn } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   Asset,
@@ -12,6 +12,9 @@ import {
   BasketHandlerP0,
   BrokerP0,
   ComptrollerMock,
+  TestIDeployer,
+  TestIRToken,
+  TestIStRSR,
   DeployerP0,
   DistributorP0,
   ERC20Mock,
@@ -23,8 +26,8 @@ import {
   RTokenP0,
   StRSRP0,
   TradingP0,
-} from '../../typechain'
-import { defaultFixture, IConfig } from './utils/fixtures'
+} from '../typechain'
+import { defaultFixture, IConfig } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -32,7 +35,7 @@ describe('DeployerP0 contract', () => {
   let owner: SignerWithAddress
 
   // Deployer contract
-  let deployer: DeployerP0
+  let deployer: TestIDeployer
 
   // Config
   let config: IConfig
@@ -55,9 +58,9 @@ describe('DeployerP0 contract', () => {
   let facade: FacadeP0
 
   // Core contracts
-  let rToken: RTokenP0
+  let rToken: TestIRToken
   let rTokenAsset: RTokenAsset
-  let stRSR: StRSRP0
+  let stRSR: TestIStRSR
   let furnace: FurnaceP0
   let main: MainP0
   let assetRegistry: AssetRegistryP0

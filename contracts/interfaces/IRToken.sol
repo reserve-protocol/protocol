@@ -41,7 +41,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     /// Emitted when an RToken issuance is completed successfully
     /// @param issuer The account of the issuer
     /// @param firstId The first of the completed issuances in the issuer's queue
-    /// @param endId The first of the completed issuances in the issuer's queue
+    /// @param endId The id directly after the last of the completed issuances
     event IssuancesCompleted(
         address indexed issuer,
         uint256 indexed firstId,
@@ -115,4 +115,12 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
 
     /// @return p {UoA/rTok} The price of 1 whole RToken in the unit of account
     function price() external view returns (int192 p);
+}
+
+interface TestIRToken is IRToken {
+    /// Set the issuance rate as a % of RToken supply
+    function setIssuanceRate(int192) external;
+
+    /// @return {%} The issuance rate as a percentage of the RToken supply
+    function issuanceRate() external view returns (int192);
 }

@@ -2,9 +2,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR, CollateralStatus } from '../../common/constants'
-import { expectEvents, expectInReceipt } from '../../common/events'
-import { bn, fp, toBNDecimals } from '../../common/numbers'
+import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
+import { expectEvents } from '../common/events'
+import { bn, fp, toBNDecimals } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AaveOracleMock,
@@ -19,13 +19,13 @@ import {
   ERC20Mock,
   FacadeP0,
   GnosisMock,
-  RTokenP0,
+  TestIRToken,
   StaticATokenMock,
-  StRSRP0,
+  TestIStRSR,
   USDCMock,
-} from '../../typechain'
-import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { Collateral, defaultFixture, IConfig } from './utils/fixtures'
+} from '../typechain'
+import { advanceTime, getLatestBlockTimestamp } from './utils/time'
+import { Collateral, defaultFixture, IConfig } from './fixtures'
 import { expectTrade } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -71,8 +71,8 @@ describe('MainP0 contract', () => {
   let config: IConfig
 
   // Contracts to retrieve after deploy
-  let rToken: RTokenP0
-  let stRSR: StRSRP0
+  let rToken: TestIRToken
+  let stRSR: TestIStRSR
   let facade: FacadeP0
   let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
