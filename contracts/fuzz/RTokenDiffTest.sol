@@ -29,7 +29,7 @@ import "contracts/fuzz/Utils.sol";
        - Or something yet more ambitious? This could be practically anything we can drive from
          random actions.
 
-   - It *might* be that these mocked-out component models are really useful for other fuzz tests too272
+   - It *might* be that these mocked-out component models are really useful for other fuzz tests too
  */
 
 contract MockBackingManager is IBackingManager, ComponentMock {

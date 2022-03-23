@@ -9,7 +9,7 @@ import "contracts/plugins/mocks/ERC20Mock.sol";
 import "contracts/fuzz/Mocks.sol";
 
 contract RTokenMock is ERC20Mock {
-    uint256 totalMelted = 0;
+    uint256 public totalMelted = 0;
 
     // solhint-disable-next-line no-empty-blocks
     constructor() ERC20Mock("RToken Mock", "RTM") {}
@@ -26,10 +26,10 @@ contract RTokenMock is ERC20Mock {
 contract FurnaceP0TestProps {
     using FixLib for int192;
 
-    MainMock main;
-    FurnaceP0 furn1;
-    FurnaceP0 furn2;
-    ERC20Mock token;
+    MainMock public main;
+    FurnaceP0 public furn1;
+    FurnaceP0 public furn2;
+    ERC20Mock public token;
 
     constructor() {
         // assume sensible period and ratio values
