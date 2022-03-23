@@ -14,7 +14,7 @@
         "devchain": "npx hardhat node",
         "test": "npx hardhat test --parallel",
         "test:p0": "PROTO_IMPL=0 npx hardhat test test/*.test.ts --parallel",
-        "test:p1": "PROTO_IMPL=1 npx hardhat test test/RToken.test.ts --parallel",
+        "test:p1": "PROTO_IMPL=1 npx hardhat test test/RToken.test.ts test/Deployer.test.ts --parallel",
         "test:coverage": "npx hardhat coverage --temp artifacts",
         "test:generic": "npx hardhat test test/generic/*.test.ts",
         "test:parallel": "npx hardhat test --parallel",
