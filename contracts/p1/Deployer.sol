@@ -72,20 +72,21 @@ contract DeployerP1 is IDeployer {
         deployments.push(main);
 
         // Components
-        Components memory components;
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
         string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
-        components.stRSR = new StRSRP1(stRSRName, stRSRSymbol);
-        components.rToken = new RTokenP1(name, symbol, constitutionURI);
-        components.assetRegistry = new AssetRegistryP0();
-        components.basketHandler = new BasketHandlerP0();
-        components.backingManager = new BackingManagerP0();
-        components.distributor = new DistributorP0();
-        components.rsrTrader = new RevenueTradingP0(rsr);
-        components.rTokenTrader = new RevenueTradingP0(components.rToken);
-        components.furnace = new FurnaceP0();
-        components.broker = new BrokerP0();
-
+        IRToken rToken = new RTokenP1(name, symbol, constitutionURI);
+        Components memory components = Components({
+            stRSR: new StRSRP1(stRSRName, stRSRSymbol),
+            rToken: rToken,
+            assetRegistry: new AssetRegistryP0(),
+            basketHandler: new BasketHandlerP0(),
+            backingManager: new BackingManagerP0(),
+            distributor: new DistributorP0(),
+            rsrTrader: new RevenueTradingP0(rsr),
+            rTokenTrader: new RevenueTradingP0(rToken),
+            furnace: new FurnaceP0(),
+            broker: new BrokerP0()
+        });
         IAsset[] memory assets = new IAsset[](4);
         assets[0] = new RTokenAsset(components.rToken, params.maxTradeVolume, main);
         assets[1] = new AavePricedAsset(rsr, params.maxTradeVolume, comptroller, aaveLendingPool);

@@ -25,7 +25,7 @@ abstract contract RewardableP0 is Component, IRewardable {
         IAssetRegistry reg = main.assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();
         IERC20[] memory rewardTokens = new IERC20[](erc20s.length);
-        uint256 numRewardTokens;
+        uint256 numRewardTokens = 0;
 
         for (uint256 i = 0; i < erc20s.length; i++) {
             // Does erc20s[i] _have_ a reward function and reward token?

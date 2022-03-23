@@ -170,7 +170,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Permit, IRToken {
 
     /// Return the highest index that could be completed by a vestIssuances call.
     function endIdForVest(address account) external view returns (uint256) {
-        uint256 i;
+        uint256 i=0;
         int192 currBlock = toFix(block.number);
         SlowIssuance[] storage queue = issuances[account];
 

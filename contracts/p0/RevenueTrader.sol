@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
@@ -11,6 +12,7 @@ import "contracts/p0/mixins/TradingLib.sol";
 /// single target asset and sends this asset to the Distributor.
 contract RevenueTradingP0 is TradingP0, IRevenueTrader {
     using FixLib for int192;
+    using SafeERC20 for IERC20;
 
     IERC20 public immutable tokenToBuy;
 
@@ -45,7 +47,7 @@ contract RevenueTradingP0 is TradingP0, IRevenueTrader {
         if (bal == 0) return;
 
         if (erc20 == tokenToBuy) {
-            erc20.approve(address(main.distributor()), bal);
+            erc20.safeApprove(address(main.distributor()), bal);
             main.distributor().distribute(erc20, address(this), bal);
             return;
         }
