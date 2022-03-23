@@ -99,6 +99,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
     /// @return deposits {qTok} The quantities of collateral tokens transferred in
     /// @custom:action
     function issue(uint256 amtRToken) external notPaused returns (uint256[] memory deposits) {
+        require(amtRToken > 0, "Cannot issue zero");
         // ==== Basic Setup ====
         // Call collective state keepers.
         main.poke(); // TODO: only call what you really need, there should be no en-masse poke()!
@@ -131,16 +132,20 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         int192 vestingEnd = whenFinished(amtRToken);
 
         // Push issuance onto queue
-        IssueItem storage prev = queue.items[queue.right - 1];
         IssueItem storage curr = (
             queue.items.length == queue.right ? queue.items.push() : queue.items[queue.right]
         );
-
         curr.when = vestingEnd.floor();
-        curr.amtRToken = prev.amtRToken + amtRToken;
-        curr.amtBaskets = prev.amtBaskets.plus(amtBaskets);
-        for (uint256 i = 0; i < deposits.length; i++) {
-            curr.deposits[i] = prev.deposits[i] + deposits[i];
+        curr.amtRToken = amtRToken;
+        curr.amtBaskets = amtBaskets;
+        curr.deposits = deposits;
+        if (queue.right > 0) {
+            IssueItem storage prev = queue.items[queue.right - 1];
+            curr.amtRToken = prev.amtRToken + amtRToken;
+            curr.amtBaskets = prev.amtBaskets.plus(amtBaskets);
+            for (uint256 i = 0; i < deposits.length; i++) {
+                curr.deposits[i] = prev.deposits[i] + deposits[i];
+            }
         }
 
         // Configure queue
@@ -172,7 +177,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         }
 
         // Add amtRToken's worth of issuance delay to allVestAt
-        finished = fixMin(allVestAt, toFix(block.number - 1)).plus(divFix(amtRToken, lastIssRate));
+        finished = fixMax(allVestAt, toFix(block.number - 1)).plus(divFix(amtRToken, lastIssRate));
         allVestAt = finished;
     }
 
@@ -194,8 +199,8 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
 
         // Handle common edge cases in O(1)
         if (queue.left == queue.right) return queue.left;
-        if (block.timestamp < queue.items[queue.left].when) return queue.left;
-        if (queue.items[queue.right].when <= block.timestamp) return queue.right;
+        if (block.number < queue.items[queue.left].when) return queue.left;
+        if (queue.items[queue.right - 1].when <= block.number) return queue.right;
 
         // find left and right (using binary search where always left <= right) such that:
         //     left == right - 1
@@ -205,7 +210,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         uint256 right = queue.right;
         while (left < right - 1) {
             uint256 test = (left + right) / 2;
-            if (queue.items[test].when <= block.timestamp) left = test;
+            if (queue.items[test].when <= block.number) left = test;
             else right = test;
         }
         return right;
@@ -346,7 +351,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         emit IssuancesCanceled(account, left, right);
     }
 
-    /// Vest all RToken issuance in queue = queues[account], from queue.left through index `through`
+    /// Vest all RToken issuance in queue = queues[account], from queue.left to < `endId`
     /// This *does* fixup queue.left and queue.right!
     function vestUpTo(address account, uint256 endId) private returns (uint256 amtRToken) {
         IssueQueue storage queue = issueQueues[account];
@@ -356,7 +361,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         // Vest the span up to `endId`.
         uint256 amtRTokenToMint;
         int192 newBasketsNeeded;
-        IssueItem storage rightItem = queue.items[endId];
+        IssueItem storage rightItem = queue.items[endId - 1];
 
         if (queue.left == 0) {
             for (uint256 i = 0; i < queue.tokens.length; i++) {
@@ -376,8 +381,8 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         }
 
         _mint(account, amtRTokenToMint);
-        basketsNeeded = newBasketsNeeded;
         emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
+        basketsNeeded = newBasketsNeeded;
 
         emit IssuancesCompleted(account, queue.left, endId);
         queue.left = endId;
