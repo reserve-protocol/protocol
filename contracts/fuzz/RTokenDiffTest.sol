@@ -107,8 +107,8 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
     }
 
     /// @return baskets {BU} The quantity of complete baskets at an address. A balance for BUs
-    function basketsHeldBy(address account) external view returns (int192 baskets) {
-        baskets = toFix(token().balanceOf(account));
+    function basketsHeldBy(address acct) external view returns (int192 baskets) {
+        baskets = toFix(token().balanceOf(acct));
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
@@ -218,6 +218,8 @@ contract RTokenDiffTest {
 
     // ==== user actions, performed by 0x[123]0000. Melt
     function issue(uint256 amount) external fromSender returns (uint256[] memory deposits) {
+        amount %= 1e36;
+
         uint256[] memory deposits1;
         deposits = p0.rToken().issue(amount);
         deposits1 = p1.rToken().issue(amount);
@@ -231,35 +233,41 @@ contract RTokenDiffTest {
         p1.rToken().cancel(endId, e);
     }
 
-    function vest(address account, uint256 endId) external fromSender returns (uint256 vested) {
-        p0.rToken().vest(account, endId);
-        p1.rToken().vest(account, endId);
+    function vest(address acct, uint256 endId) external fromSender returns (uint256 vested) {
+        p0.rToken().vest(acct, endId);
+        p1.rToken().vest(acct, endId);
     }
 
     // TODO: Add "cancel" and "vest" variations that are likely to succeed too
     // i.e, ones that have valid endIDs
     function redeem(uint256 amount) external fromSender returns (uint256[] memory compensation) {
+        amount %= 1e36;
         p0.rToken().redeem(amount);
         p1.rToken().redeem(amount);
     }
 
     function melt(uint256 amount) external fromSender {
+        amount %= 1e36;
         p0.rToken().melt(amount);
         p1.rToken().melt(amount);
     }
 
     function mint(address recipient, uint256 amount) external fromBackingMgr {
+        amount %= 1e36;
+        recipient = address((uint160(recipient) % 3) * 0x10000); // mint only to USERS
         p0.rToken().mint(recipient, amount);
         p1.rToken().mint(recipient, amount);
     }
 
     function setBasketsNeeded(int192 basketsNeeded) external fromBackingMgr {
+        basketsNeeded %= 1e52;
         p0.rToken().setBasketsNeeded(basketsNeeded);
         p1.rToken().setBasketsNeeded(basketsNeeded);
     }
 
     // Auth on these is that the caller needs to be main.owner. That... should be this contract?
     function setIssuanceRate(int192 val) external {
+        val %= 1e24;
         assert(p0.owner() == address(this)); // hope but verify
         assert(p1.owner() == address(this));
         RTokenP0(address(p0.rToken())).setIssuanceRate(val);
@@ -269,28 +277,35 @@ contract RTokenDiffTest {
     // TODO: changes to MockERC20 balances
 
     // Invariant: the observable rtoken prices are equal
-    function echidna_prices_equal() external returns (bool) {
+    function echidna_prices_equal() external view returns (bool) {
         return p0.rToken().price() == p1.rToken().price();
     }
 
-    function echidna_vesting_ids_equal() external returns (bool) {
+    function echidna_vesting_ids_equal() external view returns (bool) {
         return
             p0.rToken().endIdForVest(USERS[0]) == p1.rToken().endIdForVest(USERS[0]) &&
             p0.rToken().endIdForVest(USERS[1]) == p1.rToken().endIdForVest(USERS[1]) &&
             p0.rToken().endIdForVest(USERS[2]) == p1.rToken().endIdForVest(USERS[2]);
     }
 
-    function echidna_baskets_needed_equal() external returns (bool) {
+    function echidna_baskets_needed_equal() external view returns (bool) {
         return p0.rToken().basketsNeeded() == p1.rToken().basketsNeeded();
     }
 
-    function echidna_user_balances_equal() external returns (bool equal) {
-        equal = true;
+    function all_balances_equal(address acct0, address acct1) internal view returns (bool) {
+        return
+            p0.baseA().balanceOf(acct0) == p1.baseA().balanceOf(acct1) &&
+            p0.baseB().balanceOf(acct0) == p1.baseB().balanceOf(acct1) &&
+            p0.rToken().balanceOf(acct0) == p1.rToken().balanceOf(acct1);
+    }
+
+    function echidna_user_balances_equal() external view returns (bool equal) {
+        equal =
+            all_balances_equal(address(p0.backingManager()), address(p1.backingManager())) &&
+            all_balances_equal(address(p0.basketHandler()), address(p1.basketHandler())) &&
+            all_balances_equal(address(p0), address(p1));
         for (uint256 i = 0; i < USERS.length; i++) {
-            equal =
-                equal &&
-                p0.baseA().balanceOf(USERS[i]) == p1.baseA().balanceOf(USERS[i]) &&
-                p0.baseB().balanceOf(USERS[i]) == p1.baseB().balanceOf(USERS[i]);
+            equal = equal && all_balances_equal(USERS[i], USERS[i]);
         }
     }
 }
