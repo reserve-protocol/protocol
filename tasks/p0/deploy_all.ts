@@ -1,3 +1,4 @@
+import { ONE_ETH } from './../../common/constants'
 import { ContractFactory } from 'ethers'
 import { task } from 'hardhat/config'
 import { expectInReceipt } from '../../common/events'
@@ -84,6 +85,18 @@ task('P0-deploy', 'Deploys all Protocol components and an RToken').setAction(
 
     console.log('Unpausing...')
     await main.connect(deployer).unpause()
+
+    // TODO: Test remove
+    console.log('RSR Funding')
+    const holderAddr = '0x6262998ced04146fa42253a5c0af90ca02dfd2a3'
+    await hre.network.provider.request({
+      method: 'hardhat_impersonateAccount',
+      params: [holderAddr],
+    })
+    const rsrHolder = hre.ethers.provider.getSigner(holderAddr)
+
+    const RSR = await hre.ethers.getContractAt('ERC20', RSR_ADDRESS)
+    await RSR.connect(rsrHolder).transfer(deployer.address, ONE_ETH.mul(100000))
 
     console.log(`
     -------------------------
