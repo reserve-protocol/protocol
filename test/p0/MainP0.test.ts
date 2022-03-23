@@ -537,6 +537,33 @@ describe('MainP0 contract', () => {
       expect(await backingManager.backingBuffer()).to.equal(newValue)
     })
 
+    // it('Should perform validations on for granting allowances', async () => {
+
+    // //   function grantAllowances() external notPaused {
+    // //     require(_msgSender() == address(main.rToken()), "RToken only");
+    // //     IERC20[] memory erc20s = main.assetRegistry().erc20s();
+    // //     for (uint256 i = 0; i < erc20s.length; i++) {
+    // //         erc20s[i].approve(address(main.rToken()), type(uint256).max);
+    // //     }
+    // // }
+    //   // Check allowances
+
+    //   // Cannot grant allowance if paused
+
+    //   // Cannot grant allowance if not RToken
+    //   // Attempt to run with another account
+    //   await expect(backingManager.connect(owner).grantAllowances()).to.be.revertedWith('RToken only')
+
+    //   // Run with RToken
+    //   await expect(backingManager.connect(owner).setBackingBuffer(newValue))
+    //     .to.emit(backingManager, 'BackingBufferSet')
+    //     .withArgs(config.backingBuffer, newValue)
+
+    //   // Check allowances were updated
+
+    //   expect(await backingManager.backingBuffer()).to.equal(newValue)
+    // })
+
     it('Should return backing tokens', async () => {
       expect(await facade.basketTokens()).to.eql([
         token0.address,
@@ -1139,6 +1166,14 @@ describe('MainP0 contract', () => {
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
       expect(await basketHandler.quantity(token2.address)).to.equal(0)
       expect(await basketHandler.quantity(token3.address)).to.equal(0)
+
+      // Force empty basket
+      await expect(assetRegistry.connect(owner).unregister(collateral0.address))
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs([], [], true)
+
+      // Should revert
+      await expect(basketHandler.basketsHeldBy(addr1.address)).to.be.revertedWith('EmptyBasket()')
     })
   })
 })
