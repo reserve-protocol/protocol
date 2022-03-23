@@ -12,6 +12,9 @@ import {
   BasketHandlerP0,
   BrokerP0,
   ComptrollerMock,
+  IDeployer,
+  IRToken,
+  IStRSR,
   DeployerP0,
   DistributorP0,
   ERC20Mock,
@@ -32,7 +35,7 @@ describe('DeployerP0 contract', () => {
   let owner: SignerWithAddress
 
   // Deployer contract
-  let deployer: DeployerP0
+  let deployer: IDeployer
 
   // Config
   let config: IConfig
@@ -55,9 +58,9 @@ describe('DeployerP0 contract', () => {
   let facade: FacadeP0
 
   // Core contracts
-  let rToken: RTokenP0
+  let rToken: IRToken
   let rTokenAsset: RTokenAsset
-  let stRSR: StRSRP0
+  let stRSR: IStRSR
   let furnace: FurnaceP0
   let main: MainP0
   let assetRegistry: AssetRegistryP0

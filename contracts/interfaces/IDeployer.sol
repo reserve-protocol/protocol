@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
+import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 import "./IFacade.sol";
+import "./IGnosis.sol";
 import "./IMain.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
@@ -72,4 +76,20 @@ interface IDeployer {
         address owner,
         DeploymentParams memory params
     ) external returns (address);
+
+    // Needed for tests
+
+    function rsr() external view returns (IERC20Metadata);
+
+    function comp() external view returns (IERC20Metadata);
+
+    function aave() external view returns (IERC20Metadata);
+
+    function gnosis() external view returns (IGnosis);
+
+    function comptroller() external view returns (IComptroller);
+
+    function aaveLendingPool() external view returns (IAaveLendingPool);
+
+    function deployments(uint256) external view returns (IMain);
 }
