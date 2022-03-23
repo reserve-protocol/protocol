@@ -38,7 +38,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
 
     // IssueItem: One edge of an issuance
     struct IssueItem {
-        uint256 when; // {block number}
+        int192 when; // {block number} fractional
         uint256 amtRToken; // {qRTok} Total amount of RTokens that have vested by `when`
         int192 amtBaskets; // {BU} Total amount of baskets that should back those RTokens
         uint256[] deposits; // {qTok}, Total amounts of basket collateral deposited for vesting
@@ -84,7 +84,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         constitutionURI = constitutionURI_;
     }
 
-    function init(ConstructorArgs calldata args) internal override {
+    function init(ConstructorArgs memory args) internal override {
         issuanceRate = args.params.issuanceRate;
         emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }
@@ -135,7 +135,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         IssueItem storage curr = (
             queue.items.length == queue.right ? queue.items.push() : queue.items[queue.right]
         );
-        curr.when = vestingEnd.floor();
+        curr.when = vestingEnd;
         curr.amtRToken = amtRToken;
         curr.amtBaskets = amtBaskets;
         curr.deposits = deposits;
@@ -164,7 +164,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         );
 
         // Vest immediately if the vesting fits into this block.
-        if (curr.when <= block.number) vestUpTo(issuer, queue.right);
+        if (curr.when.lte(toFix(block.number))) vestUpTo(issuer, queue.right);
     }
 
     /// Add amtRToken's worth of issuance delay to allVestAt, and return the resulting finish time.
@@ -194,13 +194,15 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         return vestUpTo(account, endId);
     }
 
+    /// @return A non-inclusive ending index
     function endIdForVest(address account) external view returns (uint256) {
         IssueQueue storage queue = issueQueues[account];
+        int192 blockNumber = toFix(block.number);
 
         // Handle common edge cases in O(1)
         if (queue.left == queue.right) return queue.left;
-        if (block.number < queue.items[queue.left].when) return queue.left;
-        if (queue.items[queue.right - 1].when <= block.number) return queue.right;
+        if (blockNumber.lt(queue.items[queue.left].when)) return queue.left;
+        if (queue.items[queue.right - 1].when.lte(blockNumber)) return queue.right;
 
         // find left and right (using binary search where always left <= right) such that:
         //     left == right - 1
@@ -210,10 +212,10 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         uint256 right = queue.right;
         while (left < right - 1) {
             uint256 test = (left + right) / 2;
-            if (queue.items[test].when <= block.number) left = test;
+            if (queue.items[test].when < blockNumber) left = test;
             else right = test;
         }
-        return right;
+        return right + 1;
     }
 
     /// Cancel some vesting issuance(s)
@@ -225,7 +227,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
-        require(queue.left <= endId && endId < queue.right, "'endId' is out of range");
+        require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
 
         if (earliest) {
             deposits = refundSpan(account, queue.left, endId);
@@ -327,6 +329,8 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         uint256 right
     ) private returns (uint256[] memory deposits) {
         IssueQueue storage queue = issueQueues[account];
+        assert(queue.left <= left && right <= queue.right);
+        deposits = new uint256[](queue.tokens.length);
         if (left >= right) return deposits;
 
         // compute total deposits
@@ -336,7 +340,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
                 deposits[i] = rightItem.deposits[i];
             }
         } else {
-            IssueItem storage leftItem = queue.items[queue.left - 1];
+            IssueItem storage leftItem = queue.items[queue.left];
             for (uint256 i = 0; i < queue.tokens.length; i++) {
                 deposits[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
@@ -351,7 +355,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         emit IssuancesCanceled(account, left, right);
     }
 
-    /// Vest all RToken issuance in queue = queues[account], from queue.left to < `endId`
+    /// Vest all RToken issuance in queue = queues[account], from queue.left to < endId
     /// This *does* fixup queue.left and queue.right!
     function vestUpTo(address account, uint256 endId) private returns (uint256 amtRToken) {
         IssueQueue storage queue = issueQueues[account];

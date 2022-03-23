@@ -193,12 +193,12 @@ contract RTokenP0Test is RTokenP0 {
     }
 }
 
-contract RTokenP1Test is RToken {
+contract RTokenP1Test is RTokenP1 {
     constructor(
         string memory name_,
         string memory symbol_,
         string memory constitution_
-    ) RToken(name_, symbol_, constitution_) {}
+    ) RTokenP1(name_, symbol_, constitution_) {}
 
     function _msgSender() internal view virtual override returns (address) {
         return MainMock(address(main)).sender();
@@ -300,7 +300,7 @@ contract RTokenDiffTest {
         assert(p0.owner() == address(this)); // hope but verify
         assert(p1.owner() == address(this));
         RTokenP0(address(p0.rToken())).setIssuanceRate(val);
-        RToken(address(p1.rToken())).setIssuanceRate(val);
+        RTokenP1(address(p1.rToken())).setIssuanceRate(val);
     }
 
     // TODO: changes to MockERC20 balances
