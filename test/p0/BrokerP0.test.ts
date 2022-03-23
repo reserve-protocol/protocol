@@ -493,9 +493,9 @@ describe('BrokerP0 contract', () => {
       // Check status
       expect(await trade.status()).to.equal(TradeStatus.CLOSED)
 
-      // Check balances on Trade and Origin
+      // Check balances on Trade and Origin - Funds sent back to origin (no bids)
       expect(await token0.balanceOf(trade.address)).to.equal(0)
-      expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(amount)
 
       // Send arbitrary funds to Trade
       const newFunds: BigNumber = amount.div(2)
@@ -503,7 +503,7 @@ describe('BrokerP0 contract', () => {
 
       // Check balances again
       expect(await token0.balanceOf(trade.address)).to.equal(newFunds)
-      expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(amount)
 
       // Transfer to origin
       await expect(trade.transferToOriginAfterTradeComplete(token0.address))
@@ -512,7 +512,7 @@ describe('BrokerP0 contract', () => {
 
       // Check balances again - funds sent to origin
       expect(await token0.balanceOf(trade.address)).to.equal(0)
-      expect(await token0.balanceOf(backingManager.address)).to.equal(newFunds)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
     })
   })
 })
