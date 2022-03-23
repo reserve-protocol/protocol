@@ -24,15 +24,13 @@ import {
   DistributorP0,
   FacadeP0,
   FurnaceP0,
-  IDeployer,
-  IStRSR,
-  IRToken,
+  TestIDeployer,
+  TestIStRSR,
+  TestIRToken,
   GnosisMock,
   MainP0,
   RevenueTradingP0,
   RTokenAsset,
-  RTokenP0,
-  StRSRP0,
   StaticATokenMock,
   TradingLibP0,
   USDCMock,
@@ -160,7 +158,7 @@ interface CollateralFixture {
 }
 
 async function collateralFixture(
-  deployer: IDeployer,
+  deployer: TestIDeployer,
   comptroller: ComptrollerMock,
   aaveLendingPool: AaveLendingPoolMock,
   aaveToken: ERC20Mock,
@@ -323,7 +321,7 @@ type RSRAndCompAaveAndCollateralAndModuleFixture = RSRFixture &
 interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   config: IConfig
   dist: IRevenueShare
-  deployer: IDeployer
+  deployer: TestIDeployer
   main: MainP0
   assetRegistry: AssetRegistryP0
   backingManager: BackingManagerP0
@@ -332,10 +330,10 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   rsrAsset: Asset
   compAsset: Asset
   aaveAsset: Asset
-  rToken: IRToken
+  rToken: TestIRToken
   rTokenAsset: RTokenAsset
   furnace: FurnaceP0
-  stRSR: IStRSR
+  stRSR: TestIStRSR
   facade: FacadeP0
   broker: BrokerP0
   rsrTrader: RevenueTradingP0
@@ -384,7 +382,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
     libraries: { TradingLibP0: tradingLib.address },
   })
-  let deployer: IDeployer = <DeployerP0>(
+  let deployer: TestIDeployer = <DeployerP0>(
     await DeployerFactory.deploy(
       rsr.address,
       compToken.address,
@@ -447,7 +445,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       await assetRegistry.toAsset(compToken.address)
     )
   )
-  const rToken: IRToken = <IRToken>await ethers.getContractAt('IRToken', await main.rToken())
+  const rToken: TestIRToken = <TestIRToken>(
+    await ethers.getContractAt('TestIRToken', await main.rToken())
+  )
   const rTokenAsset: RTokenAsset = <RTokenAsset>(
     await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
   )
@@ -457,7 +457,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const furnace: FurnaceP0 = <FurnaceP0>(
     await ethers.getContractAt('FurnaceP0', await main.furnace())
   )
-  const stRSR: IStRSR = <IStRSR>await ethers.getContractAt('IStRSR', await main.stRSR())
+  const stRSR: TestIStRSR = <TestIStRSR>await ethers.getContractAt('TestIStRSR', await main.stRSR())
 
   const facade: FacadeP0 = <FacadeP0>await ethers.getContractAt('FacadeP0', facadeAddr)
 

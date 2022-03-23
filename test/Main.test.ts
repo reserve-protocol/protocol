@@ -18,7 +18,7 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
-  IDeployer,
+  TestIDeployer,
   DistributorP0,
   ERC20Mock,
   FacadeP0,
@@ -27,9 +27,9 @@ import {
   GnosisMock,
   RevenueTradingP0,
   RTokenAsset,
-  IRToken,
+  TestIRToken,
   StaticATokenMock,
-  IStRSR,
+  TestIStRSR,
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
@@ -45,7 +45,7 @@ describe('MainP0 contract', () => {
   let other: SignerWithAddress
 
   // Deployer contract
-  let deployer: IDeployer
+  let deployer: TestIDeployer
 
   // Assets
   let collateral: Collateral[]
@@ -84,9 +84,9 @@ describe('MainP0 contract', () => {
   let config: IConfig
 
   // Contracts to retrieve after deploy
-  let rToken: IRToken
+  let rToken: TestIRToken
   let rTokenAsset: RTokenAsset
-  let stRSR: IStRSR
+  let stRSR: TestIStRSR
   let furnace: FurnaceP0
   let main: MainP0
   let facade: FacadeP0

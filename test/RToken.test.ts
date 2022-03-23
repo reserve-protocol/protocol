@@ -14,7 +14,7 @@ import {
   ERC20Mock,
   FacadeP0,
   MainP0,
-  IRToken,
+  TestIRToken,
   RTokenP0,
   RTokenP1,
   StaticATokenMock,
@@ -52,7 +52,7 @@ describe('RToken contract', () => {
   let aaveOracleInternal: AaveOracleMock
   // Main
   let main: MainP0
-  let rToken: IRToken
+  let rToken: TestIRToken
   let facade: FacadeP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0

@@ -76,9 +76,9 @@ interface IDeployer {
         address owner,
         DeploymentParams memory params
     ) external returns (address);
+}
 
-    // Needed for tests
-
+interface TestIDeployer is IDeployer {
     function rsr() external view returns (IERC20Metadata);
 
     function comp() external view returns (IERC20Metadata);
