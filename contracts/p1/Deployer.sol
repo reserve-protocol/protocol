@@ -75,8 +75,8 @@ contract DeployerP1 is IDeployer {
         Components memory components;
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
         string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
-        components.stRSR = new StRSR(stRSRName, stRSRSymbol);
-        components.rToken = new RToken(name, symbol, constitutionURI);
+        components.stRSR = new StRSRP1(stRSRName, stRSRSymbol);
+        components.rToken = new RTokenP1(name, symbol, constitutionURI);
         components.assetRegistry = new AssetRegistryP0();
         components.basketHandler = new BasketHandlerP0();
         components.backingManager = new BackingManagerP0();

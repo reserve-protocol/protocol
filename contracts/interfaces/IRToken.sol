@@ -117,7 +117,7 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
     function price() external view returns (int192 p);
 
     /// Set the issuance rate as a % of RToken supply
-    function issuanceRate(int192) external;
+    function setIssuanceRate(int192) external;
 
     /// @return {%} The issuance rate as a percentage of the RToken supply
     function issuanceRate() external view returns (int192);

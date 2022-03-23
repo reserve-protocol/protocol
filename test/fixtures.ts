@@ -38,12 +38,12 @@ import {
   USDCMock,
 } from '../typechain'
 
-enum Implementation {
+export enum Implementation {
   P0,
   P1,
 }
 
-const IMPLEMENTATION: Implementation =
+export const IMPLEMENTATION: Implementation =
   process.env.PROTO_IMPL == Implementation.P1.toString() ? Implementation.P1 : Implementation.P0
 
 export type Collateral = AbstractCollateral | CTokenFiatCollateral | ATokenFiatCollateral
