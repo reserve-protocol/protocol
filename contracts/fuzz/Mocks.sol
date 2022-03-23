@@ -13,7 +13,7 @@ contract MainMock is MainP0 {
         sender = sender_;
     }
 
-    function init(ConstructorArgs calldata) public virtual override(MainP0) {
+    function init(ConstructorArgs memory) public virtual override(MainP0) {
         require(!initialized, "Already Initialized");
         initialized = true;
         emit Initialized();

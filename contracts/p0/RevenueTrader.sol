@@ -18,7 +18,7 @@ contract RevenueTradingP0 is TradingP0, IRevenueTrader {
         tokenToBuy = tokenToBuy_;
     }
 
-    function init(ConstructorArgs calldata args) internal override {
+    function init(ConstructorArgs memory args) internal override {
         TradingP0.init(args);
     }
 

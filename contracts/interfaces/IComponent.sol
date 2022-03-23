@@ -11,7 +11,7 @@ import "./IMain.sol";
  */
 interface IComponent {
     /// Support uniform construction
-    function initComponent(IMain main, ConstructorArgs calldata args) external;
+    function initComponent(IMain main, ConstructorArgs memory args) external;
 
     function main() external view returns (IMain);
 }

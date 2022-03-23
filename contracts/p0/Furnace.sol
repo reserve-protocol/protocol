@@ -17,7 +17,7 @@ contract FurnaceP0 is Component, IFurnace {
     uint256 public lastPayout; // {seconds} The last time we did a payout
     uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
 
-    function init(ConstructorArgs calldata args) internal override {
+    function init(ConstructorArgs memory args) internal override {
         period = args.params.rewardPeriod;
         ratio = args.params.rewardRatio;
         lastPayout = block.timestamp;
