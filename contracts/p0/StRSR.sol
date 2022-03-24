@@ -181,7 +181,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         // Accumulate and zero executable withdrawals
         uint256 total = 0;
         uint256 i = start;
-        for (i; i < endId && queue[i].availableAt <= block.timestamp; i++) {
+        for (; i < endId && queue[i].availableAt <= block.timestamp; i++) {
             total += queue[i].rsrAmount;
             queue[i].rsrAmount = 0;
             queue[i].stakeAmount = 0;
@@ -229,11 +229,11 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
             seizedRSR = backingToTake;
 
             for (uint256 i = 0; i < accounts.length(); i++) {
-                Withdrawal[] storage withdrawalQ = withdrawals[accounts.at(i)];
-                for (uint256 j = 0; j < withdrawalQ.length; j++) {
-                    uint256 withdrawAmt = withdrawalQ[j].rsrAmount;
+                Withdrawal[] storage queue = withdrawals[accounts.at(i)];
+                for (uint256 j = 0; j < queue.length; j++) {
+                    uint256 withdrawAmt = queue[j].rsrAmount;
                     uint256 amtToTake = (withdrawAmt * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-                    withdrawalQ[j].rsrAmount -= amtToTake;
+                    queue[j].rsrAmount -= amtToTake;
 
                     seizedRSR += amtToTake;
                 }
