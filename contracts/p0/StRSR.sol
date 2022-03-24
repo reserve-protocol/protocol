@@ -86,7 +86,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     uint256 public rewardPeriod;
     int192 public rewardRatio;
 
-    constructor(string memory name_, string memory symbol_) EIP712(name_, "1") Component() {
+    constructor(string memory name_, string memory symbol_) EIP712(name_, "1") {
         _name = name_;
         _symbol = symbol_;
     }
