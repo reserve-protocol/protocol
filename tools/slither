@@ -13,4 +13,4 @@ while [ ! -d .git -a `pwd` != "/" ]; do cd ..; done
 
 
 # Run from inside `tools` so that the slither config files can live there
-cd tools && slither ../
+cd tools && slither ../ "$@"

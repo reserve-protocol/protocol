@@ -3,4 +3,6 @@
 # cd to project root
 while [ ! -d .git -a `pwd` != "/" ]; do cd ..; done
 
-git ls-files | egrep '\.(ts|sol|json)$' | xargs yarn exec prettier --write
+git ls-files | # List all files in git
+    egrep '\.(ts|sol|json)$' | # Filter down to files with source-code extensions
+    xargs -J % yarn exec prettier --write % "$@" # Run prettier on those files
