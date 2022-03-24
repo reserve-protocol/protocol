@@ -1,0 +1,6 @@
+#!/bin/bash -euo pipefail
+
+# cd to project root
+while [ ! -d .git -a `pwd` != "/" ]; do cd ..; done
+
+git ls-files | egrep '\.(ts|sol|json)$' | xargs yarn exec prettier --write

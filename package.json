@@ -11,20 +11,18 @@
     "scripts": {
         "compile": "TS_NODE_TRANSPILE_ONLY=1 hardhat compile",
         "deploy:p0": "TASKS=true hardhat run scripts/proto0/deploy_all.ts --network localhost",
-        "devchain": " hardhat node",
+        "devchain": "hardhat node",
         "test": "yarn test:p0 && yarn test:p1",
         "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts --parallel",
         "test:p1": "PROTO_IMPL=1 hardhat test test/RToken.test.ts test/StRSR.test.ts test/Deployer.test.ts --parallel",
         "test:coverage": "hardhat coverage --temp artifacts",
         "test:serial": "hardhat test",
         "test:recompile": "hardhat compile --force && mocha --require hardhat/register --recursive --exit",
-        "lint": "bash tools/lint.sh",
-        "prettier": "prettier --write 'contracts/**/*.sol' '{test,common,scripts,tasks,types,}/**/{*.ts,*.json}' '*.ts' '*.json'",
-        "mythril": "./mythril.sh",
-        "echidna": "rm -rf crytic-export && ./echidna.sh",
-        "flatten": "waffle flatten",
+        "lint": "bash tools/lint",
         "prepare": "husky install",
-        "size": " hardhat size-contracts"
+        "prettier": "bash tools/prettier",
+        "size": " hardhat size-contracts",
+        "slither": "bash tools/slither"
     },
     "repository": {
         "type": "git",
