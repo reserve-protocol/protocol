@@ -14,10 +14,10 @@ import {
   ERC20Mock,
   FacadeP0,
   MainP0,
-  TestIRToken,
   RTokenP0,
   RTokenP1,
   StaticATokenMock,
+  TestIRToken,
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
@@ -26,7 +26,7 @@ import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } f
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('RToken contract', () => {
+describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress

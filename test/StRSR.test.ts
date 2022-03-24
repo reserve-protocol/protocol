@@ -7,18 +7,16 @@ import { getChainId } from '../common/blockchain-utils'
 import { bn, fp, near } from '../common/numbers'
 import {
   AaveOracleMock,
-  AssetRegistryP0,
   BackingManagerP0,
   BasketHandlerP0,
   CTokenMock,
-  DistributorP0,
   ERC20Mock,
   FacadeP0,
   MainP0,
-  TestIRToken,
   StRSRP0,
   StRSRP1,
   StaticATokenMock,
+  TestIRToken,
   TestIStRSR,
 } from '../typechain'
 import { CollateralStatus, ZERO_ADDRESS } from '../common/constants'
@@ -29,7 +27,7 @@ import { makeDecayFn, calcErr } from './utils/rewards'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('StRSR contract', () => {
+describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -41,10 +39,8 @@ describe('StRSR contract', () => {
 
   // Main
   let main: MainP0
-  let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
-  let distributor: DistributorP0
   let rToken: TestIRToken
   let facade: FacadeP0
 
@@ -134,10 +130,8 @@ describe('StRSR contract', () => {
       basketsNeededAmts,
       config,
       main,
-      assetRegistry,
       backingManager,
       basketHandler,
-      distributor,
       rToken,
       facade,
     } = await loadFixture(defaultFixture))
