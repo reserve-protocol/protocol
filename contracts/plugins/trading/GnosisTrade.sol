@@ -58,7 +58,7 @@ contract GnosisTrade is ITrade {
         sellAmount = sell.balanceOf(address(this));
         worstCasePrice = toFix(req.minBuyAmount).divu(sellAmount);
 
-        sell.safeApprove(address(gnosis), sellAmount);
+        sell.safeIncreaseAllowance(address(gnosis), sellAmount);
         auctionId = gnosis.initiateAuction(
             sell,
             buy,
