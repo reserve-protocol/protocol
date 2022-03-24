@@ -9,7 +9,7 @@
         "node": ">=10"
     },
     "scripts": {
-        "compile": "TS_NODE_TRANSPILE_ONLY=1hardhat compile",
+        "compile": "TS_NODE_TRANSPILE_ONLY=1 hardhat compile",
         "deploy:p0": "TASKS=true hardhat run scripts/proto0/deploy_all.ts --network localhost",
         "devchain": " hardhat node",
         "test": "yarn test:p0 && yarn test:p1",
@@ -24,9 +24,7 @@
         "echidna": "rm -rf crytic-export && ./echidna.sh",
         "flatten": "waffle flatten",
         "prepare": "husky install",
-        "size": " hardhat size-contracts",
-        "whh2": " which hardhat",
-        "whh1": "which hardhat"
+        "size": " hardhat size-contracts"
     },
     "repository": {
         "type": "git",
