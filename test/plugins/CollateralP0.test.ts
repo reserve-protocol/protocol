@@ -16,7 +16,7 @@ import {
   CTokenMock,
   ERC20Mock,
   FacadeP0,
-  RTokenP0,
+  TestIRToken,
   StaticATokenMock,
   USDCMock,
 } from '../../typechain'
@@ -31,7 +31,7 @@ const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 describe('Collateral contracts', () => {
   let owner: SignerWithAddress
 
-  let rToken: RTokenP0
+  let rToken: TestIRToken
 
   // Tokens
   let token: ERC20Mock
