@@ -12,26 +12,23 @@ import {
   BasketHandlerP0,
   BrokerP0,
   ComptrollerMock,
-  TestIDeployer,
-  TestIRToken,
-  TestIStRSR,
-  DeployerP0,
   DistributorP0,
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
-  MainP0,
   GnosisMock,
+  MainP0,
   RTokenAsset,
-  RTokenP0,
-  StRSRP0,
+  TestIDeployer,
+  TestIRToken,
+  TestIStRSR,
   TradingP0,
 } from '../typechain'
-import { defaultFixture, IConfig } from './fixtures'
+import { defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('DeployerP0 contract', () => {
+describe(`DeployerP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
 
   // Deployer contract
