@@ -98,8 +98,8 @@ library TradingLibP0 {
         int192 basketBottom = basketTop;
 
         if (compromiseTarget) {
-            int192 tradeVolume=FIX_ZERO;
-            int192 totalValue=FIX_ZERO;
+            int192 tradeVolume = FIX_ZERO;
+            int192 totalValue = FIX_ZERO;
             for (uint256 i = 0; i < erc20s.length; i++) {
                 IAsset asset = assetRegistry().toAsset(erc20s[i]);
                 totalValue = totalValue.plus(asset.bal(address(this)).mul(asset.price()));
@@ -122,8 +122,8 @@ library TradingLibP0 {
             ); // {BU}
         }
 
-        int192 max=FIX_ZERO; // {UoA} positive!
-        int192 min=FIX_ZERO; // {UoA} negative!
+        int192 max = FIX_ZERO; // {UoA} positive!
+        int192 min = FIX_ZERO; // {UoA} negative!
         for (uint256 i = 0; i < erc20s.length; i++) {
             IAsset asset = assetRegistry().toAsset(erc20s[i]);
             int192 tokenTop = FIX_ZERO; // {tok}
