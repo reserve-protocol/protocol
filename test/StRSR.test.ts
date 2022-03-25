@@ -998,7 +998,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr3.address)).to.equal(amount)
     })
 
-    it.only('Should seize all RSR if required - Mayhem scenario', async () => {
+    it('Should seize all RSR if required - Mayhem scenario', async () => {
       const amount: BigNumber = bn('10e18')
 
       // Stake
