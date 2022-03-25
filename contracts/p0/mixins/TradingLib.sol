@@ -74,13 +74,12 @@ library TradingLibP0 {
     }
 
     // Compute max surpluse relative to basketTop and max deficit relative to basketBottom
-    /// @param sellRSR If true, consider RSR a sellable asset
     /// @param useFallenTarget If true, trade towards a reduced BU target
     /// @return surplus Surplus asset OR address(0)
     /// @return deficit Deficit collateral OR address(0)
     /// @return sellAmount {sellTok} Surplus amount (whole tokens)
     /// @return buyAmount {buyTok} Deficit amount (whole tokens)
-    function largestSurplusAndDeficit(bool sellRSR, bool useFallenTarget)
+    function largestSurplusAndDeficit(bool useFallenTarget)
         external
         view
         returns (
@@ -103,7 +102,12 @@ library TradingLibP0 {
             int192 totalValue = FIX_ZERO;
             for (uint256 i = 0; i < erc20s.length; i++) {
                 IAsset asset = assetRegistry().toAsset(erc20s[i]);
-                totalValue = totalValue.plus(asset.bal(address(this)).mul(asset.price()));
+
+                // Ignore dust amounts, since they cannot be traded
+                int192 bal = asset.bal(address(this)); // {tok}
+                if (bal.gt(dustThreshold(asset))) {
+                    totalValue = totalValue.plus(bal.mul(asset.price()));
+                }
             }
             basketTop = totalValue.div(basket().price());
 
@@ -126,7 +130,8 @@ library TradingLibP0 {
         int192 max = FIX_ZERO; // {UoA} positive!
         int192 min = FIX_ZERO; // {UoA} negative!
         for (uint256 i = 0; i < erc20s.length; i++) {
-            if (!sellRSR && erc20s[i] == rsr()) continue;
+            if (erc20s[i] == rsr()) continue; // do not consider RSR as surplus or deficit
+
             IAsset asset = assetRegistry().toAsset(erc20s[i]);
 
             int192 tokenTop = FIX_ZERO; // {tok}

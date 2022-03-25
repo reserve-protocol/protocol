@@ -179,7 +179,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             ICollateral deficit,
             int192 surplusAmount,
             int192 deficitAmount
-        ) = TradingLibP0.largestSurplusAndDeficit(false, useFallenTarget);
+        ) = TradingLibP0.largestSurplusAndDeficit(useFallenTarget);
 
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
 
@@ -214,7 +214,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
 
         (, ICollateral deficit, , int192 deficitAmount) = TradingLibP0.largestSurplusAndDeficit(
-            true,
             false
         );
         if (address(deficit) == address(0)) return (false, req);
