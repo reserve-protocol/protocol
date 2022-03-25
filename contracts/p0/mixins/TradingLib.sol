@@ -74,12 +74,13 @@ library TradingLibP0 {
     }
 
     // Compute max surpluse relative to basketTop and max deficit relative to basketBottom
-    /// @param compromiseTarget When true, trade towards a reduced BU target
+    /// @param sellRSR If true, consider RSR a sellable asset
+    /// @param useFallenTarget If true, trade towards a reduced BU target
     /// @return surplus Surplus asset OR address(0)
     /// @return deficit Deficit collateral OR address(0)
     /// @return sellAmount {sellTok} Surplus amount (whole tokens)
     /// @return buyAmount {buyTok} Deficit amount (whole tokens)
-    function largestSurplusAndDeficit(bool compromiseTarget)
+    function largestSurplusAndDeficit(bool sellRSR, bool useFallenTarget)
         external
         view
         returns (
@@ -97,7 +98,7 @@ library TradingLibP0 {
         int192 basketTop = rToken().basketsNeeded(); // {BU}
         int192 basketBottom = basketTop;
 
-        if (compromiseTarget) {
+        if (useFallenTarget) {
             int192 tradeVolume = FIX_ZERO;
             int192 totalValue = FIX_ZERO;
             for (uint256 i = 0; i < erc20s.length; i++) {
@@ -125,7 +126,9 @@ library TradingLibP0 {
         int192 max = FIX_ZERO; // {UoA} positive!
         int192 min = FIX_ZERO; // {UoA} negative!
         for (uint256 i = 0; i < erc20s.length; i++) {
+            if (!sellRSR && erc20s[i] == rsr()) continue;
             IAsset asset = assetRegistry().toAsset(erc20s[i]);
+
             int192 tokenTop = FIX_ZERO; // {tok}
             int192 tokenBottom = FIX_ZERO; // {tok}
 
@@ -172,8 +175,13 @@ library TradingLibP0 {
         return ITrading(address(this)).main().basketHandler();
     }
 
-    /// @return {BU} The number of baskets needed according to the RToken
+    /// @return The RToken
     function rToken() private view returns (IRToken) {
         return ITrading(address(this)).main().rToken();
+    }
+
+    /// @return The RSR associated with this RToken
+    function rsr() private view returns (IERC20) {
+        return ITrading(address(this)).main().rsr();
     }
 }

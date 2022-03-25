@@ -64,6 +64,6 @@ contract RevenueTradingP0 is TradingP0, IRevenueTrader {
             reg.toAsset(erc20).bal(address(this))
         );
 
-        if (launch) tryOpenTrade(trade);
+        if (launch) tryTrade(trade);
     }
 }

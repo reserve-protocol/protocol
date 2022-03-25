@@ -51,27 +51,61 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
-        /* Recapitalization strategy:
-         *   1. Liquidate surplus assets for needed deficits as long as possible
-         *   2. When there are no more surplus assets, begin liquidating RSR instead
-         *   3. When there is no more RSR, apply (1) to a reduced basket target
-         *   4. When all trades are dust, compromise on basketsNeeded and reduce it
-         */
-
         if (!hasOpenTrades() && !main.basketHandler().fullyCapitalized()) {
-            (bool doTrade, TradeRequest memory req) = liquidateBackingTrade(false);
+            /*
+             * Recapitalization Strategy
+             *
+             * Trading one at a time...
+             *   1. Make largest purchase possible on path towards rToken.basketsNeeded()
+             *     a. Sell non-RSR assets first
+             *     b. Sell RSR when no asset has a surplus > dust amount
+             *   2. When RSR holdings < dust:
+             *     -  Sell non-RSR surplus assets towards the Fallen Target {BU}
+             *   3. When this produces trade sizes < dust:
+             *     -  Set rToken.basketsNeeded() to basketsHeldBy(address(this))
+             *
+             * Fallen Target: The market-equivalent of all current holdings, in terms of BUs
+             *   Note that the Fallen Target is freshly calculated during each pass
+             */
+
+            ///                       Baskets Needed
+            ///                              |
+            ///                              |
+            ///                              |
+            ///             1a               |            1b
+            ///                              |
+            ///                              |
+            ///                              |
+            ///                              |
+            ///  non-RSR ------------------------------------------ RSR
+            ///                              |
+            ///                              |
+            ///                              |
+            ///                              |
+            ///             2                |
+            ///                              |
+            ///                              |
+            ///                              |
+            ///                              |
+            ///                        Fallen Target
+
+            // 1a
+            (bool doTrade, TradeRequest memory req) = nonRSRTrade(false);
 
             if (!doTrade) {
-                (doTrade, req) = liquidateInsuranceTrade();
+                // 1b
+                (doTrade, req) = rsrTrade();
             }
 
             if (!doTrade) {
-                (doTrade, req) = liquidateBackingTrade(true);
+                // 2
+                (doTrade, req) = nonRSRTrade(true);
             }
 
             if (doTrade) {
-                tryOpenTrade(req);
+                tryTrade(req);
             } else {
+                // 3
                 compromiseBasketsNeeded();
             }
         }
@@ -130,10 +164,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     /// Prepare asset-for-collateral trade
-    /// @param compromiseTarget When true, trade towards a reduced BU target
+    /// @param useFallenTarget When true, trade towards a reduced BU target based on holdings
     /// @return doTrade If the trade request should be performed
     /// @return req The prepared trade request
-    function liquidateBackingTrade(bool compromiseTarget)
+    function nonRSRTrade(bool useFallenTarget)
         private
         view
         returns (bool doTrade, TradeRequest memory req)
@@ -145,7 +179,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             ICollateral deficit,
             int192 surplusAmount,
             int192 deficitAmount
-        ) = TradingLibP0.largestSurplusAndDeficit(compromiseTarget);
+        ) = TradingLibP0.largestSurplusAndDeficit(false, useFallenTarget);
 
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
 
@@ -173,13 +207,14 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// Prepare a trade with seized RSR to buy for missing collateral
     /// @return doTrade If the trade request should be performed
     /// @return req The prepared trade request
-    function liquidateInsuranceTrade() private returns (bool doTrade, TradeRequest memory req) {
+    function rsrTrade() private returns (bool doTrade, TradeRequest memory req) {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
 
         IStRSR stRSR = main.stRSR();
         IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
 
         (, ICollateral deficit, , int192 deficitAmount) = TradingLibP0.largestSurplusAndDeficit(
+            true,
             false
         );
         if (address(deficit) == address(0)) return (false, req);

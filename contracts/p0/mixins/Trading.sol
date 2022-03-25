@@ -55,7 +55,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     /// Try to initiate a trade with a trading partner provided by the broker
     /// @dev Can fail silently if broker is disable or reverting
-    function tryOpenTrade(TradeRequest memory req) internal {
+    function tryTrade(TradeRequest memory req) internal {
         IBroker broker = main.broker();
         if (broker.disabled()) return; // correct interaction with BackingManager/RevenueTrader
 
