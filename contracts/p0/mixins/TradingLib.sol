@@ -103,9 +103,9 @@ library TradingLibP0 {
             for (uint256 i = 0; i < erc20s.length; i++) {
                 IAsset asset = assetRegistry().toAsset(erc20s[i]);
 
-                // Ignore dust amounts, since they cannot be traded
+                // Ignore dust amounts for assets not in the basket
                 int192 bal = asset.bal(address(this)); // {tok}
-                if (bal.gt(dustThreshold(asset))) {
+                if (basket().quantity(erc20s[i]).gt(FIX_ZERO) || bal.gt(dustThreshold(asset))) {
                     totalValue = totalValue.plus(bal.mul(asset.price()));
                 }
             }
@@ -130,7 +130,7 @@ library TradingLibP0 {
         int192 max = FIX_ZERO; // {UoA} positive!
         int192 min = FIX_ZERO; // {UoA} negative!
         for (uint256 i = 0; i < erc20s.length; i++) {
-            if (erc20s[i] == rsr()) continue; // do not consider RSR as surplus or deficit
+            if (erc20s[i] == rsr()) continue; // do not consider RSR
 
             IAsset asset = assetRegistry().toAsset(erc20s[i]);
 
