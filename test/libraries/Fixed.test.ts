@@ -817,9 +817,6 @@ describe('In FixLib,', async () => {
         expect(await caller.powu(a, b), `powu(${a}, ${b})`).to.equal(c)
       )
     })
-    it.only('single test', async () => {
-      expect(await caller.powu(fp('1.000000001'), bn(10).pow(11))).to.not.be.reverted
-    })
     it('fails outside its range', async () => {
       ;[
         [fp(10), bn(40)],
