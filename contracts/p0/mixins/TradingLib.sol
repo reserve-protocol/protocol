@@ -38,8 +38,10 @@ library TradingLibP0 {
         trade.sellAmount = fixSellAmount.shiftLeft(int8(sell.erc20().decimals())).floor();
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        int192 exactBuyAmount = fixSellAmount.mul(sell.price()).div(buy.price());
-        int192 minBuyAmount = exactBuyAmount.mul(FIX_ONE.minus(maxTradeSlippage()));
+        int192 minBuyAmount = fixSellAmount
+            .mul(FIX_ONE.minus(maxTradeSlippage()))
+            .mul(sell.price())
+            .div(buy.price());
         trade.minBuyAmount = minBuyAmount.shiftLeft(int8(buy.erc20().decimals())).ceil();
         return (true, trade);
     }
@@ -122,9 +124,10 @@ library TradingLibP0 {
                 }
             }
 
-            basketBottom = basketTop.mul(
-                FIX_ONE.minus(maxTradeSlippage().mul(tradeVolume).div(totalValue))
-            ); // {BU}
+            // bBot {BU} = (totalValue - mTS * tradeVolume) / basket.price
+            basketBottom = totalValue.minus(tradeVolume.mul(maxTradeSlippage())).div(
+                basket().price()
+            );
         }
 
         int192 max = FIX_ZERO; // {UoA} positive!

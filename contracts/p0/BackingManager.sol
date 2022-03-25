@@ -230,8 +230,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         if (doTrade) {
             uint256 rsrBal = rsrAsset.balQ(address(this)).floor();
             if (req.sellAmount > rsrBal) {
-                // TODO, BUG?: seizeRSR is not guaranteed to actually seize the requested amount.
-                // But the trade we've prepared maybe relies on having that much?
                 stRSR.seizeRSR(req.sellAmount - rsrBal);
             }
         }

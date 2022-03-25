@@ -350,6 +350,8 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
     /// Execute the move of `stakeAmount` from stake to draft, for `account`
     function _unstake(address account, uint256 stakeAmount) internal {
         // Compute draft and RSR amounts
+        //    (dividing out totalStakes, before multiplying by totalDrafts, is necessary here
+        //    to avoid overflow, possibly at the cost of some precision)
         uint256 rsrAmount = (stakeAmount * stakeRSR) / totalStakes;
         uint256 draftAmount = (draftRSR == 0) ? rsrAmount : (rsrAmount * totalDrafts) / draftRSR;
 

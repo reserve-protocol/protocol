@@ -812,9 +812,13 @@ describe('In FixLib,', async () => {
         [fp(987.0), bn(0), fp(1.0)],
         [fp(1.0), bn(2).pow(256).sub(1), fp(1.0)],
         [fp(-1.0), bn(2).pow(256).sub(1), fp(-1.0)],
+        [fp(2), bn(131), fp(bn(2).pow(131))],
       ].forEach(async ([a, b, c]) =>
         expect(await caller.powu(a, b), `powu(${a}, ${b})`).to.equal(c)
       )
+    })
+    it.only('single test', async () => {
+      expect(await caller.powu(fp('1.000000001'), bn(10).pow(11))).to.not.be.reverted
     })
     it('fails outside its range', async () => {
       ;[
@@ -826,6 +830,7 @@ describe('In FixLib,', async () => {
         [fp('1.9e13'), bn(3)],
         [fp('9e9'), bn(4)],
         [fp('9.2e8'), bn(5)],
+        [fp(2), bn(191)],
       ].forEach(
         async ([a, b]) => await expect(caller.powu(a, b), `powu(${a}, ${b})`).to.be.reverted
       )

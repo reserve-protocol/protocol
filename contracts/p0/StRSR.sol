@@ -203,13 +203,15 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     /// @param rsrAmount {qRSR}
     /// @return seizedRSR {qRSR} The actual rsrAmount seized.
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
-    /// seizedRSR might be smaller than rsrAmount if we're out of RSR.
+    /// seizedRSR will _not_ be smaller than rsrAmount.
+    /// TODO: remove return value
     function seizeRSR(uint256 rsrAmount) external returns (uint256 seizedRSR) {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initialExchangeRate = exchangeRate();
         uint256 rewards = rsrRewards();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
+        require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
 
         if (rsrBalance <= rsrAmount) {
             // Everyone's wiped out! Doom! Mayhem!
