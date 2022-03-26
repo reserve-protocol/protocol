@@ -3,18 +3,21 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../common/constants'
-import { bn } from '../common/numbers'
+import { bn, fp } from '../common/numbers'
+import { whileImpersonating } from './utils/impersonation'
 import {
+  BackingManagerP0,
   CTokenMock,
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
   MainP0,
+  RTokenP0,
   TestIRToken,
   StaticATokenMock,
   USDCMock,
 } from '../typechain'
-import { advanceTime } from './utils/time'
+import { advanceTime, advanceBlocks, getLatestBlockNumber } from './utils/time'
 import { Collateral, defaultFixture, IConfig } from './fixtures'
 import { makeDecayFn } from './utils/rewards'
 
@@ -30,6 +33,7 @@ describe('FurnaceP0 contract', () => {
   let main: MainP0
   let furnace: FurnaceP0
   let rToken: TestIRToken
+  let backingManager: BackingManagerP0
   let basket: Collateral[]
   let facade: FacadeP0
 
@@ -102,9 +106,9 @@ describe('FurnaceP0 contract', () => {
     it('Deployment does not accept empty period', async () => {
       const newConfig = JSON.parse(JSON.stringify(config))
       newConfig.rewardPeriod = bn('0')
-      const newFurnace = await FurnaceFactory.deploy()
+      furnace = <FurnaceP0>await FurnaceFactory.deploy()
       await expect(
-        newFurnace.initComponent(main.address, {
+        furnace.initComponent(main.address, {
           params: newConfig,
           components: {
             rToken: ZERO_ADDRESS,
@@ -356,6 +360,89 @@ describe('FurnaceP0 contract', () => {
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt2)
+    })
+  })
+
+  describe('Extreme Bounds', () => {
+    interface Bounds {
+      max: BigNumber
+      min: BigNumber
+      typical: BigNumber
+    }
+
+    const periodBounds: Bounds = {
+      max: bn('1099511627775'), // 2^40 - 1
+      min: bn('1'),
+      typical: bn('604800'),
+    }
+
+    const ratioBounds: Bounds = {
+      max: fp('1'),
+      min: fp('0'),
+      typical: fp('0.02284'),
+    }
+
+    const balBounds: Bounds = {
+      max: fp('1e18'), // {qRSR}
+      min: fp('0'),
+      typical: bn('1e9'),
+    }
+
+    const parametrize = async (period: BigNumber, ratio: BigNumber, bal: BigNumber) => {
+      // Deploy fixture
+      ;({ main, rToken, backingManager } = await loadFixture(defaultFixture))
+
+      const newConfig = JSON.parse(JSON.stringify(config))
+      newConfig.rewardPeriod = period
+      newConfig.rewardRatio = ratio
+      furnace = <FurnaceP0>await FurnaceFactory.deploy()
+      await main.connect(owner).setFurnace(furnace.address)
+
+      // Issue and send tokens to furnace
+      if (bal.gt(bn('0'))) {
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await rToken.connect(bmSigner).mint(furnace.address, bal)
+        })
+      }
+      await furnace.connect(owner).initComponent(main.address, {
+        params: newConfig,
+        components: {
+          rToken: rToken.address,
+          stRSR: ZERO_ADDRESS,
+          assetRegistry: ZERO_ADDRESS,
+          basketHandler: ZERO_ADDRESS,
+          backingManager: ZERO_ADDRESS,
+          distributor: ZERO_ADDRESS,
+          rsrTrader: ZERO_ADDRESS,
+          rTokenTrader: ZERO_ADDRESS,
+          furnace: ZERO_ADDRESS,
+          broker: ZERO_ADDRESS,
+        },
+        gnosis: ZERO_ADDRESS,
+        assets: [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
+        rsr: ZERO_ADDRESS,
+      })
+    }
+
+    it('Should not revert at extremes', async () => {
+      for (const periodKey in periodBounds) {
+        for (const ratioKey in ratioBounds) {
+          for (const balKey in balBounds) {
+            const period = periodBounds[periodKey as keyof typeof periodBounds]
+            const ratio = ratioBounds[ratioKey as keyof typeof ratioBounds]
+            const bal = balBounds[balKey as keyof typeof balBounds]
+            await parametrize(period, ratio, bal)
+
+            // Should melt after 1 period
+            await advanceTime(period.mul(1).add(1).toString())
+            await furnace.melt()
+
+            // Should melt after 1000 periods
+            await advanceTime(period.mul(1000).add(1).toString())
+            await furnace.melt()
+          }
+        }
+      }
     })
   })
 })
