@@ -21,6 +21,7 @@ contract FurnaceP0 is Component, IFurnace {
         period = args.params.rewardPeriod;
         ratio = args.params.rewardRatio;
         lastPayout = block.timestamp;
+        lastPayoutBal = args.components.rToken.balanceOf(address(this));
         require(period != 0, "period cannot be zero");
     }
 

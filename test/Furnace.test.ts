@@ -111,7 +111,7 @@ describe('FurnaceP0 contract', () => {
         furnace.initComponent(main.address, {
           params: newConfig,
           components: {
-            rToken: ZERO_ADDRESS,
+            rToken: rToken.address,
             stRSR: ZERO_ADDRESS,
             assetRegistry: ZERO_ADDRESS,
             basketHandler: ZERO_ADDRESS,
