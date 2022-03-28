@@ -10,6 +10,10 @@ export const advanceToTimestamp = async (timestamp: number | string) => {
   await ethers.provider.send('evm_mine', [])
 }
 
+export const setNextBlockTimestamp = async (timestamp: number | string) => {
+  await hre.network.provider.send('evm_setNextBlockTimestamp', [timestamp])
+}
+
 export const getLatestBlockTimestamp = async (): Promise<number> => {
   const latestBlock = await ethers.provider.getBlock('latest')
   return latestBlock.timestamp
