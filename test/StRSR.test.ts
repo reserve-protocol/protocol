@@ -886,6 +886,19 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
     })
 
+    it('Should not allow to remove RSR if amount is larger than balance', async () => {
+      const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
+      const amount: BigNumber = bn('500000000e18')
+
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSR.connect(signer).seizeRSR(amount)).to.be.revertedWith(
+          'Cannot seize more RSR than we hold'
+        )
+      })
+
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
+    })
+
     it('Should allow to remove RSR - Single staker', async () => {
       const amount: BigNumber = bn('10e18')
       const amount2: BigNumber = bn('1e18')
