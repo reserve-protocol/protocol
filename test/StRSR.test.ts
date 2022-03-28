@@ -20,7 +20,7 @@ import {
   TestIStRSR,
 } from '../typechain'
 import { CollateralStatus, ZERO_ADDRESS } from '../common/constants'
-import { advanceTime, getLatestBlockTimestamp } from './utils/time'
+import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { whileImpersonating } from './utils/impersonation'
 import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
@@ -363,6 +363,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await stRSR.connect(addr1).stake(amount)
       let availableAt = (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
 
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+
       // Unstake
       await expect(stRSR.connect(addr1).unstake(amount))
         .emit(stRSR, 'UnstakingStarted')
@@ -400,6 +403,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       let availableAt = (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
 
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+
       // Unstake - Create withdrawal
       await expect(stRSR.connect(addr1).unstake(amount1))
         .emit(stRSR, 'UnstakingStarted')
@@ -412,6 +418,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       availableAt = (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
 
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+
       // Unstake again
       await expect(stRSR.connect(addr1).unstake(amount2))
         .emit(stRSR, 'UnstakingStarted')
@@ -423,6 +432,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
 
       availableAt = (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
+
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
       // Unstake again with different user
       await expect(stRSR.connect(addr2).unstake(amount3))
