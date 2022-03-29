@@ -109,6 +109,7 @@ describe(`DeployerP${IMPLEMENTATION} contract`, () => {
 
   describe('Deployment', () => {
     it('Should setup values correctly', async () => {
+      expect(await deployer.ENS()).to.equal('reserveprotocol.eth')
       expect(await deployer.rsr()).to.equal(rsr.address)
       expect(await deployer.comp()).to.equal(compToken.address)
       expect(await deployer.aave()).to.equal(aaveToken.address)

@@ -79,6 +79,10 @@ interface IDeployer {
 }
 
 interface TestIDeployer is IDeployer {
+    /// A top-level ENS domain that should always point to the latest Deployer instance
+    // solhint-disable-next-line func-name-mixedcase
+    function ENS() external view returns (string memory);
+
     function rsr() external view returns (IERC20Metadata);
 
     function comp() external view returns (IERC20Metadata);

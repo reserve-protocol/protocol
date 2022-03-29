@@ -29,6 +29,7 @@ import "contracts/p0/Main.sol";
  * @notice The factory contract that deploys the entire P0 system.
  */
 contract DeployerP0 is IDeployer {
+    string public constant ENS = "reserveprotocol.eth";
     IERC20Metadata public immutable rsr;
     IERC20Metadata public immutable comp;
     IERC20Metadata public immutable aave;
