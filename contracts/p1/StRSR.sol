@@ -90,6 +90,7 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
 
     function init(ConstructorArgs memory args) internal override {
         payoutLastPaid = block.timestamp;
+        rsrRewardsAtLastPayout = args.rsr.balanceOf(address(this));
         unstakingDelay = args.params.unstakingDelay;
         rewardPeriod = args.params.rewardPeriod;
         rewardRatio = args.params.rewardRatio;

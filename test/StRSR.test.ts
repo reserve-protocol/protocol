@@ -24,6 +24,7 @@ import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from './u
 import { whileImpersonating } from './utils/impersonation'
 import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
+import { cartesianProduct } from './utils/cases'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -1359,6 +1360,144 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Nothing set
       expect(await stRSR.allowance(addr1.address, ZERO_ADDRESS)).to.equal(0)
       expect(await stRSR.allowance(ZERO_ADDRESS, addr2.address)).to.equal(0)
+    })
+  })
+
+  describe('Extreme Bounds', () => {
+    // Dimensions
+    //
+    // StRSR economics can be broken down into 4 "places" that RSR can be.
+    // The StRSR balances and exchange rate is fully determined by these 4 dimensions.
+    //
+    //  1. RSR staked directly {qRSR}
+    //  2. RSR accreted {qRSR}
+    //  3. RSR being withdrawn {qRSR}
+    //  4. RSR being rewarded {qRSR}
+    //  5. Unstaking Delay {seconds}
+    //  6. Reward Period {seconds}
+    //  7. Reward Ratio {%}
+    //
+    //  3^7 = 2187 cases ~= about 2-3min runtime
+    //  2^7 = 128 cases ~= about 10s runtime
+
+    const runSimulation = async (
+      rsrStake: BigNumber,
+      rsrAccreted: BigNumber,
+      rsrWithdrawal: BigNumber,
+      rsrReward: BigNumber,
+      unstakingDelay: BigNumber,
+      rewardPeriod: BigNumber,
+      rewardRatio: BigNumber
+    ) => {
+      // === Setup ===
+
+      ;({ main, rToken, stRSR, rsr, backingManager } = await loadFixture(defaultFixture))
+
+      // addr1 is the staker; addr2 is the withdrawer
+
+      // addr1 - staker
+      if (rsrStake.gt(0)) {
+        await rsr.connect(owner).mint(addr1.address, rsrStake)
+        await rsr.connect(addr1).approve(stRSR.address, rsrStake)
+        await stRSR.connect(addr1).stake(rsrStake)
+      }
+
+      // addr2 - withdrawer
+      if (rsrWithdrawal.gt(0)) {
+        await rsr.connect(owner).mint(addr2.address, rsrWithdrawal)
+        await rsr.connect(addr2).approve(stRSR.address, rsrWithdrawal)
+        await stRSR.connect(addr2).stake(rsrWithdrawal)
+        await stRSR.connect(addr2).unstake(rsrWithdrawal)
+      }
+
+      // Do accretion
+      if (rsrAccreted.gt(0)) {
+        await rsr.connect(owner).mint(stRSR.address, rsrAccreted)
+        await stRSR.connect(owner).setRewardRatio(fp('1'))
+        await advanceTime((await stRSR.rewardPeriod()).add(1).toString())
+        await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
+      }
+
+      // Config -- note this assumes the gov params have been chosen sensibly
+      await stRSR.connect(owner).setRewardPeriod(rewardPeriod)
+      await stRSR.connect(owner).setUnstakingDelay(unstakingDelay)
+      await stRSR.connect(owner).setRewardRatio(rewardRatio)
+
+      // Rewards
+      await rsr.connect(owner).mint(stRSR.address, rsrReward)
+
+      // === Simulation ===
+
+      // Should payout after 1 period
+      await advanceTime(rewardPeriod.add(1).toString())
+      await stRSR.payoutRewards()
+
+      // Should payout after 1000 period
+      await advanceTime(rewardPeriod.mul(1000).add(1).toString())
+      await stRSR.payoutRewards()
+
+      if (rsrStake.gt(0)) {
+        // Staker should be able to withdraw
+        await stRSR.connect(addr1).unstake(await stRSR.balanceOf(addr1.address))
+      }
+      await advanceTime(unstakingDelay.add(1).toString())
+
+      // Clear both withdrawals
+      if (rsrStake.gt(0)) {
+        const endId = await stRSR.endIdForWithdraw(addr1.address)
+        await expect(stRSR.withdraw(addr1.address, endId)).to.emit(stRSR, 'UnstakingCompleted')
+      }
+      if (rsrWithdrawal.gt(0)) {
+        const endId = await stRSR.endIdForWithdraw(addr2.address)
+        await expect(stRSR.withdraw(addr2.address, endId)).to.emit(stRSR, 'UnstakingCompleted')
+      }
+    }
+
+    it('Should complete issuance + reward + redeem cycle at extreme bounds', async () => {
+      const turboMode = true // cuts off the typical case, which is always the last arg
+
+      // 100B RSR
+      const rsrStakeBounds = [bn('1e29'), bn('0'), bn('1e18')]
+
+      // the amount of RSR that has already been absorbed as profit
+      // has to do with the initial exchange rate
+      const rsrAccretedBounds = [bn('1e29'), bn('0'), bn('1e18')]
+
+      const rsrWithdrawalBounds = [fp('1'), fp('0'), fp('0.5')]
+
+      const rsrRewardBounds = [bn('1e29'), bn('0'), bn('1e18')]
+
+      // max: // 2^40 - 1
+      const unstakingDelayBounds = [bn('1099511627775'), bn('0'), bn('604800')]
+
+      // max: // 2^40 - 1
+      const rewardPeriodBounds = [bn('1099511627775'), bn('1'), bn('604800')]
+
+      const rewardRatioBounds = [fp('1'), fp('0'), fp('0.02284')]
+
+      let bounds = [
+        rsrStakeBounds,
+        rsrAccretedBounds,
+        rsrWithdrawalBounds,
+        rsrRewardBounds,
+        unstakingDelayBounds,
+        rewardPeriodBounds,
+        rewardRatioBounds,
+      ]
+
+      if (turboMode) {
+        bounds = bounds.map((b) => [b[0], b[1]])
+      }
+
+      const cases = cartesianProduct(...bounds)
+      for (let i = 0; i < cases.length; i++) {
+        const args: BigNumber[] = cases[i]
+
+        // if (rewardPeriod * 2 > unstakingDelay)
+        if (args[5].mul(2).gt(args[4])) continue
+
+        await runSimulation(args[0], args[1], args[2], args[3], args[4], args[5], args[6])
+      }
     })
   })
 })

@@ -388,7 +388,7 @@ describe('FurnaceP0 contract', () => {
       typical: bn('1e9'),
     }
 
-    const parametrize = async (period: BigNumber, ratio: BigNumber, bal: BigNumber) => {
+    const applyParameters = async (period: BigNumber, ratio: BigNumber, bal: BigNumber) => {
       // Deploy fixture
       ;({ main, rToken, backingManager } = await loadFixture(defaultFixture))
 
@@ -431,10 +431,10 @@ describe('FurnaceP0 contract', () => {
             const period = periodBounds[periodKey as keyof typeof periodBounds]
             const ratio = ratioBounds[ratioKey as keyof typeof ratioBounds]
             const bal = balBounds[balKey as keyof typeof balBounds]
-            await parametrize(period, ratio, bal)
+            await applyParameters(period, ratio, bal)
 
             // Should melt after 1 period
-            await advanceTime(period.mul(1).add(1).toString())
+            await advanceTime(period.add(1).toString())
             await furnace.melt()
 
             // Should melt after 1000 periods
