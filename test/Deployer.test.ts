@@ -146,10 +146,6 @@ describe(`DeployerP${IMPLEMENTATION} contract`, () => {
       ).to.emit(deployer, 'RTokenCreated')
     })
 
-    it('Should register deployment', async () => {
-      expect(await deployer.deployments(0)).to.equal(main.address)
-    })
-
     it('Should setup Main correctly', async () => {
       // Owner/Pauser
       expect(await main.owner()).to.equal(owner.address)

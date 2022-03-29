@@ -36,8 +36,6 @@ contract DeployerP0 is IDeployer {
     IComptroller public immutable comptroller;
     IAaveLendingPool public immutable aaveLendingPool;
 
-    IMain[] public deployments;
-
     constructor(
         IERC20Metadata rsr_,
         IERC20Metadata comp_,
@@ -69,7 +67,6 @@ contract DeployerP0 is IDeployer {
         DeploymentParams memory params
     ) external returns (address) {
         MainP0 main = new MainP0();
-        deployments.push(main);
 
         // Components
         IRToken rToken = new RTokenP0(name, symbol, constitutionURI);

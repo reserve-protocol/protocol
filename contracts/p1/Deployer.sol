@@ -36,8 +36,6 @@ contract DeployerP1 is IDeployer {
     IComptroller public immutable comptroller;
     IAaveLendingPool public immutable aaveLendingPool;
 
-    IMain[] public deployments;
-
     constructor(
         IERC20Metadata rsr_,
         IERC20Metadata comp_,
@@ -69,7 +67,6 @@ contract DeployerP1 is IDeployer {
         DeploymentParams memory params
     ) external returns (address) {
         MainP0 main = new MainP0();
-        deployments.push(main);
 
         // Components
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));

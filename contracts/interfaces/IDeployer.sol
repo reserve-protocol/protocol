@@ -90,6 +90,4 @@ interface TestIDeployer is IDeployer {
     function comptroller() external view returns (IComptroller);
 
     function aaveLendingPool() external view returns (IAaveLendingPool);
-
-    function deployments(uint256) external view returns (IMain);
 }
