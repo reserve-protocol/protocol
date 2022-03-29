@@ -150,6 +150,7 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initialExchangeRate = exchangeRate();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
+        require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
 
         if (rsrBalance == 0) return 0;
         if (rsrBalance <= rsrAmount) {
