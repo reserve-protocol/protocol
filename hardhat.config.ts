@@ -64,7 +64,7 @@ export default <HardhatUserConfig>{
     sources: src_dir,
   },
   mocha: {
-    timeout: 200000,
+    timeout: 300000,
   },
   contractSizer: {
     alphaSort: false,

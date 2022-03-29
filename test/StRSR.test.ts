@@ -22,7 +22,14 @@ import {
 import { CollateralStatus, ZERO_ADDRESS } from '../common/constants'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  IConfig,
+  Implementation,
+  IMPLEMENTATION,
+  TURBO,
+} from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
 import { cartesianProduct } from './utils/cases'
 
@@ -1363,7 +1370,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Extreme Bounds', () => {
+  describe(`Extreme Bounds (turbo=${TURBO})`, () => {
     // Dimensions
     //
     // StRSR economics can be broken down into 4 "places" that RSR can be.
@@ -1407,7 +1414,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await rsr.connect(owner).mint(addr2.address, rsrWithdrawal)
         await rsr.connect(addr2).approve(stRSR.address, rsrWithdrawal)
         await stRSR.connect(addr2).stake(rsrWithdrawal)
-        await stRSR.connect(addr2).unstake(rsrWithdrawal)
       }
 
       // Do accretion
@@ -1415,7 +1421,14 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await rsr.connect(owner).mint(stRSR.address, rsrAccreted)
         await stRSR.connect(owner).setRewardRatio(fp('1'))
         await advanceTime((await stRSR.rewardPeriod()).add(1).toString())
-        await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
+        await expect(stRSR.payoutRewards())
+          .to.emit(stRSR, 'ExchangeRateSet')
+          .withArgs(fp('1'), fp('1'))
+        // first payout only registers the mint
+
+        await advanceTime((await stRSR.rewardPeriod()).add(1).toString())
+        await expect(stRSR.payoutRewards())
+        // now the mint has been fully paid out
       }
 
       // Config -- note this assumes the gov params have been chosen sensibly
@@ -1423,16 +1436,23 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await stRSR.connect(owner).setUnstakingDelay(unstakingDelay)
       await stRSR.connect(owner).setRewardRatio(rewardRatio)
 
-      // Rewards
+      // addr2 - withdrawer
+      if (rsrWithdrawal.gt(0)) {
+        const bal = await stRSR.balanceOf(addr2.address)
+        await stRSR.connect(addr2).unstake(bal)
+      }
+
+      // Place Rewards
       await rsr.connect(owner).mint(stRSR.address, rsrReward)
 
-      // === Simulation ===
+      // === Simulate ===
 
-      // Should payout after 1 period
+      // To register the reward amount
       await advanceTime(rewardPeriod.add(1).toString())
-      await stRSR.payoutRewards()
+      const rate = await stRSR.exchangeRate()
+      await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet').withArgs(rate, rate)
 
-      // Should payout after 1000 period
+      // Payout over 1000 periods
       await advanceTime(rewardPeriod.mul(1000).add(1).toString())
       await stRSR.payoutRewards()
 
@@ -1440,6 +1460,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Staker should be able to withdraw
         await stRSR.connect(addr1).unstake(await stRSR.balanceOf(addr1.address))
       }
+
       await advanceTime(unstakingDelay.add(1).toString())
 
       // Clear both withdrawals
@@ -1454,8 +1475,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     }
 
     it('Should complete issuance + reward + redeem cycle at extreme bounds', async () => {
-      const turboMode = true // cuts off the typical case, which is always the last arg
-
       // 100B RSR
       const rsrStakeBounds = [bn('1e29'), bn('0'), bn('1e18')]
 
@@ -1463,7 +1482,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // has to do with the initial exchange rate
       const rsrAccretedBounds = [bn('1e29'), bn('0'), bn('1e18')]
 
-      const rsrWithdrawalBounds = [fp('1'), fp('0'), fp('0.5')]
+      const rsrWithdrawalBounds = [bn('1e29'), bn('0'), bn('1e18')]
 
       const rsrRewardBounds = [bn('1e29'), bn('0'), bn('1e18')]
 
@@ -1485,7 +1504,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         rewardRatioBounds,
       ]
 
-      if (turboMode) {
+      // Disregard the typical case if turbo mode is enabled
+      if (TURBO) {
         bounds = bounds.map((b) => [b[0], b[1]])
       }
 

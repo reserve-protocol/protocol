@@ -20,6 +20,7 @@ import {
 import { advanceTime, advanceBlocks, getLatestBlockNumber } from './utils/time'
 import { Collateral, defaultFixture, IConfig } from './fixtures'
 import { makeDecayFn } from './utils/rewards'
+import { cartesianProduct } from './utils/cases'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -364,30 +365,6 @@ describe('FurnaceP0 contract', () => {
   })
 
   describe('Extreme Bounds', () => {
-    interface Bounds {
-      max: BigNumber
-      min: BigNumber
-      typical: BigNumber
-    }
-
-    const periodBounds: Bounds = {
-      max: bn('1099511627775'), // 2^40 - 1
-      min: bn('1'),
-      typical: bn('604800'),
-    }
-
-    const ratioBounds: Bounds = {
-      max: fp('1'),
-      min: fp('0'),
-      typical: fp('0.02284'),
-    }
-
-    const balBounds: Bounds = {
-      max: fp('1e18'), // {qRSR}
-      min: fp('0'),
-      typical: bn('1e9'),
-    }
-
     const applyParameters = async (period: BigNumber, ratio: BigNumber, bal: BigNumber) => {
       // Deploy fixture
       ;({ main, rToken, backingManager } = await loadFixture(defaultFixture))
@@ -425,23 +402,29 @@ describe('FurnaceP0 contract', () => {
     }
 
     it('Should not revert at extremes', async () => {
-      for (const periodKey in periodBounds) {
-        for (const ratioKey in ratioBounds) {
-          for (const balKey in balBounds) {
-            const period = periodBounds[periodKey as keyof typeof periodBounds]
-            const ratio = ratioBounds[ratioKey as keyof typeof ratioBounds]
-            const bal = balBounds[balKey as keyof typeof balBounds]
-            await applyParameters(period, ratio, bal)
+      // max: // 2^40 - 1
+      const periodBounds = [bn('1099511627775'), bn('1'), bn('604800')]
 
-            // Should melt after 1 period
-            await advanceTime(period.add(1).toString())
-            await furnace.melt()
+      const ratioBounds = [fp('1'), fp('0'), fp('0.02284')]
 
-            // Should melt after 1000 periods
-            await advanceTime(period.mul(1000).add(1).toString())
-            await furnace.melt()
-          }
-        }
+      const balBounds = [fp('1e18'), fp('0'), bn('1e9')]
+
+      const cases = cartesianProduct(periodBounds, ratioBounds, balBounds)
+      for (let i = 0; i < cases.length; i++) {
+        const args: BigNumber[] = cases[i]
+        const period = args[0]
+        const ratio = args[1]
+        const bal = args[2]
+
+        await applyParameters(period, ratio, bal)
+
+        // Should melt after 1 period
+        await advanceTime(period.add(1).toString())
+        await furnace.melt()
+
+        // Should melt after 1000 periods
+        await advanceTime(period.mul(1000).add(1).toString())
+        await furnace.melt()
       }
     })
   })

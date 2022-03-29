@@ -109,8 +109,8 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
         _stake(account, rsrAmount);
     }
 
-    /// Begins a delayed unstaking for `amount` stRSR
-    /// @param stakeAmount {qRSR}
+    /// Begins a delayed unstaking for `amount` StRSR
+    /// @param stakeAmount {qStRSR}
     /// @custom:action
     function unstake(uint256 stakeAmount) external notPaused {
         address account = _msgSender();
