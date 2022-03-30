@@ -305,22 +305,29 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         return balances[account];
     }
 
-    function transfer(address recipient, uint256 amount) external returns (bool) {
-        _transfer(_msgSender(), recipient, amount);
+    function transfer(address to, uint256 amount) external returns (bool) {
+        _transfer(_msgSender(), to, amount);
         return true;
     }
 
     function _transfer(
-        address sender,
-        address recipient,
+        address from,
+        address to,
         uint256 amount
     ) private {
-        require(sender != address(0), "ERC20: transfer from the zero address");
-        require(recipient != address(0), "ERC20: transfer to the zero address");
-        require(balances[sender] >= amount, "ERC20: transfer amount exceeds balance");
-        balances[sender] -= amount;
-        balances[recipient] += amount;
-        accounts.add(recipient);
+        require(from != address(0), "ERC20: transfer from the zero address");
+        require(to != address(0), "ERC20: transfer to the zero address");
+
+        uint256 fromBalance = balances[from];
+
+        require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
+
+        unchecked {
+            balances[from] = fromBalance - amount;
+        }
+
+        balances[to] += amount;
+        accounts.add(to);
     }
 
     function allowance(address owner_, address spender) public view returns (uint256) {
@@ -333,15 +340,33 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     function transferFrom(
-        address sender,
-        address recipient,
+        address from,
+        address to,
         uint256 amount
     ) public returns (bool) {
-        _transfer(sender, recipient, amount);
+        _spendAllowance(from, _msgSender(), amount);
+        _transfer(from, to, amount);
+        return true;
+    }
 
-        uint256 currentAllowance = allowances[sender][_msgSender()];
-        require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
-        _approve(sender, _msgSender(), currentAllowance - amount);
+    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
+        address owner_ = _msgSender();
+        _approve(owner_, spender, allowances[owner_][spender] + addedValue);
+        return true;
+    }
+
+    function decreaseAllowance(address spender, uint256 subtractedValue)
+        public
+        virtual
+        returns (bool)
+    {
+        address owner_ = _msgSender();
+        uint256 currentAllowance = allowances[owner_][spender];
+        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
+        unchecked {
+            _approve(owner_, spender, currentAllowance - subtractedValue);
+        }
+
         return true;
     }
 
@@ -356,6 +381,20 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         allowances[owner_][spender] = amount;
 
         emit Approval(owner_, spender, amount);
+    }
+
+    function _spendAllowance(
+        address owner_,
+        address spender,
+        uint256 amount
+    ) internal virtual {
+        uint256 currentAllowance = allowance(owner_, spender);
+        if (currentAllowance != type(uint256).max) {
+            require(currentAllowance >= amount, "ERC20: insufficient allowance");
+            unchecked {
+                _approve(owner_, spender, currentAllowance - amount);
+            }
+        }
     }
 
     // ==== end ERC20 Interface ====
