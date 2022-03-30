@@ -74,7 +74,7 @@ interface IStRSR is IERC20Permit, IERC20Metadata, IComponent {
     function stake(uint256 amount) external;
 
     /// Begins a delayed unstaking for `amount` stRSR
-    /// @param amount {qRSR}
+    /// @param amount {qStRSR}
     /// @custom:action
     function unstake(uint256 amount) external;
 
