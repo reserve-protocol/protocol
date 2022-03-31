@@ -1,16 +1,20 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { bn, fp } from '../common/numbers'
 import {
+  AaveLendingPoolMock,
+  AavePricedFiatCollateral,
   AaveOracleMock,
+  AssetRegistryP0,
   ATokenFiatCollateral,
   BackingManagerP0,
   BasketHandlerP0,
   CTokenFiatCollateral,
   CTokenMock,
+  ComptrollerMock,
   ERC20Mock,
   FacadeP0,
   MainP0,
@@ -22,9 +26,23 @@ import {
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import { advanceTime, advanceBlocks, getLatestBlockNumber } from './utils/time'
-import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  IConfig,
+  Implementation,
+  IMPLEMENTATION,
+  TURBO,
+} from './fixtures'
+import { cartesianProduct } from './utils/cases'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+enum RoundingApproach {
+  FLOOR,
+  ROUND,
+  CEIL,
+}
 
 describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
@@ -49,11 +67,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let config: IConfig
 
   // Aave / Compound
+  let aaveMock: AaveLendingPoolMock
   let aaveOracleInternal: AaveOracleMock
+  let compoundMock: ComptrollerMock
+
   // Main
   let main: MainP0
   let rToken: TestIRToken
   let facade: FacadeP0
+  let assetRegistry: AssetRegistryP0
   let backingManager: BackingManagerP0
   let basketHandler: BasketHandlerP0
 
@@ -123,16 +145,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     // Deploy fixture
     ;({
+      aaveMock,
       aaveOracleInternal,
+      assetRegistry,
+      backingManager,
       basket,
+      basketHandler,
+      compoundMock,
       config,
+      facade,
       main,
       rToken,
-      facade,
-      backingManager,
-      basketHandler,
-      rToken,
-      facade,
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
@@ -1101,6 +1124,172 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.connect(other).mint(addr1.address, mintAmount)).to.be.revertedWith(
         'backing manager only'
       )
+    })
+  })
+
+  // makeColl: Deploy and register a new constant-price collateral
+  async function makeColl(
+    index: number | string,
+    price: BigNumber
+  ): Promise<[ERC20Mock, Collateral]> {
+    const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
+    const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
+    const Coll: ContractFactory = await ethers.getContractFactory('AavePricedFiatCollateral')
+    const coll: Collateral = <Collateral>(
+      await Coll.deploy(
+        erc20.address,
+        fp('1e36'),
+        fp(0.05),
+        bn(86400),
+        compoundMock.address,
+        aaveMock.address
+      )
+    )
+    assetRegistry.register(erc20.address)
+    aaveOracleInternal.setPrice(erc20.address, price)
+    console.log('New token:', erc20.address, 'price:', price, 'symbol:', 'T' + index)
+    return [erc20, coll]
+  }
+
+  describe.only(`Extreme Values (turbo=${TURBO})`, async () => {
+    async function runScenario(
+      toIssue: BigNumber,
+      toRedeem: BigNumber,
+      totalSupply: BigNumber, // in this scenario, rtoken supply _after_ issuance.
+      numBasketAssets: BigNumber,
+      weightFirst: BigNumber, // target amount per asset (weight of first asset)
+      weightRest: BigNumber, // another target amount per asset (weight of second+ assets)
+      issuanceRate: BigNumber // range under test: [.000_001 to 1.0]
+    ) {
+      // ==== Setup Scenario ====
+      const MIN_ISSUANCE_RATE = fp(10000) // {rtoken / block}
+
+      // deploy and register basket collateral
+      const N = numBasketAssets.toNumber()
+      let erc20s = []
+      let weights: BigNumber[] = []
+      let totalWeight: BigNumber = fp(0)
+      for (let i = 0; i < N; i++) {
+        const [erc20, coll] = await makeColl(i, fp(1.0))
+        erc20s.push(erc20)
+        const currWeight = i == 0 ? weightFirst : weightRest
+        weights.push(currWeight)
+        totalWeight = totalWeight.add(currWeight)
+      }
+
+      // set basket assets as the prime basket
+      const basketAddresses = erc20s.map((erc20) => erc20.address)
+      basketHandler.connect(owner).setPrimeBasket(basketAddresses, weights)
+      basketHandler.connect(owner).switchBasket()
+      expect(await rToken.price()).to.equal(totalWeight)
+
+      // toIssue0 -- how much rToken should be issued to owner, to begin this scenario
+      const toIssue0 = totalSupply.sub(toIssue)
+      const e18 = BN_SCALE_FACTOR
+      // user addr1 starts with enough basket assets to issue(toIssue)
+      for (let i = 0; i < N; i++) {
+        const erc20: ERC20Mock = erc20s[i]
+        // user owner starts with enough basket assets to issue (totalSupply - toIssue)
+        const toMint0: BigNumber = toIssue0.mul(weights[i]).add(e18.sub(1)).div(e18)
+        console.log('minting', toMint0.toString(), 'of token', i, 'to owner')
+        await erc20.mint(owner.address, toMint0)
+
+        // toMint = toIssue * weights[i]; rounding up after fp deconversion
+        const toMint: BigNumber = toIssue.mul(weights[i]).add(e18.sub(1)).div(e18)
+        await erc20.mint(addr1.address, toMint)
+      }
+
+      await rToken.connect(owner).setIssuanceRate(issuanceRate)
+
+      // compare quote
+      let [_, quantities] = await basketHandler.quote(toIssue0, RoundingApproach.CEIL)
+      console.log('quote for toIssue:', quantities)
+
+      // Issue the "initial" rtoken supply
+      expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
+      if (toIssue0.gt(0)) {
+        console.log('issue0 start')
+        await rToken.connect(owner).setIssuanceRate(fp(1)) // just do it, don't wait
+        await rToken.connect(owner).issue(toIssue0)
+
+        advanceBlocks(toIssue0.div(MIN_ISSUANCE_RATE).add(1))
+
+        await rToken.vest(owner.address, 1)
+        expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
+        console.log('issue0 end')
+      }
+
+      // Issue the toIssue supply
+      if (toIssue.gt(0)) {
+        console.log('issue(1) start')
+
+        expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
+        await rToken.connect(addr1).issue(toIssue)
+
+        // How many blocks should we wait?
+        // toIssue / min_issuance if the min issuance rate is in effect,
+        // and toIssue / (issuanceRate * toIssue0) otherwise.
+        // So, wait until the vesting is ready:
+        const blocksMinIss = toIssue.div(MIN_ISSUANCE_RATE).add(1)
+        const blocksIss = toIssue.div(issuanceRate.add(toIssue0)).add(1)
+        advanceBlocks(blocksMinIss.lt(blocksIss) ? blocksMinIss : blocksIss)
+
+        await rToken.vest(addr1.address, 1)
+        expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
+        // TODO? if waiting per computation isn't easy, use the emitted
+        // IssuanceStarted.blockAvailableAt
+        console.log('issue(1) end')
+      }
+
+      // Send toRedeem tokens to addr2
+
+      // Redeem toRedeem
+      // ==== Run Scenario ====
+    }
+
+    it('should handle the rtoken scenario for extreme values', async () => {
+      const toIssueBounds = [bn(1), bn('1e36'), bn('1.205e24')]
+      const toRedeemBounds = [bn(1), bn('1e36'), bn('4.4231e24')]
+      const totalSupplyBounds = [bn(1), bn('1e36'), bn('7.907e24')]
+      const numAssetsBounds = [bn(1), bn(255), bn(2)] // TODO: make last element again 7
+      const weightFirstBounds = [bn(1), fp('1e18'), fp('0.1')]
+      const weightRestBounds = [bn(1), fp('1e18'), fp('0.2')]
+      const issuanceRateBounds = [fp('1e-6'), fp('1'), fp('0.00025')]
+
+      let bounds = [
+        toIssueBounds,
+        toRedeemBounds,
+        totalSupplyBounds,
+        numAssetsBounds,
+        weightFirstBounds,
+        weightRestBounds,
+        issuanceRateBounds,
+      ]
+
+      // if (TURBO) bounds = bounds.map((b) => b.slice(0, 2)) // TURBO MODE ACTIVATE
+      // TODO: just for trying out this scenario; use the above instead to get all values
+      bounds = bounds.map((b) => [b[2]])
+
+      const paramList = cartesianProduct(...bounds)
+      for (const params of paramList) {
+        // Bind parameters
+        const [toIssue, toRedeem, totalSupply, numAssets, weightFirst, weightRest, issuanceRate] =
+          params
+
+        // Skip nonsense cases
+        if (numAssets.eq(1) && !weightRest.eq(1)) continue
+        if (toRedeem > totalSupply) continue
+
+        await runScenario(
+          toIssue,
+          toRedeem,
+          totalSupply,
+          numAssets,
+          weightFirst,
+          weightRest,
+          issuanceRate
+        )
+      }
     })
   })
 })

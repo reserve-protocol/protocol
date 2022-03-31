@@ -1,4 +1,5 @@
 import hre, { ethers } from 'hardhat'
+import { BigNumber } from 'ethers'
 
 export const advanceTime = async (seconds: number | string) => {
   await ethers.provider.send('evm_increaseTime', [parseInt(seconds.toString())])
@@ -24,7 +25,10 @@ export const getLatestBlockNumber = async (): Promise<number> => {
   return latestBlock.number
 }
 
-export const advanceBlocks = async (blocks: number) => {
-  await ethers.provider.send('hardhat_mine', ['0x' + blocks.toString(16)])
+export const advanceBlocks = async (blocks: number | BigNumber) => {
+  const blockString: string = BigNumber.isBigNumber(blocks)
+    ? blocks.toHexString()
+    : '0x' + blocks.toString(16)
+  await ethers.provider.send('hardhat_mine', [blockString])
   await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x0']) // Temporary fix - Hardhat issue
 }
