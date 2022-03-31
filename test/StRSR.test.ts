@@ -1514,40 +1514,40 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
     it('Should complete issuance + reward + redeem cycle at extreme bounds', async () => {
       // 100B RSR
-      const rsrStakeBounds = [bn('1e29'), bn('0'), bn('1e18')]
+      const rsrStakes = [bn('1e29'), bn('0'), bn('1e18')]
 
       // the amount of RSR that has already been absorbed as profit
       // has to do with the initial exchange rate
-      const rsrAccretedBounds = [bn('1e29'), bn('0'), bn('1e18')]
+      const rsrAccreteds = [bn('1e29'), bn('0'), bn('1e18')]
 
-      const rsrWithdrawalBounds = [bn('1e29'), bn('0'), bn('1e18')]
+      const rsrWithdrawals = [bn('1e29'), bn('0'), bn('1e18')]
 
-      const rsrRewardBounds = [bn('1e29'), bn('0'), bn('1e18')]
-
-      // max: // 2^40 - 1
-      const unstakingDelayBounds = [bn('1099511627775'), bn('0'), bn('604800')]
+      const rsrRewards = [bn('1e29'), bn('0'), bn('1e18')]
 
       // max: // 2^40 - 1
-      const rewardPeriodBounds = [bn('1099511627775'), bn('1'), bn('604800')]
+      const unstakingDelays = [bn('1099511627775'), bn('0'), bn('604800')]
 
-      const rewardRatioBounds = [fp('1'), fp('0'), fp('0.02284')]
+      // max: // 2^40 - 1
+      const rewardPeriods = [bn('1099511627775'), bn('1'), bn('604800')]
 
-      let bounds = [
-        rsrStakeBounds,
-        rsrAccretedBounds,
-        rsrWithdrawalBounds,
-        rsrRewardBounds,
-        unstakingDelayBounds,
-        rewardPeriodBounds,
-        rewardRatioBounds,
+      const rewardRatios = [fp('1'), fp('0'), fp('0.02284')]
+
+      let dimensions = [
+        rsrStakes,
+        rsrAccreteds,
+        rsrWithdrawals,
+        rsrRewards,
+        unstakingDelays,
+        rewardPeriods,
+        rewardRatios,
       ]
 
-      // Disregard the typical case if turbo mode is enabled
+      // Restrict to 2^7 from 3^7 to decrease runtime
       if (TURBO) {
-        bounds = bounds.map((b) => [b[0], b[1]])
+        dimensions = dimensions.map((d) => [d[0], d[1]])
       }
 
-      const cases = cartesianProduct(...bounds)
+      const cases = cartesianProduct(...dimensions)
       for (let i = 0; i < cases.length; i++) {
         const args: BigNumber[] = cases[i]
 

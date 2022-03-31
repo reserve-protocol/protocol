@@ -403,13 +403,13 @@ describe('FurnaceP0 contract', () => {
 
     it('Should not revert at extremes', async () => {
       // max: // 2^40 - 1
-      const periodBounds = [bn('1099511627775'), bn('1'), bn('604800')]
+      const periods = [bn('1099511627775'), bn('1'), bn('604800')]
 
-      const ratioBounds = [fp('1'), fp('0'), fp('0.02284')]
+      const ratios = [fp('1'), fp('0'), fp('0.02284')]
 
-      const balBounds = [fp('1e18'), fp('0'), bn('1e9')]
+      const bals = [fp('1e18'), fp('0'), bn('1e9')]
 
-      const cases = cartesianProduct(periodBounds, ratioBounds, balBounds)
+      const cases = cartesianProduct(periods, ratios, bals)
       for (let i = 0; i < cases.length; i++) {
         const args: BigNumber[] = cases[i]
         const period = args[0]
