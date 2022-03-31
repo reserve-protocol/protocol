@@ -3670,21 +3670,21 @@ describe('MainP0 contract', () => {
     // 2. Number of backup tokens
     // 3. Number of target units
     // 4. Asset.targetPerRef
-    // 5. Asset.price
+    // 5. Asset.price TODO check again
+    // 6. TargetAmts to BUs
 
     const runSimulation = async (
-      simulationIndex: number,
       numPrimeTokens: number,
       numBackupTokens: number,
       targetUnits: number,
-      targetPerRef: BigNumber,
-      assetPriceInETH: BigNumber
+      targetPerRefs: BigNumber,
+      basketTargetAmt: BigNumber
     ) => {
       firstCollateral = undefined
       const makeToken = async (
         tokenName: string,
         targetUnit: string,
-        targetAmt: BigNumber
+        targetPerRef: BigNumber
       ): Promise<ERC20Mock> => {
         const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(tokenName, `${tokenName} symbol`)
         const collateral: AavePricedFiatCollateralMock = <AavePricedFiatCollateralMock>(
@@ -3696,13 +3696,13 @@ describe('MainP0 contract', () => {
             compoundMock.address,
             aaveMock.address,
             targetUnit,
-            targetAmt
+            targetPerRef
           )
         )
 
         if (firstCollateral === undefined) firstCollateral = collateral
         await assetRegistry.register(collateral.address)
-        await aaveOracleInternal.setPrice(erc20.address, assetPriceInETH)
+        await aaveOracleInternal.setPrice(erc20.address, targetPerRef)
         return erc20
       }
 
@@ -3714,9 +3714,9 @@ describe('MainP0 contract', () => {
       const targetAmts = []
       for (let i = 0; i < numPrimeTokens; i++) {
         const targetUnit = ethers.utils.formatBytes32String((i % targetUnits).toString())
-        const erc20 = await makeToken(`Token ${simulationIndex}:${i}`, targetUnit, targetPerRef)
+        const erc20 = await makeToken(`Token ${i}`, targetUnit, targetPerRefs)
         primeERC20s.push(erc20.address)
-        targetAmts.push(fp('1').div(targetUnits)) // assumes a "centered" basket, ie sum(targetAmts) = 1
+        targetAmts.push(basketTargetAmt.div(targetUnits))
       }
 
       const backups: [string[]] = [[]]
@@ -3731,7 +3731,7 @@ describe('MainP0 contract', () => {
         const erc20Addr =
           i < numPrimeTokens
             ? primeERC20s[i]
-            : (await makeToken(`Token ${simulationIndex}:${i}`, targetUnit, targetPerRef)).address
+            : (await makeToken(`Token ${i}`, targetUnit, targetPerRefs)).address
         backups[index].push(erc20Addr)
       }
       for (let i = 0; i < targetUnits; i++) {
@@ -3751,8 +3751,8 @@ describe('MainP0 contract', () => {
       await basketHandler.connect(owner).switchBasket()
     }
 
-    it('Should not revert during basket switching', async () => {
-      const size = TURBO ? 32 : 128 // Currently 128 takes >5 minutes to execute 32 cases
+    it.only('Should not revert during basket switching', async () => {
+      const size = TURBO ? 16 : 256 // Currently 256 takes >5 minutes to execute 32 cases
 
       const primeTokens = [size, 0]
 
@@ -3760,12 +3760,19 @@ describe('MainP0 contract', () => {
 
       const targetUnits = [size, 1]
 
-      const targetPerRefs = [fp('1'), fp('1e18')]
+      // 1e18 range centered around the expected case of fp('1')
+      const targetPerRefs = [fp('1e-9'), fp('1e9')]
 
-      // [-1e18 ETH, 1e9 ETH] can't go any higher than this without overflow!
-      const prices = [bn('1'), bn('1e27')]
+      // 1e18 range centered around the expected case of fp('1')
+      const basketTargetAmts = [fp('1e-9'), fp('1e9')]
 
-      let dimensions: any[] = [primeTokens, backupTokens, targetUnits, targetPerRefs, prices]
+      let dimensions: any[] = [
+        primeTokens,
+        backupTokens,
+        targetUnits,
+        targetPerRefs,
+        basketTargetAmts,
+      ]
 
       ERC20 = await ethers.getContractFactory('ERC20Mock')
       AaveCollateralFactory = await ethers.getContractFactory('AavePricedFiatCollateralMock')
@@ -3775,7 +3782,7 @@ describe('MainP0 contract', () => {
       for (let i = 0; i < cases.length; i++) {
         const args: any[] = cases[i]
 
-        await runSimulation(i, args[0], args[1], args[2], args[3], args[4])
+        await runSimulation(args[0], args[1], args[2], args[3], args[4])
       }
     })
   })
