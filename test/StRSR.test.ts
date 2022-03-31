@@ -19,7 +19,7 @@ import {
   TestIRToken,
   TestIStRSR,
 } from '../typechain'
-import { CollateralStatus, ZERO_ADDRESS } from '../common/constants'
+import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { whileImpersonating } from './utils/impersonation'
 import {
@@ -28,7 +28,7 @@ import {
   IConfig,
   Implementation,
   IMPLEMENTATION,
-  TURBO,
+  SLOW,
 } from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
 import { cartesianProduct } from './utils/cases'
@@ -1205,7 +1205,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
     })
 
-    it('Should not transfer stakes to zero address', async function () {
+    it('Should not transfer stakes from/to zero address', async function () {
       const addr1BalancePrev = await stRSR.balanceOf(addr1.address)
       const addr2BalancePrev = await stRSR.balanceOf(addr2.address)
       const totalSupplyPrev = await stRSR.totalSupply()
@@ -1214,6 +1214,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await expect(stRSR.connect(addr1).transfer(ZERO_ADDRESS, amount)).to.be.revertedWith(
         'ERC20: transfer to the zero address'
       )
+
+      // Attempt to send from zero address - Impersonation is the only way to get to this validation
+      await whileImpersonating(ZERO_ADDRESS, async (signer) => {
+        await expect(stRSR.connect(signer).transfer(addr2.address, amount)).to.be.revertedWith(
+          'ERC20: transfer from the zero address'
+        )
+      })
 
       // Nothing transferred
       expect(await stRSR.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
@@ -1310,35 +1317,16 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
     })
 
-    it('Should not transferFrom stakes if sender is zero address', async function () {
-      const addr1BalancePrev = await stRSR.balanceOf(addr1.address)
-      const addr2BalancePrev = await stRSR.balanceOf(addr2.address)
-      const totalSupplyPrev = await stRSR.totalSupply()
-
-      // Set allowance and transfer
-      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
-      await expect(
-        stRSR.connect(addr2).transferFrom(ZERO_ADDRESS, other.address, amount)
-      ).to.be.revertedWith('ERC20: transfer from the zero address')
-
-      // Nothing transferred
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
-      expect(await stRSR.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
-      expect(await stRSR.balanceOf(other.address)).to.equal(0)
-      expect(await stRSR.totalSupply()).to.equal(totalSupplyPrev)
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
-    })
-
     it('Should not transferFrom stakes if no allowance', async function () {
       const addr1BalancePrev = await stRSR.balanceOf(addr1.address)
       const addr2BalancePrev = await stRSR.balanceOf(addr2.address)
       const totalSupplyPrev = await stRSR.totalSupply()
 
-      // Set allowance and transfer
+      // Transfer
       expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
       await expect(
         stRSR.connect(addr2).transferFrom(addr1.address, other.address, amount)
-      ).to.be.revertedWith('ERC20: transfer amount exceeds allowance')
+      ).to.be.revertedWith('ERC20: insufficient allowance')
 
       // Nothing transferred
       expect(await stRSR.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
@@ -1368,9 +1356,59 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.allowance(addr1.address, ZERO_ADDRESS)).to.equal(0)
       expect(await stRSR.allowance(ZERO_ADDRESS, addr2.address)).to.equal(0)
     })
+
+    it('Should allow to increase/decrease allowances', async function () {
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
+
+      //  Increase allowance
+      await expect(stRSR.connect(addr1).increaseAllowance(addr2.address, amount))
+        .to.emit(stRSR, 'Approval')
+        .withArgs(addr1.address, addr2.address, amount)
+
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(amount)
+
+      // Increase again
+      await expect(stRSR.connect(addr1).increaseAllowance(addr2.address, amount))
+        .to.emit(stRSR, 'Approval')
+        .withArgs(addr1.address, addr2.address, amount.mul(2))
+
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(amount.mul(2))
+
+      // Decrease allowance
+      await expect(stRSR.connect(addr1).decreaseAllowance(addr2.address, amount))
+        .to.emit(stRSR, 'Approval')
+        .withArgs(addr1.address, addr2.address, amount)
+
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(amount)
+
+      // Should not allow to decrease below zero
+      await expect(
+        stRSR.connect(addr1).decreaseAllowance(addr2.address, amount.add(1))
+      ).to.be.revertedWith('ERC20: decreased allowance below zero')
+
+      // No changes
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(amount)
+    })
+
+    it('Should not decrease allowance when Max allowance pattern is used', async function () {
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
+
+      // Increase to maximum allowance
+      await expect(stRSR.connect(addr1).increaseAllowance(addr2.address, MAX_UINT256))
+        .to.emit(stRSR, 'Approval')
+        .withArgs(addr1.address, addr2.address, MAX_UINT256)
+
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(MAX_UINT256)
+
+      // Perform a transfer, should not decrease allowance (Max allowance pattern assumed)
+      await stRSR.connect(addr2).transferFrom(addr1.address, other.address, amount)
+
+      // Remains the same
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(MAX_UINT256)
+    })
   })
 
-  describe(`Extreme Bounds (turbo=${TURBO})`, () => {
+  describe(`Extreme Bounds (SLOW=${SLOW})`, () => {
     // Dimensions
     //
     // StRSR economics can be broken down into 4 "places" that RSR can be.
@@ -1476,40 +1514,40 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
     it('Should complete issuance + reward + redeem cycle at extreme bounds', async () => {
       // 100B RSR
-      const rsrStakeBounds = [bn('1e29'), bn('0'), bn('1e18')]
+      const rsrStakes = [bn('1e29'), bn('0'), bn('1e18')]
 
       // the amount of RSR that has already been absorbed as profit
       // has to do with the initial exchange rate
-      const rsrAccretedBounds = [bn('1e29'), bn('0'), bn('1e18')]
+      const rsrAccreteds = [bn('1e29'), bn('0'), bn('1e18')]
 
-      const rsrWithdrawalBounds = [bn('1e29'), bn('0'), bn('1e18')]
+      const rsrWithdrawals = [bn('1e29'), bn('0'), bn('1e18')]
 
-      const rsrRewardBounds = [bn('1e29'), bn('0'), bn('1e18')]
-
-      // max: // 2^40 - 1
-      const unstakingDelayBounds = [bn('1099511627775'), bn('0'), bn('604800')]
+      const rsrRewards = [bn('1e29'), bn('0'), bn('1e18')]
 
       // max: // 2^40 - 1
-      const rewardPeriodBounds = [bn('1099511627775'), bn('1'), bn('604800')]
+      const unstakingDelays = [bn('1099511627775'), bn('0'), bn('604800')]
 
-      const rewardRatioBounds = [fp('1'), fp('0'), fp('0.02284')]
+      // max: // 2^40 - 1
+      const rewardPeriods = [bn('1099511627775'), bn('1'), bn('604800')]
 
-      let bounds = [
-        rsrStakeBounds,
-        rsrAccretedBounds,
-        rsrWithdrawalBounds,
-        rsrRewardBounds,
-        unstakingDelayBounds,
-        rewardPeriodBounds,
-        rewardRatioBounds,
+      const rewardRatios = [fp('1'), fp('0'), fp('0.02284')]
+
+      let dimensions = [
+        rsrStakes,
+        rsrAccreteds,
+        rsrWithdrawals,
+        rsrRewards,
+        unstakingDelays,
+        rewardPeriods,
+        rewardRatios,
       ]
 
-      // Disregard the typical case if turbo mode is enabled
-      if (TURBO) {
-        bounds = bounds.map((b) => [b[0], b[1]])
+      // Restrict to 2^7 from 3^7 to decrease runtime
+      if (!SLOW) {
+        dimensions = dimensions.map((d) => [d[0], d[1]])
       }
 
-      const cases = cartesianProduct(...bounds)
+      const cases = cartesianProduct(...dimensions)
       for (let i = 0; i < cases.length; i++) {
         const args: BigNumber[] = cases[i]
 

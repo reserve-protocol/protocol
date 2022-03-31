@@ -59,7 +59,7 @@ interface IBasketHandler is IComponent {
 
     /// Governance-controlled setter to cause a basket switch explicitly
     /// @custom:governance
-    function switchBasket() external returns (bool);
+    function switchBasket() external;
 
     /// @return If the BackingManager has sufficient collateral to redeem the entire RToken supply
     function fullyCapitalized() external view returns (bool);

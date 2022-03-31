@@ -44,7 +44,7 @@ export enum Implementation {
 export const IMPLEMENTATION: Implementation =
   process.env.PROTO_IMPL == Implementation.P1.toString() ? Implementation.P1 : Implementation.P0
 
-export const TURBO = process.env.TURBO !== 'off'
+export const SLOW = !!process.env.SLOW
 
 export type Collateral = AbstractCollateral | CTokenFiatCollateral | ATokenFiatCollateral
 
@@ -160,7 +160,6 @@ interface CollateralFixture {
 }
 
 async function collateralFixture(
-  deployer: TestIDeployer,
   comptroller: ComptrollerMock,
   aaveLendingPool: AaveLendingPoolMock,
   aaveToken: ERC20Mock,
@@ -465,7 +464,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
-    deployer,
     compoundMock,
     aaveMock,
     aaveToken,

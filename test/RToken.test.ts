@@ -281,7 +281,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const issueAmount: BigNumber = bn('10e18')
 
       await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
-        'ERC20: transfer amount exceeds allowance'
+        'ERC20: insufficient allowance'
       )
       expect(await rToken.totalSupply()).to.equal(bn(0))
     })

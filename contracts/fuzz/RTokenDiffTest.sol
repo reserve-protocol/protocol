@@ -91,11 +91,10 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
     function ensureBasket() external {}
 
     /// Governance-controlled setter to cause a basket switch explicitly
-    function switchBasket() external returns (bool) {
+    function switchBasket() external {
         // TODO: modeA = !modeA, and we do all the needed trades and handle capitalization
         ++nonce;
         timestamp = block.timestamp;
-        return false;
     }
 
     /// @return If the BackingManager has sufficient collateral to redeem the entire RToken supply

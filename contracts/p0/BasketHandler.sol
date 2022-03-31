@@ -151,9 +151,9 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         emit BackupConfigSet(targetName, max, erc20s);
     }
 
-    /// @return true if we registered a change in the underlying reference basket
-    function switchBasket() external onlyOwner returns (bool) {
-        return _switchBasket();
+    /// Switch the basket, only callable directly by governance
+    function switchBasket() external onlyOwner {
+        _switchBasket();
     }
 
     /// @return Whether it holds enough basket units of collateral
@@ -252,8 +252,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     Basket private newBasket;
 
     /// Select and save the next basket, based on the BasketConfig and Collateral statuses
-    /// @return whether or not a new basket was derived from templates
-    function _switchBasket() private returns (bool) {
+    function _switchBasket() private {
         IAssetRegistry reg = main.assetRegistry();
 
         while (targetNames.length() > 0) targetNames.remove(targetNames.at(0));
@@ -332,8 +331,6 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }
         emit BasketSet(basket.erc20s, refAmts, basket.defaulted);
-
-        return true;
     }
 
     /// Good collateral is both (i) registered, (ii) collateral, and (3) not DISABLED
