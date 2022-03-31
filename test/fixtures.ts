@@ -160,7 +160,6 @@ interface CollateralFixture {
 }
 
 async function collateralFixture(
-  deployer: TestIDeployer,
   comptroller: ComptrollerMock,
   aaveLendingPool: AaveLendingPoolMock,
   aaveToken: ERC20Mock,
@@ -465,7 +464,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
-    deployer,
     compoundMock,
     aaveMock,
     aaveToken,

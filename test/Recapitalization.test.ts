@@ -9,6 +9,8 @@ import {
   AaveLendingPoolMock,
   AaveOracleMock,
   AssetRegistryP0,
+  AavePricedFiatCollateralMock,
+  AavePricedFiatCollateral,
   ATokenFiatCollateral,
   BackingManagerP0,
   BasketHandlerP0,
@@ -25,8 +27,9 @@ import {
   USDCMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import { Collateral, defaultFixture, IConfig } from './fixtures'
+import { Collateral, defaultFixture, IConfig, TURBO } from './fixtures'
 import { expectTrade } from './utils/trades'
+import { cartesianProduct } from './utils/cases'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -3653,6 +3656,127 @@ describe('MainP0 contract', () => {
           minBuyAmt2.add(minBuyAmtRebalance).add(minBuyAmtRebalanceBkp)
         )
       })
+    })
+  })
+
+  describe('Basket Extreme Bounds', () => {
+    let ERC20: ContractFactory
+    let AaveCollateralFactory: ContractFactory
+    let firstCollateral: AavePricedFiatCollateralMock | undefined
+
+    // Dimensions
+    //
+    // 1. Number of prime basket tokens
+    // 2. Number of backup tokens
+    // 3. Number of target units
+    // 4. Asset.targetPerRef
+    // 5. Asset.price
+
+    const runSimulation = async (
+      simulationIndex: number,
+      numPrimeTokens: number,
+      numBackupTokens: number,
+      targetUnits: number,
+      targetPerRef: BigNumber,
+      assetPriceInETH: BigNumber
+    ) => {
+      firstCollateral = undefined
+      const makeToken = async (
+        tokenName: string,
+        targetUnit: string,
+        targetAmt: BigNumber
+      ): Promise<ERC20Mock> => {
+        const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(tokenName, `${tokenName} symbol`)
+        const collateral: AavePricedFiatCollateralMock = <AavePricedFiatCollateralMock>(
+          await AaveCollateralFactory.deploy(
+            erc20.address,
+            config.maxTradeVolume,
+            fp('0.05'),
+            bn('86400'),
+            compoundMock.address,
+            aaveMock.address,
+            targetUnit,
+            targetAmt
+          )
+        )
+
+        if (firstCollateral === undefined) firstCollateral = collateral
+        await assetRegistry.register(collateral.address)
+        await aaveOracleInternal.setPrice(erc20.address, assetPriceInETH)
+        return erc20
+      }
+
+      ;({ assetRegistry, basketHandler, compoundMock, aaveMock } = await loadFixture(
+        defaultFixture
+      ))
+
+      const primeERC20s = []
+      const targetAmts = []
+      for (let i = 0; i < numPrimeTokens; i++) {
+        const targetUnit = ethers.utils.formatBytes32String((i % targetUnits).toString())
+        const erc20 = await makeToken(`Token ${simulationIndex}:${i}`, targetUnit, targetPerRef)
+        primeERC20s.push(erc20.address)
+        targetAmts.push(fp('1').div(targetUnits)) // assumes a "centered" basket, ie sum(targetAmts) = 1
+      }
+
+      const backups: [string[]] = [[]]
+      for (let i = 1; i < targetUnits; i++) {
+        backups.push([])
+      }
+      for (let i = 0; i < numBackupTokens; i++) {
+        const index = i % targetUnits
+        const targetUnit = ethers.utils.formatBytes32String(index.toString())
+
+        // reuse erc20 if possible
+        const erc20Addr =
+          i < numPrimeTokens
+            ? primeERC20s[i]
+            : (await makeToken(`Token ${simulationIndex}:${i}`, targetUnit, targetPerRef)).address
+        backups[index].push(erc20Addr)
+      }
+      for (let i = 0; i < targetUnits; i++) {
+        const targetUnit = ethers.utils.formatBytes32String(i.toString())
+        await basketHandler.setBackupConfig(targetUnit, numPrimeTokens, backups[i])
+      }
+
+      // Set prime basket with all collateral
+      await basketHandler.setPrimeBasket(primeERC20s, targetAmts)
+      await basketHandler.connect(owner).switchBasket()
+
+      // Unregister collateral and switch basket
+      if (firstCollateral !== undefined) {
+        firstCollateral = <AavePricedFiatCollateralMock>firstCollateral
+        await assetRegistry.unregister(firstCollateral.address)
+      }
+      await basketHandler.connect(owner).switchBasket()
+    }
+
+    it('Should not revert during basket switching', async () => {
+      const size = TURBO ? 32 : 128 // Currently 128 takes >5 minutes to execute 32 cases
+
+      const primeTokens = [size, 0]
+
+      const backupTokens = [size, 0]
+
+      const targetUnits = [size, 1]
+
+      const targetPerRefs = [fp('1'), fp('1e18')]
+
+      // [-1e18 ETH, 1e9 ETH] can't go any higher than this without overflow!
+      const prices = [bn('1'), bn('1e27')]
+
+      let dimensions: any[] = [primeTokens, backupTokens, targetUnits, targetPerRefs, prices]
+
+      ERC20 = await ethers.getContractFactory('ERC20Mock')
+      AaveCollateralFactory = await ethers.getContractFactory('AavePricedFiatCollateralMock')
+
+      // 2^5 = 32 cases
+      const cases = cartesianProduct(...dimensions)
+      for (let i = 0; i < cases.length; i++) {
+        const args: any[] = cases[i]
+
+        await runSimulation(i, args[0], args[1], args[2], args[3], args[4])
+      }
     })
   })
 })
