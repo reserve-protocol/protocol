@@ -27,7 +27,7 @@ import {
   USDCMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import { Collateral, defaultFixture, IConfig, TURBO } from './fixtures'
+import { Collateral, defaultFixture, IConfig, SLOW } from './fixtures'
 import { expectTrade } from './utils/trades'
 import { cartesianProduct } from './utils/cases'
 
@@ -3751,8 +3751,8 @@ describe('MainP0 contract', () => {
       await basketHandler.connect(owner).switchBasket()
     }
 
-    it.only('Should not revert during basket switching', async () => {
-      const size = TURBO ? 16 : 256 // Currently 256 takes >5 minutes to execute 32 cases
+    it('Should not revert during basket switching', async () => {
+      const size = SLOW ? 256 : 4 // Currently 256 takes >5 minutes to execute 32 cases
 
       const primeTokens = [size, 0]
 

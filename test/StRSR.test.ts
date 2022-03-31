@@ -28,7 +28,7 @@ import {
   IConfig,
   Implementation,
   IMPLEMENTATION,
-  TURBO,
+  SLOW,
 } from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
 import { cartesianProduct } from './utils/cases'
@@ -1408,7 +1408,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe(`Extreme Bounds (turbo=${TURBO})`, () => {
+  describe(`Extreme Bounds (SLOW=${SLOW})`, () => {
     // Dimensions
     //
     // StRSR economics can be broken down into 4 "places" that RSR can be.
@@ -1543,7 +1543,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       ]
 
       // Restrict to 2^7 from 3^7 to decrease runtime
-      if (TURBO) {
+      if (!SLOW) {
         dimensions = dimensions.map((d) => [d[0], d[1]])
       }
 

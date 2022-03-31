@@ -44,7 +44,7 @@ export enum Implementation {
 export const IMPLEMENTATION: Implementation =
   process.env.PROTO_IMPL == Implementation.P1.toString() ? Implementation.P1 : Implementation.P0
 
-export const TURBO = process.env.TURBO !== 'off'
+export const SLOW = !!process.env.SLOW
 
 export type Collateral = AbstractCollateral | CTokenFiatCollateral | ATokenFiatCollateral
 
