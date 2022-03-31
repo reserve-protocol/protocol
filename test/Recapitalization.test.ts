@@ -3746,9 +3746,10 @@ describe('MainP0 contract', () => {
       // Unregister collateral and switch basket
       if (firstCollateral !== undefined) {
         firstCollateral = <AavePricedFiatCollateralMock>firstCollateral
+
+        // Unregister calls `ensureValidBasket`
         await assetRegistry.unregister(firstCollateral.address)
       }
-      await basketHandler.connect(owner).switchBasket()
     }
 
     it('Should not revert during basket switching', async () => {
