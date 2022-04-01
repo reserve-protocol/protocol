@@ -58,7 +58,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
         AaveOracleMixin(comptroller_, aaveLendingPool_)
     {
         rewardERC20 = rewardERC20_;
-        prevReferencePrice = refPerTok();
+        prevReferencePrice = refPerTok(); // {collateral/reference}
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
@@ -74,17 +74,32 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
         }
         uint256 cached = whenDefault;
 
-        // Check invariants
-        int192 p = refPerTok();
-        if (p.lt(prevReferencePrice)) {
+        // Check for hard default
+        int192 referencePrice = refPerTok();
+        if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
-            // If the underlying is showing signs of depegging, default eventually
-            whenDefault = isReferenceDepegged()
-                ? Math.min(whenDefault, block.timestamp + delayUntilDefault)
-                : NEVER;
+            // Check for soft default of underlying reference token
+            try this.consultOracle(referenceERC20) returns (int192 p) {
+                // {UoA/ref} = {UoA/target} * {target/ref}
+                int192 peg = pricePerTarget().mul(targetPerRef());
+                int192 delta = peg.mul(defaultThreshold);
+
+                // If the price is below the default-threshold price, default eventually
+                if (p.lt(peg.minus(delta)) || p.gt(peg.plus(delta))) {
+                    whenDefault = block.timestamp + delayUntilDefault;
+                } else whenDefault = NEVER;
+            } catch Panic(uint256) {
+                // This indicates a problem in the price function!
+                assert(false); // To confirm: there is no way to maintain the error code here
+            } catch (bytes memory lowLevelData) {
+                if (bytes4(lowLevelData) == bytes4(keccak256("PriceIsZero()"))) {
+                    // This means the oracle has broken on us and we should default immediately
+                    whenDefault = block.timestamp;
+                } else revert UnknownError(lowLevelData);
+            }
         }
-        prevReferencePrice = p;
+        prevReferencePrice = referencePrice;
 
         if (whenDefault != cached) {
             emit DefaultStatusChanged(cached, whenDefault, status());
@@ -95,14 +110,6 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     function refPerTok() public view override returns (int192) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray ref/tok}
         return toFixWithShift(rateInRAYs, -27);
-    }
-
-    function isReferenceDepegged() private view returns (bool) {
-        // {UoA/ref} = {UoA/target} * {target/ref}
-        int192 peg = pricePerTarget().mul(targetPerRef());
-        int192 delta = peg.mul(defaultThreshold);
-        int192 p = consultOracle(referenceERC20);
-        return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.

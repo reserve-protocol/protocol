@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 
-/// Raised if the oracle does not contain a price
 error PriceIsZero();
+error UnknownError(bytes);
 
 /**
  * @title IAsset
