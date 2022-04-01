@@ -1,7 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ContractFactory } from 'ethers'
-import { BigNumber, BigNumberish } from 'ethers'
+import { ContractFactory, BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 
 import { BN_SCALE_FACTOR } from '../../common/constants'
