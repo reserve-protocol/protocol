@@ -3,7 +3,6 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
@@ -52,13 +51,28 @@ abstract contract Collateral is ICollateral, Asset, Context {
     /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
     /// collateral you're defining, you MUST  this function!
     function forceUpdates() external virtual {
+        if (whenDefault <= block.timestamp) {
+            return;
+        }
         uint256 cached = whenDefault;
 
-        if (whenDefault > block.timestamp) {
+        try this.price() returns (int192 p) {
+            // {UoA/ref} = {UoA/target} * {target/ref}
+            int192 peg = pricePerTarget().mul(targetPerRef());
+            int192 delta = peg.mul(defaultThreshold);
+
             // If the price is below the default-threshold price, default eventually
-            whenDefault = isDepegged()
-                ? Math.min(whenDefault, block.timestamp + delayUntilDefault)
-                : NEVER;
+            if (p.lt(peg.minus(delta)) || p.gt(peg.plus(delta))) {
+                whenDefault = block.timestamp + delayUntilDefault;
+            } else whenDefault = NEVER;
+        } catch Panic(uint256) {
+            // This indicates a problem in the price function!
+            assert(false); // To confirm: there is no way to maintain the error code here
+        } catch (bytes memory lowLevelData) {
+            if (bytes4(lowLevelData) == bytes4(keccak256("PriceIsZero()"))) {
+                // This means the oracle has broken on us and we should default immediately
+                whenDefault = block.timestamp;
+            } else revert UnknownError(lowLevelData);
         }
 
         if (whenDefault != cached) {
@@ -95,13 +109,5 @@ abstract contract Collateral is ICollateral, Asset, Context {
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view virtual returns (int192) {
         return FIX_ONE;
-    }
-
-    function isDepegged() internal view returns (bool) {
-        // {UoA/ref} = {UoA/target} * {target/ref}
-        int192 peg = pricePerTarget().mul(targetPerRef());
-        int192 delta = peg.mul(defaultThreshold);
-        int192 p = price();
-        return p.lt(peg.minus(delta)) || p.gt(peg.plus(delta));
     }
 }
