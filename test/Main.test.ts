@@ -311,12 +311,12 @@ describe('MainP0 contract', () => {
 
       // Attempt to reinitialize - RSR Trader
       await expect(
-        rsrTrader.init(main.address, config.maxTradeSlippage, config.dustAmount)
+        rsrTrader.init(main.address, rsr.address, config.maxTradeSlippage, config.dustAmount)
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - RToken Trader
       await expect(
-        rTokenTrader.init(main.address, config.maxTradeSlippage, config.dustAmount)
+        rTokenTrader.init(main.address, rToken.address, config.maxTradeSlippage, config.dustAmount)
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - Furnace

@@ -78,8 +78,8 @@ contract DeployerP1 is IDeployer {
             basketHandler: new BasketHandlerP0(),
             backingManager: new BackingManagerP0(),
             distributor: new DistributorP0(),
-            rsrTrader: new RevenueTradingP0(rsr),
-            rTokenTrader: new RevenueTradingP0(IERC20(address(rToken))),
+            rsrTrader: new RevenueTradingP0(),
+            rTokenTrader: new RevenueTradingP0(),
             furnace: new FurnaceP0(),
             broker: new BrokerP0()
         });
@@ -110,8 +110,13 @@ contract DeployerP1 is IDeployer {
         main.basketHandler().init(main);
 
         // Init Revenue Traders
-        main.rsrTrader().init(main, params.maxTradeSlippage, params.dustAmount);
-        main.rTokenTrader().init(main, params.maxTradeSlippage, params.dustAmount);
+        main.rsrTrader().init(main, rsr, params.maxTradeSlippage, params.dustAmount);
+        main.rTokenTrader().init(
+            main,
+            IERC20(address(rToken)),
+            params.maxTradeSlippage,
+            params.dustAmount
+        );
 
         // Init Asset Registry
         main.assetRegistry().init(main, assets);
