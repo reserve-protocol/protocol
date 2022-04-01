@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "contracts/interfaces/IMain.sol";
 
 /**
  * Abstract superclass for system contracts registered in Main
  */
-abstract contract Component is IComponent, Context {
+abstract contract Component is Initializable, ContextUpgradeable, IComponent {
     IMain public main;
-    bool private initialized;
 
-    function initComponent(IMain main_, ConstructorArgs memory args) external {
-        require(!initialized, "Component: already initialized");
+    // Sets main for the component - Can only be called during initialization
+    function __Component_init(IMain main_) internal onlyInitializing {
         main = main_;
-        init(args);
-        initialized = true; // Prohibit repeated initialization
     }
 
     modifier notPaused() {
@@ -27,7 +25,4 @@ abstract contract Component is IComponent, Context {
         require(main.owner() == _msgSender(), "Component: caller is not the owner");
         _;
     }
-
-    // solhint-disable-next-line no-empty-blocks
-    function init(ConstructorArgs memory args) internal virtual {}
 }

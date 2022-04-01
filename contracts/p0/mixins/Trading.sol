@@ -27,9 +27,12 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     int192 public maxTradeSlippage; // {%}
     int192 public dustAmount; // {UoA}
 
-    function init(ConstructorArgs memory args) internal virtual override {
-        maxTradeSlippage = args.params.maxTradeSlippage;
-        dustAmount = args.params.dustAmount;
+    function __Trading_init(int192 maxTradeSlippage_, int192 dustAmount_)
+        internal
+        onlyInitializing
+    {
+        maxTradeSlippage = maxTradeSlippage_;
+        dustAmount = dustAmount_;
     }
 
     /// @return true iff this trader now has open trades.

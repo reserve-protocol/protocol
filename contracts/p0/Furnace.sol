@@ -17,11 +17,16 @@ contract FurnaceP0 is Component, IFurnace {
     uint256 public lastPayout; // {seconds} The last time we did a payout
     uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
 
-    function init(ConstructorArgs memory args) internal override {
-        period = args.params.rewardPeriod;
-        ratio = args.params.rewardRatio;
+    function init(
+        IMain main_,
+        uint256 period_,
+        int192 ratio_
+    ) public initializer {
+        __Component_init(main_);
+        period = period_;
+        ratio = ratio_;
         lastPayout = block.timestamp;
-        lastPayoutBal = args.components.rToken.balanceOf(address(this));
+        lastPayoutBal = main_.rToken().balanceOf(address(this));
         require(period != 0, "period cannot be zero");
     }
 

@@ -97,6 +97,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     BasketConfig private config;
     Basket private basket;
 
+    function init(IMain main_) public initializer {
+        __Component_init(main_);
+    }
+
     /// Try to ensure the current basket is valid, switching it if necessary
     /// If there are no available collateral tokens, the basket becomes empty and defaulted
     function ensureBasket() external notPaused {

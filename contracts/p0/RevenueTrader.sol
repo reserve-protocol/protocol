@@ -20,8 +20,13 @@ contract RevenueTradingP0 is TradingP0, IRevenueTrader {
         tokenToBuy = tokenToBuy_;
     }
 
-    function init(ConstructorArgs memory args) internal override {
-        TradingP0.init(args);
+    function init(
+        IMain main_,
+        int192 maxTradeSlippage_,
+        int192 dustAmount_
+    ) public initializer {
+        __Component_init(main_);
+        __Trading_init(maxTradeSlippage_, dustAmount_);
     }
 
     /// Close any open trades and start new ones, for all assets

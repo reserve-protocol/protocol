@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IMain.sol";
 
 /// Only Main is Pausable
-contract Pausable is Ownable, IPausable {
+abstract contract Pausable is OwnableUpgradeable, IPausable {
     address private _pauser;
     bool public paused;
 
-    constructor() {
+    function __Pausable_init() internal onlyInitializing {
+        __Ownable_init();
         _pauser = _msgSender();
         paused = true;
     }
@@ -21,23 +24,23 @@ contract Pausable is Ownable, IPausable {
         _;
     }
 
-    function pause() external {
+    function pause() public {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         emit PausedSet(paused, true);
         paused = true;
     }
 
-    function unpause() external {
+    function unpause() public {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         emit PausedSet(paused, false);
         paused = false;
     }
 
-    function pauser() external view returns (address) {
+    function pauser() public view returns (address) {
         return _pauser;
     }
 
-    function setPauser(address pauser_) external {
+    function setPauser(address pauser_) public {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         emit PauserSet(_pauser, pauser_);
         _pauser = pauser_;
@@ -49,11 +52,8 @@ contract Pausable is Ownable, IPausable {
  * @notice Collects all mixins.
  */
 // solhint-disable max-states-count
-contract MainP0 is Pausable, IMain {
+contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
     using FixLib for int192;
-
-    // Already initialized?
-    bool internal initialized;
 
     function poke() external virtual notPaused {
         // We think these are totally order-independent.
@@ -65,46 +65,33 @@ contract MainP0 is Pausable, IMain {
         stRSR.payoutRewards();
     }
 
-    function owner() public view override(IMain, Ownable) returns (address) {
-        return Ownable.owner();
+    function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
+        return OwnableUpgradeable.owner();
     }
 
     /// Initializer
-    function init(ConstructorArgs memory args) public virtual onlyOwner {
-        require(!initialized, "Already initialized");
-        initialized = true;
+    function init(
+        Components memory components,
+        IERC20 rsr_,
+        address owner_
+    ) public virtual initializer {
+        __Pausable_init();
 
-        setBackingManager(args.components.backingManager);
-        backingManager.initComponent(this, args);
+        setBackingManager(components.backingManager);
+        setBasketHandler(components.basketHandler);
+        setRSRTrader(components.rsrTrader);
+        setRTokenTrader(components.rTokenTrader);
+        setAssetRegistry(components.assetRegistry);
+        setDistributor(components.distributor);
+        setFurnace(components.furnace);
+        setBroker(components.broker);
+        setStRSR(components.stRSR);
+        setRToken(components.rToken);
+        setRSR(rsr_);
 
-        setBasketHandler(args.components.basketHandler);
-        basketHandler.initComponent(this, args);
-
-        setRSRTrader(args.components.rsrTrader);
-        rsrTrader.initComponent(this, args);
-
-        setRTokenTrader(args.components.rTokenTrader);
-        rTokenTrader.initComponent(this, args);
-
-        setAssetRegistry(args.components.assetRegistry);
-        assetRegistry.initComponent(this, args);
-
-        setDistributor(args.components.distributor);
-        distributor.initComponent(this, args);
-
-        setFurnace(args.components.furnace);
-        furnace.initComponent(this, args);
-
-        setBroker(args.components.broker);
-        broker.initComponent(this, args);
-
-        setStRSR(args.components.stRSR);
-        stRSR.initComponent(this, args);
-
-        setRToken(args.components.rToken);
-        rToken.initComponent(this, args);
-
-        setRSR(args.rsr);
+        // Roles
+        setPauser(owner_);
+        transferOwnership(owner_);
 
         emit Initialized();
     }
