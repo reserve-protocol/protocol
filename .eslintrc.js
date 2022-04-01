@@ -6,15 +6,26 @@ module.exports = {
     node: true,
   },
   plugins: ['@typescript-eslint'],
-  extends: ['standard', 'plugin:node/recommended', 'plugin:prettier/recommended'],
+  extends: [
+    'eslint:recommended',
+    'plugin:node/recommended',
+    'plugin:prettier/recommended',
+    'plugin:@typescript-eslint/recommended',
+  ],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 12,
+    project: ['./tsconfig.json'],
   },
   rules: {
     'node/no-unsupported-features/es-syntax': ['error', { ignores: ['modules'] }],
+
     // For typechain
     'node/no-missing-import': 'off',
     'node/no-extraneous-import': 'off',
+    'node/no-unpublished-import': 'off',
+    '@typescript-eslint/no-extra-semi': 'off',
+    '@typescript-eslint/no-floating-promises': 'error',
+    '@typescript-eslint/no-misused-promises': 'error',
   },
 }
