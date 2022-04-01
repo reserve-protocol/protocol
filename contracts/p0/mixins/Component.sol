@@ -12,6 +12,7 @@ abstract contract Component is Initializable, ContextUpgradeable, IComponent {
     IMain public main;
 
     // Sets main for the component - Can only be called during initialization
+    // solhint-disable-next-line func-name-mixedcase
     function __Component_init(IMain main_) internal onlyInitializing {
         main = main_;
     }

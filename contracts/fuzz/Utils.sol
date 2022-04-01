@@ -24,4 +24,3 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         issuanceRate: FixLib.divu(toFix(25), 1_000_000) // 0.025% per block or ~0.1% per minute
     });
 }
-

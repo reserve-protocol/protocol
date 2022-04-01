@@ -13,6 +13,7 @@ abstract contract Pausable is OwnableUpgradeable, IPausable {
     address private _pauser;
     bool public paused;
 
+    // solhint-disable-next-line func-name-mixedcase
     function __Pausable_init() internal onlyInitializing {
         __Ownable_init();
         _pauser = _msgSender();

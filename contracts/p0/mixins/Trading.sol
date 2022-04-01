@@ -27,6 +27,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     int192 public maxTradeSlippage; // {%}
     int192 public dustAmount; // {UoA}
 
+    // solhint-disable-next-line func-name-mixedcase
     function __Trading_init(int192 maxTradeSlippage_, int192 dustAmount_)
         internal
         onlyInitializing

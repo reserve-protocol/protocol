@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+// solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IComponent.sol";

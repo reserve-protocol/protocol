@@ -49,7 +49,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// Manage backing funds: maintain the overall backing policy
     /// Collective Action
     function manageFunds() external notPaused {
-        // Call keepers beforex``
+        // Call keepers before
         main.poke();
 
         // Do not trade when DISABLED or IFFY

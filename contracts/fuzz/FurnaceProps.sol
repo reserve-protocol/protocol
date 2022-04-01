@@ -40,7 +40,7 @@ contract FurnaceP0TestProps {
         params.rewardRatio = toFix(1).divu(2);
         Components memory components;
 
-        main = new MainMock(); 
+        main = new MainMock();
         main.init(components, IERC20(address(0)), address(this)); // this be main.owner
         furn1 = new FurnaceP0();
         furn2 = new FurnaceP0();
