@@ -32,7 +32,7 @@ import {
   IConfig,
   Implementation,
   IMPLEMENTATION,
-  TURBO,
+  SLOW,
 } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 
@@ -1134,24 +1134,33 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   ): Promise<[ERC20Mock, Collateral]> {
     const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
     const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
-    const Coll: ContractFactory = await ethers.getContractFactory('AavePricedFiatCollateral')
-    const coll: Collateral = <Collateral>(
-      await Coll.deploy(
+    const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
+      'AavePricedFiatCollateral'
+    )
+    const coll: AavePricedFiatCollateral = <AavePricedFiatCollateral>(
+      await AaveCollateralFactory.deploy(
         erc20.address,
         fp('1e36'),
-        fp(0.05),
+        fp('0.05'),
         bn(86400),
         compoundMock.address,
         aaveMock.address
       )
     )
-    assetRegistry.register(erc20.address)
+    assetRegistry.register(coll.address)
+    expect(await assetRegistry.isRegistered(erc20.address)).to.be.true
     aaveOracleInternal.setPrice(erc20.address, price)
-    console.log('New token:', erc20.address, 'price:', price, 'symbol:', 'T' + index)
     return [erc20, coll]
   }
 
-  describe.only(`Extreme Values (turbo=${TURBO})`, async () => {
+  async function forceUpdateGetStatus(): Promise<CollateralStatus> {
+    whileImpersonating(basketHandler.address, async (bhSigner) => {
+      await assetRegistry.connect(bhSigner).forceUpdates()
+    })
+    return await basketHandler.status()
+  }
+
+  describe.only(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, async () => {
     async function runScenario(
       toIssue: BigNumber,
       toRedeem: BigNumber,
@@ -1161,114 +1170,117 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       weightRest: BigNumber, // another target amount per asset (weight of second+ assets)
       issuanceRate: BigNumber // range under test: [.000_001 to 1.0]
     ) {
-      // ==== Setup Scenario ====
       const MIN_ISSUANCE_RATE = fp(10000) // {rtoken / block}
 
-      // deploy and register basket collateral
+      // ==== Deploy and register basket collateral
+      console.log('Deploy and register basket collateral')
       const N = numBasketAssets.toNumber()
-      let erc20s = []
+      let erc20s: ERC20Mock[] = []
       let weights: BigNumber[] = []
       let totalWeight: BigNumber = fp(0)
       for (let i = 0; i < N; i++) {
-        const [erc20, coll] = await makeColl(i, fp(1.0))
+        const [erc20, coll] = await makeColl(i, fp('0.00025'))
         erc20s.push(erc20)
         const currWeight = i == 0 ? weightFirst : weightRest
         weights.push(currWeight)
         totalWeight = totalWeight.add(currWeight)
       }
+      expect(await forceUpdateGetStatus()).to.equal(CollateralStatus.SOUND)
 
-      // set basket assets as the prime basket
-      const basketAddresses = erc20s.map((erc20) => erc20.address)
-      basketHandler.connect(owner).setPrimeBasket(basketAddresses, weights)
-      basketHandler.connect(owner).switchBasket()
-      expect(await rToken.price()).to.equal(totalWeight)
+      // ==== Switch Basket
+      console.log('Switch Basket')
+      const basketAddresses: string[] = erc20s.map((erc20) => erc20.address)
+      await basketHandler.connect(owner).setPrimeBasket(basketAddresses, weights)
+      await basketHandler.connect(owner).switchBasket()
+      expect(await forceUpdateGetStatus()).to.equal(CollateralStatus.SOUND)
 
-      // toIssue0 -- how much rToken should be issued to owner, to begin this scenario
+      for (let i = 0; i < basketAddresses.length; i++) {
+        expect(await basketHandler.quantity(basketAddresses[i])).to.equal(weights[i])
+      }
+
+      // ==== Mint basket tokens to owner and addr1
+      console.log('Mint basket tokens to owner and addr1')
       const toIssue0 = totalSupply.sub(toIssue)
       const e18 = BN_SCALE_FACTOR
-      // user addr1 starts with enough basket assets to issue(toIssue)
       for (let i = 0; i < N; i++) {
         const erc20: ERC20Mock = erc20s[i]
         // user owner starts with enough basket assets to issue (totalSupply - toIssue)
         const toMint0: BigNumber = toIssue0.mul(weights[i]).add(e18.sub(1)).div(e18)
-        console.log('minting', toMint0.toString(), 'of token', i, 'to owner')
         await erc20.mint(owner.address, toMint0)
+        await erc20.connect(owner).increaseAllowance(rToken.address, toMint0)
 
-        // toMint = toIssue * weights[i]; rounding up after fp deconversion
+        // user addr1 starts with enough basket assets to issue (toIssue)
         const toMint: BigNumber = toIssue.mul(weights[i]).add(e18.sub(1)).div(e18)
         await erc20.mint(addr1.address, toMint)
+        await erc20.connect(addr1).increaseAllowance(rToken.address, toMint)
       }
 
       await rToken.connect(owner).setIssuanceRate(issuanceRate)
 
-      // compare quote
-      let [_, quantities] = await basketHandler.quote(toIssue0, RoundingApproach.CEIL)
-      console.log('quote for toIssue:', quantities)
-
-      // Issue the "initial" rtoken supply
+      // ==== Issue the "initial" rtoken supply to owner
+      console.log("Issue the 'initial' rtoken supply to owner")
       expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
       if (toIssue0.gt(0)) {
-        console.log('issue0 start')
         await rToken.connect(owner).setIssuanceRate(fp(1)) // just do it, don't wait
+
+        // TODO: Do this issuance in a sequence of issuances that each only need to skip 1000 blocks
+        console.log('issue...')
         await rToken.connect(owner).issue(toIssue0)
 
-        advanceBlocks(toIssue0.div(MIN_ISSUANCE_RATE).add(1))
+        console.log(`advance blocks... ${toIssue0.div(MIN_ISSUANCE_RATE).add(1).toString()}`)
+        await advanceBlocks(toIssue0.div(MIN_ISSUANCE_RATE).add(1))
 
+        console.log('vest...')
         await rToken.vest(owner.address, 1)
         expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
-        console.log('issue0 end')
       }
 
-      // Issue the toIssue supply
-      if (toIssue.gt(0)) {
-        console.log('issue(1) start')
+      // ==== Issue the toIssue supply to addr1
+      console.log('Issue the toIssue supply to addr1')
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      await rToken.connect(addr1).issue(toIssue)
 
-        expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
-        await rToken.connect(addr1).issue(toIssue)
+      // Wait until vesting is ready:
+      const naturalIssRate = issuanceRate.mul(toIssue0)
+      const realIssuanceRate = MIN_ISSUANCE_RATE.gt(naturalIssRate)
+        ? MIN_ISSUANCE_RATE
+        : naturalIssRate
+      const blocksIss = toIssue.div(realIssuanceRate).add(1)
 
-        // How many blocks should we wait?
-        // toIssue / min_issuance if the min issuance rate is in effect,
-        // and toIssue / (issuanceRate * toIssue0) otherwise.
-        // So, wait until the vesting is ready:
-        const blocksMinIss = toIssue.div(MIN_ISSUANCE_RATE).add(1)
-        const blocksIss = toIssue.div(issuanceRate.add(toIssue0)).add(1)
-        advanceBlocks(blocksMinIss.lt(blocksIss) ? blocksMinIss : blocksIss)
+      await advanceBlocks(blocksIss)
+      await rToken.vest(addr1.address, 1)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
 
-        await rToken.vest(addr1.address, 1)
-        expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
-        // TODO? if waiting per computation isn't easy, use the emitted
-        // IssuanceStarted.blockAvailableAt
-        console.log('issue(1) end')
+      // ==== Send enough rTokens to addr2 that it can redeem the amount `toRedeem`
+      console.log('Send enough rTokens to addr2 that it can redeem the amount `toRedeem`')
+      // owner has toIssue0 rToken, addr1 has toIssue rToken.
+      if (toRedeem.lte(toIssue0)) {
+        await rToken.connect(owner).transfer(addr2.address, toRedeem)
+      } else {
+        await rToken.connect(owner).transfer(addr2.address, toIssue0)
+        await rToken.connect(addr1).transfer(addr2.address, toRedeem.sub(toIssue0))
       }
+      expect(await rToken.balanceOf(addr2.address)).to.equal(toRedeem)
 
-      // Send toRedeem tokens to addr2
-
-      // Redeem toRedeem
-      // ==== Run Scenario ====
+      // ==== Redeem tokens
+      console.log('Redeem tokens')
+      await rToken.connect(addr2).redeem(toRedeem)
+      expect(await rToken.balanceOf(addr2.address)).to.equal(0)
     }
 
-    it('should handle the rtoken scenario for extreme values', async () => {
-      const toIssueBounds = [bn(1), bn('1e36'), bn('1.205e24')]
-      const toRedeemBounds = [bn(1), bn('1e36'), bn('4.4231e24')]
-      const totalSupplyBounds = [bn(1), bn('1e36'), bn('7.907e24')]
-      const numAssetsBounds = [bn(1), bn(255), bn(2)] // TODO: make last element again 7
-      const weightFirstBounds = [bn(1), fp('1e18'), fp('0.1')]
-      const weightRestBounds = [bn(1), fp('1e18'), fp('0.2')]
-      const issuanceRateBounds = [fp('1e-6'), fp('1'), fp('0.00025')]
-
-      let bounds = [
-        toIssueBounds,
-        toRedeemBounds,
-        totalSupplyBounds,
-        numAssetsBounds,
-        weightFirstBounds,
-        weightRestBounds,
-        issuanceRateBounds,
+    // ==== Extreme-value tests
+    it('work for many cases', async () => {
+      let bounds: BigNumber[][] = [
+        [bn(1), bn('1e36'), bn('1.205e24')], // toIssue
+        [bn(1), bn('1e36'), bn('4.4231e24')], // toRedeem
+        [bn('1e36'), bn(1), bn('7.907e24')], // totalSupply
+        [bn(1), bn(7), bn(255)], // numAssets
+        [bn(1), fp('1e18'), fp('0.1')], // weightFirst
+        [bn(1), fp('1e18'), fp('0.2')], // weightRest
+        [fp('1'), fp('0.00025'), fp('1e-6')], // issuanceRate
       ]
 
-      // if (TURBO) bounds = bounds.map((b) => b.slice(0, 2)) // TURBO MODE ACTIVATE
-      // TODO: just for trying out this scenario; use the above instead to get all values
-      bounds = bounds.map((b) => [b[2]])
+      if (!SLOW) bounds = bounds.map((b) => b.slice(0, 2)) // .:. T U R B O  M O D E .:. //
 
       const paramList = cartesianProduct(...bounds)
       for (const params of paramList) {
@@ -1279,6 +1291,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Skip nonsense cases
         if (numAssets.eq(1) && !weightRest.eq(1)) continue
         if (toRedeem > totalSupply) continue
+
+        const description: string = params.map((n) => n.toString()).join(', ')
+        console.log(description)
 
         await runScenario(
           toIssue,
