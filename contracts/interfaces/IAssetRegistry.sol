@@ -24,6 +24,9 @@ interface IAssetRegistry is IComponent {
     /// @param asset The asset contract removed from the registry
     event AssetUnregistered(IERC20 indexed erc20, IAsset indexed asset);
 
+    // Initialization
+    function init(IMain main_, IAsset[] memory assets_) external;
+
     /// Force an update of all exchange rates and prices for all assets
     /// @custom:refresher
     function forceUpdates() external;

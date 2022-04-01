@@ -9,6 +9,13 @@ import "./IComponent.sol";
  * @notice A helper contract to burn RTokens slowly and permisionlessly.
  */
 interface IFurnace is IComponent {
+    // Initialization
+    function init(
+        IMain main_,
+        uint256 period_,
+        int192 ratio_
+    ) external;
+
     /// Emitted when the melting period is changed
     /// @param oldPeriod The old period
     /// @param newPeriod The new period

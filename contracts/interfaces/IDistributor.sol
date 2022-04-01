@@ -21,6 +21,9 @@ interface IDistributor is IComponent {
     /// @param rsrDist The distribution of RSR that should go to `dest`
     event DistributionSet(address dest, uint16 rTokenDist, uint16 rsrDist);
 
+    // Initialization
+    function init(IMain main_, RevenueShare memory dist) external;
+
     /// @custom:governance
     function setDistribution(address dest, RevenueShare memory share) external;
 
