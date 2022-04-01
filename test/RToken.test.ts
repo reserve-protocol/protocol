@@ -263,7 +263,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Try to issue
       await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('paused')
 
-      //Check values
+      // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
     })
 
@@ -273,7 +273,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Try to issue
       await expect(rToken.connect(addr1).issue(zero)).to.be.revertedWith('Cannot issue zero')
 
-      //Check values
+      // Check values
       expect(await rToken.totalSupply()).to.equal(bn('0'))
     })
 
@@ -342,7 +342,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Process issuance
       await advanceBlocks(17)
 
-      let endID = await rToken.endIdForVest(addr1.address)
+      const endID = await rToken.endIdForVest(addr1.address)
       expect(endID).to.equal(1)
       await rToken.vest(addr1.address, 1)
 
@@ -516,7 +516,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         'collateral not sound'
       )
 
-      //Check values
+      // Check values
       expect(await rToken.totalSupply()).to.equal(bn('0'))
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -591,7 +591,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check if minting was registered
-      let currentBlockNumber = await getLatestBlockNumber()
+      const currentBlockNumber = await getLatestBlockNumber()
       await expectIssuance(addr1.address, 0, {
         amount: issueAmount,
         basketNonce: initialBasketNonce,
@@ -667,7 +667,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(newIssuanceAmt)
 
       // Check if minting was registered
-      let currentBlockNumber = await getLatestBlockNumber()
+      const currentBlockNumber = await getLatestBlockNumber()
 
       // Using issuance rate of 50% = 2 blocks
       const blockAddPct: BigNumber = newIssuanceAmt.mul(BN_SCALE_FACTOR).div(ISSUANCE_PER_BLOCK)
@@ -772,7 +772,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check mintings
       // First minting
-      let currentBlockNumber = await getLatestBlockNumber()
+      const currentBlockNumber = await getLatestBlockNumber()
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
       await expectIssuance(addr1.address, 0, {
         amount: issueAmount,
@@ -1025,14 +1025,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         const issueAmount = bn('100e18')
         const redeemAmount = bn('100e18')
 
-        //Issue new RTokens
+        // Issue new RTokens
         await token0.connect(addr2).approve(rToken.address, initialBal)
         await token1.connect(addr2).approve(rToken.address, initialBal)
         await token2.connect(addr2).approve(rToken.address, initialBal)
         await token3.connect(addr2).approve(rToken.address, initialBal)
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
 
-        //Issue rTokens
+        // Issue rTokens
         await rToken.connect(addr2).issue(issueAmount)
 
         // Check asset value
@@ -1147,7 +1147,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         aaveMock.address
       )
     )
-    assetRegistry.register(coll.address) // SHOULD BE LINTED
+    await assetRegistry.register(coll.address) // SHOULD BE LINTED
     expect(await assetRegistry.isRegistered(erc20.address)).to.be.true
     await aaveOracleInternal.setPrice(erc20.address, price)
     return [erc20, coll]
@@ -1179,7 +1179,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     while (issued.lt(toIssue)) {
       // Find currIssue, the amount to issue this round
-      let yetToIssue = toIssue.sub(issued)
+      const yetToIssue = toIssue.sub(issued)
       const baseAmt = MIN_ISSUANCE_RATE.mul(ISS_BLOCKS)
       const succAmt = supply.mul(issuanceRate).mul(ISS_BLOCKS)
       const maxAmt = baseAmt.gt(succAmt) ? baseAmt : succAmt
@@ -1190,7 +1190,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(user).issue(currIssue)
       console.log(`    waiting ${ISS_BLOCKS} blocks...`)
       await advanceBlocks(ISS_BLOCKS.add(1))
-      console.log(`    vesting issuance...`)
+      console.log('    vesting issuance...')
       await rToken.vest(user.address, await rToken.endIdForVest(user.address))
       issued = issued.add(currIssue)
       supply = supply.add(currIssue)
@@ -1201,7 +1201,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     expect(await rToken.totalSupply()).to.equal(supply)
   }
 
-  describe.only(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, async () => {
+  describe.skip(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, async () => {
     async function runScenario([
       toIssue,
       toRedeem,
@@ -1225,8 +1225,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // ==== Deploy and register basket collateral
       console.log('Deploy and register basket collateral')
       const N = numBasketAssets.toNumber()
-      let erc20s: ERC20Mock[] = []
-      let weights: BigNumber[] = []
+      const erc20s: ERC20Mock[] = []
+      const weights: BigNumber[] = []
       let totalWeight: BigNumber = fp(0)
       for (let i = 0; i < N; i++) {
         const [erc20, coll] = await makeColl(i, fp('0.00025'))
@@ -1309,9 +1309,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     ]
 
     if (!SLOW) bounds = bounds.map((b) => b.slice(0, 2))
-    if (!!process.env.QUICK) bounds = bounds.map((b) => b.slice(0, 1))
+    if (process.env.QUICK) bounds = bounds.map((b) => b.slice(0, 1))
 
-    let paramList = cartesianProduct(...bounds)
+    const paramList = cartesianProduct(...bounds)
     const start = 0
     const numCases = 30
     paramList.slice(start, start + numCases).forEach((params, index) => {

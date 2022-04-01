@@ -12,7 +12,7 @@ import {
   GnosisTrade,
   MainP0,
   RevenueTradingP0,
-  USDCMock,
+  USDCMock
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './fixtures'
@@ -63,8 +63,8 @@ describe('BrokerP0 contract', () => {
     // Get assets
     ;[collateral0, collateral1, ,] = basket
 
-    token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
-    token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
+    token0 = <ERC20Mock> await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
+    token1 = <USDCMock> await ethers.getContractAt('USDCMock', await collateral1.erc20())
   })
 
   describe('Deployment', () => {
@@ -142,7 +142,7 @@ describe('BrokerP0 contract', () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: bn('100e18'),
-        minBuyAmount: bn('0'),
+        minBuyAmount: bn('0')
       }
 
       await expect(broker.openTrade(tradeRequest)).to.be.revertedWith('broker disabled')
@@ -155,7 +155,7 @@ describe('BrokerP0 contract', () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: bn('100e18'),
-        minBuyAmount: bn('0'),
+        minBuyAmount: bn('0')
       }
 
       // Mint required tokens
@@ -215,7 +215,7 @@ describe('BrokerP0 contract', () => {
 
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+      const trade: GnosisTrade = <GnosisTrade> await TradeFactory.deploy()
 
       // Check state
       expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
@@ -225,7 +225,7 @@ describe('BrokerP0 contract', () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: amount,
-        minBuyAmount: bn('0'),
+        minBuyAmount: bn('0')
       }
 
       // Fund trade and initialize
@@ -272,7 +272,7 @@ describe('BrokerP0 contract', () => {
 
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+      const trade: GnosisTrade = <GnosisTrade> await TradeFactory.deploy()
 
       // Check state
       expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
@@ -282,7 +282,7 @@ describe('BrokerP0 contract', () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: amount,
-        minBuyAmount: bn('0'),
+        minBuyAmount: bn('0')
       }
 
       // Attempt to initialize without funding
@@ -302,7 +302,7 @@ describe('BrokerP0 contract', () => {
 
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+      const trade: GnosisTrade = <GnosisTrade> await TradeFactory.deploy()
 
       // Check state - cannot be settled
       expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
@@ -313,7 +313,7 @@ describe('BrokerP0 contract', () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: amount,
-        minBuyAmount: bn('0'),
+        minBuyAmount: bn('0')
       }
 
       // Attempt to settle - will fail as origin is not set
@@ -367,7 +367,7 @@ describe('BrokerP0 contract', () => {
 
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+      const trade: GnosisTrade = <GnosisTrade> await TradeFactory.deploy()
 
       // Check state - cannot be settled
       expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
@@ -378,7 +378,7 @@ describe('BrokerP0 contract', () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: amount,
-        minBuyAmount: bn('0'),
+        minBuyAmount: bn('0')
       }
 
       // Fund trade and initialize
@@ -412,7 +412,7 @@ describe('BrokerP0 contract', () => {
       await gnosis.placeBid(0, {
         bidder: addr1.address,
         sellAmount: bidAmount,
-        buyAmount: minBuyAmt,
+        buyAmount: minBuyAmt
       })
 
       // Settle auction directly in Gnosis
@@ -451,14 +451,14 @@ describe('BrokerP0 contract', () => {
 
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+      const trade: GnosisTrade = <GnosisTrade> await TradeFactory.deploy()
 
       // Initialize trade - simulate from backingManager
       const tradeRequest: ITradeRequest = {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: amount,
-        minBuyAmount: bn('0'),
+        minBuyAmount: bn('0')
       }
 
       // Fund trade and initialize

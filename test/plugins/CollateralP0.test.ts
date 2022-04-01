@@ -18,7 +18,7 @@ import {
   FacadeP0,
   TestIRToken,
   StaticATokenMock,
-  USDCMock,
+  USDCMock
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig } from '../fixtures'
@@ -76,7 +76,7 @@ describe('Collateral contracts', () => {
 
     let basket: Collateral[]
 
-      // Deploy fixture
+    // Deploy fixture
     ;({
       compToken,
       compoundMock,
@@ -87,7 +87,7 @@ describe('Collateral contracts', () => {
       config,
       backingManager,
       rToken,
-      facade,
+      facade
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
@@ -95,12 +95,12 @@ describe('Collateral contracts', () => {
     usdcCollateral = <AavePricedFiatCollateral>basket[1]
     aTokenCollateral = <ATokenFiatCollateral>basket[2]
     cTokenCollateral = <CTokenFiatCollateral>basket[3]
-    token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenCollateral.erc20())
-    usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcCollateral.erc20())
+    token = <ERC20Mock> await ethers.getContractAt('ERC20Mock', await tokenCollateral.erc20())
+    usdc = <USDCMock> await ethers.getContractAt('USDCMock', await usdcCollateral.erc20())
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenCollateral.erc20())
     )
-    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenCollateral.erc20())
+    cToken = <CTokenMock> await ethers.getContractAt('CTokenMock', await cTokenCollateral.erc20())
 
     await token.connect(owner).mint(owner.address, amt)
     await usdc.connect(owner).mint(owner.address, amt.div(bn('1e12')))
@@ -198,7 +198,7 @@ describe('Collateral contracts', () => {
       calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
       expect(await cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
         compoundMock.address,
-        calldata,
+        calldata
       ])
       expect(await cTokenCollateral.rewardERC20()).to.equal(compToken.address)
     })
@@ -271,7 +271,7 @@ describe('Collateral contracts', () => {
       await aaveOracleInternal.setPrice(token.address, bn('0'))
 
       // Check price of token
-      await expect(tokenCollateral.price()).to.be.revertedWith(`PriceIsZero()`)
+      await expect(tokenCollateral.price()).to.be.revertedWith('PriceIsZero()')
     })
   })
 
@@ -574,12 +574,12 @@ describe('Collateral contracts', () => {
       // Fiat token
       symbol = await token.symbol()
       await compoundOracleInternal.setPrice(symbol, bn(0))
-      await expect(compoundTokenAsset.price()).to.be.revertedWith(`PriceIsZero()`)
+      await expect(compoundTokenAsset.price()).to.be.revertedWith('PriceIsZero()')
 
       // Usdc (6 decimals)
       symbol = await usdc.symbol()
       await compoundOracleInternal.setPrice(symbol, bn(0))
-      await expect(compoundUsdcAsset.price()).to.be.revertedWith(`PriceIsZero()`)
+      await expect(compoundUsdcAsset.price()).to.be.revertedWith('PriceIsZero()')
     })
   })
 })

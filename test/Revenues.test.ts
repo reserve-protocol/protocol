@@ -29,7 +29,7 @@ import {
   TestIRToken,
   StaticATokenMock,
   TestIStRSR,
-  USDCMock,
+  USDCMock
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
@@ -127,7 +127,7 @@ describe('Revenues', () => {
       gnosis,
       facade,
       rsrTrader,
-      rTokenTrader,
+      rTokenTrader
     } = await loadFixture(defaultFixture))
 
     // Set backingBuffer to 0 to make math easy
@@ -138,12 +138,12 @@ describe('Revenues', () => {
     collateral1 = <Collateral>basket[1]
     collateral2 = <ATokenFiatCollateral>basket[2]
     collateral3 = <CTokenFiatCollateral>basket[3]
-    token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
-    token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
+    token0 = <ERC20Mock> await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
+    token1 = <USDCMock> await ethers.getContractAt('USDCMock', await collateral1.erc20())
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    token3 = <CTokenMock> await ethers.getContractAt('CTokenMock', await collateral3.erc20())
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -161,7 +161,7 @@ describe('Revenues', () => {
   describe('Config/Setup', function () {
     it('Should setup initial distribution correctly', async () => {
       // Configuration
-      let totals = await distributor.totals()
+      const totals = await distributor.totals()
       expect(totals.rsrTotal).equal(bn(60))
       expect(totals.rTokenTotal).equal(bn(40))
     })
@@ -256,25 +256,25 @@ describe('Revenues', () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
-        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
-        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         await expectEvents(backingManager.claimAndSweepRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check status of destinations at this point
@@ -286,14 +286,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -304,7 +304,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
+          externalId: bn('0')
         })
 
         // COMP -> RToken Auction
@@ -312,7 +312,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1'),
+          externalId: bn('1')
         })
 
         // Check funds in Market
@@ -327,12 +327,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
+          buyAmount: minBuyAmt
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken,
+          buyAmount: minBuyAmtRToken
         })
 
         // Close auctions
@@ -341,24 +341,24 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check balances sent to corresponding destinations
@@ -376,11 +376,11 @@ describe('Revenues', () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
-        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
-        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         // Can also claim through Facade
         await expectEvents(facade.claimRewards(), [
@@ -388,14 +388,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check status of destinations at this point
@@ -408,14 +408,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check auctions registered
@@ -424,7 +424,7 @@ describe('Revenues', () => {
           sell: aaveToken.address,
           buy: rsr.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          externalId: bn('0'),
+          externalId: bn('0')
         })
 
         // AAVE -> RToken Auction
@@ -432,7 +432,7 @@ describe('Revenues', () => {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          externalId: bn('1'),
+          externalId: bn('1')
         })
 
         // Check funds in Market
@@ -447,12 +447,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
+          buyAmount: minBuyAmt
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken,
+          buyAmount: minBuyAmtRToken
         })
 
         // Close auctions
@@ -461,24 +461,24 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check balances sent to corresponding destinations
@@ -524,22 +524,22 @@ describe('Revenues', () => {
 
         // Collect revenue - Called via poke
         // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = bn('1e18') // due to max auction size
-        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const sellAmt: BigNumber = bn('1e18') // due to max auction size
+        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         await expectEvents(backingManager.claimAndSweepRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check status of destinations at this point
@@ -552,13 +552,13 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -569,7 +569,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
+          externalId: bn('0')
         })
 
         // Check funds in Market and Trader
@@ -581,13 +581,13 @@ describe('Revenues', () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Perform Mock Bids for RSR (addr1 has balance)
@@ -595,7 +595,7 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
+          buyAmount: minBuyAmt
         })
 
         // Advance time till auction ended
@@ -607,19 +607,19 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [1, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check new auction
@@ -628,7 +628,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rsr.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          externalId: bn('1'),
+          externalId: bn('1')
         })
 
         // Check now all funds in Market
@@ -640,7 +640,7 @@ describe('Revenues', () => {
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
+          buyAmount: minBuyAmt
         })
 
         // Advance time till auction ended
@@ -652,18 +652,18 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [1, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         //  Check balances sent to corresponding destinations
@@ -710,22 +710,22 @@ describe('Revenues', () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
-        let sellAmt: BigNumber = bn('1e18') // due to max auction size
-        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const sellAmt: BigNumber = bn('1e18') // due to max auction size
+        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         await expectEvents(backingManager.claimAndSweepRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check status of destinations at this point
@@ -738,13 +738,13 @@ describe('Revenues', () => {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, aaveToken.address, rToken.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -755,12 +755,12 @@ describe('Revenues', () => {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
+          externalId: bn('0')
         })
 
         // Calculate pending amount
-        let sellAmtRemainder: BigNumber = rewardAmountAAVE.sub(sellAmt)
-        let minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
+        const sellAmtRemainder: BigNumber = rewardAmountAAVE.sub(sellAmt)
+        const minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
 
         // Check funds in Market and Trader
         expect(await aaveToken.balanceOf(gnosis.address)).to.equal(sellAmt)
@@ -771,7 +771,7 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
+          buyAmount: minBuyAmt
         })
 
         // Advance time till auction ended
@@ -783,20 +783,20 @@ describe('Revenues', () => {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, aaveToken.address, rToken.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder],
-            emitted: true,
+            emitted: true
           },
 
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check new auction
@@ -805,7 +805,7 @@ describe('Revenues', () => {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          externalId: bn('1'),
+          externalId: bn('1')
         })
 
         // Perform Mock Bids for RToken (addr1 has balance)
@@ -813,7 +813,7 @@ describe('Revenues', () => {
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRemainder,
-          buyAmount: minBuyAmtRemainder,
+          buyAmount: minBuyAmtRemainder
         })
 
         // Advance time till auction ended
@@ -825,18 +825,18 @@ describe('Revenues', () => {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check balances in destinations
@@ -881,25 +881,25 @@ describe('Revenues', () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = bn('1e18') // due to max auction size
-        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const sellAmt: BigNumber = bn('1e18') // due to max auction size
+        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        let sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
-        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        const sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
+        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         await expectEvents(backingManager.claimAndSweepRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check status of destinations at this point
@@ -912,14 +912,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -930,7 +930,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
+          externalId: bn('0')
         })
 
         // COMP -> RToken Auction
@@ -938,7 +938,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1'),
+          externalId: bn('1')
         })
 
         // Advance time till auctions ended
@@ -950,18 +950,18 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
+          buyAmount: minBuyAmt
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken,
+          buyAmount: minBuyAmtRToken
         })
 
         // Close auctions
         // Calculate pending amount
-        let sellAmtRemainder: BigNumber = rewardAmountCOMP.sub(sellAmt).sub(sellAmtRToken)
-        let minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
+        const sellAmtRemainder: BigNumber = rewardAmountCOMP.sub(sellAmt).sub(sellAmtRToken)
+        const minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
 
         // Check funds in Market and Traders
         expect(await compToken.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
@@ -974,25 +974,25 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [1, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check destinations at this stage
@@ -1010,7 +1010,7 @@ describe('Revenues', () => {
         await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: sellAmtRemainder,
-          buyAmount: minBuyAmtRemainder,
+          buyAmount: minBuyAmtRemainder
         })
 
         await expectEvents(facade.runAuctionsForAllTraders(), [
@@ -1018,18 +1018,18 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [1, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check balances at destinations
@@ -1091,14 +1091,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
@@ -1118,13 +1118,13 @@ describe('Revenues', () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check funds sent to traders
@@ -1144,11 +1144,11 @@ describe('Revenues', () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
-        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
-        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         // Claim rewards
 
@@ -1157,14 +1157,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check status of destinations at this point
@@ -1177,17 +1177,17 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
-        let auctionTimestamp: number = await getLatestBlockTimestamp()
+        const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
         // AAVE -> RSR Auction
@@ -1195,7 +1195,7 @@ describe('Revenues', () => {
           sell: aaveToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
+          externalId: bn('0')
         })
 
         // AAVE -> RToken Auction
@@ -1203,7 +1203,7 @@ describe('Revenues', () => {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1'),
+          externalId: bn('1')
         })
 
         // Advance time till auction ended
@@ -1217,12 +1217,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt.sub(10), // Forces in our mock an invalid behavior
+          buyAmount: minBuyAmt.sub(10) // Forces in our mock an invalid behavior
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken.sub(10), // Forces in our mock an invalid behavior
+          buyAmount: minBuyAmtRToken.sub(10) // Forces in our mock an invalid behavior
         })
 
         // Close auctions - Will end trades and also report violation
@@ -1231,30 +1231,30 @@ describe('Revenues', () => {
             contract: broker,
             name: 'DisabledSet',
             args: [false, true],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, aaveToken.address, rsr.address, sellAmt, minBuyAmt.sub(10)],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken.sub(10)],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check funds at destinations
@@ -1274,14 +1274,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check status of destinations and traders
@@ -1295,21 +1295,21 @@ describe('Revenues', () => {
         await broker.connect(owner).setDisabled(true)
 
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
-        let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
 
         // Attempt to run auctions
         await expectEvents(facade.runAuctionsForAllTraders(), [
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check funds - remain in traders
@@ -1325,7 +1325,7 @@ describe('Revenues', () => {
         const InvalidBrokerFactory: ContractFactory = await ethers.getContractFactory(
           'InvalidBrokerMock'
         )
-        const invalidBroker: BrokerP0 = <BrokerP0>await InvalidBrokerFactory.deploy()
+        const invalidBroker: BrokerP0 = <BrokerP0> await InvalidBrokerFactory.deploy()
 
         const ctorArgs = {
           params: config,
@@ -1339,11 +1339,11 @@ describe('Revenues', () => {
             rsrTrader: rsrTrader.address,
             rTokenTrader: rTokenTrader.address,
             furnace: furnace.address,
-            broker: invalidBroker.address,
+            broker: invalidBroker.address
           },
           assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
           gnosis: gnosis.address,
-          rsr: rsr.address,
+          rsr: rsr.address
         }
 
         // Set broker
@@ -1361,14 +1361,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check status of destinations and traders
@@ -1379,10 +1379,10 @@ describe('Revenues', () => {
         expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
-        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
-        let sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
-        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         // Attempt to run auctions - should catch exception
         await expectEvents(facade.runAuctionsForAllTraders(), [
@@ -1390,24 +1390,24 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeBlocked',
             args: [aaveToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeBlocked',
             args: [aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check funds - remain in traders
@@ -1427,25 +1427,25 @@ describe('Revenues', () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
-        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
-        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         await expectEvents(backingManager.claimAndSweepRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check status of destinations at this point
@@ -1457,14 +1457,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check funds in Market
@@ -1479,12 +1479,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
+          buyAmount: minBuyAmt
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken,
+          buyAmount: minBuyAmtRToken
         })
 
         // Cause failure by arbitrary removing the RSR obtained from market
@@ -1496,29 +1496,29 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettlementBlocked',
             args: [0],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check balances - no changes on StRSR
@@ -1540,14 +1540,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check funds in Backing Manager and destinations
@@ -1584,25 +1584,25 @@ describe('Revenues', () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        let sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
-        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        let sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
-        let minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         await expectEvents(backingManager.claimAndSweepRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check status of destinations at this point
@@ -1617,14 +1617,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -1635,7 +1635,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
+          externalId: bn('0')
         })
 
         // COMP -> RToken Auction
@@ -1643,7 +1643,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1'),
+          externalId: bn('1')
         })
 
         // Check funds in Market
@@ -1658,12 +1658,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
+          buyAmount: minBuyAmt
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken,
+          buyAmount: minBuyAmtRToken
         })
 
         // Close auctions
@@ -1672,24 +1672,24 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check balances sent to corresponding destinations
@@ -1718,14 +1718,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check rewards sent to Main
@@ -1759,20 +1759,20 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true,
+            emitted: true
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE.add(1)],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check status - should claim both rewards correctly
@@ -1867,14 +1867,14 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Expected values
-        let currentTotalSupply: BigNumber = await rToken.totalSupply()
+        const currentTotalSupply: BigNumber = await rToken.totalSupply()
         const expectedToTrader = excessQuantity.mul(60).div(100)
         const expectedToFurnace = excessQuantity.sub(expectedToTrader)
 
-        let sellAmt: BigNumber = expectedToTrader // everything is auctioned, below max auction
-        let minBuyAmt: BigNumber = sellAmt.mul(2).sub(sellAmt.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken are worth half
-        let sellAmtRToken: BigNumber = expectedToFurnace // everything is auctioned, below max auction
-        let minBuyAmtRToken: BigNumber = sellAmtRToken.mul(2).sub(sellAmtRToken.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken are worth half
+        const sellAmt: BigNumber = expectedToTrader // everything is auctioned, below max auction
+        const minBuyAmt: BigNumber = sellAmt.mul(2).sub(sellAmt.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken are worth half
+        const sellAmtRToken: BigNumber = expectedToFurnace // everything is auctioned, below max auction
+        const minBuyAmtRToken: BigNumber = sellAmtRToken.mul(2).sub(sellAmtRToken.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken are worth half
 
         // Run auctions - Will detect excess
         await expectEvents(facade.runAuctionsForAllTraders(), [
@@ -1882,14 +1882,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, token2.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
@@ -1901,7 +1901,7 @@ describe('Revenues', () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        let auctionTimestamp: number = await getLatestBlockTimestamp()
+        const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
         // AToken -> RSR Auction
@@ -1909,7 +1909,7 @@ describe('Revenues', () => {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
+          externalId: bn('0')
         })
 
         // AToken -> RToken Auction
@@ -1917,7 +1917,7 @@ describe('Revenues', () => {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1'),
+          externalId: bn('1')
         })
 
         // Check funds in Market and Traders
@@ -1936,12 +1936,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
+          buyAmount: minBuyAmt
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken,
+          buyAmount: minBuyAmtRToken
         })
 
         // Close auctions
@@ -1950,24 +1950,24 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, token2.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check Price (unchanged) and Assets value (unchanged)
@@ -2007,18 +2007,18 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Expected values
-        let currentTotalSupply: BigNumber = await rToken.totalSupply()
+        const currentTotalSupply: BigNumber = await rToken.totalSupply()
         const expectedToTrader = divCeil(excessQuantity.mul(60), bn(100))
         const expectedToFurnace = divCeil(excessQuantity.mul(40), bn(100)) // excessQuantity.sub(expectedToTrader)
 
         // Auction values - using divCeil for dealing with Rounding
-        let sellAmt: BigNumber = expectedToTrader
-        let buyAmt: BigNumber = divCeil(sellAmt.mul(rate), BN_SCALE_FACTOR) // RSR quantity with no slippage
-        let minBuyAmt: BigNumber = buyAmt.sub(divCeil(buyAmt, bn(100))) // due to trade slippage 1%
+        const sellAmt: BigNumber = expectedToTrader
+        const buyAmt: BigNumber = divCeil(sellAmt.mul(rate), BN_SCALE_FACTOR) // RSR quantity with no slippage
+        const minBuyAmt: BigNumber = buyAmt.sub(divCeil(buyAmt, bn(100))) // due to trade slippage 1%
 
-        let sellAmtRToken: BigNumber = expectedToFurnace
-        let buyAmtRToken: BigNumber = divCeil(sellAmtRToken.mul(rate), BN_SCALE_FACTOR) // RToken quantity with no slippage
-        let minBuyAmtRToken: BigNumber = buyAmtRToken.sub(buyAmtRToken.div(100)) // due to trade slippage 1%
+        const sellAmtRToken: BigNumber = expectedToFurnace
+        const buyAmtRToken: BigNumber = divCeil(sellAmtRToken.mul(rate), BN_SCALE_FACTOR) // RToken quantity with no slippage
+        const minBuyAmtRToken: BigNumber = buyAmtRToken.sub(buyAmtRToken.div(100)) // due to trade slippage 1%
 
         // Run auctions
         await expectEvents(facade.runAuctionsForAllTraders(), [
@@ -2026,14 +2026,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, token2.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
@@ -2045,7 +2045,7 @@ describe('Revenues', () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        let auctionTimestamp: number = await getLatestBlockTimestamp()
+        const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
         // AToken -> RSR Auction
@@ -2053,7 +2053,7 @@ describe('Revenues', () => {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
+          externalId: bn('0')
         })
 
         // AToken -> RToken Auction
@@ -2061,7 +2061,7 @@ describe('Revenues', () => {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1'),
+          externalId: bn('1')
         })
 
         // Check funds in Market and Traders
@@ -2083,12 +2083,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
+          buyAmount: minBuyAmt
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken,
+          buyAmount: minBuyAmtRToken
         })
 
         // Close auctions
@@ -2097,24 +2097,24 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, token2.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         //  Check Price (unchanged) and Assets value (unchanged)
@@ -2154,10 +2154,10 @@ describe('Revenues', () => {
         const expectedToFurnace = issueAmount.sub(expectedToTrader)
 
         // Set expected auction values
-        let currentTotalSupply: BigNumber = await rToken.totalSupply()
-        let newTotalSupply: BigNumber = currentTotalSupply.mul(2)
-        let sellAmt: BigNumber = expectedToTrader // everything is auctioned, due to max auction size
-        let minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const currentTotalSupply: BigNumber = await rToken.totalSupply()
+        const newTotalSupply: BigNumber = currentTotalSupply.mul(2)
+        const sellAmt: BigNumber = expectedToTrader // everything is auctioned, due to max auction size
+        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         // Collect revenue and mint new tokens - Will also launch auction
         await expectEvents(facade.runAuctionsForAllTraders(), [
@@ -2165,14 +2165,14 @@ describe('Revenues', () => {
             contract: rToken,
             name: 'Transfer',
             args: [ZERO_ADDRESS, backingManager.address, issueAmount],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, rToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check Price (unchanged) and Assets value - Supply has doubled
@@ -2196,7 +2196,7 @@ describe('Revenues', () => {
           sell: rToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
+          externalId: bn('0')
         })
 
         // Perform Mock Bids for RSR(addr1 has balance)
@@ -2204,7 +2204,7 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
+          buyAmount: minBuyAmt
         })
 
         // Advance time till auction ended
@@ -2216,17 +2216,17 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, rToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check Price and Assets value - RToken price increases due to melting
-        let updatedRTokenPrice: BigNumber = newTotalSupply
+        const updatedRTokenPrice: BigNumber = newTotalSupply
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
         expect(await rToken.price()).to.equal(updatedRTokenPrice)
@@ -2266,7 +2266,7 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Set expected values based on f=0.6
-        let currentTotalSupply: BigNumber = await rToken.totalSupply()
+        const currentTotalSupply: BigNumber = await rToken.totalSupply()
         const excessRToken: BigNumber = issueAmount.mul(60).div(100)
         const excessCollateralValue: BigNumber = excessTotalValue.sub(excessRToken)
         const excessCollateralQty: BigNumber = excessCollateralValue.div(2) // each unit of this collateral is worth now $2
@@ -2278,15 +2278,15 @@ describe('Revenues', () => {
         )
 
         //  Set expected auction values
-        let newTotalSupply: BigNumber = currentTotalSupply.mul(160).div(100)
-        let sellAmtFromRToken: BigNumber = expectedToTraderFromRToken // all will be processed at once, due to max auction size of 50%
-        let minBuyAmtFromRToken: BigNumber = sellAmtFromRToken.sub(sellAmtFromRToken.div(100)) // due to trade slippage 1%
-        let sellAmtRSRFromCollateral: BigNumber = expectedToRSRTraderFromCollateral // all will be processed at once, due to max auction size of 50%
-        let minBuyAmtRSRFromCollateral: BigNumber = sellAmtRSRFromCollateral
+        const newTotalSupply: BigNumber = currentTotalSupply.mul(160).div(100)
+        const sellAmtFromRToken: BigNumber = expectedToTraderFromRToken // all will be processed at once, due to max auction size of 50%
+        const minBuyAmtFromRToken: BigNumber = sellAmtFromRToken.sub(sellAmtFromRToken.div(100)) // due to trade slippage 1%
+        const sellAmtRSRFromCollateral: BigNumber = expectedToRSRTraderFromCollateral // all will be processed at once, due to max auction size of 50%
+        const minBuyAmtRSRFromCollateral: BigNumber = sellAmtRSRFromCollateral
           .mul(2)
           .sub(sellAmtRSRFromCollateral.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken is worth half
-        let sellAmtRTokenFromCollateral: BigNumber = expectedToRTokenTraderFromCollateral // all will be processed at once, due to max auction size of 50%
-        let minBuyAmtRTokenFromCollateral: BigNumber = sellAmtRTokenFromCollateral
+        const sellAmtRTokenFromCollateral: BigNumber = expectedToRTokenTraderFromCollateral // all will be processed at once, due to max auction size of 50%
+        const minBuyAmtRTokenFromCollateral: BigNumber = sellAmtRTokenFromCollateral
           .mul(2)
           .sub(sellAmtRTokenFromCollateral.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken is worth half
 
@@ -2296,13 +2296,13 @@ describe('Revenues', () => {
             contract: rToken,
             name: 'Transfer',
             args: [ZERO_ADDRESS, backingManager.address, excessRToken],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
@@ -2312,9 +2312,9 @@ describe('Revenues', () => {
               token2.address,
               rsr.address,
               sellAmtRSRFromCollateral,
-              minBuyAmtRSRFromCollateral,
+              minBuyAmtRSRFromCollateral
             ],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
@@ -2324,10 +2324,10 @@ describe('Revenues', () => {
               token2.address,
               rToken.address,
               sellAmtRTokenFromCollateral,
-              minBuyAmtRTokenFromCollateral,
+              minBuyAmtRTokenFromCollateral
             ],
-            emitted: true,
-          },
+            emitted: true
+          }
         ])
 
         // Check Price (unchanged) and Assets value (excess collateral not counted anymore) - Supply has increased
@@ -2362,7 +2362,7 @@ describe('Revenues', () => {
           sell: rToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
+          externalId: bn('0')
         })
 
         // Collateral -> RSR Auction
@@ -2370,7 +2370,7 @@ describe('Revenues', () => {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1'),
+          externalId: bn('1')
         })
 
         // Collateral -> Rtoken Auction
@@ -2378,7 +2378,7 @@ describe('Revenues', () => {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('2'),
+          externalId: bn('2')
         })
 
         //  Perform Mock Bids for RSR/RToken (addr1 has balance)
@@ -2389,19 +2389,19 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmtFromRToken,
-          buyAmount: minBuyAmtFromRToken,
+          buyAmount: minBuyAmtFromRToken
         })
 
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRSRFromCollateral,
-          buyAmount: minBuyAmtRSRFromCollateral,
+          buyAmount: minBuyAmtRSRFromCollateral
         })
 
         await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: sellAmtRTokenFromCollateral,
-          buyAmount: minBuyAmtRTokenFromCollateral,
+          buyAmount: minBuyAmtRTokenFromCollateral
         })
 
         //  Advance time till auction ended
@@ -2413,7 +2413,7 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
@@ -2423,9 +2423,9 @@ describe('Revenues', () => {
               token2.address,
               rsr.address,
               sellAmtRSRFromCollateral,
-              minBuyAmtRSRFromCollateral,
+              minBuyAmtRSRFromCollateral
             ],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rTokenTrader,
@@ -2435,20 +2435,20 @@ describe('Revenues', () => {
               token2.address,
               rToken.address,
               sellAmtRTokenFromCollateral,
-              minBuyAmtRTokenFromCollateral,
+              minBuyAmtRTokenFromCollateral
             ],
-            emitted: true,
+            emitted: true
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false,
+            emitted: false
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false,
-          },
+            emitted: false
+          }
         ])
 
         // Check no funds in Market
@@ -2456,7 +2456,7 @@ describe('Revenues', () => {
         expect(await token2.balanceOf(gnosis.address)).to.equal(0)
 
         //  Check Price and Assets value - RToken price increases due to melting
-        let updatedRTokenPrice: BigNumber = newTotalSupply
+        const updatedRTokenPrice: BigNumber = newTotalSupply
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
         expect(await rToken.price()).to.equal(updatedRTokenPrice)

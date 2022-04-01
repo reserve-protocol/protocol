@@ -30,7 +30,7 @@ describe('In FixLib,', async () => {
   // prettier-ignore
   const fixable_ints: BigNumber[] = [
     bn(0), bn(1), bn(-1), MAX_FIX_INT, MIN_FIX_INT, MAX_FIX_INT.sub(1), MIN_FIX_INT.add(1),
-    bn('38326665875765560393'), bn('-01942957121544002253'),
+    bn('38326665875765560393'), bn('-01942957121544002253')
   ]
   // prettier-ignore
   const unfixable_ints: BigNumber[] = [
@@ -39,9 +39,9 @@ describe('In FixLib,', async () => {
 
   // prettier-ignore
   const positive_int192s: BigNumber[] = [
-    bn(1), fp(0.9999), fp(1), fp(1.0001), MAX_INT192.sub(1), MAX_INT192,
+    bn(1), fp(0.9999), fp(1), fp(1.0001), MAX_INT192.sub(1), MAX_INT192
   ]
-  let negative_int192s = positive_int192s.map(neg)
+  const negative_int192s = positive_int192s.map(neg)
   negative_int192s.reverse()
 
   const int192s: BigNumber[] = [MIN_INT192, ...negative_int192s, bn(0), ...positive_int192s]
@@ -100,7 +100,7 @@ describe('In FixLib,', async () => {
         [MAX_FIX_INT.sub(1), -1],
         [MAX_FIX_INT.sub(1), 0],
         [MAX_FIX_INT, -9],
-        [MAX_FIX_INT, -1],
+        [MAX_FIX_INT, -1]
       ]
         .map(([x, s]) => [bn(x), bn(s)])
         .forEach(async ([x, s]) =>
@@ -121,7 +121,7 @@ describe('In FixLib,', async () => {
         [bn('1e8'), 50],
         [bn('-1e8'), 50],
         [bn('5e56'), 2],
-        [bn('-5e56'), 2],
+        [bn('-5e56'), 2]
       ].forEach(
         async ([x, s]) =>
           await expect(caller.toFixWithShift_(x, s), `toFix(${x}, ${s})`).to.be.reverted
@@ -131,10 +131,10 @@ describe('In FixLib,', async () => {
 
   describe('divFix', async () => {
     it('correctly divides inside its range', async () => {
-      //prettier-ignore
-      [[10, 1, 10], [10, 2, 5], [20, 2.5, 8], [1, 5, 0.2], [256, 256, 1],]
-        .flatMap(([x, y, z]) => [[x, y, z], [x, -y, -z], [x, z, y], [x, -z, -y],])
-        .concat([[0, 1, 0], [0, -1, 0],])
+      // prettier-ignore
+      [[10, 1, 10], [10, 2, 5], [20, 2.5, 8], [1, 5, 0.2], [256, 256, 1]]
+        .flatMap(([x, y, z]) => [[x, y, z], [x, -y, -z], [x, z, y], [x, -z, -y]])
+        .concat([[0, 1, 0], [0, -1, 0]])
         .forEach(async ([x, y, result]) =>
           expect(await caller.divFix_(x, fp(y)), `divFix(${x}, ${y}) == ${result}`).to.equal(fp(result))
         )
@@ -152,7 +152,7 @@ describe('In FixLib,', async () => {
         [bn('8e60'), fp('2e30'), fp('4e30')],
         [bn('5e75'), fp('2.5e39'), fp('2e36')],
         [bn('8e60'), fp('-2e30'), fp('-4e30')],
-        [bn('5e75'), fp('-2.5e39'), fp('-2e36')],
+        [bn('5e75'), fp('-2.5e39'), fp('-2e36')]
       ].forEach(async ([x, y, result]) =>
         expect(await caller.divFix_(x, y), `divFix(${x}, ${y}) == ${result}`).to.equal(result)
       )
@@ -172,7 +172,7 @@ describe('In FixLib,', async () => {
 
   describe('toInt', async () => {
     it('correctly converts Fixes to int192', async () => {
-      for (let result of fixable_ints) {
+      for (const result of fixable_ints) {
         expect(await caller.toInt(fp(result)), `fp(${result})`).to.equal(bn(result))
       }
     })
@@ -191,9 +191,9 @@ describe('In FixLib,', async () => {
         [MAX_FIX_INT, MAX_FIX_INT],
         [MIN_FIX_INT, MIN_FIX_INT],
         [9.99999, 9],
-        [-9.99999, -9],
+        [-9.99999, -9]
       ]
-      for (let [input, result] of table) {
+      for (const [input, result] of table) {
         expect(await caller.toInt(fp(input)), `${input}`).to.equal(result)
       }
     })
@@ -213,7 +213,7 @@ describe('In FixLib,', async () => {
         [MAX_FIX_INT.sub(1), -1],
         [MAX_FIX_INT.sub(1), 0],
         [MAX_FIX_INT, -9],
-        [MAX_FIX_INT, -1],
+        [MAX_FIX_INT, -1]
       ]
         .map(([x, s]) => [bn(x), bn(s)])
         .forEach(async ([x, s]) => {
@@ -239,9 +239,9 @@ describe('In FixLib,', async () => {
         [MAX_FIX_INT, MAX_FIX_INT], [MIN_FIX_INT, MIN_FIX_INT],
         [9.99999, 10], [-9.99999, -10],
         [6.5, 7], [5.5, 6], [-6.5, -7], [-5.5, -6],
-        [0, 0], [0.5, 1], [-0.5, -1],
+        [0, 0], [0.5, 1], [-0.5, -1]
       ]
-      for (let [input, result] of table) {
+      for (const [input, result] of table) {
         expect(await caller.intRound(fp(input)), `fp(${input})`).to.equal(result)
       }
     })
@@ -249,7 +249,7 @@ describe('In FixLib,', async () => {
 
   describe('floor', async () => {
     it('correctly converts positive Fixes to uint192', async () => {
-      for (let result of fixable_ints) {
+      for (const result of fixable_ints) {
         if (result.gte(0)) {
           expect(await caller.floor(fp(result)), `fp(${result})`).to.equal(bn(result))
           expect(await caller.toUint(fp(result), RoundingApproach.FLOOR), `fp(${result})`).to.equal(
@@ -260,7 +260,7 @@ describe('In FixLib,', async () => {
     })
     it('fails on negative Fixes', async () => {
       const table = [-1, fp(MIN_FIX_INT), MIN_INT192, fp(-986349)]
-      for (let val of table) {
+      for (const val of table) {
         await expect(caller.floor(val), `${val}`).to.be.revertedWith('IntOutOfBounds')
         await expect(caller.toUint(val, RoundingApproach.FLOOR), `${val}`).to.be.revertedWith(
           'IntOutOfBounds'
@@ -283,9 +283,9 @@ describe('In FixLib,', async () => {
         [6.5, 6],
         [5.5, 5],
         [0, 0],
-        [0.5, 0],
+        [0.5, 0]
       ]
-      for (let [input, result] of table) {
+      for (const [input, result] of table) {
         expect(await caller.floor(fp(input)), `fp(${input})`).to.equal(result)
         expect(await caller.toUint(fp(input), RoundingApproach.FLOOR), `fp(${input})`).to.equal(
           result
@@ -304,9 +304,9 @@ describe('In FixLib,', async () => {
         [MAX_FIX_INT, MAX_FIX_INT],
         [9.99999, 10],
         [6.5, 7], [5.5, 6],
-        [0, 0], [0.5, 1],
+        [0, 0], [0.5, 1]
       ]
-      for (let [input, result] of table) {
+      for (const [input, result] of table) {
         expect(await caller.round(fp(input)), `fp(${input})`).to.equal(result)
         expect(await caller.toUint(fp(input), RoundingApproach.ROUND), `fp(${input})`).to.equal(
           result
@@ -332,9 +332,9 @@ describe('In FixLib,', async () => {
         [6.5, 7],
         [5.5, 6],
         [0, 0],
-        [0.5, 1],
+        [0.5, 1]
       ]
-      for (let [input, result] of table) {
+      for (const [input, result] of table) {
         expect(await caller.ceil(fp(input)), `fp(${input})`).to.equal(result)
         expect(await caller.toUint(fp(input), RoundingApproach.CEIL), `fp(${input})`).to.equal(
           result
@@ -351,10 +351,10 @@ describe('In FixLib,', async () => {
         [1, -1, 0],
         [5040, 301, 5341],
         [0, 0, 0],
-        [0.1, -0.1, 0],
+        [0.1, -0.1, 0]
       ]
-      let table = []
-      for (let [a, b, c] of table_init)
+      const table = []
+      for (const [a, b, c] of table_init) {
         table.push(
           [a, b, c],
           [-a, -b, -c],
@@ -365,14 +365,14 @@ describe('In FixLib,', async () => {
           [-c, a, -b],
           [-c, b, -a]
         )
+      }
       table.push(
         ['1e-18', '2e-18', '3e-18'],
         [MAX_FIX_INT, 0, MAX_FIX_INT],
         [MAX_FIX_INT, MAX_FIX_INT.mul(-1), 0],
         [MAX_FIX_INT.div(8).mul(3), MAX_FIX_INT.div(8).mul(5), MAX_FIX_INT.div(8).mul(8)]
       )
-      for (let [a, b, c] of table)
-        expect(await caller.plus(fp(a), fp(b)), `${a} + ${b}`).to.equal(fp(c))
+      for (const [a, b, c] of table) { expect(await caller.plus(fp(a), fp(b)), `${a} + ${b}`).to.equal(fp(c)) }
     })
     it('correctly adds at the extremes of its range', async () => {
       expect(await caller.plus(MAX_INT192, -1)).to.equal(MAX_INT192.sub(1))
@@ -403,9 +403,9 @@ describe('In FixLib,', async () => {
         [22, 96, 118],
         [0, 0, 0],
         [0.1, 3, 3.1],
-        [-999.8, 999, -0.8],
+        [-999.8, 999, -0.8]
       ]
-      for (let [a, b, c] of table) {
+      for (const [a, b, c] of table) {
         expect(await caller.plusu(fp(a), b), `plusu(${a}, ${b})`).to.equal(fp(c))
       }
     })
@@ -440,10 +440,10 @@ describe('In FixLib,', async () => {
         [1, 1, 0],
         [5040, -301, 5341],
         [0, 0, 0],
-        [0.1, 0.1, 0],
+        [0.1, 0.1, 0]
       ]
-      let table = []
-      for (let [a, b, c] of table_init)
+      const table = []
+      for (const [a, b, c] of table_init) {
         table.push(
           [a, b, c],
           [-a, -b, -c],
@@ -454,14 +454,14 @@ describe('In FixLib,', async () => {
           [c, a, -b],
           [-c, -a, b]
         )
+      }
       table.push(
         ['3e-18', '2e-18', '1e-18'],
         [MAX_FIX_INT, 0, MAX_FIX_INT],
         [MAX_FIX_INT, MAX_FIX_INT, 0],
         [MAX_FIX_INT.div(8).mul(5), MAX_FIX_INT.div(8).mul(-3), MAX_FIX_INT.div(8).mul(8)]
       )
-      for (let [a, b, c] of table)
-        expect(await caller.minus(fp(a), fp(b)), `${a} + ${b}`).to.equal(fp(c))
+      for (const [a, b, c] of table) { expect(await caller.minus(fp(a), fp(b)), `${a} + ${b}`).to.equal(fp(c)) }
     })
     it('correctly subtracts at the extremes of its range', async () => {
       expect(await caller.minus(MAX_INT192, 1)).to.equal(MAX_INT192.sub(1))
@@ -494,9 +494,9 @@ describe('In FixLib,', async () => {
         [0, 0, 0],
         [999.8, 999, 0.8],
         [-1000, 234, -1234],
-        [5, 12, -7],
+        [5, 12, -7]
       ]
-      for (let [a, b, c] of table) {
+      for (const [a, b, c] of table) {
         expect(await caller.minusu(fp(a), b), `minusu(${a}, ${b})`).to.equal(fp(c))
       }
     })
@@ -525,21 +525,21 @@ describe('In FixLib,', async () => {
     [3.4, 7, 23.8],
     [0.001, 1000, 1],
     [1.001, 999, 999.999],
-    [12, 13, 156],
+    [12, 13, 156]
   ]
   describe('mul', async () => {
     it('correctly multiplies inside its range', async () => {
-      let commutes = mulu_table.flatMap(([a, b, c]) => [
+      const commutes = mulu_table.flatMap(([a, b, c]) => [
         [a, b, c],
-        [b, a, c],
+        [b, a, c]
       ])
-      let table = commutes.flatMap(([a, b, c]) => [
+      const table = commutes.flatMap(([a, b, c]) => [
         [a, b, c],
         [-a, b, -c],
         [a, -b, -c],
-        [-a, -b, c],
+        [-a, -b, c]
       ])
-      for (let [a, b, c] of table) {
+      for (const [a, b, c] of table) {
         expect(await caller.mul(fp(a), fp(b)), `mul(fp(${a}), fp(${b}))`).to.equal(fp(c))
       }
     })
@@ -560,31 +560,30 @@ describe('In FixLib,', async () => {
         [MIN_INT192, fp(1), MIN_INT192],
         [MIN_INT192.div(256), fp(256), MIN_INT192],
         [MAX_INT192.sub(1).div(2), fp(2), MAX_INT192.sub(1)],
-        [MAX_INT192, fp(-1), MIN_INT192.add(1)],
+        [MAX_INT192, fp(-1), MIN_INT192.add(1)]
       ]
-      for (let [a, b, c] of table) {
+      for (const [a, b, c] of table) {
         expect(await caller.mul(a, b), `mul(${a}, ${b})`).to.equal(c)
         expect(await caller.mul(b, a), `mul(${b}, ${a})`).to.equal(c)
       }
     })
     it('fails outside its range', async () => {
-      await expect(caller.mul(MIN_INT192, fp(-1)), `mul(MIN, -1)`).to.be.reverted
-      await expect(caller.mul(MAX_INT192.div(2).add(1), fp(2)), `mul(MAX/2 + 2, 2)`).to.be.reverted
-      await expect(caller.mul(fp(bn(2).pow(81)), fp(bn(2).pow(81))), `mul(2^81, 2^81)`).to.be
+      await expect(caller.mul(MIN_INT192, fp(-1)), 'mul(MIN, -1)').to.be.reverted
+      await expect(caller.mul(MAX_INT192.div(2).add(1), fp(2)), 'mul(MAX/2 + 2, 2)').to.be.reverted
+      await expect(caller.mul(fp(bn(2).pow(81)), fp(bn(2).pow(81))), 'mul(2^81, 2^81)').to.be
         .reverted
-      await expect(caller.mul(fp(bn(2).pow(81).mul(-1)), fp(bn(2).pow(81))), `mul(-2^81, 2^81)`).to
+      await expect(caller.mul(fp(bn(2).pow(81).mul(-1)), fp(bn(2).pow(81))), 'mul(-2^81, 2^81)').to
         .be.reverted
     })
   })
 
   describe('mulu', async () => {
     it('correctly multiplies inside its range', async () => {
-      let table = mulu_table.flatMap(([a, b, c]) => [
+      const table = mulu_table.flatMap(([a, b, c]) => [
         [a, b, c],
-        [-a, b, -c],
+        [-a, b, -c]
       ])
-      for (let [a, b, c] of table)
-        expect(await caller.mulu(fp(a), b), `mulu(fp(${a}), ${b})`).to.equal(fp(c))
+      for (const [a, b, c] of table) { expect(await caller.mulu(fp(a), b), `mulu(fp(${a}), ${b})`).to.equal(fp(c)) }
     })
     it('correctly multiplies at the extremes of its range', async () => {
       const table = [
@@ -593,9 +592,9 @@ describe('In FixLib,', async () => {
         [fp(1), MAX_FIX_INT, fp(MAX_FIX_INT)],
         [MIN_INT192.div(256), 256, MIN_INT192],
         [MAX_INT192.sub(1).div(2), 2, MAX_INT192.sub(1)],
-        [fp(0.25), bn(2).pow(69), fp(bn(2).pow(67))],
+        [fp(0.25), bn(2).pow(69), fp(bn(2).pow(67))]
       ]
-      for (let [a, b, c] of table) expect(await caller.mulu(a, b), `mulu(${a}, ${b})`).to.equal(c)
+      for (const [a, b, c] of table) expect(await caller.mulu(a, b), `mulu(${a}, ${b})`).to.equal(c)
     })
     it('fails outside its range', async () => {
       const table = [
@@ -604,10 +603,9 @@ describe('In FixLib,', async () => {
         [MAX_INT192, MAX_INT192],
         [MIN_INT192, MAX_INT192],
         [fp(1), MAX_UINT192],
-        [fp(0.25), bn(2).pow(195)],
+        [fp(0.25), bn(2).pow(195)]
       ]
-      for (let [a, b, c] of table)
-        await expect(caller.mulu(a, b), `mulu(${a}, ${b})`).to.be.reverted
+      for (const [a, b, c] of table) { await expect(caller.mulu(a, b), `mulu(${a}, ${b})`).to.be.reverted }
     })
   })
   describe('div', async () => {
@@ -620,10 +618,10 @@ describe('In FixLib,', async () => {
         [bn(2), bn(2), fp(1)],
         [bn(3), bn(2), fp(1.5)],
         [fp(1), bn(1), fp('1e18')],
-        [bn(1), fp(1), bn(1)],
-      ].flatMap(([a, b, c]) => [[a, b, c], [a, c, b],])
-        .flatMap(([a, b, c]) => [[a, b, c], [neg(a), b, neg(c)],])
-        .flatMap(([a, b, c]) => [[a, b, c], [a, neg(b), neg(c)],])
+        [bn(1), fp(1), bn(1)]
+      ].flatMap(([a, b, c]) => [[a, b, c], [a, c, b]])
+        .flatMap(([a, b, c]) => [[a, b, c], [neg(a), b, neg(c)]])
+        .flatMap(([a, b, c]) => [[a, b, c], [a, neg(b), neg(c)]])
 
       table.forEach(async ([a, b, c]) =>
         expect(await caller.div(a, b), `div(${a}, ${b})`).to.equal(c)
@@ -634,8 +632,8 @@ describe('In FixLib,', async () => {
       const table: BigNumber[][] = [
         [MAX_INT192, fp(1), MAX_INT192],
         [MAX_INT192, fp(-1), neg(MAX_INT192)],
-        [MIN_INT192, fp(2), MIN_INT192.div(2)],
-      ].flatMap(([a, b, c]) => [[a, b, c], [a, c, b],])
+        [MIN_INT192, fp(2), MIN_INT192.div(2)]
+      ].flatMap(([a, b, c]) => [[a, b, c], [a, c, b]])
 
       table.forEach(async ([a, b, c]) =>
         expect(await caller.div(a, b), `div((${a}, ${b})`).to.equal(c)
@@ -646,7 +644,7 @@ describe('In FixLib,', async () => {
         [bn(5), fp(2), bn(2)],
         [bn(-5), fp(2), bn(-2)],
         [bn(29), fp(10), bn(2)],
-        [bn(-19), fp(10), bn(-1)],
+        [bn(-19), fp(10), bn(-1)]
       ]
       table.forEach(async ([a, b, c]) =>
         expect(await caller.div(a, b), `div((${a}, ${b})`).to.equal(c)
@@ -660,7 +658,7 @@ describe('In FixLib,', async () => {
         [MAX_INT192.div(pow10(16)), bn(1)],
         [MIN_INT192, fp(0.99)],
         [MIN_INT192.div(5), fp(0.19)],
-        [MIN_INT192.div(pow10(16)), bn(1)],
+        [MIN_INT192.div(pow10(16)), bn(1)]
       ].flatMap(([a, b]) => [[a, b], [a, neg(b)]])
 
       table.forEach(
@@ -683,7 +681,7 @@ describe('In FixLib,', async () => {
         [fp(2), bn(2), fp(1)],
         [fp(3), bn(2), fp(1.5)],
         [fp(1), bn(1), fp(1)],
-        [bn(1), bn(1), bn(1)],
+        [bn(1), bn(1), bn(1)]
       ].forEach(async ([a, b, c]) => expect(await caller.divu(a, b), `divu((${a}, ${b})`).to.equal(c))
     })
     it('correctly divides at the extremes of its range', async () => {
@@ -691,7 +689,7 @@ describe('In FixLib,', async () => {
       [
         [MAX_INT192, bn(1), MAX_INT192],
         [MIN_INT192, bn(1), MIN_INT192],
-        [MIN_INT192, bn(2), MIN_INT192.div(2)],
+        [MIN_INT192, bn(2), MIN_INT192.div(2)]
       ].forEach(async ([a, b, c]) => expect(await caller.divu(a, b), `divu(${a}, ${b})`).to.equal(c))
     })
     it('correctly truncates results towards zero', async () => {
@@ -700,7 +698,7 @@ describe('In FixLib,', async () => {
         [bn(5), bn(2), bn(2)],
         [bn(-5), bn(2), bn(-2)],
         [bn(29), bn(10), bn(2)],
-        [bn(-19), bn(10), bn(-1)],
+        [bn(-19), bn(10), bn(-1)]
       ].forEach(async ([a, b, c]) => expect(await caller.divu(a, b), `divu((${a}, ${b})`).to.equal(c))
     })
     it('fails to divide by zero', async () => {
@@ -719,7 +717,7 @@ describe('In FixLib,', async () => {
         [fp(2), bn(2), fp(1)],
         [fp(3), bn(2), fp(1.5)],
         [fp(1), bn(1), fp(1)],
-        [bn(1), bn(1), bn(1)],
+        [bn(1), bn(1), bn(1)]
       ].forEach(async ([a, b, c]) => expect(await caller.divuRound(a, b), `divuRound((${a}, ${b})`).to.equal(c))
     })
     it('correctly divides at the extremes of its range', async () => {
@@ -727,7 +725,7 @@ describe('In FixLib,', async () => {
       [
         [MAX_INT192, bn(1), MAX_INT192],
         [MIN_INT192, bn(1), MIN_INT192],
-        [MIN_INT192, bn(2), MIN_INT192.div(2)],
+        [MIN_INT192, bn(2), MIN_INT192.div(2)]
       ].forEach(async ([a, b, c]) => expect(await caller.divuRound(a, b), `divuRound(${a}, ${b})`).to.equal(c))
     })
     it('correctly rounds results towards the nearest output fix', async () => {
@@ -746,7 +744,7 @@ describe('In FixLib,', async () => {
         [bn(-29), bn(10), bn(-3)],
         [bn(-30), bn(10), bn(-3)],
         [bn(-31), bn(10), bn(-3)],
-        [bn(-34), bn(10), bn(-3)],
+        [bn(-34), bn(10), bn(-3)]
       ].forEach(async ([a, b, c]) => expect(await caller.divuRound(a, b), `divuRound((${a}, ${b})`).to.equal(c))
     })
     it('fails to divide by zero', async () => {
@@ -762,7 +760,7 @@ describe('In FixLib,', async () => {
         [fp(1), fp(1)],
         [fp(2), fp(0.5)],
         [bn(2), fp('0.5e18')],
-        [bn(1e9), fp(1e9)],
+        [bn(1e9), fp(1e9)]
       ].flatMap(([a, b]) => [[a, b], [b, a], [neg(a), neg(b)], [neg(b), neg(a)]])
         .forEach(async ([a, b]) => expect(await caller.inv(a), `inv(${a})`).to.equal(b))
     })
@@ -774,7 +772,7 @@ describe('In FixLib,', async () => {
         [fp('1e18'), bn(1)],
         [fp('-1e18'), bn(-1)],
         [bn(1), fp('1e18')],
-        [bn(-1), fp('-1e18')],
+        [bn(-1), fp('-1e18')]
       ].forEach(async ([a, b]) => expect(await caller.inv(a), `inv(${a})`).to.equal(b))
     })
     it('fails to invert zero', async () => {
@@ -800,7 +798,7 @@ describe('In FixLib,', async () => {
         [bn(1), bn(2), bn(0)],
         [fp('1e-9'), bn(2), fp('1e-18')],
         [fp(0.1), bn(17), fp('1e-17')],
-        [fp(10), bn(19), fp('1e19')],
+        [fp(10), bn(19), fp('1e19')]
       ].forEach(async ([a, b, c]) => expect(await caller.powu(a, b), `powu(${a}, ${b})`).to.equal(c))
     })
     it('correctly exponentiates at the extremes of its range', async () => {
@@ -812,7 +810,7 @@ describe('In FixLib,', async () => {
         [fp(987.0), bn(0), fp(1.0)],
         [fp(1.0), bn(2).pow(256).sub(1), fp(1.0)],
         [fp(-1.0), bn(2).pow(256).sub(1), fp(-1.0)],
-        [fp(2), bn(131), fp(bn(2).pow(131))],
+        [fp(2), bn(131), fp(bn(2).pow(131))]
       ].forEach(async ([a, b, c]) =>
         expect(await caller.powu(a, b), `powu(${a}, ${b})`).to.equal(c)
       )
@@ -827,7 +825,7 @@ describe('In FixLib,', async () => {
         [fp('1.9e13'), bn(3)],
         [fp('9e9'), bn(4)],
         [fp('9.2e8'), bn(5)],
-        [fp(2), bn(191)],
+        [fp(2), bn(191)]
       ].forEach(
         async ([a, b]) => await expect(caller.powu(a, b), `powu(${a}, ${b})`).to.be.reverted
       )
@@ -837,14 +835,14 @@ describe('In FixLib,', async () => {
   describe('increment', async () => {
     it('increments the whole numbers', async () => {
       const table = [0, 864, 1e15]
-      for (let a of table) {
+      for (const a of table) {
         expect(await caller.increment(fp(a)), `increment(${a})`).to.equal(fp(a).add(1))
       }
     })
 
     it('increments the negative numbers', async () => {
       const table = [-1, -864, -1e15]
-      for (let a of table) {
+      for (const a of table) {
         expect(await caller.increment(fp(a)), `increment(${a})`).to.equal(fp(a).add(1))
       }
     })
@@ -939,7 +937,7 @@ describe('In FixLib,', async () => {
         [bn(87654), bn(87654), bn(1)],
         [bn(87654), bn(87655), bn(1)],
         [bn(87654), bn(87655), bn(2)],
-        [fp(1.0), fp(1.0), bn(1)],
+        [fp(1.0), fp(1.0), bn(1)]
       ].flatMap(([a, b, c]) => [[a, b, c], [b, a, c], [neg(a), neg(b), c], [neg(b), neg(a), c]])
         .forEach(async ([a, b, c]) =>
           expect(await caller.near(a, b, c), `near(${a}, ${b}, ${c}`).to.equal(a.sub(b).abs().lt(c)))
@@ -957,9 +955,9 @@ describe('In FixLib,', async () => {
         [MIN_INT192, MIN_INT192.add(1), bn(1)],
         [MIN_INT192, MIN_INT192.add(1), bn(2)],
         [bn(-1000), MIN_INT192, MAX_INT192],
-        [bn(1000), MAX_INT192, MAX_INT192],
+        [bn(1000), MAX_INT192, MAX_INT192]
 
-      ].flatMap(([a, b, c]) => [[a, b, c], [b, a, c],])
+      ].flatMap(([a, b, c]) => [[a, b, c], [b, a, c]])
         .forEach(async ([a, b, c]) =>
           expect(await caller.near(a, b, c), `near(${a}, ${b}, ${c}`).to.equal(a.sub(b).abs().lt(c)))
     })

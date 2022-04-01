@@ -17,7 +17,7 @@ import {
   StRSRP1,
   StaticATokenMock,
   TestIRToken,
-  TestIStRSR,
+  TestIStRSR
 } from '../typechain'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
@@ -28,7 +28,7 @@ import {
   IConfig,
   Implementation,
   IMPLEMENTATION,
-  SLOW,
+  SLOW
 } from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
 import { cartesianProduct } from './utils/cases'
@@ -95,7 +95,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     withdrawal: Partial<IWithdrawal>
   ) => {
     if (IMPLEMENTATION == Implementation.P0) {
-      const stRSRP0 = <StRSRP0>await ethers.getContractAt('StRSRP0', stRSR.address)
+      const stRSRP0 = <StRSRP0> await ethers.getContractAt('StRSRP0', stRSR.address)
       const [account, rsrAmount, , availableAt] = await stRSRP0.withdrawals(address, index)
 
       expect(account).to.eql(address)
@@ -104,7 +104,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(availableAt.toString()).to.eql(withdrawal.availableAt.toString())
       }
     } else if (IMPLEMENTATION == Implementation.P1) {
-      const stRSRP1 = <StRSRP1>await ethers.getContractAt('StRSRP1', stRSR.address)
+      const stRSRP1 = <StRSRP1> await ethers.getContractAt('StRSRP1', stRSR.address)
       const [drafts, availableAt] = await stRSRP1.draftQueues(0, address, index)
       let rsrAmount = drafts
 
@@ -141,7 +141,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       backingManager,
       basketHandler,
       rToken,
-      facade,
+      facade
     } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
@@ -154,12 +154,12 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     // Get assets and tokens
     ;[collateral0, collateral1, collateral2, collateral3] = basket
 
-    token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
-    token1 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral1.erc20())
+    token0 = <ERC20Mock> await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
+    token1 = <ERC20Mock> await ethers.getContractAt('ERC20Mock', await collateral1.erc20())
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    token3 = <CTokenMock> await ethers.getContractAt('CTokenMock', await collateral3.erc20())
   })
 
   describe('Deployment', () => {
@@ -191,7 +191,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           name: _name,
           version,
           chainId,
-          verifyingContract,
+          verifyingContract
         })
       )
     })
@@ -369,7 +369,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
       await stRSR.connect(addr1).stake(amount)
-      let availableAt = (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
+      const availableAt = (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
 
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
@@ -1539,7 +1539,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         rsrRewards,
         unstakingDelays,
         rewardPeriods,
-        rewardRatios,
+        rewardRatios
       ]
 
       // Restrict to 2^7 from 3^7 to decrease runtime

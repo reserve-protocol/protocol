@@ -25,11 +25,11 @@ export const whileImpersonating = async (address: string, f: ImpersonationFuncti
   // Set maximum ether balance at address
   await hre.network.provider.request({
     method: 'hardhat_setBalance',
-    params: [address, '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'],
+    params: [address, '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff']
   })
   await hre.network.provider.request({
     method: 'hardhat_impersonateAccount',
-    params: [address],
+    params: [address]
   })
   const signer = await ethers.getSigner(address)
 
@@ -37,7 +37,7 @@ export const whileImpersonating = async (address: string, f: ImpersonationFuncti
 
   await hre.network.provider.request({
     method: 'hardhat_stopImpersonatingAccount',
-    params: [address],
+    params: [address]
   })
   // If anyone ever needs it, we could make sure here that we set the balance at address back to
   // its original quantity...

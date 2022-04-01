@@ -15,7 +15,7 @@ import {
   RTokenP0,
   TestIRToken,
   StaticATokenMock,
-  USDCMock,
+  USDCMock
 } from '../typechain'
 import { advanceTime, advanceBlocks, getLatestBlockNumber } from './utils/time'
 import { Collateral, defaultFixture, IConfig } from './fixtures'
@@ -74,12 +74,12 @@ describe('FurnaceP0 contract', () => {
     // Get assets and tokens
     ;[collateral0, collateral1, collateral2, collateral3] = basket
 
-    token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
-    token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
+    token0 = <ERC20Mock> await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
+    token1 = <USDCMock> await ethers.getContractAt('USDCMock', await collateral1.erc20())
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    token3 = <CTokenMock> await ethers.getContractAt('CTokenMock', await collateral3.erc20())
 
     // Mint Tokens
     await token0.connect(owner).mint(addr1.address, initialBal)
@@ -107,7 +107,7 @@ describe('FurnaceP0 contract', () => {
     it('Deployment does not accept empty period', async () => {
       const newConfig = JSON.parse(JSON.stringify(config))
       newConfig.rewardPeriod = bn('0')
-      furnace = <FurnaceP0>await FurnaceFactory.deploy()
+      furnace = <FurnaceP0> await FurnaceFactory.deploy()
       await expect(
         furnace.initComponent(main.address, {
           params: newConfig,
@@ -121,11 +121,11 @@ describe('FurnaceP0 contract', () => {
             rsrTrader: ZERO_ADDRESS,
             rTokenTrader: ZERO_ADDRESS,
             furnace: ZERO_ADDRESS,
-            broker: ZERO_ADDRESS,
+            broker: ZERO_ADDRESS
           },
           gnosis: ZERO_ADDRESS,
           assets: [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
-          rsr: ZERO_ADDRESS,
+          rsr: ZERO_ADDRESS
         })
       ).to.be.revertedWith('period cannot be zero')
     })
@@ -372,7 +372,7 @@ describe('FurnaceP0 contract', () => {
       const newConfig = JSON.parse(JSON.stringify(config))
       newConfig.rewardPeriod = period
       newConfig.rewardRatio = ratio
-      furnace = <FurnaceP0>await FurnaceFactory.deploy()
+      furnace = <FurnaceP0> await FurnaceFactory.deploy()
       await main.connect(owner).setFurnace(furnace.address)
 
       // Issue and send tokens to furnace
@@ -393,11 +393,11 @@ describe('FurnaceP0 contract', () => {
           rsrTrader: ZERO_ADDRESS,
           rTokenTrader: ZERO_ADDRESS,
           furnace: ZERO_ADDRESS,
-          broker: ZERO_ADDRESS,
+          broker: ZERO_ADDRESS
         },
         gnosis: ZERO_ADDRESS,
         assets: [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
-        rsr: ZERO_ADDRESS,
+        rsr: ZERO_ADDRESS
       })
     }
 
