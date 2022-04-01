@@ -258,39 +258,93 @@ describe('MainP0 contract', () => {
   })
 
   describe('Initialization', () => {
-    let ctorArgs: any
+    let components: any
 
     beforeEach(async () => {
-      ctorArgs = {
-        params: config,
-        components: {
-          rToken: rToken.address,
-          stRSR: stRSR.address,
-          assetRegistry: assetRegistry.address,
-          basketHandler: basketHandler.address,
-          backingManager: backingManager.address,
-          distributor: distributor.address,
-          rsrTrader: rsrTrader.address,
-          rTokenTrader: rTokenTrader.address,
-          furnace: furnace.address,
-          broker: broker.address,
-        },
-        assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
-        gnosis: gnosis.address,
-        rsr: rsr.address,
+      components = {
+        rToken: rToken.address,
+        stRSR: stRSR.address,
+        assetRegistry: assetRegistry.address,
+        basketHandler: basketHandler.address,
+        backingManager: backingManager.address,
+        distributor: distributor.address,
+        rsrTrader: rsrTrader.address,
+        rTokenTrader: rTokenTrader.address,
+        furnace: furnace.address,
+        broker: broker.address,
       }
     })
 
     it('Should not allow to initialize Main twice', async () => {
-      await expect(main.init(ctorArgs)).to.be.revertedWith('Already initialized')
+      await expect(main.init(components, rsr.address, owner.address)).to.be.revertedWith(
+        'Initializable: contract is already initialized'
+      )
     })
 
     it('Should not allow to initialize components twice', async () => {
-      // Setup new Main
-      const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
-      const newMain = <MainP0>await MainFactory.deploy()
+      // Attempt to reinitialize - Asset Registry
+      const assets = [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address]
+      await expect(assetRegistry.init(main.address, assets)).to.be.revertedWith(
+        'Initializable: contract is already initialized'
+      )
 
-      await expect(newMain.init(ctorArgs)).to.be.revertedWith('Component: already initialized')
+      // Attempt to reinitialize - Backing Manager
+      await expect(
+        backingManager.init(
+          main.address,
+          config.tradingDelay,
+          config.backingBuffer,
+          config.maxTradeSlippage,
+          config.dustAmount
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      // Attempt to reinitialize - Basket Handler
+      await expect(basketHandler.init(main.address)).to.be.revertedWith(
+        'Initializable: contract is already initialized'
+      )
+
+      // Attempt to reinitialize - Distributor
+      await expect(distributor.init(main.address, config.dist)).to.be.revertedWith(
+        'Initializable: contract is already initialized'
+      )
+
+      // Attempt to reinitialize - RSR Trader
+      await expect(
+        rsrTrader.init(main.address, config.maxTradeSlippage, config.dustAmount)
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      // Attempt to reinitialize - RToken Trader
+      await expect(
+        rTokenTrader.init(main.address, config.maxTradeSlippage, config.dustAmount)
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      // Attempt to reinitialize - Furnace
+      await expect(
+        furnace.init(main.address, config.rewardPeriod, config.rewardRatio)
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      // Attempt to reinitialize - Broker
+      await expect(
+        broker.init(main.address, gnosis.address, config.auctionLength)
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      // Attempt to reinitialize - RToken
+      await expect(
+        rToken.init(main.address, 'RTKN RToken', 'RTKN', 'constitution', config.issuanceRate)
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      // Attempt to reinitialize - StRSR
+      await expect(
+        stRSR.init(
+          main.address,
+          'stRTKNRSR Token',
+          'stRTKNRSR',
+          config.unstakingDelay,
+          config.rewardPeriod,
+          config.rewardRatio
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
     })
 
     it('Should perform validations on init', async () => {
