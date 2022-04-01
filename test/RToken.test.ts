@@ -1147,9 +1147,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         aaveMock.address
       )
     )
-    assetRegistry.register(coll.address)
+    assetRegistry.register(coll.address) // SHOULD BE LINTED
     expect(await assetRegistry.isRegistered(erc20.address)).to.be.true
-    aaveOracleInternal.setPrice(erc20.address, price)
+    await aaveOracleInternal.setPrice(erc20.address, price)
     return [erc20, coll]
   }
 
@@ -1160,16 +1160,66 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     return await basketHandler.status()
   }
 
+  // Issue `amount` RToken to `user`.
+  //
+  // Because hardhat_mine actually takes O(n) time to mine n
+  // blocks, we do this more cleverly than just one big issuance...
+  // This presumes that user has already granted allowances of basket tokens!
+  async function issue_many(toIssue: BigNumber, user: SignerWithAddress): Promise<void> {
+    const ISS_BLOCKS = bn(1e3) // How many blocks to wait between issuances; tweak to tune performance
+    const MIN_ISSUANCE_RATE = fp(10000) // {rtoken / block}
+
+    let supply = await rToken.totalSupply()
+    let issued = bn(0)
+    const initBalance = await rToken.balanceOf(user.address)
+    const issuanceRate = await rToken.issuanceRate()
+    console.log(
+      `issuing ${toIssue.toString()} to ${user.address.slice(0, 6)}...${user.address.slice(-4)}`
+    )
+
+    while (issued.lt(toIssue)) {
+      // Find currIssue, the amount to issue this round
+      let yetToIssue = toIssue.sub(issued)
+      const baseAmt = MIN_ISSUANCE_RATE.mul(ISS_BLOCKS)
+      const succAmt = supply.mul(issuanceRate).mul(ISS_BLOCKS)
+      const maxAmt = baseAmt.gt(succAmt) ? baseAmt : succAmt
+      const currIssue = maxAmt.lt(yetToIssue) ? maxAmt : yetToIssue
+
+      // Issue currIssue to user, and wait ISS_BLOCKS
+      console.log(`  issuing ${currIssue.toString()}...`)
+      await rToken.connect(user).issue(currIssue)
+      console.log(`    waiting ${ISS_BLOCKS} blocks...`)
+      await advanceBlocks(ISS_BLOCKS.add(1))
+      console.log(`    vesting issuance...`)
+      await rToken.vest(user.address, await rToken.endIdForVest(user.address))
+      issued = issued.add(currIssue)
+      supply = supply.add(currIssue)
+    }
+
+    // assert that this worked
+    expect(await rToken.balanceOf(user.address)).to.equal(initBalance.add(toIssue))
+    expect(await rToken.totalSupply()).to.equal(supply)
+  }
+
   describe.only(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, async () => {
-    async function runScenario(
-      toIssue: BigNumber,
-      toRedeem: BigNumber,
-      totalSupply: BigNumber, // in this scenario, rtoken supply _after_ issuance.
-      numBasketAssets: BigNumber,
-      weightFirst: BigNumber, // target amount per asset (weight of first asset)
-      weightRest: BigNumber, // another target amount per asset (weight of second+ assets)
-      issuanceRate: BigNumber // range under test: [.000_001 to 1.0]
-    ) {
+    async function runScenario([
+      toIssue,
+      toRedeem,
+      totalSupply, // in this scenario, rtoken supply _after_ issuance.
+      numBasketAssets,
+      weightFirst, // target amount per asset (weight of first asset)
+      weightRest, // another target amount per asset (weight of second+ assets)
+      issuanceRate, // range under test: [.000_001 to 1.0]
+    ]: BigNumber[]) {
+      // skip nonsense cases
+      if (
+        (numBasketAssets.eq(1) && !weightRest.eq(1)) ||
+        toRedeem.gt(totalSupply) ||
+        toIssue.gt(totalSupply)
+      ) {
+        return
+      }
+
       const MIN_ISSUANCE_RATE = fp(10000) // {rtoken / block}
 
       // ==== Deploy and register basket collateral
@@ -1220,35 +1270,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // ==== Issue the "initial" rtoken supply to owner
       console.log("Issue the 'initial' rtoken supply to owner")
       expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
-      if (toIssue0.gt(0)) {
-        await rToken.connect(owner).setIssuanceRate(fp(1)) // just do it, don't wait
-
-        // TODO: Do this issuance in a sequence of issuances that each only need to skip 1000 blocks
-        console.log('issue...')
-        await rToken.connect(owner).issue(toIssue0)
-
-        console.log(`advance blocks... ${toIssue0.div(MIN_ISSUANCE_RATE).add(1).toString()}`)
-        await advanceBlocks(toIssue0.div(MIN_ISSUANCE_RATE).add(1))
-
-        console.log('vest...')
-        await rToken.vest(owner.address, 1)
-        expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
-      }
+      await issue_many(toIssue0, owner)
+      expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
 
       // ==== Issue the toIssue supply to addr1
       console.log('Issue the toIssue supply to addr1')
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      await rToken.connect(addr1).issue(toIssue)
-
-      // Wait until vesting is ready:
-      const naturalIssRate = issuanceRate.mul(toIssue0)
-      const realIssuanceRate = MIN_ISSUANCE_RATE.gt(naturalIssRate)
-        ? MIN_ISSUANCE_RATE
-        : naturalIssRate
-      const blocksIss = toIssue.div(realIssuanceRate).add(1)
-
-      await advanceBlocks(blocksIss)
-      await rToken.vest(addr1.address, 1)
+      await issue_many(toIssue, addr1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
 
       // ==== Send enough rTokens to addr2 that it can redeem the amount `toRedeem`
@@ -1268,43 +1296,28 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr2.address)).to.equal(0)
     }
 
-    // ==== Extreme-value tests
-    it('work for many cases', async () => {
-      let bounds: BigNumber[][] = [
-        [bn(1), bn('1e36'), bn('1.205e24')], // toIssue
-        [bn(1), bn('1e36'), bn('4.4231e24')], // toRedeem
-        [bn('1e36'), bn(1), bn('7.907e24')], // totalSupply
-        [bn(1), bn(7), bn(255)], // numAssets
-        [bn(1), fp('1e18'), fp('0.1')], // weightFirst
-        [bn(1), fp('1e18'), fp('0.2')], // weightRest
-        [fp('1'), fp('0.00025'), fp('1e-6')], // issuanceRate
-      ]
+    // ==== Generate the tests
 
-      if (!SLOW) bounds = bounds.map((b) => b.slice(0, 2)) // .:. T U R B O  M O D E .:. //
+    let bounds: BigNumber[][] = [
+      [bn(1), bn('1e18'), bn('1.205e24')], // toIssue
+      [bn(1), bn('1e18'), bn('4.4231e24')], // toRedeem
+      [bn('1e18'), bn(1), bn('7.907e24')], // totalSupply TODO RANGE
+      [bn(1), bn(7), bn(255)], // numAssets
+      [bn(1), fp('1e18'), fp('0.1')], // weightFirst
+      [bn(1), fp('1e18'), fp('0.2')], // weightRest
+      [fp('0.00025'), fp('1'), fp('1e-6')], // issuanceRate
+    ]
 
-      const paramList = cartesianProduct(...bounds)
-      for (const params of paramList) {
-        // Bind parameters
-        const [toIssue, toRedeem, totalSupply, numAssets, weightFirst, weightRest, issuanceRate] =
-          params
+    if (!SLOW) bounds = bounds.map((b) => b.slice(0, 2))
+    if (!!process.env.QUICK) bounds = bounds.map((b) => b.slice(0, 1))
 
-        // Skip nonsense cases
-        if (numAssets.eq(1) && !weightRest.eq(1)) continue
-        if (toRedeem > totalSupply) continue
-
-        const description: string = params.map((n) => n.toString()).join(', ')
-        console.log(description)
-
-        await runScenario(
-          toIssue,
-          toRedeem,
-          totalSupply,
-          numAssets,
-          weightFirst,
-          weightRest,
-          issuanceRate
-        )
-      }
+    let paramList = cartesianProduct(...bounds)
+    const start = 0
+    const numCases = 30
+    paramList.slice(start, start + numCases).forEach((params, index) => {
+      it(`case ${index + start}: ${params}`, async () => {
+        await runScenario(params)
+      })
     })
   })
 })
