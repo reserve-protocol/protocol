@@ -98,7 +98,7 @@ contract DeployerP0 is IDeployer {
         main.init(components, rsr, owner);
 
         // Init Backing Manager
-        components.backingManager.init(
+        main.backingManager().init(
             main,
             params.tradingDelay,
             params.backingBuffer,
@@ -107,26 +107,26 @@ contract DeployerP0 is IDeployer {
         );
 
         // Init Basket Handler
-        components.basketHandler.init(main);
+        main.basketHandler().init(main);
 
         // Init Revenue Traders
-        components.rsrTrader.init(main, params.maxTradeSlippage, params.dustAmount);
-        components.rTokenTrader.init(main, params.maxTradeSlippage, params.dustAmount);
+        main.rsrTrader().init(main, params.maxTradeSlippage, params.dustAmount);
+        main.rTokenTrader().init(main, params.maxTradeSlippage, params.dustAmount);
 
         // Init Asset Registry
-        components.assetRegistry.init(main, assets);
+        main.assetRegistry().init(main, assets);
 
         // Init Distributor
-        components.distributor.init(main, params.dist);
+        main.distributor().init(main, params.dist);
 
         // Init Furnace
-        components.furnace.init(main, params.rewardPeriod, params.rewardRatio);
+        main.furnace().init(main, params.rewardPeriod, params.rewardRatio);
 
-        components.broker.init(main, gnosis, params.auctionLength);
+        main.broker().init(main, gnosis, params.auctionLength);
 
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
         string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
-        components.stRSR.init(
+        main.stRSR().init(
             main,
             stRSRName,
             stRSRSymbol,
@@ -135,7 +135,7 @@ contract DeployerP0 is IDeployer {
             params.rewardRatio
         );
 
-        components.rToken.init(main, name, symbol, constitutionURI, params.issuanceRate);
+        main.rToken().init(main, name, symbol, constitutionURI, params.issuanceRate);
 
         // Facade
         IFacade facade = new FacadeP0(address(main));
