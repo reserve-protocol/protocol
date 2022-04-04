@@ -142,7 +142,6 @@ contract DeployerP0 is IDeployer {
 
         main.rToken().init(main, name, symbol, constitutionURI, params.issuanceRate);
 
-
         // Transfer Ownership
         main.setPauser(owner);
         main.transferOwnership(owner);

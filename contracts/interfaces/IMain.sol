@@ -146,10 +146,7 @@ interface IMain is IPausable {
 
     event Initialized();
 
-    function init(
-        Components memory components,
-        IERC20 rsr_
-    ) external;
+    function init(Components memory components, IERC20 rsr_) external;
 
     function owner() external view returns (address);
 }

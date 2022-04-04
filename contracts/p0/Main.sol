@@ -78,10 +78,7 @@ contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
     }
 
     /// Initializer
-    function init(
-        Components memory components,
-        IERC20 rsr_
-    ) public virtual initializer {
+    function init(Components memory components, IERC20 rsr_) public virtual initializer {
         __Pausable_init();
 
         setBackingManager(components.backingManager);
