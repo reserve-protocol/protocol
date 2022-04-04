@@ -8,7 +8,6 @@ import { bn, divCeil, fp, near } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AavePricedAsset,
-  Asset,
   AssetRegistryP0,
   ATokenFiatCollateral,
   BackingManagerP0,
@@ -25,7 +24,6 @@ import {
   MainP0,
   GnosisMock,
   RevenueTradingP0,
-  RTokenAsset,
   TestIRToken,
   StaticATokenMock,
   TestIStRSR,
@@ -46,12 +44,9 @@ describe('Revenues', () => {
 
   // Non-backing assets
   let rsr: ERC20Mock
-  let rsrAsset: Asset
   let compToken: ERC20Mock
-  let compAsset: Asset
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
-  let aaveAsset: Asset
   let aaveMock: AaveLendingPoolMock
 
   // Trading
@@ -79,7 +74,6 @@ describe('Revenues', () => {
 
   // Contracts to retrieve after deploy
   let rToken: TestIRToken
-  let rTokenAsset: RTokenAsset
   let stRSR: TestIStRSR
   let furnace: FurnaceP0
   let main: MainP0
@@ -103,11 +97,8 @@ describe('Revenues', () => {
     // Deploy fixture
     ;({
       rsr,
-      rsrAsset,
       compToken,
       aaveToken,
-      compAsset,
-      aaveAsset,
       compoundMock,
       aaveMock,
       erc20s,
@@ -120,7 +111,6 @@ describe('Revenues', () => {
       basketHandler,
       distributor,
       rToken,
-      rTokenAsset,
       furnace,
       stRSR,
       broker,

@@ -258,8 +258,7 @@ describe('MainP0 contract', () => {
   })
 
   describe('Initialization', () => {
-    type Components = Parameters<typeof main.init>[0]['components']
-    let components: Components
+    let components: Parameters<typeof main.init>[0]
 
     beforeEach(async () => {
       components = {
