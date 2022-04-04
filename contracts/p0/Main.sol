@@ -39,8 +39,15 @@ contract Pausable is Ownable, IPausable {
 
     function setPauser(address pauser_) external {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        require(pauser_ != address(0), "use renouncePauser");
         emit PauserSet(_pauser, pauser_);
         _pauser = pauser_;
+    }
+
+    function renouncePausership() external {
+        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
+        emit PauserSet(_pauser, address(0));
+        _pauser = address(0);
     }
 }
 
