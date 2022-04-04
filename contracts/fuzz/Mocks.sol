@@ -15,12 +15,9 @@ contract MainMock is MainP0 {
 
     function init(
         Components memory,
-        IERC20,
-        address owner_
+        IERC20
     ) public virtual override(MainP0) initializer {
         __Pausable_init();
-        setPauser(owner_);
-        transferOwnership(owner_);
         emit Initialized();
     }
 
