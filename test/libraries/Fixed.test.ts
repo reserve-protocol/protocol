@@ -139,7 +139,7 @@ describe('In FixLib,', () => {
             [0, 1, 0],
             [0, -1, 0],
           ])
-      for ([x, y, result] of table) {
+      for (const [x, y, result] of table) {
         expect(await caller.divFix_(x, fp(y)), `divFix(${x}, ${y}) == ${result}`).to.equal(
           fp(result)
         )
@@ -160,7 +160,7 @@ describe('In FixLib,', () => {
         [bn('8e60'), fp('-2e30'), fp('-4e30')],
         [bn('5e75'), fp('-2.5e39'), fp('-2e36')],
       ]
-      for ([x, y, result] of table) {
+      for (const [x, y, result] of table) {
         expect(await caller.divFix_(x, y), `divFix(${x}, ${y}) == ${result}`).to.equal(result)
       }
     })
@@ -787,7 +787,7 @@ describe('In FixLib,', () => {
         [bn(-34), bn(10), bn(-3)]
       ]
       for (const [a, b, c] of table) {
-        Expect(await caller.divuRound(a, b), `divuRound((${a}, ${b})`).to.equal(c)
+        expect(await caller.divuRound(a, b), `divuRound((${a}, ${b})`).to.equal(c)
       }
     })
     it('fails to divide by zero', async () => {
@@ -795,7 +795,7 @@ describe('In FixLib,', () => {
       const table = [fp(1), fp(0), fp(-1), bn(1), bn(-1),
                      fp(MAX_INT192), fp(MIN_INT192), bn(987162349587)]
 
-      for (const [x] of table) {
+      for (const x of table) {
         await expect(caller.divuRound(x, bn(0)), `divuRound(${x}, 0`).to.be.reverted
       }
     })

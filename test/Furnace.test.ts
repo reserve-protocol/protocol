@@ -9,7 +9,6 @@ import {
   BackingManagerP0,
   CTokenMock,
   ERC20Mock,
-  FacadeP0,
   FurnaceP0,
   MainP0,
   TestIRToken,

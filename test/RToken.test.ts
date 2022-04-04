@@ -1218,8 +1218,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         return
       }
 
-      const MIN_ISSUANCE_RATE = fp(10000) // {rtoken / block}
-
       // ==== Deploy and register basket collateral
       console.log('Deploy and register basket collateral')
       const N = numBasketAssets.toNumber()
