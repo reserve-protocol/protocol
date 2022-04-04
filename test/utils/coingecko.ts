@@ -20,7 +20,7 @@ const getCoingeckoDataPoints = async (
   return coingeckoDatapoints
 }
 
-const getCoingeckoSimplePrice = async (coin: string, currency: string): Promise<any> => {
+const getCoingeckoSimplePrice = async (coin: string, currency: string): Promise<unknown> => {
   const getCoingeckoSimplePrice = (
     await axios.get(
       `https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=${currency}`
@@ -29,7 +29,10 @@ const getCoingeckoSimplePrice = async (coin: string, currency: string): Promise<
   return getCoingeckoSimplePrice
 }
 
-const getCoingeckoSimpleTokenPrice = async (tokenAddr: string, currency: string): Promise<any> => {
+const getCoingeckoSimpleTokenPrice = async (
+  tokenAddr: string,
+  currency: string
+): Promise<unknown> => {
   const getCoingeckoSimpleTokenPrice = (
     await axios.get(
       `https://api.coingecko.com/api/v3/simple/token_price/ethereum?contract_addresses=${tokenAddr}&vs_currencies=${currency}`

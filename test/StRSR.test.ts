@@ -122,7 +122,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   }
 
   before('create fixture loader', async () => {
-    ;[wallet] = await (ethers as any).getSigners()
+    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
   })
 

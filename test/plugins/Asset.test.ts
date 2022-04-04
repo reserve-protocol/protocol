@@ -48,7 +48,7 @@ describe('AssetsP0 contracts', () => {
   const amt = fp('1e4')
 
   before('create fixture loader', async () => {
-    ;[wallet] = await (ethers as any).getSigners()
+    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
   })
 
