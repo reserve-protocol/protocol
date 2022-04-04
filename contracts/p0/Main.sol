@@ -25,23 +25,23 @@ abstract contract Pausable is OwnableUpgradeable, IPausable {
         _;
     }
 
-    function pause() public {
+    function pause() external {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         emit PausedSet(paused, true);
         paused = true;
     }
 
-    function unpause() public {
+    function unpause() external {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         emit PausedSet(paused, false);
         paused = false;
     }
 
-    function pauser() public view returns (address) {
+    function pauser() external view returns (address) {
         return _pauser;
     }
 
-    function setPauser(address pauser_) public {
+    function setPauser(address pauser_) external {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         require(pauser_ != address(0), "use renouncePauser");
         emit PauserSet(_pauser, pauser_);
@@ -80,8 +80,7 @@ contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
     /// Initializer
     function init(
         Components memory components,
-        IERC20 rsr_,
-        address owner_
+        IERC20 rsr_
     ) public virtual initializer {
         __Pausable_init();
 
@@ -96,10 +95,6 @@ contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
         setStRSR(components.stRSR);
         setRToken(components.rToken);
         setRSR(rsr_);
-
-        // Roles
-        setPauser(owner_);
-        transferOwnership(owner_);
 
         emit Initialized();
     }
