@@ -95,7 +95,7 @@ contract DeployerP1 is IDeployer {
         assets[3] = new CompoundPricedAsset(comp, params.maxTradeVolume, comptroller);
 
         // Init Main
-        main.init(components, rsr, owner);
+        main.init(components, rsr);
 
         // Init Backing Manager
         main.backingManager().init(
@@ -144,9 +144,15 @@ contract DeployerP1 is IDeployer {
         // Init RToken
         main.rToken().init(main, name, symbol, constitutionURI, params.issuanceRate);
 
+
+        // Transfer Ownership
+        main.setPauser(owner);
+        main.transferOwnership(owner);
+
         // Facade
         IFacade facade = new FacadeP0(address(main));
         emit RTokenCreated(main, components.rToken, components.stRSR, facade, owner);
         return (address(main));
     }
 }
+    
