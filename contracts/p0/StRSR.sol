@@ -122,8 +122,8 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         // Move deposited RSR to backing
         rsrBacking += rsrAmount;
 
-        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
         emit Staked(account, rsrAmount, stakeAmount);
+        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
     }
 
     /// Begins a delayed unstaking for `amount` stRSR
@@ -189,8 +189,8 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         }
 
         // Execute accumulated withdrawals
-        main.rsr().safeTransfer(account, total);
         emit UnstakingCompleted(start, i, 0, account, total);
+        main.rsr().safeTransfer(account, total);
     }
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
@@ -249,8 +249,8 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         }
 
         // Transfer RSR to caller
-        main.rsr().safeTransfer(_msgSender(), seizedRSR);
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
+        main.rsr().safeTransfer(_msgSender(), seizedRSR);
     }
 
     /// Assign reward payouts to the staker pool
@@ -348,17 +348,13 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         return true;
     }
 
-    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue) external returns (bool) {
         address owner_ = _msgSender();
         _approve(owner_, spender, allowances[owner_][spender] + addedValue);
         return true;
     }
 
-    function decreaseAllowance(address spender, uint256 subtractedValue)
-        public
-        virtual
-        returns (bool)
-    {
+    function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
         address owner_ = _msgSender();
         uint256 currentAllowance = allowances[owner_][spender];
         require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");

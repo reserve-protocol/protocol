@@ -80,40 +80,30 @@ contract MainP0 is Pausable, IMain {
     function init(ConstructorArgs memory args) public virtual onlyOwner {
         require(!initialized, "Already initialized");
         initialized = true;
+        emit Initialized();
 
         setBackingManager(args.components.backingManager);
-        backingManager.initComponent(this, args);
-
         setBasketHandler(args.components.basketHandler);
-        basketHandler.initComponent(this, args);
-
         setRSRTrader(args.components.rsrTrader);
-        rsrTrader.initComponent(this, args);
-
         setRTokenTrader(args.components.rTokenTrader);
-        rTokenTrader.initComponent(this, args);
-
         setAssetRegistry(args.components.assetRegistry);
-        assetRegistry.initComponent(this, args);
-
         setDistributor(args.components.distributor);
-        distributor.initComponent(this, args);
-
         setFurnace(args.components.furnace);
-        furnace.initComponent(this, args);
-
         setBroker(args.components.broker);
-        broker.initComponent(this, args);
-
         setStRSR(args.components.stRSR);
-        stRSR.initComponent(this, args);
-
         setRToken(args.components.rToken);
-        rToken.initComponent(this, args);
-
         setRSR(args.rsr);
 
-        emit Initialized();
+        backingManager.initComponent(this, args);
+        basketHandler.initComponent(this, args);
+        rsrTrader.initComponent(this, args);
+        rTokenTrader.initComponent(this, args);
+        assetRegistry.initComponent(this, args);
+        distributor.initComponent(this, args);
+        furnace.initComponent(this, args);
+        broker.initComponent(this, args);
+        stRSR.initComponent(this, args);
+        rToken.initComponent(this, args);
     }
 
     // === Registered Contracts ===

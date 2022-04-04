@@ -253,6 +253,7 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
         // {BU} = {BU} * {qRTok} / {qRTok}
         int192 baskets = basketsNeeded.mulu(amount).divuRound(totalSupply());
         assert(baskets.lte(basketsNeeded));
+        emit Redemption(_msgSender(), amount, baskets);
 
         address[] memory erc20s;
         (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingApproach.FLOOR);
@@ -279,8 +280,6 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
             // Send withdrawal
             IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), withdrawals[i]);
         }
-
-        emit Redemption(_msgSender(), amount, baskets);
     }
 
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate

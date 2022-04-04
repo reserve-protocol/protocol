@@ -185,8 +185,8 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
         }
 
         // Transfer RSR to caller
-        main.rsr().safeTransfer(_msgSender(), seizedRSR);
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
+        main.rsr().safeTransfer(_msgSender(), seizedRSR);
     }
 
     /// Assign reward payouts to the staker pool
@@ -321,17 +321,13 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
         emit Approval(owner_, spender, amount);
     }
 
-    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue) external returns (bool) {
         address owner_ = _msgSender();
         _approve(owner_, spender, allowances[owner_][spender] + addedValue);
         return true;
     }
 
-    function decreaseAllowance(address spender, uint256 subtractedValue)
-        public
-        virtual
-        returns (bool)
-    {
+    function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
         address owner_ = _msgSender();
         uint256 currentAllowance = allowances[owner_][spender];
         require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
@@ -374,9 +370,6 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
 
     /// Execute the staking of `rsrAmount` RSR for `account`
     function _stake(address account, uint256 rsrAmount) internal {
-        // Transfer RSR from account to this contract
-        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
-
         // Compute stake amount
         uint256 stakeAmount = (stakeRSR == 0) ? rsrAmount : (rsrAmount * totalStakes) / stakeRSR;
 
@@ -385,7 +378,9 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
         totalStakes += stakeAmount;
         stakeRSR += rsrAmount;
 
+        // Transfer RSR from account to this contract
         emit Staked(account, rsrAmount, stakeAmount);
+        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
     }
 
     /// Execute the move of `stakeAmount` from stake to draft, for `account`
@@ -437,9 +432,9 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
 
         totalDrafts -= draftAmount;
         draftRSR -= rsrAmount;
-        main.rsr().safeTransfer(account, rsrAmount);
 
         emit UnstakingCompleted(firstId, endId, era, account, rsrAmount);
+        main.rsr().safeTransfer(account, rsrAmount);
     }
 
     /// Add a cumulative draft to account's draft queue (from the current time).
