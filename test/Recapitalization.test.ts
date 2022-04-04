@@ -4,19 +4,18 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { bn, divCeil, fp, pow10, toBNDecimals } from '../common/numbers'
+import { bn, fp, pow10, toBNDecimals } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AaveOracleMock,
   AssetRegistryP0,
   AavePricedFiatCollateralMock,
-  AavePricedFiatCollateral,
-  ATokenFiatCollateral,
+  // ATokenFiatCollateral,
   BackingManagerP0,
   BasketHandlerP0,
   CompoundOracleMock,
   ComptrollerMock,
-  CTokenFiatCollateral,
+  // CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
   FacadeP0,
@@ -37,7 +36,6 @@ describe('MainP0 contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
-  let other: SignerWithAddress
 
   // Assets
   let collateral: Collateral[]
@@ -65,8 +63,8 @@ describe('MainP0 contract', () => {
   let backupToken4: ERC20Mock
   let collateral0: Collateral
   let collateral1: Collateral
-  let collateral2: ATokenFiatCollateral
-  let collateral3: CTokenFiatCollateral
+  // let collateral2: ATokenFiatCollateral
+  // let collateral3: CTokenFiatCollateral
   let backupCollateral1: Collateral
   let backupCollateral2: Collateral
   let backupCollateral3: Collateral
@@ -111,7 +109,7 @@ describe('MainP0 contract', () => {
   })
 
   beforeEach(async () => {
-    ;[owner, addr1, addr2, other] = await ethers.getSigners()
+    ;[owner, addr1, addr2] = await ethers.getSigners()
     let erc20s: ERC20Mock[]
 
       // Deploy fixture
@@ -145,8 +143,8 @@ describe('MainP0 contract', () => {
 
     collateral0 = <Collateral>basket[0]
     collateral1 = <Collateral>basket[1]
-    collateral2 = <ATokenFiatCollateral>basket[2]
-    collateral3 = <CTokenFiatCollateral>basket[3]
+    // collateral2 = <ATokenFiatCollateral>basket[2]
+    // collateral3 = <CTokenFiatCollateral>basket[3]
 
     // Backup tokens and collaterals - USDT - aUSDT - aUSDC - aBUSD
     backupToken1 = erc20s[2] // USDT
@@ -180,7 +178,7 @@ describe('MainP0 contract', () => {
   })
 
   describe('Default Handling - Basket Selection', function () {
-    context('With issued Rtokens', async function () {
+    context('With issued Rtokens', function () {
       let issueAmount: BigNumber
       let initialTokens: string[]
       let initialQuantities: BigNumber[]
@@ -628,7 +626,7 @@ describe('MainP0 contract', () => {
       })
     })
 
-    context('With multiple targets', async function () {
+    context('With multiple targets', function () {
       let issueAmount: BigNumber
       let newEURCollateral: Collateral
       let backupEURCollateral: Collateral
@@ -814,7 +812,7 @@ describe('MainP0 contract', () => {
   })
 
   describe('Recapitalization', function () {
-    context('With very simple Basket - Single stablecoin', async function () {
+    context('With very simple Basket - Single stablecoin', function () {
       let issueAmount: BigNumber
 
       beforeEach(async function () {
@@ -2205,7 +2203,7 @@ describe('MainP0 contract', () => {
       })
     })
 
-    context('With issued Rtokens', async function () {
+    context('With issued Rtokens', function () {
       let issueAmount: BigNumber
       let initialTokens: string[]
       let initialQuantities: BigNumber[]
@@ -3767,13 +3765,7 @@ describe('MainP0 contract', () => {
       // 1e18 range centered around the expected case of fp('1')
       const basketTargetAmts = [fp('1e-9'), fp('1e9')]
 
-      const dimensions: any[] = [
-        primeTokens,
-        backupTokens,
-        targetUnits,
-        targetPerRefs,
-        basketTargetAmts,
-      ]
+      const dimensions = [primeTokens, backupTokens, targetUnits, targetPerRefs, basketTargetAmts]
 
       ERC20 = await ethers.getContractFactory('ERC20Mock')
       AaveCollateralFactory = await ethers.getContractFactory('AavePricedFiatCollateralMock')
@@ -3781,9 +3773,15 @@ describe('MainP0 contract', () => {
       // 2^5 = 32 cases
       const cases = cartesianProduct(...dimensions)
       for (let i = 0; i < cases.length; i++) {
-        const args: any[] = cases[i]
+        const args = cases[i]
 
-        await runSimulation(args[0], args[1], args[2], args[3], args[4])
+        await runSimulation(
+          args[0] as number,
+          args[1] as number,
+          args[2] as number,
+          args[3] as BigNumber,
+          args[4] as BigNumber
+        )
       }
     })
   })

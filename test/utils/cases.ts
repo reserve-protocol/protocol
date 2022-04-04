@@ -1,5 +1,7 @@
 // Utility functions for composing test cases
 
+// If anyone wants to get this typing correctly _without_ using any, that'd be awesome
+
 // Yoinked from: https://stackoverflow.com/questions/65025411/
 type MapCartesian<T extends any[][]> = {
   [P in keyof T]: T[P] extends Array<infer U> ? U : never

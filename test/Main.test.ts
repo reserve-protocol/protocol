@@ -258,7 +258,8 @@ describe('MainP0 contract', () => {
   })
 
   describe('Initialization', () => {
-    let ctorArgs: any
+    type CtorArgs = Parameters<typeof main.init>[0]
+    let ctorArgs: CtorArgs
 
     beforeEach(async () => {
       ctorArgs = {
