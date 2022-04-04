@@ -16,6 +16,15 @@ interface IBackingManager is IComponent, ITrading {
     event TradingDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
     event BackingBufferSet(int192 indexed oldVal, int192 indexed newVal);
 
+    // Initialization
+    function init(
+        IMain main_,
+        uint256 tradingDelay_,
+        int192 backingBuffer_,
+        int192 maxTradeSlippage_,
+        int192 dustAmount_
+    ) external;
+
     // Give RToken max allowances over all registered tokens
     /// @custom:refresher
     function grantAllowances() external;

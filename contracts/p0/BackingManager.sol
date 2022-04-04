@@ -22,10 +22,17 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     uint256 public tradingDelay; // {s} how long to wait until resuming trading after switching
     int192 public backingBuffer; // {%} how much extra backing collateral to keep
 
-    function init(ConstructorArgs memory args) internal override {
-        TradingP0.init(args);
-        tradingDelay = args.params.tradingDelay;
-        backingBuffer = args.params.backingBuffer;
+    function init(
+        IMain main_,
+        uint256 tradingDelay_,
+        int192 backingBuffer_,
+        int192 maxTradeSlippage_,
+        int192 dustAmount_
+    ) public initializer {
+        __Component_init(main_);
+        __Trading_init(maxTradeSlippage_, dustAmount_);
+        tradingDelay = tradingDelay_;
+        backingBuffer = backingBuffer_;
     }
 
     // Give RToken max allowances over all registered tokens

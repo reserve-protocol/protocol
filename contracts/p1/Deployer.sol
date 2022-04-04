@@ -70,36 +70,83 @@ contract DeployerP1 is IDeployer {
         MainP0 main = new MainP0();
 
         // Components
-        string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
-        string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
-        IRToken rToken = new RTokenP1(name, symbol, constitutionURI);
+        IRToken rToken = new RTokenP1();
         Components memory components = Components({
-            stRSR: new StRSRP1(stRSRName, stRSRSymbol),
+            stRSR: new StRSRP1(),
             rToken: rToken,
             assetRegistry: new AssetRegistryP0(),
             basketHandler: new BasketHandlerP0(),
             backingManager: new BackingManagerP0(),
             distributor: new DistributorP0(),
-            rsrTrader: new RevenueTradingP0(rsr),
-            rTokenTrader: new RevenueTradingP0(rToken),
+            rsrTrader: new RevenueTradingP0(),
+            rTokenTrader: new RevenueTradingP0(),
             furnace: new FurnaceP0(),
             broker: new BrokerP0()
         });
+
         IAsset[] memory assets = new IAsset[](4);
-        assets[0] = new RTokenAsset(components.rToken, params.maxTradeVolume, main);
+        assets[0] = new RTokenAsset(
+            IERC20Metadata(address(components.rToken)),
+            params.maxTradeVolume,
+            main
+        );
         assets[1] = new AavePricedAsset(rsr, params.maxTradeVolume, comptroller, aaveLendingPool);
         assets[2] = new AavePricedAsset(aave, params.maxTradeVolume, comptroller, aaveLendingPool);
         assets[3] = new CompoundPricedAsset(comp, params.maxTradeVolume, comptroller);
 
-        // ConstructorArgs
-        ConstructorArgs memory ctorArgs = ConstructorArgs(params, components, rsr, gnosis, assets);
+        // Init Main
+        main.init(components, rsr);
 
-        // Init main
-        main.init(ctorArgs);
+        // Init Backing Manager
+        main.backingManager().init(
+            main,
+            params.tradingDelay,
+            params.backingBuffer,
+            params.maxTradeSlippage,
+            params.dustAmount
+        );
 
-        // Roles
+        // Init Basket Handler
+        main.basketHandler().init(main);
+
+        // Init Revenue Traders
+        main.rsrTrader().init(main, rsr, params.maxTradeSlippage, params.dustAmount);
+        main.rTokenTrader().init(
+            main,
+            IERC20(address(rToken)),
+            params.maxTradeSlippage,
+            params.dustAmount
+        );
+
+        // Init Asset Registry
+        main.assetRegistry().init(main, assets);
+
+        // Init Distributor
+        main.distributor().init(main, params.dist);
+
+        // Init Furnace
+        main.furnace().init(main, params.rewardPeriod, params.rewardRatio);
+
+        main.broker().init(main, gnosis, params.auctionLength);
+
+        // Init StRSR
+        string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
+        string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
+        main.stRSR().init(
+            main,
+            stRSRName,
+            stRSRSymbol,
+            params.unstakingDelay,
+            params.rewardPeriod,
+            params.rewardRatio
+        );
+
+        // Init RToken
+        main.rToken().init(main, name, symbol, constitutionURI, params.issuanceRate);
+
+        // Transfer Ownership
         main.setPauser(owner);
-        Ownable(address(main)).transferOwnership(owner);
+        main.transferOwnership(owner);
 
         // Facade
         IFacade facade = new FacadeP0(address(main));

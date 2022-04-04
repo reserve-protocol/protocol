@@ -10,8 +10,5 @@ import "./IMain.sol";
  *   their ownership to Main's owner.
  */
 interface IComponent {
-    /// Support uniform construction
-    function initComponent(IMain main, ConstructorArgs memory args) external;
-
     function main() external view returns (IMain);
 }

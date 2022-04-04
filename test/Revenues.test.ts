@@ -1327,27 +1327,8 @@ describe('Revenues', () => {
         )
         const invalidBroker: BrokerP0 = <BrokerP0>await InvalidBrokerFactory.deploy()
 
-        const ctorArgs = {
-          params: config,
-          components: {
-            rToken: rToken.address,
-            stRSR: stRSR.address,
-            assetRegistry: assetRegistry.address,
-            basketHandler: basketHandler.address,
-            backingManager: backingManager.address,
-            distributor: distributor.address,
-            rsrTrader: rsrTrader.address,
-            rTokenTrader: rTokenTrader.address,
-            furnace: furnace.address,
-            broker: invalidBroker.address,
-          },
-          assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
-          gnosis: gnosis.address,
-          rsr: rsr.address,
-        }
-
         // Set broker
-        await invalidBroker.initComponent(main.address, ctorArgs)
+        await invalidBroker.init(main.address, gnosis.address, config.auctionLength)
         await main.connect(owner).setBroker(invalidBroker.address)
 
         rewardAmountAAVE = bn('0.5e18')

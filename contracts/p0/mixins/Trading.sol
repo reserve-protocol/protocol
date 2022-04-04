@@ -27,9 +27,13 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     int192 public maxTradeSlippage; // {%}
     int192 public dustAmount; // {UoA}
 
-    function init(ConstructorArgs memory args) internal virtual override {
-        maxTradeSlippage = args.params.maxTradeSlippage;
-        dustAmount = args.params.dustAmount;
+    // solhint-disable-next-line func-name-mixedcase
+    function __Trading_init(int192 maxTradeSlippage_, int192 dustAmount_)
+        internal
+        onlyInitializing
+    {
+        maxTradeSlippage = maxTradeSlippage_;
+        dustAmount = dustAmount_;
     }
 
     /// @return true iff this trader now has open trades.
@@ -56,6 +60,9 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     /// Try to initiate a trade with a trading partner provided by the broker
     /// @dev Can fail silently if broker is disable or reverting
     function tryTrade(TradeRequest memory req) internal {
+        IAssetRegistry reg = main.assetRegistry();
+        assert(reg.isRegistered(req.sell.erc20()) && reg.isRegistered(req.buy.erc20()));
+
         IBroker broker = main.broker();
         if (broker.disabled()) return; // correct interaction with BackingManager/RevenueTrader
 
@@ -73,8 +80,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
                 req.minBuyAmount
             );
         } catch {
-            req.sell.erc20().safeApprove(address(broker), 0);
             emit TradeBlocked(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
+            req.sell.erc20().safeApprove(address(broker), 0);
         }
     }
 

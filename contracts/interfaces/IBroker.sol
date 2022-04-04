@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "./IAsset.sol";
 import "./IComponent.sol";
+import "./IGnosis.sol";
 import "./ITrade.sol";
 
 /// The data format that describes a request for trade with the Broker
@@ -21,6 +22,13 @@ struct TradeRequest {
 interface IBroker is IComponent {
     event AuctionLengthSet(uint256 indexed oldVal, uint256 indexed newVal);
     event DisabledSet(bool indexed prevVal, bool indexed newVal);
+
+    // Initialization
+    function init(
+        IMain main_,
+        IGnosis gnosis_,
+        uint256 auctionLength_
+    ) external;
 
     /// Request a trade from the broker
     /// @dev Requires setting an allowance in advance

@@ -46,6 +46,7 @@ contract GnosisTrade is ITrade {
     ) external {
         require(status == TradeStatus.NOT_STARTED, "trade already started");
         require(req.sell.erc20().balanceOf(address(this)) >= req.sellAmount, "unfunded trade");
+        assert(origin_ != address(0));
         status = TradeStatus.OPEN;
 
         broker = broker_;

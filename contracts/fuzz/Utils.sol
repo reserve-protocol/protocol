@@ -24,20 +24,3 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         issuanceRate: FixLib.divu(toFix(25), 1_000_000) // 0.025% per block or ~0.1% per minute
     });
 }
-
-function defaultCtorArgs(DeploymentParams memory params)
-    pure
-    returns (ConstructorArgs memory args)
-{
-    // consider: are these sane defaults?
-    // Init to zero values:
-    Components memory components;
-    IAsset[] memory assets;
-    args = ConstructorArgs({
-        params: params,
-        components: components,
-        rsr: IERC20(address(0)),
-        gnosis: IGnosis(address(0)),
-        assets: assets
-    });
-}

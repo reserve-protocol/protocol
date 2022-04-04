@@ -34,6 +34,9 @@ interface IBasketHandler is IComponent {
     /// @param erc20s The set of backup collateral tokens
     event BackupConfigSet(bytes32 indexed targetName, uint256 indexed max, IERC20[] erc20s);
 
+    // Initialization
+    function init(IMain main_) external;
+
     /// Set the prime basket
     /// @param erc20s The collateral tokens for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket

@@ -22,9 +22,10 @@ contract DistributorP0 is Component, IDistributor {
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
 
-    function init(ConstructorArgs memory args) internal override {
-        _setDistribution(FURNACE, RevenueShare(args.params.dist.rTokenDist, 0));
-        _setDistribution(ST_RSR, RevenueShare(0, args.params.dist.rsrDist));
+    function init(IMain main_, RevenueShare memory dist) public initializer {
+        __Component_init(main_);
+        _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
+        _setDistribution(ST_RSR, RevenueShare(0, dist.rsrDist));
     }
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
@@ -43,7 +44,7 @@ contract DistributorP0 is Component, IDistributor {
     ) external {
         IERC20 rsr = main.rsr();
 
-        require(erc20 == rsr || erc20 == main.rToken(), "RSR or RToken");
+        require(erc20 == rsr || erc20 == IERC20(address(main.rToken())), "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
         uint256 tokensPerShare;
         {

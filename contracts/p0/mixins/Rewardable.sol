@@ -32,7 +32,7 @@ abstract contract RewardableP0 is Component, IRewardable {
             IAsset asset = reg.toAsset(erc20s[i]);
 
             IERC20 rewardToken = asset.rewardERC20();
-            if (address(rewardToken) == address(0)) continue;
+            if (address(rewardToken) == address(0) || !reg.isRegistered(rewardToken)) continue;
 
             (address _to, bytes memory _calldata) = asset.getClaimCalldata();
             if (_to == address(0)) continue;

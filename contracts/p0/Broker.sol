@@ -23,9 +23,14 @@ contract BrokerP0 is Component, IBroker {
 
     bool public disabled;
 
-    function init(ConstructorArgs memory args) internal override {
-        gnosis = args.gnosis;
-        auctionLength = args.params.auctionLength;
+    function init(
+        IMain main_,
+        IGnosis gnosis_,
+        uint256 auctionLength_
+    ) public initializer {
+        __Component_init(main_);
+        gnosis = gnosis_;
+        auctionLength = auctionLength_;
     }
 
     /// Handle a trade request by deploying a customized disposable trading contract

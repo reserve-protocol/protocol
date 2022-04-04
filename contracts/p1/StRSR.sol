@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
@@ -25,7 +24,7 @@ import "contracts/p0/mixins/Component.sol";
  * stakes that are in the process of being withdrawn and those that are not.
  */
 // solhint-disable max-states-count
-contract StRSRP1 is IStRSR, Component, EIP712 {
+contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
@@ -83,17 +82,23 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
     uint256 public rewardPeriod;
     int192 public rewardRatio;
 
-    constructor(string memory name_, string memory symbol_) EIP712(name_, "1") {
+    function init(
+        IMain main_,
+        string memory name_,
+        string memory symbol_,
+        uint256 unstakingDelay_,
+        uint256 rewardPeriod_,
+        int192 rewardRatio_
+    ) public initializer {
+        __Component_init(main_);
+        __EIP712_init(name_, "1");
         _name = name_;
         _symbol = symbol_;
-    }
-
-    function init(ConstructorArgs memory args) internal override {
         payoutLastPaid = block.timestamp;
-        rsrRewardsAtLastPayout = args.rsr.balanceOf(address(this));
-        unstakingDelay = args.params.unstakingDelay;
-        rewardPeriod = args.params.rewardPeriod;
-        rewardRatio = args.params.rewardRatio;
+        rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
+        unstakingDelay = unstakingDelay_;
+        rewardPeriod = rewardPeriod_;
+        rewardRatio = rewardRatio_;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
@@ -143,17 +148,17 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
     }
 
     /// @param rsrAmount {qRSR}
-    /// @return seizedRSR {qRSR} The actual rsrAmount seized.
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR might be smaller than rsrAmount if we're out of RSR.
-    function seizeRSR(uint256 rsrAmount) external returns (uint256 seizedRSR) {
+    function seizeRSR(uint256 rsrAmount) external {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initialExchangeRate = exchangeRate();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
 
-        if (rsrBalance == 0) return 0;
+        uint256 seizedRSR;
+        if (rsrBalance == 0) return;
         if (rsrBalance <= rsrAmount) {
             // Total RSR stake wipeout.
             seizedRSR = rsrBalance;
@@ -185,8 +190,8 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
         }
 
         // Transfer RSR to caller
-        main.rsr().safeTransfer(_msgSender(), seizedRSR);
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
+        main.rsr().safeTransfer(_msgSender(), seizedRSR);
     }
 
     /// Assign reward payouts to the staker pool
@@ -321,17 +326,13 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
         emit Approval(owner_, spender, amount);
     }
 
-    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue) external returns (bool) {
         address owner_ = _msgSender();
         _approve(owner_, spender, allowances[owner_][spender] + addedValue);
         return true;
     }
 
-    function decreaseAllowance(address spender, uint256 subtractedValue)
-        public
-        virtual
-        returns (bool)
-    {
+    function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
         address owner_ = _msgSender();
         uint256 currentAllowance = allowances[owner_][spender];
         require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
@@ -374,9 +375,6 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
 
     /// Execute the staking of `rsrAmount` RSR for `account`
     function _stake(address account, uint256 rsrAmount) internal {
-        // Transfer RSR from account to this contract
-        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
-
         // Compute stake amount
         uint256 stakeAmount = (stakeRSR == 0) ? rsrAmount : (rsrAmount * totalStakes) / stakeRSR;
 
@@ -385,7 +383,9 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
         totalStakes += stakeAmount;
         stakeRSR += rsrAmount;
 
+        // Transfer RSR from account to this contract
         emit Staked(account, rsrAmount, stakeAmount);
+        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
     }
 
     /// Execute the move of `stakeAmount` from stake to draft, for `account`
@@ -437,9 +437,9 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
 
         totalDrafts -= draftAmount;
         draftRSR -= rsrAmount;
-        main.rsr().safeTransfer(account, rsrAmount);
 
         emit UnstakingCompleted(firstId, endId, era, account, rsrAmount);
+        main.rsr().safeTransfer(account, rsrAmount);
     }
 
     /// Add a cumulative draft to account's draft queue (from the current time).
@@ -476,7 +476,7 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
-        address signer = ECDSA.recover(hash, v, r, s);
+        address signer = ECDSAUpgradeable.recover(hash, v, r, s);
         require(signer == owner_, "ERC20Permit: invalid signature");
 
         _approve(owner_, spender, value);

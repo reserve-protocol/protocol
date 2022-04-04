@@ -14,14 +14,17 @@ contract RevenueTradingP0 is TradingP0, IRevenueTrader {
     using FixLib for int192;
     using SafeERC20 for IERC20;
 
-    IERC20 public immutable tokenToBuy;
+    IERC20 public tokenToBuy;
 
-    constructor(IERC20 tokenToBuy_) {
+    function init(
+        IMain main_,
+        IERC20 tokenToBuy_,
+        int192 maxTradeSlippage_,
+        int192 dustAmount_
+    ) public initializer {
+        __Component_init(main_);
+        __Trading_init(maxTradeSlippage_, dustAmount_);
         tokenToBuy = tokenToBuy_;
-    }
-
-    function init(ConstructorArgs memory args) internal override {
-        TradingP0.init(args);
     }
 
     /// Close any open trades and start new ones, for all assets

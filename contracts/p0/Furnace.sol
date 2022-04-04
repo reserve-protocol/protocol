@@ -17,17 +17,22 @@ contract FurnaceP0 is Component, IFurnace {
     uint256 public lastPayout; // {seconds} The last time we did a payout
     uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
 
-    function init(ConstructorArgs memory args) internal override {
-        period = args.params.rewardPeriod;
-        ratio = args.params.rewardRatio;
+    function init(
+        IMain main_,
+        uint256 period_,
+        int192 ratio_
+    ) public initializer {
+        __Component_init(main_);
+        period = period_;
+        ratio = ratio_;
         lastPayout = block.timestamp;
-        lastPayoutBal = args.components.rToken.balanceOf(address(this));
+        lastPayoutBal = main_.rToken().balanceOf(address(this));
         require(period != 0, "period cannot be zero");
     }
 
     /// Performs any melting that has vested since last call.
-    function melt() external returns (uint256 amount) {
-        if (block.timestamp < lastPayout + period) return 0;
+    function melt() external {
+        if (block.timestamp < lastPayout + period) return;
 
         // # of whole periods that have passed since lastPayout
         uint256 numPeriods = (block.timestamp - lastPayout) / period;
@@ -36,10 +41,10 @@ contract FurnaceP0 is Component, IFurnace {
         int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
 
         IRToken rToken = main.rToken();
-        amount = payoutRatio.mulu(lastPayoutBal).floor();
+        uint256 amount = payoutRatio.mulu(lastPayoutBal).floor();
 
-        if (amount > 0) rToken.melt(amount);
         lastPayout += numPeriods * period;
+        if (amount > 0) rToken.melt(amount);
         lastPayoutBal = rToken.balanceOf(address(this));
     }
 

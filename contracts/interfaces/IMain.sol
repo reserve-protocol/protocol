@@ -18,15 +18,6 @@ import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
 import "./ITrading.sol";
 
-/// Arguments for configuration of an entire system instance
-struct ConstructorArgs {
-    DeploymentParams params;
-    Components components;
-    IERC20 rsr;
-    IGnosis gnosis;
-    IAsset[] assets;
-}
-
 /**
  * Main is a central hub that maintains a list of Component contracts.
  *
@@ -44,7 +35,6 @@ struct Components {
     IBackingManager backingManager;
     IDistributor distributor;
     IFurnace furnace;
-    // Does not need proxy
     IBroker broker;
     IRevenueTrader rsrTrader;
     IRevenueTrader rTokenTrader;
@@ -156,7 +146,7 @@ interface IMain is IPausable {
 
     event Initialized();
 
-    function init(ConstructorArgs memory args) external;
+    function init(Components memory components, IERC20 rsr_) external;
 
     function owner() external view returns (address);
 }
