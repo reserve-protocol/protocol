@@ -116,7 +116,6 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
         main.poke();
         payoutRewards();
 
-        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
         uint256 stakeAmount = rsrAmount;
         if (totalStaked > 0) stakeAmount = (rsrAmount * totalStaked) / rsrBacking;
 
@@ -129,6 +128,7 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
         rsrBacking += rsrAmount;
 
         emit Staked(account, rsrAmount, stakeAmount);
+        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
     }
 
     /// Begins a delayed unstaking for `amount` stRSR
@@ -194,8 +194,8 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
         }
 
         // Execute accumulated withdrawals
-        main.rsr().safeTransfer(account, total);
         emit UnstakingCompleted(start, i, 0, account, total);
+        main.rsr().safeTransfer(account, total);
     }
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
@@ -207,11 +207,9 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
     }
 
     /// @param rsrAmount {qRSR}
-    /// @return seizedRSR {qRSR} The actual rsrAmount seized.
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR will _not_ be smaller than rsrAmount.
-    /// TODO: remove return value
-    function seizeRSR(uint256 rsrAmount) external returns (uint256 seizedRSR) {
+    function seizeRSR(uint256 rsrAmount) external {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initialExchangeRate = exchangeRate();
@@ -219,6 +217,7 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
 
+        uint256 seizedRSR;
         if (rsrBalance <= rsrAmount) {
             // Everyone's wiped out! Doom! Mayhem!
             // Zero all balances and withdrawals
@@ -255,8 +254,8 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
         }
 
         // Transfer RSR to caller
-        main.rsr().safeTransfer(_msgSender(), seizedRSR);
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
+        main.rsr().safeTransfer(_msgSender(), seizedRSR);
     }
 
     /// Assign reward payouts to the staker pool
@@ -354,6 +353,23 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
         return true;
     }
 
+    function increaseAllowance(address spender, uint256 addedValue) external returns (bool) {
+        address owner_ = _msgSender();
+        _approve(owner_, spender, allowances[owner_][spender] + addedValue);
+        return true;
+    }
+
+    function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
+        address owner_ = _msgSender();
+        uint256 currentAllowance = allowances[owner_][spender];
+        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
+        unchecked {
+            _approve(owner_, spender, currentAllowance - subtractedValue);
+        }
+
+        return true;
+    }
+
     function _approve(
         address owner_,
         address spender,
@@ -365,27 +381,6 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
         allowances[owner_][spender] = amount;
 
         emit Approval(owner_, spender, amount);
-    }
-
-    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
-        address owner_ = _msgSender();
-        _approve(owner_, spender, allowances[owner_][spender] + addedValue);
-        return true;
-    }
-
-    function decreaseAllowance(address spender, uint256 subtractedValue)
-        public
-        virtual
-        returns (bool)
-    {
-        address owner_ = _msgSender();
-        uint256 currentAllowance = allowances[owner_][spender];
-        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
-        unchecked {
-            _approve(owner_, spender, currentAllowance - subtractedValue);
-        }
-
-        return true;
     }
 
     function _spendAllowance(

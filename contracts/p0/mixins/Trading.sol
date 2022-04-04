@@ -60,6 +60,9 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     /// Try to initiate a trade with a trading partner provided by the broker
     /// @dev Can fail silently if broker is disable or reverting
     function tryTrade(TradeRequest memory req) internal {
+        IAssetRegistry reg = main.assetRegistry();
+        assert(reg.isRegistered(req.sell.erc20()) && reg.isRegistered(req.buy.erc20()));
+
         IBroker broker = main.broker();
         if (broker.disabled()) return; // correct interaction with BackingManager/RevenueTrader
 
@@ -77,8 +80,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
                 req.minBuyAmount
             );
         } catch {
-            req.sell.erc20().safeApprove(address(broker), 0);
             emit TradeBlocked(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
+            req.sell.erc20().safeApprove(address(broker), 0);
         }
     }
 

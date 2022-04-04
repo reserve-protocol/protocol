@@ -14,7 +14,7 @@
         "devchain": "hardhat node",
         "test": "yarn test:p0 && yarn test:p1",
         "test:exhaustive": "SLOW=true yarn test:p0 && yarn test:p1",
-        "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts --parallel",
+        "test:p0": "PROTO_IMPL=0 hardhat test test/**/*.test.ts --parallel",
         "test:p1": "PROTO_IMPL=1 hardhat test test/RToken.test.ts test/StRSR.test.ts test/Deployer.test.ts --parallel",
         "test:coverage": "hardhat coverage --temp artifacts",
         "test:serial": "hardhat test",

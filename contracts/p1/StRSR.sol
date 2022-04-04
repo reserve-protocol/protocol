@@ -148,17 +148,17 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
     }
 
     /// @param rsrAmount {qRSR}
-    /// @return seizedRSR {qRSR} The actual rsrAmount seized.
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR might be smaller than rsrAmount if we're out of RSR.
-    function seizeRSR(uint256 rsrAmount) external returns (uint256 seizedRSR) {
+    function seizeRSR(uint256 rsrAmount) external {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initialExchangeRate = exchangeRate();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
 
-        if (rsrBalance == 0) return 0;
+        uint256 seizedRSR;
+        if (rsrBalance == 0) return;
         if (rsrBalance <= rsrAmount) {
             // Total RSR stake wipeout.
             seizedRSR = rsrBalance;
@@ -190,8 +190,8 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         }
 
         // Transfer RSR to caller
-        main.rsr().safeTransfer(_msgSender(), seizedRSR);
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
+        main.rsr().safeTransfer(_msgSender(), seizedRSR);
     }
 
     /// Assign reward payouts to the staker pool
@@ -326,17 +326,13 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         emit Approval(owner_, spender, amount);
     }
 
-    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue) external returns (bool) {
         address owner_ = _msgSender();
         _approve(owner_, spender, allowances[owner_][spender] + addedValue);
         return true;
     }
 
-    function decreaseAllowance(address spender, uint256 subtractedValue)
-        public
-        virtual
-        returns (bool)
-    {
+    function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
         address owner_ = _msgSender();
         uint256 currentAllowance = allowances[owner_][spender];
         require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
@@ -379,9 +375,6 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
 
     /// Execute the staking of `rsrAmount` RSR for `account`
     function _stake(address account, uint256 rsrAmount) internal {
-        // Transfer RSR from account to this contract
-        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
-
         // Compute stake amount
         uint256 stakeAmount = (stakeRSR == 0) ? rsrAmount : (rsrAmount * totalStakes) / stakeRSR;
 
@@ -390,7 +383,9 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         totalStakes += stakeAmount;
         stakeRSR += rsrAmount;
 
+        // Transfer RSR from account to this contract
         emit Staked(account, rsrAmount, stakeAmount);
+        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
     }
 
     /// Execute the move of `stakeAmount` from stake to draft, for `account`
@@ -442,9 +437,9 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
 
         totalDrafts -= draftAmount;
         draftRSR -= rsrAmount;
-        main.rsr().safeTransfer(account, rsrAmount);
 
         emit UnstakingCompleted(firstId, endId, era, account, rsrAmount);
+        main.rsr().safeTransfer(account, rsrAmount);
     }
 
     /// Add a cumulative draft to account's draft queue (from the current time).

@@ -31,8 +31,8 @@ contract FurnaceP0 is Component, IFurnace {
     }
 
     /// Performs any melting that has vested since last call.
-    function melt() external returns (uint256 amount) {
-        if (block.timestamp < lastPayout + period) return 0;
+    function melt() external {
+        if (block.timestamp < lastPayout + period) return;
 
         // # of whole periods that have passed since lastPayout
         uint256 numPeriods = (block.timestamp - lastPayout) / period;
@@ -41,10 +41,10 @@ contract FurnaceP0 is Component, IFurnace {
         int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
 
         IRToken rToken = main.rToken();
-        amount = payoutRatio.mulu(lastPayoutBal).floor();
+        uint256 amount = payoutRatio.mulu(lastPayoutBal).floor();
 
-        if (amount > 0) rToken.melt(amount);
         lastPayout += numPeriods * period;
+        if (amount > 0) rToken.melt(amount);
         lastPayoutBal = rToken.balanceOf(address(this));
     }
 
