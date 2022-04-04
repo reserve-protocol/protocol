@@ -33,6 +33,14 @@ import "contracts/fuzz/Utils.sol";
  */
 
 contract MockBackingManager is IBackingManager, ComponentMock {
+    function init(
+        IMain,
+        uint256,
+        int192,
+        int192,
+        int192
+    ) external {}
+
     function grantAllowances() external {}
 
     function manageFunds() external {}
@@ -72,6 +80,8 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
         tokenB = tokenB_;
         timestamp = block.timestamp;
     }
+
+    function init(IMain) external {}
 
     function token() private view returns (IERC20) {
         return modeA ? tokenA : tokenB;
@@ -152,7 +162,7 @@ contract RTokenTestSystem is MainMock {
 
     constructor(IRToken rToken_) {
         DeploymentParams memory params = defaultParams();
-        ConstructorArgs memory args = defaultCtorArgs(params);
+        Components memory components;
 
         baseA = new ERC20Mock("Base Token A", "A$");
         baseB = new ERC20Mock("Base Token B", "B$");
@@ -161,15 +171,22 @@ contract RTokenTestSystem is MainMock {
             baseB.mint(USERS[i], 1e24);
         }
 
-        init(args);
+        init(components, IERC20(address(0)));
+
         basketHandler = new MockBasketHandler(baseA, baseB);
-        basketHandler.initComponent(this, args);
+        basketHandler.init(this);
 
         backingManager = new MockBackingManager();
-        backingManager.initComponent(this, args);
+        backingManager.init(
+            this,
+            params.tradingDelay,
+            params.backingBuffer,
+            params.maxTradeSlippage,
+            params.dustAmount
+        );
 
         rToken = rToken_;
-        rToken.initComponent(this, args);
+        rToken.init(this, "RToken", "RTK", "rtoken://1", params.issuanceRate);
     }
 
     function poke() public virtual override {
@@ -180,25 +197,12 @@ contract RTokenTestSystem is MainMock {
 }
 
 contract RTokenP0Test is RTokenP0 {
-    // constructor?
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        string memory constitution_
-    ) RTokenP0(name_, symbol_, constitution_) {}
-
     function _msgSender() internal view virtual override returns (address) {
         return MainMock(address(main)).sender();
     }
 }
 
 contract RTokenP1Test is RTokenP1 {
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        string memory constitution_
-    ) RTokenP1(name_, symbol_, constitution_) {}
-
     function _msgSender() internal view virtual override returns (address) {
         return MainMock(address(main)).sender();
     }
@@ -228,8 +232,8 @@ contract RTokenDiffTest {
     }
 
     constructor() {
-        p0 = new RTokenTestSystem(new RTokenP0Test("RToken", "RTK", "rtoken://1"));
-        p1 = new RTokenTestSystem(new RTokenP1Test("RToken", "RTK", "rtoken://1"));
+        p0 = new RTokenTestSystem(new RTokenP0Test());
+        p1 = new RTokenTestSystem(new RTokenP1Test());
     }
 
     // Actions and state modifiers

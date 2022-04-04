@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+// solhint-disable-next-line max-line-length
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -17,7 +18,7 @@ import "contracts/p0/mixins/Rewardable.sol";
  * @title RTokenP1
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
+contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
     using SafeERC20 for IERC20;
@@ -76,16 +77,18 @@ contract RTokenP1 is RewardableP0, ERC20Permit, IRToken {
 
     int192 public issuanceRate; // {%} of RToken supply to issue per block
 
-    constructor(
+    function init(
+        IMain main_,
         string memory name_,
         string memory symbol_,
-        string memory constitutionURI_
-    ) ERC20(name_, symbol_) ERC20Permit(name_) {
+        string memory constitutionURI_,
+        int192 issuanceRate_
+    ) public initializer {
+        __Component_init(main_);
+        __ERC20_init(name_, symbol_);
+        __ERC20Permit_init(name_);
         constitutionURI = constitutionURI_;
-    }
-
-    function init(ConstructorArgs memory args) internal override {
-        issuanceRate = args.params.issuanceRate;
+        issuanceRate = issuanceRate_;
         emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }
 

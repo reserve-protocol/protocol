@@ -4,13 +4,12 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { bn, divCeil, fp, pow10, toBNDecimals } from '../common/numbers'
+import { bn, fp, pow10, toBNDecimals } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AaveOracleMock,
   AssetRegistryP0,
   AavePricedFiatCollateralMock,
-  AavePricedFiatCollateral,
   ATokenFiatCollateral,
   BackingManagerP0,
   BasketHandlerP0,

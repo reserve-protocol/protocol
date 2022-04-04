@@ -11,6 +11,14 @@ import "./ITrading.sol";
  *   of the RevenueTrader, 1 for RToken and 1 for RSR.
  */
 interface IRevenueTrader is IComponent, ITrading {
+    // Initialization
+    function init(
+        IMain main_,
+        IERC20 tokenToBuy_,
+        int192 maxTradeSlippage_,
+        int192 dustAmount_
+    ) external;
+
     /// Run the central RevenueTrader loop; unpermissioned
     /// @custom:action
     function manageFunds() external;

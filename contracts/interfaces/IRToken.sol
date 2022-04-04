@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+// solhint-disable-next-line max-line-length
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IComponent.sol";
 import "./IMain.sol";
@@ -13,7 +14,7 @@ import "./IRewardable.sol";
  * @notice An RToken is an ERC20 that is permissionlessly issuable/redeemable and tracks an
  *   exchange rate against a single unit: baskets, or {BU} in our type notation.
  */
-interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
+interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgradeable {
     /// Emitted when issuance is started, at the point collateral is taken in
     /// @param issuer The account performing the issuance
     /// @param index The index off the issuance in the issuer's queue
@@ -65,6 +66,15 @@ interface IRToken is IRewardable, IERC20Metadata, IERC20Permit {
 
     /// Emitted when the IssuanceRate is set
     event IssuanceRateSet(int192 indexed oldVal, int192 indexed newVal);
+
+    // Initialization
+    function init(
+        IMain main_,
+        string memory name_,
+        string memory symbol_,
+        string memory constitutionURI_,
+        int192 issuanceRate_
+    ) external;
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qRTok} The quantity of RToken to issue

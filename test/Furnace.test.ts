@@ -2,7 +2,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { ZERO_ADDRESS } from '../common/constants'
 import { bn, fp } from '../common/numbers'
 import { whileImpersonating } from './utils/impersonation'
 import {
@@ -12,12 +11,11 @@ import {
   FacadeP0,
   FurnaceP0,
   MainP0,
-  RTokenP0,
   TestIRToken,
   StaticATokenMock,
   USDCMock,
 } from '../typechain'
-import { advanceTime, advanceBlocks, getLatestBlockNumber } from './utils/time'
+import { advanceTime } from './utils/time'
 import { Collateral, defaultFixture, IConfig } from './fixtures'
 import { makeDecayFn } from './utils/rewards'
 import { cartesianProduct } from './utils/cases'
@@ -109,24 +107,7 @@ describe('FurnaceP0 contract', () => {
       newConfig.rewardPeriod = bn('0')
       furnace = <FurnaceP0>await FurnaceFactory.deploy()
       await expect(
-        furnace.initComponent(main.address, {
-          params: newConfig,
-          components: {
-            rToken: rToken.address,
-            stRSR: ZERO_ADDRESS,
-            assetRegistry: ZERO_ADDRESS,
-            basketHandler: ZERO_ADDRESS,
-            backingManager: ZERO_ADDRESS,
-            distributor: ZERO_ADDRESS,
-            rsrTrader: ZERO_ADDRESS,
-            rTokenTrader: ZERO_ADDRESS,
-            furnace: ZERO_ADDRESS,
-            broker: ZERO_ADDRESS,
-          },
-          gnosis: ZERO_ADDRESS,
-          assets: [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
-          rsr: ZERO_ADDRESS,
-        })
+        furnace.init(main.address, newConfig.rewardPeriod, newConfig.rewardRatio)
       ).to.be.revertedWith('period cannot be zero')
     })
   })
@@ -381,24 +362,7 @@ describe('FurnaceP0 contract', () => {
           await rToken.connect(bmSigner).mint(furnace.address, bal)
         })
       }
-      await furnace.connect(owner).initComponent(main.address, {
-        params: newConfig,
-        components: {
-          rToken: rToken.address,
-          stRSR: ZERO_ADDRESS,
-          assetRegistry: ZERO_ADDRESS,
-          basketHandler: ZERO_ADDRESS,
-          backingManager: ZERO_ADDRESS,
-          distributor: ZERO_ADDRESS,
-          rsrTrader: ZERO_ADDRESS,
-          rTokenTrader: ZERO_ADDRESS,
-          furnace: ZERO_ADDRESS,
-          broker: ZERO_ADDRESS,
-        },
-        gnosis: ZERO_ADDRESS,
-        assets: [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
-        rsr: ZERO_ADDRESS,
-      })
+      await furnace.init(main.address, newConfig.rewardPeriod, newConfig.rewardRatio)
     }
 
     it('Should not revert at extremes', async () => {

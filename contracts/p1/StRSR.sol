@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
@@ -25,7 +24,7 @@ import "contracts/p0/mixins/Component.sol";
  * stakes that are in the process of being withdrawn and those that are not.
  */
 // solhint-disable max-states-count
-contract StRSRP1 is IStRSR, Component, EIP712 {
+contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
@@ -83,17 +82,23 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
     uint256 public rewardPeriod;
     int192 public rewardRatio;
 
-    constructor(string memory name_, string memory symbol_) EIP712(name_, "1") {
+    function init(
+        IMain main_,
+        string memory name_,
+        string memory symbol_,
+        uint256 unstakingDelay_,
+        uint256 rewardPeriod_,
+        int192 rewardRatio_
+    ) public initializer {
+        __Component_init(main_);
+        __EIP712_init(name_, "1");
         _name = name_;
         _symbol = symbol_;
-    }
-
-    function init(ConstructorArgs memory args) internal override {
         payoutLastPaid = block.timestamp;
-        rsrRewardsAtLastPayout = args.rsr.balanceOf(address(this));
-        unstakingDelay = args.params.unstakingDelay;
-        rewardPeriod = args.params.rewardPeriod;
-        rewardRatio = args.params.rewardRatio;
+        rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
+        unstakingDelay = unstakingDelay_;
+        rewardPeriod = rewardPeriod_;
+        rewardRatio = rewardRatio_;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
@@ -471,7 +476,7 @@ contract StRSRP1 is IStRSR, Component, EIP712 {
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
-        address signer = ECDSA.recover(hash, v, r, s);
+        address signer = ECDSAUpgradeable.recover(hash, v, r, s);
         require(signer == owner_, "ERC20Permit: invalid signature");
 
         _approve(owner_, spender, value);

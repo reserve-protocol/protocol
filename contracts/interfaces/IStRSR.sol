@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+// solhint-disable-next-line max-line-length
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IComponent.sol";
 import "./IMain.sol";
@@ -18,7 +19,7 @@ import "./IMain.sol";
  * monotonically increasing exchange rate with respect to RSR, meaning that over time
  * StRSR is redeemable for more RSR. It is non-rebasing.
  */
-interface IStRSR is IERC20Permit, IERC20Metadata, IComponent {
+interface IStRSR is IERC20PermitUpgradeable, IERC20MetadataUpgradeable, IComponent {
     /// Emitted when RSR is staked
     /// @param staker The address of the staker
     /// @param rsrAmount {qRSR} How much RSR was staked
@@ -67,6 +68,16 @@ interface IStRSR is IERC20Permit, IERC20Metadata, IComponent {
     event UnstakingDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
     event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
     event RewardRatioSet(int192 indexed oldVal, int192 indexed newVal);
+
+    // Initialization
+    function init(
+        IMain main_,
+        string memory name_,
+        string memory symbol_,
+        uint256 unstakingDelay_,
+        uint256 rewardPeriod_,
+        int192 rewardRatio_
+    ) external;
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param amount {qRSR}

@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IMain.sol";
 
 /// Only Main is Pausable
-contract Pausable is Ownable, IPausable {
+abstract contract Pausable is OwnableUpgradeable, IPausable {
     address private _pauser;
     bool public paused;
 
-    constructor() {
+    // solhint-disable-next-line func-name-mixedcase
+    function __Pausable_init() internal onlyInitializing {
+        __Ownable_init();
         _pauser = _msgSender();
         paused = true;
     }
@@ -56,11 +60,8 @@ contract Pausable is Ownable, IPausable {
  * @notice Collects all mixins.
  */
 // solhint-disable max-states-count
-contract MainP0 is Pausable, IMain {
+contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
     using FixLib for int192;
-
-    // Already initialized?
-    bool internal initialized;
 
     function poke() external virtual notPaused {
         // We think these are totally order-independent.
@@ -72,38 +73,27 @@ contract MainP0 is Pausable, IMain {
         stRSR.payoutRewards();
     }
 
-    function owner() public view override(IMain, Ownable) returns (address) {
-        return Ownable.owner();
+    function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
+        return OwnableUpgradeable.owner();
     }
 
     /// Initializer
-    function init(ConstructorArgs memory args) public virtual onlyOwner {
-        require(!initialized, "Already initialized");
-        initialized = true;
+    function init(Components memory components, IERC20 rsr_) public virtual initializer {
+        __Pausable_init();
+
+        setBackingManager(components.backingManager);
+        setBasketHandler(components.basketHandler);
+        setRSRTrader(components.rsrTrader);
+        setRTokenTrader(components.rTokenTrader);
+        setAssetRegistry(components.assetRegistry);
+        setDistributor(components.distributor);
+        setFurnace(components.furnace);
+        setBroker(components.broker);
+        setStRSR(components.stRSR);
+        setRToken(components.rToken);
+        setRSR(rsr_);
+
         emit Initialized();
-
-        setBackingManager(args.components.backingManager);
-        setBasketHandler(args.components.basketHandler);
-        setRSRTrader(args.components.rsrTrader);
-        setRTokenTrader(args.components.rTokenTrader);
-        setAssetRegistry(args.components.assetRegistry);
-        setDistributor(args.components.distributor);
-        setFurnace(args.components.furnace);
-        setBroker(args.components.broker);
-        setStRSR(args.components.stRSR);
-        setRToken(args.components.rToken);
-        setRSR(args.rsr);
-
-        backingManager.initComponent(this, args);
-        basketHandler.initComponent(this, args);
-        rsrTrader.initComponent(this, args);
-        rTokenTrader.initComponent(this, args);
-        assetRegistry.initComponent(this, args);
-        distributor.initComponent(this, args);
-        furnace.initComponent(this, args);
-        broker.initComponent(this, args);
-        stRSR.initComponent(this, args);
-        rToken.initComponent(this, args);
     }
 
     // === Registered Contracts ===

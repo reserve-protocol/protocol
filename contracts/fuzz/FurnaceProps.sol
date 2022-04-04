@@ -38,17 +38,17 @@ contract FurnaceP0TestProps {
         // reward params may be relevant here:
         params.rewardPeriod = 100;
         params.rewardRatio = toFix(1).divu(2);
-        ConstructorArgs memory ctorArgs = defaultCtorArgs(params);
+        Components memory components;
 
-        main = new MainMock(); // makes this be main.owner
-        main.init(ctorArgs);
+        main = new MainMock();
+        main.init(components, IERC20(address(0))); // this be main.owner
         furn1 = new FurnaceP0();
         furn2 = new FurnaceP0();
         token = new RTokenMock();
 
         main.setRToken(IRToken(address(token)));
-        furn1.initComponent(IMain(address(main)), ctorArgs);
-        furn2.initComponent(IMain(address(main)), ctorArgs);
+        furn1.init(IMain(address(main)), params.rewardPeriod, params.rewardRatio);
+        furn2.init(IMain(address(main)), params.rewardPeriod, params.rewardRatio);
 
         setFunds(1e18);
         furn1.melt();
