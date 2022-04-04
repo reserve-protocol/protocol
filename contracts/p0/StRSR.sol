@@ -111,7 +111,6 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         main.poke();
         payoutRewards();
 
-        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
         uint256 stakeAmount = rsrAmount;
         if (totalStaked > 0) stakeAmount = (rsrAmount * totalStaked) / rsrBacking;
 
@@ -123,6 +122,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         // Move deposited RSR to backing
         rsrBacking += rsrAmount;
 
+        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
         emit Staked(account, rsrAmount, stakeAmount);
     }
 
@@ -202,11 +202,9 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
     }
 
     /// @param rsrAmount {qRSR}
-    /// @return seizedRSR {qRSR} The actual rsrAmount seized.
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR will _not_ be smaller than rsrAmount.
-    /// TODO: remove return value
-    function seizeRSR(uint256 rsrAmount) external returns (uint256 seizedRSR) {
+    function seizeRSR(uint256 rsrAmount) external {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initialExchangeRate = exchangeRate();
@@ -214,6 +212,7 @@ contract StRSRP0 is IStRSR, Component, EIP712 {
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
 
+        uint256 seizedRSR;
         if (rsrBalance <= rsrAmount) {
             // Everyone's wiped out! Doom! Mayhem!
             // Zero all balances and withdrawals

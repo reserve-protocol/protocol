@@ -85,8 +85,8 @@ interface IStRSR is IERC20Permit, IERC20Metadata, IComponent {
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
     function endIdForWithdraw(address account) external view returns (uint256 endId);
 
-    /// @return seizedRSR {qRSR} The actual amount seized. May be dust-larger than `amount`.
-    function seizeRSR(uint256 amount) external returns (uint256 seizedRSR);
+    /// Seize RSR, only callable by main.backingManager()
+    function seizeRSR(uint256 amount) external;
 
     /// Gather and payout rewards from rsrTrader. State Keeper.
     /// @custom:refresher

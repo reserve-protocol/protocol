@@ -38,9 +38,9 @@ contract FurnaceP0 is Component, IFurnace {
         IRToken rToken = main.rToken();
         amount = payoutRatio.mulu(lastPayoutBal).floor();
 
-        if (amount > 0) rToken.melt(amount);
         lastPayout += numPeriods * period;
         lastPayoutBal = rToken.balanceOf(address(this));
+        if (amount > 0) rToken.melt(amount);
     }
 
     /// Period setting
