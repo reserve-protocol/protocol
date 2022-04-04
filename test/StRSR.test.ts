@@ -458,7 +458,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.exchangeRate()).to.equal(fp('1'))
     })
 
-    context('With deposits and withdrawals', async () => {
+    context('With deposits and withdrawals', () => {
       let amount1: BigNumber
       let amount2: BigNumber
       let amount3: BigNumber
@@ -712,7 +712,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Add RSR / Rewards', async () => {
+  describe('Add RSR / Rewards', () => {
     const initialRate = fp('1')
     const stake: BigNumber = bn('1e18')
     const amountAdded: BigNumber = bn('10e18')

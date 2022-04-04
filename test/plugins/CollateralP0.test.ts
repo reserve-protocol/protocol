@@ -265,8 +265,6 @@ describe('Collateral contracts', () => {
     })
 
     it('Should revert if price is zero', async () => {
-      const symbol: string = await token.symbol()
-
       // Set price of token to 0 in Aave
       await aaveOracleInternal.setPrice(token.address, bn('0'))
 

@@ -226,7 +226,7 @@ describe('Revenues', () => {
   })
 
   describe('Revenues', function () {
-    context('With issued Rtokens', async function () {
+    context('With issued Rtokens', function () {
       let issueAmount: BigNumber
       let rewardAmountCOMP: BigNumber
       let rewardAmountAAVE: BigNumber
@@ -1823,7 +1823,7 @@ describe('Revenues', () => {
       })
     })
 
-    context('With simple basket of ATokens and CTokens', async function () {
+    context('With simple basket of ATokens and CTokens', function () {
       let issueAmount: BigNumber
 
       beforeEach(async function () {

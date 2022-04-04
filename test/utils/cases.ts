@@ -1,6 +1,8 @@
 // Utility functions for composing test cases
 
-// If anyone wants to get this typing correctly _without_ using any, that'd be awesome
+// If anyone wants to get this typing correctly without using any, that'd be cool.
+// But this is really the sort of thing that would've already broken badly if it was gonna, so,
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 // Yoinked from: https://stackoverflow.com/questions/65025411/
 type MapCartesian<T extends any[][]> = {
