@@ -276,7 +276,7 @@ describe('MainP0 contract', () => {
     })
 
     it('Should not allow to initialize Main twice', async () => {
-      await expect(main.init(components, rsr.address, owner.address)).to.be.revertedWith(
+      await expect(main.init(components, rsr.address)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       )
     })
