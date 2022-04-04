@@ -29,7 +29,7 @@ import {
   TestIRToken,
   StaticATokenMock,
   TestIStRSR,
-  USDCMock
+  USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
@@ -127,7 +127,7 @@ describe('Revenues', () => {
       gnosis,
       facade,
       rsrTrader,
-      rTokenTrader
+      rTokenTrader,
     } = await loadFixture(defaultFixture))
 
     // Set backingBuffer to 0 to make math easy
@@ -138,12 +138,12 @@ describe('Revenues', () => {
     collateral1 = <Collateral>basket[1]
     collateral2 = <ATokenFiatCollateral>basket[2]
     collateral3 = <CTokenFiatCollateral>basket[3]
-    token0 = <ERC20Mock> await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
-    token1 = <USDCMock> await ethers.getContractAt('USDCMock', await collateral1.erc20())
+    token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
+    token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenMock> await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -267,14 +267,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check status of destinations at this point
@@ -286,14 +286,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -304,7 +304,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // COMP -> RToken Auction
@@ -312,7 +312,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Check funds in Market
@@ -327,12 +327,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken
+          buyAmount: minBuyAmtRToken,
         })
 
         // Close auctions
@@ -341,24 +341,24 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check balances sent to corresponding destinations
@@ -388,14 +388,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check status of destinations at this point
@@ -408,14 +408,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check auctions registered
@@ -424,7 +424,7 @@ describe('Revenues', () => {
           sell: aaveToken.address,
           buy: rsr.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // AAVE -> RToken Auction
@@ -432,7 +432,7 @@ describe('Revenues', () => {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Check funds in Market
@@ -447,12 +447,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken
+          buyAmount: minBuyAmtRToken,
         })
 
         // Close auctions
@@ -461,24 +461,24 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check balances sent to corresponding destinations
@@ -532,14 +532,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check status of destinations at this point
@@ -552,13 +552,13 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -569,7 +569,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Check funds in Market and Trader
@@ -581,13 +581,13 @@ describe('Revenues', () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Perform Mock Bids for RSR (addr1 has balance)
@@ -595,7 +595,7 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
 
         // Advance time till auction ended
@@ -607,19 +607,19 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [1, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check new auction
@@ -628,7 +628,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rsr.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Check now all funds in Market
@@ -640,7 +640,7 @@ describe('Revenues', () => {
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
 
         // Advance time till auction ended
@@ -652,18 +652,18 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [1, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         //  Check balances sent to corresponding destinations
@@ -718,14 +718,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check status of destinations at this point
@@ -738,13 +738,13 @@ describe('Revenues', () => {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, aaveToken.address, rToken.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -755,7 +755,7 @@ describe('Revenues', () => {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Calculate pending amount
@@ -771,7 +771,7 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
 
         // Advance time till auction ended
@@ -783,20 +783,20 @@ describe('Revenues', () => {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, aaveToken.address, rToken.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder],
-            emitted: true
+            emitted: true,
           },
 
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check new auction
@@ -805,7 +805,7 @@ describe('Revenues', () => {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Perform Mock Bids for RToken (addr1 has balance)
@@ -813,7 +813,7 @@ describe('Revenues', () => {
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRemainder,
-          buyAmount: minBuyAmtRemainder
+          buyAmount: minBuyAmtRemainder,
         })
 
         // Advance time till auction ended
@@ -825,18 +825,18 @@ describe('Revenues', () => {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check balances in destinations
@@ -892,14 +892,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check status of destinations at this point
@@ -912,14 +912,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -930,7 +930,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // COMP -> RToken Auction
@@ -938,7 +938,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Advance time till auctions ended
@@ -950,12 +950,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken
+          buyAmount: minBuyAmtRToken,
         })
 
         // Close auctions
@@ -974,25 +974,25 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [1, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check destinations at this stage
@@ -1010,7 +1010,7 @@ describe('Revenues', () => {
         await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: sellAmtRemainder,
-          buyAmount: minBuyAmtRemainder
+          buyAmount: minBuyAmtRemainder,
         })
 
         await expectEvents(facade.runAuctionsForAllTraders(), [
@@ -1018,18 +1018,18 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [1, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check balances at destinations
@@ -1091,14 +1091,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
@@ -1118,13 +1118,13 @@ describe('Revenues', () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check funds sent to traders
@@ -1157,14 +1157,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check status of destinations at this point
@@ -1177,14 +1177,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -1195,7 +1195,7 @@ describe('Revenues', () => {
           sell: aaveToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // AAVE -> RToken Auction
@@ -1203,7 +1203,7 @@ describe('Revenues', () => {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Advance time till auction ended
@@ -1217,12 +1217,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt.sub(10) // Forces in our mock an invalid behavior
+          buyAmount: minBuyAmt.sub(10), // Forces in our mock an invalid behavior
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken.sub(10) // Forces in our mock an invalid behavior
+          buyAmount: minBuyAmtRToken.sub(10), // Forces in our mock an invalid behavior
         })
 
         // Close auctions - Will end trades and also report violation
@@ -1231,30 +1231,30 @@ describe('Revenues', () => {
             contract: broker,
             name: 'DisabledSet',
             args: [false, true],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, aaveToken.address, rsr.address, sellAmt, minBuyAmt.sub(10)],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken.sub(10)],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check funds at destinations
@@ -1274,14 +1274,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check status of destinations and traders
@@ -1303,13 +1303,13 @@ describe('Revenues', () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check funds - remain in traders
@@ -1325,7 +1325,7 @@ describe('Revenues', () => {
         const InvalidBrokerFactory: ContractFactory = await ethers.getContractFactory(
           'InvalidBrokerMock'
         )
-        const invalidBroker: BrokerP0 = <BrokerP0> await InvalidBrokerFactory.deploy()
+        const invalidBroker: BrokerP0 = <BrokerP0>await InvalidBrokerFactory.deploy()
 
         const ctorArgs = {
           params: config,
@@ -1339,11 +1339,11 @@ describe('Revenues', () => {
             rsrTrader: rsrTrader.address,
             rTokenTrader: rTokenTrader.address,
             furnace: furnace.address,
-            broker: invalidBroker.address
+            broker: invalidBroker.address,
           },
           assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
           gnosis: gnosis.address,
-          rsr: rsr.address
+          rsr: rsr.address,
         }
 
         // Set broker
@@ -1361,14 +1361,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check status of destinations and traders
@@ -1390,24 +1390,24 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeBlocked',
             args: [aaveToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeBlocked',
             args: [aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check funds - remain in traders
@@ -1438,14 +1438,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check status of destinations at this point
@@ -1457,14 +1457,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check funds in Market
@@ -1479,12 +1479,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken
+          buyAmount: minBuyAmtRToken,
         })
 
         // Cause failure by arbitrary removing the RSR obtained from market
@@ -1496,29 +1496,29 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettlementBlocked',
             args: [0],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check balances - no changes on StRSR
@@ -1540,14 +1540,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check funds in Backing Manager and destinations
@@ -1595,14 +1595,14 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check status of destinations at this point
@@ -1617,14 +1617,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
@@ -1635,7 +1635,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // COMP -> RToken Auction
@@ -1643,7 +1643,7 @@ describe('Revenues', () => {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Check funds in Market
@@ -1658,12 +1658,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken
+          buyAmount: minBuyAmtRToken,
         })
 
         // Close auctions
@@ -1672,24 +1672,24 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check balances sent to corresponding destinations
@@ -1718,14 +1718,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check rewards sent to Main
@@ -1759,20 +1759,20 @@ describe('Revenues', () => {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE.add(1)],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check status - should claim both rewards correctly
@@ -1882,14 +1882,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, token2.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
@@ -1909,7 +1909,7 @@ describe('Revenues', () => {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // AToken -> RToken Auction
@@ -1917,7 +1917,7 @@ describe('Revenues', () => {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Check funds in Market and Traders
@@ -1936,12 +1936,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken
+          buyAmount: minBuyAmtRToken,
         })
 
         // Close auctions
@@ -1950,24 +1950,24 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, token2.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check Price (unchanged) and Assets value (unchanged)
@@ -2026,14 +2026,14 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, token2.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
@@ -2053,7 +2053,7 @@ describe('Revenues', () => {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // AToken -> RToken Auction
@@ -2061,7 +2061,7 @@ describe('Revenues', () => {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Check funds in Market and Traders
@@ -2083,12 +2083,12 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken
+          buyAmount: minBuyAmtRToken,
         })
 
         // Close auctions
@@ -2097,24 +2097,24 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, token2.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         //  Check Price (unchanged) and Assets value (unchanged)
@@ -2165,14 +2165,14 @@ describe('Revenues', () => {
             contract: rToken,
             name: 'Transfer',
             args: [ZERO_ADDRESS, backingManager.address, issueAmount],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, rToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check Price (unchanged) and Assets value - Supply has doubled
@@ -2196,7 +2196,7 @@ describe('Revenues', () => {
           sell: rToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Perform Mock Bids for RSR(addr1 has balance)
@@ -2204,7 +2204,7 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
 
         // Advance time till auction ended
@@ -2216,13 +2216,13 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, rToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check Price and Assets value - RToken price increases due to melting
@@ -2296,13 +2296,13 @@ describe('Revenues', () => {
             contract: rToken,
             name: 'Transfer',
             args: [ZERO_ADDRESS, backingManager.address, excessRToken],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [0, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
@@ -2312,9 +2312,9 @@ describe('Revenues', () => {
               token2.address,
               rsr.address,
               sellAmtRSRFromCollateral,
-              minBuyAmtRSRFromCollateral
+              minBuyAmtRSRFromCollateral,
             ],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
@@ -2324,10 +2324,10 @@ describe('Revenues', () => {
               token2.address,
               rToken.address,
               sellAmtRTokenFromCollateral,
-              minBuyAmtRTokenFromCollateral
+              minBuyAmtRTokenFromCollateral,
             ],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check Price (unchanged) and Assets value (excess collateral not counted anymore) - Supply has increased
@@ -2362,7 +2362,7 @@ describe('Revenues', () => {
           sell: rToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Collateral -> RSR Auction
@@ -2370,7 +2370,7 @@ describe('Revenues', () => {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Collateral -> Rtoken Auction
@@ -2378,7 +2378,7 @@ describe('Revenues', () => {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('2')
+          externalId: bn('2'),
         })
 
         //  Perform Mock Bids for RSR/RToken (addr1 has balance)
@@ -2389,19 +2389,19 @@ describe('Revenues', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmtFromRToken,
-          buyAmount: minBuyAmtFromRToken
+          buyAmount: minBuyAmtFromRToken,
         })
 
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRSRFromCollateral,
-          buyAmount: minBuyAmtRSRFromCollateral
+          buyAmount: minBuyAmtRSRFromCollateral,
         })
 
         await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: sellAmtRTokenFromCollateral,
-          buyAmount: minBuyAmtRTokenFromCollateral
+          buyAmount: minBuyAmtRTokenFromCollateral,
         })
 
         //  Advance time till auction ended
@@ -2413,7 +2413,7 @@ describe('Revenues', () => {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [0, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
@@ -2423,9 +2423,9 @@ describe('Revenues', () => {
               token2.address,
               rsr.address,
               sellAmtRSRFromCollateral,
-              minBuyAmtRSRFromCollateral
+              minBuyAmtRSRFromCollateral,
             ],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rTokenTrader,
@@ -2435,20 +2435,20 @@ describe('Revenues', () => {
               token2.address,
               rToken.address,
               sellAmtRTokenFromCollateral,
-              minBuyAmtRTokenFromCollateral
+              minBuyAmtRTokenFromCollateral,
             ],
-            emitted: true
+            emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            emitted: false
+            emitted: false,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check no funds in Market

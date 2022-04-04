@@ -24,7 +24,7 @@ import {
   TestIRToken,
   StaticATokenMock,
   TestIStRSR,
-  USDCMock
+  USDCMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import { Collateral, defaultFixture, IConfig, SLOW } from './fixtures'
@@ -97,7 +97,7 @@ describe('MainP0 contract', () => {
     const tokens = await facade.basketTokens()
     expect(tokens).to.eql(backingInfo.tokens)
 
-    for (let i: number = 0; i < tokens.length; i++) {
+    for (let i = 0; i < tokens.length; i++) {
       const tok = await ethers.getContractAt('ERC20Mock', tokens[i])
       const q = backingInfo.quantities ? backingInfo.quantities[i] : 0
 
@@ -114,7 +114,7 @@ describe('MainP0 contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
     let erc20s: ERC20Mock[]
 
-    // Deploy fixture
+      // Deploy fixture
     ;({
       rsr,
       aaveToken,
@@ -133,7 +133,7 @@ describe('MainP0 contract', () => {
       facade,
       assetRegistry,
       backingManager,
-      basketHandler
+      basketHandler,
     } = await loadFixture(defaultFixture))
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
@@ -226,7 +226,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
@@ -244,7 +244,7 @@ describe('MainP0 contract', () => {
         // expect(quotes).to.eql(initialQuotes)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
 
         // Basket should not switch yet
@@ -262,7 +262,7 @@ describe('MainP0 contract', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(bn('75e18')) // 25% defaulted, value = 0
         await expectCurrentBacking({
           tokens: [initialTokens[0], initialTokens[2], initialTokens[3]],
-          quantities: [initialQuantities[0], initialQuantities[2], initialQuantities[3]]
+          quantities: [initialQuantities[0], initialQuantities[2], initialQuantities[3]],
         })
 
         // Basket should switch
@@ -270,13 +270,13 @@ describe('MainP0 contract', () => {
           initialTokens[0],
           initialTokens[2],
           initialTokens[3],
-          backupToken1.address
+          backupToken1.address,
         ]
         const newQuantities = [
           initialQuantities[0],
           initialQuantities[2],
           initialQuantities[3],
-          bn('0')
+          bn('0'),
         ]
         await expect(basketHandler.ensureBasket())
           .to.emit(basketHandler, 'BasketSet')
@@ -287,7 +287,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: newQuantities
+          quantities: newQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[2], initialQuotes[3], bn('0.25e18')])
@@ -303,7 +303,7 @@ describe('MainP0 contract', () => {
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
             backupToken1.address,
-            backupToken2.address
+            backupToken2.address,
           ])
 
         // Check initial state
@@ -311,7 +311,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
@@ -325,14 +325,14 @@ describe('MainP0 contract', () => {
           initialTokens[1],
           initialTokens[3],
           backupToken1.address,
-          backupToken2.address
+          backupToken2.address,
         ]
         const newQuantities = [
           initialQuantities[0],
           initialQuantities[1],
           initialQuantities[3],
           bn('0'),
-          bn('0')
+          bn('0'),
         ]
 
         const newRefAmounts = [
@@ -340,7 +340,7 @@ describe('MainP0 contract', () => {
           basketsNeededAmts[1],
           basketsNeededAmts[3],
           fp('0.125'),
-          fp('0.125')
+          fp('0.125'),
         ]
         await expect(basketHandler.ensureBasket())
           .to.emit(basketHandler, 'BasketSet')
@@ -351,7 +351,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: newQuantities
+          quantities: newQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([
@@ -359,7 +359,7 @@ describe('MainP0 contract', () => {
           initialQuotes[1],
           initialQuotes[3],
           bn('0.125e18'),
-          bn('0.125e18')
+          bn('0.125e18'),
         ])
       })
 
@@ -377,7 +377,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
@@ -394,7 +394,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
 
         // Basket should not switch yet
@@ -417,7 +417,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: newQuantities
+          quantities: newQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[1], bn('0.75e18')])
@@ -429,7 +429,7 @@ describe('MainP0 contract', () => {
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
             token0.address,
-            token3.address
+            token3.address,
           ])
 
         // Check initial state
@@ -437,7 +437,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
@@ -451,7 +451,7 @@ describe('MainP0 contract', () => {
         const newRefAmounts = [
           basketsNeededAmts[0].mul(2),
           basketsNeededAmts[1],
-          basketsNeededAmts[2]
+          basketsNeededAmts[2],
         ]
         await expect(basketHandler.ensureBasket())
           .to.emit(basketHandler, 'BasketSet')
@@ -462,7 +462,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: newQuantities
+          quantities: newQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         // Incremented the weight for token0
@@ -475,7 +475,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
@@ -504,7 +504,7 @@ describe('MainP0 contract', () => {
         // Should exclude bad token
         await expectCurrentBacking({
           tokens: [initialTokens[0], initialTokens[2], initialTokens[3]],
-          quantities: [initialQuantities[0], initialQuantities[2], initialQuantities[3]]
+          quantities: [initialQuantities[0], initialQuantities[2], initialQuantities[3]],
         })
 
         // Cannot issue because collateral is not sound
@@ -523,7 +523,7 @@ describe('MainP0 contract', () => {
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
             backupToken1.address,
-            backupToken2.address
+            backupToken2.address,
           ])
 
         // Unregister one of the tokens
@@ -534,7 +534,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
@@ -548,20 +548,20 @@ describe('MainP0 contract', () => {
           initialTokens[0],
           initialTokens[1],
           initialTokens[3],
-          backupToken2.address
+          backupToken2.address,
         ]
         const newQuantities = [
           initialQuantities[0],
           initialQuantities[1],
           initialQuantities[3],
-          bn('0')
+          bn('0'),
         ]
 
         const newRefAmounts = [
           basketsNeededAmts[0],
           basketsNeededAmts[1],
           basketsNeededAmts[3],
-          fp('0.25')
+          fp('0.25'),
         ]
         await expect(basketHandler.ensureBasket())
           .to.emit(basketHandler, 'BasketSet')
@@ -572,7 +572,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: newQuantities
+          quantities: newQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[1], initialQuotes[3], bn('0.25e18')])
@@ -592,7 +592,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
@@ -602,13 +602,13 @@ describe('MainP0 contract', () => {
           initialTokens[0],
           initialTokens[2],
           initialTokens[3],
-          backupToken1.address
+          backupToken1.address,
         ]
         const newQuantities = [
           initialQuantities[0],
           initialQuantities[2],
           initialQuantities[3],
-          bn('0')
+          bn('0'),
         ]
 
         // Unregister an asset in basket
@@ -621,7 +621,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: newQuantities
+          quantities: newQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[2], initialQuotes[3], bn('0.25e18')])
@@ -705,7 +705,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
@@ -728,7 +728,7 @@ describe('MainP0 contract', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(bn('50e18')) // 50% defaulted, value = 0
         await expectCurrentBacking({
           tokens: [initialTokens[0]],
-          quantities: [initialQuantities[0]]
+          quantities: [initialQuantities[0]],
         })
 
         //  Basket should switch
@@ -744,7 +744,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: newQuantities
+          quantities: newQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], bn('0.5e18')])
@@ -764,7 +764,7 @@ describe('MainP0 contract', () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
@@ -787,7 +787,7 @@ describe('MainP0 contract', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(bn('50e18')) // 50% defaulted, value = 0
         await expectCurrentBacking({
           tokens: [initialTokens[1]],
-          quantities: [initialQuantities[1]]
+          quantities: [initialQuantities[1]],
         })
 
         //  Basket should switch to empty and defaulted
@@ -802,7 +802,7 @@ describe('MainP0 contract', () => {
         // Should exclude bad token
         await expectCurrentBacking({
           tokens: [initialTokens[1]],
-          quantities: [initialQuantities[1]]
+          quantities: [initialQuantities[1]],
         })
 
         // Cannot issue because collateral is not sound
@@ -837,7 +837,7 @@ describe('MainP0 contract', () => {
 
       it('Should only start recapitalization after tradingDelay', async () => {
         // Set trading delay
-        const newDelay: number = 3600
+        const newDelay = 3600
         await backingManager.connect(owner).setTradingDelay(newDelay) // 1 hour
 
         // Setup prime basket
@@ -871,7 +871,7 @@ describe('MainP0 contract', () => {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
       })
 
@@ -921,7 +921,7 @@ describe('MainP0 contract', () => {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Check state
@@ -948,7 +948,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: toBNDecimals(sellAmt, 6)
+          buyAmount: toBNDecimals(sellAmt, 6),
         })
 
         // Advance time till auction ended
@@ -960,9 +960,9 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [0, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6)],
-            emitted: true
+            emitted: true,
           },
-          { contract: backingManager, name: 'TradeStarted', emitted: false }
+          { contract: backingManager, name: 'TradeStarted', emitted: false },
         ])
 
         // Check state - Order restablished
@@ -1025,7 +1025,7 @@ describe('MainP0 contract', () => {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Check state
@@ -1051,7 +1051,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: toBNDecimals(minBuyAmt, 6)
+          buyAmount: toBNDecimals(minBuyAmt, 6),
         })
 
         // Advance time till auction ended
@@ -1063,9 +1063,9 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
-            emitted: true
+            emitted: true,
           },
-          { contract: backingManager, name: 'TradeStarted', emitted: false }
+          { contract: backingManager, name: 'TradeStarted', emitted: false },
         ])
 
         // Check state - Haircut taken, price of RToken has been reduced
@@ -1136,7 +1136,7 @@ describe('MainP0 contract', () => {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Check state
@@ -1163,7 +1163,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: toBNDecimals(minBuyAmt, 6)
+          buyAmount: toBNDecimals(minBuyAmt, 6),
         })
 
         // Advance time till auction ended
@@ -1179,15 +1179,15 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
-            emitted: true
+            emitted: true,
           },
 
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6)],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -1197,7 +1197,7 @@ describe('MainP0 contract', () => {
           sell: rsr.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Check state
@@ -1222,7 +1222,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRSR,
-          buyAmount: toBNDecimals(buyAmtBidRSR, 6)
+          buyAmount: toBNDecimals(buyAmtBidRSR, 6),
         })
 
         // Advance time till auction ended
@@ -1234,13 +1234,13 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6)],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check state - Order restablished
@@ -1322,7 +1322,7 @@ describe('MainP0 contract', () => {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Another call should not create any new auctions if still ongoing
@@ -1347,7 +1347,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
 
         //  Advance time till auction ended
@@ -1359,13 +1359,13 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [0, token0.address, backupToken1.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check state - Haircut taken, price of RToken has been reduced
@@ -1463,7 +1463,7 @@ describe('MainP0 contract', () => {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Check state
@@ -1485,7 +1485,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
 
         //  Advance time till auction ended
@@ -1497,14 +1497,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [0, token0.address, backupToken1.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [1, token0.address, backupToken1.address, sellAmt, bn('0')],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check new auction
@@ -1513,7 +1513,7 @@ describe('MainP0 contract', () => {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Check state
@@ -1533,7 +1533,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
 
         //  Advance time till auction ended
@@ -1553,14 +1553,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [1, token0.address, backupToken1.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -1571,7 +1571,7 @@ describe('MainP0 contract', () => {
           sell: rsr.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('2')
+          externalId: bn('2'),
         })
 
         // Check state
@@ -1594,7 +1594,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: sellAmtRSR,
-          buyAmount: buyAmtBidRSR
+          buyAmount: buyAmtBidRSR,
         })
 
         //  Advance time till auction ended
@@ -1606,13 +1606,13 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         //  Should have seized RSR
@@ -1651,7 +1651,7 @@ describe('MainP0 contract', () => {
             backupToken1.address,
             backupToken2.address,
             backupToken3.address,
-            backupToken4.address
+            backupToken4.address,
           ])
 
         // Check initial state
@@ -1692,7 +1692,7 @@ describe('MainP0 contract', () => {
           backupToken1.address,
           backupToken2.address,
           backupToken3.address,
-          backupToken4.address
+          backupToken4.address,
         ]
         const bkpTokenRefAmt: BigNumber = bn('0.25e18')
         const newRefAmounts = [bkpTokenRefAmt, bkpTokenRefAmt, bkpTokenRefAmt, bkpTokenRefAmt]
@@ -1708,7 +1708,7 @@ describe('MainP0 contract', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(0)
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: [bn('0'), bn('0'), bn('0'), bn('0')]
+          quantities: [bn('0'), bn('0'), bn('0'), bn('0')],
         })
 
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
@@ -1729,7 +1729,7 @@ describe('MainP0 contract', () => {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         //  Perform Mock Bids (addr1 has balance)
@@ -1739,7 +1739,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
 
         //  Advance time till auction ended
@@ -1755,14 +1755,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [0, token0.address, backupToken1.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [1, backupToken1.address, backupToken2.address, sellAmtBkp, minBuyAmtBkp],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check new auction
@@ -1771,13 +1771,13 @@ describe('MainP0 contract', () => {
           sell: backupToken1.address,
           buy: backupToken2.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Check backing changed
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: [minBuyAmt.sub(sellAmtBkp), bn('0'), bn('0'), bn('0')]
+          quantities: [minBuyAmt.sub(sellAmtBkp), bn('0'), bn('0'), bn('0')],
         })
 
         //  Perform Mock Bids (addr1 has balance)
@@ -1786,7 +1786,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtBkp,
-          buyAmount: minBuyAmtBkp
+          buyAmount: minBuyAmtBkp,
         })
 
         // Advance time till auction ended
@@ -1803,14 +1803,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [1, backupToken1.address, backupToken2.address, sellAmtBkp, minBuyAmtBkp],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [2, backupToken1.address, backupToken3.address, sellAmtBkp, minBuyAmtBkp],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check new auction
@@ -1819,13 +1819,13 @@ describe('MainP0 contract', () => {
           sell: backupToken1.address,
           buy: backupToken3.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          externalId: bn('2')
+          externalId: bn('2'),
         })
 
         // Check backing changed
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: [minBuyAmt.sub(requiredBkpToken.mul(2)), requiredBkpToken, bn('0'), bn('0')]
+          quantities: [minBuyAmt.sub(requiredBkpToken.mul(2)), requiredBkpToken, bn('0'), bn('0')],
         })
 
         //  Perform Mock Bids (addr1 has balance)
@@ -1834,7 +1834,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: sellAmtBkp,
-          buyAmount: minBuyAmtBkp
+          buyAmount: minBuyAmtBkp,
         })
 
         // Advance time till auction ended
@@ -1854,7 +1854,7 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [2, backupToken1.address, backupToken3.address, sellAmtBkp, minBuyAmtBkp],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
@@ -1864,10 +1864,10 @@ describe('MainP0 contract', () => {
               backupToken1.address,
               backupToken4.address,
               sellAmtBkp1Remainder,
-              minBuyAmtBkp1Remainder
+              minBuyAmtBkp1Remainder,
             ],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         // Check new auction
@@ -1876,7 +1876,7 @@ describe('MainP0 contract', () => {
           sell: backupToken1.address,
           buy: backupToken4.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
-          externalId: bn('3')
+          externalId: bn('3'),
         })
 
         // Check backing changed
@@ -1886,8 +1886,8 @@ describe('MainP0 contract', () => {
             minBuyAmt.sub(requiredBkpToken.mul(2).add(sellAmtBkp1Remainder)),
             requiredBkpToken,
             requiredBkpToken,
-            bn('0')
-          ]
+            bn('0'),
+          ],
         })
 
         //  Perform Mock Bids (addr1 has balance)
@@ -1896,7 +1896,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(3, {
           bidder: addr1.address,
           sellAmount: sellAmtBkp1Remainder,
-          buyAmount: minBuyAmtBkp1Remainder
+          buyAmount: minBuyAmtBkp1Remainder,
         })
 
         // Advance time till auction ended
@@ -1920,16 +1920,16 @@ describe('MainP0 contract', () => {
               backupToken1.address,
               backupToken4.address,
               sellAmtBkp1Remainder,
-              minBuyAmtBkp1Remainder
+              minBuyAmtBkp1Remainder,
             ],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [4, rsr.address, backupToken4.address, sellAmtRSR, buyAmtBidRSR],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -1940,7 +1940,7 @@ describe('MainP0 contract', () => {
           sell: rsr.address,
           buy: backupToken4.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('4')
+          externalId: bn('4'),
         })
 
         // Check backing changed
@@ -1950,8 +1950,8 @@ describe('MainP0 contract', () => {
             minBuyAmt.sub(requiredBkpToken.mul(2).add(sellAmtBkp1Remainder)),
             requiredBkpToken,
             requiredBkpToken,
-            minBuyAmtBkp1Remainder
-          ]
+            minBuyAmtBkp1Remainder,
+          ],
         })
 
         // Should have seized RSR
@@ -1963,7 +1963,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(4, {
           bidder: addr1.address,
           sellAmount: sellAmtRSR,
-          buyAmount: buyAmtBidRSR
+          buyAmount: buyAmtBidRSR,
         })
 
         // Advance time till auction ended
@@ -1975,13 +1975,13 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [4, rsr.address, backupToken4.address, sellAmtRSR, buyAmtBidRSR],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check final state - All back to normal
@@ -2003,8 +2003,8 @@ describe('MainP0 contract', () => {
             minBuyAmt.sub(requiredBkpToken.mul(2).add(sellAmtBkp1Remainder)),
             requiredBkpToken,
             requiredBkpToken,
-            requiredBkpToken
-          ]
+            requiredBkpToken,
+          ],
         })
 
         //  Check price in USD of the current RToken - Remains the same
@@ -2071,7 +2071,7 @@ describe('MainP0 contract', () => {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         //  Perform Mock Bids (addr1 has balance)
@@ -2081,7 +2081,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt,
-          buyAmount: minBuyAmt
+          buyAmount: minBuyAmt,
         })
 
         //  Advance time till auction ended
@@ -2097,14 +2097,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [0, token0.address, backupToken1.address, sellAmt, minBuyAmt],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [1, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -2115,7 +2115,7 @@ describe('MainP0 contract', () => {
           sell: rsr.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Check state
@@ -2143,15 +2143,15 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [1, rsr.address, backupToken1.address, bn('0'), bn('0')],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
 
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -2162,7 +2162,7 @@ describe('MainP0 contract', () => {
           sell: rsr.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('2')
+          externalId: bn('2'),
         })
 
         //  Funds were reused. No more seizures
@@ -2174,7 +2174,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: sellAmtRSR,
-          buyAmount: buyAmtBidRSR
+          buyAmount: buyAmtBidRSR,
         })
 
         //  Advance time till auction ended
@@ -2186,9 +2186,9 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
-            emitted: true
+            emitted: true,
           },
-          { contract: backingManager, name: 'TradeStarted', emitted: false }
+          { contract: backingManager, name: 'TradeStarted', emitted: false },
         ])
 
         //  Check final state - All back to normal
@@ -2268,7 +2268,7 @@ describe('MainP0 contract', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2290,20 +2290,20 @@ describe('MainP0 contract', () => {
           initialTokens[0],
           initialTokens[1],
           initialTokens[3],
-          backupToken1.address
+          backupToken1.address,
         ]
         const newQuantities = [
           initialQuantities[0],
           initialQuantities[1],
           initialQuantities[3],
-          bn('0')
+          bn('0'),
         ]
         const newQuotes = [initialQuotes[0], initialQuotes[1], initialQuotes[3], bn('0.25e18')]
         const newRefAmounts = [
           basketsNeededAmts[0],
           basketsNeededAmts[1],
           basketsNeededAmts[3],
-          bn('0.25e18')
+          bn('0.25e18'),
         ]
 
         // Mark Default - Perform basket switch
@@ -2317,7 +2317,7 @@ describe('MainP0 contract', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(75).div(100)) // only 75% of collateral is worth something
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: newQuantities
+          quantities: newQuantities,
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2337,8 +2337,8 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeStarted',
             args: [0, token2.address, backupToken1.address, sellAmt2, bn('0')],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         let auctionTimestamp = await getLatestBlockTimestamp()
@@ -2348,7 +2348,7 @@ describe('MainP0 contract', () => {
           sell: token2.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Another call should not create any new auctions if still ongoing
@@ -2361,7 +2361,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt2,
-          buyAmount: minBuyAmt2
+          buyAmount: minBuyAmt2,
         })
 
         // Advance time till auction ended
@@ -2377,14 +2377,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [0, token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [1, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -2395,7 +2395,7 @@ describe('MainP0 contract', () => {
           sell: rsr.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         //  Check state - After first auction
@@ -2407,7 +2407,7 @@ describe('MainP0 contract', () => {
 
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: [newQuantities[0], newQuantities[1], newQuantities[2], minBuyAmt2]
+          quantities: [newQuantities[0], newQuantities[1], newQuantities[2], minBuyAmt2],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2430,7 +2430,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtRSR,
-          buyAmount: buyAmtBidRSR
+          buyAmount: buyAmtBidRSR,
         })
 
         // \Advance time till auction ended
@@ -2442,13 +2442,13 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [1, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         //  Check final state - All back to normal
@@ -2465,8 +2465,8 @@ describe('MainP0 contract', () => {
             newQuantities[0],
             newQuantities[1],
             newQuantities[2],
-            minBuyAmt2.add(buyAmtBidRSR)
-          ]
+            minBuyAmt2.add(buyAmtBidRSR),
+          ],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2494,7 +2494,7 @@ describe('MainP0 contract', () => {
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
             backupToken1.address,
-            backupToken2.address
+            backupToken2.address,
           ])
 
         // Perform stake
@@ -2512,7 +2512,7 @@ describe('MainP0 contract', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2536,21 +2536,21 @@ describe('MainP0 contract', () => {
           initialTokens[1],
           initialTokens[3],
           backupToken1.address,
-          backupToken2.address
+          backupToken2.address,
         ]
         const newQuantities = [
           initialQuantities[0],
           initialQuantities[1],
           initialQuantities[3],
           bn('0'),
-          bn('0')
+          bn('0'),
         ]
         const newQuotes = [
           initialQuotes[0],
           initialQuotes[1],
           initialQuotes[3],
           bn('0.125e18'),
-          bn('0.125e18')
+          bn('0.125e18'),
         ]
         const bkpTokenRefAmt: BigNumber = bn('0.125e18')
         const newRefAmounts = [
@@ -2558,7 +2558,7 @@ describe('MainP0 contract', () => {
           basketsNeededAmts[1],
           basketsNeededAmts[3],
           bkpTokenRefAmt,
-          bkpTokenRefAmt
+          bkpTokenRefAmt,
         ]
 
         // Mark Default - Perform basket switch
@@ -2572,7 +2572,7 @@ describe('MainP0 contract', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(75).div(100)) // only 75% of collateral is worth something
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: newQuantities
+          quantities: newQuantities,
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2592,8 +2592,8 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeStarted',
             args: [0, token2.address, backupToken1.address, sellAmt2, bn('0')],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         let auctionTimestamp = await getLatestBlockTimestamp()
@@ -2603,7 +2603,7 @@ describe('MainP0 contract', () => {
           sell: token2.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Another call should not create any new auctions if still ongoing
@@ -2616,7 +2616,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt2,
-          buyAmount: minBuyAmt2
+          buyAmount: minBuyAmt2,
         })
 
         // Advance time till auction ended
@@ -2633,14 +2633,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [0, token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [1, backupToken1.address, backupToken2.address, sellAmtBkp1, minBuyAmtBkp1],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -2651,7 +2651,7 @@ describe('MainP0 contract', () => {
           sell: backupToken1.address,
           buy: backupToken2.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         //  Check state - After first auction
@@ -2668,8 +2668,8 @@ describe('MainP0 contract', () => {
             newQuantities[1],
             newQuantities[2],
             requiredBkpToken,
-            bn('0')
-          ]
+            bn('0'),
+          ],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2690,7 +2690,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmtBkp1,
-          buyAmount: minBuyAmtBkp1
+          buyAmount: minBuyAmtBkp1,
         })
 
         // Advance time till auction ended
@@ -2706,14 +2706,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [1, backupToken1.address, backupToken2.address, sellAmtBkp1, minBuyAmtBkp1],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [2, rsr.address, backupToken2.address, sellAmtRSR, buyAmtBidRSR],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -2724,7 +2724,7 @@ describe('MainP0 contract', () => {
           sell: rsr.address,
           buy: backupToken2.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('2')
+          externalId: bn('2'),
         })
 
         //  Check state - After second auction
@@ -2741,8 +2741,8 @@ describe('MainP0 contract', () => {
             newQuantities[1],
             newQuantities[2],
             requiredBkpToken,
-            minBuyAmtBkp1
-          ]
+            minBuyAmtBkp1,
+          ],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2766,7 +2766,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: sellAmtRSR.sub(1000),
-          buyAmount: buyAmtBidRSR
+          buyAmount: buyAmtBidRSR,
         })
 
         // Advance time till auction ended
@@ -2778,13 +2778,13 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [2, rsr.address, backupToken2.address, sellAmtRSR.sub(1000), buyAmtBidRSR],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         //  Check final state - All back to normal
@@ -2803,8 +2803,8 @@ describe('MainP0 contract', () => {
             newQuantities[1],
             newQuantities[2],
             requiredBkpToken,
-            minBuyAmtBkp1.add(buyAmtBidRSR)
-          ]
+            minBuyAmtBkp1.add(buyAmtBidRSR),
+          ],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2838,7 +2838,7 @@ describe('MainP0 contract', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2881,7 +2881,7 @@ describe('MainP0 contract', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.div(4)) // only 25% of collateral is worth something
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: newQuantities
+          quantities: newQuantities,
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2903,8 +2903,8 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeStarted',
             args: [0, token0.address, backupToken1.address, sellAmt0, bn('0')],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         let auctionTimestamp = await getLatestBlockTimestamp()
@@ -2914,7 +2914,7 @@ describe('MainP0 contract', () => {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Another call should not create any new auctions if still ongoing
@@ -2927,7 +2927,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt0,
-          buyAmount: minBuyAmt0
+          buyAmount: minBuyAmt0,
         })
 
         // Advance time till auction ended
@@ -2939,14 +2939,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [0, token0.address, backupToken1.address, sellAmt0, minBuyAmt0],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [1, token2.address, backupToken1.address, sellAmt2, bn('0')],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -2957,7 +2957,7 @@ describe('MainP0 contract', () => {
           sell: token2.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Check state after first auction
@@ -2969,7 +2969,7 @@ describe('MainP0 contract', () => {
 
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: [newQuantities[0], minBuyAmt0]
+          quantities: [newQuantities[0], minBuyAmt0],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2990,7 +2990,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmt2,
-          buyAmount: minBuyAmt2
+          buyAmount: minBuyAmt2,
         })
 
         // Advance time till auction ended
@@ -3002,14 +3002,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [1, token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [2, token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), bn('0')],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -3020,7 +3020,7 @@ describe('MainP0 contract', () => {
           sell: token3.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('2')
+          externalId: bn('2'),
         })
 
         // Check state after second auction
@@ -3032,7 +3032,7 @@ describe('MainP0 contract', () => {
 
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: [newQuantities[0], minBuyAmt0.add(minBuyAmt2)]
+          quantities: [newQuantities[0], minBuyAmt0.add(minBuyAmt2)],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -3067,7 +3067,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: toBNDecimals(sellAmt3, 8),
-          buyAmount: minBuyAmt3
+          buyAmount: minBuyAmt3,
         })
 
         // Advance time till auction ended
@@ -3079,14 +3079,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [2, token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), minBuyAmt3],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [3, token1.address, backupToken1.address, sellAmtRebalance, minBuyAmtRebalance],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -3097,7 +3097,7 @@ describe('MainP0 contract', () => {
           sell: token1.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('3')
+          externalId: bn('3'),
         })
 
         // Check state after third auction
@@ -3111,8 +3111,8 @@ describe('MainP0 contract', () => {
           tokens: newTokens,
           quantities: [
             newQuantities[0].sub(sellAmtRebalance),
-            minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3)
-          ]
+            minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3),
+          ],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -3134,7 +3134,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(3, {
           bidder: addr1.address,
           sellAmount: sellAmtRebalance,
-          buyAmount: minBuyAmtRebalance
+          buyAmount: minBuyAmtRebalance,
         })
 
         // Advance time till auction ended
@@ -3146,13 +3146,13 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [3, token1.address, backupToken1.address, sellAmtRebalance, minBuyAmtRebalance],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check final state - Haircut taken, stable but price of RToken has been reduced
@@ -3166,8 +3166,8 @@ describe('MainP0 contract', () => {
           tokens: newTokens,
           quantities: [
             newQuantities[0].sub(sellAmtRebalance),
-            minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3).add(minBuyAmtRebalance)
-          ]
+            minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3).add(minBuyAmtRebalance),
+          ],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -3197,7 +3197,7 @@ describe('MainP0 contract', () => {
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
             backupToken1.address,
-            backupToken2.address
+            backupToken2.address,
           ])
 
         // Check initial state
@@ -3206,7 +3206,7 @@ describe('MainP0 contract', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
         await expectCurrentBacking({
           tokens: initialTokens,
-          quantities: initialQuantities
+          quantities: initialQuantities,
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -3249,7 +3249,7 @@ describe('MainP0 contract', () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.div(4)) // only 25% of collateral is worth something
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: newQuantities
+          quantities: newQuantities,
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -3271,8 +3271,8 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeStarted',
             args: [0, token0.address, backupToken1.address, sellAmt0, bn('0')],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         let auctionTimestamp = await getLatestBlockTimestamp()
@@ -3282,7 +3282,7 @@ describe('MainP0 contract', () => {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0')
+          externalId: bn('0'),
         })
 
         // Perform Mock Bids for the new Token (addr1 has balance)
@@ -3292,7 +3292,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt0,
-          buyAmount: minBuyAmt0
+          buyAmount: minBuyAmt0,
         })
 
         // Advance time till auction ended
@@ -3304,15 +3304,15 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [0, token0.address, backupToken1.address, sellAmt0, minBuyAmt0],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [1, token2.address, backupToken2.address, sellAmt2, bn('0')],
 
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -3323,7 +3323,7 @@ describe('MainP0 contract', () => {
           sell: token2.address,
           buy: backupToken2.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1')
+          externalId: bn('1'),
         })
 
         // Check state after first auction
@@ -3335,7 +3335,7 @@ describe('MainP0 contract', () => {
 
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: [newQuantities[0], minBuyAmt0, bn('0')]
+          quantities: [newQuantities[0], minBuyAmt0, bn('0')],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -3357,7 +3357,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: sellAmt2,
-          buyAmount: minBuyAmt2
+          buyAmount: minBuyAmt2,
         })
 
         // Advance time till auction ended
@@ -3369,14 +3369,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [1, token2.address, backupToken2.address, sellAmt2, minBuyAmt2],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [2, token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), bn('0')],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -3387,7 +3387,7 @@ describe('MainP0 contract', () => {
           sell: token3.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('2')
+          externalId: bn('2'),
         })
 
         //   Check state after second auction
@@ -3399,7 +3399,7 @@ describe('MainP0 contract', () => {
 
         await expectCurrentBacking({
           tokens: newTokens,
-          quantities: [newQuantities[0], minBuyAmt0, minBuyAmt2]
+          quantities: [newQuantities[0], minBuyAmt0, minBuyAmt2],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -3434,7 +3434,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: toBNDecimals(sellAmt3, 8),
-          buyAmount: minBuyAmt3
+          buyAmount: minBuyAmt3,
         })
 
         // Advance time till auction ended
@@ -3448,14 +3448,14 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [2, token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), minBuyAmt3],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [3, token1.address, backupToken2.address, sellAmtRebalance, minBuyAmtRebalance],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -3466,7 +3466,7 @@ describe('MainP0 contract', () => {
           sell: token1.address,
           buy: backupToken2.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('3')
+          externalId: bn('3'),
         })
 
         // Check state after third auction
@@ -3481,8 +3481,8 @@ describe('MainP0 contract', () => {
           quantities: [
             newQuantities[0].sub(sellAmtRebalance),
             minBuyAmt0.add(minBuyAmt3),
-            minBuyAmt2
-          ]
+            minBuyAmt2,
+          ],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -3505,7 +3505,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(3, {
           bidder: addr1.address,
           sellAmount: sellAmtRebalance,
-          buyAmount: minBuyAmtRebalance
+          buyAmount: minBuyAmtRebalance,
         })
 
         // Advance time till auction ended
@@ -3523,7 +3523,7 @@ describe('MainP0 contract', () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [3, token1.address, backupToken2.address, sellAmtRebalance, minBuyAmtRebalance],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
@@ -3533,10 +3533,10 @@ describe('MainP0 contract', () => {
               backupToken1.address,
               backupToken2.address,
               sellAmtRebalanceBkp,
-              minBuyAmtRebalanceBkp
+              minBuyAmtRebalanceBkp,
             ],
-            emitted: true
-          }
+            emitted: true,
+          },
         ])
 
         auctionTimestamp = await getLatestBlockTimestamp()
@@ -3547,7 +3547,7 @@ describe('MainP0 contract', () => {
           sell: backupToken1.address,
           buy: backupToken2.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('4')
+          externalId: bn('4'),
         })
 
         // Check state after fourth auction
@@ -3567,8 +3567,8 @@ describe('MainP0 contract', () => {
           quantities: [
             newQuantities[0].sub(sellAmtRebalance),
             minBuyAmt0.add(minBuyAmt3).sub(sellAmtRebalanceBkp),
-            minBuyAmt2.add(minBuyAmtRebalance)
-          ]
+            minBuyAmt2.add(minBuyAmtRebalance),
+          ],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -3593,7 +3593,7 @@ describe('MainP0 contract', () => {
         await gnosis.placeBid(4, {
           bidder: addr1.address,
           sellAmount: sellAmtRebalanceBkp,
-          buyAmount: minBuyAmtRebalanceBkp
+          buyAmount: minBuyAmtRebalanceBkp,
         })
 
         // Advance time till auction ended
@@ -3609,15 +3609,15 @@ describe('MainP0 contract', () => {
               backupToken1.address,
               backupToken2.address,
               sellAmtRebalanceBkp,
-              minBuyAmtRebalanceBkp
+              minBuyAmtRebalanceBkp,
             ],
-            emitted: true
+            emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            emitted: false
-          }
+            emitted: false,
+          },
         ])
 
         // Check final state - Haircut taken, stable but price of RToken has been reduced
@@ -3632,8 +3632,8 @@ describe('MainP0 contract', () => {
           quantities: [
             newQuantities[0].sub(sellAmtRebalance),
             minBuyAmt0.add(minBuyAmt3).sub(sellAmtRebalanceBkp),
-            minBuyAmt2.add(minBuyAmtRebalance).add(minBuyAmtRebalanceBkp)
-          ]
+            minBuyAmt2.add(minBuyAmtRebalance).add(minBuyAmtRebalanceBkp),
+          ],
         })
 
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -3686,7 +3686,7 @@ describe('MainP0 contract', () => {
         targetUnit: string,
         targetPerRef: BigNumber
       ): Promise<ERC20Mock> => {
-        const erc20: ERC20Mock = <ERC20Mock> await ERC20.deploy(tokenName, `${tokenName} symbol`)
+        const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(tokenName, `${tokenName} symbol`)
         const collateral: AavePricedFiatCollateralMock = <AavePricedFiatCollateralMock>(
           await AaveCollateralFactory.deploy(
             erc20.address,
@@ -3772,7 +3772,7 @@ describe('MainP0 contract', () => {
         backupTokens,
         targetUnits,
         targetPerRefs,
-        basketTargetAmts
+        basketTargetAmts,
       ]
 
       ERC20 = await ethers.getContractFactory('ERC20Mock')

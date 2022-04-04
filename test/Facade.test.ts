@@ -12,7 +12,7 @@ import {
   TestIRToken,
   StaticATokenMock,
   TestIStRSR,
-  USDCMock
+  USDCMock,
 } from '../typechain'
 import { Collateral, defaultFixture } from './fixtures'
 
@@ -68,12 +68,12 @@ describe('FacadeP0 contract', () => {
     // Get assets and tokens
     ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
 
-    token = <ERC20Mock> await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
-    usdc = <USDCMock> await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
+    token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
+    usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
-    cToken = <CTokenMock> await ethers.getContractAt('CTokenMock', await cTokenAsset.erc20())
+    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenAsset.erc20())
   })
 
   describe('Deployment', () => {

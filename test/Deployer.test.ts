@@ -22,7 +22,7 @@ import {
   TestIDeployer,
   TestIRToken,
   TestIStRSR,
-  TradingP0
+  TradingP0,
 } from '../typechain'
 import { defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
 
@@ -103,7 +103,7 @@ describe(`DeployerP${IMPLEMENTATION} contract`, () => {
       gnosis,
       facade,
       rsrTrader,
-      rTokenTrader
+      rTokenTrader,
     } = await loadFixture(defaultFixture))
   })
 

@@ -30,7 +30,7 @@ import {
   TestIRToken,
   StaticATokenMock,
   TestIStRSR,
-  USDCMock
+  USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import { Collateral, defaultFixture, IConfig } from './fixtures'
@@ -136,7 +136,7 @@ describe('MainP0 contract', () => {
       broker,
       facade,
       rsrTrader,
-      rTokenTrader
+      rTokenTrader,
     } = await loadFixture(defaultFixture))
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
@@ -273,11 +273,11 @@ describe('MainP0 contract', () => {
           rsrTrader: rsrTrader.address,
           rTokenTrader: rTokenTrader.address,
           furnace: furnace.address,
-          broker: broker.address
+          broker: broker.address,
         },
         assets: [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address],
         gnosis: gnosis.address,
-        rsr: rsr.address
+        rsr: rsr.address,
       }
     })
 
@@ -288,7 +288,7 @@ describe('MainP0 contract', () => {
     it('Should not allow to initialize components twice', async () => {
       // Setup new Main
       const MainFactory: ContractFactory = await ethers.getContractFactory('MainP0')
-      const newMain = <MainP0> await MainFactory.deploy()
+      const newMain = <MainP0>await MainFactory.deploy()
 
       await expect(newMain.init(ctorArgs)).to.be.revertedWith('Component: already initialized')
     })
@@ -311,59 +311,59 @@ describe('MainP0 contract', () => {
       ).wait()
 
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
-      const newMain: MainP0 = <MainP0> await ethers.getContractAt('MainP0', mainAddr)
+      const newMain: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
 
       expectInIndirectReceipt(receipt, newMain.interface, 'Initialized')
       expectInIndirectReceipt(receipt, newMain.interface, 'AssetRegistrySet', {
         oldVal: ZERO_ADDRESS,
-        newVal: await newMain.assetRegistry()
+        newVal: await newMain.assetRegistry(),
       })
 
       expectInIndirectReceipt(receipt, newMain.interface, 'BasketHandlerSet', {
         oldVal: ZERO_ADDRESS,
-        newVal: await newMain.basketHandler()
+        newVal: await newMain.basketHandler(),
       })
       expectInIndirectReceipt(receipt, newMain.interface, 'BackingManagerSet', {
         oldVal: ZERO_ADDRESS,
-        newVal: await newMain.backingManager()
+        newVal: await newMain.backingManager(),
       })
       expectInIndirectReceipt(receipt, newMain.interface, 'DistributorSet', {
         oldVal: ZERO_ADDRESS,
-        newVal: await newMain.distributor()
+        newVal: await newMain.distributor(),
       })
 
       expectInIndirectReceipt(receipt, newMain.interface, 'RTokenSet', {
         oldVal: ZERO_ADDRESS,
-        newVal: await newMain.rToken()
+        newVal: await newMain.rToken(),
       })
       expectInIndirectReceipt(receipt, newMain.interface, 'StRSRSet', {
         oldVal: ZERO_ADDRESS,
-        newVal: await newMain.stRSR()
+        newVal: await newMain.stRSR(),
       })
 
       expectInIndirectReceipt(receipt, newMain.interface, 'RSRTraderSet', {
         oldVal: ZERO_ADDRESS,
-        newVal: await newMain.rsrTrader()
+        newVal: await newMain.rsrTrader(),
       })
 
       expectInIndirectReceipt(receipt, newMain.interface, 'RTokenTraderSet', {
         oldVal: ZERO_ADDRESS,
-        newVal: await newMain.rTokenTrader()
+        newVal: await newMain.rTokenTrader(),
       })
 
       expectInIndirectReceipt(receipt, newMain.interface, 'FurnaceSet', {
         oldVal: ZERO_ADDRESS,
-        newVal: await newMain.furnace()
+        newVal: await newMain.furnace(),
       })
 
       expectInIndirectReceipt(receipt, newMain.interface, 'BrokerSet', {
         oldVal: ZERO_ADDRESS,
-        newVal: await newMain.broker()
+        newVal: await newMain.broker(),
       })
 
       expectInIndirectReceipt(receipt, newMain.interface, 'RSRSet', {
         oldVal: ZERO_ADDRESS,
-        newVal: await newMain.rsr()
+        newVal: await newMain.rsr(),
       })
     })
   })
@@ -584,7 +584,7 @@ describe('MainP0 contract', () => {
         token0.address,
         token1.address,
         token2.address,
-        token3.address
+        token3.address,
       ])
     })
 
@@ -675,7 +675,7 @@ describe('MainP0 contract', () => {
     it('Should allow to set Furnace if Owner and perform validations', async () => {
       // Setup test furnaces
       const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')
-      const newFurnace = <FurnaceP0> await FurnaceFactory.deploy()
+      const newFurnace = <FurnaceP0>await FurnaceFactory.deploy()
 
       // Check existing value
       expect(await main.furnace()).to.equal(furnace.address)
@@ -799,7 +799,7 @@ describe('MainP0 contract', () => {
 
       // Setup new asset with new ERC20
       const ERC20Factory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-      const newToken: ERC20Mock = <ERC20Mock> await ERC20Factory.deploy('NewTKN Token', 'NewTKN')
+      const newToken: ERC20Mock = <ERC20Mock>await ERC20Factory.deploy('NewTKN Token', 'NewTKN')
       const newTokenAsset: CompoundPricedAsset = <CompoundPricedAsset>(
         await AssetFactory.deploy(
           newToken.address,
@@ -890,14 +890,14 @@ describe('MainP0 contract', () => {
           contract: assetRegistry,
           name: 'AssetUnregistered',
           args: [token0.address, collateral0.address],
-          emitted: true
+          emitted: true,
         },
         {
           contract: assetRegistry,
           name: 'AssetRegistered',
           args: [token0.address, newAsset.address],
-          emitted: true
-        }
+          emitted: true,
+        },
       ])
 
       // Check length is not modified and erc20 remains registered
@@ -1124,15 +1124,15 @@ describe('MainP0 contract', () => {
           contract: assetRegistry,
           name: 'AssetUnregistered',
           args: [token1.address, collateral1.address],
-          emitted: true
+          emitted: true,
         },
         {
           contract: assetRegistry,
           name: 'AssetRegistered',
           args: [token1.address, newAsset.address],
-          emitted: true
+          emitted: true,
         },
-        { contract: basketHandler, name: 'BasketSet', args: [[], [], true], emitted: true }
+        { contract: basketHandler, name: 'BasketSet', args: [[], [], true], emitted: true },
       ])
 
       // Check values - No changes

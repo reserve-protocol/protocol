@@ -1,7 +1,7 @@
 import hre, { ethers } from 'hardhat'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
-type ImpersonationFunction = (signer: SignerWithAddress) => Promise<any>
+type ImpersonationFunction<T> = (signer: SignerWithAddress) => Promise<T>
 
 /* whileImpersonating(address, f):
 
@@ -21,15 +21,15 @@ type ImpersonationFunction = (signer: SignerWithAddress) => Promise<any>
    - Calls rToken.setBasketsNeeded _as_ the basketHandler contract,
    - Checks that that call emits the event 'BasketNeededChanged'
 */
-export const whileImpersonating = async (address: string, f: ImpersonationFunction) => {
+export const whileImpersonating = async (address: string, f: ImpersonationFunction<void>) => {
   // Set maximum ether balance at address
   await hre.network.provider.request({
     method: 'hardhat_setBalance',
-    params: [address, '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff']
+    params: [address, '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'],
   })
   await hre.network.provider.request({
     method: 'hardhat_impersonateAccount',
-    params: [address]
+    params: [address],
   })
   const signer = await ethers.getSigner(address)
 
@@ -37,7 +37,7 @@ export const whileImpersonating = async (address: string, f: ImpersonationFuncti
 
   await hre.network.provider.request({
     method: 'hardhat_stopImpersonatingAccount',
-    params: [address]
+    params: [address],
   })
   // If anyone ever needs it, we could make sure here that we set the balance at address back to
   // its original quantity...

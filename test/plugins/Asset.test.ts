@@ -10,7 +10,7 @@ import {
   ERC20Mock,
   RTokenAsset,
   TestIRToken,
-  USDCMock
+  USDCMock,
 } from '../../typechain'
 import { Collateral, defaultFixture, IConfig } from '../fixtures'
 
@@ -66,11 +66,11 @@ describe('AssetsP0 contracts', () => {
       basket,
       config,
       rToken,
-      rTokenAsset
+      rTokenAsset,
     } = await loadFixture(defaultFixture))
 
-    token0 = <ERC20Mock> await ethers.getContractAt('ERC20Mock', await basket[0].erc20())
-    token1 = <USDCMock> await ethers.getContractAt('USDCMock', await basket[1].erc20())
+    token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await basket[0].erc20())
+    token1 = <USDCMock>await ethers.getContractAt('USDCMock', await basket[1].erc20())
 
     await rsr.connect(wallet).mint(wallet.address, amt)
     await compToken.connect(wallet).mint(wallet.address, amt)

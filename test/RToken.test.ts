@@ -38,11 +38,12 @@ import { cartesianProduct } from './utils/cases'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-enum RoundingApproach {
-  FLOOR,
-  ROUND,
-  CEIL,
-}
+// eslint suggests I drop this. I think it's probably confused.
+// enum RoundingApproach {
+//   FLOOR,
+//   ROUND,
+//   CEIL,
+// }
 
 describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
@@ -424,7 +425,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr2).approve(rToken.address, initialBal)
       await token2.connect(addr2).approve(rToken.address, initialBal)
       await token3.connect(addr2).approve(rToken.address, initialBal)
-      advanceBlocks(1)
+      await advanceBlocks(1)
       await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
@@ -465,7 +466,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       // Complete 2nd issuance
-      advanceBlocks(1)
+      await advanceBlocks(1)
       await rToken.vest(addr2.address, await rToken.endIdForVest(addr2.address))
 
       // Check issuance is confirmed
@@ -497,7 +498,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
 
       // Attempt to vest (pending 1 block)
-      advanceBlocks(1)
+      await advanceBlocks(1)
       await expect(
         rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
       ).to.be.revertedWith('collateral default')
@@ -656,7 +657,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Set issuance rate to 50% per block
       // Update config
-      rToken.connect(owner).setIssuanceRate(fp('0.5'))
+      await rToken.connect(owner).setIssuanceRate(fp('0.5'))
 
       // Try new issuance. Should be based on issuance rate = 50% per block should take two blocks
       // Based on current supply its gonna be 25000e18 tokens per block
@@ -696,7 +697,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
 
       // Process slow mintings one more time
-      advanceBlocks(1)
+      await advanceBlocks(1)
       await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
@@ -981,7 +982,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       )
     })
 
-    context('With issued RTokens', async function () {
+    context('With issued RTokens', function () {
       let issueAmount: BigNumber
 
       beforeEach(async function () {
@@ -1128,10 +1129,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   })
 
   // makeColl: Deploy and register a new constant-price collateral
-  async function makeColl(
-    index: number | string,
-    price: BigNumber
-  ): Promise<[ERC20Mock, Collateral]> {
+  async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {
     const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
     const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
     const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
@@ -1150,14 +1148,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     await assetRegistry.register(coll.address) // SHOULD BE LINTED
     expect(await assetRegistry.isRegistered(erc20.address)).to.be.true
     await aaveOracleInternal.setPrice(erc20.address, price)
-    return [erc20, coll]
+    return erc20
   }
 
   async function forceUpdateGetStatus(): Promise<CollateralStatus> {
-    whileImpersonating(basketHandler.address, async (bhSigner) => {
+    await whileImpersonating(basketHandler.address, async (bhSigner) => {
       await assetRegistry.connect(bhSigner).forceUpdates()
     })
-    return await basketHandler.status()
+    return basketHandler.status()
   }
 
   // Issue `amount` RToken to `user`.
@@ -1201,7 +1199,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     expect(await rToken.totalSupply()).to.equal(supply)
   }
 
-  describe.skip(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, async () => {
+  describe.skip(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     async function runScenario([
       toIssue,
       toRedeem,
@@ -1229,7 +1227,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const weights: BigNumber[] = []
       let totalWeight: BigNumber = fp(0)
       for (let i = 0; i < N; i++) {
-        const [erc20, coll] = await makeColl(i, fp('0.00025'))
+        const erc20 = await makeColl(i, fp('0.00025'))
         erc20s.push(erc20)
         const currWeight = i == 0 ? weightFirst : weightRest
         weights.push(currWeight)

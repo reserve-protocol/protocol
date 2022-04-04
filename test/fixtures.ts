@@ -33,7 +33,7 @@ import {
   TestIRToken,
   TestIStRSR,
   TradingLibP0,
-  USDCMock
+  USDCMock,
 } from '../typechain'
 
 export enum Implementation {
@@ -71,10 +71,10 @@ interface RSRFixture {
   rsr: ERC20Mock
 }
 
-async function rsrFixture (): Promise<RSRFixture> {
+async function rsrFixture(): Promise<RSRFixture> {
   // Deploy RSR and asset
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-  const rsr: ERC20Mock = <ERC20Mock> await ERC20.deploy('Reserve Rights', 'RSR')
+  const rsr: ERC20Mock = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
 
   return { rsr }
 }
@@ -89,13 +89,13 @@ interface COMPAAVEFixture {
   aaveMock: AaveLendingPoolMock
 }
 
-async function compAaveFixture (): Promise<COMPAAVEFixture> {
+async function compAaveFixture(): Promise<COMPAAVEFixture> {
   // Deploy COMP token and Asset
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-  const compToken: ERC20Mock = <ERC20Mock> await ERC20.deploy('COMP Token', 'COMP')
+  const compToken: ERC20Mock = <ERC20Mock>await ERC20.deploy('COMP Token', 'COMP')
 
   // Deploy AAVE token and Asset
-  const aaveToken: ERC20Mock = <ERC20Mock> await ERC20.deploy('AAVE Token', 'AAVE')
+  const aaveToken: ERC20Mock = <ERC20Mock>await ERC20.deploy('AAVE Token', 'AAVE')
 
   // Deploy Comp and Aave Oracle Mocks
   const CompoundOracleMockFactory: ContractFactory = await ethers.getContractFactory(
@@ -112,7 +112,7 @@ async function compAaveFixture (): Promise<COMPAAVEFixture> {
   await compoundMock.setCompToken(compToken.address)
 
   const AaveOracleMockFactory: ContractFactory = await ethers.getContractFactory('AaveOracleMock')
-  const weth: ERC20Mock = <ERC20Mock> await ERC20.deploy('Wrapped ETH', 'WETH')
+  const weth: ERC20Mock = <ERC20Mock>await ERC20.deploy('Wrapped ETH', 'WETH')
   const aaveOracleInternal: AaveOracleMock = <AaveOracleMock>(
     await AaveOracleMockFactory.deploy(weth.address)
   )
@@ -138,7 +138,7 @@ async function compAaveFixture (): Promise<COMPAAVEFixture> {
     compoundMock,
     aaveToken,
     aaveOracleInternal,
-    aaveMock
+    aaveMock,
   }
 }
 
@@ -146,9 +146,9 @@ interface ModuleFixture {
   gnosis: GnosisMock
 }
 
-async function gnosisFixture (): Promise<ModuleFixture> {
+async function gnosisFixture(): Promise<ModuleFixture> {
   const GnosisMockFactory: ContractFactory = await ethers.getContractFactory('GnosisMock')
-  const gnosisMock: GnosisMock = <GnosisMock> await GnosisMockFactory.deploy()
+  const gnosisMock: GnosisMock = <GnosisMock>await GnosisMockFactory.deploy()
   return { gnosis: gnosisMock }
 }
 
@@ -159,7 +159,7 @@ interface CollateralFixture {
   basketsNeededAmts: BigNumber[] // reference amounts
 }
 
-async function collateralFixture (
+async function collateralFixture(
   comptroller: ComptrollerMock,
   aaveLendingPool: AaveLendingPoolMock,
   aaveToken: ERC20Mock,
@@ -180,7 +180,7 @@ async function collateralFixture (
 
   // Deploy all potential collateral assets
   const makeVanillaCollateral = async (symbol: string): Promise<[ERC20Mock, Collateral]> => {
-    const erc20: ERC20Mock = <ERC20Mock> await ERC20.deploy(symbol + ' Token', symbol)
+    const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(symbol + ' Token', symbol)
     return [
       erc20,
       <Collateral>(
@@ -192,11 +192,11 @@ async function collateralFixture (
           comptroller.address,
           aaveLendingPool.address
         )
-      )
+      ),
     ]
   }
   const makeSixDecimalCollateral = async (symbol: string): Promise<[USDCMock, Collateral]> => {
-    const erc20: USDCMock = <USDCMock> await USDC.deploy(symbol + ' Token', symbol)
+    const erc20: USDCMock = <USDCMock>await USDC.deploy(symbol + ' Token', symbol)
     return [
       erc20,
       <Collateral>(
@@ -208,7 +208,7 @@ async function collateralFixture (
           comptroller.address,
           aaveLendingPool.address
         )
-      )
+      ),
     ]
   }
   const makeCTokenCollateral = async (
@@ -231,7 +231,7 @@ async function collateralFixture (
           comptroller.address,
           compToken.address
         )
-      )
+      ),
     ]
   }
   const makeATokenCollateral = async (
@@ -259,7 +259,7 @@ async function collateralFixture (
           aaveLendingPool.address,
           aaveToken.address
         )
-      )
+      ),
     ]
   }
 
@@ -286,7 +286,7 @@ async function collateralFixture (
     adai[0],
     ausdc[0],
     ausdt[0],
-    abusd[0]
+    abusd[0],
   ]
   const collateral = [
     dai[1],
@@ -299,7 +299,7 @@ async function collateralFixture (
     adai[1],
     ausdc[1],
     ausdt[1],
-    abusd[1]
+    abusd[1],
   ]
 
   // Create the initial basket
@@ -310,7 +310,7 @@ async function collateralFixture (
     erc20s,
     collateral,
     basket,
-    basketsNeededAmts
+    basketsNeededAmts,
   }
 }
 
@@ -342,7 +342,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
-  owner
+  owner,
 ]): Promise<DefaultFixture> {
   const { rsr } = await rsrFixture()
   const {
@@ -352,12 +352,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     compoundMock,
     aaveToken,
     aaveOracleInternal,
-    aaveMock
+    aaveMock,
   } = await compAaveFixture()
   const { gnosis } = await gnosisFixture()
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
-    rsrDist: bn(60) // 3/5 RSR
+    rsrDist: bn(60), // 3/5 RSR
   }
 
   // Setup Config
@@ -372,16 +372,16 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
     dustAmount: fp('0.01'), // 0.01 UoA (USD)
-    issuanceRate: fp('0.00025') // 0.025% per block or ~0.1% per minute
+    issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
   }
 
   // Deploy TradingLib external library
   const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
-  const tradingLib: TradingLibP0 = <TradingLibP0> await TradingLibFactory.deploy()
+  const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
 
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-    libraries: { TradingLibP0: tradingLib.address }
+    libraries: { TradingLibP0: tradingLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
     await DeployerFactory.deploy(
@@ -396,7 +396,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   if (IMPLEMENTATION == Implementation.P1) {
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1', {
-      libraries: { TradingLibP0: tradingLib.address }
+      libraries: { TradingLibP0: tradingLib.address },
     })
     deployer = <DeployerP1>(
       await DeployerFactory.deploy(
@@ -417,7 +417,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
   const facadeAddr = expectInReceipt(receipt, 'RTokenCreated').args.facade
-  const main: MainP0 = <MainP0> await ethers.getContractAt('MainP0', mainAddr)
+  const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
 
   // Get Core
   const assetRegistry: AssetRegistryP0 = <AssetRegistryP0>(
@@ -453,14 +453,14 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
   )
 
-  const broker: BrokerP0 = <BrokerP0> await ethers.getContractAt('BrokerP0', await main.broker())
+  const broker: BrokerP0 = <BrokerP0>await ethers.getContractAt('BrokerP0', await main.broker())
 
   const furnace: FurnaceP0 = <FurnaceP0>(
     await ethers.getContractAt('FurnaceP0', await main.furnace())
   )
-  const stRSR: TestIStRSR = <TestIStRSR> await ethers.getContractAt('TestIStRSR', await main.stRSR())
+  const stRSR: TestIStRSR = <TestIStRSR>await ethers.getContractAt('TestIStRSR', await main.stRSR())
 
-  const facade: FacadeP0 = <FacadeP0> await ethers.getContractAt('FacadeP0', facadeAddr)
+  const facade: FacadeP0 = <FacadeP0>await ethers.getContractAt('FacadeP0', facadeAddr)
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
@@ -543,6 +543,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     gnosis,
     facade,
     rsrTrader,
-    rTokenTrader
+    rTokenTrader,
   }
 }
