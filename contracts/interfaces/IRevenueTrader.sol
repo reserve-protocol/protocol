@@ -23,3 +23,5 @@ interface IRevenueTrader is IComponent, ITrading {
     /// @custom:action
     function manageFunds() external;
 }
+
+interface TestIRevenueTrader is IRevenueTrader, TestITrading {}

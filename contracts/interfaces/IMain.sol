@@ -2,8 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-
 import "./IAsset.sol";
 import "./IAssetRegistry.sol";
 import "./IBackingManager.sol";
@@ -51,7 +49,7 @@ interface IPausable {
     /// @param newPauser The address of the new pauser
     event PauserSet(address oldPauser, address newPauser);
 
-    function paused() external returns (bool);
+    function paused() external view returns (bool);
 }
 
 /**
@@ -149,4 +147,18 @@ interface IMain is IPausable {
     function init(Components memory components, IERC20 rsr_) external;
 
     function owner() external view returns (address);
+}
+
+interface TestIMain is IMain {
+    function pause() external;
+
+    function unpause() external;
+
+    function pauser() external view returns (address);
+
+    function setPauser(address pauser_) external;
+
+    function renounceOwnership() external;
+
+    function transferOwnership(address newOwner) external;
 }
