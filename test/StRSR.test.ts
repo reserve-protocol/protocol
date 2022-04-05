@@ -4,7 +4,7 @@ import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
-import { bn, fp, near } from '../common/numbers'
+import { bn, fp, near, shortString } from '../common/numbers'
 import {
   AaveOracleMock,
   BackingManagerP0,
@@ -1425,15 +1425,15 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     //  3^7 = 2187 cases ~= about 2-3min runtime
     //  2^7 = 128 cases ~= about 10s runtime
 
-    const runSimulation = async (
-      rsrStake: BigNumber,
-      rsrAccreted: BigNumber,
-      rsrWithdrawal: BigNumber,
-      rsrReward: BigNumber,
-      unstakingDelay: BigNumber,
-      rewardPeriod: BigNumber,
-      rewardRatio: BigNumber
-    ) => {
+    const runSimulation = async ([
+      rsrStake,
+      rsrAccreted,
+      rsrWithdrawal,
+      rsrReward,
+      unstakingDelay,
+      rewardPeriod,
+      rewardRatio,
+    ]: BigNumber[]) => {
       // === Setup ===
 
       ;({ main, rToken, stRSR, rsr, backingManager } = await loadFixture(defaultFixture))
@@ -1512,49 +1512,49 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       }
     }
 
-    it('Should complete issuance + reward + redeem cycle at extreme bounds', async () => {
-      // 100B RSR
-      const rsrStakes = [bn('1e29'), bn('0'), bn('1e18')]
+    // 100B RSR
+    const rsrStakes = [bn('1e29'), bn('0'), bn('1e18')]
 
-      // the amount of RSR that has already been absorbed as profit
-      // has to do with the initial exchange rate
-      const rsrAccreteds = [bn('1e29'), bn('0'), bn('1e18')]
+    // the amount of RSR that has already been absorbed as profit
+    // has to do with the initial exchange rate
+    const rsrAccreteds = [bn('1e29'), bn('0'), bn('1e18')]
 
-      const rsrWithdrawals = [bn('1e29'), bn('0'), bn('1e18')]
+    const rsrWithdrawals = [bn('1e29'), bn('0'), bn('1e18')]
 
-      const rsrRewards = [bn('1e29'), bn('0'), bn('1e18')]
+    const rsrRewards = [bn('1e29'), bn('0'), bn('1e18')]
 
-      // max: // 2^40 - 1
-      const unstakingDelays = [bn('1099511627775'), bn('0'), bn('604800')]
+    // max: // 2^40 - 1
+    const unstakingDelays = [bn('1099511627775'), bn('0'), bn('604800')]
 
-      // max: // 2^40 - 1
-      const rewardPeriods = [bn('1099511627775'), bn('1'), bn('604800')]
+    // max: // 2^40 - 1
+    const rewardPeriods = [bn('1099511627775'), bn('1'), bn('604800')]
 
-      const rewardRatios = [fp('1'), fp('0'), fp('0.02284')]
+    const rewardRatios = [fp('1'), fp('0'), fp('0.02284')]
 
-      let dimensions = [
-        rsrStakes,
-        rsrAccreteds,
-        rsrWithdrawals,
-        rsrRewards,
-        unstakingDelays,
-        rewardPeriods,
-        rewardRatios,
-      ]
+    let dimensions = [
+      rsrStakes,
+      rsrAccreteds,
+      rsrWithdrawals,
+      rsrRewards,
+      unstakingDelays,
+      rewardPeriods,
+      rewardRatios,
+    ]
 
-      // Restrict to 2^7 from 3^7 to decrease runtime
-      if (!SLOW) {
-        dimensions = dimensions.map((d) => [d[0], d[1]])
-      }
+    // Restrict to 2^7 from 3^7 to decrease runtime
+    if (!SLOW) {
+      dimensions = dimensions.map((d) => [d[0], d[1]])
+    }
 
-      const cases = cartesianProduct(...dimensions)
-      for (let i = 0; i < cases.length; i++) {
-        const args: BigNumber[] = cases[i]
+    const cases = cartesianProduct(...dimensions)
 
-        // if (rewardPeriod * 2 > unstakingDelay)
-        if (args[5].mul(2).gt(args[4])) continue
-
-        await runSimulation(args[0], args[1], args[2], args[3], args[4], args[5], args[6])
+    const numCases = cases.length.toString()
+    cases.forEach((params, index) => {
+      // if (rewardPeriod * 2 > unstakingDelay)
+      if (params[5].mul(2).lte(params[4])) {
+        it(`case ${index} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+          await runSimulation(params)
+        })
       }
     })
   })
