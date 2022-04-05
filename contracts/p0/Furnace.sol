@@ -9,7 +9,7 @@ import "contracts/p0/mixins/Component.sol";
  * @title FurnaceP0
  * @notice A helper to melt RTokens slowly and permisionlessly.
  */
-contract FurnaceP0 is Component, IFurnace {
+contract FurnaceP0 is ComponentP0, IFurnace {
     using FixLib for int192;
 
     int192 public ratio; // {1} What fraction of balance to melt each period

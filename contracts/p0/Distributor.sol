@@ -8,7 +8,7 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/mixins/Component.sol";
 
-contract DistributorP0 is Component, IDistributor {
+contract DistributorP0 is ComponentP0, IDistributor {
     using SafeERC20 for IERC20;
     using FixLib for int192;
     using EnumerableSet for EnumerableSet.AddressSet;

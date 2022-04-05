@@ -88,7 +88,7 @@ library BasketLib {
  * @title BasketHandler
  * @notice Handles the basket configuration, definition, and evolution over time.
  */
-contract BasketHandlerP0 is Component, IBasketHandler {
+contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     using BasketLib for Basket;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
