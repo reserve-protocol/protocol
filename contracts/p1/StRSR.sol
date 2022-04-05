@@ -12,7 +12,7 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/mixins/Component.sol";
+import "contracts/p1/mixins/Component.sol";
 
 /*
  * @title StRSRP1
@@ -24,7 +24,7 @@ import "contracts/p0/mixins/Component.sol";
  * stakes that are in the process of being withdrawn and those that are not.
  */
 // solhint-disable max-states-count
-contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
+contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;

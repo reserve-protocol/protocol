@@ -12,13 +12,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/mixins/Rewardable.sol";
+import "contracts/p1/mixins/Rewardable.sol";
 
 /**
  * @title RTokenP1
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
+contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
     using SafeERC20 for IERC20;

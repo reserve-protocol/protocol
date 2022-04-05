@@ -8,10 +8,10 @@ import "contracts/plugins/trading/GnosisTrade.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/ITrade.sol";
-import "contracts/p0/mixins/Component.sol";
+import "contracts/p1/mixins/Component.sol";
 
 /// A simple core contract that deploys disposable trading contracts for Traders
-contract InvalidBrokerMock is ComponentP0, IBroker {
+contract BrokerP1 is ComponentP1, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20Metadata;
 
@@ -21,7 +21,7 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
 
     uint256 public auctionLength; // {s} the length of an auction
 
-    bool public disabled = false;
+    bool public disabled;
 
     function init(
         IMain main_,
@@ -33,8 +33,9 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
         auctionLength = auctionLength_;
     }
 
-    /// Invalid implementation - Reverts
-    function openTrade(TradeRequest memory req) external view returns (ITrade) {
+    /// Handle a trade request by deploying a customized disposable trading contract
+    /// @dev Requires setting an allowance in advance
+    function openTrade(TradeRequest memory req) external returns (ITrade) {
         require(!disabled, "broker disabled");
         require(
             _msgSender() == address(main.backingManager()) ||
@@ -43,21 +44,30 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
             "only traders"
         );
 
-        req;
-
-        // Revert when opening trades
-        revert("Failure opening trade");
+        // In the future we'll have more sophisticated choice logic here, probably by trade size
+        GnosisTrade trade = new GnosisTrade();
+        trades[address(trade)] = true;
+        req.sell.erc20().safeTransferFrom(_msgSender(), address(trade), req.sellAmount);
+        trade.init(this, _msgSender(), gnosis, auctionLength, req);
+        return trade;
     }
 
-    /// Dummy implementation
-    /* solhint-disable no-empty-blocks */
-    function reportViolation() external {}
+    /// Disable the broker until re-enabled by governance
+    function reportViolation() external {
+        require(trades[_msgSender()], "unrecognized trade contract");
+        emit DisabledSet(disabled, true);
+        disabled = true;
+    }
 
-    /// Dummy implementation
-    /* solhint-disable no-empty-blocks */
-    function setAuctionLength(uint256 newAuctionLength) external onlyOwner {}
+    // === Setters ===
 
-    /// Dummy implementation
-    /* solhint-disable no-empty-blocks */
-    function setDisabled(bool disabled_) external onlyOwner {}
+    function setAuctionLength(uint256 newAuctionLength) external onlyOwner {
+        emit AuctionLengthSet(auctionLength, newAuctionLength);
+        auctionLength = newAuctionLength;
+    }
+
+    function setDisabled(bool disabled_) external onlyOwner {
+        emit DisabledSet(disabled, disabled_);
+        disabled = disabled_;
+    }
 }
