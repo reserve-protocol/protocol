@@ -24,4 +24,7 @@ interface IRevenueTrader is IComponent, ITrading {
     function manageFunds() external;
 }
 
-interface TestIRevenueTrader is IRevenueTrader, TestITrading {}
+// solhint-disable-next-line no-empty-blocks
+interface TestIRevenueTrader is IRevenueTrader, TestITrading {
+
+}

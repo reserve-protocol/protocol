@@ -29,5 +29,6 @@ abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradea
         _;
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
