@@ -4,7 +4,7 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { bn, fp, pow10, toBNDecimals } from '../common/numbers'
+import { bn, fp, pow10, toBNDecimals, shortString } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AaveOracleMock,
@@ -3655,7 +3655,7 @@ describe('MainP0 contract', () => {
     })
   })
 
-  describe('Basket Extreme Bounds', () => {
+  describe.only('Basket Extreme Bounds', () => {
     let ERC20: ContractFactory
     let AaveCollateralFactory: ContractFactory
     let firstCollateral: AavePricedFiatCollateralMock | undefined
@@ -3676,6 +3676,9 @@ describe('MainP0 contract', () => {
       targetPerRefs: BigNumber,
       basketTargetAmt: BigNumber
     ) => {
+      ERC20 = await ethers.getContractFactory('ERC20Mock')
+      AaveCollateralFactory = await ethers.getContractFactory('AavePricedFiatCollateralMock')
+
       firstCollateral = undefined
       const makeToken = async (
         tokenName: string,
@@ -3748,39 +3751,35 @@ describe('MainP0 contract', () => {
       }
     }
 
-    it('Should not revert during basket switching', async () => {
-      const size = SLOW ? 256 : 4 // Currently 256 takes >5 minutes to execute 32 cases
+    const size = SLOW ? 256 : 4 // Currently 256 takes >5 minutes to execute 32 cases
 
-      const primeTokens = [size, 0]
+    const primeTokens = [size, 0]
 
-      const backupTokens = [size, 0]
+    const backupTokens = [size, 0]
 
-      const targetUnits = [size, 1]
+    const targetUnits = [size, 1]
 
-      // 1e18 range centered around the expected case of fp('1')
-      const targetPerRefs = [fp('1e-9'), fp('1e9')]
+    // 1e18 range centered around the expected case of fp('1')
+    const targetPerRefs = [fp('1e-9'), fp('1e9')]
 
-      // 1e18 range centered around the expected case of fp('1')
-      const basketTargetAmts = [fp('1e-9'), fp('1e9')]
+    // min weight: 0, max weight: 1000
+    const basketTargetAmts = [fp('0'), fp('1e3')]
 
-      const dimensions = [primeTokens, backupTokens, targetUnits, targetPerRefs, basketTargetAmts]
+    const dimensions = [primeTokens, backupTokens, targetUnits, targetPerRefs, basketTargetAmts]
 
-      ERC20 = await ethers.getContractFactory('ERC20Mock')
-      AaveCollateralFactory = await ethers.getContractFactory('AavePricedFiatCollateralMock')
-
-      // 2^5 = 32 cases
-      const cases = cartesianProduct(...dimensions)
-      for (let i = 0; i < cases.length; i++) {
-        const args = cases[i]
-
+    // 2^5 = 32 cases
+    const cases = cartesianProduct(...dimensions)
+    const numCases = cases.length.toString()
+    cases.forEach((params, index) => {
+      it(`case ${index} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
         await runSimulation(
-          args[0] as number,
-          args[1] as number,
-          args[2] as number,
-          args[3] as BigNumber,
-          args[4] as BigNumber
+          params[0] as number,
+          params[1] as number,
+          params[2] as number,
+          params[3] as BigNumber,
+          params[4] as BigNumber
         )
-      }
+      })
     })
   })
 })
