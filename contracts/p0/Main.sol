@@ -7,53 +7,7 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IMain.sol";
-
-/// Only Main is Pausable
-abstract contract Pausable is OwnableUpgradeable, IPausable {
-    address private _pauser;
-    bool public paused;
-
-    // solhint-disable-next-line func-name-mixedcase
-    function __Pausable_init() internal onlyInitializing {
-        __Ownable_init();
-        _pauser = _msgSender();
-        paused = true;
-    }
-
-    modifier notPaused() {
-        require(!paused, "paused");
-        _;
-    }
-
-    function pause() external {
-        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
-        emit PausedSet(paused, true);
-        paused = true;
-    }
-
-    function unpause() external {
-        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
-        emit PausedSet(paused, false);
-        paused = false;
-    }
-
-    function pauser() external view returns (address) {
-        return _pauser;
-    }
-
-    function setPauser(address pauser_) external {
-        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
-        require(pauser_ != address(0), "use renouncePauser");
-        emit PauserSet(_pauser, pauser_);
-        _pauser = pauser_;
-    }
-
-    function renouncePausership() external {
-        require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
-        emit PauserSet(_pauser, address(0));
-        _pauser = address(0);
-    }
-}
+import "contracts/p0/mixins/Pausable.sol";
 
 /**
  * @title Main
