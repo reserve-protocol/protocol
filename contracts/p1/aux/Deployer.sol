@@ -73,22 +73,65 @@ contract DeployerP1 is IDeployer {
         address owner,
         DeploymentParams memory params
     ) external returns (address) {
-         // Main - Proxy
-        MainP1 main = MainP1(address(new ERC1967Proxy(address(implementations.main), new bytes(0))));
+        // Main - Proxy
+        MainP1 main = MainP1(
+            address(new ERC1967Proxy(address(implementations.main), new bytes(0)))
+        );
 
         // Components - Proxies
-        IRToken rToken = IRToken(address(new ERC1967Proxy(address(implementations.components.rToken), new bytes(0))));
+        IRToken rToken = IRToken(
+            address(new ERC1967Proxy(address(implementations.components.rToken), new bytes(0)))
+        );
         Components memory components = Components({
-            stRSR: IStRSR(address(new ERC1967Proxy(address(implementations.components.stRSR), new bytes(0)))),
+            stRSR: IStRSR(
+                address(new ERC1967Proxy(address(implementations.components.stRSR), new bytes(0)))
+            ),
             rToken: rToken,
-            assetRegistry: IAssetRegistry(address(new ERC1967Proxy(address(implementations.components.assetRegistry), new bytes(0)))),
-            basketHandler: IBasketHandler(address(new ERC1967Proxy(address(implementations.components.basketHandler), new bytes(0)))),
-            backingManager: IBackingManager(address(new ERC1967Proxy(address(implementations.components.backingManager), new bytes(0)))),
-            distributor: IDistributor(address(new ERC1967Proxy(address(implementations.components.distributor),new bytes(0)))),
-            rsrTrader: IRevenueTrader(address(new ERC1967Proxy(address(implementations.components.rsrTrader), new bytes(0)))),
-            rTokenTrader: IRevenueTrader(address(new ERC1967Proxy(address(implementations.components.rTokenTrader), new bytes(0)))),
-            furnace: IFurnace(address(new ERC1967Proxy(address(implementations.components.furnace), new bytes(0)))),
-            broker: IBroker(address(new ERC1967Proxy(address(implementations.components.broker), new bytes(0))))
+            assetRegistry: IAssetRegistry(
+                address(
+                    new ERC1967Proxy(
+                        address(implementations.components.assetRegistry),
+                        new bytes(0)
+                    )
+                )
+            ),
+            basketHandler: IBasketHandler(
+                address(
+                    new ERC1967Proxy(
+                        address(implementations.components.basketHandler),
+                        new bytes(0)
+                    )
+                )
+            ),
+            backingManager: IBackingManager(
+                address(
+                    new ERC1967Proxy(
+                        address(implementations.components.backingManager),
+                        new bytes(0)
+                    )
+                )
+            ),
+            distributor: IDistributor(
+                address(
+                    new ERC1967Proxy(address(implementations.components.distributor), new bytes(0))
+                )
+            ),
+            rsrTrader: IRevenueTrader(
+                address(
+                    new ERC1967Proxy(address(implementations.components.rsrTrader), new bytes(0))
+                )
+            ),
+            rTokenTrader: IRevenueTrader(
+                address(
+                    new ERC1967Proxy(address(implementations.components.rTokenTrader), new bytes(0))
+                )
+            ),
+            furnace: IFurnace(
+                address(new ERC1967Proxy(address(implementations.components.furnace), new bytes(0)))
+            ),
+            broker: IBroker(
+                address(new ERC1967Proxy(address(implementations.components.broker), new bytes(0)))
+            )
         });
 
         IAsset[] memory assets = new IAsset[](4);

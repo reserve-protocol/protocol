@@ -133,7 +133,6 @@ contract MainP1 is Initializable, ContextUpgradeable, Pausable, UUPSUpgradeable,
         rsr = val;
     }
 
-
     // === Upgradeability ===
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
