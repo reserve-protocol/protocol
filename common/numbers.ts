@@ -83,3 +83,15 @@ function _parseScientific(s: string, scale: BigNumberish = 0): BigNumber {
 
   return positive_output.mul(sign)
 }
+
+export function shortString(input: BigNumberish): string {
+  const maxSimple = bn(1e4)
+  const minSimple = bn(-1e4)
+  const x = bn(input)
+  if (x.gt(minSimple) && x.lt(maxSimple)) return x.toString()
+  else
+    return x
+      .toBigInt()
+      .toLocaleString('en-US', { notation: 'scientific', maximumSignificantDigits: 21 })
+      .replace('E', 'e')
+}

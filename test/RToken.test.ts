@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
-import { bn, fp } from '../common/numbers'
+import { bn, fp, shortString } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AavePricedFiatCollateral,
@@ -1171,9 +1171,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     let issued = bn(0)
     const initBalance = await rToken.balanceOf(user.address)
     const issuanceRate = await rToken.issuanceRate()
-    console.log(
-      `issuing ${toIssue.toString()} to ${user.address.slice(0, 6)}...${user.address.slice(-4)}`
-    )
 
     while (issued.lt(toIssue)) {
       // Find currIssue, the amount to issue this round
@@ -1184,11 +1181,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const currIssue = maxAmt.lt(yetToIssue) ? maxAmt : yetToIssue
 
       // Issue currIssue to user, and wait ISS_BLOCKS
-      console.log(`  issuing ${currIssue.toString()}...`)
+
       await rToken.connect(user).issue(currIssue)
-      console.log(`    waiting ${ISS_BLOCKS} blocks...`)
+
       await advanceBlocks(ISS_BLOCKS.add(1))
-      console.log('    vesting issuance...')
+
       await rToken.vest(user.address, await rToken.endIdForVest(user.address))
       issued = issued.add(currIssue)
       supply = supply.add(currIssue)
@@ -1199,7 +1196,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     expect(await rToken.totalSupply()).to.equal(supply)
   }
 
-  describe.skip(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
+  describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     async function runScenario([
       toIssue,
       toRedeem,
@@ -1219,7 +1216,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       }
 
       // ==== Deploy and register basket collateral
-      console.log('Deploy and register basket collateral')
+
       const N = numBasketAssets.toNumber()
       const erc20s: ERC20Mock[] = []
       const weights: BigNumber[] = []
@@ -1234,7 +1231,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await forceUpdateGetStatus()).to.equal(CollateralStatus.SOUND)
 
       // ==== Switch Basket
-      console.log('Switch Basket')
+
       const basketAddresses: string[] = erc20s.map((erc20) => erc20.address)
       await basketHandler.connect(owner).setPrimeBasket(basketAddresses, weights)
       await basketHandler.connect(owner).switchBasket()
@@ -1245,7 +1242,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       }
 
       // ==== Mint basket tokens to owner and addr1
-      console.log('Mint basket tokens to owner and addr1')
+
       const toIssue0 = totalSupply.sub(toIssue)
       const e18 = BN_SCALE_FACTOR
       for (let i = 0; i < N; i++) {
@@ -1264,19 +1261,19 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(owner).setIssuanceRate(issuanceRate)
 
       // ==== Issue the "initial" rtoken supply to owner
-      console.log("Issue the 'initial' rtoken supply to owner")
+
       expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
       await issue_many(toIssue0, owner)
       expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
 
       // ==== Issue the toIssue supply to addr1
-      console.log('Issue the toIssue supply to addr1')
+
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       await issue_many(toIssue, addr1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
 
       // ==== Send enough rTokens to addr2 that it can redeem the amount `toRedeem`
-      console.log('Send enough rTokens to addr2 that it can redeem the amount `toRedeem`')
+
       // owner has toIssue0 rToken, addr1 has toIssue rToken.
       if (toRedeem.lte(toIssue0)) {
         await rToken.connect(owner).transfer(addr2.address, toRedeem)
@@ -1287,31 +1284,56 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr2.address)).to.equal(toRedeem)
 
       // ==== Redeem tokens
-      console.log('Redeem tokens')
+
       await rToken.connect(addr2).redeem(toRedeem)
       expect(await rToken.balanceOf(addr2.address)).to.equal(0)
     }
 
     // ==== Generate the tests
+    const MAX_TOKENS = bn('1e18') // TODO: should be 1e36, but I know that throws error for now...
+    const MAX_WEIGHT = MAX_TOKENS
+    const MIN_ISSUANCE_FRACTION = fp('1e-6')
 
-    let bounds: BigNumber[][] = [
-      [bn(1), bn('1e18'), bn('1.205e24')], // toIssue
-      [bn(1), bn('1e18'), bn('4.4231e24')], // toRedeem
-      [bn('1e18'), bn(1), bn('7.907e24')], // totalSupply TODO RANGE
-      [bn(1), bn(7), bn(255)], // numAssets
-      [bn(1), fp('1e18'), fp('0.1')], // weightFirst
-      [bn(1), fp('1e18'), fp('0.2')], // weightRest
-      [fp('0.00025'), fp('1'), fp('1e-6')], // issuanceRate
-    ]
+    let paramList
 
-    if (!SLOW) bounds = bounds.map((b) => b.slice(0, 2))
-    if (process.env.QUICK) bounds = bounds.map((b) => b.slice(0, 1))
+    if (SLOW) {
+      const bounds: BigNumber[][] = [
+        [bn(1), MAX_TOKENS, bn('1.205e24')], // toIssue
+        [bn(1), MAX_TOKENS, bn('4.4231e24')], // toRedeem
+        [MAX_TOKENS, bn('7.907e24')], // totalSupply
+        [bn(1), bn(3)], // numAssets
+        [bn(1), MAX_WEIGHT, fp('0.1')], // weightFirst
+        [bn(1), MAX_WEIGHT, fp('0.2')], // weightRest
+        [fp('0.00025'), fp(1), MIN_ISSUANCE_FRACTION], // issuanceRate
+      ]
 
-    const paramList = cartesianProduct(...bounds)
-    const start = 0
-    const numCases = 30
-    paramList.slice(start, start + numCases).forEach((params, index) => {
-      it(`case ${index + start}: ${params}`, async () => {
+      // A few big heavy test cases
+      const bounds2: BigNumber[][] = [
+        [MAX_TOKENS, bn(1)],
+        [MAX_TOKENS, bn(1)],
+        [MAX_TOKENS],
+        [bn(255)],
+        [MAX_WEIGHT, bn(1)],
+        [MAX_WEIGHT, bn(1)],
+        [fp('0.1')],
+      ]
+
+      paramList = cartesianProduct(...bounds).concat(cartesianProduct(...bounds2))
+    } else {
+      const bounds: BigNumber[][] = [
+        [bn(1), MAX_TOKENS], // toIssue
+        [bn(1), MAX_TOKENS], // toRedeem
+        [MAX_TOKENS], // totalSupply
+        [bn(1)], // numAssets
+        [bn(1), MAX_WEIGHT], // weightFirst
+        [bn(1)], // weightRest
+        [MIN_ISSUANCE_FRACTION, fp(1)], // issuanceRate
+      ]
+      paramList = cartesianProduct(...bounds)
+    }
+    const numCases = paramList.length.toString()
+    paramList.forEach((params, index) => {
+      it(`case ${index} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
         await runScenario(params)
       })
     })
