@@ -3655,7 +3655,7 @@ describe('MainP0 contract', () => {
     })
   })
 
-  describe.only('Basket Extreme Bounds', () => {
+  describe('Basket Extreme Bounds', () => {
     let ERC20: ContractFactory
     let AaveCollateralFactory: ContractFactory
     let firstCollateral: AavePricedFiatCollateralMock | undefined
