@@ -24,6 +24,7 @@ describe('In FixLib,', () => {
   const MAX_UINT192 = BigNumber.from(2).pow(192).sub(1)
   const MAX_FIX_INT = MAX_INT192.div(pow10(18)) // biggest integer N st toFix(N) exists
   const MIN_FIX_INT = MIN_INT192.div(pow10(18)) // smallest integer N st toFix(N) exists
+  const MAX_INT256 = BigNumber.from(2).pow(255).sub(1)
 
   // prettier-ignore
   const fixable_ints: BigNumber[] = [
@@ -1017,5 +1018,29 @@ describe('In FixLib,', () => {
         expect(await caller.near(a, b, c), `near(${a}, ${b}, ${c}`).to.equal(a.sub(b).abs().lt(c))
       }
     })
+  })
+
+  describe.only('fullMul', () => {
+    const m = MAX_INT256
+    const table = [
+      [0, 0],
+      [0, 1],
+      [1, 1],
+      [48763, 875123],
+      [m, m],
+      [m.sub(1), m.sub(17)],
+    ].map(([x, y]) => [bn(x), bn(y)])
+
+    const WORD = bn(2).pow(256)
+    for (const [x, y] of table) {
+      it(`multiplies ${x} and ${y}`, async () => {
+        const prod = x.mul(y)
+        const loExpected = prod.mod(WORD)
+        const hiExpected = prod.div(WORD)
+        const [loResult, hiResult] = await caller.fullMul_(x, y)
+        expect(hiResult).to.equal(hiExpected)
+        expect(loResult).to.equal(loExpected)
+      })
+    }
   })
 })
