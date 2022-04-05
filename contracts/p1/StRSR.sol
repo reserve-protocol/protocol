@@ -36,7 +36,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     mapping(address => Counters.Counter) private _nonces;
 
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _PERMIT_TYPEHASH =
+    bytes32 private constant _PERMIT_TYPEHASH =
         keccak256(
             "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
         );
@@ -48,7 +48,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     string private _symbol;
 
     // Era. If ever there's a total RSR wipeout, increment the era to zero old balances in one step.
-    uint256 internal era = 0;
+    uint256 internal era;
 
     // Stakes: usual staking position. These are the token stakes!
     mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
@@ -94,6 +94,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
         __EIP712_init(name_, "1");
         _name = name_;
         _symbol = symbol_;
+        era = 0;
         payoutLastPaid = block.timestamp;
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
         unstakingDelay = unstakingDelay_;
