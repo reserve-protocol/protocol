@@ -8,35 +8,35 @@ import { bn, divCeil, fp, near } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AavePricedAsset,
-  AssetRegistryP0,
   ATokenFiatCollateral,
-  BackingManagerP0,
-  BasketHandlerP0,
-  BrokerP0,
   CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
-  DistributorP0,
   ERC20Mock,
   FacadeP0,
-  FurnaceP0,
-  MainP0,
   GnosisMock,
-  RevenueTradingP0,
-  TestIRToken,
+  IBasketHandler,
   StaticATokenMock,
+  TestIAssetRegistry,
+  TestIBackingManager,
+  TestIBroker,
+  TestIDistributor,
+  TestIFurnace,
+  TestIMain,
+  TestIRevenueTrader,
+  TestIRToken,
   TestIStRSR,
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import { Collateral, defaultFixture, IConfig } from './fixtures'
+import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
 import { expectTrade } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('Revenues', () => {
+describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -51,9 +51,9 @@ describe('Revenues', () => {
 
   // Trading
   let gnosis: GnosisMock
-  let rsrTrader: RevenueTradingP0
-  let rTokenTrader: RevenueTradingP0
-  let broker: BrokerP0
+  let rsrTrader: TestIRevenueTrader
+  let rTokenTrader: TestIRevenueTrader
+  let broker: TestIBroker
 
   // Tokens and Assets
   let initialBal: BigNumber
@@ -75,13 +75,13 @@ describe('Revenues', () => {
   // Contracts to retrieve after deploy
   let rToken: TestIRToken
   let stRSR: TestIStRSR
-  let furnace: FurnaceP0
-  let main: MainP0
+  let furnace: TestIFurnace
+  let main: TestIMain
   let facade: FacadeP0
-  let assetRegistry: AssetRegistryP0
-  let backingManager: BackingManagerP0
-  let basketHandler: BasketHandlerP0
-  let distributor: DistributorP0
+  let assetRegistry: TestIAssetRegistry
+  let backingManager: TestIBackingManager
+  let basketHandler: IBasketHandler
+  let distributor: TestIDistributor
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -1315,7 +1315,7 @@ describe('Revenues', () => {
         const InvalidBrokerFactory: ContractFactory = await ethers.getContractFactory(
           'InvalidBrokerMock'
         )
-        const invalidBroker: BrokerP0 = <BrokerP0>await InvalidBrokerFactory.deploy()
+        const invalidBroker: TestIBroker = <TestIBroker>await InvalidBrokerFactory.deploy()
 
         // Set broker
         await invalidBroker.init(main.address, gnosis.address, config.auctionLength)

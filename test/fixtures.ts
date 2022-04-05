@@ -8,11 +8,7 @@ import {
   AaveLendingPoolMock,
   AaveOracleMock,
   Asset,
-  AssetRegistryP0,
   ATokenFiatCollateral,
-  BackingManagerP0,
-  BasketHandlerP0,
-  BrokerP0,
   Collateral as AbstractCollateral,
   CompoundOracleMock,
   ComptrollerMock,
@@ -21,15 +17,19 @@ import {
   ERC20Mock,
   DeployerP0,
   DeployerP1,
-  DistributorP0,
   FacadeP0,
-  FurnaceP0,
   GnosisMock,
-  MainP0,
-  RevenueTradingP0,
+  IBasketHandler,
   RTokenAsset,
   StaticATokenMock,
+  TestIAssetRegistry,
+  TestIBackingManager,
+  TestIBroker,
   TestIDeployer,
+  TestIDistributor,
+  TestIFurnace,
+  TestIMain,
+  TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
   TradingLibP0,
@@ -323,22 +323,22 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   config: IConfig
   dist: IRevenueShare
   deployer: TestIDeployer
-  main: MainP0
-  assetRegistry: AssetRegistryP0
-  backingManager: BackingManagerP0
-  basketHandler: BasketHandlerP0
-  distributor: DistributorP0
+  main: TestIMain
+  assetRegistry: TestIAssetRegistry
+  backingManager: TestIBackingManager
+  basketHandler: IBasketHandler
+  distributor: TestIDistributor
   rsrAsset: Asset
   compAsset: Asset
   aaveAsset: Asset
   rToken: TestIRToken
   rTokenAsset: RTokenAsset
-  furnace: FurnaceP0
+  furnace: TestIFurnace
   stRSR: TestIStRSR
   facade: FacadeP0
-  broker: BrokerP0
-  rsrTrader: RevenueTradingP0
-  rTokenTrader: RevenueTradingP0
+  broker: TestIBroker
+  rsrTrader: TestIRevenueTrader
+  rTokenTrader: TestIRevenueTrader
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -417,20 +417,20 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
   const facadeAddr = expectInReceipt(receipt, 'RTokenCreated').args.facade
-  const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
+  const main: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
 
   // Get Core
-  const assetRegistry: AssetRegistryP0 = <AssetRegistryP0>(
-    await ethers.getContractAt('AssetRegistryP0', await main.assetRegistry())
+  const assetRegistry: TestIAssetRegistry = <TestIAssetRegistry>(
+    await ethers.getContractAt('TestIAssetRegistry', await main.assetRegistry())
   )
-  const backingManager: BackingManagerP0 = <BackingManagerP0>(
-    await ethers.getContractAt('BackingManagerP0', await main.backingManager())
+  const backingManager: TestIBackingManager = <TestIBackingManager>(
+    await ethers.getContractAt('TestIBackingManager', await main.backingManager())
   )
-  const basketHandler: BasketHandlerP0 = <BasketHandlerP0>(
-    await ethers.getContractAt('BasketHandlerP0', await main.basketHandler())
+  const basketHandler: IBasketHandler = <IBasketHandler>(
+    await ethers.getContractAt('IBasketHandler', await main.basketHandler())
   )
-  const distributor: DistributorP0 = <DistributorP0>(
-    await ethers.getContractAt('DistributorP0', await main.distributor())
+  const distributor: TestIDistributor = <TestIDistributor>(
+    await ethers.getContractAt('TestIDistributor', await main.distributor())
   )
 
   const rsrAsset: Asset = <Asset>(
@@ -453,10 +453,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
   )
 
-  const broker: BrokerP0 = <BrokerP0>await ethers.getContractAt('BrokerP0', await main.broker())
+  const broker: TestIBroker = <TestIBroker>(
+    await ethers.getContractAt('TestIBroker', await main.broker())
+  )
 
-  const furnace: FurnaceP0 = <FurnaceP0>(
-    await ethers.getContractAt('FurnaceP0', await main.furnace())
+  const furnace: TestIFurnace = <TestIFurnace>(
+    await ethers.getContractAt('TestIFurnace', await main.furnace())
   )
   const stRSR: TestIStRSR = <TestIStRSR>await ethers.getContractAt('TestIStRSR', await main.stRSR())
 
@@ -471,11 +473,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     config
   )
 
-  const rsrTrader = <RevenueTradingP0>(
-    await ethers.getContractAt('RevenueTradingP0', await main.rsrTrader())
+  const rsrTrader = <TestIRevenueTrader>(
+    await ethers.getContractAt('TestIRevenueTrader', await main.rsrTrader())
   )
-  const rTokenTrader = <RevenueTradingP0>(
-    await ethers.getContractAt('RevenueTradingP0', await main.rTokenTrader())
+  const rTokenTrader = <TestIRevenueTrader>(
+    await ethers.getContractAt('TestIRevenueTrader', await main.rTokenTrader())
   )
 
   // Set Oracle Prices

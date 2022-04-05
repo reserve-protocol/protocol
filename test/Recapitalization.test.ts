@@ -8,29 +8,29 @@ import { bn, fp, pow10, toBNDecimals } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AaveOracleMock,
-  AssetRegistryP0,
   AavePricedFiatCollateralMock,
-  BackingManagerP0,
-  BasketHandlerP0,
   CompoundOracleMock,
   ComptrollerMock,
   CTokenMock,
   ERC20Mock,
   FacadeP0,
   GnosisMock,
-  TestIRToken,
+  IBasketHandler,
   StaticATokenMock,
+  TestIAssetRegistry,
+  TestIBackingManager,
+  TestIRToken,
   TestIStRSR,
   USDCMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import { Collateral, defaultFixture, IConfig, SLOW } from './fixtures'
+import { Collateral, defaultFixture, IConfig, IMPLEMENTATION, SLOW } from './fixtures'
 import { expectTrade } from './utils/trades'
 import { cartesianProduct } from './utils/cases'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('MainP0 contract', () => {
+describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -77,9 +77,9 @@ describe('MainP0 contract', () => {
   let rToken: TestIRToken
   let stRSR: TestIStRSR
   let facade: FacadeP0
-  let assetRegistry: AssetRegistryP0
-  let backingManager: BackingManagerP0
-  let basketHandler: BasketHandlerP0
+  let assetRegistry: TestIAssetRegistry
+  let backingManager: TestIBackingManager
+  let basketHandler: IBasketHandler
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
