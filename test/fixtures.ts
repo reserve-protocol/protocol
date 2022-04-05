@@ -78,7 +78,7 @@ export interface IRevenueShare {
   rsrDist: BigNumber
 }
 
-interface IComponents {
+export interface IComponents {
   rToken: string
   stRSR: string
   assetRegistry: string
@@ -91,7 +91,7 @@ interface IComponents {
   rTokenTrader: string
 }
 
-interface IImplementations {
+export interface IImplementations {
   main: string
   components: IComponents
 }
