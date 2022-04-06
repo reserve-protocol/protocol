@@ -1,13 +1,20 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet, BigNumberish } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
+import {
+  BN_SCALE_FACTOR,
+  FURNACE_DEST,
+  STRSR_DEST,
+  ZERO_ADDRESS,
+  MAX_UINT256,
+} from '../common/constants'
 import { expectEvents } from '../common/events'
-import { bn, divCeil, fp, near } from '../common/numbers'
+import { bn, divCeil, fp, near, shortString } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AavePricedAsset,
+  AaveOracleMock,
   AssetRegistryP0,
   ATokenFiatCollateral,
   BackingManagerP0,
@@ -15,12 +22,14 @@ import {
   BrokerP0,
   CompoundPricedAsset,
   ComptrollerMock,
+  CompoundOracleMock,
   CTokenFiatCollateral,
   CTokenMock,
   DistributorP0,
   ERC20Mock,
   FacadeP0,
   FurnaceP0,
+  GnosisTrade,
   MainP0,
   GnosisMock,
   RevenueTradingP0,
@@ -31,8 +40,10 @@ import {
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import { Collateral, defaultFixture, IConfig } from './fixtures'
+import { Collateral, defaultFixture, IConfig, SLOW } from './fixtures'
 import { expectTrade } from './utils/trades'
+import { cartesianProduct } from './utils/cases'
+import { issueMany } from './utils/issue'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -48,6 +59,8 @@ describe('Revenues', () => {
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
   let aaveMock: AaveLendingPoolMock
+  let compoundOracleInternal: CompoundOracleMock
+  let aaveOracleInternal: AaveOracleMock
 
   // Trading
   let gnosis: GnosisMock
@@ -2440,6 +2453,261 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
+      })
+    })
+  })
+
+  describe.only(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
+    const defaultThreshold = fp('0.05') // 5%
+    const delayUntilDefault = bn('86400') // 24h
+    let ERC20Mock: ContractFactory
+    let ATokenMockFactory: ContractFactory
+    let CTokenMockFactory: ContractFactory
+    let ATokenCollateralFactory: ContractFactory
+    let CTokenCollateralFactory: ContractFactory
+
+    const prepAToken = async (index: number): Promise<StaticATokenMock> => {
+      const underlying: ERC20Mock = <ERC20Mock>(
+        await ERC20Mock.deploy(`ERC20_NAME:${index}`, `ERC20_SYM:${index}`)
+      )
+      await compoundOracleInternal.setPrice(await underlying.symbol(), bn('1e6'))
+      await aaveOracleInternal.setPrice(underlying.address, bn('2.5e14'))
+      const erc20: StaticATokenMock = <StaticATokenMock>(
+        await ATokenMockFactory.deploy(
+          `StaticAToken_NAME:${index}`,
+          `StaticAToken_SYM:${index}`,
+          underlying.address
+        )
+      )
+
+      // Set reward token
+      await erc20.setAaveToken(aaveToken.address)
+      const collateral = <ATokenFiatCollateral>(
+        await ATokenCollateralFactory.deploy(
+          erc20.address,
+          config.maxTradeVolume,
+          defaultThreshold,
+          delayUntilDefault,
+          underlying.address,
+          compoundMock.address,
+          aaveMock.address,
+          aaveToken.address
+        )
+      )
+      await assetRegistry.connect(owner).register(collateral.address)
+      return erc20
+    }
+
+    const prepCToken = async (index: number): Promise<CTokenMock> => {
+      const underlying: ERC20Mock = <ERC20Mock>(
+        await ERC20Mock.deploy(`ERC20_NAME:${index}`, `ERC20_SYM:${index}`)
+      )
+      await compoundOracleInternal.setPrice(await underlying.symbol(), bn('1e6'))
+      const erc20: CTokenMock = <CTokenMock>(
+        await CTokenMockFactory.deploy(
+          `CToken_NAME:${index}`,
+          `CToken_SYM:${index}`,
+          underlying.address
+        )
+      )
+      const collateral = <CTokenFiatCollateral>(
+        await CTokenCollateralFactory.deploy(
+          erc20.address,
+          config.maxTradeVolume,
+          defaultThreshold,
+          delayUntilDefault,
+          underlying.address,
+          compoundMock.address,
+          compToken.address
+        )
+      )
+      await assetRegistry.connect(owner).register(collateral.address)
+      return erc20
+    }
+
+    async function runScenario(
+      rTokenSupply: BigNumber,
+      basketSize: number,
+      primeWeight: BigNumber,
+      collateralDecimals: number,
+      appreciation: BigNumber,
+      howManyAppreciate: number,
+      stRSRCut: BigNumber
+    ) {
+      // === Boilerplate
+
+      ERC20Mock = await ethers.getContractFactory('ERC20Mock')
+      ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
+      CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
+      ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
+      CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
+
+      // === Setup ===
+      ;({
+        main,
+        rToken,
+        rsr,
+        distributor,
+        facade,
+        assetRegistry,
+        basketHandler,
+        backingManager,
+        compoundMock,
+        aaveMock,
+        aaveToken,
+        compToken,
+        compoundOracleInternal,
+        aaveOracleInternal,
+      } = await loadFixture(defaultFixture))
+
+      // Configure Distributor
+      const rsrDist = stRSRCut.div(fp('1')).mul(5)
+      const rTokenDist = fp('1').sub(stRSRCut).div(fp('1')).mul(5)
+      expect(rsrDist.add(rTokenDist)).to.equal(5)
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: rsrDist })
+      )
+        .to.emit(distributor, 'DistributionSet')
+        .withArgs(STRSR_DEST, bn(0), rsrDist)
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(FURNACE_DEST, { rTokenDist: rTokenDist, rsrDist: bn(0) })
+      )
+        .to.emit(distributor, 'DistributionSet')
+        .withArgs(FURNACE_DEST, rTokenDist, bn(0))
+
+      // Set trading params to 0
+      await backingManager.connect(owner).setBackingBuffer(0)
+      await backingManager.connect(owner).setDustAmount(0)
+
+      const primeBasket = []
+      const targetAmts = []
+      for (let i = 0; i < basketSize; i++) {
+        expect(collateralDecimals == 8 || collateralDecimals == 18).to.equal(true)
+        const token = collateralDecimals == 8 ? await prepCToken(i) : await prepAToken(i)
+        primeBasket.push(token)
+        targetAmts.push(primeWeight.div(basketSize))
+        await token.setExchangeRate(fp('1'))
+        await token.connect(owner).mint(addr1.address, MAX_UINT256)
+        await token.connect(addr1).approve(rToken.address, MAX_UINT256)
+      }
+
+      // Setup basket
+      await basketHandler.connect(owner).setPrimeBasket(
+        primeBasket.map((c) => c.address),
+        targetAmts
+      )
+      await basketHandler.connect(owner).switchBasket()
+
+      // Issue rTokens
+      await issueMany(rToken, rTokenSupply, addr1)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
+
+      // Set misc prices
+      await compoundOracleInternal.setPrice(await rsr.symbol(), bn('1e6'))
+      await aaveOracleInternal.setPrice(rsr.address, bn('2.5e14'))
+      await compoundOracleInternal.setPrice(await aaveToken.symbol(), bn('1e6'))
+      await aaveOracleInternal.setPrice(aaveToken.address, bn('2.5e14'))
+      await compoundOracleInternal.setPrice(await compToken.symbol(), bn('1e6'))
+
+      // === Execution ===
+
+      // Increase redemption rate
+      for (let i = 0; i < primeBasket.length; i++) {
+        const newRate = fp('1').add(i < howManyAppreciate ? appreciation : 0)
+        await primeBasket[i].setExchangeRate(newRate)
+      }
+
+      // Run auctions
+      await facade.runAuctionsForAllTraders()
+
+      console.log('trades', await backingManager.tradesStart())
+      for (let i = 0; bn(i).lt(await backingManager.tradesStart()); i++) {
+        const trade = <GnosisTrade>(
+          await ethers.getContractAt('GnosisTrade', await backingManager.trades(i))
+        )
+        const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
+        const auctionId = await trade.auctionId()
+        const [, , buy, sellAmt, buyAmt] = await gnosis.auctions(auctionId)
+        if (buy == rToken.address) {
+          await rToken.connect(addr1).approve(gnosis.address, buyAmt)
+          await gnosis.placeBid(auctionId, {
+            bidder: addr1.address,
+            sellAmount: sellAmt,
+            buyAmount: buyAmt,
+          })
+        } else if (buy == rsr.address) {
+          await rsr.connect(owner).mint(addr2.address, buyAmt)
+          await rsr.connect(addr2).approve(gnosis.address, buyAmt)
+          await gnosis.placeBid(auctionId, {
+            bidder: addr2.address,
+            sellAmount: sellAmt,
+            buyAmount: buyAmt,
+          })
+        } else {
+          throw new Error('test broken')
+        }
+      }
+
+      // Advance time till auctions end
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // Close auctions
+      await facade.runAuctionsForAllTraders()
+    }
+
+    // STORY
+    //
+    // There are N apppreciating collateral in the basket.
+    // Between 1 and N collateral appreciate X% (assume 0% backingBuffer)
+    // Launch up to 2-2N auctions using surplus collateral for RSR/RToken.
+    // Give result to Furnace/StRSR.
+    //
+    // DIMENSIONS
+    //
+    // 1. RToken supply
+    // 2. Size of basket
+    // 3. Prime basket weights
+    // 4. # of decimals in collateral token
+    // 5. % appreciation
+    // 6. Symmetry of appreciation (evenly vs all in 1 collateral)
+    // 7. StRSR cut (previously: f)
+
+    const MAX_BASKET_SIZE = SLOW ? 256 : 4
+
+    // [min, max, typical?]
+    let dimensions = [
+      [bn('1e9'), bn('1e48')], // RToken supply
+      [1, MAX_BASKET_SIZE, 7], // basket size
+      [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
+      [8, 18], // collateral decimals
+      [fp('0'), fp('1e9'), fp('0.02')], // % appreciation
+      [1, MAX_BASKET_SIZE], // how many collateral assets appreciate (up to)
+      [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
+    ]
+
+    if (!SLOW) {
+      dimensions = dimensions.map((d) => [d[0] as any, d[1] as any])
+    }
+
+    const cases = cartesianProduct(...dimensions)
+
+    const numCases = cases.length.toString()
+    cases.forEach((params, index) => {
+      if (index != 64) return
+      it(`case ${index} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+        await runScenario(
+          params[0] as BigNumber,
+          params[1] as number,
+          params[2] as BigNumber,
+          params[3] as number,
+          params[4] as BigNumber,
+          params[5] as number,
+          params[6] as BigNumber
+        )
       })
     })
   })

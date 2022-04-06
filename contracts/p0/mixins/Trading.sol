@@ -18,7 +18,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     ITrade[] public trades;
 
     // First trade that is still open (or trades.length if all trades are settled)
-    uint256 internal tradesStart;
+    uint256 public tradesStart;
 
     // The latest end time for any trade in `trades`.
     uint256 private latestEndtime;
