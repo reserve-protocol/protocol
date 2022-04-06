@@ -18,6 +18,9 @@ import "contracts/p0/mixins/Pausable.sol";
 contract MainP1 is Initializable, ContextUpgradeable, Pausable, UUPSUpgradeable, IMain {
     using FixLib for int192;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() initializer {}
+
     function poke() external virtual notPaused {
         // We think these are totally order-independent.
         basketHandler.ensureBasket();

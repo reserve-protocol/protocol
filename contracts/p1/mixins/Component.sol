@@ -12,6 +12,9 @@ import "contracts/interfaces/IMain.sol";
 abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradeable, IComponent {
     IMain public main;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() initializer {}
+
     // Sets main for the component - Can only be called during initialization
     // solhint-disable-next-line func-name-mixedcase
     function __Component_init(IMain main_) internal onlyInitializing {
