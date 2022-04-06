@@ -376,6 +376,8 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
     /// Execute the staking of `rsrAmount` RSR for `account`
     function _stake(address account, uint256 rsrAmount) internal {
         // Compute stake amount
+        // This is not an overflow risk according to our expected ranges:
+        //   rsrAmount <= 1e29, totalStaked <= 1e38, 1e29 * 1e38 < 2^256.
         uint256 stakeAmount = (stakeRSR == 0) ? rsrAmount : (rsrAmount * totalStakes) / stakeRSR;
 
         // Add to stakeAmount to stakes
@@ -393,6 +395,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         // Compute draft and RSR amounts
         //    (dividing out totalStakes, before multiplying by totalDrafts, is necessary here
         //    to avoid overflow, possibly at the cost of some precision)
+        //    (We should use uint256 muldiv here, instead!)
         uint256 rsrAmount = (stakeAmount * stakeRSR) / totalStakes;
         uint256 draftAmount = (draftRSR == 0) ? rsrAmount : (rsrAmount * totalDrafts) / draftRSR;
 

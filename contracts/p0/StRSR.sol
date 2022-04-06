@@ -117,6 +117,8 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
         payoutRewards();
 
         uint256 stakeAmount = rsrAmount;
+        // The next line is _not_ an overflow risk, in our expected ranges:
+        // rsrAmount <= 1e29 and totalStaked <= 1e38, so their product <= 1e67 < 1e77 < 2^256
         if (totalStaked > 0) stakeAmount = (rsrAmount * totalStaked) / rsrBacking;
 
         // Create stRSR balance
@@ -147,6 +149,10 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
         main.poke();
         payoutRewards();
 
+        // The next line is not an overflow risk:
+        // stakeAmount = rsrAmount * (totalStaked / rsrBacking) <= 1e29 * 1e9 = 1e38
+        // rsrBacking <= 1e29 (an RSR amount)
+        // so stakeAmount * rsrBacking <= 1e67 < 2^256
         uint256 rsrAmount = (stakeAmount * rsrBacking) / totalStaked;
 
         // Destroy the stRSR balance

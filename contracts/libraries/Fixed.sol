@@ -342,4 +342,57 @@ library FixLib {
         int256 diff = x - y;
         return -epsilon < diff && diff < epsilon;
     }
+
+    function muluDivu(
+        int192 x,
+        uint256 y,
+        uint256 z
+    ) public pure returns (int192) {
+        return _safe_wrap(int256(mulDiv(uint256(uint192(x)), y, z)));
+    }
+}
+
+/// mulDiv: return (x*y/z), overflowing *only* if the end result is out of range.
+///   Adapted from sources:
+///   https://medium.com/coinmonks/4db014e080b1, https://medium.com/wicketh/afa55870a65
+///   and quite a few of the other excellent "Mathemagic" posts from https://medium.com/wicketh
+function mulDiv(
+    uint256 x,
+    uint256 y,
+    uint256 z
+) pure returns (uint256 result) {
+    unchecked {
+        (uint256 l, uint256 h) = fullMul(x, y);
+        require(h < z);
+        uint256 mm = mulmod(x, y, z);
+        if (mm > l) h -= 1;
+        l -= mm;
+        uint256 pow2 = z & (0 - z);
+        z /= pow2;
+        l /= pow2;
+        l += h * ((0 - pow2) / pow2 + 1);
+        uint256 r = 1;
+        r *= 2 - z * r;
+        r *= 2 - z * r;
+        r *= 2 - z * r;
+        r *= 2 - z * r;
+        r *= 2 - z * r;
+        r *= 2 - z * r;
+        r *= 2 - z * r;
+        r *= 2 - z * r;
+        result = l * r;
+    }
+}
+
+/// fullMul: return (x*y) as a "virtual uint512"
+/// The computed result is (h*2^256 + l)
+///   Adapted from sources:
+///   https://medium.com/wicketh/27650fec525d, https://medium.com/coinmonks/4db014e080b1
+function fullMul(uint256 x, uint256 y) pure returns (uint256 l, uint256 h) {
+    unchecked {
+        uint256 mm = mulmod(x, y, uint256(0) - uint256(1));
+        l = x * y;
+        h = mm - l;
+        if (mm < l) h -= 1;
+    }
 }

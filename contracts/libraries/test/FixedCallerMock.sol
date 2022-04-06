@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity ^0.8.9;
 
-import { FixLib, RoundingApproach, toFix, toFixWithShift, intToFix, divFix, fixMin, fixMax } from "../Fixed.sol";
+import { FixLib, RoundingApproach, toFix, toFixWithShift, intToFix, divFix, fixMin, fixMax, mulDiv, fullMul } from "../Fixed.sol";
 
 // Simple mock for Fixed library.
 contract FixedCallerMock {
@@ -138,8 +138,15 @@ contract FixedCallerMock {
         return FixLib.near(x, y, epsilon);
     }
 
-    // Nonview version for gas estimation in test framework
-    function powu_nonview(int192 x, uint256 y) public pure {
-        FixLib.powu(x, y);
+    function mulDiv_(
+        uint256 x,
+        uint256 y,
+        uint256 z
+    ) public pure returns (uint256) {
+        return mulDiv(x, y, z);
+    }
+
+    function fullMul_(uint256 x, uint256 y) public pure returns (uint256 l, uint256 h) {
+        return fullMul(x, y);
     }
 }
