@@ -2,8 +2,8 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "contracts/p1/mixins/Component.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRewardable.sol";
@@ -13,8 +13,8 @@ import "contracts/interfaces/IRewardable.sol";
  * @notice A mix-in that makes a contract able to claim rewards
  */
 abstract contract RewardableP1 is ComponentP1, IRewardable {
-    using Address for address;
-    using SafeERC20 for IERC20;
+    using AddressUpgradeable for address;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
@@ -60,7 +60,10 @@ abstract contract RewardableP1 is ComponentP1, IRewardable {
             for (uint256 i = 0; i < numRewardTokens; i++) {
                 uint256 bal = rewardTokens[i].balanceOf(address(this));
                 if (bal > 0) {
-                    rewardTokens[i].safeTransfer(address(main.backingManager()), bal);
+                    IERC20Upgradeable(address(rewardTokens[i])).safeTransfer(
+                        address(main.backingManager()),
+                        bal
+                    );
                 }
             }
         }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
@@ -12,7 +12,7 @@ import "contracts/p1/mixins/Rewardable.sol";
 /// Abstract trading mixin for all Traders, to be paired with TradingLib
 abstract contract TradingP1 is RewardableP1, ITrading {
     using FixLib for int192;
-    using SafeERC20 for IERC20Metadata;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // All trades
     ITrade[] public trades;
@@ -66,7 +66,10 @@ abstract contract TradingP1 is RewardableP1, ITrading {
         IBroker broker = main.broker();
         if (broker.disabled()) return; // correct interaction with BackingManager/RevenueTrader
 
-        req.sell.erc20().safeIncreaseAllowance(address(broker), req.sellAmount);
+        IERC20Upgradeable(address(req.sell.erc20())).safeIncreaseAllowance(
+            address(broker),
+            req.sellAmount
+        );
         try broker.openTrade(req) returns (ITrade trade) {
             if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
 
@@ -81,7 +84,7 @@ abstract contract TradingP1 is RewardableP1, ITrading {
             );
         } catch {
             emit TradeBlocked(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
-            req.sell.erc20().safeApprove(address(broker), 0);
+            IERC20Upgradeable(address(req.sell.erc20())).safeApprove(address(broker), 0);
         }
     }
 

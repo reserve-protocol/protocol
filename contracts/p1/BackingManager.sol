@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p1/mixins/TradingLib.sol";
 import "contracts/p1/mixins/Trading.sol";
@@ -17,7 +17,7 @@ import "contracts/libraries/Fixed.sol";
  */
 contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for int192;
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     uint256 public tradingDelay; // {s} how long to wait until resuming trading after switching
     int192 public backingBuffer; // {%} how much extra backing collateral to keep
@@ -42,7 +42,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         for (uint256 i = 0; i < erc20s.length; i++) {
             uint256 initAllowance = erc20s[i].allowance(address(this), address(main.rToken()));
             uint256 increaseAmt = type(uint256).max - initAllowance;
-            erc20s[i].safeIncreaseAllowance(address(main.rToken()), increaseAmt);
+            IERC20Upgradeable(address(erc20s[i])).safeIncreaseAllowance(
+                address(main.rToken()),
+                increaseAmt
+            );
         }
     }
 
@@ -129,7 +132,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // Special-case RSR to forward to StRSR pool
         uint256 rsrBal = main.rsr().balanceOf(address(this));
         if (rsrBal > 0) {
-            main.rsr().safeTransfer(address(main.rsrTrader()), rsrBal);
+            IERC20Upgradeable(address(main.rsr())).safeTransfer(address(main.rsrTrader()), rsrBal);
         }
 
         // Mint revenue RToken
@@ -164,8 +167,16 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 uint256 toRSR = tokensPerShare * rsrShares;
                 uint256 toRToken = tokensPerShare * rTokenShares;
 
-                if (toRSR > 0) erc20s[i].safeTransfer(address(main.rsrTrader()), toRSR);
-                if (toRToken > 0) erc20s[i].safeTransfer(address(main.rTokenTrader()), toRToken);
+                if (toRSR > 0)
+                    IERC20Upgradeable(address(erc20s[i])).safeTransfer(
+                        address(main.rsrTrader()),
+                        toRSR
+                    );
+                if (toRToken > 0)
+                    IERC20Upgradeable(address(erc20s[i])).safeTransfer(
+                        address(main.rTokenTrader()),
+                        toRToken
+                    );
             }
         }
     }

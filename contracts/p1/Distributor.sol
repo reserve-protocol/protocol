@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IMain.sol";
@@ -9,7 +9,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Component.sol";
 
 contract DistributorP1 is ComponentP1, IDistributor {
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using FixLib for int192;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -70,7 +70,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
             } else if (addrTo == ST_RSR) {
                 addrTo = address(main.stRSR());
             }
-            erc20.safeTransferFrom(from, addrTo, transferAmt);
+            IERC20Upgradeable(address(erc20)).safeTransferFrom(from, addrTo, transferAmt);
         }
     }
 

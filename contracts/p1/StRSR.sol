@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
@@ -25,7 +25,7 @@ import "contracts/p1/mixins/Component.sol";
  */
 // solhint-disable max-states-count
 contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
 
@@ -192,7 +192,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
-        main.rsr().safeTransfer(_msgSender(), seizedRSR);
+        IERC20Upgradeable(address(main.rsr())).safeTransfer(_msgSender(), seizedRSR);
     }
 
     /// Assign reward payouts to the staker pool
@@ -386,7 +386,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
 
         // Transfer RSR from account to this contract
         emit Staked(account, rsrAmount, stakeAmount);
-        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
+        IERC20Upgradeable(address(main.rsr())).safeTransferFrom(account, address(this), rsrAmount);
     }
 
     /// Execute the move of `stakeAmount` from stake to draft, for `account`
@@ -440,7 +440,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
         draftRSR -= rsrAmount;
 
         emit UnstakingCompleted(firstId, endId, era, account, rsrAmount);
-        main.rsr().safeTransfer(account, rsrAmount);
+        IERC20Upgradeable(address(main.rsr())).safeTransfer(account, rsrAmount);
     }
 
     /// Add a cumulative draft to account's draft queue (from the current time).

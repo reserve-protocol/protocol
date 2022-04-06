@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -21,7 +21,7 @@ import "contracts/p1/mixins/Rewardable.sol";
 contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// Expected to be an IPFS hash
     string public constitutionURI;
@@ -124,7 +124,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
-            IERC20(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
+            IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
         }
 
         // ==== Enqueue the issuance ====
@@ -281,7 +281,11 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             uint256 prorata = prorate.mulu(bal).floor();
             withdrawals[i] = Math.min(withdrawals[i], prorata);
             // Send withdrawal
-            IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), withdrawals[i]);
+            IERC20Upgradeable(erc20s[i]).safeTransferFrom(
+                address(backingMgr),
+                _msgSender(),
+                withdrawals[i]
+            );
         }
     }
 
@@ -348,7 +352,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         // transfer deposits
         for (uint256 i = 0; i < queue.tokens.length; i++) {
-            IERC20(queue.tokens[i]).safeTransfer(account, deposits[i]);
+            IERC20Upgradeable(queue.tokens[i]).safeTransfer(account, deposits[i]);
         }
         queue.left = right;
 
@@ -371,7 +375,10 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         if (queue.left == 0) {
             for (uint256 i = 0; i < queue.tokens.length; i++) {
                 uint256 amtDeposit = rightItem.deposits[i];
-                IERC20(queue.tokens[i]).safeTransfer(address(main.backingManager()), amtDeposit);
+                IERC20Upgradeable(queue.tokens[i]).safeTransfer(
+                    address(main.backingManager()),
+                    amtDeposit
+                );
             }
             amtRTokenToMint = rightItem.amtRToken;
             newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets);
@@ -379,7 +386,10 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             IssueItem storage leftItem = queue.items[queue.left - 1];
             for (uint256 i = 0; i < queue.tokens.length; i++) {
                 uint256 amtDeposit = rightItem.deposits[i] - leftItem.deposits[i];
-                IERC20(queue.tokens[i]).safeTransfer(address(main.backingManager()), amtDeposit);
+                IERC20Upgradeable(queue.tokens[i]).safeTransfer(
+                    address(main.backingManager()),
+                    amtDeposit
+                );
             }
             amtRTokenToMint = rightItem.amtRToken - leftItem.amtRToken;
             newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets).minus(leftItem.amtBaskets);

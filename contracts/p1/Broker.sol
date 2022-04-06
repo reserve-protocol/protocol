@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/plugins/trading/GnosisTrade.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
@@ -13,7 +12,7 @@ import "contracts/p1/mixins/Component.sol";
 /// A simple core contract that deploys disposable trading contracts for Traders
 contract BrokerP1 is ComponentP1, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
-    using SafeERC20 for IERC20Metadata;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IGnosis public gnosis;
 
@@ -47,7 +46,11 @@ contract BrokerP1 is ComponentP1, IBroker {
         // In the future we'll have more sophisticated choice logic here, probably by trade size
         GnosisTrade trade = new GnosisTrade();
         trades[address(trade)] = true;
-        req.sell.erc20().safeTransferFrom(_msgSender(), address(trade), req.sellAmount);
+        IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
+            _msgSender(),
+            address(trade),
+            req.sellAmount
+        );
         trade.init(this, _msgSender(), gnosis, auctionLength, req);
         return trade;
     }
