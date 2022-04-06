@@ -347,7 +347,7 @@ library FixLib {
         int192 x,
         uint256 y,
         uint256 z
-    ) public pure returns (int192) {
+    ) internal pure returns (int192) {
         return _safe_wrap(int256(mulDiv(uint256(uint192(x)), y, z)));
     }
 }
