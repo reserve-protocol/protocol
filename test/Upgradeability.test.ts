@@ -162,7 +162,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['delegatecall'], // Review - Address.sol/SafeERC20.sol
         }
       )
       await newRToken.deployed()
@@ -204,7 +203,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['external-library-linking', 'delegatecall'], // Review - TradingLib (external) and Address/SafeERC20
+          unsafeAllow: ['external-library-linking'], // Review - TradingLib
         }
       )
       await newRevenueTrader.deployed()
@@ -232,7 +231,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['external-library-linking', 'delegatecall'], // Review - TradingLib (external) and Address/SafeERC20
+          unsafeAllow: ['external-library-linking'], // Review - TradingLib (external)
         }
       )
       await newBackingMgr.deployed()
@@ -250,10 +249,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       )
       const newAssetRegistry: AssetRegistryP1 = <AssetRegistryP1>await upgrades.deployProxy(
         AssetRegistryFactory,
-        [
-          main.address,
-          [rsrAsset.address, rTokenAsset.address]
-        ],
+        [main.address, [rsrAsset.address, rTokenAsset.address]],
         {
           initializer: 'init',
           kind: 'uups',
@@ -272,9 +268,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       )
       const newBasketHandler: BasketHandlerP1 = <BasketHandlerP1>await upgrades.deployProxy(
         BasketHandlerFactory,
-        [
-          main.address
-        ],
+        [main.address],
         {
           initializer: 'init',
           kind: 'uups',
@@ -286,19 +280,13 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     })
 
     it('Should deploy valid implementation - Distributor', async () => {
-      const DistributorFactory: ContractFactory = await ethers.getContractFactory(
-        'DistributorP1'
-      )
+      const DistributorFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
       const newDistributor: DistributorP1 = <DistributorP1>await upgrades.deployProxy(
         DistributorFactory,
-        [
-          main.address,
-          config.dist
-        ],
+        [main.address, config.dist],
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['delegatecall'], // Review - Address/SafeERC20
         }
       )
       await newDistributor.deployed()
@@ -308,22 +296,15 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(totals.rTokenTotal).equal(bn(40))
       expect(await newDistributor.main()).to.equal(main.address)
     })
-    
+
     it('Should deploy valid implementation - Broker', async () => {
-      const BrokerFactory: ContractFactory = await ethers.getContractFactory(
-        'BrokerP1'
-      )
+      const BrokerFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
       const newBroker: BrokerP1 = <BrokerP1>await upgrades.deployProxy(
         BrokerFactory,
-        [
-          main.address,
-          gnosis.address,
-          config.auctionLength
-        ],
+        [main.address, gnosis.address, config.auctionLength],
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['delegatecall'], // Review - Address/SafeERC20
         }
       )
       await newBroker.deployed()
@@ -335,23 +316,20 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     })
 
     it('Should deploy valid implementation - StRSR', async () => {
-      const StRSRFactory: ContractFactory = await ethers.getContractFactory(
-        'StRSRP1'
-      )
+      const StRSRFactory: ContractFactory = await ethers.getContractFactory('StRSRP1')
       const newStRSR: StRSRP1 = <StRSRP1>await upgrades.deployProxy(
         StRSRFactory,
         [
           main.address,
-         'stRTKNRSR Token',
-         'stRTKNRSR',
-         config.unstakingDelay,
-         config.rewardPeriod,
-         config.rewardRatio
+          'stRTKNRSR Token',
+          'stRTKNRSR',
+          config.unstakingDelay,
+          config.rewardPeriod,
+          config.rewardRatio,
         ],
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['delegatecall'], // Review - Address/SafeERC20
         }
       )
       await newStRSR.deployed()
