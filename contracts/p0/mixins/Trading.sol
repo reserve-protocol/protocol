@@ -41,6 +41,11 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         return trades.length > tradesStart;
     }
 
+    // @return The length of the trades array
+    function numTrades() public view returns (uint256) {
+        return trades.length;
+    }
+
     /// Settle any trades that can be settled
     /// @custom:refresher
     function settleTrades() external {
