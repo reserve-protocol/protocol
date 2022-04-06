@@ -348,7 +348,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
         address owner_,
         address spender,
         uint256 amount
-    ) internal virtual {
+    ) internal {
         uint256 currentAllowance = allowance(owner_, spender);
         if (currentAllowance != type(uint256).max) {
             require(currentAllowance >= amount, "ERC20: insufficient allowance");
@@ -468,7 +468,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public virtual {
+    ) public {
         require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
 
         bytes32 structHash = keccak256(
@@ -483,7 +483,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
         _approve(owner_, spender, value);
     }
 
-    function nonces(address owner_) public view virtual returns (uint256) {
+    function nonces(address owner_) public view returns (uint256) {
         return _nonces[owner_].current();
     }
 
@@ -492,7 +492,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
         return _domainSeparatorV4();
     }
 
-    function _useNonce(address owner_) internal virtual returns (uint256 current) {
+    function _useNonce(address owner_) internal returns (uint256 current) {
         Counters.Counter storage nonce = _nonces[owner_];
         current = nonce.current();
         nonce.increment();
