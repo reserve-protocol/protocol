@@ -247,8 +247,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         basketsNeeded = basketsNeeded_;
     }
 
-    /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
-    function price() external view returns (int192 p) {
+    /// @return {UoA/rTok} The protocol's best guess of the RToken price on markets
+    function price() external view returns (int192) {
         if (totalSupply() == 0) return main.basketHandler().price();
 
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}

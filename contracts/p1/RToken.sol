@@ -311,8 +311,8 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         basketsNeeded = basketsNeeded_;
     }
 
-    /// @return p {UoA/rTok} The protocol's best guess of the RToken price on markets
-    function price() external view returns (int192 p) {
+    /// @return {UoA/rTok} The protocol's best guess of the RToken price on markets
+    function price() external view returns (int192) {
         if (totalSupply() == 0) return main.basketHandler().price();
 
         int192 supply = toFixWithShift(totalSupply(), -int8(decimals()));
