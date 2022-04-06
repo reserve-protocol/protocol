@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "contracts/p1/RevenueTrader.sol";
 
+/// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract RevenueTradingP1V2 is RevenueTradingP1 {
     uint256 public newValue;
 

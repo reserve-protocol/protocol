@@ -10,6 +10,7 @@ import "contracts/p1/mixins/TradingLib.sol";
 
 /// Trader Component that converts all asset balances at its address to a
 /// single target asset and sends this asset to the Distributor.
+/// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract RevenueTradingP1 is TradingP1, IRevenueTrader {
     using FixLib for int192;
     using SafeERC20Upgradeable for IERC20Upgradeable;

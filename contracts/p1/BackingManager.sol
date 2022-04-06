@@ -15,6 +15,8 @@ import "contracts/libraries/Fixed.sol";
  * @title BackingManager
  * @notice The backing manager holds + manages the backing for an RToken
  */
+
+/// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for int192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
