@@ -51,12 +51,13 @@ export const getLastPrice = async (
   return coingeckoDataPoints.prices[0][1]
 }
 
-export const getSimplePrice = async (coin: string, currency: string): Promise<number> => {
-  const coingeckoSimplePrice = await getCoingeckoSimplePrice(coin, currency)
-  return coingeckoSimplePrice[`${coin}`][`${currency}`]
-}
+// TODO: Fix typing
+// export const getSimplePrice = async (coin: string, currency: string): Promise<number> => {
+//   const coingeckoSimplePrice = await getCoingeckoSimplePrice(coin, currency)
+//   return coingeckoSimplePrice[`${coin}`][`${currency}`]
+// }
 
-export const getSimpleTokenPrice = async (tokenAddr: string, currency: string): Promise<number> => {
-  const coingeckoSimplePrice = await getCoingeckoSimpleTokenPrice(tokenAddr, currency)
-  return coingeckoSimplePrice[`${tokenAddr}`][`${currency}`]
-}
+// export const getSimpleTokenPrice = async (tokenAddr: string, currency: string): Promise<number> => {
+//   const coingeckoSimplePrice = await getCoingeckoSimpleTokenPrice(tokenAddr, currency)
+//   return coingeckoSimplePrice[`${tokenAddr}`][`${currency}`]
+// }
