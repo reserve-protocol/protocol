@@ -2568,7 +2568,8 @@ describe('Revenues', () => {
       await compoundOracleInternal.setPrice(await compToken.symbol(), bn('1e6'))
     }
 
-    const doCommonExecution = async () => {
+    // Run, fill, and complete auctions
+    const doAuctions = async () => {
       // Run auctions
       await facade.runAuctionsForAllTraders()
 
@@ -2667,7 +2668,7 @@ describe('Revenues', () => {
           await primeBasket[i].setExchangeRate(newRate)
         }
 
-        await doCommonExecution()
+        await doAuctions()
       }
 
       // [min, max, typical?]
@@ -2775,7 +2776,7 @@ describe('Revenues', () => {
           }
         }
 
-        await doCommonExecution()
+        await doAuctions()
       }
 
       // [min, max, typical?]

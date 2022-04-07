@@ -116,7 +116,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         // ==== Compute and accept collateral ====
         int192 amtBaskets = (totalSupply() > 0) // {BU}
-            ? basketsNeeded.mulu(amtRToken).divuRound(totalSupply()) // {BU * qRTok / qRTok}
+            ? basketsNeeded.muluDivu(amtRToken, totalSupply()) // {BU * qRTok / qRTok}
             : toFixWithShift(amtRToken, -int8(decimals())); // {qRTok / qRTok}
 
         address[] memory erc20s;
@@ -254,7 +254,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
 
         // {BU} = {BU} * {qRTok} / {qRTok}
-        int192 baskets = basketsNeeded.mulu(amount).divuRound(totalSupply());
+        int192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
         assert(baskets.lte(basketsNeeded));
         emit Redemption(_msgSender(), amount, baskets);
 

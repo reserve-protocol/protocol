@@ -91,7 +91,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
 
         // Compute # of baskets to create `amount` qRTok
         int192 baskets = (totalSupply() > 0) // {BU}
-            ? basketsNeeded.mulu(amount).divuRound(totalSupply()) // {BU * qRTok / qRTok}
+            ? basketsNeeded.muluDivu(amount, totalSupply()) // {BU * qRTok / qRTok}
             : toFixWithShift(amount, -int8(decimals())); // {qRTok / qRTok}
 
         address[] memory erc20s;
@@ -194,7 +194,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
 
         // {BU} = {BU} * {qRTok} / {qRTok}
-        int192 baskets = basketsNeeded.mulu(amount).divuRound(totalSupply());
+        int192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
         assert(baskets.lte(basketsNeeded));
         emit Redemption(_msgSender(), amount, baskets);
 
