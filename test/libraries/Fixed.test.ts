@@ -1023,7 +1023,7 @@ describe('In FixLib,', () => {
 
   describe('fullMul', () => {
     const WORD = 2n ** 256n
-    it.only(`works for many values`, async () => {
+    it(`works for many values`, async () => {
       await fc.assert(
         fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), async (x, y) => {
           const loExpected = (x * y) % WORD
@@ -1044,9 +1044,9 @@ describe('In FixLib,', () => {
     })
   })
 
-  describe('mulDiv', () => {
+  describe('uMulDiv', () => {
     const WORD = 2n ** 256n
-    it.only('works for many values', async () => {
+    it('works for many values', async () => {
       await fc.assert(
         fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), fc.bigUintN(256), async (x, y, z_) => {
           // Ensure the result fits inside a uint256
@@ -1054,7 +1054,7 @@ describe('In FixLib,', () => {
           // so z is good if z in [x*y/WORD + 1, WORD) = x*y/WORD + 1 + [0, WORD-x*y/WORD-1)
           const z: bigint = 1n + (x * y) / WORD + (z_ % (WORD - (x * y) / WORD - 1n))
           const expectedResult: bigint = (x * y) / z
-          const result = await caller.mulDiv_(bn(x), bn(y), bn(z))
+          const result = await caller.uMulDiv_(bn(x), bn(y), bn(z))
           expect(result.toBigInt()).to.equal(expectedResult)
         }),
         {

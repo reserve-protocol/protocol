@@ -27,10 +27,10 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     string public constitutionURI;
 
     // MIN_ISS_RATE: {qRTok/block} 10k whole RTok
-    int192 public constant MIN_ISS_RATE = 10_000 * 1e18 * int192(FIX_SCALE);
+    uint256 public constant MIN_ISS_RATE = 10_000 * 1e18;
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
-    int192 public lastIssRate; // {qRTok/block}
+    uint256 public lastIssRate; // {qRTok/block}
     uint256 public lastIssRateBlock; // {block number}
 
     // When the all pending issuances will have vested.
@@ -176,11 +176,15 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         // Calculate the issuance rate (if this is the first issuance in the block)
         if (lastIssRateBlock < block.number) {
             lastIssRateBlock = block.number;
-            lastIssRate = fixMax(MIN_ISS_RATE, issuanceRate.mulu(totalSupply()));
+            lastIssRate = Math.max(
+                MIN_ISS_RATE,
+                issuanceRate.muluDiv(totalSupply(), FIX_ONE) // TODO check
+            );
         }
 
         // Add amtRToken's worth of issuance delay to allVestAt
-        finished = fixMax(allVestAt, toFix(block.number - 1)).plus(divFix(amtRToken, lastIssRate));
+        int192 before = fixMax(allVestAt, toFix(block.number - 1));
+        finished = before.plus(FIX_ONE.muluDivu(amtRToken, lastIssRate));
         allVestAt = finished;
     }
 

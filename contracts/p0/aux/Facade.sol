@@ -57,7 +57,7 @@ contract FacadeP0 is IFacade {
         if (needed.eq(FIX_ZERO)) return held.shiftLeft(int8(main.rToken().decimals())).floor();
 
         // {qRTok} = {BU} * {qRTok} / {BU}
-        return held.mulu(main.rToken().totalSupply()).div(needed).floor();
+        return held.muluDiv(main.rToken().totalSupply(), needed);
     }
 
     /// @return tokens Array of all known ERC20 asset addreses.

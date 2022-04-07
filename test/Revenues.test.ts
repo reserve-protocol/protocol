@@ -2460,7 +2460,6 @@ describe('Revenues', () => {
   })
 
   describe.only(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
-    const MAX_BASKET_SIZE = SLOW ? 256 : 4
     const defaultThreshold = fp('0.05') // 5%
     const delayUntilDefault = bn('86400') // 24h
     let ERC20Mock: ContractFactory
@@ -2538,8 +2537,8 @@ describe('Revenues', () => {
 
     const doCommonSetup = async (stRSRCut: BigNumber) => {
       // Configure Distributor
-      const rsrDist = stRSRCut.div(fp('1')).mul(5)
-      const rTokenDist = fp('1').sub(stRSRCut).div(fp('1')).mul(5)
+      const rsrDist = bn(5).mul(stRSRCut).div(fp('1'))
+      const rTokenDist = bn(5).mul(fp('1').sub(stRSRCut)).div(fp('1'))
       expect(rsrDist.add(rTokenDist)).to.equal(5)
       await expect(
         distributor
@@ -2570,42 +2569,47 @@ describe('Revenues', () => {
 
     // Run, fill, and complete auctions
     const doAuctions = async () => {
-      // Run auctions
-      await facade.runAuctionsForAllTraders()
+      let allTrades
+      let lastClosedTrade
+      do {
+        // Run auctions
+        await facade.runAuctionsForAllTraders()
 
-      console.log('trades', await backingManager.numTrades())
-      for (let i = 0; bn(i).lt(await backingManager.numTrades()); i++) {
-        const trade = <GnosisTrade>(
-          await ethers.getContractAt('GnosisTrade', await backingManager.trades(i))
-        )
-        const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
-        const auctionId = await trade.auctionId()
-        const [, , buy, sellAmt, buyAmt] = await gnosis.auctions(auctionId)
-        expect(buy == rToken.address || buy == rsr.address)
-        if (buy == rToken.address) {
-          await rToken.connect(addr1).approve(gnosis.address, buyAmt)
-          await gnosis.placeBid(auctionId, {
-            bidder: addr1.address,
-            sellAmount: sellAmt,
-            buyAmount: buyAmt,
-          })
-        } else if (buy == rsr.address) {
-          await rsr.connect(owner).mint(addr2.address, buyAmt)
-          await rsr.connect(addr2).approve(gnosis.address, buyAmt)
-          await gnosis.placeBid(auctionId, {
-            bidder: addr2.address,
-            sellAmount: sellAmt,
-            buyAmount: buyAmt,
-          })
+        for (let i = 0; bn(i).lt(await backingManager.numTrades()); i++) {
+          const trade = <GnosisTrade>(
+            await ethers.getContractAt('GnosisTrade', await backingManager.trades(i))
+          )
+          const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
+          const auctionId = await trade.auctionId()
+          const [, , buy, sellAmt, buyAmt] = await gnosis.auctions(auctionId)
+          expect(buy == rToken.address || buy == rsr.address)
+          if (buy == rToken.address) {
+            await rToken.connect(addr1).approve(gnosis.address, buyAmt)
+            await gnosis.placeBid(auctionId, {
+              bidder: addr1.address,
+              sellAmount: sellAmt,
+              buyAmount: buyAmt,
+            })
+          } else if (buy == rsr.address) {
+            await rsr.connect(owner).mint(addr2.address, buyAmt)
+            await rsr.connect(addr2).approve(gnosis.address, buyAmt)
+            await gnosis.placeBid(auctionId, {
+              bidder: addr2.address,
+              sellAmount: sellAmt,
+              buyAmount: buyAmt,
+            })
+          }
         }
-      }
 
-      // Advance time till auctions end
-      await advanceTime(config.auctionLength.add(100).toString())
+        // Advance time till auctions end
+        await advanceTime(config.auctionLength.add(100).toString())
 
-      // Close auctions
-      await facade.runAuctionsForAllTraders()
-      console.log('trades', await backingManager.tradesStart(), await backingManager.numTrades())
+        // Close auctions
+        await facade.runAuctionsForAllTraders()
+        allTrades = await backingManager.numTrades()
+        lastClosedTrade = await backingManager.tradesStart()
+        console.log('trades', lastClosedTrade, allTrades)
+      } while (lastClosedTrade < allTrades)
     }
 
     context('Appreciation', function () {
@@ -2671,27 +2675,34 @@ describe('Revenues', () => {
         await doAuctions()
       }
 
-      // [min, max, typical?]
-      let dimensions = [
-        [bn('1e9'), bn('1e48')], // RToken supply
-        [1, MAX_BASKET_SIZE, 7], // basket size
-        [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
-        [8, 18], // collateral decimals
-        [fp('0'), fp('1e9'), fp('0.02')], // % appreciation
-        [1, MAX_BASKET_SIZE], // how many collateral assets appreciate (up to)
-        [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
-      ]
-
-      if (!SLOW) {
-        dimensions = dimensions.map((d) => [d[0] as any, d[1] as any])
+      let dimensions
+      if (SLOW) {
+        dimensions = [
+          [fp('1e-6'), fp('1e30')], // RToken supply
+          [1, 256], // basket size
+          [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
+          [8, 18], // collateral decimals
+          [fp('0'), fp('1e9'), fp('0.02')], // % appreciation
+          [1, 256], // how many collateral assets appreciate (up to)
+          [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
+        ]
+      } else {
+        dimensions = [
+          [fp('1e-6'), fp('1e30')], // RToken supply
+          [7], // basket size
+          [fp('1e-6'), fp('1e3')], // prime basket weights
+          [8, 18], // collateral decimals
+          [fp('1e9')], // % appreciation
+          [1, 7], // how many collateral assets appreciate (up to)
+          [fp('0.6')], // StRSR cut (f)
+        ]
       }
 
       const cases = cartesianProduct(...dimensions)
 
       const numCases = cases.length.toString()
       cases.forEach((params, index) => {
-        if (index != 64) return
-        it(`case ${index} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+        it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
           await runScenario(
             params[0] as BigNumber,
             params[1] as number,
@@ -2748,10 +2759,13 @@ describe('Revenues', () => {
 
         // Setup basket
         await basketHandler.connect(owner).setPrimeBasket(
-          primeBasket.map((c) => c.address),
+          primeBasket.map((token) => token.address),
           targetAmts
         )
-        await basketHandler.connect(owner).switchBasket()
+        await expect(basketHandler.connect(owner).switchBasket()).to.emit(
+          basketHandler,
+          'BasketSet'
+        )
 
         // Issue rTokens
         await issueMany(rToken, rTokenSupply, addr1)
@@ -2766,7 +2780,10 @@ describe('Revenues', () => {
           if (decimals == 8) {
             // cToken
             const oldRewards = await compoundMock.compBalances(backingManager.address)
+            console.log('oldRewards', oldRewards)
             const newRewards = rewardTok.mul(bn('1e8')).div(numRewardTokens)
+            console.log('newRewards', newRewards)
+
             await compoundMock.setRewards(backingManager.address, oldRewards.add(newRewards))
           } else if (decimals == 18) {
             // aToken
@@ -2776,28 +2793,39 @@ describe('Revenues', () => {
           }
         }
 
+        // Claim rewards
+        await expect(backingManager.claimAndSweepRewards()).to.emit(
+          backingManager,
+          'RewardsClaimed'
+        )
+
+        // Do auctions
         await doAuctions()
       }
 
-      // [min, max, typical?]
-      let dimensions = [
-        [bn('1e9'), bn('1e48')], // RToken supply
-        [1, MAX_BASKET_SIZE, 7], // basket size
-        [1, 2], // num reward tokens
-        [bn('0'), bn('1e11'), bn('1e6')], // reward amount (whole tokens), up to 100B supply tokens
-        [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
-      ]
-
-      if (!SLOW) {
-        dimensions = dimensions.map((d) => [d[0] as any, d[1] as any])
+      let dimensions
+      if (SLOW) {
+        dimensions = [
+          [fp('1e-6'), fp('1e30')], // RToken supply
+          [1, 256], // basket size
+          [1, 2], // num reward tokens
+          [bn('0'), bn('1e11'), bn('1e6')], // reward amount (whole tokens), up to 100B supply tokens
+          [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
+        ]
+      } else {
+        dimensions = [
+          [fp('1e-6'), fp('1e30')], // RToken supply
+          [1, 7], // basket size
+          [2], // num reward tokens
+          [bn('1e11')], // reward amount (whole tokens), up to 100B supply tokens
+          [fp('0.6')], // StRSR cut (f)
+        ]
       }
-
       const cases = cartesianProduct(...dimensions)
 
       const numCases = cases.length.toString()
       cases.forEach((params, index) => {
-        if (index != 16) return
-        it(`case ${index} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+        it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
           await runScenario(
             params[0] as BigNumber,
             params[1] as number,

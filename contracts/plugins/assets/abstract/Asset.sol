@@ -22,7 +22,7 @@ abstract contract Asset is IAsset {
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (int192) {
-        return balQ(account).shiftLeft(-int8(erc20.decimals()));
+        return toFixWithShift(erc20.balanceOf(account), -int8(erc20.decimals()));
     }
 
     /// @return {qTok} The balance of the ERC20 in qTokens

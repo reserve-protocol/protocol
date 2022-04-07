@@ -138,7 +138,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         int192 needed = rToken.basketsNeeded();
         if (held.gt(needed)) {
             // {qRTok} = {(BU - BU) * qRTok / BU}
-            uint256 qRTok = held.minus(needed).mulu(rToken.totalSupply()).div(needed).floor();
+            uint256 qRTok = held.minus(needed).muluDiv(rToken.totalSupply(), needed); // TODO check
             rToken.mint(address(this), qRTok);
             rToken.setBasketsNeeded(held);
             needed = held;
@@ -157,10 +157,13 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
             if (bal.gt(neededI)) {
                 // delta: {qTok}
-                int192 delta = bal.minus(neededI).shiftLeft(int8(asset.erc20().decimals()));
+                uint256 delta = bal.minus(neededI).toUintWithShift(
+                    int8(asset.erc20().decimals()),
+                    RoundingApproach.FLOOR
+                );
                 (uint256 rTokenShares, uint256 rsrShares) = main.distributor().totals();
 
-                uint256 tokensPerShare = delta.floor() / (rTokenShares + rsrShares);
+                uint256 tokensPerShare = delta / (rTokenShares + rsrShares);
                 uint256 toRSR = tokensPerShare * rsrShares;
                 uint256 toRToken = tokensPerShare * rTokenShares;
 

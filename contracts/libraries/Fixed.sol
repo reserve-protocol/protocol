@@ -196,6 +196,24 @@ library FixLib {
         return floor(x);
     }
 
+    // TODO Matt: to check + test
+    /// Convert this int192 to a uint, pre-applying a shift and applying the specified rounding
+    /// Note that only FLOOR and CEIL are supported
+    function toUintWithShift(
+        int192 x,
+        int8 decimals,
+        RoundingApproach rounding
+    ) internal pure returns (uint192) {
+        int256 coeff = decimals >= 0 ? int256(10**uint8(decimals)) : int256(10**uint8(-decimals));
+        int256 shifted = decimals >= 0 ? x * coeff : x / coeff;
+        if (shifted < 0) revert IntOutOfBounds();
+        uint192 u = uint192(uint256(shifted) / FIX_SCALE_U);
+        if (rounding == RoundingApproach.FLOOR) return u;
+        if (rounding == RoundingApproach.ROUND) revert("RoundingApproach.ROUND unsupported");
+        if (uint256(shifted) == uint256(u) * FIX_SCALE_U) return u;
+        return u + 1;
+    }
+
     /// Convert this int192 to an int. Round the fractional part towards zero.
     function toInt(int192 x) internal pure returns (int192) {
         return x / FIX_SCALE;
@@ -348,7 +366,30 @@ library FixLib {
         uint256 y,
         uint256 z
     ) internal pure returns (int192) {
-        return _safe_wrap(int256(mulDiv(uint256(uint192(x)), y, z)));
+        return _safe_wrap(int256(uMulDiv(uint256(uint192(x)), y, z)));
+    }
+
+    // TODO attn: Matt to-check + test
+    // It's just like `muluDivu, but it takes a Fix divider and returns in uint256
+    function muluDiv(
+        int192 x,
+        uint256 y,
+        int192 z
+    ) internal pure returns (uint192) {
+        return uint192(uint256(uMulDiv(uint256(uint192(x)), y, uint256(uint192(z)))));
+    }
+
+    // TODO attn: Matt to-check + test
+    // Just a chained .mul + .div that allows overflow intermediately
+    function mulDiv(
+        int192 x,
+        int192 y,
+        int192 z
+    ) internal pure returns (int192) {
+        return
+            _safe_wrap(
+                int256(uMulDiv(uint256(uint192(x)), uint256(uint192(y)), uint256(uint192(z))))
+            );
     }
 }
 
@@ -356,7 +397,7 @@ library FixLib {
 ///   Adapted from sources:
 ///   https://medium.com/coinmonks/4db014e080b1, https://medium.com/wicketh/afa55870a65
 ///   and quite a few of the other excellent "Mathemagic" posts from https://medium.com/wicketh
-function mulDiv(
+function uMulDiv(
     uint256 x,
     uint256 y,
     uint256 z

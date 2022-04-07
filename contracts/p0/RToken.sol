@@ -41,10 +41,10 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
 
     // To enforce a fixed issuanceRate throughout the entire block
     // TODO: simplify
-    mapping(uint256 => int192) private blockIssuanceRates; // block.number => {qRTok/block}
+    mapping(uint256 => uint256) private blockIssuanceRates; // block.number => {qRTok/block}
 
     // MIN_ISSUANCE_RATE: {qRTok/block} 10k whole RTok
-    int192 public constant MIN_ISSUANCE_RATE = 10_000 * 1e18 * int192(FIX_SCALE);
+    uint256 public constant MIN_ISSUANCE_RATE = 10_000 * 1e18;
 
     // List of accounts. If issuances[user].length > 0 then (user is in accounts)
     EnumerableSet.AddressSet internal accounts;
@@ -96,7 +96,6 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
 
         address[] memory erc20s;
         (erc20s, deposits) = basketHandler.quote(baskets, RoundingApproach.CEIL);
-
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
             IERC20(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
@@ -253,7 +252,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
 
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
         int192 supply = toFixWithShift(totalSupply(), -int8(decimals()));
-        return main.basketHandler().price().mul(basketsNeeded).div(supply);
+        return main.basketHandler().price().mulDiv(basketsNeeded, supply);
     }
 
     /// Tries to vest an issuance
@@ -285,13 +284,13 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
         int192 before = toFix(block.number - 1);
 
         // Calculate the issuance rate if this is the first issue in the block
-        if (blockIssuanceRates[block.number].eq(FIX_ZERO)) {
-            blockIssuanceRates[block.number] = fixMax(
+        if (blockIssuanceRates[block.number] == 0) {
+            blockIssuanceRates[block.number] = Math.max(
                 MIN_ISSUANCE_RATE,
-                issuanceRate.mulu(totalSupply())
+                issuanceRate.muluDiv(totalSupply(), FIX_ONE) // TODO check
             );
         }
-        int192 perBlock = blockIssuanceRates[block.number];
+        uint256 perBlock = blockIssuanceRates[block.number];
 
         for (uint256 i = 0; i < accounts.length(); i++) {
             SlowIssuance[] storage queue = issuances[accounts.at(i)];
@@ -299,6 +298,6 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
                 before = queue[queue.length - 1].blockAvailableAt;
             }
         }
-        return before.plus(divFix(amount, perBlock));
+        return before.plus(FIX_ONE.muluDivu(amount, perBlock)); // TODO check
     }
 }

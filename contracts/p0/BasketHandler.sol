@@ -220,9 +220,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
             uint8 decimals = IERC20Metadata(address(basket.erc20s[i])).decimals();
 
-            // {qTok} = {BU} * {tok/BU} * {qTok/tok}
-            int192 q = amount.mul(quantity(basket.erc20s[i])).shiftLeft(int8(decimals));
-            quantitiesBig[size] = q.toUint(rounding);
+            // {tok} = {BU} * {tok/BU}
+            int192 tok = amount.mul(quantity(basket.erc20s[i]));
+            // {qTok} = {tok} * {qTok/tok}
+            quantitiesBig[size] = tok.toUintWithShift(int8(decimals), rounding);
             erc20sBig[size] = address(basket.erc20s[i]);
             size++;
         }
