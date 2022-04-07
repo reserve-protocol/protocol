@@ -1,6 +1,7 @@
 import { expect } from 'chai'
 import { ContractFactory, BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
+import fc from 'fast-check'
 
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp, pow10 } from '../../common/numbers'
@@ -1020,27 +1021,49 @@ describe('In FixLib,', () => {
     })
   })
 
-  describe.only('fullMul', () => {
-    const m = MAX_INT256
-    const table = [
-      [0, 0],
-      [0, 1],
-      [1, 1],
-      [48763, 875123],
-      [m, m],
-      [m.sub(1), m.sub(17)],
-    ].map(([x, y]) => [bn(x), bn(y)])
+  describe('fullMul', () => {
+    const WORD = 2n ** 256n
+    it.only(`works for many values`, async () => {
+      await fc.assert(
+        fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), async (x, y) => {
+          const loExpected = (x * y) % WORD
+          const hiExpected = (x * y) / WORD
+          const [loResult, hiResult] = await caller.fullMul_(BigNumber.from(x), BigNumber.from(y))
+          expect(hiResult).to.equal(hiExpected)
+          expect(loResult).to.equal(loExpected)
+        }),
+        {
+          examples: [
+            [0n, 0n],
+            [0n, 1n],
+            [1n, WORD - 1n],
+            [WORD - 1n, WORD - 1n],
+          ],
+        }
+      )
+    })
+  })
 
-    const WORD = bn(2).pow(256)
-    for (const [x, y] of table) {
-      it(`multiplies ${x} and ${y}`, async () => {
-        const prod = x.mul(y)
-        const loExpected = prod.mod(WORD)
-        const hiExpected = prod.div(WORD)
-        const [loResult, hiResult] = await caller.fullMul_(x, y)
-        expect(hiResult).to.equal(hiExpected)
-        expect(loResult).to.equal(loExpected)
-      })
-    }
+  describe('mulDiv', () => {
+    const WORD = 2n ** 256n
+    it.only('works for many values', async () => {
+      await fc.assert(
+        fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), fc.bigUintN(256), async (x, y, z_) => {
+          // Ensure the result fits inside a uint256
+          // z is good if x*y/z < WORD  <=> x*y/WORD < z
+          // so z is good if z in [x*y/WORD + 1, WORD) = x*y/WORD + 1 + [0, WORD-x*y/WORD-1)
+          const z: bigint = 1n + (x * y) / WORD + (z_ % (WORD - (x * y) / WORD - 1n))
+          const expectedResult: bigint = (x * y) / z
+          const result = await caller.mulDiv_(bn(x), bn(y), bn(z))
+          expect(result.toBigInt()).to.equal(expectedResult)
+        }),
+        {
+          examples: [
+            [1n, 1n, 1n],
+            [WORD - 1n, WORD - 1n, WORD - 1n],
+          ],
+        }
+      )
+    })
   })
 })
