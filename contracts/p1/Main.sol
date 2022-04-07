@@ -19,6 +19,7 @@ contract MainP1 is Initializable, ContextUpgradeable, Pausable, UUPSUpgradeable,
     using FixLib for int192;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
+    // solhint-disable-next-line no-empty-blocks
     constructor() initializer {}
 
     function poke() external virtual notPaused {
