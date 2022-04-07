@@ -1,9 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber } from 'ethers'
-import { advanceBlocks } from './time'
 import { bn, fp } from '../../common/numbers'
 import { TestIRToken } from '../../typechain'
+import { advanceBlocks } from './time'
 
 // Issue `amount` RToken to `user`.
 //
@@ -15,7 +15,7 @@ export async function issueMany(
   toIssue: BigNumber,
   user: SignerWithAddress
 ): Promise<void> {
-  const ISS_BLOCKS = bn(1e3) // How many blocks to wait between issuances; tweak to tune performance
+  const ISS_BLOCKS = bn(1e6) // How many blocks to wait between issuances; tweak to tune performance
   const MIN_ISSUANCE_RATE = fp(10000) // {rtoken / block}
 
   let supply = await rToken.totalSupply()
@@ -27,7 +27,7 @@ export async function issueMany(
     // Find currIssue, the amount to issue this round
     const yetToIssue = toIssue.sub(issued)
     const baseAmt = MIN_ISSUANCE_RATE.mul(ISS_BLOCKS)
-    const succAmt = supply.mul(issuanceRate).mul(ISS_BLOCKS)
+    const succAmt = supply.mul(issuanceRate).mul(ISS_BLOCKS).div(fp('1'))
     const maxAmt = baseAmt.gt(succAmt) ? baseAmt : succAmt
     const currIssue = maxAmt.lt(yetToIssue) ? maxAmt : yetToIssue
 
@@ -38,6 +38,7 @@ export async function issueMany(
     await advanceBlocks(ISS_BLOCKS.add(1))
 
     await rToken.vest(user.address, await rToken.endIdForVest(user.address))
+
     issued = issued.add(currIssue)
     supply = supply.add(currIssue)
   }
