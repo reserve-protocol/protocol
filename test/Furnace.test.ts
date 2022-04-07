@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import hre, { ethers, upgrades, waffle } from 'hardhat'
 import { bn, fp } from '../common/numbers'
 import { whileImpersonating } from './utils/impersonation'
 import {
@@ -15,7 +15,7 @@ import {
   USDCMock,
 } from '../typechain'
 import { advanceTime } from './utils/time'
-import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
+import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
 import { makeDecayFn } from './utils/rewards'
 import { cartesianProduct } from './utils/cases'
 
@@ -27,7 +27,6 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let addr2: SignerWithAddress
 
   // Contracts
-  let FurnaceFactory: ContractFactory
   let main: TestIMain
   let furnace: TestIFurnace
   let rToken: TestIRToken
@@ -52,6 +51,21 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
+
+  // Implementation-agnostic interface for deploying the Furnace
+  const deployNewFurnace = async (): Promise<TestIFurnace> => {
+    if (IMPLEMENTATION == Implementation.P0) {
+      const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')
+      return <TestIFurnace>await FurnaceFactory.deploy()
+    } else if (IMPLEMENTATION == Implementation.P1) {
+      const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
+      return <TestIFurnace>await upgrades.deployProxy(FurnaceFactory, [], {
+        kind: 'uups',
+      })
+    } else {
+      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+    }
+  }
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
@@ -87,9 +101,6 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     await token1.connect(owner).mint(addr2.address, initialBal)
     await token2.connect(owner).mint(addr2.address, initialBal)
     await token3.connect(owner).mint(addr2.address, initialBal)
-
-    // Set Furnace Factory
-    FurnaceFactory = await ethers.getContractFactory(`FurnaceP${IMPLEMENTATION}`)
   })
 
   describe('Deployment', () => {
@@ -103,7 +114,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     it('Deployment does not accept empty period', async () => {
       const newConfig = JSON.parse(JSON.stringify(config))
       newConfig.rewardPeriod = bn('0')
-      furnace = <TestIFurnace>await FurnaceFactory.deploy()
+      furnace = <TestIFurnace>await deployNewFurnace()
       await expect(
         furnace.init(main.address, newConfig.rewardPeriod, newConfig.rewardRatio)
       ).to.be.revertedWith('period cannot be zero')
@@ -351,7 +362,8 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       const newConfig = JSON.parse(JSON.stringify(config))
       newConfig.rewardPeriod = period
       newConfig.rewardRatio = ratio
-      furnace = <TestIFurnace>await FurnaceFactory.deploy()
+      furnace = <TestIFurnace>await deployNewFurnace()
+
       await main.connect(owner).setFurnace(furnace.address)
 
       // Issue and send tokens to furnace

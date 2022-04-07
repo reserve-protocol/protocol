@@ -727,7 +727,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should allow to set Furnace if Owner and perform validations', async () => {
-      // Setup test furnaces
+      // Setup test furnaces - We are only interested in the address no need for proxy
       const FurnaceFactory: ContractFactory = await ethers.getContractFactory(
         `FurnaceP${IMPLEMENTATION}`
       )
