@@ -8,37 +8,37 @@ import { bn, fp } from '../common/numbers'
 import {
   AaveOracleMock,
   Asset,
-  AssetRegistryP0,
   ATokenFiatCollateral,
-  BackingManagerP0,
-  BasketHandlerP0,
-  BrokerP0,
   CompoundOracleMock,
   CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
-  TestIDeployer,
-  DistributorP0,
   ERC20Mock,
   FacadeP0,
-  FurnaceP0,
-  MainP0,
   GnosisMock,
-  RevenueTradingP0,
+  IBasketHandler,
   RTokenAsset,
-  TestIRToken,
   StaticATokenMock,
+  TestIAssetRegistry,
+  TestIBackingManager,
+  TestIBroker,
+  TestIDeployer,
+  TestIDistributor,
+  TestIFurnace,
+  TestIMain,
+  TestIRevenueTrader,
+  TestIRToken,
   TestIStRSR,
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, defaultFixture, IConfig } from './fixtures'
+import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
 import { advanceTime } from './utils/time'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('MainP0 contract', () => {
+describe(`MainP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -63,9 +63,9 @@ describe('MainP0 contract', () => {
 
   // Trading
   let gnosis: GnosisMock
-  let broker: BrokerP0
-  let rsrTrader: RevenueTradingP0
-  let rTokenTrader: RevenueTradingP0
+  let broker: TestIBroker
+  let rsrTrader: TestIRevenueTrader
+  let rTokenTrader: TestIRevenueTrader
 
   // Tokens and Assets
   let initialBal: BigNumber
@@ -87,13 +87,13 @@ describe('MainP0 contract', () => {
   let rToken: TestIRToken
   let rTokenAsset: RTokenAsset
   let stRSR: TestIStRSR
-  let furnace: FurnaceP0
-  let main: MainP0
+  let furnace: TestIFurnace
+  let main: TestIMain
   let facade: FacadeP0
-  let assetRegistry: AssetRegistryP0
-  let backingManager: BackingManagerP0
-  let basketHandler: BasketHandlerP0
-  let distributor: DistributorP0
+  let assetRegistry: TestIAssetRegistry
+  let backingManager: TestIBackingManager
+  let basketHandler: IBasketHandler
+  let distributor: TestIDistributor
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -365,7 +365,7 @@ describe('MainP0 contract', () => {
       ).wait()
 
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
-      const newMain: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
+      const newMain: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
 
       expectInIndirectReceipt(receipt, newMain.interface, 'Initialized')
       expectInIndirectReceipt(receipt, newMain.interface, 'AssetRegistrySet', {
@@ -727,9 +727,11 @@ describe('MainP0 contract', () => {
     })
 
     it('Should allow to set Furnace if Owner and perform validations', async () => {
-      // Setup test furnaces
-      const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')
-      const newFurnace = <FurnaceP0>await FurnaceFactory.deploy()
+      // Setup test furnaces - We are only interested in the address no need for proxy
+      const FurnaceFactory: ContractFactory = await ethers.getContractFactory(
+        `FurnaceP${IMPLEMENTATION}`
+      )
+      const newFurnace = <TestIFurnace>await FurnaceFactory.deploy()
 
       // Check existing value
       expect(await main.furnace()).to.equal(furnace.address)

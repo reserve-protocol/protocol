@@ -8,19 +8,19 @@ import {
   AaveLendingPoolMock,
   AavePricedFiatCollateral,
   AaveOracleMock,
-  AssetRegistryP0,
   ATokenFiatCollateral,
-  BackingManagerP0,
-  BasketHandlerP0,
   CTokenFiatCollateral,
   CTokenMock,
   ComptrollerMock,
   ERC20Mock,
   FacadeP0,
-  MainP0,
+  IBasketHandler,
   RTokenP0,
   RTokenP1,
   StaticATokenMock,
+  TestIAssetRegistry,
+  TestIBackingManager,
+  TestIMain,
   TestIRToken,
   USDCMock,
 } from '../typechain'
@@ -74,12 +74,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let compoundMock: ComptrollerMock
 
   // Main
-  let main: MainP0
+  let main: TestIMain
   let rToken: TestIRToken
   let facade: FacadeP0
-  let assetRegistry: AssetRegistryP0
-  let backingManager: BackingManagerP0
-  let basketHandler: BasketHandlerP0
+  let assetRegistry: TestIAssetRegistry
+  let backingManager: TestIBackingManager
+  let basketHandler: IBasketHandler
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet

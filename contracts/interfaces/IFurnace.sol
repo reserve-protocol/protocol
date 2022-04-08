@@ -41,3 +41,9 @@ interface IFurnace is IComponent {
     /// @custom:refresher
     function melt() external;
 }
+
+interface TestIFurnace is IFurnace {
+    function lastPayout() external view returns (uint256);
+
+    function lastPayoutBal() external view returns (uint256);
+}

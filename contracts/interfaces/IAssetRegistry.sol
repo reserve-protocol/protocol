@@ -43,3 +43,11 @@ interface IAssetRegistry is IComponent {
     /// @return A list of all registered ERC20s
     function erc20s() external view returns (IERC20[] memory);
 }
+
+interface TestIAssetRegistry is IAssetRegistry {
+    function register(IAsset asset) external returns (bool);
+
+    function swapRegistered(IAsset asset) external returns (bool swapped);
+
+    function unregister(IAsset asset) external;
+}

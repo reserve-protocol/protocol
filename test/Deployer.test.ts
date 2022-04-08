@@ -7,22 +7,22 @@ import { bn } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   Asset,
-  AssetRegistryP0,
-  BackingManagerP0,
-  BasketHandlerP0,
-  BrokerP0,
   ComptrollerMock,
-  DistributorP0,
   ERC20Mock,
   FacadeP0,
-  FurnaceP0,
   GnosisMock,
-  MainP0,
+  IBasketHandler,
   RTokenAsset,
+  TestIAssetRegistry,
+  TestIBackingManager,
+  TestIBroker,
   TestIDeployer,
+  TestIDistributor,
+  TestIFurnace,
+  TestIMain,
+  TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
-  TradingP0,
 } from '../typechain'
 import { defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
 
@@ -51,21 +51,21 @@ describe(`DeployerP${IMPLEMENTATION} contract`, () => {
 
   // Market / Facade
   let gnosis: GnosisMock
-  let broker: BrokerP0
+  let broker: TestIBroker
   let facade: FacadeP0
 
   // Core contracts
   let rToken: TestIRToken
   let rTokenAsset: RTokenAsset
   let stRSR: TestIStRSR
-  let furnace: FurnaceP0
-  let main: MainP0
-  let assetRegistry: AssetRegistryP0
-  let backingManager: BackingManagerP0
-  let basketHandler: BasketHandlerP0
-  let distributor: DistributorP0
-  let rsrTrader: TradingP0
-  let rTokenTrader: TradingP0
+  let furnace: TestIFurnace
+  let main: TestIMain
+  let assetRegistry: TestIAssetRegistry
+  let backingManager: TestIBackingManager
+  let basketHandler: IBasketHandler
+  let distributor: TestIDistributor
+  let rsrTrader: TestIRevenueTrader
+  let rTokenTrader: TestIRevenueTrader
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet

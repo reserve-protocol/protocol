@@ -42,6 +42,15 @@ struct DeploymentParams {
 }
 
 /**
+ * @title Implementations
+ * @notice The set of implementation contracts to be used for proxies in the Deployer
+ */
+struct Implementations {
+    IMain main;
+    Components components;
+}
+
+/**
  * @title IDeployer
  * @notice Factory contract for an RToken system instance
  */

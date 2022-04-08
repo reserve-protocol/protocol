@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "contracts/plugins/assets/AavePricedAsset.sol";
 import "contracts/plugins/assets/CompoundPricedAsset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
@@ -9,20 +11,19 @@ import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
 import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
 import "contracts/p0/aux/Facade.sol";
-import "contracts/p0/AssetRegistry.sol";
-import "contracts/p0/BackingManager.sol";
-import "contracts/p0/BasketHandler.sol";
-import "contracts/p0/Broker.sol";
-import "contracts/p0/Distributor.sol";
-import "contracts/p0/RevenueTrader.sol";
-import "contracts/p0/Furnace.sol";
-import "contracts/p1/RToken.sol";
-import "contracts/p1/StRSR.sol";
 import "contracts/interfaces/IAsset.sol";
+import "contracts/interfaces/IAssetRegistry.sol";
+import "contracts/interfaces/IBackingManager.sol";
+import "contracts/interfaces/IBasketHandler.sol";
+import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IDeployer.sol";
+import "contracts/interfaces/IDistributor.sol";
 import "contracts/interfaces/IFacade.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/p0/Main.sol";
+import "contracts/interfaces/IFurnace.sol";
+import "contracts/interfaces/IRevenueTrader.sol";
+import "contracts/interfaces/IRToken.sol";
+import "contracts/interfaces/IStRSR.sol";
+import "contracts/p1/Main.sol";
 
 /**
  * @title DeployerP1
@@ -37,13 +38,17 @@ contract DeployerP1 is IDeployer {
     IComptroller public immutable comptroller;
     IAaveLendingPool public immutable aaveLendingPool;
 
+    // Implementation contracts for Upgradeability
+    Implementations public implementations;
+
     constructor(
         IERC20Metadata rsr_,
         IERC20Metadata comp_,
         IERC20Metadata aave_,
         IGnosis gnosis_,
         IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_
+        IAaveLendingPool aaveLendingPool_,
+        Implementations memory implementations_
     ) {
         rsr = rsr_;
         comp = comp_;
@@ -51,6 +56,7 @@ contract DeployerP1 is IDeployer {
         gnosis = gnosis_;
         comptroller = comptroller_;
         aaveLendingPool = aaveLendingPool_;
+        implementations = implementations_;
     }
 
     /// Deploys an instance of the entire system
@@ -67,21 +73,65 @@ contract DeployerP1 is IDeployer {
         address owner,
         DeploymentParams memory params
     ) external returns (address) {
-        MainP0 main = new MainP0();
+        // Main - Proxy
+        MainP1 main = MainP1(
+            address(new ERC1967Proxy(address(implementations.main), new bytes(0)))
+        );
 
-        // Components
-        IRToken rToken = new RTokenP1();
+        // Components - Proxies
+        IRToken rToken = IRToken(
+            address(new ERC1967Proxy(address(implementations.components.rToken), new bytes(0)))
+        );
         Components memory components = Components({
-            stRSR: new StRSRP1(),
+            stRSR: IStRSR(
+                address(new ERC1967Proxy(address(implementations.components.stRSR), new bytes(0)))
+            ),
             rToken: rToken,
-            assetRegistry: new AssetRegistryP0(),
-            basketHandler: new BasketHandlerP0(),
-            backingManager: new BackingManagerP0(),
-            distributor: new DistributorP0(),
-            rsrTrader: new RevenueTradingP0(),
-            rTokenTrader: new RevenueTradingP0(),
-            furnace: new FurnaceP0(),
-            broker: new BrokerP0()
+            assetRegistry: IAssetRegistry(
+                address(
+                    new ERC1967Proxy(
+                        address(implementations.components.assetRegistry),
+                        new bytes(0)
+                    )
+                )
+            ),
+            basketHandler: IBasketHandler(
+                address(
+                    new ERC1967Proxy(
+                        address(implementations.components.basketHandler),
+                        new bytes(0)
+                    )
+                )
+            ),
+            backingManager: IBackingManager(
+                address(
+                    new ERC1967Proxy(
+                        address(implementations.components.backingManager),
+                        new bytes(0)
+                    )
+                )
+            ),
+            distributor: IDistributor(
+                address(
+                    new ERC1967Proxy(address(implementations.components.distributor), new bytes(0))
+                )
+            ),
+            rsrTrader: IRevenueTrader(
+                address(
+                    new ERC1967Proxy(address(implementations.components.rsrTrader), new bytes(0))
+                )
+            ),
+            rTokenTrader: IRevenueTrader(
+                address(
+                    new ERC1967Proxy(address(implementations.components.rTokenTrader), new bytes(0))
+                )
+            ),
+            furnace: IFurnace(
+                address(new ERC1967Proxy(address(implementations.components.furnace), new bytes(0)))
+            ),
+            broker: IBroker(
+                address(new ERC1967Proxy(address(implementations.components.broker), new bytes(0)))
+            )
         });
 
         IAsset[] memory assets = new IAsset[](4);

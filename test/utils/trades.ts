@@ -1,10 +1,10 @@
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
-import { TradingP0, GnosisTrade } from '../../typechain'
+import { TestITrading, GnosisTrade } from '../../typechain'
 
 export const expectTrade = async (
-  trader: TradingP0,
+  trader: TestITrading,
   index: number,
   auctionInfo: Partial<ITradeInfo>
 ) => {
@@ -16,7 +16,7 @@ export const expectTrade = async (
 }
 
 // TODO use this in more places
-export const getTrade = async (trader: TradingP0, index: number): Promise<GnosisTrade> => {
+export const getTrade = async (trader: TestITrading, index: number): Promise<GnosisTrade> => {
   const tradeAddr = await trader.trades(index)
   return await ethers.getContractAt('GnosisTrade', tradeAddr)
 }

@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/mixins/Component.sol";
+import "contracts/p1/mixins/Component.sol";
 
 /*
  * @title StRSRP1
@@ -24,8 +24,8 @@ import "contracts/p0/mixins/Component.sol";
  * stakes that are in the process of being withdrawn and those that are not.
  */
 // solhint-disable max-states-count
-contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
-    using SafeERC20 for IERC20;
+contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
 
@@ -36,7 +36,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
     mapping(address => Counters.Counter) private _nonces;
 
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _PERMIT_TYPEHASH =
+    bytes32 private constant _PERMIT_TYPEHASH =
         keccak256(
             "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
         );
@@ -48,7 +48,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
     string private _symbol;
 
     // Era. If ever there's a total RSR wipeout, increment the era to zero old balances in one step.
-    uint256 internal era = 0;
+    uint256 internal era;
 
     // Stakes: usual staking position. These are the token stakes!
     mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
@@ -94,6 +94,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         __EIP712_init(name_, "1");
         _name = name_;
         _symbol = symbol_;
+        era = 0;
         payoutLastPaid = block.timestamp;
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
         unstakingDelay = unstakingDelay_;
@@ -191,7 +192,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
-        main.rsr().safeTransfer(_msgSender(), seizedRSR);
+        IERC20Upgradeable(address(main.rsr())).safeTransfer(_msgSender(), seizedRSR);
     }
 
     /// Assign reward payouts to the staker pool
@@ -347,7 +348,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         address owner_,
         address spender,
         uint256 amount
-    ) internal virtual {
+    ) internal {
         uint256 currentAllowance = allowance(owner_, spender);
         if (currentAllowance != type(uint256).max) {
             require(currentAllowance >= amount, "ERC20: insufficient allowance");
@@ -385,7 +386,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
 
         // Transfer RSR from account to this contract
         emit Staked(account, rsrAmount, stakeAmount);
-        main.rsr().safeTransferFrom(account, address(this), rsrAmount);
+        IERC20Upgradeable(address(main.rsr())).safeTransferFrom(account, address(this), rsrAmount);
     }
 
     /// Execute the move of `stakeAmount` from stake to draft, for `account`
@@ -439,7 +440,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         draftRSR -= rsrAmount;
 
         emit UnstakingCompleted(firstId, endId, era, account, rsrAmount);
-        main.rsr().safeTransfer(account, rsrAmount);
+        IERC20Upgradeable(address(main.rsr())).safeTransfer(account, rsrAmount);
     }
 
     /// Add a cumulative draft to account's draft queue (from the current time).
@@ -467,7 +468,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public virtual {
+    ) public {
         require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
 
         bytes32 structHash = keccak256(
@@ -482,7 +483,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         _approve(owner_, spender, value);
     }
 
-    function nonces(address owner_) public view virtual returns (uint256) {
+    function nonces(address owner_) public view returns (uint256) {
         return _nonces[owner_].current();
     }
 
@@ -491,7 +492,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         return _domainSeparatorV4();
     }
 
-    function _useNonce(address owner_) internal virtual returns (uint256 current) {
+    function _useNonce(address owner_) internal returns (uint256 current) {
         Counters.Counter storage nonce = _nonces[owner_];
         current = nonce.current();
         nonce.increment();

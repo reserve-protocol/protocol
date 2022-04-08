@@ -12,7 +12,7 @@ import "contracts/interfaces/IRewardable.sol";
  * @title Rewardable
  * @notice A mix-in that makes a contract able to claim rewards
  */
-abstract contract RewardableP0 is Component, IRewardable {
+abstract contract RewardableP0 is ComponentP0, IRewardable {
     using Address for address;
     using SafeERC20 for IERC20;
 

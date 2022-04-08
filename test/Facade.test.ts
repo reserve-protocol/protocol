@@ -8,9 +8,9 @@ import {
   CTokenMock,
   ERC20Mock,
   FacadeP0,
-  MainP0,
-  TestIRToken,
   StaticATokenMock,
+  TestIMain,
+  TestIRToken,
   TestIStRSR,
   USDCMock,
 } from '../typechain'
@@ -45,7 +45,7 @@ describe('FacadeP0 contract', () => {
   let facade: FacadeP0
 
   // Main
-  let main: MainP0
+  let main: TestIMain
   let rToken: TestIRToken
   let stRSR: TestIStRSR
 
