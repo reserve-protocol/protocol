@@ -153,7 +153,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             IAsset asset = main.assetRegistry().toAsset(erc20s[i]);
 
             int192 bal = asset.bal(address(this)); // {tok}
-            int192 neededI = needed.mul(main.basketHandler().quantity(erc20s[i]));
+            int192 neededI = needed.mulCeil(main.basketHandler().quantity(erc20s[i]));
 
             if (bal.gt(neededI)) {
                 // delta: {qTok}

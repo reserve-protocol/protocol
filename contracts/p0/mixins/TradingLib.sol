@@ -34,15 +34,12 @@ library TradingLibP0 {
         if (sellAmount.lt(dustThreshold(sell))) return (false, trade);
 
         // {sellTok}
-        int192 fixSellAmount = fixMin(sellAmount, sell.maxTradeVolume().div(sell.price()));
-        trade.sellAmount = fixSellAmount.shiftLeft(int8(sell.erc20().decimals())).floor();
+        int192 s = fixMin(sellAmount, sell.maxTradeVolume().div(sell.price()));
+        trade.sellAmount = s.toUintWithShift(int8(sell.erc20().decimals()), RoundingApproach.FLOOR);
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        int192 minBuyAmount = fixSellAmount
-            .mul(FIX_ONE.minus(maxTradeSlippage()))
-            .mul(sell.price())
-            .div(buy.price());
-        trade.minBuyAmount = minBuyAmount.shiftLeft(int8(buy.erc20().decimals())).ceil();
+        int192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mul(sell.price()).div(buy.price());
+        trade.minBuyAmount = b.toUintWithShift(int8(buy.erc20().decimals()), RoundingApproach.CEIL);
         return (true, trade);
     }
 
@@ -100,8 +97,8 @@ library TradingLibP0 {
         int192 basketBottom = basketTop;
 
         if (useFallenTarget) {
-            int192 tradeVolume = FIX_ZERO;
-            int192 totalValue = FIX_ZERO;
+            int192 tradeVolume = FIX_ZERO; // {UoA}
+            int192 totalValue = FIX_ZERO; // {UoA}
             for (uint256 i = 0; i < erc20s.length; i++) {
                 IAsset asset = assetRegistry().toAsset(erc20s[i]);
 

@@ -196,8 +196,9 @@ library FixLib {
         return floor(x);
     }
 
+    // SHOULD BE PURE
     // TODO Matt: to check + test
-    /// Convert this int192 to a uint, pre-applying a shift and applying the specified rounding
+    /// Convert this int192 to a uint, pre-applying a shift, then applying therounding
     /// Note that only FLOOR and CEIL are supported
     function toUintWithShift(
         int192 x,
@@ -269,6 +270,14 @@ library FixLib {
         return _safe_wrap((naive_prod + rounding_adjustment) / FIX_SCALE);
     }
 
+    /// Multiply this int192 by a int192.
+    /// Round truncated values upwards towards one.
+    function mulCeil(int192 x, int192 y) internal pure returns (int192) {
+        int256 naive_prod = int256(x) * int256(y);
+        if (naive_prod % FIX_SCALE == 0) return _safe_wrap(naive_prod / FIX_SCALE);
+        return _safe_wrap((naive_prod) / FIX_SCALE + 1);
+    }
+
     /// Multiply this int192 by a uint.
     function mulu(int192 x, uint256 y) internal pure returns (int192) {
         if (y > type(uint256).max / 2) revert UIntOutOfBounds();
@@ -280,6 +289,14 @@ library FixLib {
         // Multiply-in FIX_SCALE before dividing by y to preserve right-hand digits of result.
         int256 shift_x = int256(x) * FIX_SCALE;
         return _safe_wrap(shift_x / y);
+    }
+
+    /// Divide this int192 by a int192; round the fractional part towards one.
+    function divCeil(int192 x, int192 y) internal pure returns (int192) {
+        // Multiply-in FIX_SCALE before dividing by y to preserve right-hand digits of result.
+        int256 shift_x = int256(x) * FIX_SCALE;
+        int256 u = shift_x / y;
+        return _safe_wrap(shift_x % y == 0 ? u : u + 1);
     }
 
     /// Divide this int192 by a uint.
@@ -366,7 +383,7 @@ library FixLib {
         uint256 y,
         uint256 z
     ) internal pure returns (int192) {
-        return _safe_wrap(int256(uMulDiv(uint256(uint192(x)), y, z)));
+        return _safe_wrap(int256(mulDiv256(uint256(uint192(x)), y, z)));
     }
 
     // TODO attn: Matt to-check + test
@@ -376,11 +393,12 @@ library FixLib {
         uint256 y,
         int192 z
     ) internal pure returns (uint192) {
-        return uint192(uint256(uMulDiv(uint256(uint192(x)), y, uint256(uint192(z)))));
+        return uint192(uint256(mulDiv256(uint256(uint192(x)), y, uint256(uint192(z)))));
     }
 
     // TODO attn: Matt to-check + test
     // Just a chained .mul + .div that allows overflow intermediately
+    // May not be necessary if we are okay with less precision
     function mulDiv(
         int192 x,
         int192 y,
@@ -388,7 +406,7 @@ library FixLib {
     ) internal pure returns (int192) {
         return
             _safe_wrap(
-                int256(uMulDiv(uint256(uint192(x)), uint256(uint192(y)), uint256(uint192(z))))
+                int256(mulDiv256(uint256(uint192(x)), uint256(uint192(y)), uint256(uint192(z))))
             );
     }
 }
@@ -397,7 +415,7 @@ library FixLib {
 ///   Adapted from sources:
 ///   https://medium.com/coinmonks/4db014e080b1, https://medium.com/wicketh/afa55870a65
 ///   and quite a few of the other excellent "Mathemagic" posts from https://medium.com/wicketh
-function uMulDiv(
+function mulDiv256(
     uint256 x,
     uint256 y,
     uint256 z

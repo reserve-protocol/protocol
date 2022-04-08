@@ -191,7 +191,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         if (!goodCollateral(erc20)) return FIX_ZERO;
 
         // {qTok/BU} = {ref/BU} / {ref/tok}
-        return basket.refAmts[erc20].div(main.assetRegistry().toColl(erc20).refPerTok());
+        return basket.refAmts[erc20].divCeil(main.assetRegistry().toColl(erc20).refPerTok());
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
@@ -221,7 +221,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             uint8 decimals = IERC20Metadata(address(basket.erc20s[i])).decimals();
 
             // {tok} = {BU} * {tok/BU}
-            int192 tok = amount.mul(quantity(basket.erc20s[i]));
+            int192 tok = amount.mulCeil(quantity(basket.erc20s[i]));
             // {qTok} = {tok} * {qTok/tok}
             quantitiesBig[size] = tok.toUintWithShift(int8(decimals), rounding);
             erc20sBig[size] = address(basket.erc20s[i]);
@@ -295,7 +295,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
             if (goodCollateral(erc20) && targetWeight.gt(FIX_ZERO)) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
-                newBasket.add(erc20, targetWeight.div(reg.toColl(erc20).targetPerRef()));
+                newBasket.add(erc20, targetWeight.divCeil(reg.toColl(erc20).targetPerRef()));
             }
         }
 
@@ -319,10 +319,14 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             // Set backup basket weights
             uint256 assigned = 0;
             int192 needed = totalWeights[i].minus(goodWeights[i]);
+            int192 fixSize = toFix(size);
             for (uint256 j = 0; j < backup.erc20s.length && assigned < size; j++) {
                 IERC20 erc20 = backup.erc20s[j];
                 if (goodCollateral(erc20)) {
-                    newBasket.add(erc20, needed.divu(size).div(reg.toColl(erc20).targetPerRef()));
+                    newBasket.add(
+                        erc20,
+                        needed.divCeil(fixSize).divCeil(reg.toColl(erc20).targetPerRef())
+                    );
                     assigned++;
                 }
             }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity ^0.8.9;
 
-import { FixLib, RoundingApproach, toFix, toFixWithShift, intToFix, divFix, fixMin, fixMax, uMulDiv, fullMul } from "../Fixed.sol";
+import { FixLib, RoundingApproach, toFix, toFixWithShift, intToFix, divFix, fixMin, fixMax, mulDiv256, fullMul } from "../Fixed.sol";
 
 // Simple mock for Fixed library.
 contract FixedCallerMock {
@@ -138,12 +138,12 @@ contract FixedCallerMock {
         return FixLib.near(x, y, epsilon);
     }
 
-    function mulDiv_(
+    function mulDiv256_(
         uint256 x,
         uint256 y,
         uint256 z
     ) public pure returns (uint256) {
-        return uMulDiv(x, y, z);
+        return mulDiv256(x, y, z);
     }
 
     function fullMul_(uint256 x, uint256 y) public pure returns (uint256 l, uint256 h) {
