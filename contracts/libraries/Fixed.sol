@@ -283,6 +283,13 @@ library FixLib {
         return _safe_wrap(x * int256(y));
     }
 
+    /// Multiply this int192 by a uint and output the result as a uint.
+    /// Round truncated values toward zero.
+    function muluToUint(int192 x, uint256 y) internal pure returns (uint256) {
+        if (y > type(uint256).max / 2) revert UIntOutOfBounds();
+        return uint256((x * int256(y)) / FIX_SCALE);
+    }
+
     /// Divide this int192 by a int192; round the fractional part towards zero.
     function div(int192 x, int192 y) internal pure returns (int192) {
         // Multiply-in FIX_SCALE before dividing by y to preserve right-hand digits of result.
@@ -377,6 +384,8 @@ library FixLib {
         return -epsilon < diff && diff < epsilon;
     }
 
+    /// A chained .mul + .div on uints that permits for overflow intermediately
+    /// @dev Do not use if you can avoid it. Has higher gas costs
     function muluDivu(
         int192 x,
         uint256 y,
@@ -385,20 +394,8 @@ library FixLib {
         return _safe_wrap(int256(mulDiv256(uint256(uint192(x)), y, z)));
     }
 
-    // TODO attn: Matt to-check + test
-    // It's just like `muluDivu, but it takes a Fix divider and returns in uint192
-    // Not really in the pattern of the rest of the functions...
-    function muluDiv(
-        int192 x,
-        uint256 y,
-        int192 z
-    ) internal pure returns (uint192) {
-        return uint192(uint256(mulDiv256(uint256(uint192(x)), y, uint256(uint192(z)))));
-    }
-
-    // TODO attn: Matt to-check + test
-    // Just a chained .mul + .div that allows overflow intermediately
-    // May not be necessary if we are okay with less precision
+    // A chained .mul + .div on Fixes that permits for overflow intermediately
+    /// @dev Do not use if you can avoid it. Has higher gas costs
     function mulDiv(
         int192 x,
         int192 y,
@@ -415,6 +412,7 @@ library FixLib {
 ///   Adapted from sources:
 ///   https://medium.com/coinmonks/4db014e080b1, https://medium.com/wicketh/afa55870a65
 ///   and quite a few of the other excellent "Mathemagic" posts from https://medium.com/wicketh
+/// @dev Do not use if you can avoid it. Has higher gas costs
 function mulDiv256(
     uint256 x,
     uint256 y,

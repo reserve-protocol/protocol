@@ -53,7 +53,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
 
     int192 public basketsNeeded; //  {BU}
 
-    int192 public issuanceRate; // {%} of RToken supply to issue per block
+    int192 public issuanceRate; // {qRTok/(qRTok * block)} = {1/block} of RToken supply to issue per block
 
     function init(
         IMain main_,
@@ -287,7 +287,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
         if (blockIssuanceRates[block.number] == 0) {
             blockIssuanceRates[block.number] = Math.max(
                 MIN_ISSUANCE_RATE,
-                issuanceRate.muluDiv(totalSupply(), FIX_ONE) // TODO check
+                issuanceRate.muluToUint(totalSupply())
             );
         }
         uint256 perBlock = blockIssuanceRates[block.number];
@@ -298,6 +298,6 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
                 before = queue[queue.length - 1].blockAvailableAt;
             }
         }
-        return before.plus(FIX_ONE.muluDivu(amount, perBlock)); // TODO check
+        return before.plus(FIX_ONE.muluDivu(amount, perBlock));
     }
 }
