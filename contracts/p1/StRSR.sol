@@ -77,6 +77,9 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         uint256 availableAt; // When the last of the drafts will become available
     }
 
+    // Min exchange rate {qRSR/qStRSR}
+    int192 private constant MIN_EXCHANGE_RATE = int192(1e9); // 1e-9
+
     // ==== Gov Params ====
     uint256 public unstakingDelay;
     uint256 public rewardPeriod;
@@ -156,10 +159,14 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         int192 initialExchangeRate = exchangeRate();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
+        if (rsrBalance == 0) return;
+
+        // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
+        uint256 allStakes = totalDrafts + totalStakes; // {qStRSR}
+        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.muluDiv(allStakes, FIX_ONE); // {qRSR}
 
         uint256 seizedRSR;
-        if (rsrBalance == 0) return;
-        if (rsrBalance <= rsrAmount) {
+        if (rsrBalance <= rsrAmount + dustRSRAmt) {
             // Total RSR stake wipeout.
             seizedRSR = rsrBalance;
 

@@ -196,7 +196,6 @@ library FixLib {
         return floor(x);
     }
 
-    // SHOULD BE PURE
     // TODO Matt: to check + test
     /// Convert this int192 to a uint, pre-applying a shift, then applying therounding
     /// Note that only FLOOR and CEIL are supported
@@ -387,7 +386,8 @@ library FixLib {
     }
 
     // TODO attn: Matt to-check + test
-    // It's just like `muluDivu, but it takes a Fix divider and returns in uint256
+    // It's just like `muluDivu, but it takes a Fix divider and returns in uint192
+    // Not really in the pattern of the rest of the functions...
     function muluDiv(
         int192 x,
         uint256 y,
