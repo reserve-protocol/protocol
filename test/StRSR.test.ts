@@ -1552,7 +1552,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     cases.forEach((params, index) => {
       // if (rewardPeriod * 2 > unstakingDelay)
       if (params[5].mul(2).lte(params[4])) {
-        it(`case ${index} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+        it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
           await runSimulation(params)
         })
       }

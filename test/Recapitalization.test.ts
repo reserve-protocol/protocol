@@ -3771,7 +3771,7 @@ describe('MainP0 contract', () => {
     const cases = cartesianProduct(...dimensions)
     const numCases = cases.length.toString()
     cases.forEach((params, index) => {
-      it(`case ${index} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+      it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
         await runSimulation(
           params[0] as number,
           params[1] as number,

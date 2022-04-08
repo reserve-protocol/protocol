@@ -33,6 +33,7 @@ import {
   MainP0,
   GnosisMock,
   RevenueTradingP0,
+  RTokenAsset,
   TestIRToken,
   StaticATokenMock,
   TestIStRSR,
@@ -1971,7 +1972,7 @@ describe('Revenues', () => {
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      it('Should handle slight increase in collateral correctly - full cycle', async () => {
+      it.only('Should handle slight increase in collateral correctly - full cycle', async () => {
         // Check Price and Assets value
         expect(await rToken.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
@@ -2459,7 +2460,7 @@ describe('Revenues', () => {
     })
   })
 
-  describe.only(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
+  describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     const defaultThreshold = fp('0.05') // 5%
     const delayUntilDefault = bn('86400') // 24h
     let ERC20Mock: ContractFactory
@@ -2495,7 +2496,7 @@ describe('Revenues', () => {
       const collateral = <ATokenFiatCollateral>(
         await ATokenCollateralFactory.deploy(
           erc20.address,
-          config.maxTradeVolume,
+          bn('1e57'),
           defaultThreshold,
           delayUntilDefault,
           underlying.address,
@@ -2523,7 +2524,7 @@ describe('Revenues', () => {
       const collateral = <CTokenFiatCollateral>(
         await CTokenCollateralFactory.deploy(
           erc20.address,
-          config.maxTradeVolume,
+          bn('1e57'),
           defaultThreshold,
           delayUntilDefault,
           underlying.address,
@@ -2555,9 +2556,10 @@ describe('Revenues', () => {
         .to.emit(distributor, 'DistributionSet')
         .withArgs(FURNACE_DEST, rTokenDist, bn(0))
 
-      // Set trading params to 0
-      await backingManager.connect(owner).setBackingBuffer(0)
+      // Eliminate auction frictions
       await backingManager.connect(owner).setDustAmount(0)
+      await rsrTrader.connect(owner).setDustAmount(0)
+      await rTokenTrader.connect(owner).setDustAmount(0)
 
       // Set prices
       await compoundOracleInternal.setPrice(await rsr.symbol(), bn('1e6'))
@@ -2565,54 +2567,77 @@ describe('Revenues', () => {
       await compoundOracleInternal.setPrice(await aaveToken.symbol(), bn('1e6'))
       await aaveOracleInternal.setPrice(aaveToken.address, bn('2.5e14'))
       await compoundOracleInternal.setPrice(await compToken.symbol(), bn('1e6'))
+
+      // Replace RSR and RToken assets with larger maxTradeVolume settings
+      const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset')
+      const RSRAssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAsset')
+      const newRTokenAsset: RTokenAsset = <RTokenAsset>(
+        await RTokenAssetFactory.deploy(rToken.address, bn('1e57'), main.address)
+      )
+      const newRSRAsset: AavePricedAsset = <AavePricedAsset>(
+        await RSRAssetFactory.deploy(
+          compToken.address,
+          bn('1e57'),
+          compoundMock.address,
+          aaveMock.address
+        )
+      )
+      await assetRegistry.connect(owner).swapRegistered(newRTokenAsset.address)
+      await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
     }
 
-    // Run, fill, and complete auctions
-    const doAuctions = async () => {
-      let allTrades
-      let lastClosedTrade
-      do {
-        // Run auctions
+    const runAuctionsForAllTraders = async () => {
+      let didStuff = true
+      // Run auctions
+      while (didStuff) {
+        didStuff = false
+        // Close auctions
         await facade.runAuctionsForAllTraders()
 
-        for (let i = 0; bn(i).lt(await backingManager.numTrades()); i++) {
-          const trade = <GnosisTrade>(
-            await ethers.getContractAt('GnosisTrade', await backingManager.trades(i))
-          )
-          const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
-          const auctionId = await trade.auctionId()
-          const [, , buy, sellAmt, buyAmt] = await gnosis.auctions(auctionId)
-          expect(buy == rToken.address || buy == rsr.address)
-          if (buy == rToken.address) {
-            await rToken.connect(addr1).approve(gnosis.address, buyAmt)
-            await gnosis.placeBid(auctionId, {
-              bidder: addr1.address,
-              sellAmount: sellAmt,
-              buyAmount: buyAmt,
-            })
-          } else if (buy == rsr.address) {
-            await rsr.connect(owner).mint(addr2.address, buyAmt)
-            await rsr.connect(addr2).approve(gnosis.address, buyAmt)
-            await gnosis.placeBid(auctionId, {
-              bidder: addr2.address,
-              sellAmount: sellAmt,
-              buyAmount: buyAmt,
-            })
+        expect(await backingManager.numTrades()).to.equal(0)
+        const traders = [rsrTrader, rTokenTrader]
+        for (const trader of traders) {
+          const lastClosedTrade = await trader.tradesStart()
+          const totalTrades = await trader.numTrades()
+          for (let i = lastClosedTrade; i.lt(totalTrades); i = i.add(1)) {
+            didStuff = true
+            const trade = <GnosisTrade>(
+              await ethers.getContractAt('GnosisTrade', await trader.trades(i))
+            )
+            const gnosis = <GnosisMock>(
+              await ethers.getContractAt('GnosisMock', await trade.gnosis())
+            )
+            const auctionId = await trade.auctionId()
+            const [, , buy, sellAmt, buyAmt] = await gnosis.auctions(auctionId)
+            expect(buy == rToken.address || buy == rsr.address)
+            if (buy == rToken.address) {
+              await whileImpersonating(backingManager.address, async (bmSigner) => {
+                await rToken.connect(bmSigner).mint(addr1.address, buyAmt)
+              })
+              await rToken.connect(addr1).approve(gnosis.address, buyAmt)
+              await gnosis.placeBid(auctionId, {
+                bidder: addr1.address,
+                sellAmount: sellAmt,
+                buyAmount: buyAmt,
+              })
+            } else if (buy == rsr.address) {
+              await rsr.connect(owner).mint(addr2.address, buyAmt)
+              await rsr.connect(addr2).approve(gnosis.address, buyAmt)
+              await gnosis.placeBid(auctionId, {
+                bidder: addr2.address,
+                sellAmount: sellAmt,
+                buyAmount: buyAmt,
+              })
+            }
           }
         }
 
-        // Advance time till auctions end
+        // Advance time till auction ends
         await advanceTime(config.auctionLength.add(100).toString())
-
-        // Close auctions
-        await facade.runAuctionsForAllTraders()
-        allTrades = await backingManager.numTrades()
-        lastClosedTrade = await backingManager.tradesStart()
-        console.log('trades', lastClosedTrade, allTrades)
-      } while (lastClosedTrade < allTrades)
+      }
     }
 
-    context('Appreciation', function () {
+    context.only('Appreciation', function () {
       // STORY
       //
       // There are N apppreciating collateral in the basket.
@@ -2626,7 +2651,7 @@ describe('Revenues', () => {
       // 2. Size of basket
       // 3. Prime basket weights
       // 4. # of decimals in collateral token
-      // 5. % appreciation
+      // 5. Exchange rate after appreciation
       // 6. Symmetry of appreciation (evenly vs all in 1 collateral)
       // 7. StRSR cut (previously: f)
 
@@ -2635,7 +2660,7 @@ describe('Revenues', () => {
         basketSize: number,
         primeWeight: BigNumber,
         collateralDecimals: number,
-        appreciation: BigNumber,
+        appreciationExchangeRate: BigNumber,
         howManyAppreciate: number,
         stRSRCut: BigNumber
       ) {
@@ -2647,7 +2672,7 @@ describe('Revenues', () => {
           expect(collateralDecimals == 8 || collateralDecimals == 18).to.equal(true)
           const token = collateralDecimals == 8 ? await prepCToken(i) : await prepAToken(i)
           primeBasket.push(token)
-          targetAmts.push(primeWeight.div(basketSize))
+          targetAmts.push(primeWeight.div(basketSize).add(1))
           await token.setExchangeRate(fp('1'))
           await token.connect(owner).mint(addr1.address, MAX_UINT256)
           await token.connect(addr1).approve(rToken.address, MAX_UINT256)
@@ -2667,12 +2692,11 @@ describe('Revenues', () => {
         // === Execution ===
 
         // Increase redemption rate
-        for (let i = 0; i < primeBasket.length; i++) {
-          const newRate = fp('1').add(i < howManyAppreciate ? appreciation : 0)
-          await primeBasket[i].setExchangeRate(newRate)
+        for (let i = 0; i < primeBasket.length && i < howManyAppreciate; i++) {
+          await primeBasket[i].setExchangeRate(appreciationExchangeRate)
         }
 
-        await doAuctions()
+        await runAuctionsForAllTraders()
       }
 
       let dimensions
@@ -2682,7 +2706,7 @@ describe('Revenues', () => {
           [1, 256], // basket size
           [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
           [8, 18], // collateral decimals
-          [fp('0'), fp('1e9'), fp('0.02')], // % appreciation
+          [fp('0'), fp('1e9'), fp('0.02')], // exchange rate at appreciation
           [1, 256], // how many collateral assets appreciate (up to)
           [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
         ]
@@ -2692,7 +2716,7 @@ describe('Revenues', () => {
           [7], // basket size
           [fp('1e-6'), fp('1e3')], // prime basket weights
           [8, 18], // collateral decimals
-          [fp('1e9')], // % appreciation
+          [fp('1e9')], // exchange rate at appreciation
           [1, 7], // how many collateral assets appreciate (up to)
           [fp('0.6')], // StRSR cut (f)
         ]
@@ -2740,6 +2764,26 @@ describe('Revenues', () => {
       ) {
         await doCommonSetup(stRSRCut)
 
+        // Replace registered reward assets with large maxTradeVolume assets
+        const AaveAssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAsset')
+        const CompoundAssetFactory: ContractFactory = await ethers.getContractFactory(
+          'CompoundPricedAsset'
+        )
+        const newAaveAsset: AavePricedAsset = <AavePricedAsset>(
+          await AaveAssetFactory.deploy(
+            aaveToken.address,
+            bn('1e57'),
+            compoundMock.address,
+            aaveMock.address
+          )
+        )
+        const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+          await CompoundAssetFactory.deploy(compToken.address, bn('1e57'), compoundMock.address)
+        )
+        await assetRegistry.connect(owner).swapRegistered(newAaveAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
+
+        // Set up prime basket
         const primeBasket = []
         const targetAmts = []
         for (let i = 0; i < basketSize; i++) {
@@ -2780,9 +2824,7 @@ describe('Revenues', () => {
           if (decimals == 8) {
             // cToken
             const oldRewards = await compoundMock.compBalances(backingManager.address)
-            console.log('oldRewards', oldRewards)
             const newRewards = rewardTok.mul(bn('1e8')).div(numRewardTokens)
-            console.log('newRewards', newRewards)
 
             await compoundMock.setRewards(backingManager.address, oldRewards.add(newRewards))
           } else if (decimals == 18) {
@@ -2800,7 +2842,7 @@ describe('Revenues', () => {
         )
 
         // Do auctions
-        await doAuctions()
+        await runAuctionsForAllTraders()
       }
 
       let dimensions

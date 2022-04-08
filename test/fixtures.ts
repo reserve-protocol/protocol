@@ -419,7 +419,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const facadeAddr = expectInReceipt(receipt, 'RTokenCreated').args.facade
   const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
 
-  // Get Core
+  // Get Components
   const assetRegistry: AssetRegistryP0 = <AssetRegistryP0>(
     await ethers.getContractAt('AssetRegistryP0', await main.assetRegistry())
   )

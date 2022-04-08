@@ -15,14 +15,13 @@ export async function issueMany(
   toIssue: BigNumber,
   user: SignerWithAddress
 ): Promise<void> {
-  const ISS_BLOCKS = bn(1e6) // How many blocks to wait between issuances; tweak to tune performance
+  const ISS_BLOCKS = bn(1e8) // How many blocks to wait between issuances; tweak to tune performance
   const MIN_ISSUANCE_RATE = fp(10000) // {rtoken / block}
 
   let supply = await rToken.totalSupply()
   let issued = bn(0)
   const initBalance = await rToken.balanceOf(user.address)
   const issuanceRate = await rToken.issuanceRate()
-
   while (issued.lt(toIssue)) {
     // Find currIssue, the amount to issue this round
     const yetToIssue = toIssue.sub(issued)

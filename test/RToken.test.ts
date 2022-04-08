@@ -1297,7 +1297,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     }
     const numCases = paramList.length.toString()
     paramList.forEach((params, index) => {
-      it(`case ${index} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+      it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
         await runScenario(params)
       })
     })

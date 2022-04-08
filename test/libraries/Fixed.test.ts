@@ -1044,7 +1044,7 @@ describe('In FixLib,', () => {
     })
   })
 
-  describe('uMulDiv', () => {
+  describe('mulDiv256', () => {
     const WORD = 2n ** 256n
     it('works for many values', async () => {
       await fc.assert(
@@ -1054,7 +1054,7 @@ describe('In FixLib,', () => {
           // so z is good if z in [x*y/WORD + 1, WORD) = x*y/WORD + 1 + [0, WORD-x*y/WORD-1)
           const z: bigint = 1n + (x * y) / WORD + (z_ % (WORD - (x * y) / WORD - 1n))
           const expectedResult: bigint = (x * y) / z
-          const result = await caller.uMulDiv_(bn(x), bn(y), bn(z))
+          const result = await caller.mulDiv256_(bn(x), bn(y), bn(z))
           expect(result.toBigInt()).to.equal(expectedResult)
         }),
         {
