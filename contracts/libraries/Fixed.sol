@@ -196,7 +196,6 @@ library FixLib {
         return floor(x);
     }
 
-    // SHOULD BE PURE
     // TODO Matt: to check + test
     /// Convert this int192 to a uint, pre-applying a shift, then applying therounding
     /// Note that only FLOOR and CEIL are supported
