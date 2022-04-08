@@ -386,7 +386,8 @@ library FixLib {
     }
 
     // TODO attn: Matt to-check + test
-    // It's just like `muluDivu, but it takes a Fix divider and returns in uint256
+    // It's just like `muluDivu, but it takes a Fix divider and returns in uint192
+    // Not really in the pattern of the rest of the functions...
     function muluDiv(
         int192 x,
         uint256 y,

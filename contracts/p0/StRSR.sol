@@ -80,6 +80,9 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
     // Withdrawal queues by account
     mapping(address => Withdrawal[]) public withdrawals;
 
+    // Min exchange rate {qRSR/qStRSR}
+    int192 private constant MIN_EXCHANGE_RATE = int192(1e9); // 1e-9
+
     // ==== Gov Params ====
     uint256 public unstakingDelay;
     uint256 public rewardPeriod;
@@ -223,8 +226,12 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
 
+        // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
+        uint256 allStakes = totalStaked + stakeBeingWithdrawn(); // {qStRSR}
+        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.muluDiv(allStakes, FIX_ONE); // {qRSR}
+
         uint256 seizedRSR;
-        if (rsrBalance <= rsrAmount) {
+        if (rsrBalance <= rsrAmount + dustRSRAmt) {
             // Everyone's wiped out! Doom! Mayhem!
             // Zero all balances and withdrawals
             seizedRSR = rsrBalance;
