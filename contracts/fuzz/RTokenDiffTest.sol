@@ -125,7 +125,7 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
     /// @param amount {BU}
     /// @return erc20s The addresses of the ERC20 tokens in the reference basket
     /// @return quantities {qTok} The quantity of each ERC20 token to issue `amount` baskets
-    function quote(int192 amount, RoundingApproach rounding)
+    function quote(int192 amount, RoundingApproach)
         external
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
@@ -133,12 +133,14 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
         erc20s = new address[](1);
         erc20s[0] = modeA ? address(tokenA) : address(tokenB);
         quantities = new uint256[](1);
-        quantities[0] = amount.shiftLeft(18).toUint(rounding);
+        int8 decimals = int8(IERC20Metadata(address(token())).decimals());
+        quantities[0] = amount.toUintWithShift(decimals);
     }
 
     /// @return baskets {BU} The quantity of complete baskets at an address. A balance for BUs
     function basketsHeldBy(address acct) external view returns (int192 baskets) {
-        baskets = toFix(token().balanceOf(acct));
+        int8 decimals = int8(IERC20Metadata(address(token())).decimals());
+        baskets = toFixWithShift(token().balanceOf(acct), -decimals);
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA

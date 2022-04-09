@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IMain.sol";
@@ -190,7 +191,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     function quantity(IERC20 erc20) public view returns (int192) {
         if (!goodCollateral(erc20)) return FIX_ZERO;
 
-        // {qTok/BU} = {ref/BU} / {ref/tok}
+        // {tok/BU} = {ref/BU} / {ref/tok}
         return basket.refAmts[erc20].divCeil(main.assetRegistry().toColl(erc20).refPerTok());
     }
 
@@ -218,12 +219,11 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             if (!goodCollateral(basket.erc20s[i])) continue;
 
-            uint8 decimals = IERC20Metadata(address(basket.erc20s[i])).decimals();
+            int8 decimals = int8(IERC20Metadata(address(basket.erc20s[i])).decimals());
 
-            // {tok} = {BU} * {tok/BU}
-            int192 tok = amount.mulCeil(quantity(basket.erc20s[i]));
-            // {qTok} = {tok} * {qTok/tok}
-            quantitiesBig[size] = tok.toUintWithShift(int8(decimals), rounding);
+            // {qTok} = {tok/BU} * {BU} * {qTok/tok}
+            uint256 q = quantity(basket.erc20s[i]).mulToUint(amount, rounding);
+            quantitiesBig[size] = q;
             erc20sBig[size] = address(basket.erc20s[i]);
             size++;
         }
@@ -244,7 +244,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             int192 bal = main.assetRegistry().toColl(basket.erc20s[i]).bal(account); // {tok}
             int192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
-            // baskets {BU} = bal {tok} / q {tok/BU}
+            // {BU} = {tok} / {tok/BU}
             if (q.gt(FIX_ZERO)) baskets = fixMin(baskets, bal.div(q));
         }
 

@@ -13,7 +13,7 @@ contract InvalidATokenFiatCollateralMock is AaveOracleMixin, Collateral {
 
     constructor(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
+        uint256 maxTradeVolume_,
         int192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,

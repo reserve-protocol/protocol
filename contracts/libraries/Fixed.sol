@@ -194,8 +194,15 @@ library FixLib {
         return floor(x);
     }
 
-    /// Convert this int192 to a uint, pre-applying a shift, then applying rounding
     /// Note that only FLOOR and CEIL are implemented
+    /// Convert this int192 to a uint, pre-applying a shift, then rounding down
+    function toUintWithShift(int192 x, int8 decimals) internal pure returns (uint192) {
+        // this is a stub
+        return uint192(0);
+    }
+
+    /// Convert this int192 to a uint, pre-applying a shift, then applying therounding
+    /// Note that only FLOOR and CEIL are supported
     function toUintWithShift(
         int192 x,
         int8 decimals,
@@ -277,6 +284,16 @@ library FixLib {
         int256 naive_prod = int256(x) * int256(y);
         int256 rounding_adjustment = naive_prod >= 0 ? FIX_SCALE / 2 : -FIX_SCALE / 2;
         return uint192(uint256((naive_prod + rounding_adjustment)) / FIX_SCALE_U);
+    }
+
+    /// Multiply this int192 by a int192 and output the result as a uint, rounding towards zero.
+    function mulToUint(
+        int192 x,
+        int192 y,
+        RoundingApproach rounding
+    ) internal pure returns (uint192) {
+        // this is a stub
+        return uint192(0);
     }
 
     /// Multiply this int192 by a int192 and output the result as an int, rounding towards zero.

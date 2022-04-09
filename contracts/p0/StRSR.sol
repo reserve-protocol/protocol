@@ -80,7 +80,7 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
     // Withdrawal queues by account
     mapping(address => Withdrawal[]) public withdrawals;
 
-    // Min exchange rate {qRSR/qStRSR}
+    // Min exchange rate {qRSR/qStRSR} (compile-time constant)
     int192 private constant MIN_EXCHANGE_RATE = int192(1e9); // 1e-9
 
     // ==== Gov Params ====
@@ -228,7 +228,7 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
 
         // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
         uint256 allStakes = totalStaked + stakeBeingWithdrawn(); // {qStRSR}
-        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.muluDiv(allStakes, FIX_ONE); // {qRSR}
+        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.muluToUint(allStakes); // {qRSR}
 
         uint256 seizedRSR;
         if (rsrBalance <= rsrAmount + dustRSRAmt) {

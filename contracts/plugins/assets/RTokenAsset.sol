@@ -10,7 +10,7 @@ contract RTokenAsset is Asset {
 
     constructor(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
+        uint256 maxTradeVolume_,
         IMain main_
     ) Asset(erc20_, maxTradeVolume_) {
         main = main_;
