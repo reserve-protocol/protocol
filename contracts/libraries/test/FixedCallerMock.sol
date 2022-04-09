@@ -89,9 +89,10 @@ contract FixedCallerMock {
         return FixLib.divu(x, y);
     }
 
-    function divuRound(int192 x, uint256 y) public pure returns (int192) {
-        return FixLib.divuRound(x, y);
-    }
+    // Can delete?
+    // function divuRound(int192 x, uint256 y) public pure returns (int192) {
+    //     return FixLib.divuRound(x, y);
+    // }
 
     function inv(int192 x) public pure returns (int192) {
         return FixLib.inv(x);

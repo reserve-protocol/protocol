@@ -20,6 +20,7 @@ pragma solidity ^0.8.9;
 error IntOutOfBounds();
 // A uint value passed to this library was out of bounds for int192 operations
 error UIntOutOfBounds();
+error NotImplementedYet();
 
 // If a particular int192 is represented by the int192 n, then the int192 represents the
 // value n/FIX_SCALE.
@@ -166,39 +167,35 @@ library FixLib {
     /// All arithmetic functions fail if and only if the result is out of bounds.
 
     /// Convert this int192 to a uint. Fail if x is negative. Round the fractional part towards zero.
-    function floor(int192 x) internal pure returns (uint192) {
+    function floor(int192 x) internal pure returns (uint128) {
         int192 n = x;
         if (n < 0) revert IntOutOfBounds();
-        return uint192(n) / FIX_SCALE_U;
+        return uint128(uint192(n / FIX_SCALE));
     }
 
     /// Convert this int192 to a uint with standard rounding to the nearest integer.
-    function round(int192 x) internal pure returns (uint192) {
+    function round(int192 x) internal pure returns (uint128) {
         int192 n = x;
         if (n < 0) revert IntOutOfBounds();
-        return uint192(intRound(x));
+        return uint128(uint192(intRound(x)));
     }
 
     /// Convert this int192 to a uint. Round the fractional part towards one.
-    function ceil(int192 x) internal pure returns (uint192) {
-        uint192 u = floor(x);
+    function ceil(int192 x) internal pure returns (uint128) {
+        uint128 u = floor(x);
         if (uint192(x) == u * FIX_SCALE_U) return u;
         return u + 1;
     }
 
     /// Convert this int192 to a uint, applying the rounding approach described by the enum
-    function toUint(int192 x, RoundingApproach rounding) internal pure returns (uint192) {
-        if (rounding == RoundingApproach.ROUND) {
-            return round(x);
-        } else if (rounding == RoundingApproach.CEIL) {
-            return ceil(x);
-        }
+    function toUint(int192 x, RoundingApproach rounding) internal pure returns (uint128) {
+        if (rounding == RoundingApproach.ROUND) return round(x);
+        if (rounding == RoundingApproach.CEIL) return ceil(x);
         return floor(x);
     }
 
-    // TODO Matt: to check + test
-    /// Convert this int192 to a uint, pre-applying a shift, then applying therounding
-    /// Note that only FLOOR and CEIL are supported
+    /// Convert this int192 to a uint, pre-applying a shift, then applying rounding
+    /// Note that only FLOOR and CEIL are implemented
     function toUintWithShift(
         int192 x,
         int8 decimals,
@@ -207,16 +204,15 @@ library FixLib {
         int256 coeff = decimals >= 0 ? int256(10**uint8(decimals)) : int256(10**uint8(-decimals));
         int256 shifted = decimals >= 0 ? x * coeff : x / coeff;
         if (shifted < 0) revert IntOutOfBounds();
-        uint192 u = uint192(uint256(shifted) / FIX_SCALE_U);
+        uint192 u = uint192(uint256(shifted / FIX_SCALE));
         if (rounding == RoundingApproach.FLOOR) return u;
-        if (rounding == RoundingApproach.ROUND) revert("RoundingApproach.ROUND unsupported");
-        if (uint256(shifted) == uint256(u) * FIX_SCALE_U) return u;
-        return u + 1;
+        if (rounding == RoundingApproach.ROUND) revert NotImplementedYet();
+        return shifted == int192(u) * FIX_SCALE ? u : u + 1;
     }
 
     /// Convert this int192 to an int. Round the fractional part towards zero.
-    function toInt(int192 x) internal pure returns (int192) {
-        return x / FIX_SCALE;
+    function toInt(int192 x) internal pure returns (int128) {
+        return int128(x / FIX_SCALE);
     }
 
     /// Return the int192 shifted to the left by `decimal` digits
@@ -257,7 +253,6 @@ library FixLib {
     /// Subtract a uint from this int192.
     function minusu(int192 x, uint256 y) internal pure returns (int192) {
         if (y > type(uint256).max / 2) revert UIntOutOfBounds();
-
         return _safe_wrap(int256(x) - int256(y * FIX_SCALE_U));
     }
 
@@ -277,17 +272,44 @@ library FixLib {
         return _safe_wrap((naive_prod) / FIX_SCALE + 1);
     }
 
+    /// Multiply this int192 by a int192 and output the result as a uint, rounding towards zero.
+    function mulToUint(int192 x, int192 y) internal pure returns (uint192) {
+        int256 naive_prod = int256(x) * int256(y);
+        int256 rounding_adjustment = naive_prod >= 0 ? FIX_SCALE / 2 : -FIX_SCALE / 2;
+        return uint192(uint256((naive_prod + rounding_adjustment)) / FIX_SCALE_U);
+    }
+
+    /// Multiply this int192 by a int192 and output the result as an int, rounding towards zero.
+    /// There's one place in the code we use this and it's very useful there...it is one of a kind
+    /// @dev This function's return is only up to int192, but to avoid confusion it returns int256
+    function mulToInt(int192 x, int192 y) internal pure returns (int256) {
+        int256 naive_prod = int256(x) * int256(y);
+        int256 rounding_adjustment = naive_prod >= 0 ? FIX_SCALE / 2 : -FIX_SCALE / 2;
+        return (naive_prod + rounding_adjustment) / FIX_SCALE;
+    }
+
     /// Multiply this int192 by a uint.
     function mulu(int192 x, uint256 y) internal pure returns (int192) {
         if (y > type(uint256).max / 2) revert UIntOutOfBounds();
         return _safe_wrap(x * int256(y));
     }
 
-    /// Multiply this int192 by a uint and output the result as a uint.
-    /// Round truncated values toward zero.
-    function muluToUint(int192 x, uint256 y) internal pure returns (uint256) {
+    /// Multiply this int192 by a uint and output the result as a uint, rounding towards zero.
+    function muluToUint(int192 x, uint256 y) internal pure returns (uint192) {
+        return muluToUint(x, y, RoundingApproach.FLOOR);
+    }
+
+    /// Multiply this int192 by a uint and output the result as a uint, rounding as specified.
+    function muluToUint(
+        int192 x,
+        uint256 y,
+        RoundingApproach rounding
+    ) internal pure returns (uint192) {
         if (y > type(uint256).max / 2) revert UIntOutOfBounds();
-        return uint256((x * int256(y)) / FIX_SCALE);
+        int192 z = int192((x * int256(y)) / FIX_SCALE);
+        if (rounding == RoundingApproach.FLOOR) return uint192(z);
+        if (rounding == RoundingApproach.ROUND) revert NotImplementedYet();
+        return z * FIX_SCALE == x * int256(y) ? uint192(z) : uint192(z + 1);
     }
 
     /// Divide this int192 by a int192; round the fractional part towards zero.
@@ -311,16 +333,17 @@ library FixLib {
         return _safe_wrap(x / int256(y));
     }
 
-    /// Divide this int192 by a uint. Round the result to the *nearest* int192, instead of truncating.
-    /// Values at exactly 0.5 are rounded up.
-    function divuRound(int192 x_, uint256 y_) internal pure returns (int192) {
-        if (y_ > type(uint256).max / 2) return FIX_ZERO;
-        int256 y = int256(y_);
-        int256 x = int256(x_);
-        int8 sign = (x < 0) ? -1 : int8(1);
-        x *= sign;
-        return _safe_wrap(((x + y / 2) / y) * sign);
-    }
+    // We don't currently use this anywhere, I think we can delete it. We always want FLOOR or CEIL
+    // /// Divide this int192 by a uint. Round the result to the *nearest* int192, instead of truncating.
+    // /// Values at exactly 0.5 are rounded up.
+    // function divuRound(int192 x_, uint256 y_) internal pure returns (int192) {
+    //     if (y_ > type(uint256).max / 2) return FIX_ZERO;
+    //     int256 y = int256(y_);
+    //     int256 x = int256(x_);
+    //     int8 sign = (x < 0) ? -1 : int8(1);
+    //     x *= sign;
+    //     return _safe_wrap(((x + y / 2) / y) * sign);
+    // }
 
     /// Compute 1 / (this int192).
     function inv(int192 x) internal pure returns (int192) {
