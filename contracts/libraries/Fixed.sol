@@ -74,16 +74,23 @@ function toFix(uint256 x) pure returns (int192) {
 /// Convert a uint to its fixed-point representation after left-shifting its value `shiftLeft`
 /// decimal digits. Fails if the result is outside int192's representable range.
 function shiftl_toFix(uint256 x, int8 shiftLeft) pure returns (int192) {
-    // TODO very suspicious
-    // toFix_shift
-    if (x == 0 || shiftLeft < -95) return 0; // shift would clear a uint256; 0 -> 0
-    if (59 < shiftLeft) revert IntOutOfBounds(); // would unconditionally overflow x
+    return shiftl_toFix(x, shiftLeft, FLOOR);
+}
 
+function shiftl_toFix(
+    uint256 x,
+    int8 shiftLeft,
+    RoundingMode rounding
+) pure returns (int192) {
     shiftLeft += 18;
-    uint256 shifted = (shiftLeft >= 0) ? x * 10**abs(shiftLeft) : x / 10**abs(shiftLeft);
 
-    if (uint192(type(int192).max) < shifted) revert UIntOutOfBounds();
-    return int192(uint192(shifted));
+    if (x == 0 || shiftLeft < -77) return 0; // shift would clear a uint256; 0 -> 0
+    if (77 < shiftLeft) revert IntOutOfBounds(); // would unconditionally overflow x
+
+    uint256 coeff = 10**abs(shiftLeft);
+    uint256 shifted = (shiftLeft >= 0) ? x * coeff : _divrnd(x, coeff, rounding);
+
+    return _safeWrap(int256(shifted));
 }
 
 /// Divide a uint by a int192. Fails if the result is outside int192's representable range.
@@ -98,7 +105,7 @@ function divFix(uint256 x, int192 y) pure returns (int192) {
     int256 _y = int256(y);
     /* If we didn't have to worry about overflow or precision loss, we'd just do:
        return x * 1e36 / _y.
-       TODO: compare gas costs of this implementation versus mulDiv256(x, 1e36, y)
+       TODO OPTIMIZATION: compare gas costs of this implementation versus mulDiv256(x, 1e36, y)
     */
     // If it's safe to do this operation the easy way, do it:
     if (x < uint256(type(int256).max / FIX_SCALE_SQ)) {
@@ -351,6 +358,7 @@ library FixLib {
     /// Raise this int192 to a nonnegative integer power.
     /// Presumes that powu(0.0, 0) = 1
     /// @dev The gas cost is O(lg(y)). We can maybe do better but it will get very fiddly indeed.
+    /// Rounding: intermediate muls do nearest-value rounding. Anything else gets wierd quick.
     function powu(int192 x, uint256 y) internal pure returns (int192 result) {
         // The algorithm is exponentiation by squaring. See: https://w.wiki/4LjE
         result = FIX_ONE;
