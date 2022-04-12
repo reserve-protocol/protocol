@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity ^0.8.9;
 
-import { FixLib, RoundingApproach, toFix, toFixWithShift, intToFix, divFix, fixMin, fixMax, mulDiv256, fullMul } from "../Fixed.sol";
+import "../Fixed.sol";
 
 // Simple mock for Fixed library.
 contract FixedCallerMock {
@@ -9,12 +9,12 @@ contract FixedCallerMock {
         return toFix(x);
     }
 
-    function toFixWithShift_(uint256 x, int8 shiftLeft_) public pure returns (int192) {
-        return toFixWithShift(x, shiftLeft_);
+    function intToFix_(int256 x) public pure returns (int192) {
+        return toFix(x);
     }
 
-    function intToFix_(int256 x) public pure returns (int192) {
-        return intToFix(x);
+    function shiftl_toFix_(uint256 x, int8 shiftLeft) public pure returns (int192) {
+        return shiftl_toFix(x, shiftLeft);
     }
 
     function divFix_(uint256 x, int192 y) public pure returns (int192) {
@@ -29,12 +29,28 @@ contract FixedCallerMock {
         return fixMax(x, y);
     }
 
-    function toInt(int192 x) public pure returns (int192) {
-        return FixLib.toInt(x);
+    function signOf_(int256 x) public pure returns (int8) {
+        return signOf(x);
     }
 
-    function toUint(int192 x, RoundingApproach rounding) public pure returns (uint192) {
-        return FixLib.toUint(x, rounding);
+    function abs_(int256 x) public pure returns (uint256) {
+        return abs(x);
+    }
+
+    function _divrndInt(
+        int256 n,
+        int256 d,
+        RoundingMode rnd
+    ) public pure returns (int256) {
+        return _divrnd(n, d, rnd);
+    }
+
+    function _divrndUint(
+        uint256 n,
+        uint256 d,
+        RoundingMode rnd
+    ) public pure returns (uint256) {
+        return _divrnd(n, d, rnd);
     }
 
     function floor(int192 x) public pure returns (uint192) {
@@ -49,12 +65,32 @@ contract FixedCallerMock {
         return FixLib.ceil(x);
     }
 
-    function shiftLeft(int192 x, int8 shiftLeft_) public pure returns (int192) {
-        return FixLib.shiftLeft(x, shiftLeft_);
+    function toInt(int192 x) public pure returns (int192) {
+        return FixLib.toInt(x);
     }
 
-    function intRound(int192 x) public pure returns (int192) {
-        return FixLib.intRound(x);
+    function toInt(int192 x, RoundingMode rnd) public pure returns (int192) {
+        return FixLib.toInt(x, rnd);
+    }
+
+    function toUint(int192 x) public pure returns (uint192) {
+        return FixLib.toUint(x);
+    }
+
+    function toUint(int192 x, RoundingMode rnd) public pure returns (uint192) {
+        return FixLib.toUint(x, rnd);
+    }
+
+    function shiftl(int192 x, int8 decimals) public pure returns (int192) {
+        return FixLib.shiftl(x, decimals);
+    }
+
+    function shiftl(
+        int192 x,
+        int8 decimals,
+        RoundingMode rnd
+    ) public pure returns (int192) {
+        return FixLib.shiftl(x, decimals, rnd);
     }
 
     function plus(int192 x, int192 y) public pure returns (int192) {
@@ -77,6 +113,14 @@ contract FixedCallerMock {
         return FixLib.mul(x, y);
     }
 
+    function mul(
+        int192 x,
+        int192 y,
+        RoundingMode rnd
+    ) public pure returns (int192) {
+        return FixLib.mul(x, y, rnd);
+    }
+
     function mulu(int192 x, uint256 y) public pure returns (int192) {
         return FixLib.mulu(x, y);
     }
@@ -85,15 +129,27 @@ contract FixedCallerMock {
         return FixLib.div(x, y);
     }
 
+    function div(
+        int192 x,
+        int192 y,
+        RoundingMode rnd
+    ) public pure returns (int192) {
+        return FixLib.div(x, y, rnd);
+    }
+
     function divu(int192 x, uint256 y) public pure returns (int192) {
         return FixLib.divu(x, y);
     }
 
-    // Can delete?
-    // function divuRound(int192 x, uint256 y) public pure returns (int192) {
-    //     return FixLib.divuRound(x, y);
-    // }
+    function divu(
+        int192 x,
+        uint256 y,
+        RoundingMode rnd
+    ) public pure returns (int192) {
+        return FixLib.divu(x, y, rnd);
+    }
 
+    // TODO:remove
     function inv(int192 x) public pure returns (int192) {
         return FixLib.inv(x);
     }
@@ -102,6 +158,7 @@ contract FixedCallerMock {
         return FixLib.powu(x, y);
     }
 
+    // TODO: remove
     function increment(int192 x) public pure returns (int192) {
         return FixLib.increment(x);
     }
@@ -139,12 +196,70 @@ contract FixedCallerMock {
         return FixLib.near(x, y, epsilon);
     }
 
+    // ================ chained operations
+    function shiftl_toUint(
+        int192 x,
+        int8 decimals,
+        RoundingMode rnd
+    ) internal pure returns (uint256);
+
+    function mulu_toUint(int192 x, uint256 y) internal pure returns (uint256);
+
+    function mulu_toUint(
+        int192 x,
+        uint256 y,
+        RoundingMode rnd
+    ) internal pure returns (uint256);
+
+    function mul_toUint(int192 x, int192 y) internal pure returns (uint256);
+
+    function mul_toUint(
+        int192 x,
+        int192 y,
+        RoundingMode rnd
+    ) internal pure returns (uint256);
+
+    function mul_toInt(int192 x, int192 y) internal pure returns (int256) ;
+    function mul_toInt(int192 x, int192 y, RoundingMode rnd) internal pure returns (int256) ;
+    function muluDivu(
+        int192 x,
+        uint256 y,
+        uint256 z,
+        ) internal pure returns (int192);
+    function muluDivu(
+        int192 x,
+        uint256 y,
+        uint256 z,
+        RoundingMode rnd
+        ) internal pure returns (int192) ;
+
+    function mulDiv(
+        int192 x,
+        int192 y,
+        int192 z
+        ) internal pure returns (int192);
+    function mulDiv(
+        int192 x,
+        int192 y,
+        int192 z,
+        RoundingMode rnd
+        ) internal pure returns (int192);
+    // ================ wide muldiv operations...
     function mulDiv256_(
         uint256 x,
         uint256 y,
         uint256 z
     ) public pure returns (uint256) {
         return mulDiv256(x, y, z);
+    }
+
+    function mulDivRnd256_(
+        uint256 x,
+        uint256 y,
+        uint256 z,
+        RoundingMode rnd
+    ) public pure returns (uint256) {
+        return mulDivRnd256(x, y, z, rnd);
     }
 
     function fullMul_(uint256 x, uint256 y) public pure returns (uint256 l, uint256 h) {

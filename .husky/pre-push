@@ -1,6 +1,7 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
+solc contracts/libraries/Fixed.sol
 # yarn lint
 # yarn compile
 # yarn test:p0

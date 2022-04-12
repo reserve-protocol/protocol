@@ -521,7 +521,7 @@ library FixLib {
         int192 x,
         uint256 y,
         uint256 z,
-        RoundingMode rounding // TODO gotta use this
+        RoundingMode rounding
     ) internal pure returns (int192) {
         return _safeWrap(signOf(x) * int256(mulDivRnd256(abs(x), y, z, rounding)));
     }
@@ -598,6 +598,7 @@ function mulDivRnd256(
 ) pure returns (uint256) {
     uint256 result = mulDiv256(x, y, z);
     if (rounding == RoundingMode.FLOOR) return result;
+
     uint256 mm = mulmod(x, y, z);
     if (rounding == RoundingMode.CEIL) {
         if (mm > 0) result += 1;
@@ -611,6 +612,7 @@ function mulDivRnd256(
 /// The computed result is (hi*2^256 + lo)
 ///   Adapted from sources:
 ///   https://medium.com/wicketh/27650fec525d, https://medium.com/coinmonks/4db014e080b1
+/// @dev Intended to be internal to this library
 function fullMul(uint256 x, uint256 y) pure returns (uint256 lo, uint256 hi) {
     unchecked {
         uint256 mm = mulmod(x, y, uint256(0) - uint256(1));
