@@ -39,6 +39,6 @@ abstract contract CompoundOracleMixin {
         }
 
         // {UoA/tok} = {microUoA/tok} / {microUoA/UoA}
-        return toFix(p).shiftLeft(-6);
+        return toFix(p).shiftl(-6);
     }
 }

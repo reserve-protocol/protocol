@@ -76,7 +76,7 @@ interface IBasketHandler is IComponent {
     /// @param amount {BU}
     /// @return erc20s The addresses of the ERC20 tokens in the reference basket
     /// @return quantities {qTok} The quantity of each ERC20 token to issue `amount` baskets
-    function quote(int192 amount, RoundingApproach rounding)
+    function quote(int192 amount, RoundingMode rounding)
         external
         view
         returns (address[] memory erc20s, uint256[] memory quantities);

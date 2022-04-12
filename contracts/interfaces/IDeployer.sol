@@ -18,7 +18,7 @@ import "./IDistributor.sol";
  */
 struct DeploymentParams {
     // === RSR/RToken/AAVE/COMP ===
-    int192 maxTradeVolume; // {UoA}
+    uint256 maxTradeVolume; // {UoA}
     //
     // === Revenue sharing ===
     RevenueShare dist; // revenue sharing splits between RToken and RSR
