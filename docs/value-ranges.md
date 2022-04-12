@@ -31,3 +31,7 @@ All of the below are in terms of quanta, or a granularity of 1.
 
 - `{seconds}` [0, 2^40]
   The current number of seconds since 1970 is ~1.6e9, which is about 0.1% of 2^40.
+
+# Unit of Account
+
+- `{UoA}` [0, 1e39]
