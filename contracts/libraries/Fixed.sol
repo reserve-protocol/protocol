@@ -355,12 +355,6 @@ library FixLib {
         return _safeWrap(_divrnd(x, int256(y), rounding));
     }
 
-    /// Compute 1 / (this int192).
-    /// TODO: remove, we don't really need this
-    function inv(int192 x) internal pure returns (int192) {
-        return div(FIX_ONE, x);
-    }
-
     /// Raise this int192 to a nonnegative integer power.
     /// Presumes that powu(0.0, 0) = 1
     /// @dev The gas cost is O(lg(y)). We can maybe do better but it will get very fiddly indeed.
@@ -374,12 +368,6 @@ library FixLib {
             y = y >> 1;
             x = mul(x, x, RoundingMode.ROUND);
         }
-    }
-
-    /// Increment by 1 part in FIX_SCALE
-    /// TODO: remove! we don't use this, and it's kind of a bad idea.
-    function increment(int192 x) internal pure returns (int192 result) {
-        return _safeWrap(int256(x) + 1);
     }
 
     /// Comparison operators...
@@ -456,7 +444,7 @@ library FixLib {
         // This underlying operation is:
         // raw_x * raw_y / FIX_SCALE, with the division respecting `rounding`
         if (x < 0) revert IntOutOfBounds();
-        return mulDivRnd256(uint192(x), y, FIX_SCALE_U, rounding);
+        return mulDiv256(uint192(x), y, FIX_SCALE_U, rounding);
     }
 
     /// Multiply this int192 by a int192 and output the result as a uint, rounding towards zero.
@@ -484,7 +472,7 @@ library FixLib {
             x = -x;
             y = -y;
         }
-        return mulDivRnd256(uint192(x), uint192(y), FIX_SCALE_SQ_U, rounding);
+        return mulDiv256(uint192(x), uint192(y), FIX_SCALE_SQ_U, rounding);
     }
 
     /// Multiply this int192 by a int192 and output the result as an int, rounding towards zero.
@@ -502,7 +490,7 @@ library FixLib {
     ) internal pure returns (int256) {
         int256 sign = (x < 0) == (y < 0) ? int256(1) : int256(-1);
 
-        return sign * int256(mulDivRnd256(abs(x), abs(y), FIX_SCALE_U, rounding));
+        return sign * int256(mulDiv256(abs(x), abs(y), FIX_SCALE_U, rounding));
     }
 
     /// A chained .mul + .div on uints that avoids intermediate overflow
@@ -523,7 +511,7 @@ library FixLib {
         uint256 z,
         RoundingMode rounding
     ) internal pure returns (int192) {
-        return _safeWrap(signOf(x) * int256(mulDivRnd256(abs(x), y, z, rounding)));
+        return _safeWrap(signOf(x) * int256(mulDiv256(abs(x), y, z, rounding)));
     }
 
     /// A chained .mul + .div on Fixes that avoids intermediate overflow
@@ -549,11 +537,11 @@ library FixLib {
         // i.e, sign is -1 iff ((x<0) xor (y<0) xor (z<0)) is true
         // i.e, sign is -1 iff an odd number of (x<0), (y<0), (z<0) are true
 
-        return _safeWrap(sign * int256(mulDivRnd256(abs(x), abs(y), abs(z), rounding)));
+        return _safeWrap(sign * int256(mulDiv256(abs(x), abs(y), abs(z), rounding)));
     }
 }
 
-// ================ a couple pure-uint functions, too ================
+// ================ a couple pure-uint helpers================
 
 /// mulDiv: return (x*y/z), overflowing *only* if the end result is out of range.
 ///   Adapted from sources:
@@ -590,7 +578,7 @@ function mulDiv256(
 
 /// return (x*y/z), overflowing only if the end result is out of range, and having the division
 /// round as specified by `rounding`.
-function mulDivRnd256(
+function mulDiv256(
     uint256 x,
     uint256 y,
     uint256 z,
