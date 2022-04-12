@@ -279,7 +279,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
             uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingMgr));
             // {qTok} = {1} * {qTok}
-            uint256 prorata = prorate.mulu(bal).floor();
+            uint256 prorata = prorate.mulu_toUint(bal);
             withdrawals[i] = Math.min(withdrawals[i], prorata);
             // Send withdrawal
             IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), withdrawals[i]);

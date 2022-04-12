@@ -56,7 +56,7 @@ contract FacadeP0 is IFacade {
         int8 decimals = int8(main.rToken().decimals());
 
         // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
-        if (needed.eq(FIX_ZERO)) return held.shiftl(decimals).floor();
+        if (needed.eq(FIX_ZERO)) return held.shiftl_toUint(decimals);
 
         int192 totalSupply = shiftl_toFix(main.rToken().totalSupply(), -decimals); // {rTok}
 

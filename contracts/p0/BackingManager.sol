@@ -160,7 +160,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
             if (bal.gt(req)) {
                 // delta: {qTok}
-                uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20().decimals()), FLOOR);
+                uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20().decimals()));
                 (uint256 rTokenShares, uint256 rsrShares) = main.distributor().totals();
 
                 uint256 tokensPerShare = delta / (rTokenShares + rsrShares);

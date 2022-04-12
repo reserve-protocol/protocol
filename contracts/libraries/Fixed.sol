@@ -229,21 +229,6 @@ function _divrnd(
 library FixLib {
     /// All arithmetic functions fail if and only if the result is out of bounds.
 
-    /// Convert this int192 to a uint. Fail if x is negative; round towards zero.
-    function floor(int192 x) internal pure returns (uint136) {
-        return toUint(x, FLOOR);
-    }
-
-    /// Convert this int192 to a uint with standard rounding to the nearest integer.
-    function round(int192 x) internal pure returns (uint136) {
-        return toUint(x, ROUND);
-    }
-
-    /// Convert this int192 to a uint. Round the fractional part towards one.
-    function ceil(int192 x) internal pure returns (uint136) {
-        return toUint(x, CEIL);
-    }
-
     /// Convert this fixed-point value to a uint; round the result towards zero
     function toUint(int192 x) internal pure returns (uint136) {
         return toUint(x, FLOOR);

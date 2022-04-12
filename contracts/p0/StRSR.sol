@@ -283,7 +283,7 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
-        uint256 payout = payoutRatio.mulu(rsrRewardsAtLastPayout).floor();
+        uint256 payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
 
         // Apply payout to RSR backing
         rsrBacking += payout;

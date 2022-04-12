@@ -35,7 +35,7 @@ library TradingLibP0 {
 
         // {sellTok}
         int192 s = fixMin(sellAmount, divFix(sell.maxTradeVolume(), sell.price()));
-        trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), FLOOR);
+        trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()));
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         int192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mul(sell.price()).div(buy.price());

@@ -1972,7 +1972,7 @@ describe('Revenues', () => {
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      it.only('Should handle slight increase in collateral correctly - full cycle', async () => {
+      it.skip('Should handle slight increase in collateral correctly - full cycle', async () => {
         // Check Price and Assets value
         expect(await rToken.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
@@ -2637,7 +2637,7 @@ describe('Revenues', () => {
       }
     }
 
-    context.only('Appreciation', function () {
+    context.skip('Appreciation', function () {
       // STORY
       //
       // There are N apppreciating collateral in the basket.
