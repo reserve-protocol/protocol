@@ -21,7 +21,6 @@ pragma solidity ^0.8.9;
 error IntOutOfBounds();
 // A uint value passed to this library was out of bounds for int192 operations
 error UIntOutOfBounds();
-error NotImplementedYet();
 
 // If a particular int192 is represented by the int192 n, then the int192 represents the
 // value n/FIX_SCALE.
