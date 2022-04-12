@@ -45,7 +45,7 @@ int192 constant FIX_MAX = type(int192).max; // The largest int192. (Not an integ
 int192 constant FIX_MIN = type(int192).min; // The smallest int192.
 
 /// An enum that describes a rounding approach for converting to ints
-enum RoundingApproach {
+enum RoundingMode {
     FLOOR, // Round towards zero
     ROUND, // Round to the nearest int
     CEIL // Round away from zero
@@ -78,14 +78,13 @@ function toFix(int256 x) pure returns (int192) {
 /// decimal digits. Fails if the result is outside int192's representable range.
 /// @dev RENAMED from toFixWithShift
 function shiftl_toFix(uint256 x, int8 shiftLeft) pure returns (int192) {
+    // TODO very suspicious
     // toFix_shift
     if (x == 0 || shiftLeft < -95) return 0; // shift would clear a uint256; 0 -> 0
     if (59 < shiftLeft) revert IntOutOfBounds(); // would unconditionally overflow x
 
     shiftLeft += 18;
-    uint256 shifted = (shiftLeft >= 0)
-        ? x * 10**uint256(uint8(shiftLeft))
-        : x / 10**(uint256(uint8(-shiftLeft)));
+    uint256 shifted = (shiftLeft >= 0) ? x * 10**abs(shiftLeft) : x / 10**abs(shiftLeft);
 
     if (uint192(type(int192).max) < shifted) revert UIntOutOfBounds();
     return int192(uint192(shifted));
@@ -103,6 +102,7 @@ function divFix(uint256 x, int192 y) pure returns (int192) {
     int256 _y = int256(y);
     /* If we didn't have to worry about overflow or precision loss, we'd just do:
        return x * 1e36 / _y.
+       TODO: compare gas costs of this implementation versus mulDiv256(x, 1e36, y)
     */
     // If it's safe to do this operation the easy way, do it:
     if (x < uint256(type(int256).max / FIX_SCALE_SQ)) {
@@ -116,8 +116,8 @@ function divFix(uint256 x, int192 y) pure returns (int192) {
      * So, we'll do this, essentially, by long division. Note that 1e18 fits in 64 bits.
      */
 
-    int256 sign = (_y < 0) ? int256(-1) : int256(1); // sign = sign(_y)
-    uint256 div = uint256(_y * sign); // div = abs(_y),
+    int256 sign = signOf(_y);
+    uint256 div = abs(_y); // div = abs(_y),
     /* From starting conditions, we know that x in uint256, div in uint192, and 1e18 in uint64.
 
        We can't directly compute x * 1e18, because that might overflow a uint256. Instead,
@@ -167,91 +167,121 @@ function fixMax(int192 x, int192 y) pure returns (int192) {
     return FixLib.gt(x, y) ? x : y;
 }
 
+function signOf(int256 x) pure returns (int8) {
+    return x < 0 ? int8(-1) : int8(1);
+}
+
+function abs(int256 x) pure returns (uint256) {
+    return uint256(x < 0 ? -x : x);
+}
+
+/// internal: Do an internal division with given rounding. Where numerator and divisor are int200s
+/// (not presumed to be fixed-point values!), return numerator/divisor.
+/// Round the division's result as specified by `rounding`.
+function _divrnd(
+    int256 numerator,
+    int256 divisor,
+    RoundingMode rounding
+) pure returns (int256) {
+    int256 result = numerator / divisor;
+    if (rounding == RoundingMode.FLOOR) return result;
+
+    if (rounding == RoundingMode.CEIL) {
+        if (numerator % divisor != 0) {
+            result += signOf(result);
+        }
+    } else {
+        if (abs(numerator % divisor) >= (abs(divisor) / 2)) {
+            result += signOf(result);
+        }
+    }
+    return result;
+}
+
+/// internal: Do an internal division with given rounding. Where numerator and divisor are uint200s
+/// (not presumed to be fixed-point values!), return numerator/divisor.
+/// Round the division's result as specified by `rounding`.
+function _divrnd(
+    uint256 numerator,
+    uint256 divisor,
+    RoundingMode rounding
+) pure returns (uint256) {
+    uint256 result = numerator / divisor;
+
+    if (rounding == RoundingMode.FLOOR) return result;
+
+    if (rounding == RoundingMode.ROUND) {
+        if (numerator % divisor >= divisor >> 1) {
+            result++;
+        }
+    } else {
+        if (numerator % divisor > 0) {
+            result++;
+        }
+    }
+
+    return result;
+}
+
 library FixLib {
     /// All arithmetic functions fail if and only if the result is out of bounds.
 
     /// Convert this int192 to a uint. Fail if x is negative; round towards zero.
     function floor(int192 x) internal pure returns (uint136) {
-        return toUint(x, RoundingApproach.FLOOR);
+        return toUint(x, RoundingMode.FLOOR);
     }
 
     /// Convert this int192 to a uint with standard rounding to the nearest integer.
     function round(int192 x) internal pure returns (uint136) {
-        return toUint(x, RoundingApproach.ROUND);
+        return toUint(x, RoundingMode.ROUND);
     }
 
     /// Convert this int192 to a uint. Round the fractional part towards one.
     function ceil(int192 x) internal pure returns (uint136) {
-        return toUint(x, RoundingApproach.CEIL);
+        return toUint(x, RoundingMode.CEIL);
     }
 
     /// Convert this fixed-point value to a uint; round the result towards zero
     function toUint(int192 x) internal pure returns (uint136) {
-        return toUint(x, RoundingApproach.FLOOR);
+        return toUint(x, RoundingMode.FLOOR);
     }
 
     /// Convert this int192 to a uint, applying the rounding approach described by the enum
-    function toUint(int192 x, RoundingApproach rounding) internal pure returns (uint136) {
+    function toUint(int192 x, RoundingMode rounding) internal pure returns (uint136) {
         if (x < 0) revert IntOutOfBounds();
-
-        uint200 extra;
-        if (rounding == RoundingApproach.FLOOR) extra = 0;
-        else if (rounding == RoundingApproach.ROUND) extra = FIX_SCALE_U / 2;
-        else if (rounding == RoundingApproach.CEIL) extra = FIX_SCALE_U - 1;
-
-        return uint136((uint200(uint192(x)) + extra) / FIX_SCALE_U);
+        return uint136(_divrnd(uint192(x), FIX_SCALE_U, rounding));
     }
 
     /// Convert this fixed-point value to an int. Round the fractional part towards zero.
     function toInt(int192 x) internal pure returns (int136) {
-        return int136(x / FIX_SCALE);
+        return toInt(x, RoundingMode.FLOOR);
     }
 
     /// Convert this fixed-point value to an int, round the result as specified.
-    function toInt(int192 x, RoundingApproach rounding) internal pure returns (int136) {
-        int200 extra;
-        if (rounding == RoundingApproach.CEIL) extra = FIX_SCALE - 1;
-        else if (rounding == RoundingApproach.FLOOR) extra = 0;
-        else extra = FIX_SCALE / 2;
-
-        if (x < 0) extra *= -1;
-
-        return int136((x + extra) / FIX_SCALE);
-    }
-
-    /// Convert this int192 to a uint, pre-applying a shift, then applying rounding
-    /// Note that only FLOOR and CEIL are implemented (TODO FIXME)
-    /// RENAMED from toUintWithShift
-    function shift_toUint(
-        int192 x,
-        int8 decimals,
-        RoundingApproach rounding
-    ) internal pure returns (uint192) {
-        int256 coeff = decimals >= 0 ? int256(10**uint8(decimals)) : int256(10**uint8(-decimals));
-        int256 shifted = decimals >= 0 ? x * coeff : x / coeff;
-        if (shifted < 0) revert IntOutOfBounds();
-        uint192 u = uint192(uint256(shifted / FIX_SCALE));
-        if (rounding == RoundingApproach.FLOOR) return u;
-        if (rounding == RoundingApproach.ROUND) revert NotImplementedYet();
-        return shifted == int192(u) * FIX_SCALE ? u : u + 1;
+    /// RENAMED: x.intRound() is now x.toInt(RoundingMode.ROUND)
+    function toInt(int192 x, RoundingMode rounding) internal pure returns (int136) {
+        return int136(_divrnd(x, FIX_SCALE, rounding));
     }
 
     /// Return the int192 shifted to the left by `decimal` digits
     /// Similar to a bitshift but in base 10
     /// Equivalent to multiplying `x` by `10**decimal`
-    function shiftLeft(int192 x, int8 decimals) internal pure returns (int192) {
-        int256 coeff = decimals >= 0 ? int256(10**uint8(decimals)) : int256(10**uint8(-decimals));
-        return _safeWrap(decimals >= 0 ? x * coeff : x / coeff);
+    /// RENAMED from shiftLeft
+    function shiftl(int192 x, int8 decimals) internal pure returns (int192) {
+        return shiftl(x, decimals, RoundingMode.FLOOR);
     }
 
-    /// Round this int192 to the nearest int. If equidistant to both
-    /// adjacent ints, round up, away from zero.
-    function intRound(int192 x) internal pure returns (int192) {
-        int256 x_ = x;
-        int256 adjustment = x_ >= 0 ? FIX_SCALE / 2 : -FIX_SCALE / 2;
-        int256 rounded = (x_ + adjustment) / FIX_SCALE;
-        if (rounded < type(int192).min || type(int192).max < rounded) revert IntOutOfBounds();
-        return int192(rounded);
+    /// Return the int192 shifted to the left by `decimal` digits
+    /// (Similar to a bitshift but in base 10)
+    /// Equivalent to multiplying `x` by `10**decimal`
+    /// RENAMED from shiftLeft
+    function shiftl(
+        int192 x,
+        int8 decimals,
+        RoundingMode rounding
+    ) internal pure returns (int192) {
+        int256 coeff = int256(10**abs(decimals));
+        return _safeWrap(decimals >= 0 ? x * coeff : _divrnd(x, coeff, rounding));
     }
 
     /// Add a int192 to this int192.
@@ -262,8 +292,7 @@ library FixLib {
     /// Add a uint to this int192.
     function plusu(int192 x, uint256 y) internal pure returns (int192) {
         if (y > type(uint256).max / 2) revert UIntOutOfBounds();
-        int256 y_ = int256(y);
-        return _safeWrap(x + y_ * FIX_SCALE);
+        return _safeWrap(x + int256(y) * FIX_SCALE);
     }
 
     /// Subtract a int192 from this int192.
@@ -280,33 +309,15 @@ library FixLib {
     /// Multiply this int192 by a int192.
     /// Round truncated values to the nearest available value. 5e-19 rounds away from zero.
     function mul(int192 x, int192 y) internal pure returns (int192) {
-        int256 naiveProd = int256(x) * int256(y);
-        int256 roundingAdjustment = naiveProd >= 0 ? FIX_SCALE / 2 : -FIX_SCALE / 2;
-        return _safeWrap((naiveProd + roundingAdjustment) / FIX_SCALE);
+        return mul(x, y, RoundingMode.ROUND);
     }
 
-    /// Multiply this int192 by a int192.
-    /// Round truncated values upwards towards one.
-    function mulCeil(int192 x, int192 y) internal pure returns (int192) {
-        int256 naiveProd = int256(x) * int256(y);
-        if (naiveProd % FIX_SCALE == 0) return _safeWrap(naiveProd / FIX_SCALE);
-        return _safeWrap((naiveProd) / FIX_SCALE + 1);
-    }
-
-    /// Multiply this int192 by a int192 and output the result as a uint, rounding towards zero.
-    function mulToUint(int192 x, int192 y) internal pure returns (uint192) {
-        int256 naiveProd = int256(x) * int256(y);
-        int256 roundingAdjustment = naiveProd >= 0 ? FIX_SCALE / 2 : -FIX_SCALE / 2;
-        return uint192(uint256((naiveProd + roundingAdjustment)) / FIX_SCALE_U);
-    }
-
-    /// Multiply this int192 by a int192 and output the result as an int, rounding towards zero.
-    /// There's one place in the code we use this and it's very useful there...it is one of a kind
-    /// @dev This function's return is only up to int192, but to avoid confusion it returns int256
-    function mulToInt(int192 x, int192 y) internal pure returns (int256) {
-        int256 naiveProd = int256(x) * int256(y);
-        int256 roundingAdjustment = naiveProd >= 0 ? FIX_SCALE / 2 : -FIX_SCALE / 2;
-        return (naiveProd + roundingAdjustment) / FIX_SCALE;
+    function mul(
+        int192 x,
+        int192 y,
+        RoundingMode rounding
+    ) internal pure returns (int192) {
+        return _safeWrap(_divrnd(int256(x) * int256(y), FIX_SCALE, rounding));
     }
 
     /// Multiply this int192 by a uint.
@@ -315,58 +326,37 @@ library FixLib {
         return _safeWrap(x * int256(y));
     }
 
-    /// Multiply this int192 by a uint and output the result as a uint, rounding towards zero.
-    function muluToUint(int192 x, uint256 y) internal pure returns (uint192) {
-        return muluToUint(x, y, RoundingApproach.FLOOR);
-    }
-
-    /// Multiply this int192 by a uint and output the result as a uint, rounding as specified.
-    function muluToUint(
-        int192 x,
-        uint256 y,
-        RoundingApproach rounding
-    ) internal pure returns (uint192) {
-        if (y > type(uint256).max / 2) revert UIntOutOfBounds();
-        int192 z = int192((x * int256(y)) / FIX_SCALE);
-        if (rounding == RoundingApproach.FLOOR) return uint192(z);
-        if (rounding == RoundingApproach.ROUND) revert NotImplementedYet();
-        return z * FIX_SCALE == x * int256(y) ? uint192(z) : uint192(z + 1);
-    }
-
     /// Divide this int192 by a int192; round the fractional part towards zero.
     function div(int192 x, int192 y) internal pure returns (int192) {
-        // Multiply-in FIX_SCALE before dividing by y to preserve right-hand digits of result.
-        int256 shift_x = int256(x) * FIX_SCALE;
-        return _safeWrap(shift_x / y);
+        return div(x, y, RoundingMode.FLOOR);
     }
 
-    /// Divide this int192 by a int192; round the fractional part towards one.
-    function divCeil(int192 x, int192 y) internal pure returns (int192) {
-        // Multiply-in FIX_SCALE before dividing by y to preserve right-hand digits of result.
-        int256 shift_x = int256(x) * FIX_SCALE;
-        int256 u = shift_x / y;
-        return _safeWrap(shift_x % y == 0 ? u : u + 1);
+    function div(
+        int192 x,
+        int192 y,
+        RoundingMode rounding
+    ) internal pure returns (int192) {
+        // Multiply-in FIX_SCALE before dividing by y to preserve precision.
+        int256 shiftedX = int256(x) * FIX_SCALE;
+        return _safeWrap(_divrnd(shiftedX, y, rounding));
     }
 
     /// Divide this int192 by a uint.
     function divu(int192 x, uint256 y) internal pure returns (int192) {
-        if (y > type(uint256).max / 2) return FIX_ZERO;
-        return _safeWrap(x / int256(y));
+        return divu(x, y, RoundingMode.FLOOR);
     }
 
-    // We don't currently use this anywhere, I think we can delete it. We always want FLOOR or CEIL
-    // Divide this int192 by a uint. Round the result to the *nearest* int192, instead of truncating.
-    // Values at exactly 0.5 are rounded up.
-    // function divuRound(int192 x_, uint256 y_) internal pure returns (int192) {
-    //     if (y_ > type(uint256).max / 2) return FIX_ZERO;
-    //     int256 y = int256(y_);
-    //     int256 x = int256(x_);
-    //     int8 sign = (x < 0) ? -1 : int8(1);
-    //     x *= sign;
-    //     return _safeWrap(((x + y / 2) / y) * sign);
-    // }
+    function divu(
+        int192 x,
+        uint256 y,
+        RoundingMode rounding
+    ) internal pure returns (int192) {
+        if (y > type(uint256).max / 2) return FIX_ZERO;
+        return _safeWrap(_divrnd(x, int256(y), rounding));
+    }
 
     /// Compute 1 / (this int192).
+    /// TODO: remove, we don't really need this
     function inv(int192 x) internal pure returns (int192) {
         return div(FIX_ONE, x);
     }
@@ -382,11 +372,12 @@ library FixLib {
             if (y & 1 == 1) result = mul(result, x);
             if (y <= 1) return result;
             y = y >> 1;
-            x = mul(x, x);
+            x = mul(x, x, RoundingMode.ROUND);
         }
     }
 
     /// Increment by 1 part in FIX_SCALE
+    /// TODO: remove! we don't use this, and it's kind of a bad idea.
     function increment(int192 x) internal pure returns (int192 result) {
         return _safeWrap(int256(x) + 1);
     }
@@ -428,35 +419,147 @@ library FixLib {
         return -epsilon < diff && diff < epsilon;
     }
 
-    /// A chained .mul + .div on uints that permits for overflow intermediately
-    /// @dev Do not use if you can avoid it. Has higher gas costs
+    // ================ Chained Operations ================
+    // The operation foo_bar() always means:
+    //   Do foo() followed by bar(), and overflow only if the _end_ result doesn't fit in an int192
+
+    function shiftl_toUint(int192 x, int8 decimals) internal pure returns (uint256) {
+        return shiftl_toUint(x, decimals, RoundingMode.FLOOR);
+    }
+
+    /// Shift this int192, left by `decimals`, and then convert the result to a uint.
+    /// Do all this applying the given rounding mode.
+    /// Overflow only if the end result doesn't fit in an int192.
+    function shiftl_toUint(
+        int192 x,
+        int8 decimals,
+        RoundingMode rounding
+    ) internal pure returns (uint256) {
+        decimals -= 18; // shift so that toUint happens at the same time.
+        int256 coeff = int256(10**abs(decimals));
+        return decimals >= 0 ? uint256(x * coeff) : uint256(_divrnd(x, coeff, rounding));
+    }
+
+    /// Multiply this int192 by a uint and output the result as a uint, rounding towards zero.
+    function mulu_toUint(int192 x, uint256 y) internal pure returns (uint256) {
+        // special-cased because it's easy and probably cheaper
+        if (x < 0) revert IntOutOfBounds();
+        return mulDiv256(uint192(x), y, FIX_SCALE_U);
+    }
+
+    /// Multiply this int192 by a uint and output the result as a uint, rounding as specified.
+    function mulu_toUint(
+        int192 x,
+        uint256 y,
+        RoundingMode rounding
+    ) internal pure returns (uint256) {
+        // This underlying operation is:
+        // raw_x * raw_y / FIX_SCALE, with the division respecting `rounding`
+        if (x < 0) revert IntOutOfBounds();
+        return mulDivRnd256(uint192(x), y, FIX_SCALE_U, rounding);
+    }
+
+    /// Multiply this int192 by a int192 and output the result as a uint, rounding towards zero.
+    /// RENAMED from mulToUint
+    function mul_toUint(int192 x, int192 y) internal pure returns (uint256) {
+        // underlyingly, this is raw_x * raw_y / FIX_SCALE_SQ
+        if ((x < 0) != (y < 0)) revert IntOutOfBounds();
+        if (x < 0) {
+            x = -x;
+            y = -y;
+        }
+        return mulDiv256(uint192(x), uint192(y), FIX_SCALE_SQ_U);
+    }
+
+    /// Multiply this int192 by a int192 and output the result as a uint, rounding towards zero.
+    /// RENAMED from mulToUint
+    function mul_toUint(
+        int192 x,
+        int192 y,
+        RoundingMode rounding
+    ) internal pure returns (uint256) {
+        // Fundamentally, this is raw_x * raw_y / FIX_SCALE_SQ
+        if ((x < 0) != (y < 0)) revert IntOutOfBounds();
+        if (x < 0) {
+            x = -x;
+            y = -y;
+        }
+        return mulDivRnd256(uint192(x), uint192(y), FIX_SCALE_SQ_U, rounding);
+    }
+
+    /// Multiply this int192 by a int192 and output the result as an int, rounding towards zero.
+    /// There's one place in the code we use this and it's very useful there...it is one of a kind
+    /// @dev This function's return is only up to int192, but to avoid confusion it returns int256
+    /// RENAMED from mulToInt
+    function mul_toInt(int192 x, int192 y) internal pure returns (int256) {
+        return mul_toInt(x, y, RoundingMode.FLOOR);
+    }
+
+    function mul_toInt(
+        int192 x,
+        int192 y,
+        RoundingMode rounding
+    ) internal pure returns (int256) {
+        int256 sign = (x < 0) == (y < 0) ? int256(1) : int256(-1);
+
+        return sign * int256(mulDivRnd256(abs(x), abs(y), FIX_SCALE_U, rounding));
+    }
+
+    /// A chained .mul + .div on uints that avoids intermediate overflow
+    /// @dev Do not use if you don't need it; has higher gas costs than x * y / z
     function muluDivu(
         int192 x,
         uint256 y,
         uint256 z
     ) internal pure returns (int192) {
-        return _safeWrap(int256(mulDiv256(uint256(uint192(x)), y, z)));
+        return muluDivu(x, y, z, RoundingMode.FLOOR);
     }
 
-    // A chained .mul + .div on Fixes that permits for overflow intermediately
-    /// @dev Do not use if you can avoid it. Has higher gas costs
+    /// A chained .mul + .div on uints that avoids intermediate overflow
+    /// @dev Do not use if you don't need it; has higher gas costs than x * y / z
+    function muluDivu(
+        int192 x,
+        uint256 y,
+        uint256 z,
+        RoundingMode rounding // TODO gotta use this
+    ) internal pure returns (int192) {
+        return _safeWrap(signOf(x) * int256(mulDivRnd256(abs(x), y, z, rounding)));
+    }
+
+    /// A chained .mul + .div on Fixes that avoids intermediate overflow
+    /// @dev Do not use if you don't need it; has higher gas costs than x * y / z
     function mulDiv(
         int192 x,
         int192 y,
         int192 z
     ) internal pure returns (int192) {
-        return
-            _safeWrap(
-                int256(mulDiv256(uint256(uint192(x)), uint256(uint192(y)), uint256(uint192(z))))
-            );
+        return mulDiv(x, y, z, RoundingMode.FLOOR);
+    }
+
+    /// A chained .mul + .div on Fixes that avoids intermediate overflow
+    /// @dev Do not use if you don't need it; has higher gas costs than x * y / z
+    function mulDiv(
+        int192 x,
+        int192 y,
+        int192 z,
+        RoundingMode rounding
+    ) internal pure returns (int192) {
+        int256 sign = ((x < 0) != (y < 0) != (z < 0)) ? int256(-1) : int256(1);
+        // i.e, sign == signOf(x) * signOf(y) * signOf(z)
+        // i.e, sign is -1 iff ((x<0) xor (y<0) xor (z<0)) is true
+        // i.e, sign is -1 iff an odd number of (x<0), (y<0), (z<0) are true
+
+        return _safeWrap(sign * int256(mulDivRnd256(abs(x), abs(y), abs(z), rounding)));
     }
 }
+
+// ================ a couple pure-uint functions, too ================
 
 /// mulDiv: return (x*y/z), overflowing *only* if the end result is out of range.
 ///   Adapted from sources:
 ///   https://medium.com/coinmonks/4db014e080b1, https://medium.com/wicketh/afa55870a65
 ///   and quite a few of the other excellent "Mathemagic" posts from https://medium.com/wicketh
-/// @dev Do not use if you can avoid it. Has higher gas costs
+/// @dev Just use x*y/z unless you need to avoid intermediate overflow. This has higher gas costs
 function mulDiv256(
     uint256 x,
     uint256 y,
@@ -483,6 +586,25 @@ function mulDiv256(
         r *= 2 - z * r;
         result = lo * r;
     }
+}
+
+/// return (x*y/z), overflowing only if the end result is out of range, and having the division
+/// round as specified by `rounding`.
+function mulDivRnd256(
+    uint256 x,
+    uint256 y,
+    uint256 z,
+    RoundingMode rounding
+) pure returns (uint256) {
+    uint256 result = mulDiv256(x, y, z);
+    if (rounding == RoundingMode.FLOOR) return result;
+    uint256 mm = mulmod(x, y, z);
+    if (rounding == RoundingMode.CEIL) {
+        if (mm > 0) result += 1;
+    } else {
+        if (mm >= (z >> 1)) result += 1;
+    }
+    return result;
 }
 
 /// fullMul: return (x*y) as a "virtual uint512"
