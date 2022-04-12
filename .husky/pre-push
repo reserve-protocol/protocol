@@ -2,6 +2,6 @@
 . "$(dirname "$0")/_/husky.sh"
 
 # yarn lint
-# yarn compile
+yarn compile
 # yarn test:p0
 # yarn test:p1

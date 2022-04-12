@@ -52,6 +52,6 @@ abstract contract AaveOracleMixin is CompoundOracleMixin {
         int192 ethInUsd = toFix(comptroller.oracle().price("ETH")); // {microUoA/ETH}
 
         // {UoA/tok} = {qETH/tok} * {microUoA/ETH} / {qETH/ETH} / {microUoA/UoA}
-        return inETH.mul(ethInUsd).div(ethNorm).shiftLeft(-6);
+        return inETH.mul(ethInUsd).div(ethNorm).shiftl(-6);
     }
 }

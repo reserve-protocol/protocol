@@ -117,10 +117,10 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         // ==== Compute and accept collateral ====
         int192 amtBaskets = (totalSupply() > 0) // {BU}
             ? basketsNeeded.muluDivu(amtRToken, totalSupply()) // {BU * qRTok / qRTok}
-            : toFixWithShift(amtRToken, -int8(decimals())); // {qRTok / qRTok}
+            : shiftl_toFix(amtRToken, -int8(decimals())); // {qRTok / qRTok}
 
         address[] memory erc20s;
-        (erc20s, deposits) = basketHandler.quote(amtBaskets, RoundingApproach.CEIL);
+        (erc20s, deposits) = basketHandler.quote(amtBaskets, RoundingMode.CEIL);
 
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -176,10 +176,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         // Calculate the issuance rate (if this is the first issuance in the block)
         if (lastIssRateBlock < block.number) {
             lastIssRateBlock = block.number;
-            lastIssRate = Math.max(
-                MIN_ISS_RATE,
-                issuanceRate.muluDiv(totalSupply(), FIX_ONE) // TODO check
-            );
+            lastIssRate = Math.max(MIN_ISS_RATE, issuanceRate.mulu_toUint(totalSupply()));
         }
 
         // Add amtRToken's worth of issuance delay to allVestAt
@@ -263,7 +260,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         emit Redemption(_msgSender(), amount, baskets);
 
         address[] memory erc20s;
-        (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingApproach.FLOOR);
+        (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingMode.FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         int192 prorate = toFix(amount).divu(totalSupply());
@@ -315,7 +312,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     function price() external view returns (int192) {
         if (totalSupply() == 0) return main.basketHandler().price();
 
-        int192 supply = toFixWithShift(totalSupply(), -int8(decimals()));
+        int192 supply = shiftl_toFix(totalSupply(), -int8(decimals()));
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
         return main.basketHandler().price().mul(basketsNeeded).div(supply);
     }

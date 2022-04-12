@@ -92,10 +92,10 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
         // Compute # of baskets to create `amount` qRTok
         int192 baskets = (totalSupply() > 0) // {BU}
             ? basketsNeeded.muluDivu(amount, totalSupply()) // {BU * qRTok / qRTok}
-            : toFixWithShift(amount, -int8(decimals())); // {qRTok / qRTok}
+            : shiftl_toFix(amount, -int8(decimals())); // {qRTok / qRTok}
 
         address[] memory erc20s;
-        (erc20s, deposits) = basketHandler.quote(baskets, RoundingApproach.CEIL);
+        (erc20s, deposits) = basketHandler.quote(baskets, RoundingMode.CEIL);
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
             IERC20(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
@@ -198,7 +198,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
         emit Redemption(_msgSender(), amount, baskets);
 
         address[] memory erc20s;
-        (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingApproach.FLOOR);
+        (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingMode.FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         int192 prorate = toFix(amount).divu(totalSupply());
@@ -251,7 +251,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
         if (totalSupply() == 0) return main.basketHandler().price();
 
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
-        int192 supply = toFixWithShift(totalSupply(), -int8(decimals()));
+        int192 supply = shiftl_toFix(totalSupply(), -int8(decimals()));
         return main.basketHandler().price().mulDiv(basketsNeeded, supply);
     }
 
@@ -287,7 +287,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
         if (blockIssuanceRates[block.number] == 0) {
             blockIssuanceRates[block.number] = Math.max(
                 MIN_ISSUANCE_RATE,
-                issuanceRate.muluToUint(totalSupply())
+                issuanceRate.mulu_toUint(totalSupply())
             );
         }
         uint256 perBlock = blockIssuanceRates[block.number];
