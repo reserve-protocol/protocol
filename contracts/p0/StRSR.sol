@@ -228,7 +228,7 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
 
         // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
         uint256 allStakes = totalStaked + stakeBeingWithdrawn(); // {qStRSR}
-        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.muluToUint(allStakes); // {qRSR}
+        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.mulu_toUint(allStakes); // {qRSR}
 
         uint256 seizedRSR;
         if (rsrBalance <= rsrAmount + dustRSRAmt) {

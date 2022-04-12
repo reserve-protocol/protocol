@@ -35,11 +35,11 @@ library TradingLibP0 {
 
         // {sellTok}
         int192 s = fixMin(sellAmount, divFix(sell.maxTradeVolume(), sell.price()));
-        trade.sellAmount = s.toUintWithShift(int8(sell.erc20().decimals()), RoundingApproach.FLOOR);
+        trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), RoundingMode.FLOOR);
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        int192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(sell.price(), buy.price());
-        trade.minBuyAmount = b.toUintWithShift(int8(buy.erc20().decimals()), RoundingApproach.CEIL);
+        int192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mul(sell.price()).div(buy.price());
+        trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20().decimals()), RoundingMode.CEIL);
         return (true, trade);
     }
 
@@ -106,7 +106,7 @@ library TradingLibP0 {
                 int192 bal = asset.bal(address(this)); // {tok}
                 if (basket().quantity(erc20s[i]).gt(FIX_ZERO) || bal.gt(dustThreshold(asset))) {
                     // {UoA} = {UoA} + {UoA/tok} * {tok}
-                    totalValue = totalValue + asset.price().mulToUint(bal);
+                    totalValue = totalValue + asset.price().mul_toUint(bal);
                 }
             }
             basketTop = divFix(totalValue, basket().price());
@@ -118,13 +118,13 @@ library TradingLibP0 {
                 int192 held = asset.bal(address(this));
 
                 if (held.lt(needed)) {
-                    tradeVolume = tradeVolume + needed.minus(held).mulToUint(asset.price());
+                    tradeVolume = tradeVolume + needed.minus(held).mul_toUint(asset.price());
                 }
             }
 
             // bBot {BU} = (totalValue - mTS * tradeVolume) / basket.price
             basketBottom = divFix(
-                totalValue - maxTradeSlippage().muluToUint(tradeVolume),
+                totalValue - maxTradeSlippage().mulu_toUint(tradeVolume),
                 basket().price()
             );
         }
@@ -144,7 +144,7 @@ library TradingLibP0 {
                 .minus(
                     asset.isCollateral() ? basketTop.mul(basket().quantity(erc20s[i])) : FIX_ZERO
                 )
-                .mulToInt(asset.price());
+                .mul_toInt(asset.price());
 
             // {UoA} = ({tok} - {tok}) * {UoA/tok}
             int256 deltaBottom = asset
@@ -152,7 +152,7 @@ library TradingLibP0 {
                 .minus(
                     asset.isCollateral() ? basketBottom.mul(basket().quantity(erc20s[i])) : FIX_ZERO
                 )
-                .mulToInt(asset.price());
+                .mul_toInt(asset.price());
 
             if (deltaTop > max) {
                 surplus = asset;

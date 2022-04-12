@@ -109,7 +109,7 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
     function refPerTok() public view override returns (int192) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20.decimals()) - 18;
-        int192 rateNow = toFixWithShift(rate, shiftLeft);
+        int192 rateNow = shiftl_toFix(rate, shiftLeft);
         return rateNow.div(COMPOUND_BASE);
     }
 

@@ -22,7 +22,7 @@ abstract contract Asset is IAsset {
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (int192) {
-        return toFixWithShift(erc20.balanceOf(account), -int8(erc20.decimals()));
+        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20.decimals()));
     }
 
     /// @return If the asset is an instance of ICollateral or not

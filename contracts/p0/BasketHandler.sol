@@ -192,7 +192,11 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         if (!goodCollateral(erc20)) return FIX_ZERO;
 
         // {tok/BU} = {ref/BU} / {ref/tok}
-        return basket.refAmts[erc20].divCeil(main.assetRegistry().toColl(erc20).refPerTok());
+        return
+            basket.refAmts[erc20].div(
+                main.assetRegistry().toColl(erc20).refPerTok(),
+                RoundingMode.CEIL
+            );
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
@@ -208,7 +212,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
-    function quote(int192 amount, RoundingApproach rounding)
+    function quote(int192 amount, RoundingMode rounding)
         external
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
@@ -219,11 +223,13 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             if (!goodCollateral(basket.erc20s[i])) continue;
 
-            int8 decimals = int8(IERC20Metadata(address(basket.erc20s[i])).decimals());
+            // {tok} = {tok/BU} * {BU}
+            int192 tok = quantity(basket.erc20s[i]).mul(amount, rounding);
 
-            // {qTok} = {tok/BU} * {BU} * {qTok/tok}
-            uint256 q = quantity(basket.erc20s[i]).mulToUint(amount, rounding);
-            quantitiesBig[size] = q;
+            // {qTok} = {tok} * {qTok/tok}
+            quantitiesBig[size] = tok.shiftl_toUint(
+                int8(IERC20Metadata(address(basket.erc20s[i])).decimals())
+            );
             erc20sBig[size] = address(basket.erc20s[i]);
             size++;
         }
@@ -295,7 +301,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
             if (goodCollateral(erc20) && targetWeight.gt(FIX_ZERO)) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
-                newBasket.add(erc20, targetWeight.divCeil(reg.toColl(erc20).targetPerRef()));
+                newBasket.add(
+                    erc20,
+                    targetWeight.div(reg.toColl(erc20).targetPerRef(), RoundingMode.CEIL)
+                );
             }
         }
 
@@ -325,7 +334,10 @@ contract BasketHandlerP0 is Component, IBasketHandler {
                 if (goodCollateral(erc20)) {
                     newBasket.add(
                         erc20,
-                        needed.divCeil(fixSize).divCeil(reg.toColl(erc20).targetPerRef())
+                        needed.div(fixSize, RoundingMode.CEIL).div(
+                            reg.toColl(erc20).targetPerRef(),
+                            RoundingMode.CEIL
+                        )
                     );
                     assigned++;
                 }

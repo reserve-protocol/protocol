@@ -9,9 +9,6 @@ contract FixedCallerMock {
     function toFix_(uint256 x) public pure returns (int192) {
         return toFix(x);
     }
-    function intToFix_(int256 x) public pure returns (int192) {
-        return toFix(x);
-    }
     function shiftl_toFix_(uint256 x, int8 shiftLeft) public pure returns (int192) {
         return shiftl_toFix(x, shiftLeft);
     }

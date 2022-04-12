@@ -55,13 +55,13 @@ contract FacadeP0 is IFacade {
 
         int8 decimals = int8(main.rToken().decimals());
 
-        // return {qRTok} = {qBU} * {qRTok/qBU}
-        if (needed.eq(FIX_ZERO)) return held.toUintWithShift(decimals);
+        // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
+        if (needed.eq(FIX_ZERO)) return held.shiftl(decimals).floor();
 
-        int192 totalSupply = toFixWithShift(main.rToken().totalSupply(), -decimals); // {rTok}
+        int192 totalSupply = shiftl_toFix(main.rToken().totalSupply(), -decimals); // {rTok}
 
         // {qRTok} = {BU} * {rTok} / {BU} * {qRTok/rTok}
-        return held.mulDiv(totalSupply, needed).toUintWithShift(decimals);
+        return held.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
     }
 
     /// @return tokens Array of all known ERC20 asset addreses.
@@ -111,6 +111,6 @@ contract FacadeP0 is IFacade {
     /// @return tokens The addresses of the ERC20s backing the RToken
     /// @custom:view
     function basketTokens() external view returns (address[] memory tokens) {
-        (tokens, ) = main.basketHandler().quote(1e18, RoundingApproach.CEIL);
+        (tokens, ) = main.basketHandler().quote(FIX_ONE, RoundingMode.CEIL);
     }
 }

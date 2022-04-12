@@ -68,15 +68,8 @@ function toFix(uint256 x) pure returns (int192) {
     return int192(uint192(x)) * FIX_SCALE;
 }
 
-/// Convert an int to its int192 representation. Fails if x is outside int192's representable range.
-/// @dev RENAMED from intToFix
-function toFix(int256 x) pure returns (int192) {
-    return _safeWrap(x * FIX_SCALE);
-}
-
 /// Convert a uint to its fixed-point representation after left-shifting its value `shiftLeft`
 /// decimal digits. Fails if the result is outside int192's representable range.
-/// @dev RENAMED from toFixWithShift
 function shiftl_toFix(uint256 x, int8 shiftLeft) pure returns (int192) {
     // TODO very suspicious
     // toFix_shift
@@ -258,7 +251,6 @@ library FixLib {
     }
 
     /// Convert this fixed-point value to an int, round the result as specified.
-    /// RENAMED: x.intRound() is now x.toInt(RoundingMode.ROUND)
     function toInt(int192 x, RoundingMode rounding) internal pure returns (int136) {
         return int136(_divrnd(x, FIX_SCALE, rounding));
     }
@@ -266,7 +258,6 @@ library FixLib {
     /// Return the int192 shifted to the left by `decimal` digits
     /// Similar to a bitshift but in base 10
     /// Equivalent to multiplying `x` by `10**decimal`
-    /// RENAMED from shiftLeft
     function shiftl(int192 x, int8 decimals) internal pure returns (int192) {
         return shiftl(x, decimals, RoundingMode.FLOOR);
     }
@@ -274,7 +265,6 @@ library FixLib {
     /// Return the int192 shifted to the left by `decimal` digits
     /// (Similar to a bitshift but in base 10)
     /// Equivalent to multiplying `x` by `10**decimal`
-    /// RENAMED from shiftLeft
     function shiftl(
         int192 x,
         int8 decimals,
@@ -460,7 +450,6 @@ library FixLib {
     }
 
     /// Multiply this int192 by a int192 and output the result as a uint, rounding towards zero.
-    /// RENAMED from mulToUint
     function mul_toUint(int192 x, int192 y) internal pure returns (uint256) {
         // underlyingly, this is raw_x * raw_y / FIX_SCALE_SQ
         if ((x < 0) != (y < 0)) revert IntOutOfBounds();
@@ -472,7 +461,6 @@ library FixLib {
     }
 
     /// Multiply this int192 by a int192 and output the result as a uint, rounding towards zero.
-    /// RENAMED from mulToUint
     function mul_toUint(
         int192 x,
         int192 y,
@@ -490,7 +478,6 @@ library FixLib {
     /// Multiply this int192 by a int192 and output the result as an int, rounding towards zero.
     /// There's one place in the code we use this and it's very useful there...it is one of a kind
     /// @dev This function's return is only up to int192, but to avoid confusion it returns int256
-    /// RENAMED from mulToInt
     function mul_toInt(int192 x, int192 y) internal pure returns (int256) {
         return mul_toInt(x, y, RoundingMode.FLOOR);
     }
