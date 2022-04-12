@@ -67,7 +67,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
              *     a. Sell non-RSR assets first
              *     b. Sell RSR when no asset has a surplus > dust amount
              *   2. When RSR holdings < dust:
-             *     -  Sell non-RSR surplus assets towards the Fallen Target {BU}
+             *     -  Sell non-RSR surplus assets towards the Fallen Target
              *   3. When this produces trade sizes < dust:
              *     -  Set rToken.basketsNeeded() to basketsHeldBy(address(this))
              *
@@ -134,12 +134,15 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         // Mint revenue RToken
         IRToken rToken = main.rToken();
-        int192 held = main.basketHandler().basketsHeldBy(address(this));
-        int192 needed = rToken.basketsNeeded();
+        int192 held = main.basketHandler().basketsHeldBy(address(this)); // {BU}
+        int192 needed = rToken.basketsNeeded(); // {BU}
         if (held.gt(needed)) {
-            // {qRTok} = {(BU - BU) * qRTok / BU}
-            uint256 qRTok = held.minus(needed).muluDiv(rToken.totalSupply(), needed); // TODO check
-            rToken.mint(address(this), qRTok);
+            int8 decimals = int8(main.rToken().decimals());
+            int192 totalSupply = toFixWithShift(main.rToken().totalSupply(), -decimals); // {rTok}
+
+            // {rTok} = {(BU - BU) * rTok / BU}
+            int192 rTok = held.minus(needed).mulDiv(totalSupply, needed);
+            rToken.mint(address(this), rTok.toUintWithShift(decimals));
             rToken.setBasketsNeeded(held);
             needed = held;
         }
@@ -238,7 +241,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         );
 
         if (doTrade) {
-            uint256 rsrBal = rsrAsset.balQ(address(this)).floor();
+            int8 decimals = int8(IERC20Metadata(address(main.rsr())).decimals());
+            uint256 rsrBal = rsrAsset.bal(address(this)).toUintWithShift(decimals);
             if (req.sellAmount > rsrBal) {
                 stRSR.seizeRSR(req.sellAmount - rsrBal);
             }

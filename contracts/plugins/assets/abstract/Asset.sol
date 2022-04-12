@@ -10,9 +10,9 @@ abstract contract Asset is IAsset {
 
     IERC20Metadata public immutable erc20;
 
-    int192 public immutable maxTradeVolume; // {UoA}
+    uint256 public immutable maxTradeVolume; // {UoA}
 
-    constructor(IERC20Metadata erc20_, int192 maxTradeVolume_) {
+    constructor(IERC20Metadata erc20_, uint256 maxTradeVolume_) {
         erc20 = erc20_;
         maxTradeVolume = maxTradeVolume_;
     }
@@ -23,11 +23,6 @@ abstract contract Asset is IAsset {
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (int192) {
         return toFixWithShift(erc20.balanceOf(account), -int8(erc20.decimals()));
-    }
-
-    /// @return {qTok} The balance of the ERC20 in qTokens
-    function balQ(address account) public view returns (int192) {
-        return toFix(erc20.balanceOf(account));
     }
 
     /// @return If the asset is an instance of ICollateral or not

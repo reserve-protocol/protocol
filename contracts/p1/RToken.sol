@@ -176,10 +176,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         // Calculate the issuance rate (if this is the first issuance in the block)
         if (lastIssRateBlock < block.number) {
             lastIssRateBlock = block.number;
-            lastIssRate = Math.max(
-                MIN_ISS_RATE,
-                issuanceRate.muluDiv(totalSupply(), FIX_ONE) // TODO check
-            );
+            lastIssRate = Math.max(MIN_ISS_RATE, issuanceRate.muluToUint(totalSupply()));
         }
 
         // Add amtRToken's worth of issuance delay to allVestAt
