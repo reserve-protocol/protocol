@@ -156,14 +156,11 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             IAsset asset = main.assetRegistry().toAsset(erc20s[i]);
 
             int192 bal = asset.bal(address(this)); // {tok}
-            int192 req = needed.mul(main.basketHandler().quantity(erc20s[i]), RoundingMode.CEIL);
+            int192 req = needed.mul(main.basketHandler().quantity(erc20s[i]), CEIL);
 
             if (bal.gt(req)) {
                 // delta: {qTok}
-                uint256 delta = bal.minus(req).shiftl_toUint(
-                    int8(asset.erc20().decimals()),
-                    RoundingMode.FLOOR
-                );
+                uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20().decimals()), FLOOR);
                 (uint256 rTokenShares, uint256 rsrShares) = main.distributor().totals();
 
                 uint256 tokensPerShare = delta / (rTokenShares + rsrShares);

@@ -50,6 +50,10 @@ enum RoundingMode {
     CEIL // Round away from zero
 }
 
+RoundingMode constant FLOOR = RoundingMode.FLOOR;
+RoundingMode constant ROUND = RoundingMode.ROUND;
+RoundingMode constant CEIL = RoundingMode.CEIL;
+
 /* @dev To understand the tedious-looking double conversions (e.g, uint256(uint192(foo))) herein:
    Solidity 0.8.x only allows you to type-convert _one_ of type or size per conversion.
    See: https://docs.soliditylang.org/en/v0.8.9/080-breaking-changes.html#new-restrictions
@@ -176,9 +180,9 @@ function _divrnd(
     RoundingMode rounding
 ) pure returns (int256) {
     int256 result = numerator / divisor;
-    if (rounding == RoundingMode.FLOOR) return result;
+    if (rounding == FLOOR) return result;
 
-    if (rounding == RoundingMode.CEIL) {
+    if (rounding == CEIL) {
         if (numerator % divisor != 0) {
             result += signOf(result);
         }
@@ -200,9 +204,9 @@ function _divrnd(
 ) pure returns (uint256) {
     uint256 result = numerator / divisor;
 
-    if (rounding == RoundingMode.FLOOR) return result;
+    if (rounding == FLOOR) return result;
 
-    if (rounding == RoundingMode.ROUND) {
+    if (rounding == ROUND) {
         if (numerator % divisor >= divisor >> 1) {
             result++;
         }
@@ -220,22 +224,22 @@ library FixLib {
 
     /// Convert this int192 to a uint. Fail if x is negative; round towards zero.
     function floor(int192 x) internal pure returns (uint136) {
-        return toUint(x, RoundingMode.FLOOR);
+        return toUint(x, FLOOR);
     }
 
     /// Convert this int192 to a uint with standard rounding to the nearest integer.
     function round(int192 x) internal pure returns (uint136) {
-        return toUint(x, RoundingMode.ROUND);
+        return toUint(x, ROUND);
     }
 
     /// Convert this int192 to a uint. Round the fractional part towards one.
     function ceil(int192 x) internal pure returns (uint136) {
-        return toUint(x, RoundingMode.CEIL);
+        return toUint(x, CEIL);
     }
 
     /// Convert this fixed-point value to a uint; round the result towards zero
     function toUint(int192 x) internal pure returns (uint136) {
-        return toUint(x, RoundingMode.FLOOR);
+        return toUint(x, FLOOR);
     }
 
     /// Convert this int192 to a uint, applying the rounding approach described by the enum
@@ -246,7 +250,7 @@ library FixLib {
 
     /// Convert this fixed-point value to an int. Round the fractional part towards zero.
     function toInt(int192 x) internal pure returns (int136) {
-        return toInt(x, RoundingMode.FLOOR);
+        return toInt(x, FLOOR);
     }
 
     /// Convert this fixed-point value to an int, round the result as specified.
@@ -258,7 +262,7 @@ library FixLib {
     /// Similar to a bitshift but in base 10
     /// Equivalent to multiplying `x` by `10**decimal`
     function shiftl(int192 x, int8 decimals) internal pure returns (int192) {
-        return shiftl(x, decimals, RoundingMode.FLOOR);
+        return shiftl(x, decimals, FLOOR);
     }
 
     /// Return the int192 shifted to the left by `decimal` digits
@@ -298,7 +302,7 @@ library FixLib {
     /// Multiply this int192 by a int192.
     /// Round truncated values to the nearest available value. 5e-19 rounds away from zero.
     function mul(int192 x, int192 y) internal pure returns (int192) {
-        return mul(x, y, RoundingMode.ROUND);
+        return mul(x, y, ROUND);
     }
 
     function mul(
@@ -317,7 +321,7 @@ library FixLib {
 
     /// Divide this int192 by a int192; round the fractional part towards zero.
     function div(int192 x, int192 y) internal pure returns (int192) {
-        return div(x, y, RoundingMode.FLOOR);
+        return div(x, y, FLOOR);
     }
 
     function div(
@@ -332,7 +336,7 @@ library FixLib {
 
     /// Divide this int192 by a uint.
     function divu(int192 x, uint256 y) internal pure returns (int192) {
-        return divu(x, y, RoundingMode.FLOOR);
+        return divu(x, y, FLOOR);
     }
 
     function divu(
@@ -355,7 +359,7 @@ library FixLib {
             if (y & 1 == 1) result = mul(result, x);
             if (y <= 1) return result;
             y = y >> 1;
-            x = mul(x, x, RoundingMode.ROUND);
+            x = mul(x, x, ROUND);
         }
     }
 
@@ -401,7 +405,7 @@ library FixLib {
     //   Do foo() followed by bar(), and overflow only if the _end_ result doesn't fit in an int192
 
     function shiftl_toUint(int192 x, int8 decimals) internal pure returns (uint256) {
-        return shiftl_toUint(x, decimals, RoundingMode.FLOOR);
+        return shiftl_toUint(x, decimals, FLOOR);
     }
 
     /// Shift this int192, left by `decimals`, and then convert the result to a uint.
@@ -466,7 +470,7 @@ library FixLib {
     /// There's one place in the code we use this and it's very useful there...it is one of a kind
     /// @dev This function's return is only up to int192, but to avoid confusion it returns int256
     function mul_toInt(int192 x, int192 y) internal pure returns (int256) {
-        return mul_toInt(x, y, RoundingMode.FLOOR);
+        return mul_toInt(x, y, FLOOR);
     }
 
     function mul_toInt(
@@ -486,7 +490,7 @@ library FixLib {
         uint256 y,
         uint256 z
     ) internal pure returns (int192) {
-        return muluDivu(x, y, z, RoundingMode.FLOOR);
+        return muluDivu(x, y, z, FLOOR);
     }
 
     /// A chained .mul + .div on uints that avoids intermediate overflow
@@ -507,7 +511,7 @@ library FixLib {
         int192 y,
         int192 z
     ) internal pure returns (int192) {
-        return mulDiv(x, y, z, RoundingMode.FLOOR);
+        return mulDiv(x, y, z, FLOOR);
     }
 
     /// A chained .mul + .div on Fixes that avoids intermediate overflow
@@ -571,10 +575,10 @@ function mulDiv256(
     RoundingMode rounding
 ) pure returns (uint256) {
     uint256 result = mulDiv256(x, y, z);
-    if (rounding == RoundingMode.FLOOR) return result;
+    if (rounding == FLOOR) return result;
 
     uint256 mm = mulmod(x, y, z);
-    if (rounding == RoundingMode.CEIL) {
+    if (rounding == CEIL) {
         if (mm > 0) result += 1;
     } else {
         if (mm >= (z >> 1)) result += 1;

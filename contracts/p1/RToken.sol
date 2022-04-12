@@ -120,7 +120,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             : shiftl_toFix(amtRToken, -int8(decimals())); // {qRTok / qRTok}
 
         address[] memory erc20s;
-        (erc20s, deposits) = basketHandler.quote(amtBaskets, RoundingMode.CEIL);
+        (erc20s, deposits) = basketHandler.quote(amtBaskets, CEIL);
 
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -260,7 +260,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         emit Redemption(_msgSender(), amount, baskets);
 
         address[] memory erc20s;
-        (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingMode.FLOOR);
+        (erc20s, withdrawals) = basketHandler.quote(baskets, FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         int192 prorate = toFix(amount).divu(totalSupply());

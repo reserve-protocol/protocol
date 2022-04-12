@@ -192,11 +192,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         if (!goodCollateral(erc20)) return FIX_ZERO;
 
         // {tok/BU} = {ref/BU} / {ref/tok}
-        return
-            basket.refAmts[erc20].div(
-                main.assetRegistry().toColl(erc20).refPerTok(),
-                RoundingMode.CEIL
-            );
+        return basket.refAmts[erc20].div(main.assetRegistry().toColl(erc20).refPerTok(), CEIL);
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
@@ -301,10 +297,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
             if (goodCollateral(erc20) && targetWeight.gt(FIX_ZERO)) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
-                newBasket.add(
-                    erc20,
-                    targetWeight.div(reg.toColl(erc20).targetPerRef(), RoundingMode.CEIL)
-                );
+                newBasket.add(erc20, targetWeight.div(reg.toColl(erc20).targetPerRef(), CEIL));
             }
         }
 
@@ -334,10 +327,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
                 if (goodCollateral(erc20)) {
                     newBasket.add(
                         erc20,
-                        needed.div(fixSize, RoundingMode.CEIL).div(
-                            reg.toColl(erc20).targetPerRef(),
-                            RoundingMode.CEIL
-                        )
+                        needed.div(fixSize, CEIL).div(reg.toColl(erc20).targetPerRef(), CEIL)
                     );
                     assigned++;
                 }

@@ -111,6 +111,6 @@ contract FacadeP0 is IFacade {
     /// @return tokens The addresses of the ERC20s backing the RToken
     /// @custom:view
     function basketTokens() external view returns (address[] memory tokens) {
-        (tokens, ) = main.basketHandler().quote(FIX_ONE, RoundingMode.CEIL);
+        (tokens, ) = main.basketHandler().quote(FIX_ONE, CEIL);
     }
 }

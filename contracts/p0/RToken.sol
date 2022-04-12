@@ -95,7 +95,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
             : shiftl_toFix(amount, -int8(decimals())); // {qRTok / qRTok}
 
         address[] memory erc20s;
-        (erc20s, deposits) = basketHandler.quote(baskets, RoundingMode.CEIL);
+        (erc20s, deposits) = basketHandler.quote(baskets, CEIL);
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
             IERC20(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
@@ -198,7 +198,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
         emit Redemption(_msgSender(), amount, baskets);
 
         address[] memory erc20s;
-        (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingMode.FLOOR);
+        (erc20s, withdrawals) = basketHandler.quote(baskets, FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         int192 prorate = toFix(amount).divu(totalSupply());

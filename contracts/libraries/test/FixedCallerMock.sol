@@ -27,10 +27,10 @@ contract FixedCallerMock {
     function abs_(int256 x) public pure returns (uint256) {
         return abs(x);
     }
-    function _divrnd(int256 n, int256 d, RoundingMode rnd) public pure returns (int256) {
+    function divrnd_(int256 n, int256 d, RoundingMode rnd) public pure returns (int256) {
         return _divrnd(n, d, rnd);
     }
-    function _divrnd(uint256 n, uint256 d, RoundingMode rnd) public pure returns (uint256) {
+    function divrnd_(uint256 n, uint256 d, RoundingMode rnd) public pure returns (uint256) {
         return _divrnd(n, d, rnd);
     }
     function floor(int192 x) public pure returns (uint192) {
