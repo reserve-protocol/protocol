@@ -21,7 +21,9 @@ const MNEMONIC = process.env.MNEMONIC || ''
 const TIMEOUT = !!process.env.SLOW ? 3_000_000 : 300_000
 
 const src_dir = process.env.PROTO ? './contracts/' + process.env.PROTO : './contracts'
+
 const settings = process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 2000 } }
+
 export default <HardhatUserConfig>{
   defaultNetwork: 'hardhat',
   networks: {
@@ -75,5 +77,8 @@ export default <HardhatUserConfig>{
     strict: false,
     only: [],
     except: ['Extension'],
+  },
+  gasReporter: {
+    enabled: process.env.REPORT_GAS ? true : false,
   },
 }
