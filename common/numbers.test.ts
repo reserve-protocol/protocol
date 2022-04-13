@@ -1,6 +1,6 @@
 import { assert, expect } from 'chai'
-import { bn, fp, fpRound, fpCeil, fpFloor, shortString } from './numbers'
-import { SCALE_DECIMALS, BN_SCALE_FACTOR } from './constants'
+import { bn, fp, div, fpRound, fpCeil, fpFloor, shortString } from './numbers'
+import { SCALE_DECIMALS, BN_SCALE_FACTOR, RoundingMode } from './constants'
 import { BigNumber, BigNumberish } from 'ethers'
 
 const N = BN_SCALE_FACTOR
@@ -86,6 +86,39 @@ describe('fp', () => {
   for (const [input, output] of table) {
     it(`correctly expands ${input}`, () => {
       expect(fp(input)).to.equal(BN(output))
+    })
+  }
+})
+
+describe('div', () => {
+  // x, y, FLOOR result, ROUND result, CEIL result
+  const table = [
+    [10, 10, 1, 1, 1],
+    [13, 10, 1, 1, 2],
+    [15, 10, 1, 2, 2],
+    [17, 10, 1, 2, 2],
+    [20, 10, 2, 2, 2],
+    [0, 10, 0, 0, 0],
+    [1, 3, 0, 0, 1],
+    [2, 3, 0, 1, 1],
+  ]
+    .flatMap(([x, y, fv, rv, cv]) => [
+      [x, y, fv, rv, cv],
+      [-x, y, -fv, -rv, -cv],
+      [x, -y, -fv, -rv, -cv],
+      [-x, -y, fv, rv, cv],
+    ])
+    .map(([x, y, fv, rv, cv]) => [bn(x), bn(y), bn(fv), bn(rv), bn(cv)])
+
+  for (const [x, y, floorVal, roundVal, ceilVal] of table) {
+    it(`div(${x},${y},FLOOR) == ${floorVal}`, () => {
+      expect(div(x, y, RoundingMode.FLOOR)).to.equal(floorVal)
+    })
+    it(`div(${x},${y},ROUND) == ${roundVal}`, () => {
+      expect(div(x, y, RoundingMode.ROUND)).to.equal(roundVal)
+    })
+    it(`div(${x},${y},CEIL)  == ${ceilVal}`, () => {
+      expect(div(x, y, RoundingMode.CEIL)).to.equal(ceilVal)
     })
   }
 })

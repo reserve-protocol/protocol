@@ -1,6 +1,9 @@
 import { BigNumber, BigNumberish } from 'ethers'
-import { SCALE_DECIMALS, BN_SCALE_FACTOR } from './constants'
+import { SCALE_DECIMALS, BN_SCALE_FACTOR, RoundingMode } from './constants'
 
+const ROUND = RoundingMode.ROUND
+const FLOOR = RoundingMode.FLOOR
+const CEIL = RoundingMode.CEIL
 export const ZERO = BigNumber.from(0)
 
 // Convenience form for "BigNumber.from" that also accepts scientific notation
@@ -31,9 +34,20 @@ export const fp = (x: BigNumberish): BigNumber => {
   return BigNumber.from(x).mul(BN_SCALE_FACTOR)
 }
 
-export const divCeil = (x: BigNumber, y: BigNumber): BigNumber =>
-  // ceil(x/y) == (x + y - 1) / y
-  x.add(y).sub(1).div(y)
+export const divCeil = (x: BigNumber, y: BigNumber): BigNumber => div(x, y, CEIL)
+
+export function div(x: BigNumber, y: BigNumber, rnd: RoundingMode) {
+  let extra: BigNumber = bn(0)
+
+  if (rnd == CEIL) {
+    extra = y.abs().sub(1)
+  } else if (rnd == ROUND) {
+    extra = y.abs().div(2)
+  }
+
+  if (x.isNegative()) extra = extra.mul(-1)
+  return x.add(extra).div(y)
+}
 
 // Whether the absolute difference between x and y is less than z
 export const near = (x: BigNumber, y: BigNumber, z: BigNumberish): boolean => {
