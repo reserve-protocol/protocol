@@ -1,7 +1,9 @@
 import { assert, expect } from 'chai'
-import { bn, fp, shortString } from './numbers'
-import { SCALE_DECIMALS } from './constants'
+import { bn, fp, fpRound, fpCeil, fpFloor, shortString } from './numbers'
+import { SCALE_DECIMALS, BN_SCALE_FACTOR } from './constants'
 import { BigNumber, BigNumberish } from 'ethers'
+
+const N = BN_SCALE_FACTOR
 
 describe('bn', () => {
   const table: [BigNumberish, BigNumberish][] = [
@@ -88,6 +90,72 @@ describe('fp', () => {
   }
 })
 
+describe('fpRound', () => {
+  const table = [
+    [1, 1],
+    [1.2, 1],
+    [1.5, 2],
+    [1.8, 2],
+    [2, 2],
+    [0, 0],
+    [-1, -1],
+    [-1.2, -1],
+    [-1.5, -2],
+    [-1.8, -2],
+    [-2, -2],
+    [-2.5, -3],
+    [2.5, 3],
+  ]
+
+  for (const [input, output] of table) {
+    it(`fpRound(${input}) == ${output}`, () => {
+      expect(fpRound(fp(input))).to.equal(fp(output))
+    })
+  }
+})
+describe('fpFloor', () => {
+  const table = [
+    [1, 1],
+    [1.2, 1],
+    [1.5, 1],
+    [1.8, 1],
+    [2, 2],
+    [0, 0],
+    [-1, -1],
+    [-1.2, -1],
+    [-1.5, -1],
+    [-1.8, -1],
+    [-2, -2],
+  ]
+
+  for (const [input, output] of table) {
+    it(`fpFloor(${input}) == ${output}`, () => {
+      expect(fpFloor(fp(input))).to.equal(fp(output))
+    })
+  }
+})
+describe('fpCeil', () => {
+  const table = [
+    [1, 1],
+    [1.2, 2],
+    [1.5, 2],
+    [1.8, 2],
+    [2, 2],
+    [0, 0],
+    [-1, -1],
+    [-1.2, -2],
+    [-1.5, -2],
+    [-1.8, -2],
+    [-2, -2],
+  ]
+
+  for (const [input, output] of table) {
+    it(`fpCeil(${input}) == ${output}`, () => {
+      expect(fpCeil(fp(input))).to.equal(fp(output))
+    })
+  }
+})
+
 describe('shortString', () => {
   const values = [
     '0',
@@ -103,7 +171,7 @@ describe('shortString', () => {
     '5.2e987',
   ]
   for (const val of values) {
-    it(`works for ${val}`, () => {
+    it(val, () => {
       expect(shortString(bn(val))).to.equal(val)
     })
   }
