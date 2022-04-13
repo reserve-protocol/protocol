@@ -34,6 +34,8 @@ export const fp = (x: BigNumberish): BigNumber => {
   return BigNumber.from(x).mul(BN_SCALE_FACTOR)
 }
 
+export const divFloor = (x: BigNumber, y: BigNumber): BigNumber => div(x, y, FLOOR)
+
 export const divCeil = (x: BigNumber, y: BigNumber): BigNumber => div(x, y, CEIL)
 
 export function div(x: BigNumber, y: BigNumber, rnd: RoundingMode) {
