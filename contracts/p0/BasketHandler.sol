@@ -218,14 +218,13 @@ contract BasketHandlerP0 is Component, IBasketHandler {
         uint256[] memory quantitiesBig = new uint256[](basket.erc20s.length);
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             if (!goodCollateral(basket.erc20s[i])) continue;
+            int8 decimals = int8(IERC20Metadata(address(basket.erc20s[i])).decimals());
 
             // {tok} = {tok/BU} * {BU}
             int192 tok = quantity(basket.erc20s[i]).mul(amount, rounding);
 
             // {qTok} = {tok} * {qTok/tok}
-            quantitiesBig[size] = tok.shiftl_toUint(
-                int8(IERC20Metadata(address(basket.erc20s[i])).decimals())
-            );
+            quantitiesBig[size] = tok.shiftl_toUint(decimals, CEIL);
             erc20sBig[size] = address(basket.erc20s[i]);
             size++;
         }
