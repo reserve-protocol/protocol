@@ -7,11 +7,15 @@ import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp, pow10 } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
 
-enum RoundingApproach {
+enum RoundingMode {
   FLOOR,
   ROUND,
   CEIL,
 }
+
+const FLOOR = RoundingMode.FLOOR
+const ROUND = RoundingMode.ROUND
+const CEIL = RoundingMode.CEIL
 
 describe('In FixLib,', () => {
   let FixedCaller: ContractFactory
@@ -48,20 +52,6 @@ describe('In FixLib,', () => {
     caller = await (<Promise<FixedCallerMock>>FixedCaller.deploy())
   })
 
-  describe('toFix(int)', () => {
-    it('correctly converts int values', async () => {
-      for (const x of fixable_ints) {
-        expect(await caller.toFix_(x), `${x}`).to.equal(fp(x))
-      }
-    })
-    it('fails on values outside its domain', async () => {
-      const table = [MAX_FIX_INT.add(1), MIN_FIX_INT.sub(1), MAX_FIX_INT.mul(25)]
-      for (const x of table) {
-        await expect(caller.toFix_(x)).to.be.revertedWith('IntOutOfBounds')
-      }
-    })
-  })
-
   describe('toFix(uint)', () => {
     it('correctly converts uint values', async () => {
       const table = [0, 1, 2, '38326665875765560393', MAX_FIX_INT.sub(1), MAX_FIX_INT].map(bn)
@@ -81,6 +71,9 @@ describe('In FixLib,', () => {
       const table = [0, 1, 2, '38326665875765560393', MAX_FIX_INT.sub(1), MAX_FIX_INT].map(bn)
       for (const x of table) {
         expect(await caller.shiftl_toFix_(x, bn(0)), `${x}`).to.equal(fp(x))
+        expect(await caller.shiftl_toFix_Rnd(x, bn(0), FLOOR), `${x}`).to.equal(fp(x))
+        expect(await caller.shiftl_toFix_Rnd(x, bn(0), CEIL), `${x}`).to.equal(fp(x))
+        expect(await caller.shiftl_toFix_Rnd(x, bn(0), ROUND), `${x}`).to.equal(fp(x))
       }
     })
 
@@ -123,9 +116,12 @@ describe('In FixLib,', () => {
 
       for (const [x, s] of table) {
         await expect(caller.shiftl_toFix_(x, s), `toFix(${x}, ${s})`).to.be.reverted
+        await expect(caller.shiftl_toFix_Rnd(x, s, FLOOR), `toFix(${x}, ${s}, FLOOR)`).be.reverted
       }
     })
   })
+
+  describe('shiftl_toFix with rounding', () => {})
 
   describe('divFix', () => {
     it('correctly divides inside its range', async () => {
@@ -202,9 +198,7 @@ describe('In FixLib,', () => {
       for (const result of fixable_ints) {
         if (result.gte(0)) {
           expect(await caller.floor(fp(result)), `fp(${result})`).to.equal(bn(result))
-          expect(await caller.toUint(fp(result), RoundingApproach.FLOOR), `fp(${result})`).to.equal(
-            bn(result)
-          )
+          expect(await caller.toUint(fp(result), FLOOR), `fp(${result})`).to.equal(bn(result))
         }
       }
     })
@@ -212,9 +206,7 @@ describe('In FixLib,', () => {
       const table = [-1, fp(MIN_FIX_INT), MIN_INT192, fp(-986349)]
       for (const val of table) {
         await expect(caller.floor(val), `${val}`).to.be.revertedWith('IntOutOfBounds')
-        await expect(caller.toUint(val, RoundingApproach.FLOOR), `${val}`).to.be.revertedWith(
-          'IntOutOfBounds'
-        )
+        await expect(caller.toUint(val, FLOOR), `${val}`).to.be.revertedWith('IntOutOfBounds')
       }
     })
     it('correctly rounds down', async () => {
@@ -237,9 +229,7 @@ describe('In FixLib,', () => {
       ]
       for (const [input, result] of table) {
         expect(await caller.floor(fp(input)), `fp(${input})`).to.equal(result)
-        expect(await caller.toUint(fp(input), RoundingApproach.FLOOR), `fp(${input})`).to.equal(
-          result
-        )
+        expect(await caller.toUint(fp(input), FLOOR), `fp(${input})`).to.equal(result)
       }
     })
   })
@@ -258,9 +248,7 @@ describe('In FixLib,', () => {
       ]
       for (const [input, result] of table) {
         expect(await caller.round(fp(input)), `fp(${input})`).to.equal(result)
-        expect(await caller.toUint(fp(input), RoundingApproach.ROUND), `fp(${input})`).to.equal(
-          result
-        )
+        expect(await caller.toUint(fp(input), ROUND), `fp(${input})`).to.equal(result)
       }
     })
   })
@@ -286,9 +274,7 @@ describe('In FixLib,', () => {
       ]
       for (const [input, result] of table) {
         expect(await caller.ceil(fp(input)), `fp(${input})`).to.equal(result)
-        expect(await caller.toUint(fp(input), RoundingApproach.CEIL), `fp(${input})`).to.equal(
-          result
-        )
+        expect(await caller.toUint(fp(input), CEIL), `fp(${input})`).to.equal(result)
       }
     })
   })
