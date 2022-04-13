@@ -1,285 +1,69 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - One period  1`] = `25572`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, all at once 1`] = `65200`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - One period  2`] = `68908`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, all at once 2`] = `63837`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - One period  3`] = `63705`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, one after the other 1`] = `65200`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - One period  4`] = `25572`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, one after the other 2`] = `59997`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, all at once 1`] = `68908`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, one after the other 3`] = `59997`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, all at once 2`] = `67545`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, one after the other 4`] = `59997`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, one after the other 1`] = `68908`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, one after the other 5`] = `59997`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, one after the other 2`] = `63705`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, one after the other 6`] = `59997`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, one after the other 3`] = `63705`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, one after the other 7`] = `59997`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, one after the other 4`] = `63705`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, one after the other 8`] = `59997`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, one after the other 5`] = `63705`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, one after the other 9`] = `59997`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, one after the other 6`] = `63705`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, one after the other 10`] = `59997`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, one after the other 7`] = `63705`;
+exports[`FurnaceP0 contract Gas Reporting Melt - Many periods, one after the other 11`] = `59997`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, one after the other 8`] = `63705`;
+exports[`FurnaceP0 contract Gas Reporting Melt - One period  1`] = `23516`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, one after the other 9`] = `63705`;
+exports[`FurnaceP0 contract Gas Reporting Melt - One period  2`] = `65200`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, one after the other 10`] = `63705`;
+exports[`FurnaceP0 contract Gas Reporting Melt - One period  3`] = `59997`;
 
-exports[`FurnaceP0 contract Do Melt Gas Measurements Melt - many periods, one after the other 11`] = `63705`;
+exports[`FurnaceP0 contract Gas Reporting Melt - One period  4`] = `23516`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 1`] = `50964`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, all at once 1`] = `79873`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 2`] = `62322`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, all at once 2`] = `78959`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 3`] = `49008`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 1`] = `79873`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 4`] = `62322`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 2`] = `75119`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 5`] = `50964`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 3`] = `75119`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 6`] = `62322`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 4`] = `75119`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 7`] = `48061`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 5`] = `75119`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 8`] = `48061`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 6`] = `75119`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 9`] = `48061`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 7`] = `75119`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 10`] = `48061`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 8`] = `75119`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 11`] = `48061`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 9`] = `75119`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 12`] = `48061`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 10`] = `75119`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 13`] = `63705`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 11`] = `75119`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 14`] = `77019`;
+exports[`FurnaceP1 contract Gas Reporting Melt - One period  1`] = `28396`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 15`] = `49008`;
+exports[`FurnaceP1 contract Gas Reporting Melt - One period  2`] = `79873`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 16`] = `62322`;
+exports[`FurnaceP1 contract Gas Reporting Melt - One period  3`] = `75119`;
 
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 17`] = `63705`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 18`] = `77019`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 19`] = `52467`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 20`] = `63219`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 21`] = `50886`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 22`] = `63219`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 23`] = `52467`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 24`] = `63219`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 25`] = `48061`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 26`] = `48061`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 27`] = `48061`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 28`] = `48061`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 29`] = `48061`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 30`] = `48061`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 31`] = `65583`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 32`] = `77916`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 33`] = `50886`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 34`] = `63219`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 35`] = `65583`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 36`] = `77916`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 37`] = `50964`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 38`] = `62322`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 39`] = `49008`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 40`] = `62322`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 41`] = `50964`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 42`] = `62322`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 43`] = `48061`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 44`] = `48061`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 45`] = `48061`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 46`] = `48061`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 47`] = `48061`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 48`] = `48061`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 49`] = `63705`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 50`] = `77019`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 51`] = `49008`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 52`] = `62322`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 53`] = `63705`;
-
-exports[`FurnaceP0 contract Extreme Bounds Should not revert at extremes 54`] = `77019`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - One period  1`] = `30452`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - One period  2`] = `83581`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - One period  3`] = `78827`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - One period  4`] = `30452`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, all at once 1`] = `83581`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, all at once 2`] = `82667`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, one after the other 1`] = `83581`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, one after the other 2`] = `78827`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, one after the other 3`] = `78827`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, one after the other 4`] = `78827`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, one after the other 5`] = `78827`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, one after the other 6`] = `78827`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, one after the other 7`] = `78827`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, one after the other 8`] = `78827`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, one after the other 9`] = `78827`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, one after the other 10`] = `78827`;
-
-exports[`FurnaceP1 contract Do Melt Gas Measurements Melt - many periods, one after the other 11`] = `78827`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 1`] = `64439`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 2`] = `77007`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 3`] = `63693`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 4`] = `77007`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 5`] = `64439`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 6`] = `77007`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 7`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 8`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 9`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 10`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 11`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 12`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 13`] = `78839`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 14`] = `92153`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 15`] = `63693`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 16`] = `77007`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 17`] = `78839`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 18`] = `92153`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 19`] = `66317`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 20`] = `77904`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 21`] = `65571`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 22`] = `77904`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 23`] = `66317`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 24`] = `77904`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 25`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 26`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 27`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 28`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 29`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 30`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 31`] = `80717`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 32`] = `93050`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 33`] = `65571`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 34`] = `77904`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 35`] = `80717`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 36`] = `93050`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 37`] = `64439`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 38`] = `77007`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 39`] = `63693`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 40`] = `77007`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 41`] = `64439`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 42`] = `77007`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 43`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 44`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 45`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 46`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 47`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 48`] = `62746`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 49`] = `78839`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 50`] = `92153`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 51`] = `63693`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 52`] = `77007`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 53`] = `78839`;
-
-exports[`FurnaceP1 contract Extreme Bounds Should not revert at extremes 54`] = `92153`;
+exports[`FurnaceP1 contract Gas Reporting Melt - One period  4`] = `28396`;
