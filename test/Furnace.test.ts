@@ -353,93 +353,6 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt2)
     })
-
-    describe('Gas Measurements', () => {
-      it('Melt - One period ', async () => {
-        const hndAmt: BigNumber = bn('10e18')
-        const period: number = 60 * 60 * 24 // 1 day
-
-        // Call with no impact
-        await snapshotGasCost(furnace.connect(addr1).melt())
-
-        // Set time period
-        await furnace.connect(owner).setPeriod(period)
-
-        // Transfer
-        await rToken.connect(addr1).transfer(furnace.address, hndAmt)
-
-        // Get past first noop melt
-        await advanceTime(period + 1)
-        await snapshotGasCost(furnace.connect(addr1).melt())
-
-        // Advance to the end to melt full amount
-        await advanceTime(period + 1)
-
-        const decayFn = makeDecayFn(await furnace.ratio())
-        const expAmt = decayFn(hndAmt, 1) // 1 period
-
-        // Melt
-        await snapshotGasCost(furnace.connect(addr1).melt())
-
-        // Another call to melt with no impact
-        await snapshotGasCost(furnace.connect(addr1).melt())
-
-        expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
-        expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
-      })
-
-      it('Melt - many periods, all at once', async () => {
-        const hndAmt: BigNumber = bn('10e18')
-        const period: number = 60 * 60 * 24 // 1 day
-
-        // Set time period
-        await furnace.connect(owner).setPeriod(period)
-
-        // Transfer
-        await rToken.connect(addr1).transfer(furnace.address, hndAmt)
-
-        // Get past first noop melt
-        await advanceTime(period + 1)
-        await snapshotGasCost(furnace.connect(addr1).melt())
-        // Advance to the end to melt full amount
-        await advanceTime(10 * period + 1)
-
-        const decayFn = makeDecayFn(await furnace.ratio())
-        const expAmt = decayFn(hndAmt, 10) // 10 periods
-
-        await snapshotGasCost(furnace.connect(addr1).melt())
-
-        expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
-        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(expAmt, 15)
-      })
-
-      it('Melt - many periods, one after the other', async () => {
-        const hndAmt: BigNumber = bn('10e18')
-        const period: number = 60 * 60 * 24 // 1 day
-
-        // Set time period
-        await furnace.connect(owner).setPeriod(period)
-
-        // Transfer
-        await rToken.connect(addr1).transfer(furnace.address, hndAmt)
-
-        // Get past first noop melt
-        await advanceTime(period + 1)
-        await snapshotGasCost(furnace.connect(addr1).melt())
-
-        // Melt 10 periods
-        for (let i = 1; i <= 10; i++) {
-          await advanceTime(period + 1)
-          await snapshotGasCost(furnace.connect(addr1).melt())
-        }
-
-        const decayFn = makeDecayFn(await furnace.ratio())
-        const expAmt = decayFn(hndAmt, 10) // 10 periods
-
-        expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
-        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(expAmt, 15)
-      })
-    })
   })
 
   describe('Extreme Bounds', () => {
@@ -465,7 +378,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
     it('Should not revert at extremes', async () => {
       // max: // 2^40 - 1
-      const periods = [bn('1099511627775'), bn('1'), bn('604800')]
+      const periods = [bn('4294967295'), bn('1'), bn('604800')]
 
       const ratios = [fp('1'), fp('0'), fp('0.02284')]
 
@@ -482,16 +395,119 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
         // Should melt after 1 period
         await advanceTime(period.add(1).toString())
-        await snapshotGasCost(furnace.melt())
-
-        // await furnace.melt()
+        await furnace.melt()
 
         // Should melt after 1000 periods
         await advanceTime(period.mul(1000).add(1).toString())
-        await snapshotGasCost(furnace.melt())
-
-        //        await furnace.melt()
+        await furnace.melt()
       }
+    })
+  })
+
+  const describeGas = process.env.REPORT_GAS ? describe : describe.skip
+
+  describeGas('Gas Reporting', () => {
+    beforeEach(async () => {
+      // Approvals for issuance
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      await token0.connect(addr2).approve(rToken.address, initialBal)
+      await token1.connect(addr2).approve(rToken.address, initialBal)
+      await token2.connect(addr2).approve(rToken.address, initialBal)
+      await token3.connect(addr2).approve(rToken.address, initialBal)
+
+      // Issue tokens
+      const issueAmount: BigNumber = bn('100e18')
+      await rToken.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr2).issue(issueAmount)
+    })
+
+    it('Melt - One period ', async () => {
+      const hndAmt: BigNumber = bn('10e18')
+      const period: number = 60 * 60 * 24 // 1 day
+
+      // Call with no impact
+      await snapshotGasCost(furnace.connect(addr1).melt())
+
+      // Set time period
+      await furnace.connect(owner).setPeriod(period)
+
+      // Transfer
+      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      // Get past first noop melt
+      await advanceTime(period + 1)
+      await snapshotGasCost(furnace.connect(addr1).melt())
+
+      // Advance to the end to melt full amount
+      await advanceTime(period + 1)
+
+      const decayFn = makeDecayFn(await furnace.ratio())
+      const expAmt = decayFn(hndAmt, 1) // 1 period
+
+      // Melt
+      await snapshotGasCost(furnace.connect(addr1).melt())
+
+      // Another call to melt with no impact
+      await snapshotGasCost(furnace.connect(addr1).melt())
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
+    })
+
+    it('Melt - Many periods, all at once', async () => {
+      const hndAmt: BigNumber = bn('10e18')
+      const period: number = 60 * 60 * 24 // 1 day
+
+      // Set time period
+      await furnace.connect(owner).setPeriod(period)
+
+      // Transfer
+      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      // Get past first noop melt
+      await advanceTime(period + 1)
+      await snapshotGasCost(furnace.connect(addr1).melt())
+      // Advance to the end to melt full amount
+      await advanceTime(10 * period + 1)
+
+      const decayFn = makeDecayFn(await furnace.ratio())
+      const expAmt = decayFn(hndAmt, 10) // 10 periods
+
+      await snapshotGasCost(furnace.connect(addr1).melt())
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(expAmt, 15)
+    })
+
+    it('Melt - Many periods, one after the other', async () => {
+      const hndAmt: BigNumber = bn('10e18')
+      const period: number = 60 * 60 * 24 // 1 day
+
+      // Set time period
+      await furnace.connect(owner).setPeriod(period)
+
+      // Transfer
+      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      // Get past first noop melt
+      await advanceTime(period + 1)
+      await snapshotGasCost(furnace.connect(addr1).melt())
+
+      // Melt 10 periods
+      for (let i = 1; i <= 10; i++) {
+        await advanceTime(period + 1)
+        await snapshotGasCost(furnace.connect(addr1).melt())
+      }
+
+      const decayFn = makeDecayFn(await furnace.ratio())
+      const expAmt = decayFn(hndAmt, 10) // 10 periods
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(expAmt, 15)
     })
   })
 })
