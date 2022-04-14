@@ -157,11 +157,13 @@ library TradingLibP0 {
             if (deltaTop > max) {
                 surplus = asset;
                 max = deltaTop;
-                sellAmount = divFix(uint256(max), surplus.price());
+                sellAmount = divFix(uint256(max), surplus.price()); // {qTok}
+                sellAmount = sellAmount.shiftl(-int8(asset.erc20().decimals())); // {tok}
             } else if (deltaBottom < min) {
                 deficit = ICollateral(address(asset));
                 min = deltaBottom;
-                buyAmount = divFix(uint256(-min), deficit.price());
+                buyAmount = divFix(uint256(-min), deficit.price()); // {qTok}
+                buyAmount = buyAmount.shiftl(-int8(asset.erc20().decimals())); // {tok}
             }
         }
     }
