@@ -472,8 +472,8 @@ library FixLib {
         RoundingMode rounding
     ) internal pure returns (int256) {
         int256 sign = (x < 0) == (y < 0) ? int256(1) : int256(-1);
-
-        return sign * int256(mulDiv256(abs(x), abs(y), FIX_SCALE_U, rounding));
+        uint256 unsigned = mulDiv256(abs(x), abs(y), FIX_SCALE_SQ_U, rounding);
+        return sign * int256(unsigned);
     }
 
     /// A chained .mul + .div on uints that avoids intermediate overflow
