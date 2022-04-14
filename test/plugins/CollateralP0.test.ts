@@ -20,7 +20,7 @@ import {
   StaticATokenMock,
   USDCMock,
 } from '../../typechain'
-import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
+import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IConfig } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -341,6 +341,10 @@ describe('Collateral contracts', () => {
       expectedDefaultTimestamp = bn(await getLatestBlockTimestamp())
         .add(1)
         .add(delayUntilDefault)
+
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+
       await expect(tokenCollateral.forceUpdates())
         .to.emit(tokenCollateral, 'DefaultStatusChanged')
         .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.IFFY)
@@ -354,6 +358,9 @@ describe('Collateral contracts', () => {
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+
       expectedDefaultTimestamp = bn(await getLatestBlockTimestamp())
         .add(1)
         .add(delayUntilDefault)
@@ -362,6 +369,9 @@ describe('Collateral contracts', () => {
         .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.IFFY)
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
       expect(await aTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
       expectedDefaultTimestamp = bn(await getLatestBlockTimestamp())
         .add(1)
@@ -430,12 +440,18 @@ describe('Collateral contracts', () => {
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+
       let expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(1)
       await expect(aTokenCollateral.forceUpdates())
         .to.emit(aTokenCollateral, 'DefaultStatusChanged')
         .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await aTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
       expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
       await expect(cTokenCollateral.forceUpdates())
