@@ -16,12 +16,13 @@ import {
 } from '../typechain'
 import { advanceTime } from './utils/time'
 import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
-import { describeGas } from './utils/describe'
 import { makeDecayFn } from './utils/rewards'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+export const describeGas = ( IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS) ? describe : describe.skip
 
 describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress

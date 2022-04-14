@@ -42,10 +42,11 @@ import {
   TestIStRSR,
   TradingLibP1,
 } from '../typechain'
-import { defaultFixture, IComponents, IConfig, IMPLEMENTATION } from './fixtures'
-import { describeP1 } from './utils/describe'
+import { defaultFixture, IComponents, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
 describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
