@@ -53,7 +53,7 @@ contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgra
 
     int192 public basketsNeeded; //  {BU}
 
-    int192 public issuanceRate; // {qRTok/(qRTok * block)} = {1/block} of RToken supply to issue per block
+    int192 public issuanceRate; // {1/block} of RToken supply to issue per block
 
     function init(
         IMain main_,
