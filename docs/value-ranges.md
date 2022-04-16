@@ -27,12 +27,11 @@ All of the below are in terms of quanta, or a granularity of 1.
 - `{qTok}`[0, 1e77] (collateral tokens)
 - `{qTok}` [0, 1e29] (reward tokens)
 
+(similar to token quantities but not quite the same)
+
+- `{attoUoA}` [0, 1e44] (1e26 `UoA`, or roughly the square of the current M2 money supply)
+
 ## Time
 
 - `{seconds}` [0, 2^32]
   The current number of seconds since 1970 is ~1.6e9, which is about 37% of 2^32. We've got a little under a hundred years to upgrade this contract.
-
-## Unit of Account
-
-- `{UoA}` [0, 1e30] eg one million of a trillion of a trillion dollars
-  Notice it is not a fixed point. A value of `1` means one whole unit
