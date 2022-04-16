@@ -10,9 +10,9 @@ abstract contract Asset is IAsset {
 
     IERC20Metadata public immutable erc20;
 
-    uint256 public immutable maxTradeVolume; // {UoA}
+    int192 public immutable maxTradeVolume; // {UoA}
 
-    constructor(IERC20Metadata erc20_, uint256 maxTradeVolume_) {
+    constructor(IERC20Metadata erc20_, int192 maxTradeVolume_) {
         erc20 = erc20_;
         maxTradeVolume = maxTradeVolume_;
     }

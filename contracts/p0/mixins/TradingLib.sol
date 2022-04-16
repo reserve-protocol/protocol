@@ -34,11 +34,11 @@ library TradingLibP0 {
         if (sellAmount.lt(dustThreshold(sell))) return (false, trade);
 
         // {sellTok}
-        int192 s = fixMin(sellAmount, divFix(sell.maxTradeVolume(), sell.price()));
-        trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()));
+        int192 s = fixMin(sellAmount, sell.maxTradeVolume().div(sell.price(), FLOOR));
+        trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), FLOOR);
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        int192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mul(sell.price()).div(buy.price());
+        int192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(sell.price(), buy.price(), CEIL);
         trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20().decimals()), CEIL);
         return (true, trade);
     }
@@ -62,11 +62,11 @@ library TradingLibP0 {
         deficitAmount = fixMax(deficitAmount, dustThreshold(buy));
 
         // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
-        int192 exactSellAmount = deficitAmount.mulDiv(buy.price(), sell.price());
+        int192 exactSellAmount = deficitAmount.mulDiv(buy.price(), sell.price(), FLOOR);
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
-        int192 idealSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage()));
+        int192 idealSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage()), FLOOR);
 
         int192 sellAmount = fixMin(idealSellAmount, maxSellAmount);
         return prepareTradeSell(sell, buy, sellAmount);
@@ -97,8 +97,8 @@ library TradingLibP0 {
         int192 basketBottom = basketTop; // {BU}
 
         if (useFallenTarget) {
-            uint256 tradeVolume; // {UoA}
-            uint256 totalValue; // {UoA}
+            int192 tradeVolume; // {UoA}
+            int192 totalValue; // {UoA}
             for (uint256 i = 0; i < erc20s.length; i++) {
                 IAsset asset = assetRegistry().toAsset(erc20s[i]);
 
@@ -106,64 +106,62 @@ library TradingLibP0 {
                 int192 bal = asset.bal(address(this)); // {tok}
                 if (basket().quantity(erc20s[i]).gt(FIX_ZERO) || bal.gt(dustThreshold(asset))) {
                     // {UoA} = {UoA} + {UoA/tok} * {tok}
-                    totalValue = totalValue + asset.price().mul_toUint(bal);
+                    totalValue = totalValue.plus(asset.price().mul(bal, FLOOR));
                 }
             }
-            basketTop = divFix(totalValue, basket().price());
+            basketTop = totalValue.div(basket().price(), CEIL);
 
             for (uint256 i = 0; i < erc20s.length; i++) {
                 IAsset asset = assetRegistry().toAsset(erc20s[i]);
                 if (!asset.isCollateral()) continue;
-                int192 needed = basketTop.mul(basket().quantity(erc20s[i]));
-                int192 held = asset.bal(address(this));
+                int192 needed = basketTop.mul(basket().quantity(erc20s[i]), CEIL); // {tok}
+                int192 held = asset.bal(address(this)); // {tok}
 
                 if (held.lt(needed)) {
-                    tradeVolume = tradeVolume + needed.minus(held).mul_toUint(asset.price());
+                    // {UoA} = {UoA} + ({tok} - {tok}) * {UoA/tok}
+                    tradeVolume = tradeVolume.plus(needed.minus(held).mul(asset.price(), FLOOR));
                 }
             }
 
             // bBot {BU} = (totalValue - mTS * tradeVolume) / basket.price
-            basketBottom = divFix(
-                totalValue - maxTradeSlippage().mulu_toUint(tradeVolume),
-                basket().price()
+            basketBottom = totalValue.minus(maxTradeSlippage().mul(tradeVolume)).div(
+                basket().price(),
+                CEIL
             );
         }
 
-        int256 max = 0; // {UoA}
-        int256 min = 0; // {UoA}
+        int192 max; // {UoA}
+        int192 min; // {UoA}
+
         for (uint256 i = 0; i < erc20s.length; i++) {
             if (erc20s[i] == rsr()) continue; // do not consider RSR
 
             IAsset asset = assetRegistry().toAsset(erc20s[i]);
 
-            // I know this is verbose but we need it to avoid stack too deep; it's still readable
-
-            // {UoA} = ({tok} - {tok}) * {UoA/tok}
-            int256 deltaTop = asset
+            // {UoA} = ({tok} - {BU} * {tok/BU}) * {UoA/tok}
+            int192 deltaTop = asset
                 .bal(address(this))
-                .minus(
-                    asset.isCollateral() ? basketTop.mul(basket().quantity(erc20s[i])) : FIX_ZERO
-                )
-                .mul_toInt(asset.price());
+                .minus(basketTop.mul(basket().quantity(erc20s[i]), FLOOR))
+                .mul(asset.price(), CEIL);
 
-            // {UoA} = ({tok} - {tok}) * {UoA/tok}
-            int256 deltaBottom = asset
+            // {UoA} = ({tok} - {BU} * {tok/BU}) * {UoA/tok}
+            int192 deltaBottom = asset
                 .bal(address(this))
-                .minus(
-                    asset.isCollateral() ? basketBottom.mul(basket().quantity(erc20s[i])) : FIX_ZERO
-                )
-                .mul_toInt(asset.price());
+                .minus(basketBottom.mul(basket().quantity(erc20s[i]), FLOOR))
+                .mul(asset.price(), CEIL);
 
-            if (deltaTop > max) {
+            if (deltaTop.gt(max)) {
                 surplus = asset;
                 max = deltaTop;
-                sellAmount = divFix(uint256(max), surplus.price()); // {qTok}
-                sellAmount = sellAmount.shiftl(-int8(asset.erc20().decimals())); // {tok}
-            } else if (deltaBottom < min) {
+
+                // {tok} = {UoA} / {UoA/tok}
+                sellAmount = max.div(surplus.price(), CEIL);
+            } else if (deltaBottom.lt(min)) {
                 deficit = ICollateral(address(asset));
                 min = deltaBottom;
-                buyAmount = divFix(uint256(-min), deficit.price()); // {qTok}
-                buyAmount = buyAmount.shiftl(-int8(asset.erc20().decimals())); // {tok}
+
+                // {tok} = {UoA} / {UoA/tok}
+                buyAmount = min.minus(min).minus(min).div(deficit.price());
             }
         }
     }

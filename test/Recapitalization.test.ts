@@ -854,6 +854,7 @@ describe('MainP0 contract', () => {
         // Advance time post trading delay
         await advanceTime(newDelay + 1)
 
+        console.log(sellAmt, toBNDecimals(minBuyAmt, 6))
         // Auction can be run now
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeStarted')
@@ -1088,7 +1089,7 @@ describe('MainP0 contract', () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        //  Check price in USD of the current
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Perform stake
@@ -1177,7 +1178,6 @@ describe('MainP0 contract', () => {
             args: [0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
             emitted: true,
           },
-
           {
             contract: backingManager,
             name: 'TradeStarted',

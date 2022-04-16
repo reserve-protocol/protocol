@@ -498,7 +498,7 @@ describe('Revenues', () => {
         // Set max trade volume for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
         const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
-          await AssetFactory.deploy(compToken.address, bn('1'), compoundMock.address)
+          await AssetFactory.deploy(compToken.address, fp('1'), compoundMock.address)
         )
 
         // Perform asset swap
@@ -683,7 +683,7 @@ describe('Revenues', () => {
         const newAaveAsset: AavePricedAsset = <AavePricedAsset>(
           await AssetFactory.deploy(
             aaveToken.address,
-            bn('1'),
+            fp('1'),
             compoundMock.address,
             aaveMock.address
           )
@@ -856,7 +856,7 @@ describe('Revenues', () => {
         // Set max trade volume for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
         const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
-          await AssetFactory.deploy(compToken.address, bn('1'), compoundMock.address)
+          await AssetFactory.deploy(compToken.address, fp('1'), compoundMock.address)
         )
 
         // Perform asset swap
@@ -2005,8 +2005,9 @@ describe('Revenues', () => {
 
         const sellAmtRToken: BigNumber = expectedToFurnace
         const buyAmtRToken: BigNumber = divCeil(sellAmtRToken.mul(rate), BN_SCALE_FACTOR) // RToken quantity with no slippage
-        const minBuyAmtRToken: BigNumber = buyAmtRToken.sub(divFloor(buyAmtRToken, bn(100))).sub(2) // due to trade slippage 1%
+        const minBuyAmtRToken: BigNumber = buyAmtRToken.sub(divFloor(buyAmtRToken, bn(100))) // due to trade slippage 1%
 
+        console.log(sellAmt, minBuyAmt, sellAmtRToken, minBuyAmtRToken)
         // Run auctions
         await expectEvents(facade.runAuctionsForAllTraders(), [
           {
@@ -2465,7 +2466,7 @@ describe('Revenues', () => {
   describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     const defaultThreshold = fp('0.05') // 5%
     const delayUntilDefault = bn('86400') // 24h
-    const maxUoA = bn('1e30')
+    const maxUoA = fp('1e26')
     let ERC20Mock: ContractFactory
     let ATokenMockFactory: ContractFactory
     let CTokenMockFactory: ContractFactory
