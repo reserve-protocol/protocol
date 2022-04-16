@@ -409,6 +409,7 @@ library FixLib {
         int8 decimals,
         RoundingMode rounding
     ) internal pure returns (uint256) {
+        if (x < 0) revert IntOutOfBounds();
         decimals -= 18; // shift so that toUint happens at the same time.
         int256 coeff = int256(10**abs(decimals));
         return decimals >= 0 ? uint256(x * coeff) : uint256(_divrnd(x, coeff, rounding));
