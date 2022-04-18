@@ -5,23 +5,23 @@ import { ethers, waffle } from 'hardhat'
 import { TradeStatus } from '../common/constants'
 import { bn, toBNDecimals } from '../common/numbers'
 import {
-  BackingManagerP0,
-  BrokerP0,
   ERC20Mock,
   GnosisMock,
   GnosisTrade,
-  MainP0,
-  RevenueTradingP0,
+  TestIBackingManager,
+  TestIBroker,
+  TestIMain,
+  TestIRevenueTrader,
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, defaultFixture, IConfig } from './fixtures'
+import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('BrokerP0 contract', () => {
+describe(`BrokerP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let other: SignerWithAddress
@@ -34,16 +34,16 @@ describe('BrokerP0 contract', () => {
 
   // Trading
   let gnosis: GnosisMock
-  let broker: BrokerP0
+  let broker: TestIBroker
 
   // Config values
   let config: IConfig
 
   // Main contracts
-  let main: MainP0
-  let backingManager: BackingManagerP0
-  let rsrTrader: RevenueTradingP0
-  let rTokenTrader: RevenueTradingP0
+  let main: TestIMain
+  let backingManager: TestIBackingManager
+  let rsrTrader: TestIRevenueTrader
+  let rTokenTrader: TestIRevenueTrader
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet

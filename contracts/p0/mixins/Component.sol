@@ -8,7 +8,7 @@ import "contracts/interfaces/IMain.sol";
 /**
  * Abstract superclass for system contracts registered in Main
  */
-abstract contract Component is Initializable, ContextUpgradeable, IComponent {
+abstract contract ComponentP0 is Initializable, ContextUpgradeable, IComponent {
     IMain public main;
 
     // Sets main for the component - Can only be called during initialization

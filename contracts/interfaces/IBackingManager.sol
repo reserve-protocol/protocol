@@ -33,3 +33,13 @@ interface IBackingManager is IComponent, ITrading {
     /// @custom:action
     function manageFunds() external;
 }
+
+interface TestIBackingManager is IBackingManager, TestITrading {
+    function tradingDelay() external view returns (uint256);
+
+    function backingBuffer() external view returns (int192);
+
+    function setTradingDelay(uint256 val) external;
+
+    function setBackingBuffer(int192 val) external;
+}

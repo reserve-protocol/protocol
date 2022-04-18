@@ -26,7 +26,7 @@ contract MainMock is MainP0 {
     }
 }
 
-abstract contract ComponentMock is Component {
+abstract contract ComponentMock is ComponentP0 {
     address[] public USERS = [address(0x10000), address(0x20000), address(0x30000)];
 
     function _msgSender() internal view virtual override returns (address) {

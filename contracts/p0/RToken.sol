@@ -31,7 +31,7 @@ struct SlowIssuance {
  * @title RTokenP0
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP0 is Component, RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
+contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
     using SafeERC20 for IERC20;

@@ -39,3 +39,13 @@ interface IBroker is IComponent {
 
     function disabled() external view returns (bool);
 }
+
+interface TestIBroker is IBroker {
+    function gnosis() external view returns (IGnosis);
+
+    function auctionLength() external view returns (uint256);
+
+    function setAuctionLength(uint256 newAuctionLength) external;
+
+    function setDisabled(bool disabled_) external;
+}

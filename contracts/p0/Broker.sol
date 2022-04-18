@@ -11,7 +11,7 @@ import "contracts/interfaces/ITrade.sol";
 import "contracts/p0/mixins/Component.sol";
 
 /// A simple core contract that deploys disposable trading contracts for Traders
-contract BrokerP0 is Component, IBroker {
+contract BrokerP0 is ComponentP0, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20Metadata;
 

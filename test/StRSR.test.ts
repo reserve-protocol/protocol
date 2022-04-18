@@ -7,15 +7,15 @@ import { getChainId } from '../common/blockchain-utils'
 import { bn, fp, near, shortString } from '../common/numbers'
 import {
   AaveOracleMock,
-  BackingManagerP0,
-  BasketHandlerP0,
   CTokenMock,
   ERC20Mock,
   FacadeP0,
-  MainP0,
+  IBasketHandler,
   StRSRP0,
   StRSRP1,
   StaticATokenMock,
+  TestIBackingManager,
+  TestIMain,
   TestIRToken,
   TestIStRSR,
 } from '../typechain'
@@ -46,9 +46,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let rsr: ERC20Mock
 
   // Main
-  let main: MainP0
-  let backingManager: BackingManagerP0
-  let basketHandler: BasketHandlerP0
+  let main: TestIMain
+  let backingManager: TestIBackingManager
+  let basketHandler: IBasketHandler
   let rToken: TestIRToken
   let facade: FacadeP0
 

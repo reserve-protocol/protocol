@@ -1,8 +1,9 @@
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-waffle'
+import '@openzeppelin/hardhat-upgrades'
 import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
-//import 'hardhat-gas-reporter'
+import 'hardhat-gas-reporter'
 import 'solidity-coverage'
 
 import dotenv from 'dotenv'
@@ -74,5 +75,8 @@ export default <HardhatUserConfig>{
     strict: false,
     only: [],
     except: ['Extension'],
+  },
+  gasReporter: {
+    enabled: process.env.REPORT_GAS ? true : false,
   },
 }

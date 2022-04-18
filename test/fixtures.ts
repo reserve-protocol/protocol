@@ -8,11 +8,11 @@ import {
   AaveLendingPoolMock,
   AaveOracleMock,
   Asset,
-  AssetRegistryP0,
+  AssetRegistryP1,
   ATokenFiatCollateral,
-  BackingManagerP0,
-  BasketHandlerP0,
-  BrokerP0,
+  BackingManagerP1,
+  BasketHandlerP1,
+  BrokerP1,
   Collateral as AbstractCollateral,
   CompoundOracleMock,
   ComptrollerMock,
@@ -21,18 +21,29 @@ import {
   ERC20Mock,
   DeployerP0,
   DeployerP1,
-  DistributorP0,
   FacadeP0,
-  FurnaceP0,
+  DistributorP1,
+  FurnaceP1,
   GnosisMock,
-  MainP0,
-  RevenueTradingP0,
+  IBasketHandler,
+  MainP1,
+  RevenueTradingP1,
   RTokenAsset,
+  RTokenP1,
   StaticATokenMock,
+  StRSRP1,
+  TestIAssetRegistry,
+  TestIBackingManager,
+  TestIBroker,
   TestIDeployer,
+  TestIDistributor,
+  TestIFurnace,
+  TestIMain,
+  TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
   TradingLibP0,
+  TradingLibP1,
   USDCMock,
 } from '../typechain'
 
@@ -65,6 +76,24 @@ export interface IConfig {
 export interface IRevenueShare {
   rTokenDist: BigNumber
   rsrDist: BigNumber
+}
+
+export interface IComponents {
+  rToken: string
+  stRSR: string
+  assetRegistry: string
+  basketHandler: string
+  backingManager: string
+  distributor: string
+  furnace: string
+  broker: string
+  rsrTrader: string
+  rTokenTrader: string
+}
+
+export interface IImplementations {
+  main: string
+  components: IComponents
 }
 
 interface RSRFixture {
@@ -323,22 +352,22 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   config: IConfig
   dist: IRevenueShare
   deployer: TestIDeployer
-  main: MainP0
-  assetRegistry: AssetRegistryP0
-  backingManager: BackingManagerP0
-  basketHandler: BasketHandlerP0
-  distributor: DistributorP0
+  main: TestIMain
+  assetRegistry: TestIAssetRegistry
+  backingManager: TestIBackingManager
+  basketHandler: IBasketHandler
+  distributor: TestIDistributor
   rsrAsset: Asset
   compAsset: Asset
   aaveAsset: Asset
   rToken: TestIRToken
   rTokenAsset: RTokenAsset
-  furnace: FurnaceP0
+  furnace: TestIFurnace
   stRSR: TestIStRSR
   facade: FacadeP0
-  broker: BrokerP0
-  rsrTrader: RevenueTradingP0
-  rTokenTrader: RevenueTradingP0
+  broker: TestIBroker
+  rsrTrader: TestIRevenueTrader
+  rTokenTrader: TestIRevenueTrader
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -395,9 +424,67 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
 
   if (IMPLEMENTATION == Implementation.P1) {
-    const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1', {
-      libraries: { TradingLibP0: tradingLib.address },
-    })
+    // Deploy implementations
+    const MainImplFactory: ContractFactory = await ethers.getContractFactory('MainP1')
+    const mainImpl: MainP1 = <MainP1>await MainImplFactory.deploy()
+
+    // Deploy TradingLib external library
+    const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP1')
+    const tradingLib: TradingLibP1 = <TradingLibP1>await TradingLibFactory.deploy()
+
+    const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
+    const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
+
+    const BackingMgrImplFactory: ContractFactory = await ethers.getContractFactory(
+      'BackingManagerP1',
+      { libraries: { TradingLibP1: tradingLib.address } }
+    )
+    const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>await BackingMgrImplFactory.deploy()
+
+    const BskHandlerImplFactory: ContractFactory = await ethers.getContractFactory(
+      'BasketHandlerP1'
+    )
+    const bskHndlrImpl: BasketHandlerP1 = <BasketHandlerP1>await BskHandlerImplFactory.deploy()
+
+    const DistribImplFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
+    const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
+
+    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
+      'RevenueTradingP1',
+      { libraries: { TradingLibP1: tradingLib.address } }
+    )
+    const revTraderImpl: RevenueTradingP1 = <RevenueTradingP1>await RevTraderImplFactory.deploy()
+
+    const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
+    const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
+
+    const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
+    const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
+
+    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1')
+    const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
+
+    const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1')
+    const stRSRImpl: StRSRP1 = <StRSRP1>await StRSRImplFactory.deploy()
+
+    // Setup Implementation addresses
+    const implementations: IImplementations = {
+      main: mainImpl.address,
+      components: {
+        rToken: rTokenImpl.address,
+        stRSR: stRSRImpl.address,
+        assetRegistry: assetRegImpl.address,
+        basketHandler: bskHndlrImpl.address,
+        backingManager: backingMgrImpl.address,
+        distributor: distribImpl.address,
+        furnace: furnaceImpl.address,
+        broker: brokerImpl.address,
+        rsrTrader: revTraderImpl.address,
+        rTokenTrader: revTraderImpl.address,
+      },
+    }
+
+    const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
     deployer = <DeployerP1>(
       await DeployerFactory.deploy(
         rsr.address,
@@ -405,7 +492,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
         aaveToken.address,
         gnosis.address,
         compoundMock.address,
-        aaveMock.address
+        aaveMock.address,
+        implementations
       )
     )
   }
@@ -417,20 +505,20 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
   const facadeAddr = expectInReceipt(receipt, 'RTokenCreated').args.facade
-  const main: MainP0 = <MainP0>await ethers.getContractAt('MainP0', mainAddr)
+  const main: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
 
-  // Get Components
-  const assetRegistry: AssetRegistryP0 = <AssetRegistryP0>(
-    await ethers.getContractAt('AssetRegistryP0', await main.assetRegistry())
+  // Get Core
+  const assetRegistry: TestIAssetRegistry = <TestIAssetRegistry>(
+    await ethers.getContractAt('TestIAssetRegistry', await main.assetRegistry())
   )
-  const backingManager: BackingManagerP0 = <BackingManagerP0>(
-    await ethers.getContractAt('BackingManagerP0', await main.backingManager())
+  const backingManager: TestIBackingManager = <TestIBackingManager>(
+    await ethers.getContractAt('TestIBackingManager', await main.backingManager())
   )
-  const basketHandler: BasketHandlerP0 = <BasketHandlerP0>(
-    await ethers.getContractAt('BasketHandlerP0', await main.basketHandler())
+  const basketHandler: IBasketHandler = <IBasketHandler>(
+    await ethers.getContractAt('IBasketHandler', await main.basketHandler())
   )
-  const distributor: DistributorP0 = <DistributorP0>(
-    await ethers.getContractAt('DistributorP0', await main.distributor())
+  const distributor: TestIDistributor = <TestIDistributor>(
+    await ethers.getContractAt('TestIDistributor', await main.distributor())
   )
 
   const rsrAsset: Asset = <Asset>(
@@ -453,10 +541,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
   )
 
-  const broker: BrokerP0 = <BrokerP0>await ethers.getContractAt('BrokerP0', await main.broker())
+  const broker: TestIBroker = <TestIBroker>(
+    await ethers.getContractAt('TestIBroker', await main.broker())
+  )
 
-  const furnace: FurnaceP0 = <FurnaceP0>(
-    await ethers.getContractAt('FurnaceP0', await main.furnace())
+  const furnace: TestIFurnace = <TestIFurnace>(
+    await ethers.getContractAt('TestIFurnace', await main.furnace())
   )
   const stRSR: TestIStRSR = <TestIStRSR>await ethers.getContractAt('TestIStRSR', await main.stRSR())
 
@@ -471,11 +561,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     config
   )
 
-  const rsrTrader = <RevenueTradingP0>(
-    await ethers.getContractAt('RevenueTradingP0', await main.rsrTrader())
+  const rsrTrader = <TestIRevenueTrader>(
+    await ethers.getContractAt('TestIRevenueTrader', await main.rsrTrader())
   )
-  const rTokenTrader = <RevenueTradingP0>(
-    await ethers.getContractAt('RevenueTradingP0', await main.rTokenTrader())
+  const rTokenTrader = <TestIRevenueTrader>(
+    await ethers.getContractAt('TestIRevenueTrader', await main.rTokenTrader())
   )
 
   // Set Oracle Prices

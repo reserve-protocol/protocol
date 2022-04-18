@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/p0/mixins/Component.sol";
 
-contract DistributorP0 is Component, IDistributor {
+contract DistributorP0 is ComponentP0, IDistributor {
     using SafeERC20 for IERC20;
     using FixLib for int192;
     using EnumerableSet for EnumerableSet.AddressSet;

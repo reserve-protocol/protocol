@@ -69,3 +69,13 @@ interface ITrading is IRewardable {
     /// @return {UoA} The smallest amount of value worth trading
     function dustAmount() external view returns (int192);
 }
+
+interface TestITrading is ITrading {
+    function setMaxTradeSlippage(int192 val) external;
+
+    function setDustAmount(int192 val) external;
+
+    function hasOpenTrades() external view returns (bool);
+
+    function trades(uint256) external view returns (ITrade);
+}

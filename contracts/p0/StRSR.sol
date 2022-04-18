@@ -24,7 +24,7 @@ import "contracts/p0/mixins/Component.sol";
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both
  * balances that are in the process of being withdrawn and those that are not.
  */
-contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
+contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;

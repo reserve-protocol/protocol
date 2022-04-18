@@ -39,3 +39,11 @@ interface IDistributor is IComponent {
     ///     These are both uint24s, assuming no more than 1024 independent distributions.
     function totals() external view returns (uint256 rTokenTotal, uint256 rsrTotal);
 }
+
+interface TestIDistributor is IDistributor {
+    // solhint-disable-next-line func-name-mixedcase
+    function FURNACE() external view returns (address);
+
+    // solhint-disable-next-line func-name-mixedcase
+    function ST_RSR() external view returns (address);
+}
