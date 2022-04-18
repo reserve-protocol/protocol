@@ -30,12 +30,19 @@ library TradingLibP0 {
         trade.sell = sell;
         trade.buy = buy;
 
-        // Don't buy dust.
+        // Don't sell dust.
         if (sellAmount.lt(dustThreshold(sell))) return (false, trade);
 
         // {sellTok}
         int192 s = fixMin(sellAmount, sell.maxTradeVolume().div(sell.price(), FLOOR));
         trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), FLOOR);
+
+        // Do not consider 1 qTok a viable sell amount
+        if (trade.sellAmount <= 1) return (false, trade);
+
+        // Do not overflow auction mechanism
+        // Gnosis: uint96 ~= 7e28
+        if (trade.sellAmount > 7e28) trade.sellAmount = 7e28;
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         int192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(sell.price(), buy.price(), CEIL);
@@ -62,13 +69,13 @@ library TradingLibP0 {
         deficitAmount = fixMax(deficitAmount, dustThreshold(buy));
 
         // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
-        int192 exactSellAmount = deficitAmount.mulDiv(buy.price(), sell.price(), FLOOR);
+        int192 exactSellAmount = deficitAmount.mulDiv(buy.price(), sell.price(), CEIL);
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
-        // idealSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
-        int192 idealSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage()), FLOOR);
+        // slippedSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
+        int192 slippedSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage()), CEIL);
 
-        int192 sellAmount = fixMin(idealSellAmount, maxSellAmount);
+        int192 sellAmount = fixMin(slippedSellAmount, maxSellAmount);
         return prepareTradeSell(sell, buy, sellAmount);
     }
 
@@ -138,16 +145,18 @@ library TradingLibP0 {
 
             IAsset asset = assetRegistry().toAsset(erc20s[i]);
 
+            // Recall that FLOOR and CEIL round toward/away from 0, regardless of sign
+
             // {UoA} = ({tok} - {BU} * {tok/BU}) * {UoA/tok}
             int192 deltaTop = asset
                 .bal(address(this))
-                .minus(basketTop.mul(basket().quantity(erc20s[i]), FLOOR))
-                .mul(asset.price(), CEIL);
+                .minus(basketTop.mul(basket().quantity(erc20s[i]), CEIL))
+                .mul(asset.price(), FLOOR);
 
             // {UoA} = ({tok} - {BU} * {tok/BU}) * {UoA/tok}
             int192 deltaBottom = asset
                 .bal(address(this))
-                .minus(basketBottom.mul(basket().quantity(erc20s[i]), FLOOR))
+                .minus(basketBottom.mul(basket().quantity(erc20s[i]), CEIL))
                 .mul(asset.price(), CEIL);
 
             if (deltaTop.gt(max)) {
@@ -155,13 +164,13 @@ library TradingLibP0 {
                 max = deltaTop;
 
                 // {tok} = {UoA} / {UoA/tok}
-                sellAmount = max.div(surplus.price(), CEIL);
+                sellAmount = fixMin(asset.bal(address(this)), max.div(surplus.price()));
             } else if (deltaBottom.lt(min)) {
                 deficit = ICollateral(address(asset));
                 min = deltaBottom;
 
                 // {tok} = {UoA} / {UoA/tok}
-                buyAmount = min.minus(min).minus(min).div(deficit.price());
+                buyAmount = min.minus(min).minus(min).div(deficit.price(), CEIL);
             }
         }
     }
