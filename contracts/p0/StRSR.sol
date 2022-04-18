@@ -294,11 +294,12 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
     }
 
     function exchangeRate() public view returns (int192) {
+        int8 d = int8(decimals());
         uint256 numerator = rsrBacking + rsrBeingWithdrawn();
         uint256 denominator = totalStaked + stakeBeingWithdrawn();
         if (numerator == 0 || denominator == 0) return FIX_ONE;
 
-        return toFix(numerator).divu(denominator);
+        return shiftl_toFix(numerator, -d).div(shiftl_toFix(denominator, -d));
     }
 
     // ==== ERC20 Interface ====
@@ -310,7 +311,7 @@ contract StRSRP0 is IStRSR, Component, EIP712Upgradeable {
         return _symbol;
     }
 
-    function decimals() external pure returns (uint8) {
+    function decimals() public pure returns (uint8) {
         return 18;
     }
 
