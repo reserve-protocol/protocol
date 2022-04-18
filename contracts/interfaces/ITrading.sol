@@ -78,4 +78,8 @@ interface TestITrading is ITrading {
     function hasOpenTrades() external view returns (bool);
 
     function trades(uint256) external view returns (ITrade);
+
+    function numTrades() external view returns (uint256);
+
+    function tradesStart() external view returns (uint256);
 }

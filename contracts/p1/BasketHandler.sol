@@ -157,6 +157,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// Switch the basket, only callable directly by governance
     function switchBasket() external onlyOwner {
+        main.assetRegistry().forceUpdates();
         _switchBasket();
     }
 
@@ -190,8 +191,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function quantity(IERC20 erc20) public view returns (int192) {
         if (!goodCollateral(erc20)) return FIX_ZERO;
 
-        // {qTok/BU} = {ref/BU} / {ref/tok}
-        return basket.refAmts[erc20].div(main.assetRegistry().toColl(erc20).refPerTok());
+        // {tok/BU} = {ref/BU} / {ref/tok}
+        return basket.refAmts[erc20].div(main.assetRegistry().toColl(erc20).refPerTok(), CEIL);
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
@@ -207,7 +208,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
-    function quote(int192 amount, RoundingApproach rounding)
+    function quote(int192 amount, RoundingMode rounding)
         external
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
@@ -217,12 +218,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         uint256[] memory quantitiesBig = new uint256[](basket.erc20s.length);
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             if (!goodCollateral(basket.erc20s[i])) continue;
+            int8 decimals = int8(IERC20Metadata(address(basket.erc20s[i])).decimals());
 
-            uint8 decimals = IERC20Metadata(address(basket.erc20s[i])).decimals();
+            // {tok} = {tok/BU} * {BU}
+            int192 tok = quantity(basket.erc20s[i]).mul(amount, rounding);
 
-            // {qTok} = {BU} * {tok/BU} * {qTok/tok}
-            int192 q = amount.mul(quantity(basket.erc20s[i])).shiftLeft(int8(decimals));
-            quantitiesBig[size] = q.toUint(rounding);
+            // {qTok} = {tok} * {qTok/tok}
+            quantitiesBig[size] = tok.shiftl_toUint(decimals, CEIL);
             erc20sBig[size] = address(basket.erc20s[i]);
             size++;
         }
@@ -243,10 +245,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             int192 bal = main.assetRegistry().toColl(basket.erc20s[i]).bal(account); // {tok}
             int192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
-            // baskets {BU} = bal {tok} / q {tok/BU}
+            // {BU} = {tok} / {tok/BU}
             if (q.gt(FIX_ZERO)) baskets = fixMin(baskets, bal.div(q));
         }
-
         if (baskets == FIX_MAX) revert EmptyBasket();
     }
 
@@ -294,7 +295,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             if (goodCollateral(erc20) && targetWeight.gt(FIX_ZERO)) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
-                newBasket.add(erc20, targetWeight.div(reg.toColl(erc20).targetPerRef()));
+                newBasket.add(erc20, targetWeight.div(reg.toColl(erc20).targetPerRef(), CEIL));
             }
         }
 
@@ -318,10 +319,14 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // Set backup basket weights
             uint256 assigned = 0;
             int192 needed = totalWeights[i].minus(goodWeights[i]);
+            int192 fixSize = toFix(size);
             for (uint256 j = 0; j < backup.erc20s.length && assigned < size; j++) {
                 IERC20 erc20 = backup.erc20s[j];
                 if (goodCollateral(erc20)) {
-                    newBasket.add(erc20, needed.divu(size).div(reg.toColl(erc20).targetPerRef()));
+                    newBasket.add(
+                        erc20,
+                        needed.div(fixSize, CEIL).div(reg.toColl(erc20).targetPerRef(), CEIL)
+                    );
                     assigned++;
                 }
             }
