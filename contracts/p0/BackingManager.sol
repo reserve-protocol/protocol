@@ -211,6 +211,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             );
         }
 
+        if (req.sellAmount == 0) return (false, req);
+
         return (doTrade, req);
     }
 

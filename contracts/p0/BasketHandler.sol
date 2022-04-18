@@ -11,8 +11,6 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/p0/mixins/Component.sol";
 import "contracts/libraries/Fixed.sol";
 
-import "hardhat/console.sol";
-
 struct BackupConfig {
     uint256 max; // Maximum number of backup collateral erc20s to use in a basket
     IERC20[] erc20s; // Ordered list of backup collateral ERC20s
@@ -248,11 +246,9 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             int192 bal = main.assetRegistry().toColl(basket.erc20s[i]).bal(account); // {tok}
             int192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
-            console.log("basketsHeldBy", i, bal.shiftl_toUint(18), q.shiftl_toUint(18));
             // {BU} = {tok} / {tok/BU}
             if (q.gt(FIX_ZERO)) baskets = fixMin(baskets, bal.div(q));
         }
-
         if (baskets == FIX_MAX) revert EmptyBasket();
     }
 

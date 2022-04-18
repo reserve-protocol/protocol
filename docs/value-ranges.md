@@ -29,7 +29,7 @@ All of the below are in terms of quanta, or a granularity of 1.
 
 (similar to token quantities but not quite the same)
 
-- `{attoUoA}` [0, 1e44] (1e26 `UoA`, or roughly the square of the current M2 money supply)
+- `{attoUoA}` [0, 1e47] (1e29 `UoA`, or about 250x the square of the current M2 money supply)
 
 ## Time
 
