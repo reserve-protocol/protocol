@@ -2,22 +2,15 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import {
-  BN_SCALE_FACTOR,
-  FURNACE_DEST,
-  STRSR_DEST,
-  ZERO_ADDRESS,
-  MAX_UINT256,
-} from '../common/constants'
+import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { bn, divCeil, divFloor, fp, near, shortString } from '../common/numbers'
+import { bn, divCeil, divFloor, fp, near } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AavePricedAsset,
   ATokenFiatCollateral,
   CompoundPricedAsset,
   ComptrollerMock,
-  CompoundOracleMock,
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
@@ -40,8 +33,6 @@ import { whileImpersonating } from './utils/impersonation'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
 import { expectTrade } from './utils/trades'
-import { cartesianProduct } from './utils/cases'
-import { issueMany } from './utils/issue'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -57,8 +48,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
   let aaveMock: AaveLendingPoolMock
-  let compoundOracleInternal: CompoundOracleMock
-  let aaveOracleInternal: AaveOracleMock
 
   // Trading
   let gnosis: GnosisMock
@@ -129,8 +118,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       facade,
       rsrTrader,
       rTokenTrader,
-      compoundOracleInternal,
-      aaveOracleInternal,
     } = await loadFixture(defaultFixture))
 
     // Set backingBuffer to 0 to make math easy

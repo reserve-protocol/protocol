@@ -14,11 +14,11 @@ import {
   AaveLendingPoolMock,
   AavePricedAsset,
   AaveOracleMock,
-  AssetRegistryP0,
+  TestIAssetRegistry,
   ATokenFiatCollateral,
-  BackingManagerP0,
+  TestIBackingManager,
   AavePricedFiatCollateral,
-  BasketHandlerP0,
+  IBasketHandler,
   CompoundPricedAsset,
   ComptrollerMock,
   CompoundOracleMock,
@@ -30,9 +30,9 @@ import {
   FacadeP0,
   GnosisTrade,
   TestIStRSR,
-  MainP0,
+  TestIMain,
   GnosisMock,
-  RevenueTradingP0,
+  TestIRevenueTrader,
   RTokenAsset,
   TestIRToken,
   StaticATokenMock,
@@ -60,8 +60,8 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let aaveOracleInternal: AaveOracleMock
 
   // Trading
-  let rsrTrader: RevenueTradingP0
-  let rTokenTrader: RevenueTradingP0
+  let rsrTrader: TestIRevenueTrader
+  let rTokenTrader: TestIRevenueTrader
 
   // Config values
   let config: IConfig
@@ -69,11 +69,11 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   // Contracts to retrieve after deploy
   let stRSR: TestIStRSR
   let rToken: TestIRToken
-  let main: MainP0
+  let main: TestIMain
   let facade: FacadeP0
-  let assetRegistry: AssetRegistryP0
-  let backingManager: BackingManagerP0
-  let basketHandler: BasketHandlerP0
+  let assetRegistry: TestIAssetRegistry
+  let backingManager: TestIBackingManager
+  let basketHandler: IBasketHandler
   let distributor: DistributorP0
 
   let loadFixture: ReturnType<typeof createFixtureLoader>

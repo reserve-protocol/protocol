@@ -4,11 +4,10 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { bn, fp, pow10, toBNDecimals, shortString } from '../common/numbers'
+import { bn, fp, pow10, toBNDecimals } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AaveOracleMock,
-  AavePricedFiatCollateralMock,
   CompoundOracleMock,
   ComptrollerMock,
   CTokenMock,
@@ -24,9 +23,8 @@ import {
   USDCMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import { Collateral, defaultFixture, IConfig, IMPLEMENTATION, SLOW } from './fixtures'
+import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
 import { expectTrade } from './utils/trades'
-import { cartesianProduct } from './utils/cases'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
