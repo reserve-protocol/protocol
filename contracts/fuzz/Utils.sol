@@ -11,7 +11,7 @@ import "contracts/p0/aux/Deployer.sol";
 
 function defaultParams() pure returns (DeploymentParams memory params) {
     params = DeploymentParams({
-        maxTradeVolume: 1e6,
+        maxTradeVolume: 1e24,
         dist: RevenueShare({ rTokenDist: 2, rsrDist: 3 }),
         rewardPeriod: 604800, // 1 week
         rewardRatio: FixLib.divu(toFix(22840), (1_000_000)), // approx. half life of 30 pay periods

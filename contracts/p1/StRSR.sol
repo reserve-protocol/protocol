@@ -163,7 +163,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
 
         // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
         uint256 allStakes = totalDrafts + totalStakes; // {qStRSR}
-        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.muluToUint(allStakes); // {qRSR}
+        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.mulu_toUint(allStakes); // {qRSR}
 
         uint256 seizedRSR;
         if (rsrBalance <= rsrAmount + dustRSRAmt) {
@@ -212,7 +212,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
-        uint256 payout = payoutRatio.mulu(rsrRewardsAtLastPayout).floor();
+        uint256 payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
 
         // Apply payout to RSR backing
         stakeRSR += payout;
@@ -223,11 +223,12 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
     }
 
     function exchangeRate() public view returns (int192) {
+        int8 d = int8(decimals());
         uint256 numerator = draftRSR + stakeRSR;
         uint256 denominator = totalDrafts + totalStakes;
         if (numerator == 0 || denominator == 0) return FIX_ONE;
 
-        return toFix(numerator).divu(denominator);
+        return shiftl_toFix(numerator, -d).div(shiftl_toFix(denominator, -d));
     }
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
@@ -265,7 +266,7 @@ contract StRSRP1 is IStRSR, Component, EIP712Upgradeable {
         return _symbol;
     }
 
-    function decimals() external pure returns (uint8) {
+    function decimals() public pure returns (uint8) {
         return 18;
     }
 

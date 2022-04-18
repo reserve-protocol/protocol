@@ -39,7 +39,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
 
     constructor(
         IERC20Metadata erc20_,
-        uint256 maxTradeVolume_,
+        int192 maxTradeVolume_,
         int192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
@@ -109,7 +109,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (int192) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray ref/tok}
-        return toFixWithShift(rateInRAYs, -27);
+        return shiftl_toFix(rateInRAYs, -27);
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.

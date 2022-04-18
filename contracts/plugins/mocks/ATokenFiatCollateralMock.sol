@@ -2,10 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
-import "contracts/plugins/assets/abstract/Collateral.sol";
+import "contracts/plugins/assets/ATokenFiatCollateral.sol";
 
-contract AavePricedFiatCollateralMock is AaveOracleMixin, Collateral {
+contract ATokenFiatCollateralMock is AaveOracleMixin, Collateral {
     int192 private _targetPerRef;
 
     constructor(

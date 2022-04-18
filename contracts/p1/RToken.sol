@@ -117,10 +117,10 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         // ==== Compute and accept collateral ====
         int192 amtBaskets = (totalSupply() > 0) // {BU}
             ? basketsNeeded.muluDivu(amtRToken, totalSupply()) // {BU * qRTok / qRTok}
-            : toFixWithShift(amtRToken, -int8(decimals())); // {qRTok / qRTok}
+            : shiftl_toFix(amtRToken, -int8(decimals())); // {qRTok / qRTok}
 
         address[] memory erc20s;
-        (erc20s, deposits) = basketHandler.quote(amtBaskets, RoundingApproach.CEIL);
+        (erc20s, deposits) = basketHandler.quote(amtBaskets, CEIL);
 
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -176,7 +176,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         // Calculate the issuance rate (if this is the first issuance in the block)
         if (lastIssRateBlock < block.number) {
             lastIssRateBlock = block.number;
-            lastIssRate = Math.max(MIN_ISS_RATE, issuanceRate.muluToUint(totalSupply()));
+            lastIssRate = Math.max(MIN_ISS_RATE, issuanceRate.mulu_toUint(totalSupply()));
         }
 
         // Add amtRToken's worth of issuance delay to allVestAt
@@ -260,7 +260,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         emit Redemption(_msgSender(), amount, baskets);
 
         address[] memory erc20s;
-        (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingApproach.FLOOR);
+        (erc20s, withdrawals) = basketHandler.quote(baskets, FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         int192 prorate = toFix(amount).divu(totalSupply());
@@ -279,7 +279,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
             uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingMgr));
             // {qTok} = {1} * {qTok}
-            uint256 prorata = prorate.mulu(bal).floor();
+            uint256 prorata = prorate.mulu_toUint(bal);
             withdrawals[i] = Math.min(withdrawals[i], prorata);
             // Send withdrawal
             IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), withdrawals[i]);
@@ -312,7 +312,7 @@ contract RTokenP1 is RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     function price() external view returns (int192) {
         if (totalSupply() == 0) return main.basketHandler().price();
 
-        int192 supply = toFixWithShift(totalSupply(), -int8(decimals()));
+        int192 supply = shiftl_toFix(totalSupply(), -int8(decimals()));
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
         return main.basketHandler().price().mul(basketsNeeded).div(supply);
     }

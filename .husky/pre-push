@@ -1,9 +1,7 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-# TODO re-enable
-
-# yarn lint
+yarn lint
 yarn compile
-# yarn test:p0
-# yarn test:p1
+yarn test:p0
+yarn test:p1

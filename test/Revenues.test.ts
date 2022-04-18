@@ -10,7 +10,7 @@ import {
   MAX_UINT256,
 } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { bn, divCeil, fp, near, shortString } from '../common/numbers'
+import { bn, divCeil, divFloor, fp, near, shortString } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AavePricedAsset,
@@ -495,10 +495,10 @@ describe('Revenues', () => {
       })
 
       it('Should handle large auctions using maxTradeVolume with f=1 (RSR only)', async () => {
-        // Set max auction size for asset
+        // Set max trade volume for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
         const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
-          await AssetFactory.deploy(compToken.address, bn('1e18'), compoundMock.address)
+          await AssetFactory.deploy(compToken.address, fp('1'), compoundMock.address)
         )
 
         // Perform asset swap
@@ -530,7 +530,7 @@ describe('Revenues', () => {
 
         // Collect revenue - Called via poke
         // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = bn('1e18') // due to max auction size
+        const sellAmt: BigNumber = bn('1e18') // due to max trade volume
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         await expectEvents(backingManager.claimAndSweepRewards(), [
@@ -678,12 +678,12 @@ describe('Revenues', () => {
       })
 
       it('Should handle large auctions using maxTradeVolume with f=0 (RToken only)', async () => {
-        // Set max auction size for asset
+        // Set max trade volume for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAsset')
         const newAaveAsset: AavePricedAsset = <AavePricedAsset>(
           await AssetFactory.deploy(
             aaveToken.address,
-            bn('1e18'),
+            fp('1'),
             compoundMock.address,
             aaveMock.address
           )
@@ -716,7 +716,7 @@ describe('Revenues', () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
-        const sellAmt: BigNumber = bn('1e18') // due to max auction size
+        const sellAmt: BigNumber = bn('1e18') // due to max trade volume
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         await expectEvents(backingManager.claimAndSweepRewards(), [
@@ -853,10 +853,10 @@ describe('Revenues', () => {
       })
 
       it('Should handle large auctions using maxTradeVolume with revenue split RSR/RToken', async () => {
-        // Set max auction size for asset
+        // Set max trade volume for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
         const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
-          await AssetFactory.deploy(compToken.address, bn('1e18'), compoundMock.address)
+          await AssetFactory.deploy(compToken.address, fp('1'), compoundMock.address)
         )
 
         // Perform asset swap
@@ -887,7 +887,7 @@ describe('Revenues', () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = bn('1e18') // due to max auction size
+        const sellAmt: BigNumber = bn('1e18') // due to max trade volume
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         const sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
@@ -1972,7 +1972,7 @@ describe('Revenues', () => {
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      it.only('Should handle slight increase in collateral correctly - full cycle', async () => {
+      it('Should handle slight increase in collateral correctly - full cycle', async () => {
         // Check Price and Assets value
         expect(await rToken.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
@@ -1995,17 +1995,17 @@ describe('Revenues', () => {
 
         // Expected values
         const currentTotalSupply: BigNumber = await rToken.totalSupply()
-        const expectedToTrader = divCeil(excessQuantity.mul(60), bn(100))
-        const expectedToFurnace = divCeil(excessQuantity.mul(40), bn(100)) // excessQuantity.sub(expectedToTrader)
+        const expectedToTrader = divCeil(excessQuantity.mul(60), bn(100)).sub(60)
+        const expectedToFurnace = divCeil(excessQuantity.mul(40), bn(100)).sub(40) // excessQuantity.sub(expectedToTrader)
 
         // Auction values - using divCeil for dealing with Rounding
         const sellAmt: BigNumber = expectedToTrader
         const buyAmt: BigNumber = divCeil(sellAmt.mul(rate), BN_SCALE_FACTOR) // RSR quantity with no slippage
-        const minBuyAmt: BigNumber = buyAmt.sub(divCeil(buyAmt, bn(100))) // due to trade slippage 1%
+        const minBuyAmt: BigNumber = buyAmt.sub(divFloor(buyAmt, bn(100))) // due to trade slippage 1%
 
         const sellAmtRToken: BigNumber = expectedToFurnace
         const buyAmtRToken: BigNumber = divCeil(sellAmtRToken.mul(rate), BN_SCALE_FACTOR) // RToken quantity with no slippage
-        const minBuyAmtRToken: BigNumber = buyAmtRToken.sub(buyAmtRToken.div(100)) // due to trade slippage 1%
+        const minBuyAmtRToken: BigNumber = buyAmtRToken.sub(divFloor(buyAmtRToken, bn(100))) // due to trade slippage 1%
 
         // Run auctions
         await expectEvents(facade.runAuctionsForAllTraders(), [
@@ -2025,7 +2025,8 @@ describe('Revenues', () => {
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
         expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
-        expect(near(await facade.callStatic.totalAssetValue(), issueAmount, 2)).to.equal(true)
+        expect(near(await facade.callStatic.totalAssetValue(), issueAmount, 100)).to.equal(true)
+        expect((await facade.callStatic.totalAssetValue()).gt(issueAmount)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
         // Check destinations at this stage
@@ -2052,7 +2053,7 @@ describe('Revenues', () => {
         })
 
         // Check funds in Market and Traders
-        expect(near(await token2.balanceOf(gnosis.address), excessQuantity, 1)).to.equal(true)
+        expect(near(await token2.balanceOf(gnosis.address), excessQuantity, 100)).to.equal(true)
         expect(await token2.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(expectedToTrader.sub(sellAmt))
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
@@ -2106,14 +2107,15 @@ describe('Revenues', () => {
 
         //  Check Price (unchanged) and Assets value (unchanged)
         expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
-        expect(near(await facade.callStatic.totalAssetValue(), issueAmount, 2)).to.equal(true)
+        expect(near(await facade.callStatic.totalAssetValue(), issueAmount, 100)).to.equal(true)
+        expect((await facade.callStatic.totalAssetValue()).gt(issueAmount)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
         // Check balances sent to corresponding destinations
         // StRSR
-        expect(near(await rsr.balanceOf(stRSR.address), minBuyAmt, 1)).to.equal(true)
+        expect(near(await rsr.balanceOf(stRSR.address), minBuyAmt, 100)).to.equal(true)
         // Furnace
-        expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 1)).to.equal(true)
+        expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 100)).to.equal(true)
       })
 
       it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
@@ -2143,7 +2145,7 @@ describe('Revenues', () => {
         // Set expected auction values
         const currentTotalSupply: BigNumber = await rToken.totalSupply()
         const newTotalSupply: BigNumber = currentTotalSupply.mul(2)
-        const sellAmt: BigNumber = expectedToTrader // everything is auctioned, due to max auction size
+        const sellAmt: BigNumber = expectedToTrader // everything is auctioned, due to max trade volume
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         // Collect revenue and mint new tokens - Will also launch auction
@@ -2266,13 +2268,13 @@ describe('Revenues', () => {
 
         //  Set expected auction values
         const newTotalSupply: BigNumber = currentTotalSupply.mul(160).div(100)
-        const sellAmtFromRToken: BigNumber = expectedToTraderFromRToken // all will be processed at once, due to max auction size of 50%
+        const sellAmtFromRToken: BigNumber = expectedToTraderFromRToken // all will be processed at once, due to max trade volume of 50%
         const minBuyAmtFromRToken: BigNumber = sellAmtFromRToken.sub(sellAmtFromRToken.div(100)) // due to trade slippage 1%
-        const sellAmtRSRFromCollateral: BigNumber = expectedToRSRTraderFromCollateral // all will be processed at once, due to max auction size of 50%
+        const sellAmtRSRFromCollateral: BigNumber = expectedToRSRTraderFromCollateral // all will be processed at once, due to max trade volume of 50%
         const minBuyAmtRSRFromCollateral: BigNumber = sellAmtRSRFromCollateral
           .mul(2)
           .sub(sellAmtRSRFromCollateral.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken is worth half
-        const sellAmtRTokenFromCollateral: BigNumber = expectedToRTokenTraderFromCollateral // all will be processed at once, due to max auction size of 50%
+        const sellAmtRTokenFromCollateral: BigNumber = expectedToRTokenTraderFromCollateral // all will be processed at once, due to max trade volume of 50%
         const minBuyAmtRTokenFromCollateral: BigNumber = sellAmtRTokenFromCollateral
           .mul(2)
           .sub(sellAmtRTokenFromCollateral.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken is worth half
@@ -2456,426 +2458,6 @@ describe('Revenues', () => {
         expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
-      })
-    })
-  })
-
-  describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
-    const defaultThreshold = fp('0.05') // 5%
-    const delayUntilDefault = bn('86400') // 24h
-    let ERC20Mock: ContractFactory
-    let ATokenMockFactory: ContractFactory
-    let CTokenMockFactory: ContractFactory
-    let ATokenCollateralFactory: ContractFactory
-    let CTokenCollateralFactory: ContractFactory
-
-    beforeEach(async function () {
-      ERC20Mock = await ethers.getContractFactory('ERC20Mock')
-      ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
-      CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
-      ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
-      CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
-    })
-
-    const prepAToken = async (index: number): Promise<StaticATokenMock> => {
-      const underlying: ERC20Mock = <ERC20Mock>(
-        await ERC20Mock.deploy(`ERC20_NAME:${index}`, `ERC20_SYM:${index}`)
-      )
-      await compoundOracleInternal.setPrice(await underlying.symbol(), bn('1e6'))
-      await aaveOracleInternal.setPrice(underlying.address, bn('2.5e14'))
-      const erc20: StaticATokenMock = <StaticATokenMock>(
-        await ATokenMockFactory.deploy(
-          `StaticAToken_NAME:${index}`,
-          `StaticAToken_SYM:${index}`,
-          underlying.address
-        )
-      )
-
-      // Set reward token
-      await erc20.setAaveToken(aaveToken.address)
-      const collateral = <ATokenFiatCollateral>(
-        await ATokenCollateralFactory.deploy(
-          erc20.address,
-          bn('1e57'),
-          defaultThreshold,
-          delayUntilDefault,
-          underlying.address,
-          compoundMock.address,
-          aaveMock.address,
-          aaveToken.address
-        )
-      )
-      await assetRegistry.connect(owner).register(collateral.address)
-      return erc20
-    }
-
-    const prepCToken = async (index: number): Promise<CTokenMock> => {
-      const underlying: ERC20Mock = <ERC20Mock>(
-        await ERC20Mock.deploy(`ERC20_NAME:${index}`, `ERC20_SYM:${index}`)
-      )
-      await compoundOracleInternal.setPrice(await underlying.symbol(), bn('1e6'))
-      const erc20: CTokenMock = <CTokenMock>(
-        await CTokenMockFactory.deploy(
-          `CToken_NAME:${index}`,
-          `CToken_SYM:${index}`,
-          underlying.address
-        )
-      )
-      const collateral = <CTokenFiatCollateral>(
-        await CTokenCollateralFactory.deploy(
-          erc20.address,
-          bn('1e57'),
-          defaultThreshold,
-          delayUntilDefault,
-          underlying.address,
-          compoundMock.address,
-          compToken.address
-        )
-      )
-      await assetRegistry.connect(owner).register(collateral.address)
-      return erc20
-    }
-
-    const doCommonSetup = async (stRSRCut: BigNumber) => {
-      // Configure Distributor
-      const rsrDist = bn(5).mul(stRSRCut).div(fp('1'))
-      const rTokenDist = bn(5).mul(fp('1').sub(stRSRCut)).div(fp('1'))
-      expect(rsrDist.add(rTokenDist)).to.equal(5)
-      await expect(
-        distributor
-          .connect(owner)
-          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: rsrDist })
-      )
-        .to.emit(distributor, 'DistributionSet')
-        .withArgs(STRSR_DEST, bn(0), rsrDist)
-      await expect(
-        distributor
-          .connect(owner)
-          .setDistribution(FURNACE_DEST, { rTokenDist: rTokenDist, rsrDist: bn(0) })
-      )
-        .to.emit(distributor, 'DistributionSet')
-        .withArgs(FURNACE_DEST, rTokenDist, bn(0))
-
-      // Eliminate auction frictions
-      await backingManager.connect(owner).setDustAmount(0)
-      await rsrTrader.connect(owner).setDustAmount(0)
-      await rTokenTrader.connect(owner).setDustAmount(0)
-
-      // Set prices
-      await compoundOracleInternal.setPrice(await rsr.symbol(), bn('1e6'))
-      await aaveOracleInternal.setPrice(rsr.address, bn('2.5e14'))
-      await compoundOracleInternal.setPrice(await aaveToken.symbol(), bn('1e6'))
-      await aaveOracleInternal.setPrice(aaveToken.address, bn('2.5e14'))
-      await compoundOracleInternal.setPrice(await compToken.symbol(), bn('1e6'))
-
-      // Replace RSR and RToken assets with larger maxTradeVolume settings
-      const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset')
-      const RSRAssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAsset')
-      const newRTokenAsset: RTokenAsset = <RTokenAsset>(
-        await RTokenAssetFactory.deploy(rToken.address, bn('1e57'), main.address)
-      )
-      const newRSRAsset: AavePricedAsset = <AavePricedAsset>(
-        await RSRAssetFactory.deploy(
-          compToken.address,
-          bn('1e57'),
-          compoundMock.address,
-          aaveMock.address
-        )
-      )
-      await assetRegistry.connect(owner).swapRegistered(newRTokenAsset.address)
-      await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
-    }
-
-    const runAuctionsForAllTraders = async () => {
-      let didStuff = true
-      // Run auctions
-      while (didStuff) {
-        didStuff = false
-        // Close auctions
-        await facade.runAuctionsForAllTraders()
-
-        expect(await backingManager.numTrades()).to.equal(0)
-        const traders = [rsrTrader, rTokenTrader]
-        for (const trader of traders) {
-          const lastClosedTrade = await trader.tradesStart()
-          const totalTrades = await trader.numTrades()
-          for (let i = lastClosedTrade; i.lt(totalTrades); i = i.add(1)) {
-            didStuff = true
-            const trade = <GnosisTrade>(
-              await ethers.getContractAt('GnosisTrade', await trader.trades(i))
-            )
-            const gnosis = <GnosisMock>(
-              await ethers.getContractAt('GnosisMock', await trade.gnosis())
-            )
-            const auctionId = await trade.auctionId()
-            const [, , buy, sellAmt, buyAmt] = await gnosis.auctions(auctionId)
-            expect(buy == rToken.address || buy == rsr.address)
-            if (buy == rToken.address) {
-              await whileImpersonating(backingManager.address, async (bmSigner) => {
-                await rToken.connect(bmSigner).mint(addr1.address, buyAmt)
-              })
-              await rToken.connect(addr1).approve(gnosis.address, buyAmt)
-              await gnosis.placeBid(auctionId, {
-                bidder: addr1.address,
-                sellAmount: sellAmt,
-                buyAmount: buyAmt,
-              })
-            } else if (buy == rsr.address) {
-              await rsr.connect(owner).mint(addr2.address, buyAmt)
-              await rsr.connect(addr2).approve(gnosis.address, buyAmt)
-              await gnosis.placeBid(auctionId, {
-                bidder: addr2.address,
-                sellAmount: sellAmt,
-                buyAmount: buyAmt,
-              })
-            }
-          }
-        }
-
-        // Advance time till auction ends
-        await advanceTime(config.auctionLength.add(100).toString())
-      }
-    }
-
-    context.only('Appreciation', function () {
-      // STORY
-      //
-      // There are N apppreciating collateral in the basket.
-      // Between 1 and N collateral appreciate X% (assume 0% backingBuffer)
-      // Launch up to 2-2N auctions using surplus collateral for RSR/RToken.
-      // Give result to Furnace/StRSR.
-      //
-      // DIMENSIONS
-      //
-      // 1. RToken supply
-      // 2. Size of basket
-      // 3. Prime basket weights
-      // 4. # of decimals in collateral token
-      // 5. Exchange rate after appreciation
-      // 6. Symmetry of appreciation (evenly vs all in 1 collateral)
-      // 7. StRSR cut (previously: f)
-
-      async function runScenario(
-        rTokenSupply: BigNumber,
-        basketSize: number,
-        primeWeight: BigNumber,
-        collateralDecimals: number,
-        appreciationExchangeRate: BigNumber,
-        howManyAppreciate: number,
-        stRSRCut: BigNumber
-      ) {
-        await doCommonSetup(stRSRCut)
-
-        const primeBasket = []
-        const targetAmts = []
-        for (let i = 0; i < basketSize; i++) {
-          expect(collateralDecimals == 8 || collateralDecimals == 18).to.equal(true)
-          const token = collateralDecimals == 8 ? await prepCToken(i) : await prepAToken(i)
-          primeBasket.push(token)
-          targetAmts.push(primeWeight.div(basketSize).add(1))
-          await token.setExchangeRate(fp('1'))
-          await token.connect(owner).mint(addr1.address, MAX_UINT256)
-          await token.connect(addr1).approve(rToken.address, MAX_UINT256)
-        }
-
-        // Setup basket
-        await basketHandler.connect(owner).setPrimeBasket(
-          primeBasket.map((c) => c.address),
-          targetAmts
-        )
-        await basketHandler.connect(owner).switchBasket()
-
-        // Issue rTokens
-        await issueMany(rToken, rTokenSupply, addr1)
-        expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
-
-        // === Execution ===
-
-        // Increase redemption rate
-        for (let i = 0; i < primeBasket.length && i < howManyAppreciate; i++) {
-          await primeBasket[i].setExchangeRate(appreciationExchangeRate)
-        }
-
-        await runAuctionsForAllTraders()
-      }
-
-      let dimensions
-      if (SLOW) {
-        dimensions = [
-          [fp('1e-6'), fp('1e30')], // RToken supply
-          [1, 256], // basket size
-          [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
-          [8, 18], // collateral decimals
-          [fp('0'), fp('1e9'), fp('0.02')], // exchange rate at appreciation
-          [1, 256], // how many collateral assets appreciate (up to)
-          [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
-        ]
-      } else {
-        dimensions = [
-          [fp('1e-6'), fp('1e30')], // RToken supply
-          [7], // basket size
-          [fp('1e-6'), fp('1e3')], // prime basket weights
-          [8, 18], // collateral decimals
-          [fp('1e9')], // exchange rate at appreciation
-          [1, 7], // how many collateral assets appreciate (up to)
-          [fp('0.6')], // StRSR cut (f)
-        ]
-      }
-
-      const cases = cartesianProduct(...dimensions)
-
-      const numCases = cases.length.toString()
-      cases.forEach((params, index) => {
-        it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
-          await runScenario(
-            params[0] as BigNumber,
-            params[1] as number,
-            params[2] as BigNumber,
-            params[3] as number,
-            params[4] as BigNumber,
-            params[5] as number,
-            params[6] as BigNumber
-          )
-        })
-      })
-    })
-    context('Rewards', function () {
-      // STORY
-      //
-      // There are N reward-earning collateral in the basket.
-      // A total amount of Y rewards is earned
-      // Launch 1-2 auctions using rewards, for RSR/RToken.
-      // Give result to Furnace/StRSR.
-      //
-      // DIMENSIONS
-      //
-      // 1. RToken supply (including this in order to check 0 supply case)
-      // 2. Size of reward-earning basket tokens
-      // 3. Number of reward tokens (1 or 2)
-      // 4. Size of reward
-      // 5. StRSR cut (previously: f)
-
-      async function runScenario(
-        rTokenSupply: BigNumber,
-        basketSize: number,
-        numRewardTokens: number,
-        rewardTok: BigNumber, // whole tokens
-        stRSRCut: BigNumber
-      ) {
-        await doCommonSetup(stRSRCut)
-
-        // Replace registered reward assets with large maxTradeVolume assets
-        const AaveAssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAsset')
-        const CompoundAssetFactory: ContractFactory = await ethers.getContractFactory(
-          'CompoundPricedAsset'
-        )
-        const newAaveAsset: AavePricedAsset = <AavePricedAsset>(
-          await AaveAssetFactory.deploy(
-            aaveToken.address,
-            bn('1e57'),
-            compoundMock.address,
-            aaveMock.address
-          )
-        )
-        const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
-          await CompoundAssetFactory.deploy(compToken.address, bn('1e57'), compoundMock.address)
-        )
-        await assetRegistry.connect(owner).swapRegistered(newAaveAsset.address)
-        await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
-
-        // Set up prime basket
-        const primeBasket = []
-        const targetAmts = []
-        for (let i = 0; i < basketSize; i++) {
-          expect(numRewardTokens == 1 || numRewardTokens == 2).to.equal(true)
-          let token
-          if (numRewardTokens == 1) {
-            token = await prepCToken(i)
-          } else {
-            token = i % 2 == 0 ? await prepCToken(i) : await prepAToken(i)
-          }
-          primeBasket.push(token)
-          targetAmts.push(fp('1').div(basketSize))
-          await token.setExchangeRate(fp('1'))
-          await token.connect(owner).mint(addr1.address, MAX_UINT256)
-          await token.connect(addr1).approve(rToken.address, MAX_UINT256)
-        }
-
-        // Setup basket
-        await basketHandler.connect(owner).setPrimeBasket(
-          primeBasket.map((token) => token.address),
-          targetAmts
-        )
-        await expect(basketHandler.connect(owner).switchBasket()).to.emit(
-          basketHandler,
-          'BasketSet'
-        )
-
-        // Issue rTokens
-        await issueMany(rToken, rTokenSupply, addr1)
-        expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
-
-        // === Execution ===
-
-        // Grant rewards
-        for (let i = 0; i < primeBasket.length; i++) {
-          const decimals = await primeBasket[i].decimals()
-          expect(decimals == 8 || decimals == 18).to.equal(true)
-          if (decimals == 8) {
-            // cToken
-            const oldRewards = await compoundMock.compBalances(backingManager.address)
-            const newRewards = rewardTok.mul(bn('1e8')).div(numRewardTokens)
-
-            await compoundMock.setRewards(backingManager.address, oldRewards.add(newRewards))
-          } else if (decimals == 18) {
-            // aToken
-            const aToken = <StaticATokenMock>primeBasket[i]
-            const rewards = rewardTok.mul(bn('1e18')).div(numRewardTokens)
-            await aToken.setRewards(backingManager.address, rewards)
-          }
-        }
-
-        // Claim rewards
-        await expect(backingManager.claimAndSweepRewards()).to.emit(
-          backingManager,
-          'RewardsClaimed'
-        )
-
-        // Do auctions
-        await runAuctionsForAllTraders()
-      }
-
-      let dimensions
-      if (SLOW) {
-        dimensions = [
-          [fp('1e-6'), fp('1e30')], // RToken supply
-          [1, 256], // basket size
-          [1, 2], // num reward tokens
-          [bn('0'), bn('1e11'), bn('1e6')], // reward amount (whole tokens), up to 100B supply tokens
-          [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
-        ]
-      } else {
-        dimensions = [
-          [fp('1e-6'), fp('1e30')], // RToken supply
-          [1, 7], // basket size
-          [2], // num reward tokens
-          [bn('1e11')], // reward amount (whole tokens), up to 100B supply tokens
-          [fp('0.6')], // StRSR cut (f)
-        ]
-      }
-      const cases = cartesianProduct(...dimensions)
-
-      const numCases = cases.length.toString()
-      cases.forEach((params, index) => {
-        it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
-          await runScenario(
-            params[0] as BigNumber,
-            params[1] as number,
-            params[2] as number,
-            params[3] as BigNumber,
-            params[4] as BigNumber
-          )
-        })
       })
     })
   })

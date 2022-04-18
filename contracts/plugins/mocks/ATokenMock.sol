@@ -73,7 +73,6 @@ contract StaticATokenMock is ERC20Mock {
     }
 
     function claimRewardsToSelf(bool) external {
-        // Mint amount and update internal balances
         if (address(aaveToken) != address(0) && aaveBalances[msg.sender] > 0) {
             aaveToken.mint(msg.sender, aaveBalances[msg.sender]);
             aaveBalances[msg.sender] = 0;
@@ -85,6 +84,6 @@ contract StaticATokenMock is ERC20Mock {
     }
 
     function _toExchangeRate(int192 fiatcoinRedemptionRate) internal pure returns (uint256) {
-        return fiatcoinRedemptionRate.mulu(1e27).round();
+        return fiatcoinRedemptionRate.mulu_toUint(1e27, ROUND);
     }
 }
