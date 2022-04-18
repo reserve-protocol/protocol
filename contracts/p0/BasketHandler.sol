@@ -160,6 +160,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
 
     /// Switch the basket, only callable directly by governance
     function switchBasket() external onlyOwner {
+        main.assetRegistry().forceUpdates();
         _switchBasket();
     }
 
@@ -247,6 +248,7 @@ contract BasketHandlerP0 is Component, IBasketHandler {
             int192 bal = main.assetRegistry().toColl(basket.erc20s[i]).bal(account); // {tok}
             int192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
+            console.log("basketsHeldBy", i, bal.shiftl_toUint(18), q.shiftl_toUint(18));
             // {BU} = {tok} / {tok/BU}
             if (q.gt(FIX_ZERO)) baskets = fixMin(baskets, bal.div(q));
         }
