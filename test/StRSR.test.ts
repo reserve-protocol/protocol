@@ -112,7 +112,10 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         const [draftsPrev] = await stRSRP1.draftQueues(0, address, index - 1)
         rsrAmount = drafts.sub(draftsPrev)
       }
-      if (withdrawal.rsrAmount) expect(rsrAmount.toString()).to.eql(withdrawal.rsrAmount.toString())
+
+      const stakeAmount = (await stRSRP1.exchangeRate()).mul(rsrAmount).div(fp('1'))
+      if (withdrawal.rsrAmount)
+        expect(stakeAmount.toString()).to.eql(withdrawal.rsrAmount.toString())
       if (withdrawal.availableAt) {
         expect(availableAt.toString()).to.eql(withdrawal.availableAt.toString())
       }
