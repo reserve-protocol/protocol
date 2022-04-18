@@ -65,12 +65,18 @@ CTokenFiatCollateral     [23373, 63106, 47529]
 * `switchBasket` (Governance/Market Makers) **Review**
     - Baseline  [148648, 763330, 315728]
 
-### Broker
+### Broker and GnosisTrade
 
 * `openTrade` (Market Makers) **Review**
     - Baseline: [1809980, 1820761, 1814739]
     - Target: `TBD`
     - Final Measurement `TBD`
+
+*  `init` trade (Market Makers) **Review**
+    - Baseline: [422366, 422366, 422366]
+
+* `settle` trade (Market Makers) **Review**
+    - Baseline: [116512, 133239, 123465]
 
 ### Distributor
 
@@ -95,18 +101,11 @@ CTokenFiatCollateral     [23373, 63106, 47529]
     - Target: `TBD`
     - Final Measurement `TBD`
 
-### Gnosis Trade
-
-* `init` (Market Makers) **Review**
-    - Baseline: [422366, 422366, 422366]
-
-* `settle` (Market Makers) **Review**
-    - Baseline: [117822, 133239, 128100]
-
 ### Main
 
 * `poke`  (Market Makers) **Review**
-
+    - Aggregator:
+        
 ### RevenueTrader
 
 * `init` (Market Makers) **Review**

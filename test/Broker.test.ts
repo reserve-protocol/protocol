@@ -581,5 +581,29 @@ describe(`BrokerP${IMPLEMENTATION} contract`, () => {
         )
       )
     })
+
+    it('Settle Trade ', async () => {
+      // Fund trade and initialize
+      await token0.connect(owner).mint(newTrade.address, amount)
+      await newTrade.init(
+        broker.address,
+        backingManager.address,
+        gnosis.address,
+        config.auctionLength,
+        tradeRequest
+      )
+
+      // Advance time till trade can be settled
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // Settle trade
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await snapshotGasCost(newTrade.connect(bmSigner).settle())
+      })
+
+      // Check status
+      expect(await newTrade.status()).to.equal(TradeStatus.CLOSED)
+      expect(await newTrade.canSettle()).to.equal(false)
+    })
   })
 })
