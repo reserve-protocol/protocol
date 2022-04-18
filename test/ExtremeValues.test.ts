@@ -29,17 +29,17 @@ import {
   ERC20Mock,
   FacadeP0,
   GnosisTrade,
+  TestIStRSR,
   MainP0,
   GnosisMock,
   RevenueTradingP0,
   RTokenAsset,
   TestIRToken,
   StaticATokenMock,
-  USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import { advanceTime } from './utils/time'
-import { Collateral, defaultFixture, IConfig, SLOW } from './fixtures'
+import { defaultFixture, IConfig, SLOW } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { issueMany } from './utils/issue'
 
@@ -63,22 +63,11 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let rsrTrader: RevenueTradingP0
   let rTokenTrader: RevenueTradingP0
 
-  // Tokens and Assets
-  let initialBal: BigNumber
-  let token0: ERC20Mock
-  let token1: USDCMock
-  let token2: StaticATokenMock
-  let token3: CTokenMock
-  let collateral0: Collateral
-  let collateral1: Collateral
-  let collateral2: ATokenFiatCollateral
-  let collateral3: CTokenFiatCollateral
-  let basket: Collateral[]
-
   // Config values
   let config: IConfig
 
   // Contracts to retrieve after deploy
+  let stRSR: TestIStRSR
   let rToken: TestIRToken
   let main: MainP0
   let facade: FacadeP0
@@ -105,10 +94,10 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       aaveToken,
       compoundMock,
       aaveMock,
-      basket,
       config,
       main,
       assetRegistry,
+      stRSR,
       backingManager,
       basketHandler,
       distributor,
@@ -122,35 +111,11 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
     // Set backingBuffer to 0 to make math easy
     await backingManager.connect(owner).setBackingBuffer(0)
-
-    // Get assets and tokens
-    collateral0 = <Collateral>basket[0]
-    collateral1 = <Collateral>basket[1]
-    collateral2 = <ATokenFiatCollateral>basket[2]
-    collateral3 = <CTokenFiatCollateral>basket[3]
-    token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
-    token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
-    token2 = <StaticATokenMock>(
-      await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
-    )
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
-
-    // Mint initial balances
-    initialBal = bn('1000000e18')
-    await token0.connect(owner).mint(addr1.address, initialBal)
-    await token1.connect(owner).mint(addr1.address, initialBal)
-    await token2.connect(owner).mint(addr1.address, initialBal)
-    await token3.connect(owner).mint(addr1.address, initialBal)
-
-    await token0.connect(owner).mint(addr2.address, initialBal)
-    await token1.connect(owner).mint(addr2.address, initialBal)
-    await token2.connect(owner).mint(addr2.address, initialBal)
-    await token3.connect(owner).mint(addr2.address, initialBal)
   })
 
   const defaultThreshold = fp('0.05') // 5%
   const delayUntilDefault = bn('86400') // 24h
-  const maxUoA = fp('1e26')
+  const maxUoA = fp('1e29')
   let ERC20Mock: ContractFactory
   let ATokenMockFactory: ContractFactory
   let CTokenMockFactory: ContractFactory
@@ -182,6 +147,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       )
     )
 
+    await erc20.setExchangeRate(fp('1'))
     // Set reward token
     await erc20.setAaveToken(aaveToken.address)
     const collateral = <ATokenFiatCollateral>(
@@ -212,6 +178,8 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         underlying.address
       )
     )
+    await erc20.setExchangeRate(fp('1'))
+
     const collateral = <CTokenFiatCollateral>(
       await CTokenCollateralFactory.deploy(
         erc20.address,
@@ -227,7 +195,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     return erc20
   }
 
-  const doCommonSetup = async (stRSRCut: BigNumber) => {
+  const setupForEasyTrading = async (stRSRCut: BigNumber) => {
     // Configure Distributor
     const rsrDist = bn(5).mul(stRSRCut).div(fp('1'))
     const rTokenDist = bn(5).mul(fp('1').sub(stRSRCut)).div(fp('1'))
@@ -277,7 +245,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
   }
 
-  const runAuctionsForAllTraders = async () => {
+  const runRevenueAuctionsUntilCompletion = async () => {
     let didStuff = true
     // Run auctions
     while (didStuff) {
@@ -355,7 +323,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       howManyAppreciate: number,
       stRSRCut: BigNumber
     ) {
-      await doCommonSetup(stRSRCut)
+      await setupForEasyTrading(stRSRCut)
 
       const primeBasket = []
       const targetAmts = []
@@ -367,7 +335,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
             : await prepAToken(i, maxTradeVolume)
         primeBasket.push(token)
         targetAmts.push(primeWeight.div(basketSize).add(1))
-        await token.setExchangeRate(fp('1'))
         await token.connect(owner).mint(addr1.address, MAX_UINT256)
         await token.connect(addr1).approve(rToken.address, MAX_UINT256)
       }
@@ -390,7 +357,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         await primeBasket[i].setExchangeRate(appreciationExchangeRate)
       }
 
-      await runAuctionsForAllTraders()
+      await runRevenueAuctionsUntilCompletion()
     }
 
     let dimensions
@@ -459,7 +426,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       rewardTok: BigNumber, // whole tokens
       stRSRCut: BigNumber
     ) {
-      await doCommonSetup(stRSRCut)
+      await setupForEasyTrading(stRSRCut)
 
       // Replace registered reward assets with large maxTradeVolume assets
       const AaveAssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAsset')
@@ -493,7 +460,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         }
         primeBasket.push(token)
         targetAmts.push(fp('1').div(basketSize))
-        await token.setExchangeRate(fp('1'))
         await token.connect(owner).mint(addr1.address, MAX_UINT256)
         await token.connect(addr1).approve(rToken.address, MAX_UINT256)
       }
@@ -533,7 +499,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await expect(backingManager.claimAndSweepRewards()).to.emit(backingManager, 'RewardsClaimed')
 
       // Do auctions
-      await runAuctionsForAllTraders()
+      await runRevenueAuctionsUntilCompletion()
     }
 
     let dimensions
@@ -698,6 +664,159 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     })
   })
 
+  context('Default', function () {
+    const runRecapitalizationAuctions = async (rTokenSupply: BigNumber, basketSize: number) => {
+      let uncapitalized = true
+      const basketsNeeded = await rToken.basketsNeeded()
+
+      // For small cases, we should be able to do `basketSize` non-RSR trades, and then 1 RSR trade
+      // For big cases we won't be able to complete recapitalization in this simulation
+
+      // Run recap auctions
+      for (let i = 0; i < basketSize + 1 && uncapitalized; i++) {
+        // Close auctions
+        await facade.runAuctionsForAllTraders()
+
+        const lastClosedTrade = await backingManager.tradesStart()
+        const totalTrades = await backingManager.numTrades()
+        for (let i = lastClosedTrade; i.lt(totalTrades); i = i.add(1)) {
+          const trade = <GnosisTrade>(
+            await ethers.getContractAt('GnosisTrade', await backingManager.trades(i))
+          )
+          const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
+          const auctionId = await trade.auctionId()
+          const [, , buy, sellAmt, minBuyAmt] = await gnosis.auctions(auctionId)
+          const actualBuyAmt = minBuyAmt.eq(0) ? sellAmt : minBuyAmt
+          const buyERC20 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', buy)
+          await buyERC20.connect(addr1).approve(gnosis.address, actualBuyAmt)
+          expect(sellAmt.gt(0)).to.equal(true)
+          expect(actualBuyAmt.gt(0)).to.equal(true)
+          await gnosis.placeBid(auctionId, {
+            bidder: addr1.address,
+            sellAmount: sellAmt,
+            buyAmount: actualBuyAmt,
+          })
+        }
+
+        // Advance time till auction ends
+        await advanceTime(config.auctionLength.add(100).toString())
+        uncapitalized = !(await basketHandler.fullyCapitalized())
+      }
+
+      // Should not have taken a haircut
+      expect((await rToken.basketsNeeded()).gte(basketsNeeded)).to.equal(true)
+      // For the really large cases, the Gnosis Auction Mechanism prevents us from recapitalizing
+      // in a reasonable amount of time.
+      if (rTokenSupply.lt(bn('1e40'))) {
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      } else {
+        expect(await backingManager.numTrades()).to.equal(basketSize + 1) // it should have tried
+      }
+    }
+
+    // STORY
+    //
+    // There are N collateral in the basket.
+    // Between 1 and N collateral default.
+    // Switch basket to remaining good collateral, if any.
+    // Run non-RSR auctions to completion.
+    // Seize RSR and use for remainder.
+    // Assert capitalized.
+    //
+    // DIMENSIONS
+    //
+    // 1. RToken supply
+    // 2. Size of basket
+    // 3. Prime basket weights
+    // 4. # of decimals in collateral token
+    // 5. Symmetry of default (1 or N tokens default)
+
+    async function runScenario(
+      rTokenSupply: BigNumber,
+      basketSize: number,
+      primeWeight: BigNumber,
+      collateralDecimals: number,
+      howManyDefault: number
+    ) {
+      await setupForEasyTrading(fp('0.6'))
+
+      const primeBasket = []
+      const targetAmts = []
+      for (let i = 0; i < basketSize; i++) {
+        expect(collateralDecimals == 8 || collateralDecimals == 18).to.equal(true)
+        const token =
+          collateralDecimals == 8 ? await prepCToken(i, maxUoA) : await prepAToken(i, maxUoA)
+        primeBasket.push(token)
+        targetAmts.push(primeWeight.div(basketSize).add(1))
+        await token.connect(owner).mint(addr1.address, MAX_UINT256)
+        await token.connect(addr1).approve(rToken.address, MAX_UINT256)
+      }
+
+      // Setup basket
+      await basketHandler.connect(owner).setPrimeBasket(
+        primeBasket.map((c) => c.address),
+        targetAmts
+      )
+      await basketHandler.connect(owner).setBackupConfig(
+        ethers.utils.formatBytes32String('USD'),
+        basketSize,
+        primeBasket.map((c) => c.address)
+      )
+      await basketHandler.connect(owner).switchBasket()
+
+      // Insure with RSR
+      await rsr.connect(owner).mint(addr1.address, fp('1e29'))
+      await rsr.connect(addr1).approve(stRSR.address, fp('1e29'))
+      await stRSR.connect(addr1).stake(fp('1e29'))
+
+      // Issue rTokens
+      await issueMany(rToken, rTokenSupply, addr1)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
+
+      // === Execution ===
+
+      // Default tokens
+      for (let i = 0; i < primeBasket.length && i < howManyDefault; i++) {
+        await primeBasket[i].setExchangeRate(fp('0.00001'))
+      }
+
+      await runRecapitalizationAuctions(rTokenSupply, basketSize)
+    }
+
+    let dimensions
+    if (SLOW) {
+      dimensions = [
+        [fp('1e-6'), fp('1e30')], // RToken supply
+        [1, 256], // basket size
+        [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
+        [8, 18], // collateral decimals
+        [1, 256], // how many collateral assets default (up to)
+      ]
+    } else {
+      dimensions = [
+        [fp('1e-6'), fp('1e30')], // RToken supply
+        [7], // basket size
+        [fp('1e-6'), fp('1e3')], // prime basket weights
+        [8, 18], // collateral decimals
+        [1], // how many collateral assets default (up to)
+      ]
+    }
+
+    const cases = cartesianProduct(...dimensions)
+
+    const numCases = cases.length.toString()
+    cases.forEach((params, index) => {
+      it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+        await runScenario(
+          params[0] as BigNumber,
+          params[1] as number,
+          params[2] as BigNumber,
+          params[3] as number,
+          params[4] as number
+        )
+      })
+    })
+  })
   context(`RToken`, () => {
     // makeColl: Deploy and register a new constant-price collateral
     async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {

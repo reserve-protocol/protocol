@@ -854,7 +854,6 @@ describe('MainP0 contract', () => {
         // Advance time post trading delay
         await advanceTime(newDelay + 1)
 
-        console.log(sellAmt, toBNDecimals(minBuyAmt, 6))
         // Auction can be run now
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeStarted')
@@ -1169,8 +1168,7 @@ describe('MainP0 contract', () => {
         // End current auction, should start a new one to sell RSR for collateral
         // Only 1e18 Tokens left to buy - Sets Buy amount as independent value
         const buyAmtBidRSR: BigNumber = sellAmt.sub(minBuyAmt)
-        const sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')) // Due to trade slippage 1% - Calculation to match Solidity
-
+        const sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')).add(1) // Due to trade slippage 1% - Calculation to match Solidity
         await expectEvents(facade.runAuctionsForAllTraders(), [
           {
             contract: backingManager,
@@ -1181,7 +1179,13 @@ describe('MainP0 contract', () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6)],
+            args: [
+              1,
+              rsr.address,
+              token1.address,
+              sellAmtRSR,
+              toBNDecimals(buyAmtBidRSR, 6).add(1),
+            ],
             emitted: true,
           },
         ])
@@ -1542,7 +1546,7 @@ describe('MainP0 contract', () => {
         // End current auction, should start a new one to sell RSR for collateral
         // 50e18 Tokens left to buy - Sets Buy amount as independent value
         const buyAmtBidRSR: BigNumber = sellAmt
-        const sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')) // Due to trade slippage 1% - Calculation to match Solidity
+        const sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')).add(1) // Due to trade slippage 1% - Calculation to match Solidity
 
         await expectEvents(facade.runAuctionsForAllTraders(), [
           {

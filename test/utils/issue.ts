@@ -31,7 +31,6 @@ export async function issueMany(
     const currIssue = maxAmt.lt(yetToIssue) ? maxAmt : yetToIssue
 
     // Issue currIssue to user, and wait ISS_BLOCKS
-
     await rToken.connect(user).issue(currIssue)
 
     await advanceBlocks(ISS_BLOCKS.add(1))

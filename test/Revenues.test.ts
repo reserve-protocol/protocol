@@ -2007,7 +2007,6 @@ describe('Revenues', () => {
         const buyAmtRToken: BigNumber = divCeil(sellAmtRToken.mul(rate), BN_SCALE_FACTOR) // RToken quantity with no slippage
         const minBuyAmtRToken: BigNumber = buyAmtRToken.sub(divFloor(buyAmtRToken, bn(100))) // due to trade slippage 1%
 
-        console.log(sellAmt, minBuyAmt, sellAmtRToken, minBuyAmtRToken)
         // Run auctions
         await expectEvents(facade.runAuctionsForAllTraders(), [
           {
