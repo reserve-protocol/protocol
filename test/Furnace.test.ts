@@ -22,7 +22,8 @@ import { cartesianProduct } from './utils/cases'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-export const describeGas = ( IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS) ? describe : describe.skip
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
 describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress

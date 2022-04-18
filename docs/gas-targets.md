@@ -67,13 +67,10 @@ CTokenFiatCollateral     [23373, 63106, 47529]
 
 ### Broker
 
-* `init` (Governance) **Review**
-
 * `openTrade` (Market Makers) **Review**
     - Baseline: [1809980, 1820761, 1814739]
     - Target: `TBD`
     - Final Measurement `TBD`
-
 
 ### Distributor
 

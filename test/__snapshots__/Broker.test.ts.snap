@@ -1,0 +1,9 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`BrokerP1 contract Gas Reporting Initialize Trade  1`] = `422366`;
+
+exports[`BrokerP1 contract Gas Reporting Open Trade  1`] = `1820761`;
+
+exports[`BrokerP1 contract Gas Reporting Open Trade  2`] = `1809980`;
+
+exports[`BrokerP1 contract Gas Reporting Open Trade  3`] = `1813476`;
