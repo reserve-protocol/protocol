@@ -1,11 +1,19 @@
 # Basket System
 
 There are 3 types of baskets in our system:
-(i) Prime Basket
-(ii) Reference Basket
-(iii) Collateral Basket
 
-`BU` = basket unit
+1. Prime Basket
+2. Reference Basket
+3. Collateral Basket
+
+Terminology
+
+```
+{BU} = basket unit
+{target} = amount of a target unit
+{ref} = amount of a reference unit
+{tok} = amount of the collateral token itself
+```
 
 ## Prime Basket
 
