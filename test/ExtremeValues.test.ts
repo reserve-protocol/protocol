@@ -389,7 +389,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
     const numCases = cases.length.toString()
     cases.forEach((params, index) => {
-      if (index != 0) return
       it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
         await runScenario(
           params[0] as BigNumber,
