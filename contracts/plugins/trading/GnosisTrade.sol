@@ -57,7 +57,8 @@ contract GnosisTrade is ITrade {
         sell = req.sell.erc20();
         buy = req.buy.erc20();
         sellAmount = sell.balanceOf(address(this));
-        worstCasePrice = toFix(req.minBuyAmount).divu(sellAmount);
+
+        worstCasePrice = shiftl_toFix(req.minBuyAmount, -18).div(shiftl_toFix(sellAmount, -18));
 
         sell.safeIncreaseAllowance(address(gnosis), sellAmount);
         auctionId = gnosis.initiateAuction(

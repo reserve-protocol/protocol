@@ -27,10 +27,10 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     string public constitutionURI;
 
     // MIN_ISS_RATE: {qRTok/block} 10k whole RTok
-    int192 public constant MIN_ISS_RATE = 10_000 * 1e18 * int192(FIX_SCALE);
+    uint256 public constant MIN_ISS_RATE = 10_000 * 1e18;
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
-    int192 public lastIssRate; // {qRTok/block}
+    uint256 public lastIssRate; // {qRTok/block}
     uint256 public lastIssRateBlock; // {block number}
 
     // When the all pending issuances will have vested.
@@ -116,11 +116,11 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         // ==== Compute and accept collateral ====
         int192 amtBaskets = (totalSupply() > 0) // {BU}
-            ? basketsNeeded.mulu(amtRToken).divuRound(totalSupply()) // {BU * qRTok / qRTok}
-            : toFixWithShift(amtRToken, -int8(decimals())); // {qRTok / qRTok}
+            ? basketsNeeded.muluDivu(amtRToken, totalSupply()) // {BU * qRTok / qRTok}
+            : shiftl_toFix(amtRToken, -int8(decimals())); // {qRTok / qRTok}
 
         address[] memory erc20s;
-        (erc20s, deposits) = basketHandler.quote(amtBaskets, RoundingApproach.CEIL);
+        (erc20s, deposits) = basketHandler.quote(amtBaskets, CEIL);
 
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -176,11 +176,12 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         // Calculate the issuance rate (if this is the first issuance in the block)
         if (lastIssRateBlock < block.number) {
             lastIssRateBlock = block.number;
-            lastIssRate = fixMax(MIN_ISS_RATE, issuanceRate.mulu(totalSupply()));
+            lastIssRate = Math.max(MIN_ISS_RATE, issuanceRate.mulu_toUint(totalSupply()));
         }
 
         // Add amtRToken's worth of issuance delay to allVestAt
-        finished = fixMax(allVestAt, toFix(block.number - 1)).plus(divFix(amtRToken, lastIssRate));
+        int192 before = fixMax(allVestAt, toFix(block.number - 1));
+        finished = before.plus(FIX_ONE.muluDivu(amtRToken, lastIssRate));
         allVestAt = finished;
     }
 
@@ -254,12 +255,12 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
 
         // {BU} = {BU} * {qRTok} / {qRTok}
-        int192 baskets = basketsNeeded.mulu(amount).divuRound(totalSupply());
+        int192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
         assert(baskets.lte(basketsNeeded));
         emit Redemption(_msgSender(), amount, baskets);
 
         address[] memory erc20s;
-        (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingApproach.FLOOR);
+        (erc20s, withdrawals) = basketHandler.quote(baskets, FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         int192 prorate = toFix(amount).divu(totalSupply());
@@ -278,7 +279,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
             uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingMgr));
             // {qTok} = {1} * {qTok}
-            uint256 prorata = prorate.mulu(bal).floor();
+            uint256 prorata = prorate.mulu_toUint(bal);
             withdrawals[i] = Math.min(withdrawals[i], prorata);
             // Send withdrawal
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
@@ -315,7 +316,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     function price() external view returns (int192) {
         if (totalSupply() == 0) return main.basketHandler().price();
 
-        int192 supply = toFixWithShift(totalSupply(), -int8(decimals()));
+        int192 supply = shiftl_toFix(totalSupply(), -int8(decimals()));
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
         return main.basketHandler().price().mul(basketsNeeded).div(supply);
     }

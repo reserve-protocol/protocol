@@ -4,11 +4,10 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { bn, fp, pow10, toBNDecimals, shortString } from '../common/numbers'
+import { bn, fp, pow10, toBNDecimals } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AaveOracleMock,
-  AavePricedFiatCollateralMock,
   CompoundOracleMock,
   ComptrollerMock,
   CTokenMock,
@@ -24,9 +23,8 @@ import {
   USDCMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import { Collateral, defaultFixture, IConfig, IMPLEMENTATION, SLOW } from './fixtures'
+import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
 import { expectTrade } from './utils/trades'
-import { cartesianProduct } from './utils/cases'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -1088,7 +1086,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        //  Check price in USD of the current
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Perform stake
@@ -1168,8 +1166,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // End current auction, should start a new one to sell RSR for collateral
         // Only 1e18 Tokens left to buy - Sets Buy amount as independent value
         const buyAmtBidRSR: BigNumber = sellAmt.sub(minBuyAmt)
-        const sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')) // Due to trade slippage 1% - Calculation to match Solidity
-
+        const sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')).add(1) // Due to trade slippage 1% - Calculation to match Solidity
         await expectEvents(facade.runAuctionsForAllTraders(), [
           {
             contract: backingManager,
@@ -1177,11 +1174,16 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
             args: [0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
             emitted: true,
           },
-
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6)],
+            args: [
+              1,
+              rsr.address,
+              token1.address,
+              sellAmtRSR,
+              toBNDecimals(buyAmtBidRSR, 6).add(1),
+            ],
             emitted: true,
           },
         ])
@@ -1542,7 +1544,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // End current auction, should start a new one to sell RSR for collateral
         // 50e18 Tokens left to buy - Sets Buy amount as independent value
         const buyAmtBidRSR: BigNumber = sellAmt
-        const sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')) // Due to trade slippage 1% - Calculation to match Solidity
+        const sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')).add(1) // Due to trade slippage 1% - Calculation to match Solidity
 
         await expectEvents(facade.runAuctionsForAllTraders(), [
           {
@@ -3650,134 +3652,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         )
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(
           minBuyAmt2.add(minBuyAmtRebalance).add(minBuyAmtRebalanceBkp)
-        )
-      })
-    })
-  })
-
-  describe('Basket Extreme Bounds', () => {
-    let ERC20: ContractFactory
-    let AaveCollateralFactory: ContractFactory
-    let firstCollateral: AavePricedFiatCollateralMock | undefined
-
-    // Dimensions
-    //
-    // 1. Number of prime basket tokens
-    // 2. Number of backup tokens
-    // 3. Number of target units
-    // 4. Asset.targetPerRef
-    // 5. Asset.price TODO check again
-    // 6. TargetAmts to BUs
-
-    const runSimulation = async (
-      numPrimeTokens: number,
-      numBackupTokens: number,
-      targetUnits: number,
-      targetPerRefs: BigNumber,
-      basketTargetAmt: BigNumber
-    ) => {
-      ERC20 = await ethers.getContractFactory('ERC20Mock')
-      AaveCollateralFactory = await ethers.getContractFactory('AavePricedFiatCollateralMock')
-
-      firstCollateral = undefined
-      const makeToken = async (
-        tokenName: string,
-        targetUnit: string,
-        targetPerRef: BigNumber
-      ): Promise<ERC20Mock> => {
-        const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy(tokenName, `${tokenName} symbol`)
-        const collateral: AavePricedFiatCollateralMock = <AavePricedFiatCollateralMock>(
-          await AaveCollateralFactory.deploy(
-            erc20.address,
-            config.maxTradeVolume,
-            fp('0.05'),
-            bn('86400'),
-            compoundMock.address,
-            aaveMock.address,
-            targetUnit,
-            targetPerRef
-          )
-        )
-
-        if (firstCollateral === undefined) firstCollateral = collateral
-        await assetRegistry.register(collateral.address)
-        await aaveOracleInternal.setPrice(erc20.address, targetPerRef)
-        return erc20
-      }
-
-      ;({ assetRegistry, basketHandler, compoundMock, aaveMock } = await loadFixture(
-        defaultFixture
-      ))
-
-      const primeERC20s = []
-      const targetAmts = []
-      for (let i = 0; i < numPrimeTokens; i++) {
-        const targetUnit = ethers.utils.formatBytes32String((i % targetUnits).toString())
-        const erc20 = await makeToken(`Token ${i}`, targetUnit, targetPerRefs)
-        primeERC20s.push(erc20.address)
-        targetAmts.push(basketTargetAmt.div(targetUnits))
-      }
-
-      const backups: [string[]] = [[]]
-      for (let i = 1; i < targetUnits; i++) {
-        backups.push([])
-      }
-      for (let i = 0; i < numBackupTokens; i++) {
-        const index = i % targetUnits
-        const targetUnit = ethers.utils.formatBytes32String(index.toString())
-
-        // reuse erc20 if possible
-        const erc20Addr =
-          i < numPrimeTokens
-            ? primeERC20s[i]
-            : (await makeToken(`Token ${i}`, targetUnit, targetPerRefs)).address
-        backups[index].push(erc20Addr)
-      }
-      for (let i = 0; i < targetUnits; i++) {
-        const targetUnit = ethers.utils.formatBytes32String(i.toString())
-        await basketHandler.setBackupConfig(targetUnit, numPrimeTokens, backups[i])
-      }
-
-      // Set prime basket with all collateral
-      await basketHandler.setPrimeBasket(primeERC20s, targetAmts)
-      await basketHandler.connect(owner).switchBasket()
-
-      // Unregister collateral and switch basket
-      if (firstCollateral !== undefined) {
-        firstCollateral = <AavePricedFiatCollateralMock>firstCollateral
-
-        // Unregister calls `ensureValidBasket`
-        await assetRegistry.unregister(firstCollateral.address)
-      }
-    }
-
-    const size = SLOW ? 256 : 4 // Currently 256 takes >5 minutes to execute 32 cases
-
-    const primeTokens = [size, 0]
-
-    const backupTokens = [size, 0]
-
-    const targetUnits = [size, 1]
-
-    // 1e18 range centered around the expected case of fp('1')
-    const targetPerRefs = [fp('1e-9'), fp('1e9')]
-
-    // min weight: 0, max weight: 1000
-    const basketTargetAmts = [fp('0'), fp('1e3')]
-
-    const dimensions = [primeTokens, backupTokens, targetUnits, targetPerRefs, basketTargetAmts]
-
-    // 2^5 = 32 cases
-    const cases = cartesianProduct(...dimensions)
-    const numCases = cases.length.toString()
-    cases.forEach((params, index) => {
-      it(`case ${index} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
-        await runSimulation(
-          params[0] as number,
-          params[1] as number,
-          params[2] as number,
-          params[3] as BigNumber,
-          params[4] as BigNumber
         )
       })
     })

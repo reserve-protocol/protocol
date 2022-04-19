@@ -112,7 +112,10 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         const [draftsPrev] = await stRSRP1.draftQueues(0, address, index - 1)
         rsrAmount = drafts.sub(draftsPrev)
       }
-      if (withdrawal.rsrAmount) expect(rsrAmount.toString()).to.eql(withdrawal.rsrAmount.toString())
+
+      const stakeAmount = (await stRSRP1.exchangeRate()).mul(rsrAmount).div(fp('1'))
+      if (withdrawal.rsrAmount)
+        expect(stakeAmount.toString()).to.eql(withdrawal.rsrAmount.toString())
       if (withdrawal.availableAt) {
         expect(availableAt.toString()).to.eql(withdrawal.availableAt.toString())
       }
@@ -1065,6 +1068,89 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
     })
 
+    it('Should round down at or below MIN_EXCHANGE_RATE - Epsilon mayhem scenario', async () => {
+      const amount: BigNumber = bn('10e18')
+
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, amount)
+      await stRSR.connect(addr1).stake(amount)
+
+      // Stake + Withdraw
+      await rsr.connect(addr2).approve(stRSR.address, amount)
+      await stRSR.connect(addr2).stake(amount)
+      await stRSR.connect(addr2).unstake(amount)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2))
+      expect(await rsr.balanceOf(stRSR.address)).to.equal((await stRSR.totalSupply()).mul(2))
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
+      await expectWithdrawal(addr2.address, 0, { rsrAmount: amount })
+
+      const dustAmt = bn('20e9')
+      const toSeize = amount.mul(2).sub(dustAmt)
+
+      // Seize RSR
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSR.connect(signer).seizeRSR(toSeize))
+          .to.emit(stRSR, 'ExchangeRateSet')
+          .withArgs(fp('1'), fp('1'))
+      })
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+      expect(await stRSR.totalSupply()).to.equal(0)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
+      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
+    })
+
+    it('Should not round down above MIN_EXCHANGE_RATE - Hyperinflation scenario', async () => {
+      const amount: BigNumber = bn('10e18')
+
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, amount)
+      await stRSR.connect(addr1).stake(amount)
+
+      // Stake + Withdraw
+      await rsr.connect(addr2).approve(stRSR.address, amount)
+      await stRSR.connect(addr2).stake(amount)
+      await stRSR.connect(addr2).unstake(amount)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2))
+      expect(await rsr.balanceOf(stRSR.address)).to.equal((await stRSR.totalSupply()).mul(2))
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
+      await expectWithdrawal(addr2.address, 0, { rsrAmount: amount })
+
+      const dustAmt = bn('20e9')
+      const toSeize = amount.mul(2).sub(dustAmt).sub(1)
+
+      // Seize RSR
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSR.connect(signer).seizeRSR(toSeize))
+          .to.emit(stRSR, 'ExchangeRateSet')
+          .withArgs(fp('1'), fp('1e-9'))
+      })
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(dustAmt)
+      expect(await stRSR.totalSupply()).to.equal(amount)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+      expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
+      await expectWithdrawal(addr2.address, 0, { rsrAmount: amount.div(1e9) })
+      expect(await stRSR.exchangeRate()).to.equal(fp('1e-9'))
+    })
+
     it('Should remove RSR from Withdrawers', async () => {
       const amount: BigNumber = bn('10e18')
       const amount2: BigNumber = bn('1e18')
@@ -1552,7 +1638,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     cases.forEach((params, index) => {
       // if (rewardPeriod * 2 > unstakingDelay)
       if (params[5].mul(2).lte(params[4])) {
-        it(`case ${index} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+        it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
           await runSimulation(params)
         })
       }

@@ -27,7 +27,11 @@ All of the below are in terms of quanta, or a granularity of 1.
 - `{qTok}`[0, 1e77] (collateral tokens)
 - `{qTok}` [0, 1e29] (reward tokens)
 
+(similar to token quantities but not quite the same)
+
+- `{attoUoA}` [0, 1e47] (1e29 `UoA`, or about 250x the square of the current M2 money supply)
+
 ## Time
 
-- `{seconds}` [0, 2^40]
-  The current number of seconds since 1970 is ~1.6e9, which is about 0.1% of 2^40.
+- `{seconds}` [0, 2^32]
+  The current number of seconds since 1970 is ~1.6e9, which is about 37% of 2^32. We've got a little under a hundred years to upgrade this contract.

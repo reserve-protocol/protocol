@@ -4,7 +4,7 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { bn, divCeil, fp, near } from '../common/numbers'
+import { bn, divCeil, divFloor, fp, near } from '../common/numbers'
 import {
   AaveLendingPoolMock,
   AavePricedAsset,
@@ -479,10 +479,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should handle large auctions using maxTradeVolume with f=1 (RSR only)', async () => {
-        // Set max auction size for asset
+        // Set max trade volume for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
         const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
-          await AssetFactory.deploy(compToken.address, bn('1e18'), compoundMock.address)
+          await AssetFactory.deploy(compToken.address, fp('1'), compoundMock.address)
         )
 
         // Perform asset swap
@@ -514,7 +514,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue - Called via poke
         // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = bn('1e18') // due to max auction size
+        const sellAmt: BigNumber = bn('1e18') // due to max trade volume
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         await expectEvents(backingManager.claimAndSweepRewards(), [
@@ -662,12 +662,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should handle large auctions using maxTradeVolume with f=0 (RToken only)', async () => {
-        // Set max auction size for asset
+        // Set max trade volume for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAsset')
         const newAaveAsset: AavePricedAsset = <AavePricedAsset>(
           await AssetFactory.deploy(
             aaveToken.address,
-            bn('1e18'),
+            fp('1'),
             compoundMock.address,
             aaveMock.address
           )
@@ -700,7 +700,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
-        const sellAmt: BigNumber = bn('1e18') // due to max auction size
+        const sellAmt: BigNumber = bn('1e18') // due to max trade volume
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         await expectEvents(backingManager.claimAndSweepRewards(), [
@@ -837,10 +837,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should handle large auctions using maxTradeVolume with revenue split RSR/RToken', async () => {
-        // Set max auction size for asset
+        // Set max trade volume for asset
         const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
         const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
-          await AssetFactory.deploy(compToken.address, bn('1e18'), compoundMock.address)
+          await AssetFactory.deploy(compToken.address, fp('1'), compoundMock.address)
         )
 
         // Perform asset swap
@@ -871,7 +871,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = bn('1e18') // due to max auction size
+        const sellAmt: BigNumber = bn('1e18') // due to max trade volume
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         const sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
@@ -1979,17 +1979,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Expected values
         const currentTotalSupply: BigNumber = await rToken.totalSupply()
-        const expectedToTrader = divCeil(excessQuantity.mul(60), bn(100))
-        const expectedToFurnace = divCeil(excessQuantity.mul(40), bn(100)) // excessQuantity.sub(expectedToTrader)
+        const expectedToTrader = divCeil(excessQuantity.mul(60), bn(100)).sub(60)
+        const expectedToFurnace = divCeil(excessQuantity.mul(40), bn(100)).sub(40) // excessQuantity.sub(expectedToTrader)
 
         // Auction values - using divCeil for dealing with Rounding
         const sellAmt: BigNumber = expectedToTrader
         const buyAmt: BigNumber = divCeil(sellAmt.mul(rate), BN_SCALE_FACTOR) // RSR quantity with no slippage
-        const minBuyAmt: BigNumber = buyAmt.sub(divCeil(buyAmt, bn(100))) // due to trade slippage 1%
+        const minBuyAmt: BigNumber = buyAmt.sub(divFloor(buyAmt, bn(100))) // due to trade slippage 1%
 
         const sellAmtRToken: BigNumber = expectedToFurnace
         const buyAmtRToken: BigNumber = divCeil(sellAmtRToken.mul(rate), BN_SCALE_FACTOR) // RToken quantity with no slippage
-        const minBuyAmtRToken: BigNumber = buyAmtRToken.sub(buyAmtRToken.div(100)) // due to trade slippage 1%
+        const minBuyAmtRToken: BigNumber = buyAmtRToken.sub(divFloor(buyAmtRToken, bn(100))) // due to trade slippage 1%
 
         // Run auctions
         await expectEvents(facade.runAuctionsForAllTraders(), [
@@ -2009,7 +2009,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
         expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
-        expect(near(await facade.callStatic.totalAssetValue(), issueAmount, 2)).to.equal(true)
+        expect(near(await facade.callStatic.totalAssetValue(), issueAmount, 100)).to.equal(true)
+        expect((await facade.callStatic.totalAssetValue()).gt(issueAmount)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
         // Check destinations at this stage
@@ -2036,7 +2037,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Check funds in Market and Traders
-        expect(near(await token2.balanceOf(gnosis.address), excessQuantity, 1)).to.equal(true)
+        expect(near(await token2.balanceOf(gnosis.address), excessQuantity, 100)).to.equal(true)
         expect(await token2.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(expectedToTrader.sub(sellAmt))
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
@@ -2090,14 +2091,15 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         //  Check Price (unchanged) and Assets value (unchanged)
         expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
-        expect(near(await facade.callStatic.totalAssetValue(), issueAmount, 2)).to.equal(true)
+        expect(near(await facade.callStatic.totalAssetValue(), issueAmount, 100)).to.equal(true)
+        expect((await facade.callStatic.totalAssetValue()).gt(issueAmount)).to.equal(true)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
         // Check balances sent to corresponding destinations
         // StRSR
-        expect(near(await rsr.balanceOf(stRSR.address), minBuyAmt, 1)).to.equal(true)
+        expect(near(await rsr.balanceOf(stRSR.address), minBuyAmt, 100)).to.equal(true)
         // Furnace
-        expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 1)).to.equal(true)
+        expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 100)).to.equal(true)
       })
 
       it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
@@ -2127,7 +2129,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Set expected auction values
         const currentTotalSupply: BigNumber = await rToken.totalSupply()
         const newTotalSupply: BigNumber = currentTotalSupply.mul(2)
-        const sellAmt: BigNumber = expectedToTrader // everything is auctioned, due to max auction size
+        const sellAmt: BigNumber = expectedToTrader // everything is auctioned, due to max trade volume
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
         // Collect revenue and mint new tokens - Will also launch auction
@@ -2250,13 +2252,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         //  Set expected auction values
         const newTotalSupply: BigNumber = currentTotalSupply.mul(160).div(100)
-        const sellAmtFromRToken: BigNumber = expectedToTraderFromRToken // all will be processed at once, due to max auction size of 50%
+        const sellAmtFromRToken: BigNumber = expectedToTraderFromRToken // all will be processed at once, due to max trade volume of 50%
         const minBuyAmtFromRToken: BigNumber = sellAmtFromRToken.sub(sellAmtFromRToken.div(100)) // due to trade slippage 1%
-        const sellAmtRSRFromCollateral: BigNumber = expectedToRSRTraderFromCollateral // all will be processed at once, due to max auction size of 50%
+        const sellAmtRSRFromCollateral: BigNumber = expectedToRSRTraderFromCollateral // all will be processed at once, due to max trade volume of 50%
         const minBuyAmtRSRFromCollateral: BigNumber = sellAmtRSRFromCollateral
           .mul(2)
           .sub(sellAmtRSRFromCollateral.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken is worth half
-        const sellAmtRTokenFromCollateral: BigNumber = expectedToRTokenTraderFromCollateral // all will be processed at once, due to max auction size of 50%
+        const sellAmtRTokenFromCollateral: BigNumber = expectedToRTokenTraderFromCollateral // all will be processed at once, due to max trade volume of 50%
         const minBuyAmtRTokenFromCollateral: BigNumber = sellAmtRTokenFromCollateral
           .mul(2)
           .sub(sellAmtRTokenFromCollateral.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken is worth half
