@@ -28,35 +28,38 @@ CTokenFiatCollateral     [23373, 63106, 45457/47114]
 
 ### Asset Registry
 
-* `init` (Governance) **Review**
-
 * `register` (Governance)
     - Baseline: [50334, 121502, 120720] 
 
-* `swapRegistered` (Governance) **Review**
+* `swapRegistered` (Governance)
     - Baseline: [335663, 535751, 446472]
+    - Mainly depends on `basketHandler.ensureBasket`
 
-* `unregister` (Governance) **Review**
+* `unregister` (Governance)
     - Baseline: [265345, 707275, 441443] 
+    - Mainly depends on `basketHandler.ensureBasket`
 
-* `forceUpdates` (Market Makers)  **Review**
-    - Baseline: [225165, 252490, 251662]
+* `forceUpdates` (Market Makers)
+    - Baseline:  [225165] (when no action required - four assets)
+    - Aggregator of `forceUpdates` on each collateral
 
 ### BackingManager
-
-* `init` (Governance) **Review**
 
 * `settleTrades` (Market Makers) **Review**
 
 * `manageFunds` (Market Makers) **Review**
+
+* `grantAllowances` (Market Makers) **Review**
+    - Baseline: [335250]
 
 * `claimAndSweepRewards` (Market Makers) **Review**
     - Baseline: [400859, 554414, 525629]
 
 ### BasketHandler
 
-* `ensureBasket` (Governance/Market Makers) **Review**
+* `ensureBasket` (Governance/Market Makers)
     - Baseline: [304293, 885338, 521772]
+    - Aggregator of `assetRegistry.forceUpdates()` and `switchBasket`
 
 * `setPrimeBasket` (Governance) **Review**
     - Baseline: [57570, 406630, 171077]
@@ -79,18 +82,15 @@ CTokenFiatCollateral     [23373, 63106, 45457/47114]
 
 ### Distributor
 
-* `init` (Governance) **Review**
-
 * `distribute` (Market Makers) **Review**
     - Baseline: [90235, 90235, 90235] 
 
 * `setDistribution` (Governance) **Review**
     - Baseline: [44100, 113597, 53459] 
 
-
 ### Furnace
 
-* `init` (Governance) **Review**
+* `init` (Governance)
     - Baseline: [141965, 181885, 168570]
     - Target: `TBD`
     - Final Measurement `TBD`
@@ -103,7 +103,8 @@ CTokenFiatCollateral     [23373, 63106, 45457/47114]
 ### Main
 
 * `poke`  (Market Makers) **Review**
-    - Aggregator:
+    - Baseline: [352202]
+    - Aggregator of other functions
         
 ### RevenueTrader
 
@@ -114,20 +115,23 @@ CTokenFiatCollateral     [23373, 63106, 45457/47114]
 * `manageFunds` (Market Makers) **Review**
 
 * `claimAndSweepRewards` (Market Makers) **Review**
+    - Calls also `main.poke`
 
 ### RToken
-
-* `init` (Governance) **Review**
 
 * `claimAndSweepRewards` (Market Makers) **Review**
 
 * `issue` (Individuals/ Market Makers) **Review**
+    - Baseline: [759837, 1363502, 1155332]
 
 * `vest` (Individuals/ Market Makers) **Review**
+    - Baseline: [408167, 750828, 481850]
 
 * `redeem` (Individuals/ Market Makers) **Review**
+    - Baseline: [746759, 934759, 794981]
 
 * `cancel` (ndividuals/ Market Makers) **Review**
+    - Baseline: [34562, 130374, 110398]
 
 * `transfer` (Individuals)
 
@@ -136,16 +140,21 @@ CTokenFiatCollateral     [23373, 63106, 45457/47114]
 * `init` (Governance) **Review**
 
 * `payoutRewards` (Market Makers) **Review**
+    - Baseline: [ 69305, 104109, 80488]
 
 * `transfer` (Individuals)
 
 * `stake` (Individuals)
+    - Baseline: [86422, 159269, 133636]
 
 * `unstake` (Individuals)
+    - Baseline: [423144, 502301, 471425]
 
 * `withdraw` (Individuals)
+    - Baseline: [336290, 416929, 404738]
 
 * `seizeRSR` (Market Makers)
+    - Baseline: [99363, 105857, 100912]
 
 
 ## Deployment Costs
