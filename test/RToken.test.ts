@@ -1128,4 +1128,177 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       )
     })
   })
+  context(`RToken`, () => {
+    // makeColl: Deploy and register a new constant-price collateral
+    async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {
+      const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
+      const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
+      const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
+        'AavePricedFiatCollateral'
+      )
+      const coll: AavePricedFiatCollateral = <AavePricedFiatCollateral>(
+        await AaveCollateralFactory.deploy(
+          erc20.address,
+          fp('1e36'),
+          fp('0.05'),
+          bn(86400),
+          compoundMock.address,
+          aaveMock.address
+        )
+      )
+      await assetRegistry.register(coll.address) // SHOULD BE LINTED
+      expect(await assetRegistry.isRegistered(erc20.address)).to.be.true
+      await aaveOracleInternal.setPrice(erc20.address, price)
+      return erc20
+    }
+
+    async function forceUpdateGetStatus(): Promise<CollateralStatus> {
+      await whileImpersonating(basketHandler.address, async (bhSigner) => {
+        await assetRegistry.connect(bhSigner).forceUpdates()
+      })
+      return basketHandler.status()
+    }
+
+    async function runScenario([
+      toIssue,
+      toRedeem,
+      totalSupply, // in this scenario, rtoken supply _after_ issuance.
+      numBasketAssets,
+      weightFirst, // target amount per asset (weight of first asset)
+      weightRest, // another target amount per asset (weight of second+ assets)
+      issuanceRate, // range under test: [.000_001 to 1.0]
+    ]: BigNumber[]) {
+      // skip nonsense cases
+      if (
+        (numBasketAssets.eq(1) && !weightRest.eq(1)) ||
+        toRedeem.gt(totalSupply) ||
+        toIssue.gt(totalSupply)
+      ) {
+        return
+      }
+
+      // ==== Deploy and register basket collateral
+
+      const N = numBasketAssets.toNumber()
+      const erc20s: ERC20Mock[] = []
+      const weights: BigNumber[] = []
+      let totalWeight: BigNumber = fp(0)
+      for (let i = 0; i < N; i++) {
+        const erc20 = await makeColl(i, fp('0.00025'))
+        erc20s.push(erc20)
+        const currWeight = i == 0 ? weightFirst : weightRest
+        weights.push(currWeight)
+        totalWeight = totalWeight.add(currWeight)
+      }
+      expect(await forceUpdateGetStatus()).to.equal(CollateralStatus.SOUND)
+
+      // ==== Switch Basket
+
+      const basketAddresses: string[] = erc20s.map((erc20) => erc20.address)
+      await basketHandler.connect(owner).setPrimeBasket(basketAddresses, weights)
+      await basketHandler.connect(owner).switchBasket()
+      expect(await forceUpdateGetStatus()).to.equal(CollateralStatus.SOUND)
+
+      for (let i = 0; i < basketAddresses.length; i++) {
+        expect(await basketHandler.quantity(basketAddresses[i])).to.equal(weights[i])
+      }
+
+      // ==== Mint basket tokens to owner and addr1
+
+      const toIssue0 = totalSupply.sub(toIssue)
+      const e18 = BN_SCALE_FACTOR
+      for (let i = 0; i < N; i++) {
+        const erc20: ERC20Mock = erc20s[i]
+        // user owner starts with enough basket assets to issue (totalSupply - toIssue)
+        const toMint0: BigNumber = toIssue0.mul(weights[i]).add(e18.sub(1)).div(e18)
+        await erc20.mint(owner.address, toMint0)
+        await erc20.connect(owner).increaseAllowance(rToken.address, toMint0)
+
+        // user addr1 starts with enough basket assets to issue (toIssue)
+        const toMint: BigNumber = toIssue.mul(weights[i]).add(e18.sub(1)).div(e18)
+        await erc20.mint(addr1.address, toMint)
+        await erc20.connect(addr1).increaseAllowance(rToken.address, toMint)
+      }
+
+      await rToken.connect(owner).setIssuanceRate(issuanceRate)
+
+      // ==== Issue the "initial" rtoken supply to owner
+
+      expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
+      await issueMany(rToken, toIssue0, owner)
+      expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
+
+      // ==== Issue the toIssue supply to addr1
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      await issueMany(rToken, toIssue, addr1)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
+
+      // ==== Send enough rTokens to addr2 that it can redeem the amount `toRedeem`
+
+      // owner has toIssue0 rToken, addr1 has toIssue rToken.
+      if (toRedeem.lte(toIssue0)) {
+        await rToken.connect(owner).transfer(addr2.address, toRedeem)
+      } else {
+        await rToken.connect(owner).transfer(addr2.address, toIssue0)
+        await rToken.connect(addr1).transfer(addr2.address, toRedeem.sub(toIssue0))
+      }
+      expect(await rToken.balanceOf(addr2.address)).to.equal(toRedeem)
+
+      // ==== Redeem tokens
+
+      await rToken.connect(addr2).redeem(toRedeem)
+      expect(await rToken.balanceOf(addr2.address)).to.equal(0)
+    }
+
+    // ==== Generate the tests
+    const MAX_RTOKENS = bn('1e48') // TODO: should be 1e36, but I know that throws error for now...
+    const MAX_WEIGHT = fp(1000)
+    const MIN_WEIGHT = fp('1e-6')
+    const MIN_ISSUANCE_FRACTION = fp('1e-6')
+
+    let paramList
+
+    if (SLOW) {
+      const bounds: BigNumber[][] = [
+        [bn(1), MAX_RTOKENS, bn('1.205e24')], // toIssue
+        [bn(1), MAX_RTOKENS, bn('4.4231e24')], // toRedeem
+        [MAX_RTOKENS, bn('7.907e24')], // totalSupply
+        [bn(1), bn(3)], // numAssets
+        [MIN_WEIGHT, MAX_WEIGHT, fp('0.1')], // weightFirst
+        [MIN_WEIGHT, MAX_WEIGHT, fp('0.2')], // weightRest
+        [fp('0.00025'), fp(1), MIN_ISSUANCE_FRACTION], // issuanceRate
+      ]
+
+      // A few big heavy test cases
+      const bounds2: BigNumber[][] = [
+        [MAX_RTOKENS, bn(1)],
+        [MAX_RTOKENS, bn(1)],
+        [MAX_RTOKENS],
+        [bn(255)],
+        [MAX_WEIGHT, MIN_WEIGHT],
+        [MAX_WEIGHT, MIN_WEIGHT],
+        [fp('0.1')],
+      ]
+
+      paramList = cartesianProduct(...bounds).concat(cartesianProduct(...bounds2))
+    } else {
+      const bounds: BigNumber[][] = [
+        [bn(1), MAX_RTOKENS], // toIssue
+        [bn(1), MAX_RTOKENS], // toRedeem
+        [MAX_RTOKENS], // totalSupply
+        [bn(1)], // numAssets
+        [MIN_WEIGHT, MAX_WEIGHT], // weightFirst
+        [MIN_WEIGHT], // weightRest
+        [MIN_ISSUANCE_FRACTION, fp(1)], // issuanceRate
+      ]
+      paramList = cartesianProduct(...bounds)
+    }
+    const numCases = paramList.length.toString()
+    paramList.forEach((params, index) => {
+      it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+        await runScenario(params)
+      })
+    })
+  })
 })
