@@ -72,9 +72,25 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
+  let ERC20Mock: ContractFactory
+  let ATokenMockFactory: ContractFactory
+  let CTokenMockFactory: ContractFactory
+  let ATokenCollateralFactory: ContractFactory
+  let CTokenCollateralFactory: ContractFactory
+
+  const defaultThreshold = fp('0.05') // 5%
+  const delayUntilDefault = bn('86400') // 24h
+  const maxUoA = fp('1e29')
+
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
+
+    ERC20Mock = await ethers.getContractFactory('ERC20Mock')
+    ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
+    CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
+    ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
+    CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
   })
 
   beforeEach(async () => {
@@ -104,23 +120,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
     // Set backingBuffer to 0 to make math easy
     await backingManager.connect(owner).setBackingBuffer(0)
-  })
-
-  const defaultThreshold = fp('0.05') // 5%
-  const delayUntilDefault = bn('86400') // 24h
-  const maxUoA = fp('1e29')
-  let ERC20Mock: ContractFactory
-  let ATokenMockFactory: ContractFactory
-  let CTokenMockFactory: ContractFactory
-  let ATokenCollateralFactory: ContractFactory
-  let CTokenCollateralFactory: ContractFactory
-
-  beforeEach(async function () {
-    ERC20Mock = await ethers.getContractFactory('ERC20Mock')
-    ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
-    CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
-    ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
-    CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
   })
 
   const prepAToken = async (
