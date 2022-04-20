@@ -67,7 +67,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
              *     a. Sell non-RSR assets first
              *     b. Sell RSR when no asset has a surplus > dust amount
              *   2. When RSR holdings < dust:
-             *     -  Sell non-RSR surplus assets towards the Fallen Target {BU}
+             *     -  Sell non-RSR surplus assets towards the Fallen Target
              *   3. When this produces trade sizes < dust:
              *     -  Set rToken.basketsNeeded() to basketsHeldBy(address(this))
              *
@@ -134,12 +134,15 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         // Mint revenue RToken
         IRToken rToken = main.rToken();
-        int192 held = main.basketHandler().basketsHeldBy(address(this));
-        int192 needed = rToken.basketsNeeded();
+        int192 held = main.basketHandler().basketsHeldBy(address(this)); // {BU}
+        int192 needed = rToken.basketsNeeded(); // {BU}
         if (held.gt(needed)) {
-            // {qRTok} = {(BU - BU) * qRTok / BU}
-            uint256 qRTok = held.minus(needed).mulu(rToken.totalSupply()).div(needed).floor();
-            rToken.mint(address(this), qRTok);
+            int8 decimals = int8(main.rToken().decimals());
+            int192 totalSupply = shiftl_toFix(main.rToken().totalSupply(), -decimals); // {rTok}
+
+            // {qRTok} = ({(BU - BU) * rTok / BU}) * {qRTok/rTok}
+            uint256 rTok = held.minus(needed).mulDiv(totalSupply, needed).shiftl_toUint(decimals);
+            rToken.mint(address(this), rTok);
             rToken.setBasketsNeeded(held);
             needed = held;
         }
@@ -153,14 +156,14 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             IAsset asset = main.assetRegistry().toAsset(erc20s[i]);
 
             int192 bal = asset.bal(address(this)); // {tok}
-            int192 neededI = needed.mul(main.basketHandler().quantity(erc20s[i]));
+            int192 req = needed.mul(main.basketHandler().quantity(erc20s[i]), CEIL);
 
-            if (bal.gt(neededI)) {
+            if (bal.gt(req)) {
                 // delta: {qTok}
-                int192 delta = bal.minus(neededI).shiftLeft(int8(asset.erc20().decimals()));
+                uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20().decimals()));
                 (uint256 rTokenShares, uint256 rsrShares) = main.distributor().totals();
 
-                uint256 tokensPerShare = delta.floor() / (rTokenShares + rsrShares);
+                uint256 tokensPerShare = delta / (rTokenShares + rsrShares);
                 uint256 toRSR = tokensPerShare * rsrShares;
                 uint256 toRToken = tokensPerShare * rTokenShares;
 
@@ -208,6 +211,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             );
         }
 
+        if (req.sellAmount == 0) return (false, req);
+
         return (doTrade, req);
     }
 
@@ -235,7 +240,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         );
 
         if (doTrade) {
-            uint256 rsrBal = rsrAsset.balQ(address(this)).floor();
+            int8 decimals = int8(IERC20Metadata(address(main.rsr())).decimals());
+            uint256 rsrBal = rsrAsset.bal(address(this)).shiftl_toUint(decimals);
             if (req.sellAmount > rsrBal) {
                 stRSR.seizeRSR(req.sellAmount - rsrBal);
             }

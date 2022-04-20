@@ -109,7 +109,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (int192) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray ref/tok}
-        return toFixWithShift(rateInRAYs, -27);
+        return shiftl_toFix(rateInRAYs, -27);
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.

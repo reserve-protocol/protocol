@@ -213,16 +213,17 @@ $ npx hardhat --network ropsten console
 
 Components of the production version `P1` are designed to be **upgradeable** using the **Proxy Upgrade Pattern** implemented by OpenZeppelin. More information about this general pattern can be found [here](https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies)
 
-This implies that the core contracts in `P1` (`Main` and core components) are meant to be deployed as **implementation** contracts, which will serve as a reference to deploy later specific instances (or **"proxies"**) via the `Deployer` contract. If changes are required in the future, a new implementation version can be deployed and the Proxy can be upgrated to point to 
+This implies that the core contracts in `P1` (`Main` and core components) are meant to be deployed as **implementation** contracts, which will serve as a reference to deploy later specific instances (or **"proxies"**) via the `Deployer` contract. If changes are required in the future, a new implementation version can be deployed and the Proxy can be upgrated to point to
 this new implementation, while preserving its state and storage.
 
-When **upgrading** smart contracts it is crucial to keep in mind the **limitations** of what can be changed/modified to avoid breaking the contracts. Additional information can be found [here](https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable) It is highly recommended to use the *OpenZeppelin Upgrades plugin* (already included in this repo) to ensure implementations are "upgrade safe" before upgrading any smart contract.
+When **upgrading** smart contracts it is crucial to keep in mind the **limitations** of what can be changed/modified to avoid breaking the contracts. Additional information can be found [here](https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable) It is highly recommended to use the _OpenZeppelin Upgrades plugin_ (already included in this repo) to ensure implementations are "upgrade safe" before upgrading any smart contract.
 
 The recommended process to perform an upgrade is the following:
-* Create the new implementation version of the contract. This should follow all the recommendations from the article linked above, to make sure the implementation is "Upgrade Safe"
-* Ensure metadata of the existing/deployed proxies is created for the required network. This is located in a folder names `.openzeppelin`, which should be persisted in `git` for Production networks. Because the initial proxies are deployed via the `Deployer` factory contract, this folder needs to be created using the [forceImport](https://docs.openzeppelin/upgrades-plugins/1.x/api-hardhat-upgrades#force-import) function provided by the plugin. A concrete example on how to use this function is provided in our Upgradeability test file (`test/Upgradeability.test.ts`) 
-* Using MAINNET FORKING, make sure you perform tests to check the new implementation behaves as expected.  Proxies should be updated using the [upgradeProxy]() function provided by the plugin to ensure all validations and checks are performed.
-* Create a deployemnt script to the required network (Mainnet) (using `upgradeProxy`). Ensure the new version of the `.openzeppelin` files are checked in to `git` for future reference. 
+
+- Create the new implementation version of the contract. This should follow all the recommendations from the article linked above, to make sure the implementation is "Upgrade Safe"
+- Ensure metadata of the existing/deployed proxies is created for the required network. This is located in a folder names `.openzeppelin`, which should be persisted in `git` for Production networks. Because the initial proxies are deployed via the `Deployer` factory contract, this folder needs to be created using the [forceImport](https://docs.openzeppelin/upgrades-plugins/1.x/api-hardhat-upgrades#force-import) function provided by the plugin. A concrete example on how to use this function is provided in our Upgradeability test file (`test/Upgradeability.test.ts`)
+- Using MAINNET FORKING, make sure you perform tests to check the new implementation behaves as expected. Proxies should be updated using the [upgradeProxy]() function provided by the plugin to ensure all validations and checks are performed.
+- Create a deployemnt script to the required network (Mainnet) (using `upgradeProxy`). Ensure the new version of the `.openzeppelin` files are checked in to `git` for future reference.
 
 For additional information on how to use the plugins and how to perform upgrades on smart contracts please refer to the OpenZeppelin docs site: https://docs.openzeppelin.com/upgrades
 
@@ -358,7 +359,7 @@ Annotation: `@custom:governance`
 
 The max trade volume is a value in the unit of account that represents the largest amount of value that should be transacted in any single trade. This value is distributed on deployment to the initial RSR, RToken, AAVE, and COMP assts. After deployment the values are allowed to differ.
 
-Anticipated value: `1e24` = $1m
+Anticipated value: `1e6` = $1m
 
 ## `rewardPeriod`
 
@@ -366,7 +367,7 @@ Anticipated value: `1e24` = $1m
 
 The reward period is the length of one period of the StRSR and Furnace reward curves, which use exponential decay in order to hand out rewards slowly. The `rewardPeriod` must be set in conjuction with `rewardRatio` in order to achieve a desired payout rate. The `rewardPeriod` is the length of time that comprises a single period. Over a single period, `rewardRatio` of the last balance recorded is handed out. For multiple periods, the amount handed out is `(1 - (1-r)^N)`, where `r` is the `rewardRatio` and `N` is the number of periods elapsed.
 
-Anticipated value: `604800` = 1 week
+Anticipated value: `86400` = 1 day
 
 ## `rewardRatio`
 

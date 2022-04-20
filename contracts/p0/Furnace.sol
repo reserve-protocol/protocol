@@ -41,7 +41,7 @@ contract FurnaceP0 is ComponentP0, IFurnace {
         int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
 
         IRToken rToken = main.rToken();
-        uint256 amount = payoutRatio.mulu(lastPayoutBal).floor();
+        uint256 amount = payoutRatio.mulu_toUint(lastPayoutBal);
 
         lastPayout += numPeriods * period;
         if (amount > 0) rToken.melt(amount);

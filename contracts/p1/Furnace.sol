@@ -6,7 +6,7 @@ import "contracts/interfaces/IFurnace.sol";
 import "contracts/p1/mixins/Component.sol";
 
 /**
- * @title FurnaceP0
+ * @title FurnaceP1
  * @notice A helper to melt RTokens slowly and permisionlessly.
  */
 contract FurnaceP1 is ComponentP1, IFurnace {
@@ -41,7 +41,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
         int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
 
         IRToken rToken = main.rToken();
-        uint256 amount = payoutRatio.mulu(lastPayoutBal).floor();
+        uint256 amount = payoutRatio.mulu_toUint(lastPayoutBal);
 
         lastPayout += numPeriods * period;
         if (amount > 0) rToken.melt(amount);

@@ -26,7 +26,7 @@ export enum CollateralStatus {
 }
 
 // @dev Must match `Fixed.RoundingApproach`.
-export enum RoundingApproach {
+export enum RoundingMode {
   FLOOR,
   ROUND,
   CEIL,

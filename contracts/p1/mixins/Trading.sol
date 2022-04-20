@@ -18,7 +18,7 @@ abstract contract TradingP1 is RewardableP1, ITrading {
     ITrade[] public trades;
 
     // First trade that is still open (or trades.length if all trades are settled)
-    uint256 internal tradesStart;
+    uint256 public tradesStart;
 
     // The latest end time for any trade in `trades`.
     uint256 private latestEndtime;
@@ -39,6 +39,11 @@ abstract contract TradingP1 is RewardableP1, ITrading {
     /// @return true iff this trader now has open trades.
     function hasOpenTrades() public view returns (bool) {
         return trades.length > tradesStart;
+    }
+
+    // @return The length of the trades array
+    function numTrades() public view returns (uint256) {
+        return trades.length;
     }
 
     /// Settle any trades that can be settled

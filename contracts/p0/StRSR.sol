@@ -80,6 +80,9 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // Withdrawal queues by account
     mapping(address => Withdrawal[]) public withdrawals;
 
+    // Min exchange rate {qRSR/qStRSR} (compile-time constant)
+    int192 private constant MIN_EXCHANGE_RATE = int192(1e9); // 1e-9
+
     // ==== Gov Params ====
     uint256 public unstakingDelay;
     uint256 public rewardPeriod;
@@ -117,6 +120,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         payoutRewards();
 
         uint256 stakeAmount = rsrAmount;
+        // The next line is _not_ an overflow risk, in our expected ranges:
+        // rsrAmount <= 1e29 and totalStaked <= 1e38, so their product <= 1e67 < 1e77 < 2^256
         if (totalStaked > 0) stakeAmount = (rsrAmount * totalStaked) / rsrBacking;
 
         // Create stRSR balance
@@ -147,6 +152,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         main.poke();
         payoutRewards();
 
+        // The next line is not an overflow risk:
+        // stakeAmount = rsrAmount * (totalStaked / rsrBacking) <= 1e29 * 1e9 = 1e38
+        // rsrBacking <= 1e29 (an RSR amount)
+        // so stakeAmount * rsrBacking <= 1e67 < 2^256
         uint256 rsrAmount = (stakeAmount * rsrBacking) / totalStaked;
 
         // Destroy the stRSR balance
@@ -217,8 +226,12 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
 
+        // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
+        uint256 allStakes = totalStaked + stakeBeingWithdrawn(); // {qStRSR}
+        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.mulu_toUint(allStakes); // {qRSR}
+
         uint256 seizedRSR;
-        if (rsrBalance <= rsrAmount) {
+        if (rsrBalance <= rsrAmount + dustRSRAmt) {
             // Everyone's wiped out! Doom! Mayhem!
             // Zero all balances and withdrawals
             seizedRSR = rsrBalance;
@@ -270,7 +283,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
-        uint256 payout = payoutRatio.mulu(rsrRewardsAtLastPayout).floor();
+        uint256 payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
 
         // Apply payout to RSR backing
         rsrBacking += payout;
@@ -281,11 +294,12 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function exchangeRate() public view returns (int192) {
+        int8 d = int8(decimals());
         uint256 numerator = rsrBacking + rsrBeingWithdrawn();
         uint256 denominator = totalStaked + stakeBeingWithdrawn();
         if (numerator == 0 || denominator == 0) return FIX_ONE;
 
-        return toFix(numerator).divu(denominator);
+        return shiftl_toFix(numerator, -d).div(shiftl_toFix(denominator, -d));
     }
 
     // ==== ERC20 Interface ====
@@ -297,7 +311,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         return _symbol;
     }
 
-    function decimals() external pure returns (uint8) {
+    function decimals() public pure returns (uint8) {
         return 18;
     }
 

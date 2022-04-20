@@ -77,6 +77,9 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
         uint256 availableAt; // When the last of the drafts will become available
     }
 
+    // Min exchange rate {qRSR/qStRSR}
+    int192 private constant MIN_EXCHANGE_RATE = int192(1e9); // 1e-9
+
     // ==== Gov Params ====
     uint256 public unstakingDelay;
     uint256 public rewardPeriod;
@@ -157,10 +160,14 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
         int192 initialExchangeRate = exchangeRate();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
+        if (rsrBalance == 0) return;
+
+        // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
+        uint256 allStakes = totalDrafts + totalStakes; // {qStRSR}
+        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.mulu_toUint(allStakes); // {qRSR}
 
         uint256 seizedRSR;
-        if (rsrBalance == 0) return;
-        if (rsrBalance <= rsrAmount) {
+        if (rsrBalance <= rsrAmount + dustRSRAmt) {
             // Total RSR stake wipeout.
             seizedRSR = rsrBalance;
 
@@ -206,7 +213,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
-        uint256 payout = payoutRatio.mulu(rsrRewardsAtLastPayout).floor();
+        uint256 payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
 
         // Apply payout to RSR backing
         stakeRSR += payout;
@@ -217,11 +224,12 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     }
 
     function exchangeRate() public view returns (int192) {
+        int8 d = int8(decimals());
         uint256 numerator = draftRSR + stakeRSR;
         uint256 denominator = totalDrafts + totalStakes;
         if (numerator == 0 || denominator == 0) return FIX_ONE;
 
-        return toFix(numerator).divu(denominator);
+        return shiftl_toFix(numerator, -d).div(shiftl_toFix(denominator, -d));
     }
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
@@ -259,7 +267,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
         return _symbol;
     }
 
-    function decimals() external pure returns (uint8) {
+    function decimals() public pure returns (uint8) {
         return 18;
     }
 
@@ -377,6 +385,8 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     /// Execute the staking of `rsrAmount` RSR for `account`
     function _stake(address account, uint256 rsrAmount) internal {
         // Compute stake amount
+        // This is not an overflow risk according to our expected ranges:
+        //   rsrAmount <= 1e29, totalStaked <= 1e38, 1e29 * 1e38 < 2^256.
         uint256 stakeAmount = (stakeRSR == 0) ? rsrAmount : (rsrAmount * totalStakes) / stakeRSR;
 
         // Add to stakeAmount to stakes
@@ -394,6 +404,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
         // Compute draft and RSR amounts
         //    (dividing out totalStakes, before multiplying by totalDrafts, is necessary here
         //    to avoid overflow, possibly at the cost of some precision)
+        //    (We should use uint256 muldiv here, instead!)
         uint256 rsrAmount = (stakeAmount * stakeRSR) / totalStakes;
         uint256 draftAmount = (draftRSR == 0) ? rsrAmount : (rsrAmount * totalDrafts) / draftRSR;
 

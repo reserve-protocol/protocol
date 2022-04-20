@@ -11,6 +11,7 @@ node_modules/
 reports
 typechain/
 
+.openzeppelin
 .env
 .vscode/
 /local/

@@ -41,10 +41,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     // To enforce a fixed issuanceRate throughout the entire block
     // TODO: simplify
-    mapping(uint256 => int192) private blockIssuanceRates; // block.number => {qRTok/block}
+    mapping(uint256 => uint256) private blockIssuanceRates; // block.number => {qRTok/block}
 
     // MIN_ISSUANCE_RATE: {qRTok/block} 10k whole RTok
-    int192 public constant MIN_ISSUANCE_RATE = 10_000 * 1e18 * int192(FIX_SCALE);
+    uint256 public constant MIN_ISSUANCE_RATE = 10_000 * 1e18;
 
     // List of accounts. If issuances[user].length > 0 then (user is in accounts)
     EnumerableSet.AddressSet internal accounts;
@@ -53,7 +53,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     int192 public basketsNeeded; //  {BU}
 
-    int192 public issuanceRate; // {%} of RToken supply to issue per block
+    int192 public issuanceRate; // {1/block} of RToken supply to issue per block
 
     function init(
         IMain main_,
@@ -91,12 +91,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         // Compute # of baskets to create `amount` qRTok
         int192 baskets = (totalSupply() > 0) // {BU}
-            ? basketsNeeded.mulu(amount).divuRound(totalSupply()) // {BU * qRTok / qRTok}
-            : toFixWithShift(amount, -int8(decimals())); // {qRTok / qRTok}
+            ? basketsNeeded.muluDivu(amount, totalSupply()) // {BU * qRTok / qRTok}
+            : shiftl_toFix(amount, -int8(decimals())); // {qRTok / qRTok}
 
         address[] memory erc20s;
-        (erc20s, deposits) = basketHandler.quote(baskets, RoundingApproach.CEIL);
-
+        (erc20s, deposits) = basketHandler.quote(baskets, CEIL);
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
             IERC20(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
@@ -194,12 +193,12 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
 
         // {BU} = {BU} * {qRTok} / {qRTok}
-        int192 baskets = basketsNeeded.mulu(amount).divuRound(totalSupply());
+        int192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
         assert(baskets.lte(basketsNeeded));
         emit Redemption(_msgSender(), amount, baskets);
 
         address[] memory erc20s;
-        (erc20s, withdrawals) = basketHandler.quote(baskets, RoundingApproach.FLOOR);
+        (erc20s, withdrawals) = basketHandler.quote(baskets, FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         int192 prorate = toFix(amount).divu(totalSupply());
@@ -218,7 +217,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
             uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingMgr));
             // {qTok} = {1} * {qTok}
-            uint256 prorata = prorate.mulu(bal).floor();
+            uint256 prorata = prorate.mulu_toUint(bal);
             withdrawals[i] = Math.min(withdrawals[i], prorata);
             // Send withdrawal
             IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), withdrawals[i]);
@@ -252,8 +251,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         if (totalSupply() == 0) return main.basketHandler().price();
 
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
-        int192 supply = toFixWithShift(totalSupply(), -int8(decimals()));
-        return main.basketHandler().price().mul(basketsNeeded).div(supply);
+        int192 supply = shiftl_toFix(totalSupply(), -int8(decimals()));
+        return main.basketHandler().price().mulDiv(basketsNeeded, supply);
     }
 
     /// Tries to vest an issuance
@@ -285,13 +284,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         int192 before = toFix(block.number - 1);
 
         // Calculate the issuance rate if this is the first issue in the block
-        if (blockIssuanceRates[block.number].eq(FIX_ZERO)) {
-            blockIssuanceRates[block.number] = fixMax(
+        if (blockIssuanceRates[block.number] == 0) {
+            blockIssuanceRates[block.number] = Math.max(
                 MIN_ISSUANCE_RATE,
-                issuanceRate.mulu(totalSupply())
+                issuanceRate.mulu_toUint(totalSupply())
             );
         }
-        int192 perBlock = blockIssuanceRates[block.number];
+        uint256 perBlock = blockIssuanceRates[block.number];
 
         for (uint256 i = 0; i < accounts.length(); i++) {
             SlowIssuance[] storage queue = issuances[accounts.at(i)];
@@ -299,6 +298,6 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                 before = queue[queue.length - 1].blockAvailableAt;
             }
         }
-        return before.plus(divFix(amount, perBlock));
+        return before.plus(FIX_ONE.muluDivu(amount, perBlock));
     }
 }
