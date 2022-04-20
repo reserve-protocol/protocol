@@ -46,14 +46,19 @@ CTokenFiatCollateral     [23373, 63106, 45457/47114]
 ### BackingManager
 
 * `settleTrades` (Market Makers) **Review**
+    - Baseline: [30485, 176540/196732]
 
 * `manageFunds` (Market Makers) **Review**
+    - Calls also `main.poke` which calls `settleTrades`
+    - Baseline: [747693, 4196073/5585828]
 
 * `grantAllowances` (Market Makers) **Review**
     - Baseline: [335250]
 
 * `claimAndSweepRewards` (Market Makers) **Review**
-    - Baseline: [400859, 554414, 525629]
+    - Calls also `main.poke`
+    - Baseline: [490303, 571746]
+
 
 ### BasketHandler
 
@@ -103,23 +108,27 @@ CTokenFiatCollateral     [23373, 63106, 45457/47114]
 ### Main
 
 * `poke`  (Market Makers) **Review**
-    - Baseline: [352202]
+    - Baseline: [398979]
     - Aggregator of other functions
         
 ### RevenueTrader
 
-* `init` (Market Makers) **Review**
-
 * `settleTrades` (Market Makers) **Review**
+    - Baseline: [30485, 199250/215417]
 
 * `manageFunds` (Market Makers) **Review**
+  - Calls also `main.poke` which includes `settleTrades`
+  - Baseline: [545344, 2501014/2872593]
 
 * `claimAndSweepRewards` (Market Makers) **Review**
     - Calls also `main.poke`
+    - Baseline: [492814, 522568]
 
 ### RToken
 
 * `claimAndSweepRewards` (Market Makers) **Review**
+    - Calls also `main.poke`
+    - Baseline: [499815, 529571]
 
 * `issue` (Individuals/ Market Makers) **Review**
     - Baseline: [759837, 1363502, 1155332]
@@ -130,19 +139,19 @@ CTokenFiatCollateral     [23373, 63106, 45457/47114]
 * `redeem` (Individuals/ Market Makers) **Review**
     - Baseline: [746759, 934759, 794981]
 
-* `cancel` (ndividuals/ Market Makers) **Review**
+* `cancel` (Individuals/ Market Makers) **Review**
     - Baseline: [34562, 130374, 110398]
 
 * `transfer` (Individuals)
+    - Baseline: [33679, 56475, 45803]
 
 ### StRSR
-
-* `init` (Governance) **Review**
 
 * `payoutRewards` (Market Makers) **Review**
     - Baseline: [ 69305, 104109, 80488]
 
 * `transfer` (Individuals)
+    - Baseline: [35192, 57092, 52304]
 
 * `stake` (Individuals)
     - Baseline: [86422, 159269, 133636]
