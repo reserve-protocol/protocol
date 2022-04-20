@@ -22,9 +22,9 @@ This doc serves to classify the protocol functions and define acceptable gas tar
 
 * `forceUpdates` (Governance) **Review**
     - Baseline:
-AavePricedFiatCollateral [23418, 69307, 65612] 
-ATokenFiatCollateral     [23418, 78063, 40298/51043]
-CTokenFiatCollateral     [23373, 63106, 45457/47114]
+        - AavePricedFiatCollateral [23418, 69307, 65612] 
+        - ATokenFiatCollateral     [23418, 78063, 40298/51043]
+        - CTokenFiatCollateral     [23373, 63106, 45457/47114]
 
 ### Asset Registry
 
