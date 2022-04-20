@@ -31,9 +31,13 @@ import {
   SLOW,
 } from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
+import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
 describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
@@ -1556,6 +1560,30 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           await runSimulation(params)
         })
       }
+    })
+  })
+
+  describeGas('Gas Reporting', () => {
+    let amount: BigNumber
+    beforeEach(async function () {
+      // Stake some RSR
+      amount = bn('10e18')
+
+      // Approve transfer and stake
+      await rsr.connect(addr1).approve(stRSR.address, amount)
+
+      await stRSR.connect(addr1).stake(amount)
+    })
+
+    it('Transfer', async function () {
+      //  Perform transfer
+      await snapshotGasCost(stRSR.connect(addr1).transfer(addr2.address, amount.div(2)))
+
+      // Transfer again
+      await snapshotGasCost(stRSR.connect(addr1).transfer(addr2.address, amount.div(2)))
+
+      // Transfer back
+      await snapshotGasCost(stRSR.connect(addr2).transfer(addr1.address, amount))
     })
   })
 })

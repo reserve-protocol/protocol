@@ -25,6 +25,7 @@ import {
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
+import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, advanceBlocks, getLatestBlockNumber } from './utils/time'
 import {
   Collateral,
@@ -36,6 +37,9 @@ import {
 } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { issueMany } from './utils/issue'
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -1299,6 +1303,41 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       it(`case ${index} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
         await runScenario(params)
       })
+    })
+  })
+
+  describeGas('Gas Reporting', () => {
+    const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+    let issueAmount: BigNumber
+
+    beforeEach(async () => {
+      issueAmount = MIN_ISSUANCE_PER_BLOCK.mul(2)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+    })
+
+    it('Transfer', async () => {
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Vest
+      await advanceTime(100)
+      await advanceTime(100)
+      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+      // Transfer
+      await snapshotGasCost(rToken.connect(addr1).transfer(addr2.address, issueAmount.div(2)))
+
+      // Transfer again
+      await snapshotGasCost(rToken.connect(addr1).transfer(addr2.address, issueAmount.div(2)))
+
+      // Transfer back
+      await snapshotGasCost(rToken.connect(addr2).transfer(addr1.address, issueAmount))
     })
   })
 })
