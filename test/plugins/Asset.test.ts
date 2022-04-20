@@ -16,7 +16,7 @@ import { Collateral, defaultFixture, IConfig } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('AssetsP0 contracts', () => {
+describe('Assets contracts', () => {
   // Tokens
   let rsr: ERC20Mock
   let compToken: ERC20Mock

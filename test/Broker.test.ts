@@ -15,11 +15,15 @@ import {
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
+import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
+import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
 describe(`BrokerP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
@@ -513,6 +517,93 @@ describe(`BrokerP${IMPLEMENTATION} contract`, () => {
       // Check balances again - funds sent to origin
       expect(await token0.balanceOf(trade.address)).to.equal(0)
       expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
+    })
+  })
+
+  describeGas('Gas Reporting', () => {
+    let amount: BigNumber
+    let tradeRequest: ITradeRequest
+    let TradeFactory: ContractFactory
+    let newTrade: GnosisTrade
+
+    beforeEach(async () => {
+      amount = bn('100e18')
+
+      tradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: bn('100e18'),
+        minBuyAmount: bn('0'),
+      }
+
+      // Mint required tokens
+      await token0.connect(owner).mint(backingManager.address, amount)
+      await token0.connect(owner).mint(rsrTrader.address, amount)
+      await token0.connect(owner).mint(rTokenTrader.address, amount)
+      await token0.connect(owner).mint(addr1.address, amount)
+
+      // Create a new trade
+      TradeFactory = await ethers.getContractFactory('GnosisTrade')
+      newTrade = <GnosisTrade>await TradeFactory.deploy()
+    })
+
+    it('Open Trade ', async () => {
+      // Open from traders
+      // Backing Manager
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await token0.connect(bmSigner).approve(broker.address, amount)
+        await snapshotGasCost(broker.connect(bmSigner).openTrade(tradeRequest))
+      })
+
+      // RSR Trader
+      await whileImpersonating(rsrTrader.address, async (rsrSigner) => {
+        await token0.connect(rsrSigner).approve(broker.address, amount)
+        await snapshotGasCost(broker.connect(rsrSigner).openTrade(tradeRequest))
+      })
+
+      // RToken Trader
+      await whileImpersonating(rTokenTrader.address, async (rtokSigner) => {
+        await token0.connect(rtokSigner).approve(broker.address, amount)
+        await snapshotGasCost(broker.connect(rtokSigner).openTrade(tradeRequest))
+      })
+    })
+
+    it('Initialize Trade ', async () => {
+      // Fund trade and initialize
+      await token0.connect(owner).mint(newTrade.address, amount)
+      await snapshotGasCost(
+        newTrade.init(
+          broker.address,
+          backingManager.address,
+          gnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      )
+    })
+
+    it('Settle Trade ', async () => {
+      // Fund trade and initialize
+      await token0.connect(owner).mint(newTrade.address, amount)
+      await newTrade.init(
+        broker.address,
+        backingManager.address,
+        gnosis.address,
+        config.auctionLength,
+        tradeRequest
+      )
+
+      // Advance time till trade can be settled
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // Settle trade
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await snapshotGasCost(newTrade.connect(bmSigner).settle())
+      })
+
+      // Check status
+      expect(await newTrade.status()).to.equal(TradeStatus.CLOSED)
+      expect(await newTrade.canSettle()).to.equal(false)
     })
   })
 })

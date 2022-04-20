@@ -30,11 +30,15 @@ import {
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
+import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
+import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
 import { expectTrade } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
 describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -2443,6 +2447,161 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
       })
+    })
+  })
+
+  describeGas('Gas Reporting', () => {
+    let issueAmount: BigNumber
+    let rewardAmountCOMP: BigNumber
+    let rewardAmountAAVE: BigNumber
+
+    beforeEach(async function () {
+      issueAmount = bn('100e18')
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Mint some RSR
+      await rsr.connect(owner).mint(addr1.address, initialBal)
+    })
+
+    it('Claim and Sweep Rewards', async () => {
+      // Claim and sweep Rewards - Nothing to claim
+      await snapshotGasCost(backingManager.claimAndSweepRewards())
+      await snapshotGasCost(rsrTrader.claimAndSweepRewards())
+      await snapshotGasCost(rTokenTrader.claimAndSweepRewards())
+      await snapshotGasCost(rToken.claimAndSweepRewards())
+
+      // Set Rewards
+      rewardAmountCOMP = bn('0.8e18')
+      rewardAmountAAVE = bn('0.6e18')
+
+      // COMP Rewards
+      await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+      await compoundMock.setRewards(rsrTrader.address, rewardAmountCOMP)
+      await compoundMock.setRewards(rTokenTrader.address, rewardAmountCOMP)
+      await compoundMock.setRewards(rToken.address, rewardAmountCOMP)
+
+      // AAVE Rewards
+      await token2.setRewards(backingManager.address, rewardAmountAAVE)
+      await token2.setRewards(rsrTrader.address, rewardAmountAAVE)
+      await token2.setRewards(rTokenTrader.address, rewardAmountAAVE)
+      await token2.setRewards(rToken.address, rewardAmountAAVE)
+
+      // Claim and sweep Rewards - With Rewards
+      await snapshotGasCost(backingManager.claimAndSweepRewards())
+      await snapshotGasCost(rsrTrader.claimAndSweepRewards())
+      await snapshotGasCost(rTokenTrader.claimAndSweepRewards())
+      await snapshotGasCost(rToken.claimAndSweepRewards())
+    })
+
+    it('Settle Trades / Manage Funds', async () => {
+      // Set max auction size for asset
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
+      const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+        await AssetFactory.deploy(compToken.address, bn('1e18'), compoundMock.address)
+      )
+
+      // Perform asset swap
+      await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
+
+      // Set f = 0.8 (0.2 for Rtoken)
+      await distributor
+        .connect(owner)
+        .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(4) })
+
+      await distributor
+        .connect(owner)
+        .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+
+      // Set COMP tokens as reward
+      rewardAmountCOMP = bn('2e18')
+
+      // COMP Rewards
+      await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+      // Collect revenue
+      // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
+      const sellAmt: BigNumber = bn('1e18') // due to max auction size
+      const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+
+      const sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
+      const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+
+      await backingManager.claimAndSweepRewards()
+
+      // Run auctions - Order: Settle trades, then Manage funds
+      // Settle trades
+      await backingManager.settleTrades()
+      await snapshotGasCost(rsrTrader.settleTrades())
+      await snapshotGasCost(rTokenTrader.settleTrades())
+
+      // Manage Funds
+      await backingManager.manageFunds()
+      await snapshotGasCost(rsrTrader.manageFunds())
+      await snapshotGasCost(rTokenTrader.manageFunds())
+
+      // Advance time till auctions ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // Perform Mock Bids for RSR and RToken (addr1 has balance)
+      await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+      await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+      await gnosis.placeBid(0, {
+        bidder: addr1.address,
+        sellAmount: sellAmt,
+        buyAmount: minBuyAmt,
+      })
+      await gnosis.placeBid(1, {
+        bidder: addr1.address,
+        sellAmount: sellAmtRToken,
+        buyAmount: minBuyAmtRToken,
+      })
+
+      // Close auctions
+      // Calculate pending amount
+      const sellAmtRemainder: BigNumber = rewardAmountCOMP.sub(sellAmt).sub(sellAmtRToken)
+      const minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
+
+      // Run auctions - Order: Settle trades, then manage funds
+      // Settle trades
+      await backingManager.settleTrades()
+      await snapshotGasCost(rsrTrader.settleTrades())
+      await snapshotGasCost(rTokenTrader.settleTrades())
+
+      // Manage Funds
+      await backingManager.manageFunds()
+      await snapshotGasCost(rsrTrader.manageFunds())
+      await snapshotGasCost(rTokenTrader.manageFunds())
+
+      // Run final auction until all funds are converted
+      // Advance time till auction ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // Perform Mock Bids for RSR and RToken (addr1 has balance)
+      await rsr.connect(addr1).approve(gnosis.address, minBuyAmtRemainder)
+      await gnosis.placeBid(2, {
+        bidder: addr1.address,
+        sellAmount: sellAmtRemainder,
+        buyAmount: minBuyAmtRemainder,
+      })
+
+      // Run auctions - Order: Settle trades, then Manage funds
+      // Settle trades
+      await backingManager.settleTrades()
+      await snapshotGasCost(rsrTrader.settleTrades())
+      await snapshotGasCost(rTokenTrader.settleTrades())
+
+      // Manage Funds
+      await backingManager.manageFunds()
+      await snapshotGasCost(rsrTrader.manageFunds())
+      await snapshotGasCost(rTokenTrader.manageFunds())
     })
   })
 })

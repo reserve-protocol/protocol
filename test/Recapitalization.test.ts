@@ -23,10 +23,20 @@ import {
   USDCMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  IConfig,
+  Implementation,
+  IMPLEMENTATION,
+} from './fixtures'
+import snapshotGasCost from './utils/snapshotGasCost'
 import { expectTrade } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
 describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -3654,6 +3664,145 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           minBuyAmt2.add(minBuyAmtRebalance).add(minBuyAmtRebalanceBkp)
         )
       })
+    })
+  })
+
+  describeGas('Gas Reporting', () => {
+    let issueAmount: BigNumber
+    let initialTokens: string[]
+    let initialQuantities: BigNumber[]
+    let initialQuotes: BigNumber[]
+    let quotes: BigNumber[]
+
+    beforeEach(async function () {
+      issueAmount = bn('100e18')
+      initialQuotes = [bn('0.25e18'), bn('0.25e6'), bn('0.25e18'), bn('0.25e8')]
+      initialQuantities = initialQuotes.map((q) => {
+        return q.mul(issueAmount).div(BN_SCALE_FACTOR)
+      })
+
+      initialTokens = await Promise.all(
+        basket.map(async (c): Promise<string> => {
+          return await c.erc20()
+        })
+      )
+
+      // Set backing buffer and max slippage to zero for simplification
+      await backingManager.connect(owner).setMaxTradeSlippage(0)
+      await backingManager.connect(owner).setBackingBuffer(0)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+      await backupToken1.connect(addr1).approve(rToken.address, initialBal)
+      await backupToken2.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Mint some RSR
+      await rsr.connect(owner).mint(addr1.address, initialBal)
+    })
+
+    it('Settle Trades / Manage Funds', async () => {
+      // Register Collateral
+      await assetRegistry.connect(owner).register(backupCollateral1.address)
+      await assetRegistry.connect(owner).register(backupCollateral2.address)
+
+      // Set backup configuration - USDT and aUSDT as backup
+      await basketHandler
+        .connect(owner)
+        .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
+          backupToken1.address,
+          backupToken2.address,
+        ])
+
+      // Perform stake
+      const stkAmount: BigNumber = bn('10000e18')
+      await rsr.connect(addr1).approve(stRSR.address, stkAmount)
+      await stRSR.connect(addr1).stake(stkAmount)
+
+      // Set Token2 to hard default - Reducing rate
+      await token2.setExchangeRate(fp('0.99'))
+
+      const bkpTokenRefAmt: BigNumber = bn('0.125e18')
+
+      // Mark Default - Perform basket switch
+      await basketHandler.ensureBasket()
+
+      // Running auctions will trigger recapitalization - All balance will be redeemed
+      const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
+
+      // Run auctions - First Settle trades then Manage Funds
+      await snapshotGasCost(backingManager.settleTrades())
+      await snapshotGasCost(backingManager.manageFunds())
+
+      // Another call should not create any new auctions if still ongoing
+      await snapshotGasCost(backingManager.settleTrades())
+      await snapshotGasCost(backingManager.manageFunds())
+
+      // Perform Mock Bids for the new Token (addr1 has balance)
+      // Assume fair price, get 80% of tokens (20e18), which is more than what we need
+      const minBuyAmt2: BigNumber = sellAmt2.mul(80).div(100)
+      await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt2)
+      await gnosis.placeBid(0, {
+        bidder: addr1.address,
+        sellAmount: sellAmt2,
+        buyAmount: minBuyAmt2,
+      })
+
+      // Advance time till auction ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // End current auction, should start a new one to sell the new surplus of Backup Token 1
+      // We have an extra 7.5e18 to sell
+      const requiredBkpToken: BigNumber = issueAmount.mul(bkpTokenRefAmt).div(BN_SCALE_FACTOR)
+      const sellAmtBkp1: BigNumber = minBuyAmt2.sub(requiredBkpToken)
+      const minBuyAmtBkp1: BigNumber = sellAmtBkp1 // No trade slippage
+
+      // Run auctions - First Settle trades then Manage Funds
+      await snapshotGasCost(backingManager.settleTrades())
+      await snapshotGasCost(backingManager.manageFunds())
+
+      // Perform Mock Bids for the new Token (addr1 has balance)
+      // Assume fair price, get all of them
+      await backupToken2.connect(addr1).approve(gnosis.address, minBuyAmtBkp1)
+      await gnosis.placeBid(1, {
+        bidder: addr1.address,
+        sellAmount: sellAmtBkp1,
+        buyAmount: minBuyAmtBkp1,
+      })
+
+      // Advance time till auction ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      //  End current auction, should start a new one to sell RSR for collateral
+      // Only 5e18 Tokens left to buy - Sets Buy amount as independent value
+      const buyAmtBidRSR: BigNumber = requiredBkpToken.sub(minBuyAmtBkp1)
+      const sellAmtRSR: BigNumber = buyAmtBidRSR // No trade slippage
+
+      // Run auctions - First Settle trades then Manage Funds
+      await snapshotGasCost(backingManager.settleTrades())
+      await snapshotGasCost(backingManager.manageFunds())
+
+      //  Perform Mock Bids for RSR (addr1 has balance)
+      // Assume fair price RSR = 1 get all of them - Leave a surplus of RSR to be returned
+      await backupToken2.connect(addr1).approve(gnosis.address, buyAmtBidRSR)
+      await gnosis.placeBid(2, {
+        bidder: addr1.address,
+        sellAmount: sellAmtRSR.sub(1000),
+        buyAmount: buyAmtBidRSR,
+      })
+
+      // Advance time till auction ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // End current auction
+      // First Settle trades then Manage Funds
+      await snapshotGasCost(backingManager.settleTrades())
+      await snapshotGasCost(backingManager.manageFunds())
     })
   })
 })

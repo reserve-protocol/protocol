@@ -18,46 +18,53 @@ This doc serves to classify the protocol functions and define acceptable gas tar
 
 ## Interfaces
 
-### Assets/Collateral
+### Collateral
 
 * `forceUpdates` (Governance) **Review**
     - Baseline:
-AavePricedFiatCollateral [23418, 69307,58158] 
-ATokenFiatCollateral     [23418, 78063, 53729]
-CTokenFiatCollateral     [23373, 63106, 47529]
-
+        - AavePricedFiatCollateral [23418, 69307, 65612] 
+        - ATokenFiatCollateral     [23418, 78063, 40298/51043]
+        - CTokenFiatCollateral     [23373, 63106, 45457/47114]
 
 ### Asset Registry
-
-* `init` (Governance) **Review**
 
 * `register` (Governance)
     - Baseline: [50334, 121502, 120720] 
 
-* `swapRegistered` (Governance) **Review**
+* `swapRegistered` (Governance)
     - Baseline: [335663, 535751, 446472]
+    - Mainly depends on `basketHandler.ensureBasket`
 
-* `unregister` (Governance) **Review**
+* `unregister` (Governance)
     - Baseline: [265345, 707275, 441443] 
+    - Mainly depends on `basketHandler.ensureBasket`
 
-* `forceUpdates` (Market Makers)  **Review**
-    - Baseline: [225165, 252490, 251662]
+* `forceUpdates` (Market Makers)
+    - Baseline:  [225165] (when no action required - four assets)
+    - Aggregator of `forceUpdates` on each collateral
 
 ### BackingManager
 
-* `init` (Governance) **Review**
-
 * `settleTrades` (Market Makers) **Review**
+    - Baseline: [30485, 176540/196732]
 
 * `manageFunds` (Market Makers) **Review**
+    - Calls also `main.poke` which calls `settleTrades`
+    - Baseline: [747693, 4196073/5585828]
+
+* `grantAllowances` (Market Makers) **Review**
+    - Baseline: [335250]
 
 * `claimAndSweepRewards` (Market Makers) **Review**
-    - Baseline: [400859, 554414, 525629]
+    - Calls also `main.poke`
+    - Baseline: [490303, 571746]
+
 
 ### BasketHandler
 
-* `ensureBasket` (Governance/Market Makers) **Review**
+* `ensureBasket` (Governance/Market Makers)
     - Baseline: [304293, 885338, 521772]
+    - Aggregator of `assetRegistry.forceUpdates()` and `switchBasket`
 
 * `setPrimeBasket` (Governance) **Review**
     - Baseline: [57570, 406630, 171077]
@@ -65,19 +72,20 @@ CTokenFiatCollateral     [23373, 63106, 47529]
 * `switchBasket` (Governance/Market Makers) **Review**
     - Baseline  [148648, 763330, 315728]
 
-### Broker
-
-* `init` (Governance) **Review**
+### Broker and GnosisTrade
 
 * `openTrade` (Market Makers) **Review**
     - Baseline: [1809980, 1820761, 1814739]
     - Target: `TBD`
     - Final Measurement `TBD`
 
+*  `init` trade (Market Makers) **Review**
+    - Baseline: [422366, 422366, 422366]
+
+* `settle` trade (Market Makers) **Review**
+    - Baseline: [116512, 133239, 123465]
 
 ### Distributor
-
-* `init` (Governance) **Review**
 
 * `distribute` (Market Makers) **Review**
     - Baseline: [90235, 90235, 90235] 
@@ -85,10 +93,9 @@ CTokenFiatCollateral     [23373, 63106, 47529]
 * `setDistribution` (Governance) **Review**
     - Baseline: [44100, 113597, 53459] 
 
-
 ### Furnace
 
-* `init` (Governance) **Review**
+* `init` (Governance)
     - Baseline: [141965, 181885, 168570]
     - Target: `TBD`
     - Final Measurement `TBD`
@@ -98,59 +105,65 @@ CTokenFiatCollateral     [23373, 63106, 47529]
     - Target: `TBD`
     - Final Measurement `TBD`
 
-### Gnosis Trade
-
-* `init` (Market Makers) **Review**
-    - Baseline: [422366, 422366, 422366]
-
-* `settle` (Market Makers) **Review**
-    - Baseline: [117822, 133239, 128100]
-
 ### Main
 
 * `poke`  (Market Makers) **Review**
-
+    - Baseline: [398979]
+    - Aggregator of other functions
+        
 ### RevenueTrader
 
-* `init` (Market Makers) **Review**
-
 * `settleTrades` (Market Makers) **Review**
+    - Baseline: [30485, 199250/215417]
 
 * `manageFunds` (Market Makers) **Review**
+  - Calls also `main.poke` which includes `settleTrades`
+  - Baseline: [545344, 2501014/2872593]
 
 * `claimAndSweepRewards` (Market Makers) **Review**
+    - Calls also `main.poke`
+    - Baseline: [492814, 522568]
 
 ### RToken
 
-* `init` (Governance) **Review**
-
 * `claimAndSweepRewards` (Market Makers) **Review**
+    - Calls also `main.poke`
+    - Baseline: [499815, 529571]
 
 * `issue` (Individuals/ Market Makers) **Review**
+    - Baseline: [759837, 1363502, 1155332]
 
 * `vest` (Individuals/ Market Makers) **Review**
+    - Baseline: [408167, 750828, 481850]
 
 * `redeem` (Individuals/ Market Makers) **Review**
+    - Baseline: [746759, 934759, 794981]
 
-* `cancel` (ndividuals/ Market Makers) **Review**
+* `cancel` (Individuals/ Market Makers) **Review**
+    - Baseline: [34562, 130374, 110398]
 
 * `transfer` (Individuals)
+    - Baseline: [33679, 56475, 45803]
 
 ### StRSR
 
-* `init` (Governance) **Review**
-
 * `payoutRewards` (Market Makers) **Review**
+    - Baseline: [ 69305, 104109, 80488]
 
 * `transfer` (Individuals)
+    - Baseline: [35192, 57092, 52304]
 
 * `stake` (Individuals)
+    - Baseline: [86422, 159269, 133636]
 
 * `unstake` (Individuals)
+    - Baseline: [423144, 502301, 471425]
 
 * `withdraw` (Individuals)
+    - Baseline: [336290, 416929, 404738]
 
 * `seizeRSR` (Market Makers)
+    - Baseline: [99363, 105857, 100912]
 
 
 ## Deployment Costs

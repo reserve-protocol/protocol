@@ -33,10 +33,14 @@ import {
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
+import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
+import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime } from './utils/time'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
 describe(`MainP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
@@ -1245,6 +1249,49 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Should revert
       await expect(basketHandler.basketsHeldBy(addr1.address)).to.be.revertedWith('EmptyBasket()')
+    })
+  })
+
+  describeGas('Gas Reporting', () => {
+    beforeEach(async () => {})
+
+    it('Poke', async () => {
+      // Poke with minimum data
+      await snapshotGasCost(main.poke())
+
+      // TODO: Check with complete gas fixture
+    })
+
+    it('Asset Registry - Force Updates', async () => {
+      // Basket handler can run forceUpdates
+      await whileImpersonating(basketHandler.address, async (bhsigner) => {
+        await snapshotGasCost(assetRegistry.connect(bhsigner).forceUpdates())
+      })
+    })
+
+    it('Asset Registry - Register Asset', async () => {
+      // Setup new Assets
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
+      const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+        await AssetFactory.deploy(
+          erc20s[5].address,
+          await collateral0.maxTradeVolume(),
+          compoundMock.address
+        )
+      )
+      const newAsset2: CompoundPricedAsset = <CompoundPricedAsset>(
+        await AssetFactory.deploy(
+          erc20s[6].address,
+          await collateral0.maxTradeVolume(),
+          compoundMock.address
+        )
+      )
+
+      // Add new asset
+      await snapshotGasCost(assetRegistry.connect(owner).register(newAsset.address))
+
+      // Add another asset
+      await snapshotGasCost(assetRegistry.connect(owner).register(newAsset2.address))
     })
   })
 })

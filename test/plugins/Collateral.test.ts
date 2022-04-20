@@ -21,12 +21,15 @@ import {
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
+import snapshotGasCost from '../utils/snapshotGasCost'
 import { Collateral, defaultFixture, IConfig } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
+
+const describeGas = process.env.REPORT_GAS ? describe : describe.skip
 
 describe('Collateral contracts', () => {
   let owner: SignerWithAddress
@@ -588,6 +591,43 @@ describe('Collateral contracts', () => {
       symbol = await usdc.symbol()
       await compoundOracleInternal.setPrice(symbol, bn(0))
       await expect(compoundUsdcAsset.price()).to.be.revertedWith('PriceIsZero()')
+    })
+  })
+
+  describeGas('Gas Reporting', () => {
+    it('Force Updates - Soft Default', async function () {
+      const delayUntilDefault: BigNumber = await tokenCollateral.delayUntilDefault()
+
+      // Depeg one of the underlying tokens - Reducing price 20%
+      // Should also impact on the aToken and cToken
+      await aaveOracleInternal.setPrice(token.address, bn('2e14')) // -20%
+      await compoundOracleInternal.setPrice(await token.symbol(), bn('0.8e6')) // -20%
+
+      // Force updates - Should update whenDefault and status
+      await snapshotGasCost(tokenCollateral.forceUpdates())
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      // Force updates - Nothing occurs
+      await snapshotGasCost(usdcCollateral.forceUpdates())
+      expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Move time forward past delayUntilDefault
+      await advanceTime(Number(delayUntilDefault))
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+    })
+
+    it('Force Updates - Hard Default - ATokens/CTokens', async function () {
+      // Decrease rate for AToken and CToken, will disable collateral immediately
+      await aToken.setExchangeRate(fp('0.99'))
+      await cToken.setExchangeRate(fp('0.95'))
+
+      // Force updates - Should update whenDefault and status for Atokens/CTokens
+      await snapshotGasCost(aTokenCollateral.forceUpdates())
+      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+      await snapshotGasCost(cTokenCollateral.forceUpdates())
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
     })
   })
 })
