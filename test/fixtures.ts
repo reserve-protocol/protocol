@@ -25,6 +25,7 @@ import {
   DistributorP1,
   FurnaceP1,
   GnosisMock,
+  GnosisTrade,
   IBasketHandler,
   MainP1,
   RevenueTradingP1,
@@ -94,6 +95,7 @@ export interface IComponents {
 export interface IImplementations {
   main: string
   components: IComponents
+  trade: string
 }
 
 interface RSRFixture {
@@ -458,6 +460,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
     const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
 
+    const TradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+    const tradeImpl: GnosisTrade = <GnosisTrade>await TradeImplFactory.deploy()
+
     const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
     const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
 
@@ -482,6 +487,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
         rsrTrader: revTraderImpl.address,
         rTokenTrader: revTraderImpl.address,
       },
+      trade: tradeImpl.address,
     }
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')

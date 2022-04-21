@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IGnosis.sol";
@@ -17,7 +17,7 @@ enum TradeStatus {
 /// Trade contract against the Gnosis EasyAuction mechanism
 contract GnosisTrade is ITrade {
     using FixLib for int192;
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IGnosis public gnosis;
 
@@ -32,7 +32,7 @@ contract GnosisTrade is ITrade {
     IERC20 public sell;
     IERC20 public buy;
     uint256 public sellAmount; // {qTok}
-    uint256 public endTime;
+    uint32 public endTime;
     int192 public worstCasePrice; // {buyTok/sellTok}
 
     /// Constructor function, can only be called once
@@ -41,7 +41,7 @@ contract GnosisTrade is ITrade {
         IBroker broker_,
         address origin_,
         IGnosis gnosis_,
-        uint256 auctionLength,
+        uint32 auctionLength,
         TradeRequest memory req
     ) external {
         require(status == TradeStatus.NOT_STARTED, "trade already started");
@@ -52,7 +52,7 @@ contract GnosisTrade is ITrade {
         broker = broker_;
         origin = origin_;
         gnosis = gnosis_;
-        endTime = block.timestamp + auctionLength;
+        endTime = uint32(block.timestamp) + auctionLength;
 
         sell = req.sell.erc20();
         buy = req.buy.erc20();
@@ -60,7 +60,7 @@ contract GnosisTrade is ITrade {
 
         worstCasePrice = shiftl_toFix(req.minBuyAmount, -18).div(shiftl_toFix(sellAmount, -18));
 
-        sell.safeIncreaseAllowance(address(gnosis), sellAmount);
+        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
         auctionId = gnosis.initiateAuction(
             sell,
             buy,
@@ -98,8 +98,8 @@ contract GnosisTrade is ITrade {
         // Transfer balances to origin
         uint256 sellBal = sell.balanceOf(address(this));
         boughtAmt = buy.balanceOf(address(this));
-        if (sellBal > 0) sell.safeTransfer(origin, sellBal);
-        if (boughtAmt > 0) buy.safeTransfer(origin, boughtAmt);
+        if (sellBal > 0) IERC20Upgradeable(address(sell)).safeTransfer(origin, sellBal);
+        if (boughtAmt > 0) IERC20Upgradeable(address(buy)).safeTransfer(origin, boughtAmt);
 
         // Check clearing prices
         if (sellBal < sellAmount) {
@@ -115,7 +115,7 @@ contract GnosisTrade is ITrade {
     /// @dev Escape hatch for when trading partner freezes up, or other unexpected events
     function transferToOriginAfterTradeComplete(IERC20 erc20) external {
         require(status == TradeStatus.CLOSED, "only after trade is closed");
-        erc20.safeTransfer(origin, erc20.balanceOf(address(this)));
+        IERC20Upgradeable(address(erc20)).safeTransfer(origin, erc20.balanceOf(address(this)));
     }
 
     // === Private ===

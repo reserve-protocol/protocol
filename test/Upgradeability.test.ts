@@ -20,6 +20,7 @@ import {
   FurnaceP1,
   FurnaceP1V2,
   GnosisMock,
+  GnosisTrade,
   IBasketHandler,
   MainP1,
   MainP1V2,
@@ -90,6 +91,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let BasketHandlerFactory: ContractFactory
   let DistributorFactory: ContractFactory
   let BrokerFactory: ContractFactory
+  let TradeFactory: ContractFactory
   let StRSRFactory: ContractFactory
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -144,6 +146,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP1')
     DistributorFactory = await ethers.getContractFactory('DistributorP1')
     BrokerFactory = await ethers.getContractFactory('BrokerP1')
+    TradeFactory = await ethers.getContractFactory('GnosisTrade')
     StRSRFactory = await ethers.getContractFactory('StRSRP1')
 
     // Import deployed proxies
@@ -258,10 +261,12 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await newBasketHandler.main()).to.equal(main.address)
     })
 
-    it('Should deploy valid implementation - Broker', async () => {
+    it('Should deploy valid implementation - Broker / Trade', async () => {
+      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
       const newBroker: BrokerP1 = <BrokerP1>await upgrades.deployProxy(
         BrokerFactory,
-        [main.address, gnosis.address, config.auctionLength],
+        [main.address, gnosis.address, trade.address, config.auctionLength],
         {
           initializer: 'init',
           kind: 'uups',

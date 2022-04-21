@@ -19,14 +19,17 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     mapping(address => bool) private trades;
 
-    uint256 public auctionLength; // {s} the length of an auction
+    uint32 public auctionLength; // {s} the length of an auction
 
     bool public disabled;
 
+    // solhint-disable-next-line no-unused-vars
     function init(
         IMain main_,
         IGnosis gnosis_,
-        uint256 auctionLength_
+        // solhint-disable-next-line no-unused-vars
+        ITrade tradeImplementation_, // Added for Interface compatibility with P1
+        uint32 auctionLength_
     ) public initializer {
         __Component_init(main_);
         gnosis = gnosis_;
@@ -61,7 +64,7 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     // === Setters ===
 
-    function setAuctionLength(uint256 newAuctionLength) external onlyOwner {
+    function setAuctionLength(uint32 newAuctionLength) external onlyOwner {
         emit AuctionLengthSet(auctionLength, newAuctionLength);
         auctionLength = newAuctionLength;
     }

@@ -20,14 +20,15 @@ struct TradeRequest {
  *   the continued proper functioning of trading platforms.
  */
 interface IBroker is IComponent {
-    event AuctionLengthSet(uint256 indexed oldVal, uint256 indexed newVal);
+    event AuctionLengthSet(uint32 indexed oldVal, uint32 indexed newVal);
     event DisabledSet(bool indexed prevVal, bool indexed newVal);
 
     // Initialization
     function init(
         IMain main_,
         IGnosis gnosis_,
-        uint256 auctionLength_
+        ITrade tradeImplementation_,
+        uint32 auctionLength_
     ) external;
 
     /// Request a trade from the broker
@@ -43,9 +44,9 @@ interface IBroker is IComponent {
 interface TestIBroker is IBroker {
     function gnosis() external view returns (IGnosis);
 
-    function auctionLength() external view returns (uint256);
+    function auctionLength() external view returns (uint32);
 
-    function setAuctionLength(uint256 newAuctionLength) external;
+    function setAuctionLength(uint32 newAuctionLength) external;
 
     function setDisabled(bool disabled_) external;
 }

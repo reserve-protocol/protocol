@@ -10,6 +10,7 @@ import "./IMain.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./IDistributor.sol";
+import "./ITrade.sol";
 
 /**
  * @title DeploymentParams
@@ -32,7 +33,7 @@ struct DeploymentParams {
     //
     // === BackingManager ===
     uint256 tradingDelay; // {s} how long to wait until starting auctions after switching basket
-    uint256 auctionLength; // {s} the length of an auction
+    uint32 auctionLength; // {s} the length of an auction
     int192 backingBuffer; // {%} how much extra backing collateral to keep
     int192 maxTradeSlippage; // {%} max slippage acceptable in a trade
     int192 dustAmount; // {UoA} value below which it is not worth wasting time trading
@@ -48,6 +49,7 @@ struct DeploymentParams {
 struct Implementations {
     IMain main;
     Components components;
+    ITrade trade;
 }
 
 /**

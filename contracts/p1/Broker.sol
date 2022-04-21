@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/plugins/trading/GnosisTrade.sol";
 import "contracts/interfaces/IBroker.sol";
@@ -13,22 +14,27 @@ import "contracts/p1/mixins/Component.sol";
 contract BrokerP1 is ComponentP1, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using Clones for address;
+
+    ITrade public tradeImplementation;
 
     IGnosis public gnosis;
 
-    mapping(address => bool) private trades;
-
-    uint256 public auctionLength; // {s} the length of an auction
+    uint32 public auctionLength; // {s} the length of an auction
 
     bool public disabled;
+
+    mapping(address => bool) private trades;
 
     function init(
         IMain main_,
         IGnosis gnosis_,
-        uint256 auctionLength_
+        ITrade tradeImplementation_,
+        uint32 auctionLength_
     ) public initializer {
         __Component_init(main_);
         gnosis = gnosis_;
+        tradeImplementation = tradeImplementation_;
         auctionLength = auctionLength_;
     }
 
@@ -44,7 +50,8 @@ contract BrokerP1 is ComponentP1, IBroker {
         );
 
         // In the future we'll have more sophisticated choice logic here, probably by trade size
-        GnosisTrade trade = new GnosisTrade();
+        //GnosisTrade trade = new GnosisTrade();
+        GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
         trades[address(trade)] = true;
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
             _msgSender(),
@@ -64,7 +71,7 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     // === Setters ===
 
-    function setAuctionLength(uint256 newAuctionLength) external onlyOwner {
+    function setAuctionLength(uint32 newAuctionLength) external onlyOwner {
         emit AuctionLengthSet(auctionLength, newAuctionLength);
         auctionLength = newAuctionLength;
     }

@@ -14,7 +14,7 @@ interface ITrade {
     function buy() external view returns (IERC20);
 
     /// @return The timestamp at which the trade is projected to become settle-able
-    function endTime() external view returns (uint256);
+    function endTime() external view returns (uint32);
 
     /// @return True if the trade can be settled
     /// @dev Should be guaranteed to be true eventually as an invariant

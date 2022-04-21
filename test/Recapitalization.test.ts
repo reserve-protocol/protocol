@@ -23,13 +23,7 @@ import {
   USDCMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import {
-  Collateral,
-  defaultFixture,
-  IConfig,
-  Implementation,
-  IMPLEMENTATION,
-} from './fixtures'
+import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { expectTrade } from './utils/trades'
 
