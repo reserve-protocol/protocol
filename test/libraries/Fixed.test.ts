@@ -16,6 +16,11 @@ enum RoundingMode {
 const FLOOR = RoundingMode.FLOOR
 const ROUND = RoundingMode.ROUND
 const CEIL = RoundingMode.CEIL
+const ROUNDING_MODES = [
+  [FLOOR, 'FLOOR'],
+  [ROUND, 'ROUND'],
+  [CEIL, 'CEIL'],
+]
 
 describe('In FixLib,', () => {
   let FixedCaller: ContractFactory
@@ -188,26 +193,67 @@ describe('In FixLib,', () => {
           expect(await caller.fixMax_(a, b), `fixMax(${a}, ${b})`).to.equal(a.gt(b) ? a : b)
     })
   })
-  describe('signOf', () => {}) // TODO
-  describe('abs', () => {}) // TODO
-  describe('divrnd(int, int, RoundingMode)', () => {}) // TODO
-  describe('divrnd(uint, uint, RoundingMode)', () => {}) // TODO
+  describe('signOf', () => {
+    it('correctly takes signOf', async () => {
+      // prettier-ignore
+      const table = [
+        [bn(0), 1],
+        [bn(1), 1],
+        [bn(-1), -1],
+        [MAX_FIX_INT, 1],
+        [MIN_FIX_INT, -1],
+        [MAX_FIX_INT.sub(1), 1],
+        [MIN_FIX_INT.add(1), -1],
+        [bn('38326665875765560393'), 1],
+        [bn('-01942957121544002253'), -1],
+      ]
+      for (const [input, result] of table) {
+        expect(await caller.signOf_(input), `signOf(${input})`).to.equal(result)
+      }
+    })
+  })
+  describe('abs', () => {
+    it('correctly takes abs', async () => {
+      // prettier-ignore
+      const table = [
+        [bn(0), 0],
+        [bn(1), 1],
+        [bn(-1), 1],
+        [MAX_FIX_INT, MAX_FIX_INT],
+        [MIN_FIX_INT, MAX_FIX_INT],
+        [MAX_FIX_INT.sub(1), MAX_FIX_INT.sub(1)],
+        [MIN_FIX_INT.add(1), MAX_FIX_INT.sub(1)],
+        [bn('38326665875765560393'), bn('38326665875765560393')],
+        [bn('-01942957121544002253'), bn('01942957121544002253')],
+      ]
+      for (const [input, result] of table) {
+        expect(await caller.abs_(input), `abs(${input})`).to.equal(result)
+      }
+    })
+  })
+  describe('_divrnd(int, int, RoundingMode)', () => {
+    it('correctly divides: floor', async () => {
+      // prettier-ignore
+      const table = [
+        [bn(0), 0],
+        [bn(1), 1],
+        [bn(-1), 1],
+        [MAX_FIX_INT, MAX_FIX_INT],
+        [MIN_FIX_INT, MAX_FIX_INT],
+        [MAX_FIX_INT.sub(1), MAX_FIX_INT.sub(1)],
+        [MIN_FIX_INT.add(1), MAX_FIX_INT.sub(1)],
+        [bn('38326665875765560393'), bn('38326665875765560393')],
+        [bn('-01942957121544002253'), bn('01942957121544002253')],
+      ]
+      for (const [input, result] of table) {
+        expect(await caller.abs_(input), `abs(${input})`).to.equal(result)
+      }
+    })
+  })
+  describe('_divrnd(uint, uint, RoundingMode)', () => {})
 
-  describe('floor', () => {
-    it('correctly converts positive Fixes to uint192', async () => {
-      for (const result of fixable_ints) {
-        if (result.gte(0)) {
-          expect(await caller.toUintRnd(fp(result), FLOOR), `fp(${result})`).to.equal(bn(result))
-        }
-      }
-    })
-    it('fails on negative Fixes', async () => {
-      const table = [-1, fp(MIN_FIX_INT), MIN_INT192, fp(-986349)]
-      for (const val of table) {
-        await expect(caller.toUintRnd(val, FLOOR), `${val}`).to.be.revertedWith('IntOutOfBounds')
-      }
-    })
-    it('correctly rounds down', async () => {
+  describe('toUint', () => {
+    it('correctly takes FLOOR', async () => {
       // prettier-ignore
       const table = [
         [1.1, 1],
@@ -229,28 +275,30 @@ describe('In FixLib,', () => {
         expect(await caller.toUintRnd(fp(input), FLOOR), `fp(${input})`).to.equal(result)
       }
     })
-  })
-
-  describe('round', () => {
-    it('correctly rounds to nearest uint', async () => {
+    it('correctly takes ROUND', async () => {
       // prettier-ignore
       const table = [
-        [1.1, 1], [1.9, 2], [1, 1], [0.1, 0],
-        [705811305.5207, 705811306], [705811305.207, 705811305],
-        [3.4999, 3], [3.50001, 4],
+        [1.1, 1],
+        [1.9, 2],
+        [1, 1],
+        [0.1, 0],
+        [705811305.5207, 705811306],
+        [705811305.207, 705811305],
+        [3.4999, 3],
+        [3.50001, 4],
         [MAX_FIX_INT, MAX_FIX_INT],
         [9.99999, 10],
-        [6.5, 7], [5.5, 6],
-        [0, 0], [0.5, 1]
+        [6.5, 7],
+        [5.5, 6],
+        [0, 0],
+        [0.5, 1]
       ]
       for (const [input, result] of table) {
         expect(await caller.toUintRnd(fp(input), ROUND), `fp(${input})`).to.equal(result)
       }
     })
-  })
 
-  describe('ceil', () => {
-    it('correctly rounds up', async () => {
+    it('correctly takes CEIL', async () => {
       // prettier-ignore
       const table = [
         [1.1, 2],
@@ -272,83 +320,64 @@ describe('In FixLib,', () => {
         expect(await caller.toUintRnd(fp(input), CEIL), `fp(${input})`).to.equal(result)
       }
     })
-  })
-  describe('toInt(Fix)', () => {
-    it('correctly converts Fixes to int192', async () => {
-      for (const result of fixable_ints) {
-        expect(await caller.toInt(fp(result)), `fp(${result})`).to.equal(bn(result))
+    it('fails on negative Fixes', async () => {
+      const table = [-1, fp(MIN_FIX_INT), MIN_INT192, fp(-986349)]
+      for (const val of table) {
+        await expect(caller.toUintRnd(val, FLOOR), `${val}`).to.be.revertedWith('IntOutOfBounds')
       }
     })
-    it('correctly rounds towards zero', async () => {
+  })
+
+  describe('shiftl(Fix, int8)', () => {
+    it('mirrors the behavior of toFixWithShift', async () => {
       const table = [
-        [1.1, 1],
-        [-1.1, -1],
-        [1.9, 1],
-        [-1.9, -1],
-        [1, 1],
-        [0.1, 0],
-        [-0.1, 0],
-        [-1, -1],
-        [705811305.5207, 705811305],
-        [-6536585.939, -6536585],
-        [MAX_FIX_INT, MAX_FIX_INT],
-        [MIN_FIX_INT, MIN_FIX_INT],
-        [9.99999, 9],
-        [-9.99999, -9],
-      ]
-      for (const [input, result] of table) {
-        expect(await caller.toInt(fp(input)), `${input}`).to.equal(result)
+        [0, 10],
+        [1, 5],
+        [1, -7],
+        [2, 3],
+        [2, -3],
+        ['38326665875765560393', -10],
+        ['38326665875', 9],
+        [MAX_FIX_INT.sub(1), -2],
+        [MAX_FIX_INT.sub(1), -1],
+        [MAX_FIX_INT.sub(1), 0],
+        [MAX_FIX_INT, -9],
+        [MAX_FIX_INT, -1],
+      ].map(([x, s]) => [bn(x), bn(s)])
+
+      for (const [x, s] of table) {
+        const xFix = await caller.toFix_(x)
+        const a = await caller.shiftl(xFix, s)
+        const b = await caller.shiftl_toFix_(x, s)
+        await expect(a, `toFix(${x}).shiftl(Fix, int8)(${s})`).to.equal(b)
       }
     })
+    for (const [k, v] of ROUNDING_MODES) {
+      it(`mirrors the behavior of toFixWithShift - ${v}`, async () => {
+        const table = [
+          [0, 10],
+          [1, 5],
+          [1, -7],
+          [2, 3],
+          [2, -3],
+          ['38326665875765560393', -10],
+          ['38326665875', 9],
+          [MAX_FIX_INT.sub(1), -2],
+          [MAX_FIX_INT.sub(1), -1],
+          [MAX_FIX_INT.sub(1), 0],
+          [MAX_FIX_INT, -9],
+          [MAX_FIX_INT, -1],
+        ].map(([x, s]) => [bn(x), bn(s)])
+
+        for (const [x, s] of table) {
+          const xFix = await caller.toFix_(x)
+          const a = await caller.shiftlRnd(xFix, s, k)
+          const b = await caller.shiftl_toFix_Rnd(x, s, k)
+          await expect(a, `toFix(${x}).shiftl(Fix, int8, RoundingMode)(${s})`).to.equal(b)
+        }
+      })
+    }
   })
-  describe('toInt(Fix, RoundingMode)', () => {}) // TODO (test with the one-param version)
-  // describe('intRound', () => {
-  //   // TODO: integrate into toInt(Fix, RoundingMode)
-  //   it('correctly rounds to nearest int', async () => {
-  //     // prettier-ignore
-  //     const table = [
-  //       [1.1, 1], [-1.1, -1], [1.9, 2], [-1.9, -2], [1, 1], [-1, -1], [0.1, 0],
-  //       [705811305.5207, 705811306], [705811305.207, 705811305],
-  //       [-6536585.939, -6536586], [-6536585.439, -6536585],
-  //       [3.4999, 3], [-3.4999, -3], [3.50001, 4], [-3.50001, -4],
-  //       [MAX_FIX_INT, MAX_FIX_INT], [MIN_FIX_INT, MIN_FIX_INT],
-  //       [9.99999, 10], [-9.99999, -10],
-  //       [6.5, 7], [5.5, 6], [-6.5, -7], [-5.5, -6],
-  //       [0, 0], [0.5, 1], [-0.5, -1]
-  //     ]
-  //     for (const [input, result] of table) {
-  //       expect(await caller.intRound(fp(input)), `fp(${input})`).to.equal(result)
-  //     }
-  //   })
-  // })
-  describe('toUint', () => {}) // TODO
-
-  // describe('shiftl(Fix, int8)', () => {
-  //   // TODO: with rounding
-  //   it('mirrors the behavior of `toFixWithShift`', async () => {
-  //     const table = [
-  //       [0, 10],
-  //       [1, 5],
-  //       [1, -7],
-  //       [2, 3],
-  //       [2, -3],
-  //       ['38326665875765560393', -10],
-  //       ['38326665875', 9],
-  //       [MAX_FIX_INT.sub(1), -2],
-  //       [MAX_FIX_INT.sub(1), -1],
-  //       [MAX_FIX_INT.sub(1), 0],
-  //       [MAX_FIX_INT, -9],
-  //       [MAX_FIX_INT, -1],
-  //     ].map(([x, s]) => [bn(x), bn(s)])
-
-  //     for (const [x, s] of table) {
-  //       const xFix = await caller.toFix_(x)
-  //       const a = await caller.shiftl(Fix, int8)(xFix, s)
-  //       const b = await caller.shiftl_toFix_(x, s)
-  //       await expect(a, `toFix(${x}).shiftl(Fix, int8)(${s})`).to.equal(b)
-  //     }
-  //   })
-  // })
 
   describe('plus', () => {
     it('correctly adds in its range', async () => {
