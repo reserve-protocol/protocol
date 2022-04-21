@@ -36,12 +36,6 @@ contract FixedCallerMock {
     function divrnd_(uint256 n, uint256 d, RoundingMode rnd) public pure returns (uint256) {
         return _divrnd(n, d, rnd);
     }
-    function toInt(int192 x) public pure returns (int192) {
-        return FixLib.toInt(x);
-    }
-    function toIntRnd(int192 x, RoundingMode rnd) public pure returns (int192) {
-        return FixLib.toInt(x, rnd);
-    }
     function toUint(int192 x) public pure returns (uint192) {
         return FixLib.toUint(x);
     }

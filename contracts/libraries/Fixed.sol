@@ -240,16 +240,6 @@ library FixLib {
         return uint136(_divrnd(uint192(x), FIX_SCALE_U, rounding));
     }
 
-    /// Convert this fixed-point value to an int. Round the fractional part towards zero.
-    function toInt(int192 x) internal pure returns (int136) {
-        return toInt(x, FLOOR);
-    }
-
-    /// Convert this fixed-point value to an int, round the result as specified.
-    function toInt(int192 x, RoundingMode rounding) internal pure returns (int136) {
-        return int136(_divrnd(x, FIX_SCALE, rounding));
-    }
-
     /// Return the int192 shifted to the left by `decimal` digits
     /// Similar to a bitshift but in base 10
     /// Equivalent to multiplying `x` by `10**decimal`
