@@ -48,7 +48,7 @@ abstract contract TradingP1 is RewardableP1, ITrading {
 
     /// Settle any trades that can be settled
     /// @custom:refresher
-    function settleTrades() external {
+    function settleTrades() public {
         uint256 i = tradesStart;
         for (; i < trades.length && trades[i].canSettle(); i++) {
             ITrade trade = trades[i];

@@ -290,9 +290,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
-      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith(
-        'Component: system is paused'
-      )
+      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith('paused')
 
       // Check deposit not registered
       expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -502,14 +500,10 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await main.connect(owner).pause()
 
         // Withdraw
-        await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
-          'is paused'
-        )
+        await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith('paused')
 
         // You cannot unstake also in this situation
-        await expect(stRSR.connect(addr2).unstake(amount2)).to.be.revertedWith(
-          'Component: system is paused'
-        )
+        await expect(stRSR.connect(addr2).unstake(amount2)).to.be.revertedWith('paused')
 
         // If unpaused should withdraw OK
         await main.connect(owner).unpause()

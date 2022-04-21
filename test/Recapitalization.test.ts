@@ -23,13 +23,7 @@ import {
   USDCMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import {
-  Collateral,
-  defaultFixture,
-  IConfig,
-  Implementation,
-  IMPLEMENTATION,
-} from './fixtures'
+import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { expectTrade } from './utils/trades'
 
@@ -1288,7 +1282,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
 
         // Running auctions will not trigger recapitalization until collateral defauls
-        await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
+        await expect(facade.runAuctionsForAllTraders()).to.be.revertedWith('basket defaulted')
 
         // Mark default as probable
         await collateral0.forceUpdates()

@@ -30,9 +30,13 @@ contract RevenueTradingP1 is TradingP1, IRevenueTrader {
 
     /// Close any open trades and start new ones, for all assets
     /// Collective Action
-    function manageFunds() external {
+    function manageFunds() external notPaused {
         // Call state keepers
-        main.poke();
+        main.assetRegistry().forceUpdates();
+        settleTrades();
+
+        // Do not trade when DISABLED or IFFY
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket defaulted");
 
         IERC20[] memory erc20s = main.assetRegistry().erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {

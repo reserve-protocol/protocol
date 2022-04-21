@@ -19,9 +19,6 @@ abstract contract RewardableP1 is ComponentP1, IRewardable {
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
     function claimAndSweepRewards() external {
-        // Call state keepers before collective actions
-        main.poke();
-
         IAssetRegistry reg = main.assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();
         IERC20[] memory rewardTokens = new IERC20[](erc20s.length);

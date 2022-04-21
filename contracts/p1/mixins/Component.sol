@@ -24,7 +24,7 @@ abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradea
     }
 
     modifier notPaused() {
-        require(!main.paused(), "Component: system is paused");
+        require(!main.paused(), "paused");
         _;
     }
 

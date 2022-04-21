@@ -104,11 +104,12 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     function issue(uint256 amtRToken) external notPaused returns (uint256[] memory deposits) {
         require(amtRToken > 0, "Cannot issue zero");
         // ==== Basic Setup ====
-        // Call collective state keepers.
-        main.poke(); // TODO: only call what you really need, there should be no en-masse poke()!
-        IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() == CollateralStatus.SOUND, "collateral not sound");
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        main.assetRegistry().forceUpdates(); // no need to ensureBasket
+        main.furnace().melt();
+
+        IBasketHandler bh = main.basketHandler();
+        require(bh.status() == CollateralStatus.SOUND, "collateral not sound");
+        (uint256 basketNonce, ) = bh.lastSet();
 
         // Refund issuances against previous baskets
         address issuer = _msgSender();
@@ -120,7 +121,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             : shiftl_toFix(amtRToken, -int8(decimals())); // {qRTok / qRTok}
 
         address[] memory erc20s;
-        (erc20s, deposits) = basketHandler.quote(amtBaskets, CEIL);
+        (erc20s, deposits) = bh.quote(amtBaskets, CEIL);
 
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -191,9 +192,10 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     /// @return vested {qRTok} The total amtRToken of RToken quanta vested
     /// @custom:completion
     function vest(address account, uint256 endId) external notPaused returns (uint256 vested) {
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
+        main.assetRegistry().forceUpdates();
+        main.furnace().melt();
 
-        main.poke();
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
         refundOldBasketIssues(account);
         return vestUpTo(account, endId);
     }
@@ -246,13 +248,14 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @return withdrawals {qTok} The quantities of collateral tokens transferred out
     /// @custom:action
+    /// TODO confirm `notPaused` is unnecessary
     function redeem(uint256 amount) external returns (uint256[] memory withdrawals) {
         require(amount > 0, "Cannot redeem zero");
-        // Call collective state keepers
-        main.poke();
-        IBasketHandler basketHandler = main.basketHandler();
-
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
+
+        // Call collective state keepers
+        main.assetRegistry().forceUpdates();
+        main.furnace().melt();
 
         // {BU} = {BU} * {qRTok} / {qRTok}
         int192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
@@ -260,7 +263,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         emit Redemption(_msgSender(), amount, baskets);
 
         address[] memory erc20s;
-        (erc20s, withdrawals) = basketHandler.quote(baskets, FLOOR);
+        (erc20s, withdrawals) = main.basketHandler().quote(baskets, FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         int192 prorate = toFix(amount).divu(totalSupply());
