@@ -54,11 +54,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// Manage backing funds: maintain the overall backing policy
     /// Collective Action
     function manageFunds() external notPaused {
-        // Call keepers before
-        main.poke();
+        // Call keepers
+        main.assetRegistry().forceUpdates();
+        settleTrades();
 
         // Do not trade when DISABLED or IFFY
-        if (main.basketHandler().status() != CollateralStatus.SOUND) return;
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket defaulted");
 
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + tradingDelay) return;

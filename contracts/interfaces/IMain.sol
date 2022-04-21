@@ -57,7 +57,7 @@ interface IPausable {
  * @notice The central hub for the entire system. Maintains components and an owner singleton role
  */
 interface IMain is IPausable {
-    /// Call all collective state keepers
+    /// Call all collective state keepers -- only necessary for P0
     /// @custom:action
     function poke() external;
 

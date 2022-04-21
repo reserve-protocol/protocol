@@ -26,7 +26,6 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
     /// Force updates in all collateral assets
     function forceUpdates() external {
-        require(_msgSender() == address(main.basketHandler()), "basket handler only");
         for (uint256 i = 0; i < _erc20s.length(); i++) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
             if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();

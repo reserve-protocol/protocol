@@ -78,8 +78,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @custom:action
     /// @param amount {qTok} The quantity of RToken to issue
-    /// @return deposits {qTok} The quantities of collateral tokens transferred in
-    function issue(uint256 amount) external notPaused returns (uint256[] memory deposits) {
+    function issue(uint256 amount) external notPaused {
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
@@ -94,8 +93,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             ? basketsNeeded.muluDivu(amount, totalSupply()) // {BU * qRTok / qRTok}
             : shiftl_toFix(amount, -int8(decimals())); // {qRTok / qRTok}
 
-        address[] memory erc20s;
-        (erc20s, deposits) = basketHandler.quote(baskets, CEIL);
+        (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(baskets, CEIL);
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
             IERC20(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
@@ -139,7 +137,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One end of the range of issuance IDs to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    function cancel(uint256 endId, bool earliest) external returns (uint256[] memory deposits) {
+    function cancel(uint256 endId, bool earliest) external {
         address account = _msgSender();
 
         SlowIssuance[] storage queue = issuances[account];
@@ -148,10 +146,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         for (uint256 n = first; n < last; n++) {
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
-                deposits = new uint256[](iss.erc20s.length);
                 for (uint256 i = 0; i < iss.erc20s.length; i++) {
                     IERC20(iss.erc20s[i]).safeTransfer(iss.issuer, iss.deposits[i]);
-                    deposits[i] += iss.deposits[i];
                 }
                 iss.processed = true;
             }
@@ -161,13 +157,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for
-    /// @return vested {qRTok} The total amount of RToken quanta vested
-    function vest(address account, uint256 endId) external notPaused returns (uint256 vested) {
+    function vest(address account, uint256 endId) external notPaused {
+        main.poke();
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
-        main.poke();
-
-        for (uint256 i = 0; i < endId; i++) vested += tryVestIssuance(account, i);
+        for (uint256 i = 0; i < endId; i++) tryVestIssuance(account, i);
     }
 
     /// Return the highest index that could be completed by a vestIssuances call.
@@ -183,8 +177,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// Redeem RToken for basket collateral
     /// @custom:action
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    /// @return withdrawals {qTok} The quantities of collateral tokens transferred out
-    function redeem(uint256 amount) external returns (uint256[] memory withdrawals) {
+    function redeem(uint256 amount) external {
         require(amount > 0, "Cannot redeem zero");
         // Call collective state keepers
         main.poke();
@@ -197,8 +190,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         assert(baskets.lte(basketsNeeded));
         emit Redemption(_msgSender(), amount, baskets);
 
-        address[] memory erc20s;
-        (erc20s, withdrawals) = basketHandler.quote(baskets, FLOOR);
+        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(baskets, FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         int192 prorate = toFix(amount).divu(totalSupply());
@@ -218,9 +210,9 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingMgr));
             // {qTok} = {1} * {qTok}
             uint256 prorata = prorate.mulu_toUint(bal);
-            withdrawals[i] = Math.min(withdrawals[i], prorata);
+            amounts[i] = Math.min(amounts[i], prorata);
             // Send withdrawal
-            IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), withdrawals[i]);
+            IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), amounts[i]);
         }
     }
 

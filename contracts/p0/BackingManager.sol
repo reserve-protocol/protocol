@@ -53,7 +53,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         main.poke();
 
         // Do not trade when DISABLED or IFFY
-        if (main.basketHandler().status() != CollateralStatus.SOUND) return;
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket defaulted");
 
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + tradingDelay) return;

@@ -33,6 +33,9 @@ contract RevenueTradingP0 is TradingP0, IRevenueTrader {
         // Call state keepers
         main.poke();
 
+        // Do not trade when DISABLED or IFFY
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket defaulted");
+
         IERC20[] memory erc20s = main.assetRegistry().erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
             manageERC20(erc20s[i]);
