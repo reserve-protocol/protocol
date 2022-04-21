@@ -460,23 +460,6 @@ library FixLib {
         return mulDiv256(uint192(x), uint192(y), FIX_SCALE_SQ_U, rounding);
     }
 
-    /// Multiply this int192 by a int192 and output the result as an int, rounding towards zero.
-    /// There's one place in the code we use this and it's very useful there...it is one of a kind
-    /// @dev This function's return is only up to int192, but to avoid confusion it returns int256
-    function mul_toInt(int192 x, int192 y) internal pure returns (int256) {
-        return mul_toInt(x, y, FLOOR);
-    }
-
-    function mul_toInt(
-        int192 x,
-        int192 y,
-        RoundingMode rounding
-    ) internal pure returns (int256) {
-        int256 sign = (x < 0) == (y < 0) ? int256(1) : int256(-1);
-        uint256 unsigned = mulDiv256(abs(x), abs(y), FIX_SCALE_SQ_U, rounding);
-        return sign * int256(unsigned);
-    }
-
     /// A chained .mul + .div on uints that avoids intermediate overflow
     /// @dev Do not use if you don't need it; has higher gas costs than x * y / z
     function muluDivu(
