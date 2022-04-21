@@ -381,7 +381,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
     it('Should not revert at extremes', async () => {
       // max: // 2^40 - 1
-      const periods = [bn('1099511627775'), bn('1'), bn('604800')]
+      const periods = [bn('4294967295'), bn('1'), bn('604800')]
 
       const ratios = [fp('1'), fp('0'), fp('0.02284')]
 

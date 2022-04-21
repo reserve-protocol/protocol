@@ -55,7 +55,7 @@ contract FurnaceP0TestProps {
         furn2.melt();
     }
 
-    function setPeriod(uint256 period) public {
+    function setPeriod(uint32 period) public {
         // restrict period values to [0, 10,000)
         furn1.melt();
         furn2.melt();

@@ -18,6 +18,11 @@ This doc serves to classify the protocol functions and define acceptable gas tar
 
 ## Interfaces
 
+### Deployer
+
+* `deploy` (Governance) **Review**
+    - Baseline: [9284946]
+
 ### Collateral
 
 * `forceUpdates` (Governance) **Review**
@@ -75,12 +80,13 @@ This doc serves to classify the protocol functions and define acceptable gas tar
 ### Broker and GnosisTrade
 
 * `openTrade` (Market Makers) **Review**
-    - Baseline: [1809980, 1820761, 1814739]
-    - Target: `TBD`
-    - Final Measurement `TBD`
+    - Baseline: [2078983, 2089764, 2083742]
+    - Final Measurement [514839, 525621, 522007]
+    - Includes `trade.init`
 
 *  `init` trade (Market Makers) **Review**
-    - Baseline: [422366, 422366, 422366]
+    - Baseline: [423211, 423211, 423211]
+    - Calls `gnosis.initiateAuction` which is out of our scope
 
 * `settle` trade (Market Makers) **Review**
     - Baseline: [116512, 133239, 123465]
@@ -97,13 +103,11 @@ This doc serves to classify the protocol functions and define acceptable gas tar
 
 * `init` (Governance)
     - Baseline: [141965, 181885, 168570]
-    - Target: `TBD`
-    - Final Measurement `TBD`
+    - Final Measurement [117729, 137737, 131064]
 
-* `melt` (Market Makers)  **Review**
-    - Baseline: [30452, 93050, 72166-78827]
-    - Target: `TBD`
-    - Final Measurement `TBD`
+* `melt` (Market Makers)
+    - Baseline: [30452, 96981, 72809-83756]
+    - Final Measurement [28396, 93267, 62627-75288]
 
 ### Main
 
