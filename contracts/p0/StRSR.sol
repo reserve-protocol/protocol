@@ -84,16 +84,16 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     int192 private constant MIN_EXCHANGE_RATE = int192(1e9); // 1e-9
 
     // ==== Gov Params ====
-    uint256 public unstakingDelay;
-    uint256 public rewardPeriod;
+    uint32 public unstakingDelay;
+    uint32 public rewardPeriod;
     int192 public rewardRatio;
 
     function init(
         IMain main_,
         string memory name_,
         string memory symbol_,
-        uint256 unstakingDelay_,
-        uint256 rewardPeriod_,
+        uint32 unstakingDelay_,
+        uint32 rewardPeriod_,
         int192 rewardRatio_
     ) public initializer {
         __Component_init(main_);
@@ -483,13 +483,13 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     // ==== Gov Param Setters ====
 
-    function setUnstakingDelay(uint256 val) external onlyOwner {
+    function setUnstakingDelay(uint32 val) external onlyOwner {
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardPeriod(uint256 val) external onlyOwner {
+    function setRewardPeriod(uint32 val) external onlyOwner {
         emit RewardPeriodSet(rewardPeriod, val);
         rewardPeriod = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");

@@ -469,7 +469,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       let amount3: BigNumber
 
       beforeEach(async () => {
-        stkWithdrawalDelay = (await stRSR.unstakingDelay()).toNumber()
+        stkWithdrawalDelay = bn(await stRSR.unstakingDelay()).toNumber()
 
         // Perform stake
         amount1 = bn('1e18')
@@ -1542,13 +1542,21 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       if (rsrAccreted.gt(0)) {
         await rsr.connect(owner).mint(stRSR.address, rsrAccreted)
         await stRSR.connect(owner).setRewardRatio(fp('1'))
-        await advanceTime((await stRSR.rewardPeriod()).add(1).toString())
+        await advanceTime(
+          bn(await stRSR.rewardPeriod())
+            .add(1)
+            .toString()
+        )
         await expect(stRSR.payoutRewards())
           .to.emit(stRSR, 'ExchangeRateSet')
           .withArgs(fp('1'), fp('1'))
         // first payout only registers the mint
 
-        await advanceTime((await stRSR.rewardPeriod()).add(1).toString())
+        await advanceTime(
+          bn(await stRSR.rewardPeriod())
+            .add(1)
+            .toString()
+        )
         await expect(stRSR.payoutRewards())
         // now the mint has been fully paid out
       }
@@ -1607,11 +1615,11 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
     const rsrRewards = [bn('1e29'), bn('0'), bn('1e18')]
 
-    // max: // 2^40 - 1
-    const unstakingDelays = [bn('1099511627775'), bn('0'), bn('604800')]
+    // max: // 2^32 - 1
+    const unstakingDelays = [bn('4294967295'), bn('0'), bn('604800')]
 
-    // max: // 2^40 - 1
-    const rewardPeriods = [bn('1099511627775'), bn('1'), bn('604800')]
+    // max: // 2^32 - 1
+    const rewardPeriods = [bn('4294967295'), bn('1'), bn('604800')]
 
     const rewardRatios = [fp('1'), fp('0'), fp('0.02284')]
 
