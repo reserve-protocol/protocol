@@ -123,16 +123,8 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     /// @custom:action
     function unstake(uint256 stakeAmount) external notPaused {
         address account = _msgSender();
-        IBasketHandler bh = main.basketHandler();
-
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
-
-        // TODO I think we can get rid of this for gas optimization, since `withdraw` handles it
-        main.assetRegistry().forceUpdates();
-
-        require(bh.fullyCapitalized(), "RToken uncapitalized");
-        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
         // Process pending withdrawals
         payoutRewards();
