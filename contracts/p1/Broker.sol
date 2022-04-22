@@ -31,7 +31,7 @@ contract BrokerP1 is ComponentP1, IBroker {
         IGnosis gnosis_,
         ITrade tradeImplementation_,
         uint32 auctionLength_
-    ) public initializer {
+    ) external initializer {
         __Component_init(main_);
         gnosis = gnosis_;
         tradeImplementation = tradeImplementation_;
