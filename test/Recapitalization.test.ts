@@ -226,7 +226,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token1 to default - 50% price reduction
@@ -238,8 +238,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state - No changes
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
-        // quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
-        // expect(quotes).to.eql(initialQuotes)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -287,7 +285,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[2], initialQuotes[3], bn('0.25e18')])
       })
 
@@ -311,7 +309,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token2 to hard default - Decrease rate
@@ -351,7 +349,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([
           initialQuotes[0],
           initialQuotes[1],
@@ -377,7 +375,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token0 to default - 50% price reduction
@@ -417,7 +415,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[1], bn('0.75e18')])
       })
 
@@ -437,7 +435,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token3 to hard default - Decrease rate (cDai)
@@ -462,7 +460,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         // Incremented the weight for token0
         expect(quotes).to.eql([bn('0.5e18'), initialQuotes[1], initialQuotes[2]])
       })
@@ -475,7 +473,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token1 to default - 50% price reduction
@@ -534,7 +532,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token2 to hard default - Decrease rate
@@ -572,7 +570,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[1], initialQuotes[3], bn('0.25e18')])
       })
 
@@ -592,7 +590,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Basket should switch
@@ -621,7 +619,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[2], initialQuotes[3], bn('0.25e18')])
       })
     })
@@ -705,7 +703,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set new EUR Token to default - 50% price reduction
@@ -744,7 +742,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], bn('0.5e18')])
       })
 
@@ -764,7 +762,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set the USD Token to default - 50% price reduction
@@ -1282,7 +1280,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
 
         // Running auctions will not trigger recapitalization until collateral defauls
-        await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
+        await expect(facade.runAuctionsForAllTraders()).to.be.revertedWith('basket defaulted')
 
         // Mark default as probable
         await collateral0.forceUpdates()
@@ -2278,7 +2276,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         //  Check no Backup tokens available
@@ -2327,7 +2325,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Running auctions will trigger recapitalization - All balance will be redeemed
@@ -2417,7 +2415,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         //  Check Backup tokens available
@@ -2476,7 +2474,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         //  Check Backup tokens available
@@ -2522,7 +2520,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         //  Check no Backup tokens available
@@ -2582,7 +2580,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Running auctions will trigger recapitalization - All balance will be redeemed
@@ -2679,7 +2677,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         //  Check Backup tokens available
@@ -2752,7 +2750,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         //  Check Backup tokens available
@@ -2814,7 +2812,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         //  Check Backup tokens available
@@ -2848,7 +2846,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         //  Check no Backup tokens available
@@ -2891,7 +2889,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Running auctions will trigger recapitalization - All balance will be redeemed
@@ -2979,7 +2977,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         //  Check Backup tokens available
@@ -3042,7 +3040,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         //  Check Backup tokens available
@@ -3122,7 +3120,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         //  Check Backup tokens available
@@ -3177,7 +3175,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('0.85'))
 
         // Check quotes - reduced by 15% as well (less collateral is required to match the new price)
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         const finalQuotes = newQuotes.map((q) => {
           return q.mul(85).div(100)
         })
@@ -3216,7 +3214,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         //  Check no Backup tokens available
@@ -3259,7 +3257,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Running auctions will trigger recapitalization - All balance will be redeemed
@@ -3345,7 +3343,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         //  Check Backup tokens available
@@ -3409,7 +3407,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         //  Check Backup tokens available
@@ -3492,7 +3490,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         //  Check Backup tokens available
@@ -3578,7 +3576,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         //  Check Backup tokens available
@@ -3644,7 +3642,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('0.625'))
 
         // Check quotes - reduced by 15% as well (less collateral is required to match the new price)
-        quotes = await rToken.connect(addr1).callStatic.issue(bn('1e18'))
+        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         const finalQuotes = newQuotes.map((q) => {
           return q.mul(625).div(1000)
         })
@@ -3666,7 +3664,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
     let initialTokens: string[]
     let initialQuantities: BigNumber[]
     let initialQuotes: BigNumber[]
-    let quotes: BigNumber[]
 
     beforeEach(async function () {
       issueAmount = bn('100e18')
