@@ -128,6 +128,9 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
 
+        // TODO I think we can get rid of this for gas optimization, since `withdraw` handles it
+        main.assetRegistry().forceUpdates();
+
         require(bh.fullyCapitalized(), "RToken uncapitalized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
@@ -139,6 +142,8 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     /// Complete delayed unstaking for an account, up to but not including `endId`
     /// @custom:completion
     function withdraw(address account, uint256 endId) external notPaused {
+        main.assetRegistry().forceUpdates();
+
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");

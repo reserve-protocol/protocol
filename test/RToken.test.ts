@@ -370,7 +370,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      const quotes: BigNumber[] = await rToken.connect(addr1).callStatic.issue(issueAmount)
+      const quotes: BigNumber[] = await facade.connect(addr1).callStatic.issue(issueAmount)
 
       // check balances before
       expect(await token0.balanceOf(main.address)).to.equal(0)
@@ -566,7 +566,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      const quotes: BigNumber[] = await rToken.connect(addr1).callStatic.issue(issueAmount)
+      const quotes: BigNumber[] = await facade.connect(addr1).callStatic.issue(issueAmount)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -606,11 +606,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       // Nothing should process
-      expect(
-        await rToken.callStatic.vest(addr1.address, await rToken.endIdForVest(addr1.address))
-      ).to.equal(0)
       await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
-
       // Check previous minting was not processed[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
       await expectIssuance(addr1.address, 0, {
         processed: false,
@@ -685,9 +681,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       // Should not process
-      expect(
-        await rToken.callStatic.vest(addr1.address, await rToken.endIdForVest(addr1.address))
-      ).to.equal(0)
       await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check previous minting was not processed
@@ -802,11 +795,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Set automine to true again
       await hre.network.provider.send('evm_setAutomine', [true])
 
-      // Process issuances
-      expect(
-        await rToken.callStatic.vest(addr1.address, await rToken.endIdForVest(addr1.address))
-      ).to.equal(0)
-      await rToken.callStatic.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      // Process issuances again, should not change anything
+      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.mul(2))
+      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
     })
 
     it('Should move issuances to next block if exceeds issuance limit', async function () {
@@ -858,7 +851,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      const quotes: BigNumber[] = await rToken.connect(addr1).callStatic.issue(issueAmount)
+      const quotes: BigNumber[] = await facade.connect(addr1).callStatic.issue(issueAmount)
       const expectedTkn0: BigNumber = quotes[0]
       const expectedTkn1: BigNumber = quotes[1]
       const expectedTkn2: BigNumber = quotes[2]
@@ -911,7 +904,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      const quotes: BigNumber[] = await rToken.connect(addr1).callStatic.issue(issueAmount)
+      const quotes: BigNumber[] = await facade.connect(addr1).callStatic.issue(issueAmount)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)

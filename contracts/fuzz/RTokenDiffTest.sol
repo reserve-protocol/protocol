@@ -240,43 +240,30 @@ contract RTokenDiffTest {
     // Actions and state modifiers
 
     // ==== user actions, performed by 0x[123]0000. Melt
-    function issue(uint256 amount) external fromSender returns (uint256[] memory deposits) {
+    function issue(uint256 amount) external fromSender {
         amount %= 1e36;
 
-        uint256[] memory deposits1;
-        deposits = p0.rToken().issue(amount);
-        deposits1 = p1.rToken().issue(amount);
-
-        assert(deposits.length == deposits1.length);
-        for (uint256 i = 0; i < deposits.length; i++) assert(deposits[i] == deposits1[i]);
+        p0.rToken().issue(amount);
+        p1.rToken().issue(amount);
     }
 
-    function cancel(uint256 endId, bool e) external fromSender returns (uint256[] memory deposits) {
-        deposits = p0.rToken().cancel(endId, e);
-        uint256[] memory deposits1 = p1.rToken().cancel(endId, e);
-
-        assert(deposits.length == deposits1.length);
-        for (uint256 i = 0; i < deposits.length; i++) assert(deposits[i] == deposits1[i]);
+    function cancel(uint256 endId, bool e) external fromSender {
+        p0.rToken().cancel(endId, e);
+        p1.rToken().cancel(endId, e);
     }
 
-    function vest(address acct, uint256 endId) external fromSender returns (uint256 vested) {
-        vested = p0.rToken().vest(acct, endId);
-        uint256 vested1 = p1.rToken().vest(acct, endId);
-        assert(vested == vested1);
+    function vest(address acct, uint256 endId) external fromSender {
+        p0.rToken().vest(acct, endId);
+        p1.rToken().vest(acct, endId);
     }
 
     // TODO: Add "cancel" and "vest" variations that are likely to succeed too
     // i.e, ones that have valid endIDs
-    function redeem(uint256 amount) external fromSender returns (uint256[] memory compensation) {
+    function redeem(uint256 amount) external fromSender {
         amount %= 1e36;
 
-        compensation = p0.rToken().redeem(amount);
-        uint256[] memory compensation1 = p1.rToken().redeem(amount);
-
-        assert(compensation.length == compensation1.length);
-        for (uint256 i = 0; i < compensation.length; i++) {
-            assert(compensation[i] == compensation1[i]);
-        }
+        p0.rToken().redeem(amount);
+        p1.rToken().redeem(amount);
     }
 
     function melt(uint256 amount) external fromSender {

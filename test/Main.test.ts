@@ -607,9 +607,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Cannot grant allowance if paused
       await main.connect(owner).pause()
-      await expect(backingManager.connect(owner).grantAllowances()).to.be.revertedWith(
-        'Component: system is paused'
-      )
+      await expect(backingManager.connect(owner).grantAllowances()).to.be.revertedWith('paused')
       await main.connect(owner).unpause()
 
       // Cannot grant allowance if not RToken
@@ -759,26 +757,31 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Actions / Refreshers / Completions / Others', () => {
-    it('Should not allow to run functions if paused', async () => {
+    it('Should not allow actions on components if paused', async () => {
+      // NOTE
+      // This is not exhaustive: Each component is responsible for checking notPaused for itself
+      // This is mostly leftover from when we were just testing P0
+
       // By default functions can be run
-      await main.poke()
+      await basketHandler.ensureBasket()
+      await backingManager.manageFunds()
+      await rsrTrader.manageFunds()
+      await rTokenTrader.manageFunds()
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+      await rToken.connect(addr1).issue(fp('1e-6'))
 
       // Pause Main
       await main.connect(owner).pause()
 
       // Attempt to run functions again
-      await expect(main.poke()).to.be.revertedWith('paused')
-    })
-
-    it('Should not allow actions on components if paused', async () => {
-      // Ensure valid basket action
-      await basketHandler.ensureBasket()
-
-      // Pause Main
-      await main.connect(owner).pause()
-
-      // Attempt to run action again
-      await expect(basketHandler.ensureBasket()).to.be.revertedWith('Component: system is paused')
+      await expect(basketHandler.ensureBasket()).to.be.revertedWith('paused')
+      await expect(backingManager.manageFunds()).to.be.revertedWith('paused')
+      await expect(rsrTrader.manageFunds()).to.be.revertedWith('paused')
+      await expect(rTokenTrader.manageFunds()).to.be.revertedWith('paused')
+      await expect(rToken.connect(addr1).issue(fp('1e-6'))).to.be.revertedWith('paused')
     })
   })
 
@@ -1004,18 +1007,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await assetRegistry.toColl(token1.address)).to.equal(collateral1.address)
       expect(await assetRegistry.toColl(token2.address)).to.equal(collateral2.address)
       expect(await assetRegistry.toColl(token3.address)).to.equal(collateral3.address)
-    })
-
-    it('Should allow to forceUpdates on assetRegistry only from basketHandler', async () => {
-      // Basket handler can run forceUpdates
-      await whileImpersonating(basketHandler.address, async (bhsigner) => {
-        await assetRegistry.connect(bhsigner).forceUpdates()
-      })
-
-      // Attempt to run from another account
-      await expect(assetRegistry.connect(other).forceUpdates()).to.be.revertedWith(
-        'basket handler only'
-      )
     })
   })
 

@@ -18,7 +18,7 @@ abstract contract ComponentP0 is Initializable, ContextUpgradeable, IComponent {
     }
 
     modifier notPaused() {
-        require(!main.paused(), "Component: system is paused");
+        require(!main.paused(), "paused");
         _;
     }
 

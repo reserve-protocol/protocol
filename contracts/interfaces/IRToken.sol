@@ -78,9 +78,8 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qRTok} The quantity of RToken to issue
-    /// @return deposits {qRTok} The quantities of collateral tokens transferred in
     /// @custom:action
-    function issue(uint256 amount) external returns (uint256[] memory deposits);
+    function issue(uint256 amount) external;
 
     /// Cancels a vesting slow issuance of _msgSender
     /// If earliest == true, cancel id if id < endId
@@ -88,13 +87,12 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// @param endId One edge of the issuance range to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     /// @custom:action
-    function cancel(uint256 endId, bool earliest) external returns (uint256[] memory deposits);
+    function cancel(uint256 endId, bool earliest) external;
 
     /// Completes vested slow issuances for the account, up to endId.
     /// @param account The address of the account to vest issuances for
-    /// @return vested {qRTok} The total amount of RToken quanta vested
     /// @custom:completion
-    function vest(address account, uint256 endId) external returns (uint256 vested);
+    function vest(address account, uint256 endId) external;
 
     /// Return the highest index that could be completed by a vestIssuances call.
     /// @dev Use with `vest`
@@ -102,9 +100,8 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
 
     /// Redeem RToken for basket collateral
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @return compensation {qRTok} The quantities of collateral tokens transferred out
     /// @custom:action
-    function redeem(uint256 amount) external returns (uint256[] memory compensation);
+    function redeem(uint256 amount) external;
 
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
     /// @param recipient The recipient of the newly minted RToken
