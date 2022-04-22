@@ -17,16 +17,18 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // Registered Assets
     mapping(IERC20 => IAsset) private assets;
 
-    function init(IMain main_, IAsset[] memory assets_) public initializer {
+    function init(IMain main_, IAsset[] calldata assets_) external initializer {
         __Component_init(main_);
-        for (uint256 i = 0; i < assets_.length; i++) {
+        uint256 length = assets_.length;
+        for (uint256 i = 0; i < length; ++i) {
             _register(assets_[i]);
         }
     }
 
     /// Force updates in all collateral assets
     function forceUpdates() external {
-        for (uint256 i = 0; i < _erc20s.length(); i++) {
+        uint256 length = _erc20s.length();
+        for (uint256 i = 0; i < length; ++i) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
             if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
         }
@@ -82,8 +84,9 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     }
 
     function erc20s() external view returns (IERC20[] memory erc20s_) {
-        erc20s_ = new IERC20[](_erc20s.length());
-        for (uint256 i = 0; i < _erc20s.length(); i++) {
+        uint256 length = _erc20s.length();
+        erc20s_ = new IERC20[](length);
+        for (uint256 i = 0; i < length; ++i) {
             erc20s_[i] = IERC20(_erc20s.at(i));
         }
     }
