@@ -21,7 +21,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
         IMain main_,
         uint32 period_,
         int192 ratio_
-    ) public initializer {
+    ) external initializer {
         __Component_init(main_);
         period = period_;
         ratio = ratio_;
