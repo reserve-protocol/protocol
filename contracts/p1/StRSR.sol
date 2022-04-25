@@ -55,6 +55,9 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     uint256 internal totalStakes; // Total of all stakes {qStakes}
     uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
 
+    // ==== Unstaking Gov Param ====
+    uint32 public unstakingDelay;
+
     // Drafts: share of the withdrawing tokens. Not transferrable.
     // Draft queues by account. Handle only through pushDrafts() and withdraw(). Indexed by era.
     mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues;
@@ -64,9 +67,6 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
 
     // ERC20 allowances of stakes
     mapping(address => mapping(address => uint256)) private allowances;
-
-    // {seconds} The last time stRSR paid out rewards to stakers
-    uint256 internal payoutLastPaid;
 
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 internal rsrRewardsAtLastPayout;
@@ -80,25 +80,26 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     // Min exchange rate {qRSR/qStRSR}
     int192 private constant MIN_EXCHANGE_RATE = int192(1e9); // 1e-9
 
-    // ==== Gov Params ====
-    uint256 public unstakingDelay;
-    uint256 public rewardPeriod;
+    // {seconds} The last time stRSR paid out rewards to stakers
+    uint32 internal payoutLastPaid;
+
+    // ==== Reward Gov Params ====
+    uint32 public rewardPeriod;
     int192 public rewardRatio;
 
     function init(
         IMain main_,
-        string memory name_,
-        string memory symbol_,
-        uint256 unstakingDelay_,
-        uint256 rewardPeriod_,
+        string calldata name_,
+        string calldata symbol_,
+        uint32 unstakingDelay_,
+        uint32 rewardPeriod_,
         int192 rewardRatio_
-    ) public initializer {
+    ) external initializer {
         __Component_init(main_);
         __EIP712_init(name_, "1");
         _name = name_;
         _symbol = symbol_;
-        era = 0;
-        payoutLastPaid = block.timestamp;
+        payoutLastPaid = uint32(block.timestamp);
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
         unstakingDelay = unstakingDelay_;
         rewardPeriod = rewardPeriod_;
@@ -206,7 +207,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         int192 initialExchangeRate = exchangeRate();
 
-        uint256 numPeriods = (block.timestamp - payoutLastPaid) / rewardPeriod;
+        uint32 numPeriods = (uint32(block.timestamp) - payoutLastPaid) / rewardPeriod;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
@@ -510,13 +511,13 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
 
     // ==== Gov Param Setters ====
 
-    function setUnstakingDelay(uint256 val) external onlyOwner {
+    function setUnstakingDelay(uint32 val) external onlyOwner {
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardPeriod(uint256 val) external onlyOwner {
+    function setRewardPeriod(uint32 val) external onlyOwner {
         emit RewardPeriodSet(rewardPeriod, val);
         rewardPeriod = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");

@@ -24,11 +24,11 @@ struct DeploymentParams {
     RevenueShare dist; // revenue sharing splits between RToken and RSR
     //
     // === Rewards (Furnace + StRSR) ===
-    uint256 rewardPeriod; // {s} the atomic unit of rewards, determines # of exponential rounds
+    uint32 rewardPeriod; // {s} the atomic unit of rewards, determines # of exponential rounds
     int192 rewardRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
     //
     // === StRSR ===
-    uint256 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
+    uint32 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
     //
     // === BackingManager ===
     uint256 tradingDelay; // {s} how long to wait until starting auctions after switching basket
@@ -81,9 +81,9 @@ interface IDeployer {
     function deploy(
         string calldata name,
         string calldata symbol,
-        string memory constitutionURI,
+        string calldata constitutionURI,
         address owner,
-        DeploymentParams memory params
+        DeploymentParams calldata params
     ) external returns (address);
 }
 
