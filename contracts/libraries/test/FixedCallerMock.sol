@@ -36,12 +36,6 @@ contract FixedCallerMock {
     function divrnd_(uint256 n, uint256 d, RoundingMode rnd) public pure returns (uint256) {
         return _divrnd(n, d, rnd);
     }
-    function toInt(int192 x) public pure returns (int192) {
-        return FixLib.toInt(x);
-    }
-    function toIntRnd(int192 x, RoundingMode rnd) public pure returns (int192) {
-        return FixLib.toInt(x, rnd);
-    }
     function toUint(int192 x) public pure returns (uint192) {
         return FixLib.toUint(x);
     }
@@ -130,12 +124,6 @@ contract FixedCallerMock {
     }
     function mul_toUintRnd(int192 x, int192 y, RoundingMode rnd) internal pure returns (uint256) {
         return FixLib.mul_toUint(x, y, rnd);
-    }
-    function mul_toInt(int192 x, int192 y) internal pure returns (int256) {
-        return FixLib.mul_toInt(x, y);
-    }
-    function mul_toIntRnd(int192 x, int192 y, RoundingMode rnd) internal pure returns (int256) {
-        return FixLib.mul_toInt(x, y, rnd);
     }
     function muluDivu(int192 x, uint256 y, uint256 z) internal pure returns (int192) {
         return FixLib.muluDivu(x, y, z);

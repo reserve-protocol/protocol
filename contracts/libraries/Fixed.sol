@@ -240,16 +240,6 @@ library FixLib {
         return uint136(_divrnd(uint192(x), FIX_SCALE_U, rounding));
     }
 
-    /// Convert this fixed-point value to an int. Round the fractional part towards zero.
-    function toInt(int192 x) internal pure returns (int136) {
-        return toInt(x, FLOOR);
-    }
-
-    /// Convert this fixed-point value to an int, round the result as specified.
-    function toInt(int192 x, RoundingMode rounding) internal pure returns (int136) {
-        return int136(_divrnd(x, FIX_SCALE, rounding));
-    }
-
     /// Return the int192 shifted to the left by `decimal` digits
     /// Similar to a bitshift but in base 10
     /// Equivalent to multiplying `x` by `10**decimal`
@@ -458,23 +448,6 @@ library FixLib {
             y = -y;
         }
         return mulDiv256(uint192(x), uint192(y), FIX_SCALE_SQ_U, rounding);
-    }
-
-    /// Multiply this int192 by a int192 and output the result as an int, rounding towards zero.
-    /// There's one place in the code we use this and it's very useful there...it is one of a kind
-    /// @dev This function's return is only up to int192, but to avoid confusion it returns int256
-    function mul_toInt(int192 x, int192 y) internal pure returns (int256) {
-        return mul_toInt(x, y, FLOOR);
-    }
-
-    function mul_toInt(
-        int192 x,
-        int192 y,
-        RoundingMode rounding
-    ) internal pure returns (int256) {
-        int256 sign = (x < 0) == (y < 0) ? int256(1) : int256(-1);
-        uint256 unsigned = mulDiv256(abs(x), abs(y), FIX_SCALE_SQ_U, rounding);
-        return sign * int256(unsigned);
     }
 
     /// A chained .mul + .div on uints that avoids intermediate overflow
