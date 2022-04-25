@@ -1322,7 +1322,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const invalidBroker: TestIBroker = <TestIBroker>await InvalidBrokerFactory.deploy()
 
         // Set broker
-        await invalidBroker.init(main.address, gnosis.address, config.auctionLength)
+        await invalidBroker.init(main.address, gnosis.address, ZERO_ADDRESS, config.auctionLength)
         await main.connect(owner).setBroker(invalidBroker.address)
 
         rewardAmountAAVE = bn('0.5e18')

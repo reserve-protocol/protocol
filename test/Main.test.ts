@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, Contract, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, ZERO_ADDRESS, MAX_UINT256 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
@@ -17,6 +17,7 @@ import {
   ERC20Mock,
   FacadeP0,
   GnosisMock,
+  GnosisTrade,
   IBasketHandler,
   RTokenAsset,
   StaticATokenMock,
@@ -329,8 +330,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - Broker
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
       await expect(
-        broker.init(main.address, gnosis.address, config.auctionLength)
+        broker.init(main.address, gnosis.address, trade.address, config.auctionLength)
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - RToken
