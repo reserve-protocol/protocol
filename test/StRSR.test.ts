@@ -469,7 +469,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       let amount3: BigNumber
 
       beforeEach(async () => {
-        stkWithdrawalDelay = (await stRSR.unstakingDelay()).toNumber()
+        stkWithdrawalDelay = bn(await stRSR.unstakingDelay()).toNumber()
 
         // Perform stake
         amount1 = bn('1e18')
@@ -518,7 +518,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
-      it('Should not withdraw/unstake if not fully capitalized', async () => {
+      it('Should not complete withdrawal if not fully capitalized', async () => {
         // Need to issue some RTokens to handle fully/not fully capitalized
         await token0.connect(owner).mint(addr1.address, initialBal)
         await token1.connect(owner).mint(addr1.address, initialBal)
@@ -541,7 +541,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Move forward past stakingWithdrawalDelay
         await advanceTime(stkWithdrawalDelay + 1)
 
-        // Save backing tokens
         const erc20s = await facade.basketTokens()
 
         // Set not fully capitalized by changing basket
@@ -551,11 +550,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
-          'RToken uncapitalized'
-        )
-
-        // Also you cannot unstake in this situation
-        await expect(stRSR.connect(addr2).unstake(amount2)).to.be.revertedWith(
           'RToken uncapitalized'
         )
 
@@ -576,7 +570,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
-      it('Should not withdraw/unstake if basket defaulted', async () => {
+      it('Should not complete withdrawal if basket defaulted', async () => {
         // Move forward past stakingWithdrawalDelay
         await advanceTime(stkWithdrawalDelay + 1)
 
@@ -590,9 +584,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
           'basket defaulted'
         )
-
-        // Also you cannot unstake in this situation
-        await expect(stRSR.connect(addr2).unstake(amount2)).to.be.revertedWith('basket defaulted')
 
         // Nothing completed
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
@@ -1542,13 +1533,21 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       if (rsrAccreted.gt(0)) {
         await rsr.connect(owner).mint(stRSR.address, rsrAccreted)
         await stRSR.connect(owner).setRewardRatio(fp('1'))
-        await advanceTime((await stRSR.rewardPeriod()).add(1).toString())
+        await advanceTime(
+          bn(await stRSR.rewardPeriod())
+            .add(1)
+            .toString()
+        )
         await expect(stRSR.payoutRewards())
           .to.emit(stRSR, 'ExchangeRateSet')
           .withArgs(fp('1'), fp('1'))
         // first payout only registers the mint
 
-        await advanceTime((await stRSR.rewardPeriod()).add(1).toString())
+        await advanceTime(
+          bn(await stRSR.rewardPeriod())
+            .add(1)
+            .toString()
+        )
         await expect(stRSR.payoutRewards())
         // now the mint has been fully paid out
       }
@@ -1607,11 +1606,11 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
     const rsrRewards = [bn('1e29'), bn('0'), bn('1e18')]
 
-    // max: // 2^40 - 1
-    const unstakingDelays = [bn('1099511627775'), bn('0'), bn('604800')]
+    // max: // 2^32 - 1
+    const unstakingDelays = [bn('4294967295'), bn('0'), bn('604800')]
 
-    // max: // 2^40 - 1
-    const rewardPeriods = [bn('1099511627775'), bn('1'), bn('604800')]
+    // max: // 2^32 - 1
+    const rewardPeriods = [bn('4294967295'), bn('1'), bn('604800')]
 
     const rewardRatios = [fp('1'), fp('0'), fp('0.02284')]
 

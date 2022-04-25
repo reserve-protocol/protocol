@@ -28,7 +28,7 @@ struct DeploymentParams {
     int192 rewardRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
     //
     // === StRSR ===
-    uint256 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
+    uint32 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
     //
     // === BackingManager ===
     uint256 tradingDelay; // {s} how long to wait until starting auctions after switching basket
