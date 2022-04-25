@@ -33,7 +33,7 @@ contract FixedCallerMock {
     function divrnd_(int256 n, int256 d, RoundingMode rnd) public pure returns (int256) {
         return _divrnd(n, d, rnd);
     }
-    function divrnd_(uint256 n, uint256 d, RoundingMode rnd) public pure returns (uint256) {
+    function divrnd_u(uint256 n, uint256 d, RoundingMode rnd) public pure returns (uint256) {
         return _divrnd(n, d, rnd);
     }
     function toUint(int192 x) public pure returns (uint192) {
@@ -107,34 +107,34 @@ contract FixedCallerMock {
     }
 
     // ================ chained operations
-    function shiftl_toUint(int192 x, int8 d) internal pure returns (uint256) {
+    function shiftl_toUint(int192 x, int8 d) public pure returns (uint256) {
         return FixLib.shiftl_toUint(x, d);
     }
-    function shiftl_toUintRnd(int192 x, int8 d, RoundingMode rnd) internal pure returns (uint256) {
+    function shiftl_toUintRnd(int192 x, int8 d, RoundingMode rnd) public pure returns (uint256) {
         return FixLib.shiftl_toUint(x, d, rnd);
     }
-    function mulu_toUint(int192 x, uint256 y) internal pure returns (uint256) {
+    function mulu_toUint(int192 x, uint256 y) public pure returns (uint256) {
         return FixLib.mulu_toUint(x, y);
     }
-    function mulu_toUintRnd(int192 x, uint256 y, RoundingMode rnd) internal pure returns (uint256) {
+    function mulu_toUintRnd(int192 x, uint256 y, RoundingMode rnd) public pure returns (uint256) {
         return FixLib.mulu_toUint(x, y, rnd);
     }
-    function mul_toUint(int192 x, int192 y) internal pure returns (uint256) {
+    function mul_toUint(int192 x, int192 y) public pure returns (uint256) {
         return FixLib.mul_toUint(x, y);
     }
-    function mul_toUintRnd(int192 x, int192 y, RoundingMode rnd) internal pure returns (uint256) {
+    function mul_toUintRnd(int192 x, int192 y, RoundingMode rnd) public pure returns (uint256) {
         return FixLib.mul_toUint(x, y, rnd);
     }
-    function muluDivu(int192 x, uint256 y, uint256 z) internal pure returns (int192) {
+    function muluDivu(int192 x, uint256 y, uint256 z) public pure returns (int192) {
         return FixLib.muluDivu(x, y, z);
     }
-    function muluDivuRnd(int192 x, uint256 y, uint256 z, RoundingMode rnd) internal pure returns (int192) {
+    function muluDivuRnd(int192 x, uint256 y, uint256 z, RoundingMode rnd) public pure returns (int192) {
         return FixLib.muluDivu(x, y, z, rnd);
     }
-    function mulDiv(int192 x, int192 y, int192 z) internal pure returns (int192) {
+    function mulDiv(int192 x, int192 y, int192 z) public pure returns (int192) {
         return FixLib.mulDiv(x, y, z);
     }
-    function mulDivRnd(int192 x, int192 y, int192 z, RoundingMode rnd) internal pure returns (int192) {
+    function mulDivRnd(int192 x, int192 y, int192 z, RoundingMode rnd) public pure returns (int192) {
         return FixLib.mulDiv(x, y, z, rnd);
     }
 

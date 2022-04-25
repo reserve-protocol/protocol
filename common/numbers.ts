@@ -61,26 +61,27 @@ export const near = (x: BigNumber, y: BigNumber, z: BigNumberish): boolean => {
 
 const N = BN_SCALE_FACTOR
 
-// treating x as a SCALE_FACTOR fixed-point number, return ceiling(x)
-export function fpCeil(x: BigNumber): BigNumber {
-  if (x.mod(N).isZero()) return x
-  if (x.isNegative()) return x.sub(x.mod(N))
-  return x.sub(x.mod(N)).add(N)
-}
-
-// treating x as a SCALE_FACTOR fixed-point number, return floor(x)
+// treating x as a SCALE_FACTOR fixed-point number, take its FLOOR
 export function fpFloor(x: BigNumber): BigNumber {
   if (x.mod(N).isZero()) return x
   if (x.isNegative()) return x.sub(x.mod(N)).add(N)
   return x.sub(x.mod(N))
 }
 
-// treating x as a SCALE_FACTOR fixed-point number, return round(x), with round(0.5) = 1
+// treating x as a SCALE_FACTOR fixed-point number, ROUND it
+// round(0.5) = 1
 export function fpRound(x: BigNumber): BigNumber {
   const m = x.mod(N)
   const threshold = x.isNegative() ? N.div(2) : N.div(2).sub(1)
   if (m.gt(threshold)) return x.sub(m).add(N)
   else return x.sub(m)
+}
+
+// treating x as a SCALE_FACTOR fixed-point number, take its CEIL
+export function fpCeil(x: BigNumber): BigNumber {
+  if (x.mod(N).isZero()) return x
+  if (x.isNegative()) return x.sub(x.mod(N))
+  return x.sub(x.mod(N)).add(N)
 }
 
 // _parseScientific(s, scale) returns a BigNumber with value (s * 10**scale),
