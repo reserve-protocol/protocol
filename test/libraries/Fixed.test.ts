@@ -4,7 +4,7 @@ import { ethers } from 'hardhat'
 import fc from 'fast-check'
 
 import { BN_SCALE_FACTOR } from '../../common/constants'
-import { bn, fp, pow10 } from '../../common/numbers'
+import { bn, fp, pow10, fpCeil, fpFloor, fpRound } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
 
 enum RoundingMode {
@@ -66,6 +66,7 @@ describe('In FixLib,', () => {
     })
 
     it('fails on inputs outside its domain', async () => {
+      await expect(caller.toFix_(bn('-1'))).to.be.revertedWith('UIntOutOfBounds')
       await expect(caller.toFix_(MAX_FIX_INT.add(1))).to.be.revertedWith('UIntOutOfBounds')
       await expect(caller.toFix_(MAX_FIX_INT.mul(17))).to.be.revertedWith('UIntOutOfBounds')
     })
@@ -99,7 +100,7 @@ describe('In FixLib,', () => {
       ].map(([x, s]) => [bn(x), bn(s)])
 
       for (const [x, s] of table) {
-        expect(await caller.shiftl_toFix_(x, s), `toFixWithShift(${x}, ${s})`).to.equal(
+        expect(await caller.shiftl_toFix_(x, s), `shiftl_toFix(${x}, ${s})`).to.equal(
           s.gte(0) ? fp(x).mul(pow10(s)) : fp(x).div(pow10(neg(s)))
         )
       }
@@ -124,9 +125,40 @@ describe('In FixLib,', () => {
         await expect(caller.shiftl_toFix_Rnd(x, s, FLOOR), `toFix(${x}, ${s}, FLOOR)`).be.reverted
       }
     })
-  })
+    it('handles rounding', async () => {
+      const table = [
+        [0, -1],
+        [0, -19],
+        [1, -1],
+        [1, -19],
+        ['38326665875765560393', -19],
+        ['38326665875', -10],
+        [MAX_FIX_INT.sub(1), -1],
+        [MAX_FIX_INT.sub(1), -19],
+        [MAX_FIX_INT.sub(1), 0],
+        [MAX_FIX_INT, -1],
+        [MAX_FIX_INT, -19],
+      ].map(([x, s]) => [bn(x), bn(s)])
 
-  describe('shiftl_toFix with rounding', () => {})
+      for (const [x, s] of table) {
+        const fixed = fp(x)
+          .mul(SCALE)
+          .div(pow10(neg(s)))
+        expect(
+          await caller.shiftl_toFix_Rnd(x, s, FLOOR),
+          `shiftl_toFix(${x}, ${s}, FLOOR)`
+        ).to.equal(fpFloor(fixed).div(SCALE))
+        expect(
+          await caller.shiftl_toFix_Rnd(x, s, ROUND),
+          `shiftl_toFix(${x}, ${s}, ROUND)`
+        ).to.equal(fpRound(fixed).div(SCALE))
+        expect(
+          await caller.shiftl_toFix_Rnd(x, s, CEIL),
+          `shiftl_toFix(${x}, ${s}, CEIL)`
+        ).to.equal(fpCeil(fixed).div(SCALE))
+      }
+    })
+  })
 
   describe('divFix', () => {
     it('correctly divides inside its range', async () => {
@@ -232,104 +264,87 @@ describe('In FixLib,', () => {
     })
   })
   describe('_divrnd(int, int, RoundingMode)', () => {
-    it('correctly divides: floor', async () => {
-      // prettier-ignore
+    it('correctly rounds', async () => {
       const table = [
-        [bn(0), 0],
-        [bn(1), 1],
-        [bn(-1), 1],
-        [MAX_FIX_INT, MAX_FIX_INT],
-        [MIN_FIX_INT, MAX_FIX_INT],
-        [MAX_FIX_INT.sub(1), MAX_FIX_INT.sub(1)],
-        [MIN_FIX_INT.add(1), MAX_FIX_INT.sub(1)],
-        [bn('38326665875765560393'), bn('38326665875765560393')],
-        [bn('-01942957121544002253'), bn('01942957121544002253')],
+        [fp(5), fp(2)],
+        [fp(-5), fp(2)],
+        [fp(29), fp(10)],
+        [fp(-29), fp(10)],
+        [fp(19), fp(10)],
+        [fp(-19), fp(10)],
       ]
-      for (const [input, result] of table) {
-        expect(await caller.abs_(input), `abs(${input})`).to.equal(result)
+
+      for (const [a, b] of table) {
+        const floor = fpFloor(a.mul(SCALE).div(b)).div(SCALE)
+        const round = fpRound(a.mul(SCALE).div(b)).div(SCALE)
+        const ceil = fpCeil(a.mul(SCALE).div(b)).div(SCALE)
+        expect(await caller.divrnd_(a, b, FLOOR), `divrnd_((${a}, ${b}, FLOOR)`).to.equal(floor)
+        expect(await caller.divrnd_(a, b, ROUND), `divrnd_((${a}, ${b}, ROUND)`).to.equal(round)
+        expect(await caller.divrnd_(a, b, CEIL), `divrnd_((${a}, ${b}, CEIL)`).to.equal(ceil)
       }
     })
   })
-  describe('_divrnd(uint, uint, RoundingMode)', () => {})
-
-  describe('toUint', () => {
-    it('correctly takes FLOOR', async () => {
-      // prettier-ignore
+  describe('_divrnd(uint, uint, RoundingMode)', () => {
+    it('correctly rounds', async () => {
       const table = [
-        [1.1, 1],
-        [1.9, 1],
-        [1, 1],
-        [0.1, 0],
-        [705811305.5207, 705811305],
-        [705811305.207, 705811305],
-        [3.4999, 3],
-        [3.50001, 3],
-        [MAX_FIX_INT, MAX_FIX_INT],
-        [9.99999, 9],
-        [6.5, 6],
-        [5.5, 5],
-        [0, 0],
-        [0.5, 0]
+        [bn(5), bn(2)],
+        [bn(29), bn(10)],
+        [bn(19), bn(10)],
       ]
-      for (const [input, result] of table) {
-        expect(await caller.toUintRnd(fp(input), FLOOR), `fp(${input})`).to.equal(result)
+
+      for (const [a, b] of table) {
+        const floor = fpFloor(a.mul(SCALE).div(b)).div(SCALE)
+        const round = fpRound(a.mul(SCALE).div(b)).div(SCALE)
+        const ceil = fpCeil(a.mul(SCALE).div(b)).div(SCALE)
+        expect(await caller.divrnd_u(a, b, FLOOR), `divrnd_u((${a}, ${b}, FLOOR)`).to.equal(floor)
+        expect(await caller.divrnd_u(a, b, ROUND), `divrnd_u((${a}, ${b}, ROUND)`).to.equal(round)
+        expect(await caller.divrnd_u(a, b, CEIL), `divrnd_u((${a}, ${b}, CEIL)`).to.equal(ceil)
       }
     })
-    it('correctly takes ROUND', async () => {
-      // prettier-ignore
-      const table = [
-        [1.1, 1],
-        [1.9, 2],
-        [1, 1],
-        [0.1, 0],
-        [705811305.5207, 705811306],
-        [705811305.207, 705811305],
-        [3.4999, 3],
-        [3.50001, 4],
-        [MAX_FIX_INT, MAX_FIX_INT],
-        [9.99999, 10],
-        [6.5, 7],
-        [5.5, 6],
-        [0, 0],
-        [0.5, 1]
-      ]
-      for (const [input, result] of table) {
-        expect(await caller.toUintRnd(fp(input), ROUND), `fp(${input})`).to.equal(result)
-      }
-    })
+  })
 
-    it('correctly takes CEIL', async () => {
+  describe('toUint + toUintRnd', () => {
+    it('correctly rounds', async () => {
       // prettier-ignore
       const table = [
-        [1.1, 2],
-        [1.9, 2],
-        [1, 1],
-        [0.1, 1],
-        [705811305.5207, 705811306],
-        [705811305.207, 705811306],
-        [3.4999, 4],
-        [3.50001, 4],
-        [MAX_FIX_INT, MAX_FIX_INT],
-        [9.99999, 10],
-        [6.5, 7],
-        [5.5, 6],
-        [0, 0],
-        [0.5, 1]
+        1.1,
+        1.9,
+        1,
+        0.1,
+        705811305.5207,
+        705811305.207,
+        3.4999,
+        3.50001,
+        MAX_FIX_INT,
+        9.99999,
+        6.5,
+        5.5,
+        0,
+        0.5
       ]
-      for (const [input, result] of table) {
-        expect(await caller.toUintRnd(fp(input), CEIL), `fp(${input})`).to.equal(result)
+      for (const input of table) {
+        const floor = fpFloor(fp(input)).div(SCALE)
+        const round = fpRound(fp(input)).div(SCALE)
+        const ceil = fpCeil(fp(input)).div(SCALE)
+        expect(await caller.toUint(fp(input)), `fp(${input})`).to.equal(floor)
+        expect(await caller.toUintRnd(fp(input), FLOOR), `fp(${input})`).to.equal(floor)
+        expect(await caller.toUintRnd(fp(input), ROUND), `fp(${input})`).to.equal(round)
+        expect(await caller.toUintRnd(fp(input), CEIL), `fp(${input})`).to.equal(ceil)
       }
     })
     it('fails on negative Fixes', async () => {
       const table = [-1, fp(MIN_FIX_INT), MIN_INT192, fp(-986349)]
       for (const val of table) {
+        await expect(caller.toUint(val), `${val}`).to.be.revertedWith('IntOutOfBounds')
         await expect(caller.toUintRnd(val, FLOOR), `${val}`).to.be.revertedWith('IntOutOfBounds')
+        await expect(caller.toUintRnd(val, ROUND), `${val}`).to.be.revertedWith('IntOutOfBounds')
+        await expect(caller.toUintRnd(val, CEIL), `${val}`).to.be.revertedWith('IntOutOfBounds')
       }
     })
   })
 
   describe('shiftl(Fix, int8)', () => {
-    it('mirrors the behavior of toFixWithShift', async () => {
+    it('mirrors the behavior of shiftl_toFix', async () => {
       const table = [
         [0, 10],
         [1, 5],
@@ -353,7 +368,7 @@ describe('In FixLib,', () => {
       }
     })
     for (const [k, v] of ROUNDING_MODES) {
-      it(`mirrors the behavior of toFixWithShift - ${v}`, async () => {
+      it(`mirrors the behavior of shiftl_toFix - ${v}`, async () => {
         const table = [
           [0, 10],
           [1, 5],
@@ -568,7 +583,6 @@ describe('In FixLib,', () => {
     [12, 13, 156],
   ]
   describe('mul', () => {
-    // TODO: with rounding
     it('correctly multiplies inside its range', async () => {
       const commutes = mulu_table.flatMap(([a, b, c]) => [
         [a, b, c],
@@ -587,7 +601,7 @@ describe('In FixLib,', () => {
     it.skip('rounds results as intended', async () => {
       expect(await caller.mul(fp('0.5e-9'), fp('1e-9'))).to.equal(fp('1e-18'))
 
-      // TODO There's a bug here
+      // TODO There's a bug here, unskip to trigger
       expect(await caller.mul(fp('-0.5e-9'), fp('1e-9'))).to.equal(fp('-1e-18'))
       expect(await caller.mul(fp('0.5e-9'), fp('-1e-9'))).to.equal(fp('-1e-18'))
       expect(await caller.mul(fp('-0.5e-9'), fp('-1e-9'))).to.equal(fp('1e-18'))
@@ -608,6 +622,24 @@ describe('In FixLib,', () => {
       for (const [a, b, c] of table) {
         expect(await caller.mul(a, b), `mul(${a}, ${b})`).to.equal(c)
         expect(await caller.mul(b, a), `mul(${b}, ${a})`).to.equal(c)
+      }
+    })
+    it('correctly rounds', async () => {
+      const table = mulu_table.flatMap(([a, b]) => [
+        [fp(a), fp(b)],
+        [fp(a), fp(-b)],
+        [fp(-a), fp(b)],
+        [fp(-a), fp(-b)],
+      ])
+
+      for (const [a, b] of table) {
+        const floor = fpFloor(a.mul(b)).div(SCALE)
+        const round = fpRound(a.mul(b)).div(SCALE)
+        const ceil = fpCeil(a.mul(b)).div(SCALE)
+        expect(await caller.mul(a, b), `mul((${a}, ${b})`).to.equal(floor)
+        expect(await caller.mulRnd(a, b, FLOOR), `mulRnd((${a}, ${b}, FLOOR)`).to.equal(floor)
+        expect(await caller.mulRnd(a, b, ROUND), `mulRnd((${a}, ${b}, ROUND)`).to.equal(round)
+        expect(await caller.mulRnd(a, b, CEIL), `mulRnd((${a}, ${b}, CEIL)`).to.equal(ceil)
       }
     })
     it('fails outside its range', async () => {
@@ -656,7 +688,6 @@ describe('In FixLib,', () => {
     })
   })
   describe('div', () => {
-    // TODO: with rounding
     it('correctly divides inside its range', async () => {
       // prettier-ignore
       const table: BigNumber[][] = [
@@ -687,16 +718,24 @@ describe('In FixLib,', () => {
         expect(await caller.div(a, b), `div((${a}, ${b})`).to.equal(c)
       }
     })
-    it('correctly truncates results (towards zero)', async () => {
+    it('correctly rounds', async () => {
       const table = [
-        [bn(5), fp(2), bn(2)],
-        [bn(-5), fp(2), bn(-2)],
-        [bn(29), fp(10), bn(2)],
-        [bn(-19), fp(10), bn(-1)],
+        [bn(5), fp(2)],
+        [bn(-5), fp(2)],
+        [bn(29), fp(10)],
+        [bn(-29), fp(10)],
+        [bn(19), fp(10)],
+        [bn(-19), fp(10)],
       ]
 
-      for (const [a, b, c] of table) {
-        expect(await caller.div(a, b), `div((${a}, ${b})`).to.equal(c)
+      for (const [a, b] of table) {
+        const floor = fpFloor(fp(a).mul(SCALE).div(b)).div(SCALE)
+        const round = fpRound(fp(a).mul(SCALE).div(b)).div(SCALE)
+        const ceil = fpCeil(fp(a).mul(SCALE).div(b)).div(SCALE)
+        expect(await caller.div(a, b), `div((${a}, ${b})`).to.equal(floor)
+        expect(await caller.divRnd(a, b, FLOOR), `div((${a}, ${b}, FLOOR)`).to.equal(floor)
+        expect(await caller.divRnd(a, b, ROUND), `div((${a}, ${b}, ROUND)`).to.equal(round)
+        expect(await caller.divRnd(a, b, CEIL), `div((${a}, ${b}, CEIL)`).to.equal(ceil)
       }
     })
     it('fails outside its range', async () => {
@@ -753,17 +792,24 @@ describe('In FixLib,', () => {
         expect(await caller.divu(a, b), `divu(${a}, ${b})`).to.equal(c)
       }
     })
-    it('correctly truncates results towards zero', async () => {
-      // prettier-ignore
+    it('correctly rounds', async () => {
       const table = [
-        [bn(5), bn(2), bn(2)],
-        [bn(-5), bn(2), bn(-2)],
-        [bn(29), bn(10), bn(2)],
-        [bn(-19), bn(10), bn(-1)]
+        [bn(5), bn(2)],
+        [bn(-5), bn(2)],
+        [bn(29), bn(10)],
+        [bn(-29), bn(10)],
+        [bn(19), bn(10)],
+        [bn(-19), bn(10)],
       ]
 
-      for (const [a, b, c] of table) {
-        expect(await caller.divu(a, b), `divu((${a}, ${b})`).to.equal(c)
+      for (const [a, b] of table) {
+        const floor = fpFloor(fp(a).div(b)).div(SCALE)
+        const round = fpRound(fp(a).div(b)).div(SCALE)
+        const ceil = fpCeil(fp(a).div(b)).div(SCALE)
+        expect(await caller.divu(a, b), `divu((${a}, ${b})`).to.equal(floor)
+        expect(await caller.divuRnd(a, b, FLOOR), `divuRnd((${a}, ${b}, FLOOR)`).to.equal(floor)
+        expect(await caller.divuRnd(a, b, ROUND), `divuRnd((${a}, ${b}, ROUND)`).to.equal(round)
+        expect(await caller.divuRnd(a, b, CEIL), `divuRnd((${a}, ${b}, CEIL)`).to.equal(ceil)
       }
     })
     it('fails to divide by zero', async () => {
@@ -773,70 +819,6 @@ describe('In FixLib,', () => {
 
       for (const x of table) {
         await expect(caller.divu(x, bn(0)), `divu(${x}, 0`).to.be.reverted
-      }
-    })
-  })
-  describe('divu with rounding', () => {
-    // TODO: make sensible with RoundingMode
-    it('correctly divides inside its range', async () => {
-      // prettier-ignore
-      const table = [
-        [fp(100), bn(20), fp(5)],
-        [fp(1.0), bn(25), fp(0.04)],
-        [bn(50), bn(50), bn(1)],
-        [fp(2), bn(2), fp(1)],
-        [fp(3), bn(2), fp(1.5)],
-        [fp(1), bn(1), fp(1)],
-        [bn(1), bn(1), bn(1)]
-      ]
-
-      for (const [a, b, c] of table) {
-        // TODO
-        expect(await caller.divuRnd(a, b, FLOOR), `divuRnd((${a}, ${b}, FLOOR})`).to.equal(c)
-      }
-    })
-    it('correctly divides at the extremes of its range', async () => {
-      // prettier-ignore
-      const table = [
-        [MAX_INT192, bn(1), MAX_INT192],
-        [MIN_INT192, bn(1), MIN_INT192],
-        [MIN_INT192, bn(2), MIN_INT192.div(2)]
-      ]
-      for (const [a, b, c] of table) {
-        // TODO
-        expect(await caller.divuRnd(a, b, FLOOR), `divuRnd(${a}, ${b}, FLOOR)`).to.equal(c)
-      }
-    })
-    it.skip('correctly rounds results towards the nearest output fix', async () => {
-      // prettier-ignore
-      const table = [
-        [bn(7), bn(3), bn(2)],
-        [bn(5), bn(3), bn(2)],
-        [bn(-5), bn(3), bn(-2)],
-        [bn(0), bn(1), bn(0)],
-        [bn(25), bn(10), bn(3)],
-        [bn(29), bn(10), bn(3)],
-        [bn(30), bn(10), bn(3)],
-        [bn(31), bn(10), bn(3)],
-        [bn(34), bn(10), bn(3)],
-        [bn(-25), bn(10), bn(-3)],
-        [bn(-29), bn(10), bn(-3)],
-        [bn(-30), bn(10), bn(-3)],
-        [bn(-31), bn(10), bn(-3)],
-        [bn(-34), bn(10), bn(-3)]
-      ]
-      for (const [a, b, c] of table) {
-        // TODO Looks like another bug here, this is doing 7 / 3 = 3
-        expect(await caller.divuRnd(a, b, ROUND), `divuRnd((${a}, ${b}, ROUND)`).to.equal(c)
-      }
-    })
-    it('fails to divide by zero', async () => {
-      // prettier-ignore
-      const table = [fp(1), fp(0), fp(-1), bn(1), bn(-1),
-                     fp(MAX_INT192), fp(MIN_INT192), bn(987162349587)]
-
-      for (const x of table) {
-        await expect(caller.divuRnd(x, bn(0), ROUND), `divuRnd(${x}, 0, ROUND)`).to.be.reverted
       }
     })
   })
