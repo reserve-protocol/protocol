@@ -66,7 +66,6 @@ describe('In FixLib,', () => {
     })
 
     it('fails on inputs outside its domain', async () => {
-      await expect(caller.toFix_(bn('-1'))).to.be.revertedWith('UIntOutOfBounds')
       await expect(caller.toFix_(MAX_FIX_INT.add(1))).to.be.revertedWith('UIntOutOfBounds')
       await expect(caller.toFix_(MAX_FIX_INT.mul(17))).to.be.revertedWith('UIntOutOfBounds')
     })
@@ -582,7 +581,7 @@ describe('In FixLib,', () => {
     [1.001, 999, 999.999],
     [12, 13, 156],
   ]
-  describe('mul', () => {
+  describe('mul + mulRnd', () => {
     it('correctly multiplies inside its range', async () => {
       const commutes = mulu_table.flatMap(([a, b, c]) => [
         [a, b, c],
@@ -687,7 +686,7 @@ describe('In FixLib,', () => {
       }
     })
   })
-  describe('div', () => {
+  describe('div + divRnd', () => {
     it('correctly divides inside its range', async () => {
       // prettier-ignore
       const table: BigNumber[][] = [
@@ -763,7 +762,7 @@ describe('In FixLib,', () => {
       }
     })
   })
-  describe('divu', () => {
+  describe('divu + divuRnd', () => {
     it('correctly divides inside its range', async () => {
       // prettier-ignore
       const table = [
@@ -974,12 +973,99 @@ describe('In FixLib,', () => {
     })
   })
 
-  describe('shiftl_toUint', () => {}) // TODO, plain and with rounding
-  describe('mulu_toUint', () => {}) // TODO, plain and with rounding
-  describe('mul_toUint', () => {}) // TODO, plain and with rounding
-  describe('mul_toInt', () => {}) // TODO, plain and with rounding
-  describe('muluDivu', () => {}) // TODO, plain and with rounding
-  describe('mulDiv', () => {}) // TODO, plain and with rounding
+  describe('shiftl_toUint + shiftl_toUintRnd', () => {
+    it.skip('handles rounding', async () => {
+      // [fix, shift]
+      const table = [
+        [fp(0), -1],
+        [fp(0), -19],
+        [fp(1), -1],
+        [fp(1), -19],
+        [fp('38326665875'), -10],
+        [MAX_INT192.sub(1), -1],
+        [MAX_INT192.sub(1), -19],
+        [MAX_INT192.sub(1), 0],
+        [MAX_INT192, -1],
+        [MAX_INT192, -19],
+      ]
+
+      for (const [x, s] of table) {
+        const shifted = (x as BigNumber).div(pow10(neg(bn(s))))
+        expect(await caller.shiftl_toUint(x, s), `shiftl_toUint(${x}, ${s})`).to.equal(
+          fpFloor(shifted).div(SCALE)
+        )
+        expect(
+          await caller.shiftl_toUintRnd(x, s, FLOOR),
+          `shiftl_toUintRnd(${x}, ${s}, FLOOR)`
+        ).to.equal(fpFloor(shifted).div(SCALE))
+        expect(
+          await caller.shiftl_toUintRnd(x, s, ROUND),
+          `shiftl_toUintRnd(${x}, ${s}, ROUND)`
+        ).to.equal(fpRound(shifted).div(SCALE))
+
+        // TODO I think there's a bug here
+        expect(
+          await caller.shiftl_toUintRnd(x, s, CEIL),
+          `shiftl_toUintRnd(${x}, ${s}, CEIL)`
+        ).to.equal(fpCeil(shifted).div(SCALE))
+      }
+    })
+  })
+  describe('mulu_toUint + mulu_toUintRnd', () => {
+    it('correctly rounds', async () => {
+      const table = mulu_table.map(([a, b]) => [fp(a), bn(b)])
+
+      for (const [a, b] of table) {
+        const floor = fpFloor(a.mul(b)).div(SCALE)
+        const round = fpRound(a.mul(b)).div(SCALE)
+        const ceil = fpCeil(a.mul(b)).div(SCALE)
+        expect(await caller.mulu_toUint(a, b), `mulu_toUint((${a}, ${b})`).to.equal(floor)
+        expect(
+          await caller.mulu_toUintRnd(a, b, FLOOR),
+          `mulu_toUintRnd((${a}, ${b}, FLOOR)`
+        ).to.equal(floor)
+        expect(
+          await caller.mulu_toUintRnd(a, b, ROUND),
+          `mulu_toUintRnd((${a}, ${b}, ROUND)`
+        ).to.equal(round)
+        expect(
+          await caller.mulu_toUintRnd(a, b, CEIL),
+          `mulu_toUintRnd((${a}, ${b}, CEIL)`
+        ).to.equal(ceil)
+      }
+    })
+  })
+  describe('mul_toUint + mul_toUintRnd', () => {
+    it('correctly rounds', async () => {
+      const table = mulu_table.flatMap(([a, b]) => [
+        [fp(a), fp(b)],
+        [fp(-a), fp(-b)],
+      ])
+
+      for (const [a, b] of table) {
+        const floor = fpFloor(a.mul(b).div(SCALE)).div(SCALE)
+        const round = fpRound(a.mul(b).div(SCALE)).div(SCALE)
+        const ceil = fpCeil(a.mul(b).div(SCALE)).div(SCALE)
+        expect(await caller.mul_toUint(a, b), `mul_toUint((${a}, ${b})`).to.equal(floor)
+        expect(
+          await caller.mul_toUintRnd(a, b, FLOOR),
+          `mul_toUintRnd((${a}, ${b}, FLOOR)`
+        ).to.equal(floor)
+        expect(
+          await caller.mul_toUintRnd(a, b, ROUND),
+          `mul_toUintRnd((${a}, ${b}, ROUND)`
+        ).to.equal(round)
+        expect(await caller.mul_toUintRnd(a, b, CEIL), `mul_toUintRnd((${a}, ${b}, CEIL)`).to.equal(
+          ceil
+        )
+      }
+    })
+  })
+
+  // Taylor: I don't feel super comfortable writing these next two tests so I'm leaving them to Matt
+  // TODO: handle ROUND + CEIL cases too
+  describe('muluDivu + muluDivuRnd', () => {})
+  describe('mulDiv + mulDivRnd', () => {})
 
   describe('fullMul', () => {
     const WORD = 2n ** 256n
@@ -1004,8 +1090,8 @@ describe('In FixLib,', () => {
     })
   })
 
-  describe('mulDiv256', () => {
-    // TODO: with rounding
+  describe('mulDiv256 + mulDiv256Rnd', () => {
+    // TODO: handle ROUND + CEIL cases
     const WORD = 2n ** 256n
     it('works for many values', async () => {
       await fc.assert(
@@ -1015,8 +1101,10 @@ describe('In FixLib,', () => {
           // so z is good if z in [x*y/WORD + 1, WORD) = x*y/WORD + 1 + [0, WORD-x*y/WORD-1)
           const z: bigint = 1n + (x * y) / WORD + (z_ % (WORD - (x * y) / WORD - 1n))
           const expectedResult: bigint = (x * y) / z
-          const result = await caller.mulDiv256_(bn(x), bn(y), bn(z))
-          expect(result.toBigInt()).to.equal(expectedResult)
+          const result1 = await caller.mulDiv256_(bn(x), bn(y), bn(z))
+          const result2 = await caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), FLOOR)
+          expect(result1.toBigInt()).to.equal(expectedResult)
+          expect(result2.toBigInt()).to.equal(expectedResult)
         }),
         {
           examples: [
