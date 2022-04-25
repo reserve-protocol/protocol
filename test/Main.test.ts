@@ -1245,18 +1245,17 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
   describeGas('Gas Reporting', () => {
     beforeEach(async () => {})
-
-    it('Poke', async () => {
-      // Poke with minimum data
-      await snapshotGasCost(main.poke())
-
-      // TODO: Check with complete gas fixture
-    })
-
     it('Asset Registry - Force Updates', async () => {
       // Basket handler can run forceUpdates
       await whileImpersonating(basketHandler.address, async (bhsigner) => {
         await snapshotGasCost(assetRegistry.connect(bhsigner).forceUpdates())
+      })
+    })
+
+    it('Asset Registry  - Erc20s - Grant Allowances', async () => {
+      // Rtoken can run grantAllowances - which uses assetRegistry.erc20s
+      await whileImpersonating(rToken.address, async (rtoksigner) => {
+        await snapshotGasCost(backingManager.connect(rtoksigner).grantAllowances())
       })
     })
 
