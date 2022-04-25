@@ -300,6 +300,7 @@ describe('In FixLib,', () => {
         expect(await caller.divrnd_u(a, b, CEIL), `divrnd_u((${a}, ${b}, CEIL)`).to.equal(ceil)
       }
     })
+  })
 
   describe('toUint + toUintRnd', () => {
     it('correctly rounds', async () => {
