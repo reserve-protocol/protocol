@@ -144,10 +144,6 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
 
-        IBasketHandler bh = main.basketHandler();
-        require(bh.fullyCapitalized(), "RToken uncapitalized");
-        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
-
         // Call state keepers
         main.poke();
         payoutRewards();

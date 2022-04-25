@@ -518,7 +518,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
-      it('Should not withdraw/unstake if not fully capitalized', async () => {
+      it('Should not complete withdrawal if not fully capitalized', async () => {
         // Need to issue some RTokens to handle fully/not fully capitalized
         await token0.connect(owner).mint(addr1.address, initialBal)
         await token1.connect(owner).mint(addr1.address, initialBal)
@@ -541,7 +541,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Move forward past stakingWithdrawalDelay
         await advanceTime(stkWithdrawalDelay + 1)
 
-        // Save backing tokens
         const erc20s = await facade.basketTokens()
 
         // Set not fully capitalized by changing basket
@@ -551,11 +550,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
-          'RToken uncapitalized'
-        )
-
-        // Also you cannot unstake in this situation
-        await expect(stRSR.connect(addr2).unstake(amount2)).to.be.revertedWith(
           'RToken uncapitalized'
         )
 
@@ -576,7 +570,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
-      it('Should not withdraw/unstake if basket defaulted', async () => {
+      it('Should not complete withdrawal if basket defaulted', async () => {
         // Move forward past stakingWithdrawalDelay
         await advanceTime(stkWithdrawalDelay + 1)
 
@@ -590,9 +584,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
           'basket defaulted'
         )
-
-        // Also you cannot unstake in this situation
-        await expect(stRSR.connect(addr2).unstake(amount2)).to.be.revertedWith('basket defaulted')
 
         // Nothing completed
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
