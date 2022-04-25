@@ -65,8 +65,8 @@ interface IStRSR is IERC20PermitUpgradeable, IERC20MetadataUpgradeable, ICompone
     /// Emitted if all the RSR in the staking pool is seized and all balances are reset to zero.
     event AllBalancesReset(uint256 indexed newEra);
 
-    event UnstakingDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
-    event RewardPeriodSet(uint256 indexed oldVal, uint256 indexed newVal);
+    event UnstakingDelaySet(uint32 indexed oldVal, uint32 indexed newVal);
+    event RewardPeriodSet(uint32 indexed oldVal, uint32 indexed newVal);
     event RewardRatioSet(int192 indexed oldVal, int192 indexed newVal);
 
     // Initialization
@@ -74,8 +74,8 @@ interface IStRSR is IERC20PermitUpgradeable, IERC20MetadataUpgradeable, ICompone
         IMain main_,
         string memory name_,
         string memory symbol_,
-        uint256 unstakingDelay_,
-        uint256 rewardPeriod_,
+        uint32 unstakingDelay_,
+        uint32 rewardPeriod_,
         int192 rewardRatio_
     ) external;
 
@@ -108,17 +108,17 @@ interface IStRSR is IERC20PermitUpgradeable, IERC20MetadataUpgradeable, ICompone
 }
 
 interface TestIStRSR is IStRSR {
-    function rewardPeriod() external view returns (uint256);
+    function rewardPeriod() external view returns (uint32);
 
-    function setRewardPeriod(uint256) external;
+    function setRewardPeriod(uint32) external;
 
     function rewardRatio() external view returns (int192);
 
     function setRewardRatio(int192) external;
 
-    function unstakingDelay() external view returns (uint256);
+    function unstakingDelay() external view returns (uint32);
 
-    function setUnstakingDelay(uint256) external;
+    function setUnstakingDelay(uint32) external;
 
     function increaseAllowance(address, uint256) external returns (bool);
 
