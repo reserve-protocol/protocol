@@ -1062,34 +1062,10 @@ describe('In FixLib,', () => {
     })
   })
 
-  // Taylor: I don't feel super comfortable writing these next two tests so I'm leaving them to Matt
-  // TODO: handle ROUND + CEIL cases too
+  // Taylor: I don't feel comfortable writing the fast-check tests for ROUND/CEIL so I'm leaving them to Matt
+  // TODO: use fast-check for these first two-cases, and add ROUND/CEIL
   describe('muluDivu + muluDivuRnd', () => {})
   describe('mulDiv + mulDivRnd', () => {})
-
-  describe('fullMul', () => {
-    const WORD = 2n ** 256n
-    it(`works for many values`, async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), async (x, y) => {
-          const loExpected = (x * y) % WORD
-          const hiExpected = (x * y) / WORD
-          const [loResult, hiResult] = await caller.fullMul_(BigNumber.from(x), BigNumber.from(y))
-          expect(hiResult).to.equal(hiExpected)
-          expect(loResult).to.equal(loExpected)
-        }),
-        {
-          examples: [
-            [0n, 0n],
-            [0n, 1n],
-            [1n, WORD - 1n],
-            [WORD - 1n, WORD - 1n],
-          ],
-        }
-      )
-    })
-  })
-
   describe('mulDiv256 + mulDiv256Rnd', () => {
     // TODO: handle ROUND + CEIL cases
     const WORD = 2n ** 256n
@@ -1110,6 +1086,29 @@ describe('In FixLib,', () => {
           examples: [
             [1n, 1n, 1n],
             [WORD - 1n, WORD - 1n, WORD - 1n],
+          ],
+        }
+      )
+    })
+  })
+
+  describe('fullMul', () => {
+    const WORD = 2n ** 256n
+    it(`works for many values`, async () => {
+      await fc.assert(
+        fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), async (x, y) => {
+          const loExpected = (x * y) % WORD
+          const hiExpected = (x * y) / WORD
+          const [loResult, hiResult] = await caller.fullMul_(BigNumber.from(x), BigNumber.from(y))
+          expect(hiResult).to.equal(hiExpected)
+          expect(loResult).to.equal(loExpected)
+        }),
+        {
+          examples: [
+            [0n, 0n],
+            [0n, 1n],
+            [1n, WORD - 1n],
+            [WORD - 1n, WORD - 1n],
           ],
         }
       )
