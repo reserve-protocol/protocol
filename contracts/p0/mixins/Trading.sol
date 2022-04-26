@@ -21,7 +21,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     uint256 public tradesStart;
 
     // The latest end time for any trade in `trades`.
-    uint256 private latestEndtime;
+    uint32 private latestEndtime;
 
     // === Governance params ===
     int192 public maxTradeSlippage; // {%}
