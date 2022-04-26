@@ -264,8 +264,9 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     /// @custom:action
     /// TODO confirm `notPaused` is unnecessary
     function redeem(uint256 amount) external {
+        address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
-        require(balanceOf(_msgSender()) >= amount, "not enough RToken");
+        require(balanceOf(redeemer) >= amount, "not enough RToken");
 
         // Call collective state keepers
         main.assetRegistry().forceUpdates();
@@ -274,7 +275,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         // {BU} = {BU} * {qRTok} / {qRTok}
         int192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
         assert(baskets.lte(basketsNeeded));
-        emit Redemption(_msgSender(), amount, baskets);
+        emit Redemption(redeemer, amount, baskets);
 
         (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
             baskets,
@@ -285,7 +286,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         int192 prorate = toFix(amount).divu(totalSupply());
 
         // Accept and burn RToken
-        _burn(_msgSender(), amount);
+        _burn(redeemer, amount);
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
         basketsNeeded = basketsNeeded.minus(baskets);
@@ -303,7 +304,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             // Send withdrawal
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                 address(backingMgr),
-                _msgSender(),
+                redeemer,
                 amounts[i]
             );
         }
