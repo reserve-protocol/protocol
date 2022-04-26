@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`RTokenP1 contract Gas Reporting Issuance 1`] = `1100345`;
+exports[`RTokenP1 contract Gas Reporting Issuance 1`] = `1097022`;
 
 exports[`RTokenP1 contract Gas Reporting Transfer 1`] = `56475`;
 

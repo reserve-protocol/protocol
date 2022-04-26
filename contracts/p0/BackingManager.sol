@@ -19,12 +19,12 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     using FixLib for int192;
     using SafeERC20 for IERC20;
 
-    uint256 public tradingDelay; // {s} how long to wait until resuming trading after switching
+    uint32 public tradingDelay; // {s} how long to wait until resuming trading after switching
     int192 public backingBuffer; // {%} how much extra backing collateral to keep
 
     function init(
         IMain main_,
-        uint256 tradingDelay_,
+        uint32 tradingDelay_,
         int192 backingBuffer_,
         int192 maxTradeSlippage_,
         int192 dustAmount_
@@ -258,7 +258,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     // === Setters ===
 
-    function setTradingDelay(uint256 val) external onlyOwner {
+    function setTradingDelay(uint32 val) external onlyOwner {
         emit TradingDelaySet(tradingDelay, val);
         tradingDelay = val;
     }

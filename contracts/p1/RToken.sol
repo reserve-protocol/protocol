@@ -79,11 +79,11 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
     function init(
         IMain main_,
-        string memory name_,
-        string memory symbol_,
-        string memory constitutionURI_,
+        string calldata name_,
+        string calldata symbol_,
+        string calldata constitutionURI_,
         int192 issuanceRate_
-    ) public initializer {
+    ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);

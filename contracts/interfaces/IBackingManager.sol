@@ -13,13 +13,13 @@ import "./ITrading.sol";
  *   - If already capitalized, excess assets are transferred to RevenueTraders.
  */
 interface IBackingManager is IComponent, ITrading {
-    event TradingDelaySet(uint256 indexed oldVal, uint256 indexed newVal);
+    event TradingDelaySet(uint32 indexed oldVal, uint32 indexed newVal);
     event BackingBufferSet(int192 indexed oldVal, int192 indexed newVal);
 
     // Initialization
     function init(
         IMain main_,
-        uint256 tradingDelay_,
+        uint32 tradingDelay_,
         int192 backingBuffer_,
         int192 maxTradeSlippage_,
         int192 dustAmount_
@@ -35,11 +35,11 @@ interface IBackingManager is IComponent, ITrading {
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {
-    function tradingDelay() external view returns (uint256);
+    function tradingDelay() external view returns (uint32);
 
     function backingBuffer() external view returns (int192);
 
-    function setTradingDelay(uint256 val) external;
+    function setTradingDelay(uint32 val) external;
 
     function setBackingBuffer(int192 val) external;
 }

@@ -22,6 +22,7 @@ import {
   TestIStRSR,
   USDCMock,
 } from '../typechain'
+import { whileImpersonating } from './utils/impersonation'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -3794,6 +3795,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       // First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrades())
       await snapshotGasCost(backingManager.manageFunds())
+    })
+
+    it('Backing Manager - Grant Allowances', async () => {
+      // Rtoken can run grantAllowances - which uses assetRegistry.erc20s
+      await whileImpersonating(rToken.address, async (rtoksigner) => {
+        await snapshotGasCost(backingManager.connect(rtoksigner).grantAllowances())
+      })
     })
   })
 })

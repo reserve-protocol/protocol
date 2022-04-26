@@ -35,7 +35,7 @@ import "contracts/fuzz/Utils.sol";
 contract MockBackingManager is IBackingManager, ComponentMock {
     function init(
         IMain,
-        uint256,
+        uint32,
         int192,
         int192,
         int192
