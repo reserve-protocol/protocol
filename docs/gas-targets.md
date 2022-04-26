@@ -7,12 +7,13 @@ This doc serves to classify the protocol functions and define acceptable gas tar
   - Target
   - Final Measurement [min, max, average/common]
 
-## User Profiles
+## Classes
 
-- Governance
-- Market Makers - Defi Integration
-- Market Makers - Trading
-- Individuals
+- Refreshers/Keepers (e.g. forceUpdates)
+- Economic stabilization actions by whales (issuance, redemption, launching/settling auctions)
+- Individual user actions (transfers, approvals, staking/unstaking)
+- Governance actions (register assets, basket switching, configuring prime basket)
+- Deployment/Upgrade
 
 ## Interfaces
 
@@ -23,7 +24,7 @@ This doc serves to classify the protocol functions and define acceptable gas tar
 
 ### Collateral
 
-- `forceUpdates` (Governance) **Review**
+- `forceUpdates` (Many) **Review**
   - Baseline:
     - AavePricedFiatCollateral [23396, 67362, 57742]
     - ATokenFiatCollateral [23418, 76460, 50521]
