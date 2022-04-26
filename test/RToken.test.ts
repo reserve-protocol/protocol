@@ -1332,5 +1332,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Transfer back
       await snapshotGasCost(rToken.connect(addr2).transfer(addr1.address, issueAmount))
     })
+
+    it.only('Issue', async () => {
+      // Issue rTokens twice
+      await snapshotGasCost(rToken.connect(addr1).issue(issueAmount))
+      await snapshotGasCost(rToken.connect(addr1).issue(issueAmount))
+    })
   })
 })

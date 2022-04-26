@@ -2,6 +2,10 @@
 
 exports[`RTokenP1 contract Gas Reporting Issuance 1`] = `1100345`;
 
+exports[`RTokenP1 contract Gas Reporting Issue 1`] = `1097033`;
+
+exports[`RTokenP1 contract Gas Reporting Issue 2`] = `837488`;
+
 exports[`RTokenP1 contract Gas Reporting Transfer 1`] = `56475`;
 
 exports[`RTokenP1 contract Gas Reporting Transfer 2`] = `34575`;
