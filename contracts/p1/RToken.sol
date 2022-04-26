@@ -121,26 +121,46 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         (address[] memory erc20s, uint256[] memory deposits) = bh.quote(amtBaskets, CEIL);
 
+        IssueQueue storage queue = issueQueues[issuer];
+        assert(queue.basketNonce == basketNonce || (queue.left == 0 && queue.right == 0));
+
+        // Add amtRToken's worth of issuance delay to allVestAt
+        int192 vestingEnd = whenFinished(amtRToken);
+
+        // Bypass queue entirely if the issuance can fit in this block
+        if (vestingEnd.lte(toFix(block.number)) && queue.left == queue.right) {
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                IERC20Upgradeable(erc20s[i]).safeTransferFrom(
+                    issuer,
+                    address(main.backingManager()),
+                    deposits[i]
+                );
+            }
+
+            // Complete issuance now
+            _mint(issuer, amtRToken);
+            int192 newBasketsNeeded = basketsNeeded.plus(amtBaskets);
+            emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
+            basketsNeeded = newBasketsNeeded;
+
+            // Note: We don't need to update the prev queue entry because queue.left = queue.right
+            emit IssuancesCompleted(issuer, queue.left, queue.right); // TODO: Breaks Explorer?
+            return;
+        }
+
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
         }
 
-        // ==== Enqueue the issuance ====
-        IssueQueue storage queue = issueQueues[issuer];
-        assert(queue.left == queue.right || queue.basketNonce == basketNonce);
-
-        // Add amtRToken's worth of issuance delay to allVestAt
-        int192 vestingEnd = whenFinished(amtRToken);
-
         // Push issuance onto queue
-        IssueItem storage curr = (
-            queue.items.length == queue.right ? queue.items.push() : queue.items[queue.right]
-        );
+        IssueItem storage curr = queue.items.push();
         curr.when = vestingEnd;
         curr.amtRToken = amtRToken;
         curr.amtBaskets = amtBaskets;
         curr.deposits = deposits;
+
+        // Accumulate
         if (queue.right > 0) {
             IssueItem storage prev = queue.items[queue.right - 1];
             curr.amtRToken = prev.amtRToken + amtRToken;
@@ -157,16 +177,13 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         emit IssuanceStarted(
             issuer,
-            queue.right,
+            queue.right - 1,
             amtRToken,
             amtBaskets,
             erc20s,
             deposits,
             vestingEnd
         );
-
-        // Vest immediately if the vesting fits into this block.
-        if (curr.when.lte(toFix(block.number))) vestUpTo(issuer, queue.right);
     }
 
     /// Add amtRToken's worth of issuance delay to allVestAt, and return the resulting finish time.
@@ -221,6 +238,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         return right;
     }
 
+    /// TODO revisit
     /// Cancel some vesting issuance(s)
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id
