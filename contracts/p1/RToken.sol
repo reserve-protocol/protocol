@@ -272,9 +272,11 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         main.assetRegistry().forceUpdates();
         main.furnace().melt();
 
+        int192 basketsNeeded_ = basketsNeeded; // gas optimization
+
         // {BU} = {BU} * {qRTok} / {qRTok}
-        int192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
-        assert(baskets.lte(basketsNeeded));
+        int192 baskets = basketsNeeded_.muluDivu(amount, totalSupply());
+        assert(baskets.lte(basketsNeeded_));
         emit Redemption(redeemer, amount, baskets);
 
         (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
@@ -288,8 +290,8 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         // Accept and burn RToken
         _burn(redeemer, amount);
 
-        emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
-        basketsNeeded = basketsNeeded.minus(baskets);
+        basketsNeeded = basketsNeeded_.minus(baskets);
+        emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
 
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
