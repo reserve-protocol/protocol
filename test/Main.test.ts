@@ -421,11 +421,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         oldVal: ZERO_ADDRESS,
         newVal: await newMain.broker(),
       })
-
-      expectInIndirectReceipt(receipt, newMain.interface, 'RSRSet', {
-        oldVal: ZERO_ADDRESS,
-        newVal: await newMain.rsr(),
-      })
     })
   })
 
@@ -666,27 +661,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check value was updated
       expect(await main.broker()).to.equal(other.address)
-    })
-
-    it('Should allow to set RSR if Owner', async () => {
-      // Check existing value
-      expect(await main.rsr()).to.equal(rsr.address)
-
-      // If not owner cannot update - use mock address
-      await expect(main.connect(other).setRSR(other.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
-
-      // Check value did not change
-      expect(await main.rsr()).to.equal(rsr.address)
-
-      // Update with owner
-      await expect(main.connect(owner).setRSR(other.address))
-        .to.emit(main, 'RSRSet')
-        .withArgs(rsr.address, other.address)
-
-      // Check value was updated
-      expect(await main.rsr()).to.equal(other.address)
     })
 
     it('Should allow to set StRSR if Owner', async () => {
