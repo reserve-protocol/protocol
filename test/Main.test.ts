@@ -605,18 +605,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Cannot grant allowance if paused
       await main.connect(owner).pause()
-      await expect(backingManager.connect(owner).grantAllowances()).to.be.revertedWith('paused')
+      await expect(backingManager.connect(owner).grantRTokenAllowances()).to.be.revertedWith(
+        'paused'
+      )
       await main.connect(owner).unpause()
 
       // Cannot grant allowance if not RToken
       // Attempt to run with another account
-      await expect(backingManager.connect(owner).grantAllowances()).to.be.revertedWith(
+      await expect(backingManager.connect(owner).grantRTokenAllowances()).to.be.revertedWith(
         'RToken only'
       )
 
       // Run with RToken
       await whileImpersonating(rToken.address, async (rtoksigner) => {
-        await backingManager.connect(rtoksigner).grantAllowances()
+        await backingManager.connect(rtoksigner).grantRTokenAllowances()
       })
 
       // Check allowances were updated
@@ -1230,9 +1232,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Asset Registry  - Erc20s - Grant Allowances', async () => {
-      // Rtoken can run grantAllowances - which uses assetRegistry.erc20s
+      // Rtoken can run grantRTokenAllowances - which uses assetRegistry.erc20s
       await whileImpersonating(rToken.address, async (rtoksigner) => {
-        await snapshotGasCost(backingManager.connect(rtoksigner).grantAllowances())
+        await snapshotGasCost(backingManager.connect(rtoksigner).grantRTokenAllowances())
       })
     })
 

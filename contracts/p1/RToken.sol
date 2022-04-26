@@ -295,7 +295,6 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
-        backingMgr.grantAllowances(); // TODO optimize
 
         for (uint256 i = 0; i < erc20s.length; i++) {
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
