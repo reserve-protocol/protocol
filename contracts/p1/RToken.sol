@@ -262,7 +262,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
-    /// TODO confirm `notPaused` is unnecessary
+    /// TODO confirm `notPaused` is unnecessary with Matt
     function redeem(uint256 amount) external {
         address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
@@ -295,12 +295,11 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
-
         for (uint256 i = 0; i < erc20s.length; i++) {
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
-            uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingMgr));
+
             // {qTok} = {1} * {qTok}
-            uint256 prorata = prorate.mulu_toUint(bal);
+            uint256 prorata = prorate.mulu_toUint(IERC20(erc20s[i]).balanceOf(address(backingMgr)));
             amounts[i] = Math.min(amounts[i], prorata);
             // Send withdrawal
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
