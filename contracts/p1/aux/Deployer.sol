@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "contracts/plugins/assets/AavePricedAsset.sol";
 import "contracts/plugins/assets/CompoundPricedAsset.sol";
-import "contracts/plugins/assets/RTokenAsset.sol";
-import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
-import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
 import "contracts/p0/aux/Facade.sol";
 import "contracts/interfaces/IAsset.sol";
@@ -30,6 +28,8 @@ import "contracts/p1/Main.sol";
  * @notice The factory contract that deploys the entire P1 system.
  */
 contract DeployerP1 is IDeployer {
+    using Clones for address;
+
     string public constant ENS = "reserveprotocol.eth";
     IERC20Metadata public immutable rsr;
     IERC20Metadata public immutable comp;
@@ -135,14 +135,31 @@ contract DeployerP1 is IDeployer {
         });
 
         IAsset[] memory assets = new IAsset[](4);
-        assets[0] = new RTokenAsset(
+        assets[0] = IAsset(address(implementations.rTokenAsset).clone());
+        RTokenAsset(address(assets[0])).init(
             IERC20Metadata(address(components.rToken)),
             params.maxTradeVolume,
             main
         );
-        assets[1] = new AavePricedAsset(rsr, params.maxTradeVolume, comptroller, aaveLendingPool);
-        assets[2] = new AavePricedAsset(aave, params.maxTradeVolume, comptroller, aaveLendingPool);
-        assets[3] = new CompoundPricedAsset(comp, params.maxTradeVolume, comptroller);
+
+        assets[1] = IAsset(address(implementations.aavePricedAsset).clone());
+        AavePricedAsset(address(assets[1])).init(
+            rsr,
+            params.maxTradeVolume,
+            comptroller,
+            aaveLendingPool
+        );
+
+        assets[2] = IAsset(address(implementations.aavePricedAsset).clone());
+        AavePricedAsset(address(assets[2])).init(
+            aave,
+            params.maxTradeVolume,
+            comptroller,
+            aaveLendingPool
+        );
+
+        assets[3] = IAsset(address(implementations.compoundPricedAsset).clone());
+        CompoundPricedAsset(address(assets[3])).init(comp, params.maxTradeVolume, comptroller);
 
         // Init Main
         main.init(components, rsr);

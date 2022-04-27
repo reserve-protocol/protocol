@@ -7,7 +7,6 @@ import "contracts/plugins/assets/CompoundPricedAsset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
 import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
 import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
-import "contracts/plugins/assets/RTokenAsset.sol";
 import "contracts/p0/aux/Facade.sol";
 import "contracts/p0/AssetRegistry.sol";
 import "contracts/p0/BackingManager.sol";
@@ -90,8 +89,11 @@ contract DeployerP0 is IDeployer {
             params.maxTradeVolume,
             main
         );
+
         assets[1] = new AavePricedAsset(rsr, params.maxTradeVolume, comptroller, aaveLendingPool);
+
         assets[2] = new AavePricedAsset(aave, params.maxTradeVolume, comptroller, aaveLendingPool);
+
         assets[3] = new CompoundPricedAsset(comp, params.maxTradeVolume, comptroller);
 
         // Init Main
