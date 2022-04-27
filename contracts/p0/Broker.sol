@@ -28,7 +28,7 @@ contract BrokerP0 is ComponentP0, IBroker {
         IMain main_,
         IGnosis gnosis_,
         // solhint-disable-next-line no-unused-vars
-        ITrade tradeImplementation_, // Added for Interface compatibility with P1
+        ITrade, // Added for Interface compatibility with P1
         uint32 auctionLength_
     ) public initializer {
         __Component_init(main_);
