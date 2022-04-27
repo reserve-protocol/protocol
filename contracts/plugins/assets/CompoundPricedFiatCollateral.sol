@@ -6,26 +6,33 @@ import "contracts/plugins/assets/abstract/Collateral.sol";
 import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 
 contract CompoundPricedFiatCollateral is CompoundOracleMixin, Collateral {
-    // solhint-disable no-empty-blocks
     constructor(
         IERC20Metadata erc20_,
         int192 maxTradeVolume_,
         int192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IComptroller comptroller_
-    )
-        Collateral(
+    ) {
+        init(erc20_, maxTradeVolume_, defaultThreshold_, delayUntilDefault_, comptroller_);
+    }
+
+    function init(
+        IERC20Metadata erc20_,
+        int192 maxTradeVolume_,
+        int192 defaultThreshold_,
+        uint256 delayUntilDefault_,
+        IComptroller comptroller_
+    ) public initializer {
+        __Collateral_init(
             erc20_,
             maxTradeVolume_,
             defaultThreshold_,
             delayUntilDefault_,
             erc20_,
             bytes32(bytes("USD"))
-        )
-        CompoundOracleMixin(comptroller_)
-    {}
-
-    // solhint-enable no-empty-blocks
+        );
+        __CompoundOracleMixin_init(comptroller_);
+    }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (int192) {
