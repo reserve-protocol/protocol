@@ -1327,7 +1327,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await snapshotGasCost(rToken.connect(addr1).issue(issueAmount))
     })
 
-    it.only('Redemption', async () => {
+    it('Redemption', async () => {
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount.div(2))
       await snapshotGasCost(rToken.connect(addr1).redeem(issueAmount.div(2)))

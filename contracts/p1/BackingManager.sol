@@ -40,7 +40,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // Give RToken max allowance over a registered token
     function grantRTokenAllowance(IERC20 erc20) external {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
-        IERC20Upgradeable(address(erc20)).safeApprove(address(main.rToken()), type(uint256).max);
+        erc20.approve(address(main.rToken()), type(uint256).max);
     }
 
     /// Manage backing funds: maintain the overall backing policy
