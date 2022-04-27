@@ -769,24 +769,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Mine block
       await advanceBlocks(1)
 
-      // Check mintings
-      // First minting
-      const currentBlockNumber = await getLatestBlockNumber()
-      const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      await expectIssuance(addr1.address, 0, {
-        amount: issueAmount,
-        basketNonce: initialBasketNonce,
-        blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
-        processed: true,
-      })
-
-      // Second minting
-      await expectIssuance(addr1.address, 1, {
-        amount: issueAmount,
-        basketNonce: initialBasketNonce,
-        blockAvailableAt: fp(currentBlockNumber - 1).add(fp('1')),
-        processed: true,
-      })
       // Check both slow mintings are confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.mul(2))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -833,8 +815,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
 
-      // Process issuance 2
-      await rToken.vest(addr1.address, 2)
+      // Process issuance #2
+      await rToken.vest(addr1.address, (await rToken.endIdForVest(addr1.address)).add(1))
 
       // Check second mintings is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
@@ -1331,6 +1313,24 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Transfer back
       await snapshotGasCost(rToken.connect(addr2).transfer(addr1.address, issueAmount))
+    })
+
+    it('Issuance: within block', async () => {
+      // Issue rTokens twice within block
+      await snapshotGasCost(rToken.connect(addr1).issue(issueAmount.div(2)))
+      await snapshotGasCost(rToken.connect(addr1).issue(issueAmount.div(2)))
+    })
+
+    it('Issuance: across blocks', async () => {
+      // Issue rTokens twice across blocks
+      await snapshotGasCost(rToken.connect(addr1).issue(issueAmount))
+      await snapshotGasCost(rToken.connect(addr1).issue(issueAmount))
+    })
+
+    it('Redemption', async () => {
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount.div(2))
+      await snapshotGasCost(rToken.connect(addr1).redeem(issueAmount.div(2)))
     })
   })
 })

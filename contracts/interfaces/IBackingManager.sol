@@ -25,9 +25,9 @@ interface IBackingManager is IComponent, ITrading {
         int192 dustAmount_
     ) external;
 
-    // Give RToken max allowances over all registered tokens
+    // Give RToken max allowance over a registered token
     /// @custom:refresher
-    function grantAllowances() external;
+    function grantRTokenAllowance(IERC20) external;
 
     /// Manage backing funds: maintain the overall backing policy
     /// @custom:action

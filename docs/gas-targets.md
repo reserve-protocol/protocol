@@ -61,7 +61,7 @@ This doc serves to classify the protocol functions and define acceptable gas tar
   - Calls also `forceUpdates()` and `settleTrades`
   - Baseline: [423404, 5719246, 2049536]
 
-- `grantAllowances` (Market Makers) **Review**
+- `grantRTokenAllowance` (Market Makers) **Review**
 
   - Baseline: [362467]
   - Can be done for each specific asset only when required?
@@ -159,7 +159,7 @@ This doc serves to classify the protocol functions and define acceptable gas tar
 
   - Baseline: [746759, 934759, 794981]
   - Calls `forceUpdates()` and `melt`
-  - Calls `grantAllowances()`
+  - Calls `grantRTokenAllowances()`
 
 - `cancel` (Individuals/ Market Makers) **Review**
 

@@ -203,7 +203,6 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
-        backingMgr.grantAllowances();
 
         for (uint256 i = 0; i < erc20s.length; i++) {
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
