@@ -26,7 +26,7 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
     function init(
         IMain main_,
         IGnosis gnosis_,
-        ITrade tradeImplementation_,
+        ITrade,
         uint32 auctionLength_
     ) public initializer {
         __Component_init(main_);
