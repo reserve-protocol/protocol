@@ -548,7 +548,7 @@ function mulDiv256(
     if (rounding == CEIL) {
         if (mm > 0) result += 1;
     } else {
-        if (mm >= (z >> 1)) result += 1;
+        if (mm > ((z-1)/2)) result += 1; // z should be z-1
     }
     return result;
 }
