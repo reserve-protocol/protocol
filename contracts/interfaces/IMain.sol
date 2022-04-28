@@ -133,12 +133,7 @@ interface IMain is IPausable {
     /// @custom:governance
     function setBroker(IBroker broker) external;
 
-    event RSRSet(IERC20 indexed oldVal, IERC20 indexed newVal);
-
     function rsr() external view returns (IERC20);
-
-    /// @custom:governance
-    function setRSR(IERC20 rsr) external;
 
     // === Initialization/ownership ===
 

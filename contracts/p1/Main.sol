@@ -18,6 +18,8 @@ import "contracts/p0/mixins/Pausable.sol";
 contract MainP1 is Initializable, ContextUpgradeable, Pausable, UUPSUpgradeable, IMain {
     using FixLib for int192;
 
+    IERC20 public rsr;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     // solhint-disable-next-line no-empty-blocks
     constructor() initializer {}
@@ -46,7 +48,7 @@ contract MainP1 is Initializable, ContextUpgradeable, Pausable, UUPSUpgradeable,
         setBroker(components.broker);
         setStRSR(components.stRSR);
         setRToken(components.rToken);
-        setRSR(rsr_);
+        rsr = rsr_;
 
         emit Initialized();
     }
@@ -121,15 +123,6 @@ contract MainP1 is Initializable, ContextUpgradeable, Pausable, UUPSUpgradeable,
     function setBroker(IBroker val) public onlyOwner {
         emit BrokerSet(broker, val);
         broker = val;
-    }
-
-    // === Non-components ===
-
-    IERC20 public rsr;
-
-    function setRSR(IERC20 val) public onlyOwner {
-        emit RSRSet(rsr, val);
-        rsr = val;
     }
 
     // === Upgradeability ===

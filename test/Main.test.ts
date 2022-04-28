@@ -421,11 +421,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         oldVal: ZERO_ADDRESS,
         newVal: await newMain.broker(),
       })
-
-      expectInIndirectReceipt(receipt, newMain.interface, 'RSRSet', {
-        oldVal: ZERO_ADDRESS,
-        newVal: await newMain.rsr(),
-      })
     })
   })
 
@@ -599,36 +594,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should perform validations on for granting allowances', async () => {
-      // Check allowances for some of the tokens in Asset Registry
-      expect(await token0.allowance(backingManager.address, rToken.address)).to.equal(0)
-      expect(await token1.allowance(backingManager.address, rToken.address)).to.equal(0)
-      expect(await token2.allowance(backingManager.address, rToken.address)).to.equal(0)
-      expect(await token3.allowance(backingManager.address, rToken.address)).to.equal(0)
-      expect(await compToken.allowance(backingManager.address, rToken.address)).to.equal(0)
-      expect(await aaveToken.allowance(backingManager.address, rToken.address)).to.equal(0)
-      expect(await rsr.allowance(backingManager.address, rToken.address)).to.equal(0)
-
-      // Cannot grant allowance if paused
-      await main.connect(owner).pause()
-      await expect(backingManager.connect(owner).grantAllowances()).to.be.revertedWith('paused')
-      await main.connect(owner).unpause()
-
-      // Cannot grant allowance if not RToken
-      // Attempt to run with another account
-      await expect(backingManager.connect(owner).grantAllowances()).to.be.revertedWith(
-        'RToken only'
-      )
-
-      // Run with RToken
-      await whileImpersonating(rToken.address, async (rtoksigner) => {
-        await backingManager.connect(rtoksigner).grantAllowances()
-      })
-
-      // Check allowances were updated
-      expect(await token0.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
-      expect(await token1.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
-      expect(await token2.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
-      expect(await token3.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+      // These should start with allowance
       expect(await compToken.allowance(backingManager.address, rToken.address)).to.equal(
         MAX_UINT256
       )
@@ -636,6 +602,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         MAX_UINT256
       )
       expect(await rsr.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+      expect(await rToken.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+      expect(await token0.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+      expect(await token1.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+      expect(await token2.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+      expect(await token3.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+
+      // Cannot grant allowance token not registered
+      await expect(
+        backingManager.connect(addr1).grantRTokenAllowance(erc20s[5].address)
+      ).to.be.revertedWith('erc20 unregistered')
     })
 
     it('Should return backing tokens', async () => {
@@ -666,27 +642,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check value was updated
       expect(await main.broker()).to.equal(other.address)
-    })
-
-    it('Should allow to set RSR if Owner', async () => {
-      // Check existing value
-      expect(await main.rsr()).to.equal(rsr.address)
-
-      // If not owner cannot update - use mock address
-      await expect(main.connect(other).setRSR(other.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
-
-      // Check value did not change
-      expect(await main.rsr()).to.equal(rsr.address)
-
-      // Update with owner
-      await expect(main.connect(owner).setRSR(other.address))
-        .to.emit(main, 'RSRSet')
-        .withArgs(rsr.address, other.address)
-
-      // Check value was updated
-      expect(await main.rsr()).to.equal(other.address)
     })
 
     it('Should allow to set StRSR if Owner', async () => {
@@ -1252,13 +1207,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Basket handler can run forceUpdates
       await whileImpersonating(basketHandler.address, async (bhsigner) => {
         await snapshotGasCost(assetRegistry.connect(bhsigner).forceUpdates())
-      })
-    })
-
-    it('Asset Registry  - Erc20s - Grant Allowances', async () => {
-      // Rtoken can run grantAllowances - which uses assetRegistry.erc20s
-      await whileImpersonating(rToken.address, async (rtoksigner) => {
-        await snapshotGasCost(backingManager.connect(rtoksigner).grantAllowances())
       })
     })
 

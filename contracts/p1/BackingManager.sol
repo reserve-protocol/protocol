@@ -37,21 +37,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         backingBuffer = backingBuffer_;
     }
 
-    // Give RToken max allowances over all registered tokens
-    function grantAllowances() external notPaused {
-        require(_msgSender() == address(main.rToken()), "RToken only");
-        IERC20[] memory erc20s = main.assetRegistry().erc20s();
-        uint256 length = erc20s.length;
-        for (uint256 i = 0; i < length; ++i) {
-            uint256 initAllowance = erc20s[i].allowance(address(this), address(main.rToken()));
-            uint256 increaseAmt = type(uint256).max - initAllowance;
-            if (increaseAmt > 0) {
-                IERC20Upgradeable(address(erc20s[i])).safeIncreaseAllowance(
-                    address(main.rToken()),
-                    increaseAmt
-                );
-            }
-        }
+    // Give RToken max allowance over a registered token
+    function grantRTokenAllowance(IERC20 erc20) external {
+        require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
+        erc20.approve(address(main.rToken()), type(uint256).max);
     }
 
     /// Manage backing funds: maintain the overall backing policy

@@ -17,6 +17,8 @@ import "contracts/p0/mixins/Pausable.sol";
 contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
     using FixLib for int192;
 
+    IERC20 public rsr;
+
     function poke() external virtual notPaused {
         // We think these are totally order-independent.
         basketHandler.ensureBasket();
@@ -25,6 +27,12 @@ contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
         rTokenTrader.settleTrades();
         backingManager.settleTrades();
         stRSR.payoutRewards();
+
+        // Grant RToken allowances
+        IERC20[] memory erc20s = assetRegistry.erc20s();
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            backingManager.grantRTokenAllowance(erc20s[i]);
+        }
     }
 
     function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
@@ -45,7 +53,7 @@ contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
         setBroker(components.broker);
         setStRSR(components.stRSR);
         setRToken(components.rToken);
-        setRSR(rsr_);
+        rsr = rsr_;
 
         emit Initialized();
     }
@@ -120,14 +128,5 @@ contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
     function setBroker(IBroker val) public onlyOwner {
         emit BrokerSet(broker, val);
         broker = val;
-    }
-
-    // === Non-components ===
-
-    IERC20 public rsr;
-
-    function setRSR(IERC20 val) public onlyOwner {
-        emit RSRSet(rsr, val);
-        rsr = val;
     }
 }

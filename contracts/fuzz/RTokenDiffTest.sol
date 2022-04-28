@@ -41,7 +41,7 @@ contract MockBackingManager is IBackingManager, ComponentMock {
         int192
     ) external {}
 
-    function grantAllowances() external {}
+    function grantRTokenAllowance(IERC20) external {}
 
     function manageFunds() external {}
 
