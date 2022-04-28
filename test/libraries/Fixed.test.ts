@@ -1084,32 +1084,64 @@ describe('In FixLib,', () => {
     })
   })
 
-  // Taylor: I don't feel comfortable writing the fast-check tests for ROUND/CEIL so I'm leaving them to Matt
+  // If seed is an arbitrary (possibly large) uint, return an aribtrary uint in [min, max)
+  const inRange = (min: bigint, max: bigint, seed: bigint) => min + (seed % (max - min))
+
   // TODO: use fast-check for these first two-cases, and add ROUND/CEIL
   describe('muluDivu + muluDivuRnd', () => {})
   describe('mulDiv + mulDivRnd', () => {})
+
   describe('mulDiv256 + mulDiv256Rnd', () => {
-    // TODO: handle ROUND + CEIL cases
     const WORD = 2n ** 256n
-    it('works for many values', async () => {
+    it('mulDiv256(uint, uint, FLOOR) works for many values', async () => {
       await fc.assert(
-        fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), fc.bigUintN(256), async (x, y, z_) => {
-          // Ensure the result fits inside a uint256
-          // z is good if x*y/z < WORD  <=> x*y/WORD < z
-          // so z is good if z in [x*y/WORD + 1, WORD) = x*y/WORD + 1 + [0, WORD-x*y/WORD-1)
-          const z: bigint = 1n + (x * y) / WORD + (z_ % (WORD - (x * y) / WORD - 1n))
-          const expectedResult: bigint = (x * y) / z
-          const result1 = await caller.mulDiv256_(bn(x), bn(y), bn(z))
-          const result2 = await caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), FLOOR)
-          expect(result1.toBigInt()).to.equal(expectedResult)
-          expect(result2.toBigInt()).to.equal(expectedResult)
-        }),
-        {
-          examples: [
-            [1n, 1n, 1n],
-            [WORD - 1n, WORD - 1n, WORD - 1n],
-          ],
-        }
+        fc.asyncProperty(
+          fc.bigUintN(256),
+          fc.bigUintN(256),
+          fc.bigUintN(256),
+          async (x, y, seed) => {
+            // Ensure the result fits inside a uint256
+            const z = inRange(1n + (x * y + WORD - 1n) / WORD, WORD, seed)
+            const expectedResult: bigint = (x * y) / z
+
+            const result = await caller.mulDiv256_(bn(x), bn(y), bn(z))
+            expect(result.toBigInt()).to.equal(expectedResult)
+
+            const resultFloor = await caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), FLOOR)
+            expect(resultFloor.toBigInt()).to.equal(expectedResult)
+          }
+        )
+      )
+    })
+    it('mulDiv256(uint, uint, CEIL) works for many values', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.bigUintN(256),
+          fc.bigUintN(256),
+          fc.bigUintN(256),
+          async (x, y, seed) => {
+            let z = inRange((x * y + WORD - 2n) / (WORD - 1n), WORD, seed)
+            if (z == 0n) z = 1n
+            const expectedResult: BigNumber = div(bn(x * y), bn(z), CEIL)
+            const resultCeil = await caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), CEIL)
+            expect(resultCeil).to.equal(expectedResult)
+          }
+        )
+      )
+    })
+    it('mulDiv256(uint, uint, ROUND) works for many values', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.bigUintN(256),
+          fc.bigUintN(256),
+          fc.bigUintN(256),
+          async (x, y, seed) => {
+            let z = inRange(1n + (2n * (x * y + WORD - 1n)) / (2n * WORD - 1n), WORD, seed)
+            const expectedResult: BigNumber = div(bn(x * y), bn(z), ROUND)
+            const resultCeil = await caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), ROUND)
+            expect(resultCeil).to.equal(expectedResult)
+          }
+        )
       )
     })
   })
