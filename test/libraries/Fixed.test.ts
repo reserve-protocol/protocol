@@ -4,7 +4,7 @@ import { ethers } from 'hardhat'
 import fc from 'fast-check'
 
 import { BN_SCALE_FACTOR } from '../../common/constants'
-import { bn, fp, pow10, fpCeil, fpFloor, fpRound, shortString } from '../../common/numbers'
+import { bn, fp, pow10, fpCeil, fpFloor, fpRound, shortString, div } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
 
 enum RoundingMode {
@@ -995,9 +995,9 @@ describe('In FixLib,', () => {
   })
 
   describe('shiftl_toUint + shiftl_toUintRnd', () => {
-    it.skip('handles rounding', async () => {
+    describe('handles rounding', () => {
       // [fix, shift]
-      const table = [
+      const table: [BigNumber, number][] = [
         [fp(0), -1],
         [fp(0), -19],
         [fp(1), -1],
@@ -1010,25 +1010,26 @@ describe('In FixLib,', () => {
         [MAX_INT192, -19],
       ]
 
-      for (const [x, s] of table) {
-        const shifted = (x as BigNumber).div(pow10(neg(bn(s))))
-        expect(await caller.shiftl_toUint(x, s), `shiftl_toUint(${x}, ${s})`).to.equal(
-          fpFloor(shifted).div(SCALE)
-        )
-        expect(
-          await caller.shiftl_toUintRnd(x, s, FLOOR),
-          `shiftl_toUintRnd(${x}, ${s}, FLOOR)`
-        ).to.equal(fpFloor(shifted).div(SCALE))
-        expect(
-          await caller.shiftl_toUintRnd(x, s, ROUND),
-          `shiftl_toUintRnd(${x}, ${s}, ROUND)`
-        ).to.equal(fpRound(shifted).div(SCALE))
+      function expected(x: BigNumber, s: number, rnd: RoundingMode) {
+        const leftDigits = s - 18
+        const coeff = pow10(bn(leftDigits).abs())
+        if (leftDigits >= 0) return x.mul(coeff)
+        else return div(x, coeff, rnd)
+      }
 
-        // TODO I think there's a bug here
-        expect(
-          await caller.shiftl_toUintRnd(x, s, CEIL),
-          `shiftl_toUintRnd(${x}, ${s}, CEIL)`
-        ).to.equal(fpCeil(shifted).div(SCALE))
+      for (const [x, s] of table) {
+        it(`shiftl_toUint(${x}, ${s})`, async () => {
+          expect(await caller.shiftl_toUint(x, s)).to.equal(expected(x, s, FLOOR))
+        })
+        it(`shiftl_toUintRnd(${x}, ${s}, FLOOR)`, async () => {
+          expect(await caller.shiftl_toUintRnd(x, s, FLOOR)).to.equal(expected(x, s, FLOOR))
+        })
+        it(`shiftl_toUintRnd(${x}, ${s}, ROUND)`, async () => {
+          expect(await caller.shiftl_toUintRnd(x, s, ROUND)).to.equal(expected(x, s, ROUND))
+        })
+        it(`shiftl_toUintRnd(${x}, ${s}, CEIL)`, async () => {
+          expect(await caller.shiftl_toUintRnd(x, s, CEIL)).to.equal(expected(x, s, CEIL))
+        })
       }
     })
   })
