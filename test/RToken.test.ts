@@ -1295,11 +1295,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token3.connect(addr1).approve(rToken.address, initialBal)
     })
 
-    it('Issuance', async () => {
-      // Issue rTokens
-      await snapshotGasCost(rToken.connect(addr1).issue(issueAmount))
-    })
-
     it('Transfer', async () => {
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
