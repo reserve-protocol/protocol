@@ -150,12 +150,4 @@ contract FixedCallerMock {
         return fullMul(x, y);
     }
 
-    // ================ internal operations, for debugging
-    function _divrndi(int256 n, int256 d, RoundingMode rounding) public pure returns (int256) {
-        return _divrnd(n, d, rounding);
-    }
-    function _divrndu(uint256 n, uint256 d, RoundingMode rounding) public pure returns (uint256) {
-        return _divrnd(n, d, rounding);
-    }
-
 }

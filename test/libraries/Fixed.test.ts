@@ -282,6 +282,20 @@ describe('In FixLib,', () => {
         expect(await caller.divrnd_(a, b, CEIL), `divrnd_((${a}, ${b}, CEIL)`).to.equal(ceil)
       }
     })
+    describe('does what I expect with signs', () => {
+      function item(n: string, d: string, rnd: RoundingMode, result: string) {
+        it(`_divrnd(${n},${d},${RoundingMode[rnd]}) = ${result}`, async () => {
+          expect(await caller.divrnd_(bn(n), bn(d), rnd)).to.equal(bn(result))
+        })
+      }
+      item('1e18', '-1', RoundingMode.FLOOR, '-1e18')
+      item('1e18', '-1', RoundingMode.ROUND, '-1e18')
+      item('1e18', '-1', RoundingMode.CEIL, '-1e18')
+      item('1e18', '-2', RoundingMode.FLOOR, '-0.5e18')
+      item('1e18', '-2', RoundingMode.ROUND, '-0.5e18')
+      item('1e18', '-2', RoundingMode.CEIL, '-0.5e18')
+      item('-5e17', '1e18', RoundingMode.ROUND, '-1')
+    })
   })
   describe('_divrnd(uint, uint, RoundingMode)', () => {
     it('correctly rounds', async () => {
@@ -606,8 +620,8 @@ describe('In FixLib,', () => {
 
     mulTest('1e-9', '-1e-9', '-1e-18')
     mulTest('0.5e-9', '1e-9', '1e-18')
-    mulTest('-0.5e-9', '1e-9', '-1e-18')
-    mulTest('0.5e-9', '-1e-9', '-1e-18')
+    mulTest('-0.5e-9', '1e-9', '-1e-18') // TODO: failing case
+    mulTest('0.5e-9', '-1e-9', '-1e-18') // TODO: failing case
     mulTest('-0.5e-9', '-1e-9', '1e-18')
     mulTest('0.49e-9', '1e-9', '0')
     mulTest('-0.49e-9', '1e-9', '0')
@@ -656,21 +670,7 @@ describe('In FixLib,', () => {
     })
   })
 
-  describe('utility function _divrnd(int,int)', () => {
-    describe('does what I expect with signs', () => {
-      function item(n: string, d: string, rnd: RoundingMode, result: string) {
-        it(`_divrnd(${n},${d},${RoundingMode[rnd]}) = ${result}`, async () => {
-          expect(await caller._divrndi(bn(n), bn(d), rnd)).to.equal(bn(result))
-        })
-      }
-      item('1e18', '-1', RoundingMode.FLOOR, '-1e18')
-      item('1e18', '-1', RoundingMode.ROUND, '-1e18')
-      item('1e18', '-1', RoundingMode.CEIL, '-1e18')
-      item('1e18', '-2', RoundingMode.FLOOR, '-0.5e18')
-      item('1e18', '-2', RoundingMode.ROUND, '-0.5e18')
-      item('1e18', '-2', RoundingMode.CEIL, '-0.5e18')
-    })
-  })
+  describe('utility function _divrnd(int,int)', () => {})
 
   describe('mulu', () => {
     it('correctly multiplies inside its range', async () => {

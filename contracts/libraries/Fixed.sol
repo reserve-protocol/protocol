@@ -187,15 +187,15 @@ function _divrnd(
     RoundingMode rounding
 ) pure returns (int256) {
     int256 result = numerator / divisor;
-    if (rounding == FLOOR) return result;
+    if (rounding == FLOOR || numerator == 0) return result;
 
     if (rounding == CEIL) {
         if (numerator % divisor != 0) {
-            result += signOf(result);
+            result += signOf(numerator) * signOf(divisor);
         }
     } else {
         if (abs(numerator % divisor) > (abs(divisor) - 1) / 2) {
-            result += signOf(result);
+            result += signOf(numerator) * signOf(divisor);
         }
     }
     return result;
