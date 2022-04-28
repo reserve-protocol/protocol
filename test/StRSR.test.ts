@@ -1511,8 +1511,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     ]: BigNumber[]) => {
       // === Setup ===
 
-      ;({ main, rToken, stRSR, rsr, backingManager } = await loadFixture(defaultFixture))
-
       // addr1 is the staker; addr2 is the withdrawer
 
       // addr1 - staker
@@ -1632,6 +1630,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     const cases = cartesianProduct(...dimensions)
 
     const numCases = cases.length.toString()
+
     cases.forEach((params, index) => {
       // if (rewardPeriod * 2 > unstakingDelay)
       if (params[5].mul(2).lte(params[4])) {
