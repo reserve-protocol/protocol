@@ -1,43 +1,21 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Recapitalization - P1 Gas Reporting Backing Manager - Grant Allowances 1`] = `360973`;
-
-<<<<<<< HEAD
 exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `30513`;
-=======
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `2735567`;
->>>>>>> master
 
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `2734255`;
+exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `2738046`;
 
-<<<<<<< HEAD
 exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 3`] = `43127`;
-=======
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 4`] = `594481`;
->>>>>>> master
 
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 4`] = `594615`;
+exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 4`] = `595750`;
 
-<<<<<<< HEAD
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 5`] = `194921`;
-=======
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 6`] = `2776993`;
->>>>>>> master
+exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 5`] = `194938`;
 
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 6`] = `2775681`;
+exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 6`] = `2779401`;
 
-<<<<<<< HEAD
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 7`] = `177844`;
-=======
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 8`] = `4124043`;
->>>>>>> master
+exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 7`] = `177861`;
 
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 8`] = `4122973`;
+exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 8`] = `4128262`;
 
-<<<<<<< HEAD
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 9`] = `197775`;
+exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 9`] = `197788`;
 
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 10`] = `1268224`;
-=======
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 10`] = `1270024`;
->>>>>>> master
+exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 10`] = `1269526`;

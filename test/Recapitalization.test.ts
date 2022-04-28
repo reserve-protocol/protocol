@@ -3796,12 +3796,5 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(backingManager.settleTrades())
       await snapshotGasCost(backingManager.manageFunds())
     })
-
-    it('Backing Manager - Grant Allowances', async () => {
-      // Rtoken can run grantAllowances - which uses assetRegistry.erc20s
-      await whileImpersonating(rToken.address, async (rtoksigner) => {
-        await snapshotGasCost(backingManager.connect(rtoksigner).grantAllowances())
-      })
-    })
   })
 })
