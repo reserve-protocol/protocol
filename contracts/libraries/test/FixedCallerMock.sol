@@ -138,7 +138,7 @@ contract FixedCallerMock {
         return FixLib.mulDiv(x, y, z, rnd);
     }
 
-    // ================ wide muldiv operations...
+    // ================ wide muldiv operations
     function mulDiv256_(uint256 x, uint256 y, uint256 z) public pure returns (uint256) {
         return mulDiv256(x, y, z);
     }
@@ -149,4 +149,13 @@ contract FixedCallerMock {
     function fullMul_(uint256 x, uint256 y) public pure returns (uint256 l, uint256 h) {
         return fullMul(x, y);
     }
+
+    // ================ internal operations, for debugging
+    function _divrndi(int256 n, int256 d, RoundingMode rounding) public pure returns (int256) {
+        return _divrnd(n, d, rounding);
+    }
+    function _divrndu(uint256 n, uint256 d, RoundingMode rounding) public pure returns (uint256) {
+        return _divrnd(n, d, rounding);
+    }
+
 }

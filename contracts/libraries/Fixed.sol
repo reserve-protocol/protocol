@@ -194,7 +194,7 @@ function _divrnd(
             result += signOf(result);
         }
     } else {
-        if (abs(numerator % divisor) >= (abs(divisor) / 2)) {
+        if (abs(numerator % divisor) > (abs(divisor) - 1) / 2) {
             result += signOf(result);
         }
     }
@@ -214,7 +214,7 @@ function _divrnd(
     if (rounding == FLOOR) return result;
 
     if (rounding == ROUND) {
-        if (numerator % divisor >= divisor >> 1) {
+        if (numerator % divisor > (divisor - 1) / 2) {
             result++;
         }
     } else {

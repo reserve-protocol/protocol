@@ -4,7 +4,7 @@ import { ethers } from 'hardhat'
 import fc from 'fast-check'
 
 import { BN_SCALE_FACTOR } from '../../common/constants'
-import { bn, fp, pow10, fpCeil, fpFloor, fpRound } from '../../common/numbers'
+import { bn, fp, pow10, fpCeil, fpFloor, fpRound, shortString } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
 
 enum RoundingMode {
@@ -597,19 +597,24 @@ describe('In FixLib,', () => {
         expect(await caller.mul(fp(a), fp(b)), `mul(fp(${a}), fp(${b}))`).to.equal(fp(c))
       }
     })
-    it.skip('rounds results as intended', async () => {
-      expect(await caller.mul(fp('0.5e-9'), fp('1e-9'))).to.equal(fp('1e-18'))
 
-      // TODO There's a bug here, unskip to trigger
-      expect(await caller.mul(fp('-0.5e-9'), fp('1e-9'))).to.equal(fp('-1e-18'))
-      expect(await caller.mul(fp('0.5e-9'), fp('-1e-9'))).to.equal(fp('-1e-18'))
-      expect(await caller.mul(fp('-0.5e-9'), fp('-1e-9'))).to.equal(fp('1e-18'))
-      expect(await caller.mul(fp('0.49e-9'), fp('1e-9'))).to.equal(fp('0'))
-      expect(await caller.mul(fp('-0.49e-9'), fp('1e-9'))).to.equal(fp('0'))
-      expect(await caller.mul(fp('0.49e-9'), fp('-1e-9'))).to.equal(fp('0'))
-      expect(await caller.mul(fp('-0.49e-9'), fp('-1e-9'))).to.equal(fp('0'))
-      expect(await caller.mul(fp('1.5e-9'), fp('4.5e-8'))).to.equal(fp('68e-18'))
-    })
+    function mulTest(x: string, y: string, result: string) {
+      it(`mul(${x}, ${y}) == ${result}`, async () => {
+        expect(await caller.mul(fp(x), fp(y))).to.equal(fp(result))
+      })
+    }
+
+    mulTest('1e-9', '-1e-9', '-1e-18')
+    mulTest('0.5e-9', '1e-9', '1e-18')
+    mulTest('-0.5e-9', '1e-9', '-1e-18')
+    mulTest('0.5e-9', '-1e-9', '-1e-18')
+    mulTest('-0.5e-9', '-1e-9', '1e-18')
+    mulTest('0.49e-9', '1e-9', '0')
+    mulTest('-0.49e-9', '1e-9', '0')
+    mulTest('0.49e-9', '-1e-9', '0')
+    mulTest('-0.49e-9', '-1e-9', '0')
+    mulTest('1.5e-9', '4.5e-8', '68e-18')
+
     it('correctly multiplies at the extremes of its range', async () => {
       const table = [
         [MAX_INT192, fp(1), MAX_INT192],
@@ -648,6 +653,22 @@ describe('In FixLib,', () => {
         .reverted
       await expect(caller.mul(fp(bn(2).pow(81).mul(-1)), fp(bn(2).pow(81))), 'mul(-2^81, 2^81)').to
         .be.reverted
+    })
+  })
+
+  describe('utility function _divrnd(int,int)', () => {
+    describe('does what I expect with signs', () => {
+      function item(n: string, d: string, rnd: RoundingMode, result: string) {
+        it(`_divrnd(${n},${d},${RoundingMode[rnd]}) = ${result}`, async () => {
+          expect(await caller._divrndi(bn(n), bn(d), rnd)).to.equal(bn(result))
+        })
+      }
+      item('1e18', '-1', RoundingMode.FLOOR, '-1e18')
+      item('1e18', '-1', RoundingMode.ROUND, '-1e18')
+      item('1e18', '-1', RoundingMode.CEIL, '-1e18')
+      item('1e18', '-2', RoundingMode.FLOOR, '-0.5e18')
+      item('1e18', '-2', RoundingMode.ROUND, '-0.5e18')
+      item('1e18', '-2', RoundingMode.CEIL, '-0.5e18')
     })
   })
 
