@@ -3661,11 +3661,9 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
   describeGas('Gas Reporting', () => {
     let issueAmount: BigNumber
-    let initialQuotes: BigNumber[]
 
     beforeEach(async function () {
       issueAmount = bn('100e18')
-      initialQuotes = [bn('0.25e18'), bn('0.25e6'), bn('0.25e18'), bn('0.25e8')]
 
       // Set backing buffer and max slippage to zero for simplification
       await backingManager.connect(owner).setMaxTradeSlippage(0)
