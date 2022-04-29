@@ -3661,6 +3661,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
   describeGas('Gas Reporting', () => {
     let issueAmount: BigNumber
+    let initialQuotes: BigNumber[]
 
     beforeEach(async function () {
       issueAmount = bn('100e18')
