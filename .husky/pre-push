@@ -2,6 +2,6 @@
 . "$(dirname "$0")/_/husky.sh"
 
 yarn lint
-# yarn eslint
+yarn eslint
 yarn compile
 yarn test:fast
