@@ -50,6 +50,8 @@ describe('In FixLib,', () => {
 
   const int192s: BigNumber[] = [MIN_INT192, ...negative_int192s, bn(0), ...positive_int192s]
 
+  const int192Pairs: [BigNumber, BigNumber][] = int192s.slice(1).map((val, i) => [int192s[i], val])
+
   // This is before() instead of beforeEach():
   // All of these functions are pure, so the contract state can be reused.
   before(async () => {
@@ -212,16 +214,14 @@ describe('In FixLib,', () => {
   })
   describe('fixMin', () => {
     it('correctly evaluates min', async () => {
-      for (const a of int192s)
-        for (const b of int192s)
-          expect(await caller.fixMin_(a, b), `fixMin(${a}, ${b})`).to.equal(a.lt(b) ? a : b)
+      for (const [a, b] of int192Pairs)
+        expect(await caller.fixMin_(a, b), `fixMin(${a}, ${b})`).to.equal(a.lt(b) ? a : b)
     })
   })
   describe('fixMax', () => {
     it('correctly evaluates max', async () => {
-      for (const a of int192s)
-        for (const b of int192s)
-          expect(await caller.fixMax_(a, b), `fixMax(${a}, ${b})`).to.equal(a.gt(b) ? a : b)
+      for (const [a, b] of int192Pairs)
+        expect(await caller.fixMax_(a, b), `fixMax(${a}, ${b})`).to.equal(a.gt(b) ? a : b)
     })
   })
   describe('signOf', () => {
@@ -905,44 +905,46 @@ describe('In FixLib,', () => {
 
   describe('lt', () => {
     it('correctly evaluates <', async () => {
-      for (const a of int192s)
-        for (const b of int192s) {
-          expect(await caller.lt(a, b), `lt(${a}, ${b})`).to.equal(a.lt(b))
-        }
+      for (const [a, b] of int192Pairs) {
+        expect(await caller.lt(a, b), `lt(${a}, ${b})`).to.equal(a.lt(b))
+      }
     })
   })
   describe('lte', () => {
     it('correctly evaluates <=', async () => {
-      for (const a of int192s)
-        for (const b of int192s) {
-          expect(await caller.lte(a, b), `lte(${a}, ${b})`).to.equal(a.lte(b))
-        }
+      for (const [a, b] of int192Pairs) {
+        expect(await caller.lte(a, b), `lte(${a}, ${b})`).to.equal(a.lte(b))
+      }
     })
   })
   describe('gt', () => {
     it('correctly evaluates >', async () => {
-      for (const a of int192s)
-        for (const b of int192s) expect(await caller.gt(a, b), `gt(${a}, ${b})`).to.equal(a.gt(b))
+      for (const [a, b] of int192Pairs) {
+        expect(await caller.gt(a, b), `lte(${a}, ${b})`).to.equal(a.gt(b))
+      }
     })
   })
   describe('gte', () => {
     it('correctly evaluates >=', async () => {
-      for (const a of int192s)
-        for (const b of int192s)
-          expect(await caller.gte(a, b), `gte(${a}, ${b})`).to.equal(a.gte(b))
+      for (const [a, b] of int192Pairs) {
+        expect(await caller.gte(a, b), `gte(${a}, ${b})`).to.equal(a.gte(b))
+      }
     })
   })
   describe('eq', () => {
     it('correctly evaluates ==', async () => {
-      for (const a of int192s)
-        for (const b of int192s) expect(await caller.eq(a, b), `eq(${a}, ${b})`).to.equal(a.eq(b))
+      for (const [a, b] of int192Pairs) {
+        expect(await caller.eq(a, b), `lte(${a}, ${b})`).to.equal(a.eq(b))
+        expect(await caller.eq(a, a), `lte(${a}, ${b})`).to.equal(true)
+      }
     })
   })
   describe('neq', () => {
     it('correctly evaluates !=', async () => {
-      for (const a of int192s)
-        for (const b of int192s)
-          expect(await caller.neq(a, b), `neq(${a}, ${b})`).to.equal(!a.eq(b))
+      for (const [a, b] of int192Pairs) {
+        expect(await caller.neq(a, b), `neq(${a}, ${b})`).to.equal(!a.eq(b))
+        expect(await caller.neq(a, a), `neq(${a}, ${b})`).to.equal(false)
+      }
     })
   })
 

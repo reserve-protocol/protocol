@@ -166,7 +166,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     await token3.connect(owner).mint(addr2.address, initialBal)
   })
 
-  describe('Deployment', () => {
+  describe('Deployment #fast', () => {
     it('Should setup Main correctly', async () => {
       // Owner/Pauser
       expect(await main.paused()).to.equal(false)
@@ -262,7 +262,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Initialization', () => {
+  describe('Initialization #fast', () => {
     let components: Parameters<typeof main.init>[0]
 
     beforeEach(async () => {
@@ -424,7 +424,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Pause/Unpause', () => {
+  describe('Pause/Unpause #fast', () => {
     it('Should Pause/Unpause for Pauser and Owner', async () => {
       // Set different Pauser
       await main.connect(owner).setPauser(addr1.address)
@@ -500,7 +500,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Configuration/State', () => {
+  describe('Configuration/State #fast', () => {
     it('Should allow to update tradingDelay if Owner', async () => {
       const newValue: BigNumber = bn('360')
 

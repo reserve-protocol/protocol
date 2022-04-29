@@ -169,7 +169,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
   })
 
-  describe('Deployment', () => {
+  describe('Deployment #fast', () => {
     it('Should setup initial addresses and values correctly', async () => {
       expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
       expect(await stRSR.balanceOf(owner.address)).to.equal(0)
@@ -204,7 +204,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Configuration / State', () => {
+  describe('Configuration / State #fast', () => {
     it('Should allow to update unstakingDelay if Owner and perform validations', async () => {
       // Setup a new value
       const newUnstakingDelay: BigNumber = config.rewardPeriod.mul(2).add(1000)
@@ -876,7 +876,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Remove RSR', () => {
+  describe('Remove RSR #fast', () => {
     it('Should not allow to remove RSR if caller is not part of Main', async () => {
       const amount: BigNumber = bn('1e18')
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
@@ -1236,7 +1236,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Transfers', () => {
+  describe('Transfers #fast', () => {
     let amount: BigNumber
 
     beforeEach(async function () {
