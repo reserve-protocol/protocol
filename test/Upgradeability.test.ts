@@ -16,7 +16,6 @@ import {
   DistributorP1,
   DistributorP1V2,
   ERC20Mock,
-  FacadeP0,
   FurnaceP1,
   FurnaceP1V2,
   GnosisMock,
@@ -34,7 +33,6 @@ import {
   TestIAssetRegistry,
   TestIBackingManager,
   TestIBroker,
-  TestIDeployer,
   TestIDistributor,
   TestIFurnace,
   TestIMain,
@@ -52,9 +50,6 @@ const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.ski
 describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
 
-  // Deployer contract
-  let deployer: TestIDeployer
-
   // Config
   let config: IConfig
 
@@ -65,7 +60,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   // Market / Facade
   let gnosis: GnosisMock
   let broker: TestIBroker
-  let facade: FacadeP0
 
   // Core contracts
   let rToken: TestIRToken
@@ -98,7 +92,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let wallet: Wallet
 
   before('create fixture loader', async () => {
-    ;[wallet] = await (ethers as any).getSigners()
+    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
   })
 
@@ -110,7 +104,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       rsr,
       rsrAsset,
       config,
-      deployer,
       main,
       assetRegistry,
       backingManager,
@@ -122,7 +115,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       stRSR,
       broker,
       gnosis,
-      facade,
       rsrTrader,
       rTokenTrader,
     } = await loadFixture(defaultFixture))

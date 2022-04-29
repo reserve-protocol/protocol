@@ -6,47 +6,36 @@ type CoingeckoDataPoints = {
   total_volumes: [number, number][]
 }
 
+const API = 'https://api.coingecko.com/api/v3'
+
 const getCoingeckoDataPoints = async (
   coin: string,
   currency: string,
   from: number,
   to: number
-): Promise<CoingeckoDataPoints> => {
-  const coingeckoDatapoints = (
+): Promise<CoingeckoDataPoints> =>
+  (
     await axios.get(
-      `https://api.coingecko.com/api/v3/coins/${coin}/market_chart/range?vs_currency=${currency}&from=${from}&to=${to}`
+      `${API}/coins/${coin}/market_chart/range?vs_currency=${currency}&from=${from}&to=${to}`
     )
-  ).data as CoingeckoDataPoints
-  return coingeckoDatapoints
-}
+  ).data
 
-const getCoingeckoSimplePrice = async (coin: string, currency: string): Promise<number> => {
-  const getCoingeckoSimplePrice = (
-    await axios.get(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=${currency}`
-    )
-  ).data as number
-  return getCoingeckoSimplePrice
-}
+export const getCoingeckoSimplePrice = async (coin: string, currency: string): Promise<number> =>
+  (await axios.get(`${API}/simple/price?ids=${coin}&vs_currencies=${currency}`)).data as number
 
-const getCoingeckoSimpleTokenPrice = async (
+export const getCoingeckoSimpleTokenPrice = async (
   tokenAddr: string,
   currency: string
-): Promise<number> => {
-  const getCoingeckoSimpleTokenPrice = (
+): Promise<number> =>
+  (
     await axios.get(
-      `https://api.coingecko.com/api/v3/simple/token_price/ethereum?contract_addresses=${tokenAddr}&vs_currencies=${currency}`
+      `${API}/simple/token_price/ethereum?contract_addresses=${tokenAddr}&vs_currencies=${currency}`
     )
   ).data as number
-  return getCoingeckoSimpleTokenPrice
-}
 
 export const getLastPrice = async (
   coin: string,
   currency: string,
   from: number,
   to: number
-): Promise<number> => {
-  const coingeckoDataPoints = await getCoingeckoDataPoints(coin, currency, from, to)
-  return coingeckoDataPoints.prices[0][1]
-}
+): Promise<number> => (await getCoingeckoDataPoints(coin, currency, from, to)).prices[0][1]

@@ -191,7 +191,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     await token3.connect(owner).mint(addr2.address, initialBal)
   })
 
-  describe('Deployment', () => {
+  describe('Deployment #fast', () => {
     it('Deployment should setup RToken correctly', async () => {
       expect(await rToken.name()).to.equal('RTKN RToken')
       expect(await rToken.symbol()).to.equal('RTKN')
@@ -204,7 +204,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Configuration', () => {
+  describe('Configuration #fast', () => {
     it('Should allow to set basketsNeeded only from BackingManager', async () => {
       // Check initial status
       expect(await rToken.basketsNeeded()).to.equal(0)
@@ -949,12 +949,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Redeem', function () {
-    it('Should revert if zero amount', async function () {
+    it('Should revert if zero amount #fast', async function () {
       const zero: BigNumber = bn('0')
       await expect(rToken.connect(addr1).redeem(zero)).to.be.revertedWith('Cannot redeem zero')
     })
 
-    it('Should revert if no balance of RToken', async function () {
+    it('Should revert if no balance of RToken #fast', async function () {
       const redeemAmount: BigNumber = bn('20000e18')
 
       await expect(rToken.connect(addr1).redeem(redeemAmount)).to.be.revertedWith(
@@ -1054,7 +1054,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Melt/Mint', () => {
+  describe('Melt/Mint #fast', () => {
     const issueAmount: BigNumber = bn('100e18')
 
     beforeEach(async () => {
@@ -1107,7 +1107,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       )
     })
   })
-  context(`RToken`, () => {
+  context(`Extreme Values`, () => {
     // makeColl: Deploy and register a new constant-price collateral
     async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {
       const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
