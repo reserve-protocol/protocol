@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Contract, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, ZERO_ADDRESS, MAX_UINT256 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
@@ -1202,7 +1202,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describeGas('Gas Reporting', () => {
-    beforeEach(async () => {})
     it('Asset Registry - Force Updates', async () => {
       // Basket handler can run forceUpdates
       await whileImpersonating(basketHandler.address, async (bhsigner) => {
