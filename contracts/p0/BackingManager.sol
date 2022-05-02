@@ -216,6 +216,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// @return req The prepared trade request
     function rsrTrade() private returns (bool doTrade, TradeRequest memory req) {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
+        require(main.assetRegistry().isRegistered(main.rsr()), "rsr unregistered");
 
         IStRSR stRSR = main.stRSR();
         IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());

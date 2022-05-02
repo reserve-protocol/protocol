@@ -26,7 +26,6 @@ library TradingLibP1 {
         IAsset buy,
         int192 sellAmount
     ) public view returns (bool notDust, TradeRequest memory trade) {
-        assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
         trade.sell = sell;
         trade.buy = buy;
 

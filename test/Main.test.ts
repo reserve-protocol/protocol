@@ -735,11 +735,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).pause()
 
       // Attempt to run functions again
-      await expect(basketHandler.ensureBasket()).to.be.revertedWith('paused')
       await expect(backingManager.manageFunds()).to.be.revertedWith('paused')
       await expect(rsrTrader.manageFunds()).to.be.revertedWith('paused')
       await expect(rTokenTrader.manageFunds()).to.be.revertedWith('paused')
       await expect(rToken.connect(addr1).issue(fp('1e-6'))).to.be.revertedWith('paused')
+      await expect(rToken.connect(addr1).redeem(fp('1e-6'))).to.be.revertedWith('paused')
     })
   })
 
