@@ -28,7 +28,7 @@ import { defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe(`DeployerP${IMPLEMENTATION} contract`, () => {
+describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let owner: SignerWithAddress
 
   // Deployer contract
