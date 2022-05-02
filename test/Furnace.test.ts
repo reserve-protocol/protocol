@@ -107,7 +107,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     await token3.connect(owner).mint(addr2.address, initialBal)
   })
 
-  describe('Deployment', () => {
+  describe('Deployment #fast', () => {
     it('Deployment should setup Furnace correctly', async () => {
       expect(await furnace.period()).to.equal(config.rewardPeriod)
       expect(await furnace.ratio()).to.equal(config.rewardRatio)
@@ -125,7 +125,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Configuration / State', () => {
+  describe('Configuration / State #fast', () => {
     it('Should allow to update period correctly if Owner and perform validations', async () => {
       // Setup a new value
       const newRewardPeriod: BigNumber = bn('100000')
@@ -164,7 +164,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Do Melt', () => {
+  describe('Do Melt #fast', () => {
     beforeEach(async () => {
       // Approvals for issuance
       await token0.connect(addr1).approve(rToken.address, initialBal)
