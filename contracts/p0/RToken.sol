@@ -83,7 +83,6 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         // Call collective state keepers.
         main.poke();
         IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() == CollateralStatus.SOUND, "collateral not sound");
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
 
         address issuer = _msgSender();
@@ -177,13 +176,14 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// Redeem RToken for basket collateral
     /// @custom:action
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    function redeem(uint256 amount) external {
+    function redeem(uint256 amount) external notPaused {
         require(amount > 0, "Cannot redeem zero");
+        require(balanceOf(_msgSender()) >= amount, "not enough RToken");
         // Call collective state keepers
         main.poke();
         IBasketHandler basketHandler = main.basketHandler();
 
-        require(balanceOf(_msgSender()) >= amount, "not enough RToken");
+        require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
 
         // {BU} = {BU} * {qRTok} / {qRTok}
         int192 baskets = basketsNeeded.muluDivu(amount, totalSupply());

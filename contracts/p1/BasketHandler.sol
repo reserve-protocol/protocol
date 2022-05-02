@@ -103,7 +103,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// Try to ensure the current basket is valid, switching it if necessary
     /// If there are no available collateral tokens, the basket becomes empty and defaulted
-    function ensureBasket() external notPaused {
+    function ensureBasket() external {
         main.assetRegistry().forceUpdates();
 
         if (status() == CollateralStatus.DISABLED) {

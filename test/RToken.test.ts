@@ -273,6 +273,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.totalSupply()).to.equal(bn(0))
     })
 
+    it('Should not redeem RTokens if paused', async function () {
+      const issueAmount: BigNumber = bn('10e18')
+
+      // Issue
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Pause Main
+      await main.connect(owner).pause()
+
+      // Try to redeem
+      await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('paused')
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+    })
+
     it('Should not issue RTokens if amount is zero', async function () {
       const zero: BigNumber = bn('0')
 
@@ -484,7 +504,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
     })
 
-    it('Should not issue/vest RTokens if collateral defaulted', async function () {
+    it('Should not vest RTokens if collateral not SOUND', async function () {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
 
       // Provide approvals
@@ -493,12 +513,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      // Issue rTokens
-      await rToken.connect(addr1).issue(issueAmount)
-
       // Default one of the tokens - 50% price reduction and mark default as probable
       await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
-      await collateral1.forceUpdates()
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
       expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
 
@@ -512,17 +531,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expectIssuance(addr1.address, 0, {
         processed: false,
       })
-      expect(await rToken.totalSupply()).to.equal(bn('0'))
-      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await rToken.balanceOf(main.address)).to.equal(0)
-
-      // Cannot start a new issuance either
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
-        'collateral not sound'
-      )
-
-      // Check values
       expect(await rToken.totalSupply()).to.equal(bn('0'))
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -1050,6 +1058,24 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await facade.callStatic.totalAssetValue()).to.equal(
           issueAmount.mul(2).sub(redeemAmount.mul(2))
         )
+      })
+
+      it('Should redeem if basket is IFFY #fast', async function () {
+        // Default one of the tokens - 50% price reduction and mark default as probable
+        await aaveOracleInternal.setPrice(token3.address, bn('1.25e14'))
+
+        await rToken.connect(addr1).redeem(issueAmount)
+        expect(await rToken.totalSupply()).to.equal(0)
+      })
+
+      it('Should revert if basket is DISABLED #fast', async function () {
+        // Default immediately
+        await token3.setExchangeRate(fp('0.999999'))
+
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith(
+          'collateral default'
+        )
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
     })
   })
