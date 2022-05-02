@@ -129,6 +129,10 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         // Bypass queue entirely if the issuance can fit in this block
         if (vestingEnd.lte(toFix(block.number)) && queue.left == queue.right) {
+            require(
+                main.basketHandler().status() == CollateralStatus.SOUND,
+                "collateral not sound"
+            );
             for (uint256 i = 0; i < erc20s.length; i++) {
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     issuer,
@@ -238,12 +242,12 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         return right;
     }
 
-    /// TODO revisit
     /// Cancel some vesting issuance(s)
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
+    /// TODO confirm we DO NOT need notPaused here
     function cancel(uint256 endId, bool earliest) external {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];

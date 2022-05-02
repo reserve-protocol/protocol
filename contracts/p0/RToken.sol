@@ -124,6 +124,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         // Complete issuance instantly if it fits into this block
         if (iss.blockAvailableAt.lte(toFix(block.number))) {
+            require(basketHandler.status() == CollateralStatus.SOUND, "collateral not sound");
+
             // At this point all checks have been done to ensure the issuance should vest
             uint256 vestedAmount = tryVestIssuance(issuer, issuances[issuer].length - 1);
             assert(vestedAmount == iss.amount);
@@ -136,6 +138,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One end of the range of issuance IDs to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
+    /// TODO confirm we DO NOT need notPaused here
     function cancel(uint256 endId, bool earliest) external {
         address account = _msgSender();
 

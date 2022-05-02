@@ -1,14 +1,14 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`RTokenP1 contract Gas Reporting Issuance: across blocks 1`] = `1030477`;
+exports[`RTokenP1 contract Gas Reporting Issuance: across blocks 1`] = `1030483`;
 
-exports[`RTokenP1 contract Gas Reporting Issuance: across blocks 2`] = `769869`;
+exports[`RTokenP1 contract Gas Reporting Issuance: across blocks 2`] = `769875`;
 
-exports[`RTokenP1 contract Gas Reporting Issuance: within block 1`] = `750992`;
+exports[`RTokenP1 contract Gas Reporting Issuance: within block 1`] = `821553`;
 
-exports[`RTokenP1 contract Gas Reporting Issuance: within block 2`] = `577957`;
+exports[`RTokenP1 contract Gas Reporting Issuance: within block 2`] = `648518`;
 
-exports[`RTokenP1 contract Gas Reporting Redemption 1`] = `628291`;
+exports[`RTokenP1 contract Gas Reporting Redemption 1`] = `628297`;
 
 exports[`RTokenP1 contract Gas Reporting Transfer 1`] = `56475`;
 
