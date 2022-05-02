@@ -1,7 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`StRSRP1 contract Gas Reporting Transfer 1`] = `57092`;
-
-exports[`StRSRP1 contract Gas Reporting Transfer 2`] = `35192`;
-
-exports[`StRSRP1 contract Gas Reporting Transfer 3`] = `52304`;
