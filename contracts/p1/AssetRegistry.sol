@@ -26,6 +26,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     }
 
     /// Force updates in all collateral assets
+    /// TODO Decide if we want reentrancy guards here
     function forceUpdates() external {
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
@@ -94,13 +95,14 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     //
 
     /// Forbids registering a different asset for an ERC20 that is already registered
-    /// @return If the asset was moved from unregistered to registered
-    function _register(IAsset asset) internal returns (bool) {
+    /// @return registered If the asset was moved from unregistered to registered
+    function _register(IAsset asset) internal returns (bool registered) {
         require(
             !_erc20s.contains(address(asset.erc20())) || assets[asset.erc20()] == asset,
             "duplicate ERC20 detected"
         );
-        return _registerIgnoringCollisions(asset);
+        registered = _registerIgnoringCollisions(asset);
+        main.backingManager().grantRTokenAllowance(IERC20(address(asset.erc20())));
     }
 
     /// Register an asset, unregistering any previous asset with the same ERC20.

@@ -115,7 +115,7 @@ describe('Collateral contracts', () => {
   })
 
   describe('Deployment', () => {
-    it('Deployment should setup collateral correctly', async () => {
+    it('Deployment should setup collateral correctly #fast', async () => {
       // Fiat Token Asset
       expect(await tokenCollateral.isCollateral()).to.equal(true)
       expect(await tokenCollateral.referenceERC20()).to.equal(token.address)
@@ -255,7 +255,7 @@ describe('Collateral contracts', () => {
     })
   })
 
-  describe('Prices', () => {
+  describe('Prices #fast', () => {
     it('Should calculate prices correctly', async () => {
       // Check initial prices
       expect(await tokenCollateral.price()).to.equal(fp('1'))
@@ -552,7 +552,7 @@ describe('Collateral contracts', () => {
   })
 
   // Tests specific to the CompoundFiatCollateral.sol contract, not used by default in fixture
-  describe('Compound Fiat Collateral', () => {
+  describe('Compound Fiat Collateral #fast', () => {
     let compoundTokenAsset: CompoundPricedFiatCollateral
     let compoundUsdcAsset: CompoundPricedFiatCollateral
 

@@ -37,18 +37,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         backingBuffer = backingBuffer_;
     }
 
-    // Give RToken max allowances over all registered tokens
-    function grantAllowances() external notPaused {
-        require(_msgSender() == address(main.rToken()), "RToken only");
-        IERC20[] memory erc20s = main.assetRegistry().erc20s();
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            uint256 initAllowance = erc20s[i].allowance(address(this), address(main.rToken()));
-            uint256 increaseAmt = type(uint256).max - initAllowance;
-            IERC20Upgradeable(address(erc20s[i])).safeIncreaseAllowance(
-                address(main.rToken()),
-                increaseAmt
-            );
-        }
+    // Give RToken max allowance over a registered token
+    function grantRTokenAllowance(IERC20 erc20) external {
+        require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
+        erc20.approve(address(main.rToken()), type(uint256).max);
     }
 
     /// Manage backing funds: maintain the overall backing policy
@@ -198,8 +190,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         view
         returns (bool doTrade, TradeRequest memory req)
     {
-        assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
-
         (
             IAsset surplus,
             ICollateral deficit,
@@ -210,7 +200,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
 
         // Of primary concern here is whether we can trust the prices for the assets
-        // we are selling. If we cannot, then we should not `prepareTradeToCoverDeficit`
+        // we are selling. If we cannot, then we should ignore `maxTradeSlippage`.
 
         if (
             surplus.isCollateral() &&
@@ -236,28 +226,28 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @return doTrade If the trade request should be performed
     /// @return req The prepared trade request
     function rsrTrade() private returns (bool doTrade, TradeRequest memory req) {
-        assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
+        IERC20 rsr = main.rsr();
+        require(main.assetRegistry().isRegistered(rsr), "rsr unregistered");
 
         IStRSR stRSR = main.stRSR();
-        IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
+        IAsset rsrAsset = main.assetRegistry().toAsset(rsr);
 
         (, ICollateral deficit, , int192 deficitAmount) = TradingLibP1.largestSurplusAndDeficit(
             false
         );
         if (address(deficit) == address(0)) return (false, req);
 
-        int192 availableRSR = rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR)));
-
         (doTrade, req) = TradingLibP1.prepareTradeToCoverDeficit(
             rsrAsset,
             deficit,
-            availableRSR,
+            rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR))),
             deficitAmount
         );
 
         if (doTrade) {
-            int8 decimals = int8(IERC20Metadata(address(main.rsr())).decimals());
-            uint256 rsrBal = rsrAsset.bal(address(this)).shiftl_toUint(decimals);
+            uint256 rsrBal = rsrAsset.bal(address(this)).shiftl_toUint(
+                int8(IERC20Metadata(address(rsr)).decimals())
+            );
             if (req.sellAmount > rsrBal) {
                 stRSR.seizeRSR(req.sellAmount - rsrBal);
             }

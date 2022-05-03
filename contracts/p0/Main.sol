@@ -27,6 +27,12 @@ contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
         rTokenTrader.settleTrades();
         backingManager.settleTrades();
         stRSR.payoutRewards();
+
+        // Grant RToken allowances
+        IERC20[] memory erc20s = assetRegistry.erc20s();
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            backingManager.grantRTokenAllowance(erc20s[i]);
+        }
     }
 
     function owner() public view override(IMain, OwnableUpgradeable) returns (address) {

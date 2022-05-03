@@ -22,7 +22,8 @@ const TIMEOUT = !!process.env.SLOW ? 3_000_000 : 300_000
 
 const src_dir = process.env.PROTO ? './contracts/' + process.env.PROTO : './contracts'
 const settings = process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 2000 } }
-export default <HardhatUserConfig>{
+
+let config: any = {
   defaultNetwork: 'hardhat',
   networks: {
     hardhat: {
@@ -52,14 +53,11 @@ export default <HardhatUserConfig>{
     version: '0.8.9',
     settings,
     debug: {
-      // How to treat revert (and require) reason strings. Settings are
-      // "default", "strip", "debug" and "verboseDebug".
-      // "default" does not inject compiler-generated revert strings and keeps user-supplied ones.
-      // "strip" removes all revert strings (if possible, i.e. if literals are used) keeping side-effects
-      // "debug" injects strings for compiler-generated internal reverts, implemented for ABI encoders V1 and V2 for now.
-      // "verboseDebug" even appends further information to user-supplied revert strings (not yet implemented)
+      // How to treat revert (and require) reason strings.
+      // "default" does not inject compiler-generated revert strings and keeps user-supplied ones
+      // "strip" removes all revert strings (if literals are used) keeping side-effects
+      // "debug" injects strings for compiler-generated internal reverts
       revertStrings: 'default',
-      // revertStrings: 'debug',
     },
   },
   paths: {
@@ -67,6 +65,7 @@ export default <HardhatUserConfig>{
   },
   mocha: {
     timeout: TIMEOUT,
+    slow: 1000,
   },
   contractSizer: {
     alphaSort: false,
@@ -80,3 +79,16 @@ export default <HardhatUserConfig>{
     enabled: process.env.REPORT_GAS ? true : false,
   },
 }
+
+if (process.env.ONLY_FAST) {
+  config.mocha.grep = '/#fast/'
+  config.mocha.slow = 200
+  config.gasReporter.enabled = false
+}
+
+if (process.env.JOBS) {
+  config.mocha.parallel = true
+  config.mocha.jobs = process.env.JOBS
+}
+
+export default <HardhatUserConfig>config

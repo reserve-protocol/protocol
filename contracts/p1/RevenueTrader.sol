@@ -49,8 +49,6 @@ contract RevenueTradingP1 is TradingP1, IRevenueTrader {
     function manageERC20(IERC20 erc20) internal {
         IAssetRegistry reg = main.assetRegistry();
 
-        assert(reg.isRegistered(erc20));
-
         uint256 bal = erc20.balanceOf(address(this));
         if (bal == 0) return;
 
@@ -64,6 +62,7 @@ contract RevenueTradingP1 is TradingP1, IRevenueTrader {
         }
 
         // Don't open a second trade if there's already one running.
+        // TODO gas optimize
         for (uint256 i = tradesStart; i < trades.length; i++) {
             if (trades[i].sell() == erc20) return;
         }

@@ -187,15 +187,15 @@ function _divrnd(
     RoundingMode rounding
 ) pure returns (int256) {
     int256 result = numerator / divisor;
-    if (rounding == FLOOR) return result;
+    if (rounding == FLOOR || numerator == 0) return result;
 
     if (rounding == CEIL) {
         if (numerator % divisor != 0) {
-            result += signOf(result);
+            result += signOf(numerator) * signOf(divisor);
         }
     } else {
-        if (abs(numerator % divisor) >= (abs(divisor) / 2)) {
-            result += signOf(result);
+        if (abs(numerator % divisor) > (abs(divisor) - 1) / 2) {
+            result += signOf(numerator) * signOf(divisor);
         }
     }
     return result;
@@ -214,7 +214,7 @@ function _divrnd(
     if (rounding == FLOOR) return result;
 
     if (rounding == ROUND) {
-        if (numerator % divisor >= divisor >> 1) {
+        if (numerator % divisor > (divisor - 1) / 2) {
             result++;
         }
     } else {
@@ -548,7 +548,7 @@ function mulDiv256(
     if (rounding == CEIL) {
         if (mm > 0) result += 1;
     } else {
-        if (mm >= (z >> 1)) result += 1;
+        if (mm > ((z - 1) / 2)) result += 1; // z should be z-1
     }
     return result;
 }

@@ -106,10 +106,6 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         main.assetRegistry().forceUpdates(); // no need to ensureBasket
         main.furnace().melt();
 
-        IBasketHandler bh = main.basketHandler();
-        require(bh.status() == CollateralStatus.SOUND, "collateral not sound");
-        (uint256 basketNonce, ) = bh.lastSet();
-
         // Refund issuances against previous baskets
         address issuer = _msgSender();
         refundOldBasketIssues(issuer);
@@ -119,28 +115,56 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             ? basketsNeeded.muluDivu(amtRToken, totalSupply()) // {BU * qRTok / qRTok}
             : shiftl_toFix(amtRToken, -int8(decimals())); // {qRTok / qRTok}
 
-        (address[] memory erc20s, uint256[] memory deposits) = bh.quote(amtBaskets, CEIL);
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        (address[] memory erc20s, uint256[] memory deposits) = main.basketHandler().quote(
+            amtBaskets,
+            CEIL
+        );
+
+        IssueQueue storage queue = issueQueues[issuer];
+        assert(queue.basketNonce == basketNonce || (queue.left == 0 && queue.right == 0));
+
+        // Add amtRToken's worth of issuance delay to allVestAt
+        int192 vestingEnd = whenFinished(amtRToken);
+
+        // Bypass queue entirely if the issuance can fit in this block
+        if (vestingEnd.lte(toFix(block.number)) && queue.left == queue.right) {
+            require(
+                main.basketHandler().status() == CollateralStatus.SOUND,
+                "collateral not sound"
+            );
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                IERC20Upgradeable(erc20s[i]).safeTransferFrom(
+                    issuer,
+                    address(main.backingManager()),
+                    deposits[i]
+                );
+            }
+
+            // Complete issuance now
+            _mint(issuer, amtRToken);
+            int192 newBasketsNeeded = basketsNeeded.plus(amtBaskets);
+            emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
+            basketsNeeded = newBasketsNeeded;
+
+            // Note: We don't need to update the prev queue entry because queue.left = queue.right
+            emit IssuancesCompleted(issuer, queue.left, queue.right); // TODO: Breaks Explorer?
+            return;
+        }
 
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
         }
 
-        // ==== Enqueue the issuance ====
-        IssueQueue storage queue = issueQueues[issuer];
-        assert(queue.left == queue.right || queue.basketNonce == basketNonce);
-
-        // Add amtRToken's worth of issuance delay to allVestAt
-        int192 vestingEnd = whenFinished(amtRToken);
-
         // Push issuance onto queue
-        IssueItem storage curr = (
-            queue.items.length == queue.right ? queue.items.push() : queue.items[queue.right]
-        );
+        IssueItem storage curr = queue.items.push();
         curr.when = vestingEnd;
         curr.amtRToken = amtRToken;
         curr.amtBaskets = amtBaskets;
         curr.deposits = deposits;
+
+        // Accumulate
         if (queue.right > 0) {
             IssueItem storage prev = queue.items[queue.right - 1];
             curr.amtRToken = prev.amtRToken + amtRToken;
@@ -157,16 +181,13 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         emit IssuanceStarted(
             issuer,
-            queue.right,
+            queue.right - 1,
             amtRToken,
             amtBaskets,
             erc20s,
             deposits,
             vestingEnd
         );
-
-        // Vest immediately if the vesting fits into this block.
-        if (curr.when.lte(toFix(block.number))) vestUpTo(issuer, queue.right);
     }
 
     /// Add amtRToken's worth of issuance delay to allVestAt, and return the resulting finish time.
@@ -190,9 +211,9 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     /// @custom:completion
     function vest(address account, uint256 endId) external notPaused {
         main.assetRegistry().forceUpdates();
-        main.furnace().melt();
-
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
+
+        main.furnace().melt();
         refundOldBasketIssues(account);
         vestUpTo(account, endId);
     }
@@ -226,6 +247,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
+    /// TODO confirm we DO NOT need notPaused here
     function cancel(uint256 endId, bool earliest) external {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
@@ -244,48 +266,50 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
-    /// TODO confirm `notPaused` is unnecessary
-    function redeem(uint256 amount) external {
+    /// TODO confirm we want to halt redemptions when paused
+    function redeem(uint256 amount) external notPaused {
+        address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
-        require(balanceOf(_msgSender()) >= amount, "not enough RToken");
+        require(balanceOf(redeemer) >= amount, "not enough RToken");
 
         // Call collective state keepers
-        main.assetRegistry().forceUpdates();
+        IBasketHandler bh = main.basketHandler();
+        bh.ensureBasket();
+
+        // Allow redemption during IFFY
+        require(bh.status() != CollateralStatus.DISABLED, "collateral default");
+
         main.furnace().melt();
+        int192 basketsNeeded_ = basketsNeeded; // gas optimization
 
         // {BU} = {BU} * {qRTok} / {qRTok}
-        int192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
-        assert(baskets.lte(basketsNeeded));
-        emit Redemption(_msgSender(), amount, baskets);
+        int192 baskets = basketsNeeded_.muluDivu(amount, totalSupply());
+        assert(baskets.lte(basketsNeeded_));
+        emit Redemption(redeemer, amount, baskets);
 
-        (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
-            baskets,
-            FLOOR
-        );
+        (address[] memory erc20s, uint256[] memory amounts) = bh.quote(baskets, FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         int192 prorate = toFix(amount).divu(totalSupply());
 
         // Accept and burn RToken
-        _burn(_msgSender(), amount);
+        _burn(redeemer, amount);
 
-        emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
-        basketsNeeded = basketsNeeded.minus(baskets);
+        basketsNeeded = basketsNeeded_.minus(baskets);
+        emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
 
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
-        backingMgr.grantAllowances(); // TODO optimize
-
         for (uint256 i = 0; i < erc20s.length; i++) {
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
-            uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingMgr));
+
             // {qTok} = {1} * {qTok}
-            uint256 prorata = prorate.mulu_toUint(bal);
+            uint256 prorata = prorate.mulu_toUint(IERC20(erc20s[i]).balanceOf(address(backingMgr)));
             amounts[i] = Math.min(amounts[i], prorata);
             // Send withdrawal
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                 address(backingMgr),
-                _msgSender(),
+                redeemer,
                 amounts[i]
             );
         }

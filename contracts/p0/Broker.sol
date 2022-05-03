@@ -23,11 +23,9 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     bool public disabled;
 
-    // solhint-disable-next-line no-unused-vars
     function init(
         IMain main_,
         IGnosis gnosis_,
-        // solhint-disable-next-line no-unused-vars
         ITrade, // Added for Interface compatibility with P1
         uint32 auctionLength_
     ) public initializer {

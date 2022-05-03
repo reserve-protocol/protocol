@@ -35,15 +35,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         backingBuffer = backingBuffer_;
     }
 
-    // Give RToken max allowances over all registered tokens
-    function grantAllowances() external notPaused {
-        require(_msgSender() == address(main.rToken()), "RToken only");
-        IERC20[] memory erc20s = main.assetRegistry().erc20s();
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            uint256 initAllowance = erc20s[i].allowance(address(this), address(main.rToken()));
-            uint256 increaseAmt = type(uint256).max - initAllowance;
-            erc20s[i].safeIncreaseAllowance(address(main.rToken()), increaseAmt);
-        }
+    // Give RToken max allowance over a registered token
+    function grantRTokenAllowance(IERC20 erc20) external {
+        require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
+        erc20.approve(address(main.rToken()), type(uint256).max);
     }
 
     /// Manage backing funds: maintain the overall backing policy
@@ -221,6 +216,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// @return req The prepared trade request
     function rsrTrade() private returns (bool doTrade, TradeRequest memory req) {
         assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
+        require(main.assetRegistry().isRegistered(main.rsr()), "rsr unregistered");
 
         IStRSR stRSR = main.stRSR();
         IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
