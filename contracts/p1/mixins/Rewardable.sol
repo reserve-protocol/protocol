@@ -24,7 +24,7 @@ abstract contract RewardableP1 is ComponentP1, IRewardable {
         IERC20[] memory rewardTokens = new IERC20[](erc20s.length);
         uint256 numRewardTokens = 0;
 
-        for (uint256 i = 0; i < erc20s.length; i++) {
+        for (uint256 i = 0; i < erc20s.length; ++i) {
             // Does erc20s[i] _have_ a reward function and reward token?
             IAsset asset = reg.toAsset(erc20s[i]);
 
@@ -54,7 +54,7 @@ abstract contract RewardableP1 is ComponentP1, IRewardable {
 
         // Sweep reward tokens to the backingManager
         if (address(this) != address(main.backingManager())) {
-            for (uint256 i = 0; i < numRewardTokens; i++) {
+            for (uint256 i = 0; i < numRewardTokens; ++i) {
                 uint256 bal = rewardTokens[i].balanceOf(address(this));
                 if (bal > 0) {
                     IERC20Upgradeable(address(rewardTokens[i])).safeTransfer(

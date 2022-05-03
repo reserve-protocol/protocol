@@ -292,7 +292,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             // Find collateral's targetName index
             uint256 targetIndex;
-            for (targetIndex = 0; targetIndex < targetNames.length(); targetIndex++) {
+            for (targetIndex = 0; targetIndex < targetNames.length(); ++targetIndex) {
                 if (targetNames.at(targetIndex) == config.targetNames[erc20]) break;
             }
             assert(targetIndex < targetNames.length());

@@ -56,7 +56,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         // Evenly distribute revenue tokens per distribution share.
         // This rounds "early", and that's deliberate!
 
-        for (uint256 i = 0; i < destinations.length(); i++) {
+        for (uint256 i = 0; i < destinations.length(); ++i) {
             address addrTo = destinations.at(i);
 
             uint256 numberOfShares = isRSR

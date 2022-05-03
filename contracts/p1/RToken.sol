@@ -169,7 +169,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             IssueItem storage prev = queue.items[queue.right - 1];
             curr.amtRToken = prev.amtRToken + amtRToken;
             curr.amtBaskets = prev.amtBaskets.plus(amtBaskets);
-            for (uint256 i = 0; i < deposits.length; i++) {
+            for (uint256 i = 0; i < deposits.length; ++i) {
                 curr.deposits[i] = prev.deposits[i] + deposits[i];
             }
         }
@@ -366,12 +366,12 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         // compute total deposits
         IssueItem storage rightItem = queue.items[right - 1];
         if (queue.left == 0) {
-            for (uint256 i = 0; i < queue.tokens.length; i++) {
+            for (uint256 i = 0; i < queue.tokens.length; ++i) {
                 IERC20Upgradeable(queue.tokens[i]).safeTransfer(account, rightItem.deposits[i]);
             }
         } else {
             IssueItem storage leftItem = queue.items[queue.left];
-            for (uint256 i = 0; i < queue.tokens.length; i++) {
+            for (uint256 i = 0; i < queue.tokens.length; ++i) {
                 IERC20Upgradeable(queue.tokens[i]).safeTransfer(
                     account,
                     rightItem.deposits[i] - leftItem.deposits[i]

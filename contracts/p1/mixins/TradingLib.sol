@@ -105,7 +105,7 @@ library TradingLibP1 {
         if (useFallenTarget) {
             int192 tradeVolume; // {UoA}
             int192 totalValue; // {UoA}
-            for (uint256 i = 0; i < erc20s.length; i++) {
+            for (uint256 i = 0; i < erc20s.length; ++i) {
                 IAsset asset = assetRegistry().toAsset(erc20s[i]);
 
                 // Ignore dust amounts for assets not in the basket
@@ -117,7 +117,7 @@ library TradingLibP1 {
             }
             basketTop = totalValue.div(basket().price(), CEIL);
 
-            for (uint256 i = 0; i < erc20s.length; i++) {
+            for (uint256 i = 0; i < erc20s.length; ++i) {
                 IAsset asset = assetRegistry().toAsset(erc20s[i]);
                 if (!asset.isCollateral()) continue;
                 int192 needed = basketTop.mul(basket().quantity(erc20s[i]), CEIL); // {tok}
@@ -139,7 +139,7 @@ library TradingLibP1 {
         int192 max; // {UoA}
         int192 min; // {UoA}
 
-        for (uint256 i = 0; i < erc20s.length; i++) {
+        for (uint256 i = 0; i < erc20s.length; ++i) {
             if (erc20s[i] == rsr()) continue; // do not consider RSR
 
             IAsset asset = assetRegistry().toAsset(erc20s[i]);
