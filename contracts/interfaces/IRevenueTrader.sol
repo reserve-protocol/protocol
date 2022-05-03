@@ -19,9 +19,10 @@ interface IRevenueTrader is IComponent, ITrading {
         int192 dustAmount_
     ) external;
 
-    /// Run the central RevenueTrader loop; unpermissioned
+    /// Processes a single token; unpermissioned
+    /// @dev Intended to be used with multicall
     /// @custom:action
-    function manageFunds() external;
+    function processToken(IERC20 sell) external;
 }
 
 // solhint-disable-next-line no-empty-blocks

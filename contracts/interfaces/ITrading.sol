@@ -16,13 +16,11 @@ interface ITrading is IRewardable {
     event DustAmountSet(int192 indexed oldVal, int192 indexed newVal);
 
     /// Emitted when a trade is started
-    /// @param index The index of the trade in the trades getter
     /// @param sell The token to sell
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
     event TradeStarted(
-        uint256 indexed index,
         IERC20 indexed sell,
         IERC20 indexed buy,
         uint256 sellAmount,
@@ -42,26 +40,24 @@ interface ITrading is IRewardable {
     );
 
     /// Emitted after a trade ends
-    /// @param index The index of the trade in the trades getter
     /// @param sell The token to sell
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the token sold
     /// @param buyAmount {qBuyTok} The quantity of the token bought
     event TradeSettled(
-        uint256 indexed index,
         IERC20 indexed sell,
         IERC20 indexed buy,
         uint256 sellAmount,
         uint256 buyAmount
     );
 
-    /// Emitted after the settlement of a trade is blocked
-    /// @param index The index of the trade in the trades getter
-    event TradeSettlementBlocked(uint256 indexed index);
+    // /// Settle any auctions that can be settled
+    // /// @custom:refresher
+    // function settleTrades() external;
 
-    /// Settle any auctions that can be settled
+    /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:refresher
-    function settleTrades() external;
+    function settleTrade(IERC20 sell) external;
 
     /// @return {%} The maximum trade slippage acceptable
     function maxTradeSlippage() external view returns (int192);

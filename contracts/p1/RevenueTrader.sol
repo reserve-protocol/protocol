@@ -28,46 +28,31 @@ contract RevenueTradingP1 is TradingP1, IRevenueTrader {
         tokenToBuy = tokenToBuy_;
     }
 
-    /// Close any open trades and start new ones, for all assets
-    /// Collective Action
-    function manageFunds() external notPaused {
-        // Call state keepers
-        main.assetRegistry().forceUpdates();
-        settleTrades();
+    /// Processes a single token; unpermissioned
+    /// @dev Intended to be used with multicall
+    /// @custom:action
+    function processToken(IERC20 erc20) external notPaused {
+        // Do not act when DISABLED or IFFY
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
 
-        // Do not trade when DISABLED or IFFY
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket defaulted");
-
-        IERC20[] memory erc20s = main.assetRegistry().erc20s();
-        for (uint256 i = 0; i < erc20s.length; ++i) {
-            manageERC20(erc20s[i]);
-        }
-    }
-
-    /// - If we have any of `tokenToBuy` (RSR or RToken), distribute it.
-    /// - If we have any of any other asset, start an trade to sell it for `assetToBuy`
-    function manageERC20(IERC20 erc20) internal {
-        IAssetRegistry reg = main.assetRegistry();
+        // TODO confirm can skip forceUpdates here
+        // rough argument: tokens in the revenue trader are already downstream of BackingManager
+        // and prices don't matter as much, and this provides huge gas savings.
 
         uint256 bal = erc20.balanceOf(address(this));
         if (bal == 0) return;
 
         if (erc20 == tokenToBuy) {
-            IERC20Upgradeable(address(erc20)).safeIncreaseAllowance(
-                address(main.distributor()),
-                bal
-            );
+            IERC20Upgradeable(address(erc20)).approve(address(main.distributor()), bal);
             main.distributor().distribute(erc20, address(this), bal);
             return;
         }
 
         // Don't open a second trade if there's already one running.
-        uint256 tradesLength = trades.length;
-        for (uint256 i = tradesStart; i < tradesLength; ++i) {
-            if (trades[i].sell() == erc20) return;
-        }
+        if (address(trades[erc20]) != address(0)) return;
 
         // If not dust, trade the non-target asset for the target asset
+        IAssetRegistry reg = main.assetRegistry();
         (bool launch, TradeRequest memory trade) = TradingLibP1.prepareTradeSell(
             reg.toAsset(erc20),
             reg.toAsset(tokenToBuy),

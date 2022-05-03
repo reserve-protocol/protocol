@@ -180,6 +180,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// @return status_ The status of the basket
     function status() public view returns (CollateralStatus status_) {
+        // TODO cache this lookup, this gets called often and we want 0(1) not 0(n)
+
         if (basket.defaulted) return CollateralStatus.DISABLED;
 
         uint256 length = basket.erc20s.length;

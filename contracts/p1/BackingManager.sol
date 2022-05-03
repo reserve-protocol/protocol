@@ -46,17 +46,20 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// Manage backing funds: maintain the overall backing policy
     /// Collective Action
     function manageFunds() external notPaused {
+        require(tradesOpen == 0, "has open trades");
+
         // Call keepers
         main.assetRegistry().forceUpdates();
-        settleTrades();
 
         // Do not trade when DISABLED or IFFY
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket defaulted");
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
 
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
-        if (!hasOpenTrades() && !main.basketHandler().fullyCapitalized()) {
+        if (main.basketHandler().fullyCapitalized()) {
+            handoutExcessAssets();
+        } else {
             /*
              * Recapitalization Strategy
              *
@@ -114,14 +117,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 compromiseBasketsNeeded();
             }
         }
-
-        if (main.basketHandler().fullyCapitalized()) {
-            handoutExcessAssets();
-        }
     }
 
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets() private {
+        // TODO can we get rid of this eventually?
         assert(main.basketHandler().status() == CollateralStatus.SOUND);
 
         // Special-case RSR to forward to StRSR pool
@@ -258,9 +258,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
     function compromiseBasketsNeeded() private {
-        assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
+        // TODO this might be the one assert we actually keep
+        assert(tradesOpen == 0 && !main.basketHandler().fullyCapitalized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
-        assert(main.basketHandler().fullyCapitalized());
+        assert(main.basketHandler().fullyCapitalized()); // TODO can be deleted after testing
     }
 
     // === Setters ===
