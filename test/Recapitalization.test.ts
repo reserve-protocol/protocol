@@ -22,7 +22,6 @@ import {
   TestIStRSR,
   USDCMock,
 } from '../typechain'
-import { whileImpersonating } from './utils/impersonation'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'

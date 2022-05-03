@@ -3,7 +3,7 @@ import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { ZERO_ADDRESS } from '../common/constants'
 import { expectInReceipt } from '../common/events'
-import { bn, fp, ZERO } from '../common/numbers'
+import { bn, fp } from '../common/numbers'
 import {
   AaveLendingAddrProviderMock,
   AaveLendingPoolMock,
