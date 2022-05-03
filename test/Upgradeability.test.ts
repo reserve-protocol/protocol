@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ContractFactory, Wallet } from 'ethers'
-import { ethers, upgrades, waffle } from 'hardhat'
+import hre, { ethers, upgrades, waffle } from 'hardhat'
 import { bn } from '../common/numbers'
 import {
   Asset,
@@ -92,6 +92,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let wallet: Wallet
 
   before('create fixture loader', async () => {
+    // Reset network for clean execution
+    await hre.network.provider.send('hardhat_reset')
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
   })
