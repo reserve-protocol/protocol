@@ -29,7 +29,7 @@ struct BasketConfig {
 /// A reference basket that provides a dynamic definition of a basket unit (BU)
 /// Can be empty if all collateral defaults
 struct Basket {
-    IERC20[] erc20s; // Weak Invariant: after `ensureBasket`, no bad collateral
+    IERC20[] erc20s; // Weak Invariant: after `checkBasket`, no bad collateral
     mapping(IERC20 => int192) refAmts; // {ref/BU}
     uint32 nonce;
     uint32 timestamp;
@@ -103,11 +103,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         __Component_init(main_);
     }
 
-    /// Try to ensure the current basket is valid, switching it if necessary
-    /// If there are no available collateral tokens, the basket becomes empty and defaulted
-    function ensureBasket() external {
-        main.assetRegistry().forceUpdates();
-
+    /// Checks the basket for default and swaps it if necessary
+    function checkBasket() external {
         if (status() == CollateralStatus.DISABLED) {
             _switchBasket();
         }

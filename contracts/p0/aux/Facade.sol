@@ -28,11 +28,46 @@ contract FacadeP0 is IFacade {
     }
 
     /// Prompt all traders to run auctions
+    /// Relatively gas-inefficient, shouldn't be used in production. Use multicall instead
     /// @custom:action
     function runAuctionsForAllTraders() external {
+        IBackingManager backingManager = main.backingManager();
+        IRevenueTrader rsrTrader = main.rsrTrader();
+        IRevenueTrader rTokenTrader = main.rTokenTrader();
+        IERC20[] memory erc20s = main.assetRegistry().erc20s();
+
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            // BackingManager
+            ITrade trade = backingManager.trades(erc20s[i]);
+            if (address(trade) != address(0) && trade.canSettle()) {
+                backingManager.settleTrade(erc20s[i]);
+            }
+
+            // RSRTrader
+            trade = rsrTrader.trades(erc20s[i]);
+            if (address(trade) != address(0) && trade.canSettle()) {
+                rsrTrader.settleTrade(erc20s[i]);
+            }
+
+            // RTokenTrader
+            trade = rTokenTrader.trades(erc20s[i]);
+            if (address(trade) != address(0) && trade.canSettle()) {
+                rTokenTrader.settleTrade(erc20s[i]);
+            }
+        }
+
         main.backingManager().manageFunds();
-        main.rsrTrader().manageFunds();
-        main.rTokenTrader().manageFunds();
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            // RSRTrader
+            if (address(rsrTrader.trades(erc20s[i])) == address(0)) {
+                rsrTrader.processToken(erc20s[i]);
+            }
+
+            // RTokenTrader
+            if (address(rTokenTrader.trades(erc20s[i])) == address(0)) {
+                rTokenTrader.processToken(erc20s[i]);
+            }
+        }
     }
 
     /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager

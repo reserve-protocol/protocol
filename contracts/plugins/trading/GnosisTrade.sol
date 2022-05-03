@@ -85,7 +85,6 @@ contract GnosisTrade is ITrade {
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
         require(msg.sender == origin, "only origin can settle");
         assert(status == TradeStatus.OPEN);
-        require(canSettle(), "cannot settle yet");
         status = TradeStatus.CLOSED;
 
         // Optionally process settlement of the auction in Gnosis

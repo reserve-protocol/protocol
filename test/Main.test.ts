@@ -721,7 +721,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // This is mostly leftover from when we were just testing P0
 
       // By default functions can be run
-      await basketHandler.ensureBasket()
+      await assetRegistry.forceUpdates()
+      await basketHandler.checkBasket()
       await backingManager.manageFunds()
       await rsrTrader.manageFunds()
       await rTokenTrader.manageFunds()

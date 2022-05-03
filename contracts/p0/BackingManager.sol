@@ -53,7 +53,9 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
-        if (!hasOpenTrades() && !main.basketHandler().fullyCapitalized()) {
+        if (main.basketHandler().fullyCapitalized()) {
+            handoutExcessAssets();
+        } else {
             /*
              * Recapitalization Strategy
              *
@@ -110,10 +112,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                 // 3
                 compromiseBasketsNeeded();
             }
-        }
-
-        if (main.basketHandler().fullyCapitalized()) {
-            handoutExcessAssets();
         }
     }
 
@@ -177,7 +175,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         view
         returns (bool doTrade, TradeRequest memory req)
     {
-        assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
+        assert(tradesOpen == 0 && !main.basketHandler().fullyCapitalized());
 
         (
             IAsset surplus,
@@ -215,7 +213,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// @return doTrade If the trade request should be performed
     /// @return req The prepared trade request
     function rsrTrade() private returns (bool doTrade, TradeRequest memory req) {
-        assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
+        assert(tradesOpen == 0 && !main.basketHandler().fullyCapitalized());
         require(main.assetRegistry().isRegistered(main.rsr()), "rsr unregistered");
 
         IStRSR stRSR = main.stRSR();
@@ -247,7 +245,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
     function compromiseBasketsNeeded() private {
-        assert(!hasOpenTrades() && !main.basketHandler().fullyCapitalized());
+        assert(tradesOpen == 0 && !main.basketHandler().fullyCapitalized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
         assert(main.basketHandler().fullyCapitalized());
     }

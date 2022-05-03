@@ -15,10 +15,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     using SafeERC20 for IERC20Metadata;
 
     // All trades
-    ITrade[] public trades;
-
-    // First trade that is still open (or trades.length if all trades are settled)
-    uint256 public tradesStart;
+    mapping(IERC20 => ITrade) public trades;
+    uint32 public tradesOpen;
 
     // The latest end time for any trade in `trades`.
     uint32 private latestEndtime;
@@ -36,58 +34,32 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         dustAmount = dustAmount_;
     }
 
-    /// @return true iff this trader now has open trades.
-    function hasOpenTrades() public view returns (bool) {
-        return trades.length > tradesStart;
-    }
-
-    // @return The length of the trades array
-    function numTrades() public view returns (uint256) {
-        return trades.length;
-    }
-
-    /// Settle any trades that can be settled
+    /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:refresher
-    function settleTrades() external {
-        uint256 i = tradesStart;
-        for (; i < trades.length && trades[i].canSettle(); i++) {
-            ITrade trade = trades[i];
-            try trade.settle() returns (uint256 soldAmt, uint256 boughtAmt) {
-                emit TradeSettled(i, trade.sell(), trade.buy(), soldAmt, boughtAmt);
-            } catch {
-                // Pass over the Trade so it does not block future trading
-                emit TradeSettlementBlocked(i);
-            }
-        }
-        tradesStart = i;
+    function settleTrade(IERC20 sell) public {
+        ITrade trade = trades[sell];
+        if (address(trade) == address(0)) return;
+        require(trade.canSettle(), "cannot settle yet");
+
+        delete trades[sell];
+        tradesOpen--;
+        (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
+        emit TradeSettled(trade.sell(), trade.buy(), soldAmt, boughtAmt);
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
-    /// @dev Can fail silently if broker is disable or reverting
     function tryTrade(TradeRequest memory req) internal {
-        IAssetRegistry reg = main.assetRegistry();
-        assert(reg.isRegistered(req.sell.erc20()) && reg.isRegistered(req.buy.erc20()));
-
         IBroker broker = main.broker();
-        if (broker.disabled()) return; // correct interaction with BackingManager/RevenueTrader
+        require(address(trades[req.sell.erc20()]) == address(0), "trade already open");
+        require(!broker.disabled(), "broker disabled");
 
         req.sell.erc20().approve(address(broker), req.sellAmount);
-        try broker.openTrade(req) returns (ITrade trade) {
-            if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
+        ITrade trade = broker.openTrade(req);
 
-            trades.push(trade);
-            uint256 i = trades.length - 1;
-            emit TradeStarted(
-                i,
-                req.sell.erc20(),
-                req.buy.erc20(),
-                req.sellAmount,
-                req.minBuyAmount
-            );
-        } catch {
-            emit TradeBlocked(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
-            req.sell.erc20().safeApprove(address(broker), 0);
-        }
+        if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
+        trades[req.sell.erc20()] = trade;
+        tradesOpen++;
+        emit TradeStarted(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 
     // === Setters ===

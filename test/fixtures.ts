@@ -31,7 +31,7 @@ import {
   GnosisTrade,
   IBasketHandler,
   MainP1,
-  RevenueTradingP1,
+  RevenueTraderP1,
   RTokenAsset,
   RTokenP1,
   StaticATokenMock,
@@ -458,10 +458,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
 
     const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
-      'RevenueTradingP1',
+      'RevenueTraderP1',
       { libraries: { TradingLibP1: tradingLib.address } }
     )
-    const revTraderImpl: RevenueTradingP1 = <RevenueTradingP1>await RevTraderImplFactory.deploy()
+    const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
 
     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
     const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()

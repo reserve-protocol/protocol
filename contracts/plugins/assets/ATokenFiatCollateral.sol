@@ -102,6 +102,8 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
         } else {
             // Check for soft default of underlying reference token
             try this.consultOracle(referenceERC20) returns (int192 p) {
+                // TODO remove fixlib usage?
+
                 // {UoA/ref} = {UoA/target} * {target/ref}
                 int192 peg = pricePerTarget().mul(targetPerRef());
                 int192 delta = peg.mul(defaultThreshold);

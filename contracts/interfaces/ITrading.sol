@@ -27,18 +27,6 @@ interface ITrading is IRewardable {
         uint256 minBuyAmount
     );
 
-    /// Emitted when a trade is blocked due to an inability to trade
-    /// @param sell The token to sell
-    /// @param buy The token to buy
-    /// @param sellAmount {qSellTok} The quantity of the selling token
-    /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
-    event TradeBlocked(
-        IERC20 indexed sell,
-        IERC20 indexed buy,
-        uint256 sellAmount,
-        uint256 minBuyAmount
-    );
-
     /// Emitted after a trade ends
     /// @param sell The token to sell
     /// @param buy The token to buy
@@ -64,6 +52,9 @@ interface ITrading is IRewardable {
 
     /// @return {UoA} The smallest amount of value worth trading
     function dustAmount() external view returns (int192);
+
+    /// @return The ongoing trade for a sell token, or the zero address
+    function trades(IERC20 sell) external view returns (ITrade);
 }
 
 interface TestITrading is ITrading {
@@ -71,11 +62,6 @@ interface TestITrading is ITrading {
 
     function setDustAmount(int192 val) external;
 
-    function hasOpenTrades() external view returns (bool);
-
-    function trades(uint256) external view returns (ITrade);
-
-    function numTrades() external view returns (uint256);
-
-    function tradesStart() external view returns (uint256);
+    /// @return The number of ongoing trades open
+    function tradesOpen() external view returns (uint32);
 }

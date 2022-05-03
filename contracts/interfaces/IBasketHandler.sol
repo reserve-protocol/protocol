@@ -56,9 +56,9 @@ interface IBasketHandler is IComponent {
         IERC20[] calldata erc20s
     ) external;
 
-    /// Try to ensure the current basket is valid, causing underlying updates
-    /// @custom:ensure-basket
-    function ensureBasket() external;
+    /// Checks the basket for default and swaps it if necessary
+    /// @custom:action
+    function checkBasket() external;
 
     /// Governance-controlled setter to cause a basket switch explicitly
     /// @custom:governance

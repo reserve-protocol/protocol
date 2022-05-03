@@ -31,6 +31,9 @@ interface IAssetRegistry is IComponent {
     /// @custom:refresher
     function forceUpdates() external;
 
+    /// @return {s} The last time at which forceUpdates was called on this ERC20 set
+    function lastForceUpdates() external view returns (uint32);
+
     /// @return The corresponding asset for ERC20, or reverts if not registered
     function toAsset(IERC20 erc20) external view returns (IAsset);
 

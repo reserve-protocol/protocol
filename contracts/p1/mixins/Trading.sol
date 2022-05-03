@@ -26,9 +26,6 @@ abstract contract TradingP1 is Multicall, RewardableP1, ITrading {
     // The latest end time for any trade in `trades`.
     uint32 private latestEndtime;
 
-    // First trade that is still open (or trades.length if all trades are settled)
-    uint256 public tradesStart;
-
     // solhint-disable-next-line func-name-mixedcase
     function __Trading_init(int192 maxTradeSlippage_, int192 dustAmount_)
         internal
@@ -42,7 +39,8 @@ abstract contract TradingP1 is Multicall, RewardableP1, ITrading {
     /// @custom:refresher
     function settleTrade(IERC20 sell) public {
         ITrade trade = trades[sell];
-        require(address(trade) != address(0), "no trade open");
+        if (address(trade) == address(0)) return;
+        require(trade.canSettle(), "cannot settle yet");
 
         delete trades[sell];
         tradesOpen--;
@@ -51,24 +49,19 @@ abstract contract TradingP1 is Multicall, RewardableP1, ITrading {
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
-    /// @dev Takes no action if trade-slot is clogged or the broker is disabled
     function tryTrade(TradeRequest memory req) internal {
-        IBroker broker = main.broker();
+        require(address(trades[req.sell.erc20()]) == address(0), "trade already open");
 
-        // Skip over doing trade if one is open
-        if (address(trades[req.sell.erc20()]) != address(0) || broker.disabled()) return;
+        IERC20Upgradeable(address(req.sell.erc20())).approve(
+            address(main.broker()),
+            req.sellAmount
+        );
+        ITrade trade = main.broker().openTrade(req);
 
-        IERC20Upgradeable(address(req.sell.erc20())).approve(address(broker), req.sellAmount);
-        try broker.openTrade(req) returns (ITrade trade) {
-            if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
-
-            trades[req.sell.erc20()] = trade;
-            tradesOpen++;
-            emit TradeStarted(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
-        } catch {
-            emit TradeBlocked(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
-            IERC20Upgradeable(address(req.sell.erc20())).approve(address(broker), 0);
-        }
+        if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
+        trades[req.sell.erc20()] = trade;
+        tradesOpen++;
+        emit TradeStarted(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 
     // === Setters ===

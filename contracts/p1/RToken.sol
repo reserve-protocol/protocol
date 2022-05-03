@@ -103,7 +103,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     function issue(uint256 amtRToken) external notPaused {
         require(amtRToken > 0, "Cannot issue zero");
         // ==== Basic Setup ====
-        main.assetRegistry().forceUpdates(); // no need to ensureBasket
+        main.assetRegistry().forceUpdates(); // no need to checkBasket
         main.furnace().melt();
 
         // Refund issuances against previous baskets
@@ -273,8 +273,10 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         require(balanceOf(redeemer) >= amount, "not enough RToken");
 
         // Call collective state keepers
+        main.assetRegistry().forceUpdates();
+
         IBasketHandler bh = main.basketHandler();
-        bh.ensureBasket();
+        bh.checkBasket();
 
         // Allow redemption during IFFY
         require(bh.status() != CollateralStatus.DISABLED, "collateral default");

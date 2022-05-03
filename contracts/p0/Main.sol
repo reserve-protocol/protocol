@@ -21,18 +21,36 @@ contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
 
     function poke() external virtual notPaused {
         // We think these are totally order-independent.
-        basketHandler.ensureBasket();
+        assetRegistry.forceUpdates();
+        basketHandler.checkBasket();
         furnace.melt();
-        rsrTrader.settleTrades();
-        rTokenTrader.settleTrades();
-        backingManager.settleTrades();
-        stRSR.payoutRewards();
 
-        // Grant RToken allowances
+        // Settle trades
         IERC20[] memory erc20s = assetRegistry.erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
+            // BackingManager allowances
             backingManager.grantRTokenAllowance(erc20s[i]);
+
+            // BackingManager trading
+            ITrade trade = backingManager.trades(erc20s[i]);
+            if (address(trade) != address(0) && trade.canSettle()) {
+                backingManager.settleTrade(erc20s[i]);
+            }
+
+            // RSRTrader
+            trade = rsrTrader.trades(erc20s[i]);
+            if (address(trade) != address(0) && trade.canSettle()) {
+                rsrTrader.settleTrade(erc20s[i]);
+            }
+
+            // RTokenTrader
+            trade = rTokenTrader.trades(erc20s[i]);
+            if (address(trade) != address(0) && trade.canSettle()) {
+                rTokenTrader.settleTrade(erc20s[i]);
+            }
         }
+
+        stRSR.payoutRewards();
     }
 
     function owner() public view override(IMain, OwnableUpgradeable) returns (address) {

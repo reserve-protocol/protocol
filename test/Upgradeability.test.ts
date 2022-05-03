@@ -23,8 +23,8 @@ import {
   IBasketHandler,
   MainP1,
   MainP1V2,
-  RevenueTradingP1,
-  RevenueTradingP1V2,
+  RevenueTraderP1,
+  RevenueTraderP1V2,
   RTokenAsset,
   RTokenP1,
   RTokenP1V2,
@@ -129,7 +129,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     MainFactory = await ethers.getContractFactory('MainP1')
     RTokenFactory = await ethers.getContractFactory('RTokenP1')
     FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
-    RevenueTraderFactory = await ethers.getContractFactory('RevenueTradingP1', {
+    RevenueTraderFactory = await ethers.getContractFactory('RevenueTraderP1', {
       libraries: { TradingLibP1: tradingLib.address },
     })
     BackingManagerFactory = await ethers.getContractFactory('BackingManagerP1', {
@@ -309,7 +309,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     })
 
     it('Should deploy valid implementation - RevenueTrader', async () => {
-      const newRevenueTrader: RevenueTradingP1 = <RevenueTradingP1>await upgrades.deployProxy(
+      const newRevenueTrader: RevenueTraderP1 = <RevenueTraderP1>await upgrades.deployProxy(
         RevenueTraderFactory,
         [main.address, rsr.address, config.maxTradeSlippage, config.dustAmount],
         {
@@ -569,10 +569,10 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should upgrade correctly - RevenueTrader', async () => {
       // Upgrading
       const RevTraderV2Factory: ContractFactory = await ethers.getContractFactory(
-        'RevenueTradingP1V2',
+        'RevenueTraderP1V2',
         { libraries: { TradingLibP1: tradingLib.address } }
       )
-      const rsrTraderV2: RevenueTradingP1V2 = <RevenueTradingP1V2>await upgrades.upgradeProxy(
+      const rsrTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
         rsrTrader.address,
         RevTraderV2Factory,
         {
@@ -580,7 +580,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         }
       )
 
-      const rTokenTraderV2: RevenueTradingP1V2 = <RevenueTradingP1V2>await upgrades.upgradeProxy(
+      const rTokenTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
         rTokenTrader.address,
         RevTraderV2Factory,
         {

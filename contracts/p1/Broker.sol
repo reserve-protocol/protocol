@@ -50,7 +50,6 @@ contract BrokerP1 is ComponentP1, IBroker {
         );
 
         // In the future we'll have more sophisticated choice logic here, probably by trade size
-        //GnosisTrade trade = new GnosisTrade();
         GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
         trades[address(trade)] = true;
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(

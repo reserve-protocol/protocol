@@ -293,16 +293,9 @@ The following are functions I'm thinking of as "actions":
 
 The actions on stRSR and rToken are _User Actions_; the actions on the traders are _Collective Actions_ which may launch new auctions. All of these may cause economically significant state changes; the exact time and sequence in which these functions are called can cause substantial differences in the resulting state.
 
-## `ensureBasket`
+## `checkBasket`
 
-Annotation: `@custom:ensure-basket`
-
-`basketHandler.ensureBasket` is unavoidably in a function class by itself. It can launch auctions, change the contents of the basket, and change the entire state of the system relatively radically. Its checks _should_ happen frequently, and especially when Actions are being called.
-
-Moreover, the conditions it watches for should be continuously monitored by external keepers, and anytime `ensureBasket` might change the state of things, the function should be immediately (and permissionlessly!) called.
-
-- Every Action should first call `ensureBasket` (or possibly ensure that ensureBasket has been called in the current block)
-- When `ensureBasket` does not detect default, it should have no effect on the system state.
+`basketHandler.checkBasket` is unavoidably in a function class by itself. It examines the state of the basket and tries to change it, if it is found to be defaulted. It does _not_ forceUpdates, in order to support for gas-efficient separation.
 
 ## Refreshers
 
@@ -311,6 +304,7 @@ Annotation: `@custom:refresher`
 The following are all refreshers:
 
 - furnace.melt()
+- assetRegistry.forceUpdates()
 - stRSR.payoutRewards()
 - {rsrTrader, rTokenTrader, backingManager}.settleTrades()
 
@@ -323,7 +317,7 @@ Why does this matter? In a strong sense, refreshers are always _safe_ to call. F
 
 - If an Action can lead to different results depending on whether or not a refresher is called just before, then the Action is currently incorrect. That Action can be made correct by first calling any such refresher when it's first called.
 
-We get this easily in P0 -- since we aren't worrying about gas optimization there, we just call every refresher at the start of every action. Main.poke() is around, in P0, to call every function that's always correct to call, which includes `ensureBasket` and all of the refreshers
+We get this easily in P0 -- since we aren't worrying about gas optimization there, we just call every refresher at the start of every action. Main.poke() is around, in P0, to call every function that's always correct to call, which includes `checkBasket` and all of the refreshers
 
 ## Completions
 
