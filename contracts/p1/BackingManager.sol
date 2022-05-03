@@ -46,7 +46,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// Manage backing funds: maintain the overall backing policy
     /// Collective Action
     function manageFunds() external notPaused {
-        require(tradesOpen == 0, "has open trades");
+        if (tradesOpen > 0) return;
 
         // Call keepers
         main.assetRegistry().forceUpdates();
