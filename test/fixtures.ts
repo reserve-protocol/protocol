@@ -1,12 +1,14 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
+import { ZERO_ADDRESS } from '../common/constants'
 import { expectInReceipt } from '../common/events'
-import { bn, fp } from '../common/numbers'
+import { bn, fp, ZERO } from '../common/numbers'
 import {
   AaveLendingAddrProviderMock,
   AaveLendingPoolMock,
   AaveOracleMock,
+  AavePricedAsset,
   Asset,
   AssetRegistryP1,
   ATokenFiatCollateral,
@@ -15,6 +17,7 @@ import {
   BrokerP1,
   Collateral as AbstractCollateral,
   CompoundOracleMock,
+  CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
@@ -96,6 +99,9 @@ export interface IImplementations {
   main: string
   components: IComponents
   trade: string
+  rTokenAsset: string
+  aavePricedAsset: string
+  compoundPricedAsset: string
 }
 
 interface RSRFixture {
@@ -472,6 +478,26 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1')
     const stRSRImpl: StRSRP1 = <StRSRP1>await StRSRImplFactory.deploy()
 
+    // Assets - Can use dummy data in constructor as only logic will be used
+    const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset')
+    const rTokenAssetImpl: RTokenAsset = <RTokenAsset>(
+      await RTokenAssetFactory.deploy(ZERO_ADDRESS, bn(0), ZERO_ADDRESS)
+    )
+
+    const AavePricedAssetFactory: ContractFactory = await ethers.getContractFactory(
+      'AavePricedAsset'
+    )
+    const aavePricedAssetImpl: AavePricedAsset = <AavePricedAsset>(
+      await AavePricedAssetFactory.deploy(ZERO_ADDRESS, bn(0), ZERO_ADDRESS, ZERO_ADDRESS)
+    )
+
+    const CompoundPricedAssetFactory: ContractFactory = await ethers.getContractFactory(
+      'CompoundPricedAsset'
+    )
+    const compoundPricedAssetImpl: CompoundPricedAsset = <CompoundPricedAsset>(
+      await CompoundPricedAssetFactory.deploy(ZERO_ADDRESS, bn(0), ZERO_ADDRESS)
+    )
+
     // Setup Implementation addresses
     const implementations: IImplementations = {
       main: mainImpl.address,
@@ -488,6 +514,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
         rTokenTrader: revTraderImpl.address,
       },
       trade: tradeImpl.address,
+      rTokenAsset: rTokenAssetImpl.address,
+      aavePricedAsset: aavePricedAssetImpl.address,
+      compoundPricedAsset: compoundPricedAssetImpl.address,
     }
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')

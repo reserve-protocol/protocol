@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
@@ -20,12 +21,13 @@ interface ICompoundOracle {
 
 // ==== End External Interfaces ====
 
-abstract contract CompoundOracleMixin {
+abstract contract CompoundOracleMixin is Initializable {
     using FixLib for int192;
 
-    IComptroller public immutable comptroller;
+    IComptroller public comptroller;
 
-    constructor(IComptroller comptroller_) {
+    // solhint-disable-next-line func-name-mixedcase
+    function __CompoundOracleMixin_init(IComptroller comptroller_) internal onlyInitializing {
         comptroller = comptroller_;
     }
 

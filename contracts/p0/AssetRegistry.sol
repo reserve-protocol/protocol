@@ -25,6 +25,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     }
 
     /// Force updates in all collateral assets
+    /// TODO Decide if we want reentrancy guards here
     function forceUpdates() external {
         for (uint256 i = 0; i < _erc20s.length(); i++) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
