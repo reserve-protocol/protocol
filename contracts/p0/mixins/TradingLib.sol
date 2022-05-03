@@ -42,7 +42,10 @@ library TradingLibP0 {
 
         // Do not overflow auction mechanism
         // Gnosis: uint96 ~= 7e28
-        if (trade.sellAmount > 7e28) trade.sellAmount = 7e28;
+        if (trade.sellAmount > 7e28) {
+            trade.sellAmount = 7e28;
+            s = shiftl_toFix(trade.sellAmount, -int8(sell.erc20().decimals()));
+        }
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         int192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(sell.price(), buy.price(), CEIL);
