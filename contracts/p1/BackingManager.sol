@@ -21,16 +21,16 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for int192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint256 public tradingDelay; // {s} how long to wait until resuming trading after switching
+    uint32 public tradingDelay; // {s} how long to wait until resuming trading after switching
     int192 public backingBuffer; // {%} how much extra backing collateral to keep
 
     function init(
         IMain main_,
-        uint256 tradingDelay_,
+        uint32 tradingDelay_,
         int192 backingBuffer_,
         int192 maxTradeSlippage_,
         int192 dustAmount_
-    ) public initializer {
+    ) external initializer {
         __Component_init(main_);
         __Trading_init(maxTradeSlippage_, dustAmount_);
         tradingDelay = tradingDelay_;
@@ -150,7 +150,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         IERC20[] memory erc20s = main.assetRegistry().erc20s();
         // Handout excess assets above what is needed, including any newly minted RToken
-        for (uint256 i = 0; i < erc20s.length; i++) {
+        uint256 length = erc20s.length;
+        for (uint256 i = 0; i < length; ++i) {
             IAsset asset = main.assetRegistry().toAsset(erc20s[i]);
 
             int192 bal = asset.bal(address(this)); // {tok}
@@ -264,7 +265,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // === Setters ===
 
-    function setTradingDelay(uint256 val) external onlyOwner {
+    function setTradingDelay(uint32 val) external onlyOwner {
         emit TradingDelaySet(tradingDelay, val);
         tradingDelay = val;
     }

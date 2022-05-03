@@ -17,15 +17,15 @@ abstract contract TradingP1 is RewardableP1, ITrading {
     // All trades
     ITrade[] public trades;
 
+    // === Governance params ===
+    int192 public maxTradeSlippage; // {%}
+    int192 public dustAmount; // {UoA}
+
     // First trade that is still open (or trades.length if all trades are settled)
     uint256 public tradesStart;
 
     // The latest end time for any trade in `trades`.
-    uint256 private latestEndtime;
-
-    // === Governance params ===
-    int192 public maxTradeSlippage; // {%}
-    int192 public dustAmount; // {UoA}
+    uint32 private latestEndtime;
 
     // solhint-disable-next-line func-name-mixedcase
     function __Trading_init(int192 maxTradeSlippage_, int192 dustAmount_)
@@ -50,7 +50,8 @@ abstract contract TradingP1 is RewardableP1, ITrading {
     /// @custom:refresher
     function settleTrades() public {
         uint256 i = tradesStart;
-        for (; i < trades.length && trades[i].canSettle(); i++) {
+        uint256 length = trades.length;
+        for (; i < length && trades[i].canSettle(); ++i) {
             ITrade trade = trades[i];
             try trade.settle() returns (uint256 soldAmt, uint256 boughtAmt) {
                 emit TradeSettled(i, trade.sell(), trade.buy(), soldAmt, boughtAmt);

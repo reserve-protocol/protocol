@@ -1,21 +1,8 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `30508`;
+exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `30513`;
 
 exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `2557325`;
 
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 3`] = `43122`;
+exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 3`] = `43127`;
 
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 4`] = `590599`;
-
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 5`] = `195038`;
-
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 6`] = `2598213`;
-
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 7`] = `177961`;
-
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 8`] = `3801583`;
-
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 9`] = `197868`;
-
-exports[`Recapitalization - P1 Gas Reporting Settle Trades / Manage Funds 10`] = `1264859`;

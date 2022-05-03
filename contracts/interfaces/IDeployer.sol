@@ -32,7 +32,7 @@ struct DeploymentParams {
     uint32 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
     //
     // === BackingManager ===
-    uint256 tradingDelay; // {s} how long to wait until starting auctions after switching basket
+    uint32 tradingDelay; // {s} how long to wait until starting auctions after switching basket
     uint32 auctionLength; // {s} the length of an auction
     int192 backingBuffer; // {%} how much extra backing collateral to keep
     int192 maxTradeSlippage; // {%} max slippage acceptable in a trade
