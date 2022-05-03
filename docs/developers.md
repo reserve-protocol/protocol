@@ -289,13 +289,11 @@ The following are functions I'm thinking of as "actions":
 - rToken.issue()
 - rToken.cancel()
 - rToken.redeem()
-- {rsrTrader, rTokenTrader, backingManager}.manageFunds() (which launch new auctions)
+- {rsrTrader,rTokenTrader,backingManager}.settleTrade()
+- backingManager.manageFunds()
+- {rsrTrader,rTokenTrader}.processToken()
 
 The actions on stRSR and rToken are _User Actions_; the actions on the traders are _Collective Actions_ which may launch new auctions. All of these may cause economically significant state changes; the exact time and sequence in which these functions are called can cause substantial differences in the resulting state.
-
-## `checkBasket`
-
-`basketHandler.checkBasket` is unavoidably in a function class by itself. It examines the state of the basket and tries to change it, if it is found to be defaulted. It does _not_ forceUpdates, in order to support for gas-efficient separation.
 
 ## Refreshers
 
@@ -303,10 +301,9 @@ Annotation: `@custom:refresher`
 
 The following are all refreshers:
 
-- furnace.melt()
 - assetRegistry.forceUpdates()
+- furnace.melt()
 - stRSR.payoutRewards()
-- {rsrTrader, rTokenTrader, backingManager}.settleTrades()
 
 Refreshers share a sort of time-dependent idempotency:
 
@@ -333,6 +330,10 @@ It's a little odd to think of them this way, but both stRSR.withdraw(acct, id) a
 - If rToken.vest(acct, x) is called arbitrarily many times in a row, with each x < id, and then rToken.vest(acct, id) is called at time t, the result is identical to if rToken.vest(acct, id) was just called once at time t. (Ditto for stRSR.withdraw)
 
 Both are similar to refreshers, in that it's always "safe" to call them on anyone's behalf. However, since there are aribtrarily many values of `acct` for which they might be called, it's impractical to call every instance of it at the start of every action, even in P0. In particular, if stRSR.seizeRSR() is called, it will seize RSR even from ongoing drafts that _could_ be withdrawn, but for which stRSR.withdraw() has not yet been called. (We could define this otherwise, but it'd cost a lot of gas.)
+
+## `checkBasket`
+
+`basketHandler.checkBasket` is unavoidably in a function class by itself. It examines the state of the basket and tries to change it, if it is found to be defaulted. It does _not_ forceUpdates, in order to support for gas-efficient separation.
 
 ## Others
 
@@ -426,3 +427,11 @@ Anticipated value: `1000e18` = $1,000
 The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply.
 
 Anticipated value: `0.00025e18` = 0.025% per block
+
+## `maxPriceLatency`
+
+{s}
+
+The max price latency is the maximum number of seconds that the RevenueTraders may allow to elapse without calling `forceUpdates`. If more time has elapsed, the RevenueTraders ought to force an update themselves.
+
+Only applies to the RevenueTraders.
