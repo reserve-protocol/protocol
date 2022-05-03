@@ -26,6 +26,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     }
 
     /// Force updates in all collateral assets
+    /// TODO Decide if we want reentrancy guards here
     function forceUpdates() external {
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {

@@ -66,23 +66,16 @@ abstract contract TradingP1 is RewardableP1, ITrading {
     /// Try to initiate a trade with a trading partner provided by the broker
     /// @dev Can fail silently if broker is disable or reverting
     function tryTrade(TradeRequest memory req) internal {
-        IAssetRegistry reg = main.assetRegistry();
-        assert(reg.isRegistered(req.sell.erc20()) && reg.isRegistered(req.buy.erc20()));
-
         IBroker broker = main.broker();
         if (broker.disabled()) return; // correct interaction with BackingManager/RevenueTrader
 
-        IERC20Upgradeable(address(req.sell.erc20())).safeIncreaseAllowance(
-            address(broker),
-            req.sellAmount
-        );
+        IERC20Upgradeable(address(req.sell.erc20())).approve(address(broker), req.sellAmount);
         try broker.openTrade(req) returns (ITrade trade) {
             if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
 
             trades.push(trade);
-            uint256 i = trades.length - 1;
             emit TradeStarted(
-                i,
+                trades.length - 1,
                 req.sell.erc20(),
                 req.buy.erc20(),
                 req.sellAmount,
@@ -90,7 +83,7 @@ abstract contract TradingP1 is RewardableP1, ITrading {
             );
         } catch {
             emit TradeBlocked(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
-            IERC20Upgradeable(address(req.sell.erc20())).safeApprove(address(broker), 0);
+            IERC20Upgradeable(address(req.sell.erc20())).approve(address(broker), 0);
         }
     }
 

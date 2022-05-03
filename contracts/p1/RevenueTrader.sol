@@ -22,7 +22,7 @@ contract RevenueTradingP1 is TradingP1, IRevenueTrader {
         IERC20 tokenToBuy_,
         int192 maxTradeSlippage_,
         int192 dustAmount_
-    ) public initializer {
+    ) external initializer {
         __Component_init(main_);
         __Trading_init(maxTradeSlippage_, dustAmount_);
         tokenToBuy = tokenToBuy_;
@@ -49,8 +49,6 @@ contract RevenueTradingP1 is TradingP1, IRevenueTrader {
     function manageERC20(IERC20 erc20) internal {
         IAssetRegistry reg = main.assetRegistry();
 
-        assert(reg.isRegistered(erc20));
-
         uint256 bal = erc20.balanceOf(address(this));
         if (bal == 0) return;
 
@@ -64,7 +62,8 @@ contract RevenueTradingP1 is TradingP1, IRevenueTrader {
         }
 
         // Don't open a second trade if there's already one running.
-        for (uint256 i = tradesStart; i < trades.length; i++) {
+        uint256 tradesLength = trades.length;
+        for (uint256 i = tradesStart; i < tradesLength; ++i) {
             if (trades[i].sell() == erc20) return;
         }
 

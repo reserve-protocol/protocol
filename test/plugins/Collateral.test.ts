@@ -5,6 +5,7 @@ import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
+  AaveLendingPoolMock,
   AaveOracleMock,
   AavePricedFiatCollateral,
   ATokenFiatCollateral,
@@ -53,6 +54,7 @@ describe('Collateral contracts', () => {
   // Aave / Compound
   let compoundMock: ComptrollerMock
   let compoundOracleInternal: CompoundOracleMock
+  let aaveMock: AaveLendingPoolMock
   let aaveOracleInternal: AaveOracleMock
 
   // Config
@@ -84,6 +86,7 @@ describe('Collateral contracts', () => {
       compToken,
       compoundMock,
       compoundOracleInternal,
+      aaveMock,
       aaveToken,
       aaveOracleInternal,
       basket,
@@ -200,6 +203,55 @@ describe('Collateral contracts', () => {
         calldata,
       ])
       expect(await cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+    })
+
+    it('Should not allow to initialize Collareral twice', async () => {
+      await expect(
+        tokenCollateral.init(
+          token.address,
+          config.maxTradeVolume,
+          fp('0.05'),
+          bn('86400'),
+          compoundMock.address,
+          aaveMock.address
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      await expect(
+        usdcCollateral.init(
+          usdc.address,
+          config.maxTradeVolume,
+          fp('0.05'),
+          bn('86400'),
+          compoundMock.address,
+          aaveMock.address
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      await expect(
+        aTokenCollateral.init(
+          aToken.address,
+          config.maxTradeVolume,
+          fp('0.05'),
+          bn('86400'),
+          token.address,
+          compoundMock.address,
+          aaveMock.address,
+          aaveToken.address
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      await expect(
+        cTokenCollateral.init(
+          cToken.address,
+          config.maxTradeVolume,
+          fp('0.05'),
+          bn('86400'),
+          token.address,
+          compoundMock.address,
+          compToken.address
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
     })
   })
 

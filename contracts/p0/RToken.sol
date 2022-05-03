@@ -83,7 +83,6 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         // Call collective state keepers.
         main.poke();
         IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() == CollateralStatus.SOUND, "collateral not sound");
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
 
         address issuer = _msgSender();
@@ -125,6 +124,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         // Complete issuance instantly if it fits into this block
         if (iss.blockAvailableAt.lte(toFix(block.number))) {
+            require(basketHandler.status() == CollateralStatus.SOUND, "collateral not sound");
+
             // At this point all checks have been done to ensure the issuance should vest
             uint256 vestedAmount = tryVestIssuance(issuer, issuances[issuer].length - 1);
             assert(vestedAmount == iss.amount);
@@ -137,6 +138,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One end of the range of issuance IDs to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
+    /// TODO confirm we DO NOT need notPaused here
     function cancel(uint256 endId, bool earliest) external {
         address account = _msgSender();
 
@@ -177,13 +179,14 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// Redeem RToken for basket collateral
     /// @custom:action
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    function redeem(uint256 amount) external {
+    function redeem(uint256 amount) external notPaused {
         require(amount > 0, "Cannot redeem zero");
+        require(balanceOf(_msgSender()) >= amount, "not enough RToken");
         // Call collective state keepers
         main.poke();
         IBasketHandler basketHandler = main.basketHandler();
 
-        require(balanceOf(_msgSender()) >= amount, "not enough RToken");
+        require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
 
         // {BU} = {BU} * {qRTok} / {qRTok}
         int192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
