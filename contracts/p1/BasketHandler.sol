@@ -116,7 +116,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    function setPrimeBasket(IERC20[] calldata erc20s, int192[] calldata targetAmts) external onlyOwner {
+    function setPrimeBasket(IERC20[] calldata erc20s, int192[] calldata targetAmts)
+        external
+        onlyOwner
+    {
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
