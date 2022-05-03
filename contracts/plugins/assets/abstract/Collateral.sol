@@ -24,22 +24,24 @@ abstract contract Collateral is ICollateral, Asset, Context {
     uint256 public whenDefault = NEVER;
 
     // targetName: The canonical name of this collateral's target unit.
-    bytes32 public immutable targetName;
+    bytes32 public targetName;
 
-    IERC20Metadata public immutable referenceERC20;
+    IERC20Metadata public referenceERC20;
 
-    int192 public immutable defaultThreshold; // {%} e.g. 0.05
+    int192 public defaultThreshold; // {%} e.g. 0.05
 
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
+    uint256 public delayUntilDefault; // {s} e.g 86400
 
-    constructor(
+    // solhint-disable-next-line func-name-mixedcase
+    function __Collateral_init(
         IERC20Metadata erc20_,
         int192 maxTradeVolume_,
         int192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         bytes32 targetName_
-    ) Asset(erc20_, maxTradeVolume_) {
+    ) internal onlyInitializing {
+        __Asset_init(erc20_, maxTradeVolume_);
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         referenceERC20 = referenceERC20_;
