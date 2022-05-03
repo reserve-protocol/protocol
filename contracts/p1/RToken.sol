@@ -79,11 +79,11 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
     function init(
         IMain main_,
-        string memory name_,
-        string memory symbol_,
-        string memory constitutionURI_,
+        string calldata name_,
+        string calldata symbol_,
+        string calldata constitutionURI_,
         int192 issuanceRate_
-    ) public initializer {
+    ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
@@ -133,7 +133,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
                 main.basketHandler().status() == CollateralStatus.SOUND,
                 "collateral not sound"
             );
-            for (uint256 i = 0; i < erc20s.length; i++) {
+            for (uint256 i = 0; i < erc20s.length; ++i) {
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     issuer,
                     address(main.backingManager()),
@@ -153,7 +153,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         }
 
         // Accept collateral
-        for (uint256 i = 0; i < erc20s.length; i++) {
+        for (uint256 i = 0; i < erc20s.length; ++i) {
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
         }
 
@@ -300,7 +300,8 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
-        for (uint256 i = 0; i < erc20s.length; i++) {
+        uint256 erc20length = erc20s.length;
+        for (uint256 i = 0; i < erc20length; ++i) {
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
 
             // {qTok} = {1} * {qTok}
@@ -394,9 +395,9 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         uint256 amtRTokenToMint;
         int192 newBasketsNeeded;
         IssueItem storage rightItem = queue.items[endId - 1];
-
+        uint256 queueLength = queue.tokens.length;
         if (queue.left == 0) {
-            for (uint256 i = 0; i < queue.tokens.length; i++) {
+            for (uint256 i = 0; i < queueLength; ++i) {
                 uint256 amtDeposit = rightItem.deposits[i];
                 IERC20Upgradeable(queue.tokens[i]).safeTransfer(
                     address(main.backingManager()),
@@ -407,7 +408,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets);
         } else {
             IssueItem storage leftItem = queue.items[queue.left - 1];
-            for (uint256 i = 0; i < queue.tokens.length; i++) {
+            for (uint256 i = 0; i < queueLength; ++i) {
                 uint256 amtDeposit = rightItem.deposits[i] - leftItem.deposits[i];
                 IERC20Upgradeable(queue.tokens[i]).safeTransfer(
                     address(main.backingManager()),
