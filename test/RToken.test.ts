@@ -191,7 +191,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     await token3.connect(owner).mint(addr2.address, initialBal)
   })
 
-  describe('Deployment', () => {
+  describe('Deployment #fast', () => {
     it('Deployment should setup RToken correctly', async () => {
       expect(await rToken.name()).to.equal('RTKN RToken')
       expect(await rToken.symbol()).to.equal('RTKN')
@@ -204,7 +204,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Configuration', () => {
+  describe('Configuration #fast', () => {
     it('Should allow to set basketsNeeded only from BackingManager', async () => {
       // Check initial status
       expect(await rToken.basketsNeeded()).to.equal(0)
@@ -271,6 +271,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should not redeem RTokens if paused', async function () {
+      const issueAmount: BigNumber = bn('10e18')
+
+      // Issue
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Pause Main
+      await main.connect(owner).pause()
+
+      // Try to redeem
+      await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('paused')
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
     })
 
     it('Should not issue RTokens if amount is zero', async function () {
@@ -484,7 +504,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(2))
     })
 
-    it('Should not issue/vest RTokens if collateral defaulted', async function () {
+    it('Should not vest RTokens if collateral not SOUND', async function () {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
 
       // Provide approvals
@@ -493,12 +513,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      // Issue rTokens
-      await rToken.connect(addr1).issue(issueAmount)
-
       // Default one of the tokens - 50% price reduction and mark default as probable
       await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
-      await collateral1.forceUpdates()
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
       expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
 
@@ -512,17 +531,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expectIssuance(addr1.address, 0, {
         processed: false,
       })
-      expect(await rToken.totalSupply()).to.equal(bn('0'))
-      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await rToken.balanceOf(main.address)).to.equal(0)
-
-      // Cannot start a new issuance either
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
-        'collateral not sound'
-      )
-
-      // Check values
       expect(await rToken.totalSupply()).to.equal(bn('0'))
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -949,12 +957,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Redeem', function () {
-    it('Should revert if zero amount', async function () {
+    it('Should revert if zero amount #fast', async function () {
       const zero: BigNumber = bn('0')
       await expect(rToken.connect(addr1).redeem(zero)).to.be.revertedWith('Cannot redeem zero')
     })
 
-    it('Should revert if no balance of RToken', async function () {
+    it('Should revert if no balance of RToken #fast', async function () {
       const redeemAmount: BigNumber = bn('20000e18')
 
       await expect(rToken.connect(addr1).redeem(redeemAmount)).to.be.revertedWith(
@@ -1051,10 +1059,28 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           issueAmount.mul(2).sub(redeemAmount.mul(2))
         )
       })
+
+      it('Should redeem if basket is IFFY #fast', async function () {
+        // Default one of the tokens - 50% price reduction and mark default as probable
+        await aaveOracleInternal.setPrice(token3.address, bn('1.25e14'))
+
+        await rToken.connect(addr1).redeem(issueAmount)
+        expect(await rToken.totalSupply()).to.equal(0)
+      })
+
+      it('Should revert if basket is DISABLED #fast', async function () {
+        // Default immediately
+        await token3.setExchangeRate(fp('0.999999'))
+
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith(
+          'collateral default'
+        )
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+      })
     })
   })
 
-  describe('Melt/Mint', () => {
+  describe('Melt/Mint #fast', () => {
     const issueAmount: BigNumber = bn('100e18')
 
     beforeEach(async () => {
@@ -1107,7 +1133,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       )
     })
   })
-  context(`RToken`, () => {
+  context(`Extreme Values`, () => {
     // makeColl: Deploy and register a new constant-price collateral
     async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {
       const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')

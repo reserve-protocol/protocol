@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
 
-abstract contract Asset is IAsset {
+abstract contract Asset is Initializable, IAsset {
     using FixLib for int192;
 
-    IERC20Metadata public immutable erc20;
+    IERC20Metadata public erc20;
 
-    int192 public immutable maxTradeVolume; // {UoA}
+    int192 public maxTradeVolume; // {UoA}
 
-    constructor(IERC20Metadata erc20_, int192 maxTradeVolume_) {
+    // solhint-disable-next-line func-name-mixedcase
+    function __Asset_init(IERC20Metadata erc20_, int192 maxTradeVolume_) internal onlyInitializing {
         erc20 = erc20_;
         maxTradeVolume = maxTradeVolume_;
     }

@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Contract, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, ZERO_ADDRESS, MAX_UINT256 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
@@ -166,7 +166,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     await token3.connect(owner).mint(addr2.address, initialBal)
   })
 
-  describe('Deployment', () => {
+  describe('Deployment #fast', () => {
     it('Should setup Main correctly', async () => {
       // Owner/Pauser
       expect(await main.paused()).to.equal(false)
@@ -262,7 +262,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Initialization', () => {
+  describe('Initialization #fast', () => {
     let components: Parameters<typeof main.init>[0]
 
     beforeEach(async () => {
@@ -424,7 +424,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Pause/Unpause', () => {
+  describe('Pause/Unpause #fast', () => {
     it('Should Pause/Unpause for Pauser and Owner', async () => {
       // Set different Pauser
       await main.connect(owner).setPauser(addr1.address)
@@ -500,7 +500,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Configuration/State', () => {
+  describe('Configuration/State #fast', () => {
     it('Should allow to update tradingDelay if Owner', async () => {
       const newValue: BigNumber = bn('360')
 
@@ -735,11 +735,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).pause()
 
       // Attempt to run functions again
-      await expect(basketHandler.ensureBasket()).to.be.revertedWith('paused')
       await expect(backingManager.manageFunds()).to.be.revertedWith('paused')
       await expect(rsrTrader.manageFunds()).to.be.revertedWith('paused')
       await expect(rTokenTrader.manageFunds()).to.be.revertedWith('paused')
       await expect(rToken.connect(addr1).issue(fp('1e-6'))).to.be.revertedWith('paused')
+      await expect(rToken.connect(addr1).redeem(fp('1e-6'))).to.be.revertedWith('paused')
     })
   })
 
@@ -1202,7 +1202,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describeGas('Gas Reporting', () => {
-    beforeEach(async () => {})
     it('Asset Registry - Force Updates', async () => {
       // Basket handler can run forceUpdates
       await whileImpersonating(basketHandler.address, async (bhsigner) => {

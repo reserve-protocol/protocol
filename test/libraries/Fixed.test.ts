@@ -4,7 +4,7 @@ import { ethers } from 'hardhat'
 import fc from 'fast-check'
 
 import { BN_SCALE_FACTOR } from '../../common/constants'
-import { bn, fp, pow10, fpCeil, fpFloor, fpRound, shortString, div } from '../../common/numbers'
+import { bn, fp, pow10, fpCeil, fpFloor, fpRound, div } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
 
 enum RoundingMode {
@@ -34,13 +34,7 @@ describe('In FixLib,', () => {
   const MAX_UINT192 = BigNumber.from(2).pow(192).sub(1)
   const MAX_FIX_INT = MAX_INT192.div(pow10(18)) // biggest integer N st toFix(N) exists
   const MIN_FIX_INT = MIN_INT192.div(pow10(18)) // smallest integer N st toFix(N) exists
-  const MAX_INT256 = BigNumber.from(2).pow(255).sub(1)
 
-  // prettier-ignore
-  const fixable_ints: BigNumber[] = [
-    bn(0), bn(1), bn(-1), MAX_FIX_INT, MIN_FIX_INT, MAX_FIX_INT.sub(1), MIN_FIX_INT.add(1),
-    bn('38326665875765560393'), bn('-01942957121544002253')
-  ]
   // prettier-ignore
   const positive_int192s: BigNumber[] = [
     bn(1), fp(0.9999), fp(1), fp(1.0001), MAX_INT192.sub(1), MAX_INT192
@@ -49,6 +43,8 @@ describe('In FixLib,', () => {
   negative_int192s.reverse()
 
   const int192s: BigNumber[] = [MIN_INT192, ...negative_int192s, bn(0), ...positive_int192s]
+
+  const int192Pairs: [BigNumber, BigNumber][] = int192s.slice(1).map((val, i) => [int192s[i], val])
 
   // This is before() instead of beforeEach():
   // All of these functions are pure, so the contract state can be reused.
@@ -212,16 +208,14 @@ describe('In FixLib,', () => {
   })
   describe('fixMin', () => {
     it('correctly evaluates min', async () => {
-      for (const a of int192s)
-        for (const b of int192s)
-          expect(await caller.fixMin_(a, b), `fixMin(${a}, ${b})`).to.equal(a.lt(b) ? a : b)
+      for (const [a, b] of int192Pairs)
+        expect(await caller.fixMin_(a, b), `fixMin(${a}, ${b})`).to.equal(a.lt(b) ? a : b)
     })
   })
   describe('fixMax', () => {
     it('correctly evaluates max', async () => {
-      for (const a of int192s)
-        for (const b of int192s)
-          expect(await caller.fixMax_(a, b), `fixMax(${a}, ${b})`).to.equal(a.gt(b) ? a : b)
+      for (const [a, b] of int192Pairs)
+        expect(await caller.fixMax_(a, b), `fixMax(${a}, ${b})`).to.equal(a.gt(b) ? a : b)
     })
   })
   describe('signOf', () => {
@@ -670,8 +664,6 @@ describe('In FixLib,', () => {
     })
   })
 
-  describe('utility function _divrnd(int,int)', () => {})
-
   describe('mulu', () => {
     it('correctly multiplies inside its range', async () => {
       const table = mulu_table.flatMap(([a, b, c]) => [
@@ -905,44 +897,46 @@ describe('In FixLib,', () => {
 
   describe('lt', () => {
     it('correctly evaluates <', async () => {
-      for (const a of int192s)
-        for (const b of int192s) {
-          expect(await caller.lt(a, b), `lt(${a}, ${b})`).to.equal(a.lt(b))
-        }
+      for (const [a, b] of int192Pairs) {
+        expect(await caller.lt(a, b), `lt(${a}, ${b})`).to.equal(a.lt(b))
+      }
     })
   })
   describe('lte', () => {
     it('correctly evaluates <=', async () => {
-      for (const a of int192s)
-        for (const b of int192s) {
-          expect(await caller.lte(a, b), `lte(${a}, ${b})`).to.equal(a.lte(b))
-        }
+      for (const [a, b] of int192Pairs) {
+        expect(await caller.lte(a, b), `lte(${a}, ${b})`).to.equal(a.lte(b))
+      }
     })
   })
   describe('gt', () => {
     it('correctly evaluates >', async () => {
-      for (const a of int192s)
-        for (const b of int192s) expect(await caller.gt(a, b), `gt(${a}, ${b})`).to.equal(a.gt(b))
+      for (const [a, b] of int192Pairs) {
+        expect(await caller.gt(a, b), `lte(${a}, ${b})`).to.equal(a.gt(b))
+      }
     })
   })
   describe('gte', () => {
     it('correctly evaluates >=', async () => {
-      for (const a of int192s)
-        for (const b of int192s)
-          expect(await caller.gte(a, b), `gte(${a}, ${b})`).to.equal(a.gte(b))
+      for (const [a, b] of int192Pairs) {
+        expect(await caller.gte(a, b), `gte(${a}, ${b})`).to.equal(a.gte(b))
+      }
     })
   })
   describe('eq', () => {
     it('correctly evaluates ==', async () => {
-      for (const a of int192s)
-        for (const b of int192s) expect(await caller.eq(a, b), `eq(${a}, ${b})`).to.equal(a.eq(b))
+      for (const [a, b] of int192Pairs) {
+        expect(await caller.eq(a, b), `lte(${a}, ${b})`).to.equal(a.eq(b))
+        expect(await caller.eq(a, a), `lte(${a}, ${b})`).to.equal(true)
+      }
     })
   })
   describe('neq', () => {
     it('correctly evaluates !=', async () => {
-      for (const a of int192s)
-        for (const b of int192s)
-          expect(await caller.neq(a, b), `neq(${a}, ${b})`).to.equal(!a.eq(b))
+      for (const [a, b] of int192Pairs) {
+        expect(await caller.neq(a, b), `neq(${a}, ${b})`).to.equal(!a.eq(b))
+        expect(await caller.neq(a, a), `neq(${a}, ${b})`).to.equal(false)
+      }
     })
   })
 
@@ -1087,10 +1081,11 @@ describe('In FixLib,', () => {
   // If seed is an arbitrary (possibly large) uint, return an aribtrary uint in [min, max)
   const inRange = (min: bigint, max: bigint, seed: bigint) => min + (seed % (max - min))
   const abs = (n: bigint) => (n >= 0n ? n : -n)
-  describe('muluDivu + muluDivuRnd', () => {
-    const WORD = 2n ** 256n
-    const INTMAX = 2n ** 191n - 1n
+  const WORD = 2n ** 256n
+  const INTMIN = -(2n ** 191n)
+  const INTMAX = 2n ** 191n - 1n
 
+  describe('muluDivu + muluDivuRnd', () => {
     it('muluDivu(0,0,1,*) = 0)', async () => {
       expect(await caller.muluDivuRnd(bn(0), bn(0), bn(1), FLOOR)).to.equal(bn(0))
       expect(await caller.muluDivuRnd(bn(0), bn(0), bn(1), CEIL)).to.equal(bn(0))
@@ -1148,11 +1143,8 @@ describe('In FixLib,', () => {
       )
     })
   })
-  describe('mulDiv + mulDivRnd', () => {
-    const WORD = 2n ** 256n
-    const INTMIN = -(2n ** 191n)
-    const INTMAX = 2n ** 191n - 1n
 
+  describe('mulDiv + mulDivRnd', () => {
     it('mulDiv(0,0,*,*) = 0.0)', async () => {
       expect(await caller.mulDivRnd(bn(0), bn(0), fp(1), FLOOR)).to.equal(bn(0))
       expect(await caller.mulDivRnd(bn(0), bn(0), fp(1), CEIL)).to.equal(bn(0))
@@ -1224,7 +1216,6 @@ describe('In FixLib,', () => {
   })
 
   describe('mulDiv256 + mulDiv256Rnd', () => {
-    const WORD = 2n ** 256n
     it('mulDiv256(0,0,1,*) = 0', async () => {
       expect(await caller.mulDiv256Rnd_(bn(0), bn(0), bn(1), FLOOR)).to.equal(bn(0))
       expect(await caller.mulDiv256Rnd_(bn(0), bn(0), bn(1), ROUND)).to.equal(bn(0))
@@ -1258,7 +1249,7 @@ describe('In FixLib,', () => {
           fc.bigUintN(256),
           fc.bigUintN(256),
           async (x, y, seed) => {
-            let z = inRange(1n + (x * y + 1n) / (WORD - 1n), WORD, seed)
+            const z = inRange(1n + (x * y + 1n) / (WORD - 1n), WORD, seed)
             const expectedResult: BigNumber = div(bn(x * y), bn(z), CEIL)
             const result = await caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), CEIL)
             expect(result).to.equal(expectedResult)
@@ -1273,7 +1264,7 @@ describe('In FixLib,', () => {
           fc.bigUintN(256),
           fc.bigUintN(256),
           async (x, y, seed) => {
-            let z = inRange(1n + (2n * x * y) / (2n * WORD - 1n), WORD, seed)
+            const z = inRange(1n + (2n * x * y) / (2n * WORD - 1n), WORD, seed)
             const expectedResult: BigNumber = div(bn(x * y), bn(z), ROUND)
             const result = await caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), ROUND)
             expect(result).to.equal(expectedResult)
@@ -1284,7 +1275,6 @@ describe('In FixLib,', () => {
   })
 
   describe('fullMul', () => {
-    const WORD = 2n ** 256n
     it(`works for many values`, async () => {
       await fc.assert(
         fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), async (x, y) => {

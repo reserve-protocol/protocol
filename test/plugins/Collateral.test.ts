@@ -5,6 +5,7 @@ import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
+  AaveLendingPoolMock,
   AaveOracleMock,
   AavePricedFiatCollateral,
   ATokenFiatCollateral,
@@ -53,6 +54,7 @@ describe('Collateral contracts', () => {
   // Aave / Compound
   let compoundMock: ComptrollerMock
   let compoundOracleInternal: CompoundOracleMock
+  let aaveMock: AaveLendingPoolMock
   let aaveOracleInternal: AaveOracleMock
 
   // Config
@@ -84,6 +86,7 @@ describe('Collateral contracts', () => {
       compToken,
       compoundMock,
       compoundOracleInternal,
+      aaveMock,
       aaveToken,
       aaveOracleInternal,
       basket,
@@ -112,7 +115,7 @@ describe('Collateral contracts', () => {
   })
 
   describe('Deployment', () => {
-    it('Deployment should setup collateral correctly', async () => {
+    it('Deployment should setup collateral correctly #fast', async () => {
       // Fiat Token Asset
       expect(await tokenCollateral.isCollateral()).to.equal(true)
       expect(await tokenCollateral.referenceERC20()).to.equal(token.address)
@@ -201,9 +204,58 @@ describe('Collateral contracts', () => {
       ])
       expect(await cTokenCollateral.rewardERC20()).to.equal(compToken.address)
     })
+
+    it('Should not allow to initialize Collareral twice', async () => {
+      await expect(
+        tokenCollateral.init(
+          token.address,
+          config.maxTradeVolume,
+          fp('0.05'),
+          bn('86400'),
+          compoundMock.address,
+          aaveMock.address
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      await expect(
+        usdcCollateral.init(
+          usdc.address,
+          config.maxTradeVolume,
+          fp('0.05'),
+          bn('86400'),
+          compoundMock.address,
+          aaveMock.address
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      await expect(
+        aTokenCollateral.init(
+          aToken.address,
+          config.maxTradeVolume,
+          fp('0.05'),
+          bn('86400'),
+          token.address,
+          compoundMock.address,
+          aaveMock.address,
+          aaveToken.address
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      await expect(
+        cTokenCollateral.init(
+          cToken.address,
+          config.maxTradeVolume,
+          fp('0.05'),
+          bn('86400'),
+          token.address,
+          compoundMock.address,
+          compToken.address
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+    })
   })
 
-  describe('Prices', () => {
+  describe('Prices #fast', () => {
     it('Should calculate prices correctly', async () => {
       // Check initial prices
       expect(await tokenCollateral.price()).to.equal(fp('1'))
@@ -500,7 +552,7 @@ describe('Collateral contracts', () => {
   })
 
   // Tests specific to the CompoundFiatCollateral.sol contract, not used by default in fixture
-  describe('Compound Fiat Collateral', () => {
+  describe('Compound Fiat Collateral #fast', () => {
     let compoundTokenAsset: CompoundPricedFiatCollateral
     let compoundUsdcAsset: CompoundPricedFiatCollateral
 

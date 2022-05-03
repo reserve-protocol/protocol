@@ -31,8 +31,8 @@ struct BasketConfig {
 struct Basket {
     IERC20[] erc20s; // Weak Invariant: after `ensureBasket`, no bad collateral
     mapping(IERC20 => int192) refAmts; // {ref/BU}
-    uint256 nonce;
-    uint256 timestamp;
+    uint32 nonce;
+    uint32 timestamp;
     bool defaulted;
     // Invariant: defaulted XOR targetAmts == refAmts.map(amt => amt * coll.targetPerRef())
 }
@@ -46,24 +46,26 @@ library BasketLib {
 
     // Empty self
     function empty(Basket storage self) internal {
-        for (uint256 i = 0; i < self.erc20s.length; i++) {
+        uint256 length = self.erc20s.length;
+        for (uint256 i = 0; i < length; ++i) {
             self.refAmts[self.erc20s[i]] = FIX_ZERO;
         }
         delete self.erc20s;
         self.nonce++;
-        self.timestamp = block.timestamp;
+        self.timestamp = uint32(block.timestamp);
         self.defaulted = false;
     }
 
     /// Set `self` equal to `other`
     function copy(Basket storage self, Basket storage other) internal {
         empty(self);
-        for (uint256 i = 0; i < other.erc20s.length; i++) {
+        uint256 length = other.erc20s.length;
+        for (uint256 i = 0; i < length; ++i) {
             self.erc20s.push(other.erc20s[i]);
             self.refAmts[other.erc20s[i]] = other.refAmts[other.erc20s[i]];
         }
         self.nonce++;
-        self.timestamp = block.timestamp;
+        self.timestamp = uint32(block.timestamp);
         self.defaulted = other.defaulted;
     }
 
@@ -80,7 +82,7 @@ library BasketLib {
             self.refAmts[tok] = self.refAmts[tok].plus(weight);
         }
         self.nonce++;
-        self.timestamp = block.timestamp;
+        self.timestamp = uint32(block.timestamp);
     }
 }
 
@@ -97,13 +99,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     BasketConfig private config;
     Basket private basket;
 
-    function init(IMain main_) public initializer {
+    function init(IMain main_) external initializer {
         __Component_init(main_);
     }
 
     /// Try to ensure the current basket is valid, switching it if necessary
     /// If there are no available collateral tokens, the basket becomes empty and defaulted
-    function ensureBasket() external notPaused {
+    function ensureBasket() external {
         main.assetRegistry().forceUpdates();
 
         if (status() == CollateralStatus.DISABLED) {
@@ -114,13 +116,16 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    function setPrimeBasket(IERC20[] memory erc20s, int192[] memory targetAmts) external onlyOwner {
+    function setPrimeBasket(IERC20[] calldata erc20s, int192[] calldata targetAmts)
+        external
+        onlyOwner
+    {
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
         bytes32[] memory names = new bytes32[](erc20s.length);
 
-        for (uint256 i = 0; i < erc20s.length; i++) {
+        for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
@@ -138,14 +143,14 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function setBackupConfig(
         bytes32 targetName,
         uint256 max,
-        IERC20[] memory erc20s
+        IERC20[] calldata erc20s
     ) external onlyOwner {
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
         delete conf.erc20s;
         IAssetRegistry reg = main.assetRegistry();
 
-        for (uint256 i = 0; i < erc20s.length; i++) {
+        for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the backup config to have its asset unregistered.
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
@@ -177,7 +182,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function status() public view returns (CollateralStatus status_) {
         if (basket.defaulted) return CollateralStatus.DISABLED;
 
-        for (uint256 i = 0; i < basket.erc20s.length; i++) {
+        uint256 length = basket.erc20s.length;
+        for (uint256 i = 0; i < length; ++i) {
             if (!goodCollateral(basket.erc20s[i])) return CollateralStatus.DISABLED;
 
             CollateralStatus s = main.assetRegistry().toColl(basket.erc20s[i]).status();
@@ -197,7 +203,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
     function price() external view returns (int192 p) {
-        for (uint256 i = 0; i < basket.erc20s.length; i++) {
+        uint256 length = basket.erc20s.length;
+        for (uint256 i = 0; i < length; ++i) {
             if (!goodCollateral(basket.erc20s[i])) continue;
 
             IERC20 erc20 = basket.erc20s[i];
@@ -216,7 +223,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         uint256 size;
         address[] memory erc20sBig = new address[](basket.erc20s.length);
         uint256[] memory quantitiesBig = new uint256[](basket.erc20s.length);
-        for (uint256 i = 0; i < basket.erc20s.length; i++) {
+        uint256 length = basket.erc20s.length;
+        for (uint256 i = 0; i < length; ++i) {
             if (!goodCollateral(basket.erc20s[i])) continue;
             int8 decimals = int8(IERC20Metadata(address(basket.erc20s[i])).decimals());
 
@@ -231,7 +239,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         erc20s = new address[](size);
         quantities = new uint256[](size);
-        for (uint256 i = 0; i < size; i++) {
+        for (uint256 i = 0; i < size; ++i) {
             erc20s[i] = erc20sBig[i];
             quantities[i] = quantitiesBig[i];
         }
@@ -241,7 +249,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @dev Returns FIX_MAX for an empty basket
     function basketsHeldBy(address account) public view returns (int192 baskets) {
         baskets = FIX_MAX;
-        for (uint256 i = 0; i < basket.erc20s.length; i++) {
+        uint256 length = basket.erc20s.length;
+        for (uint256 i = 0; i < length; ++i) {
             int192 bal = main.assetRegistry().toColl(basket.erc20s[i]).bal(account); // {tok}
             int192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
@@ -264,7 +273,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         newBasket.empty();
 
         // Count unique targets
-        for (uint256 i = 0; i < config.erc20s.length; i++) {
+        for (uint256 i = 0; i < config.erc20s.length; ++i) {
             targetNames.add(config.targetNames[config.erc20s[i]]);
         }
 
@@ -278,7 +287,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         int192[] memory totalWeights = new int192[](targetNames.length());
 
         // For each prime collateral token:
-        for (uint256 i = 0; i < config.erc20s.length; i++) {
+        for (uint256 i = 0; i < config.erc20s.length; ++i) {
             IERC20 erc20 = config.erc20s[i];
 
             // Find collateral's targetName index
@@ -301,14 +310,14 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // For each target i, if we still need more weight for target i then try to add the backup
         // basket for target i to make up that weight:
-        for (uint256 i = 0; i < targetNames.length(); i++) {
+        for (uint256 i = 0; i < targetNames.length(); ++i) {
             if (totalWeights[i].lte(goodWeights[i])) continue; // Don't need backup weight
 
             uint256 size = 0; // backup basket size
             BackupConfig storage backup = config.backups[targetNames.at(i)];
 
             // Find the backup basket size: min(backup.max, # of good backup collateral)
-            for (uint256 j = 0; j < backup.erc20s.length && size < backup.max; j++) {
+            for (uint256 j = 0; j < backup.erc20s.length && size < backup.max; ++j) {
                 if (goodCollateral(backup.erc20s[j])) size++;
             }
 
@@ -320,7 +329,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             uint256 assigned = 0;
             int192 needed = totalWeights[i].minus(goodWeights[i]);
             int192 fixSize = toFix(size);
-            for (uint256 j = 0; j < backup.erc20s.length && assigned < size; j++) {
+            for (uint256 j = 0; j < backup.erc20s.length && assigned < size; ++j) {
                 IERC20 erc20 = backup.erc20s[j];
                 if (goodCollateral(erc20)) {
                     newBasket.add(
@@ -336,7 +345,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // Keep records, emit event
         int192[] memory refAmts = new int192[](basket.erc20s.length);
-        for (uint256 i = 0; i < basket.erc20s.length; i++) {
+        for (uint256 i = 0; i < basket.erc20s.length; ++i) {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }
         emit BasketSet(basket.erc20s, refAmts, basket.defaulted);

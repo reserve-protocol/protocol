@@ -29,11 +29,14 @@ interface IAaveOracle {
 abstract contract AaveOracleMixin is CompoundOracleMixin {
     using FixLib for int192;
 
-    IAaveLendingPool public immutable aaveLendingPool;
+    IAaveLendingPool public aaveLendingPool;
 
-    constructor(IComptroller comptroller_, IAaveLendingPool aaveLendingPool_)
-        CompoundOracleMixin(comptroller_)
+    // solhint-disable-next-line func-name-mixedcase
+    function __AaveOracleMixin_init(IComptroller comptroller_, IAaveLendingPool aaveLendingPool_)
+        internal
+        onlyInitializing
     {
+        __CompoundOracleMixin_init(comptroller_);
         aaveLendingPool = aaveLendingPool_;
     }
 

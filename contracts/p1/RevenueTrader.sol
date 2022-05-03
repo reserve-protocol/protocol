@@ -49,8 +49,6 @@ contract RevenueTradingP1 is TradingP1, IRevenueTrader {
     function manageERC20(IERC20 erc20) internal {
         IAssetRegistry reg = main.assetRegistry();
 
-        assert(reg.isRegistered(erc20));
-
         uint256 bal = erc20.balanceOf(address(this));
         if (bal == 0) return;
 

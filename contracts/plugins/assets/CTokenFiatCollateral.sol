@@ -32,7 +32,7 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     int192 public prevReferencePrice; // previous rate, {collateral/reference}
-    IERC20 public immutable override rewardERC20;
+    IERC20 public override rewardERC20;
 
     constructor(
         IERC20Metadata erc20_,
@@ -42,17 +42,36 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
         IERC20Metadata referenceERC20_,
         IComptroller comptroller_,
         IERC20 rewardERC20_
-    )
-        Collateral(
+    ) {
+        init(
+            erc20_,
+            maxTradeVolume_,
+            defaultThreshold_,
+            delayUntilDefault_,
+            referenceERC20_,
+            comptroller_,
+            rewardERC20_
+        );
+    }
+
+    function init(
+        IERC20Metadata erc20_,
+        int192 maxTradeVolume_,
+        int192 defaultThreshold_,
+        uint256 delayUntilDefault_,
+        IERC20Metadata referenceERC20_,
+        IComptroller comptroller_,
+        IERC20 rewardERC20_
+    ) public initializer {
+        __Collateral_init(
             erc20_,
             maxTradeVolume_,
             defaultThreshold_,
             delayUntilDefault_,
             referenceERC20_,
             bytes32(bytes("USD"))
-        )
-        CompoundOracleMixin(comptroller_)
-    {
+        );
+        __CompoundOracleMixin_init(comptroller_);
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
     }

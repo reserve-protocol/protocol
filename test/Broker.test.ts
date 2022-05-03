@@ -25,7 +25,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
-describe(`BrokerP${IMPLEMENTATION} contract`, () => {
+describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let other: SignerWithAddress

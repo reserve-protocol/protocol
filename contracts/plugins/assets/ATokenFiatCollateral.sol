@@ -35,7 +35,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     using SafeERC20 for IERC20Metadata;
 
     int192 public prevReferencePrice; // previous rate, {collateral/reference}
-    IERC20 public immutable override rewardERC20;
+    IERC20 public override rewardERC20;
 
     constructor(
         IERC20Metadata erc20_,
@@ -46,17 +46,38 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_,
         IERC20 rewardERC20_
-    )
-        Collateral(
+    ) {
+        init(
+            erc20_,
+            maxTradeVolume_,
+            defaultThreshold_,
+            delayUntilDefault_,
+            referenceERC20_,
+            comptroller_,
+            aaveLendingPool_,
+            rewardERC20_
+        );
+    }
+
+    function init(
+        IERC20Metadata erc20_,
+        int192 maxTradeVolume_,
+        int192 defaultThreshold_,
+        uint256 delayUntilDefault_,
+        IERC20Metadata referenceERC20_,
+        IComptroller comptroller_,
+        IAaveLendingPool aaveLendingPool_,
+        IERC20 rewardERC20_
+    ) public initializer {
+        __Collateral_init(
             erc20_,
             maxTradeVolume_,
             defaultThreshold_,
             delayUntilDefault_,
             referenceERC20_,
             bytes32(bytes("USD"))
-        )
-        AaveOracleMixin(comptroller_, aaveLendingPool_)
-    {
+        );
+        __AaveOracleMixin_init(comptroller_, aaveLendingPool_);
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
     }

@@ -4,10 +4,15 @@ import { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
+  AaveLendingPoolMock,
   AaveOracleMock,
+  AavePricedAsset,
   Asset,
   CompoundOracleMock,
+  CompoundPricedAsset,
+  ComptrollerMock,
   ERC20Mock,
+  IMain,
   RTokenAsset,
   TestIRToken,
   USDCMock,
@@ -16,7 +21,7 @@ import { Collateral, defaultFixture, IConfig } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('Assets contracts', () => {
+describe('Assets contracts #fast', () => {
   // Tokens
   let rsr: ERC20Mock
   let compToken: ERC20Mock
@@ -34,6 +39,10 @@ describe('Assets contracts', () => {
   let rTokenAsset: RTokenAsset
   let basket: Collateral[]
 
+  // Aave / Compound
+  let compoundMock: ComptrollerMock
+  let aaveMock: AaveLendingPoolMock
+
   // Oracles
   let compoundOracleInternal: CompoundOracleMock
   let aaveOracleInternal: AaveOracleMock
@@ -42,6 +51,7 @@ describe('Assets contracts', () => {
   let config: IConfig
 
   // Main
+  let main: IMain
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
@@ -59,12 +69,15 @@ describe('Assets contracts', () => {
       rsrAsset,
       compToken,
       compAsset,
+      compoundMock,
       compoundOracleInternal,
       aaveToken,
       aaveAsset,
+      aaveMock,
       aaveOracleInternal,
       basket,
       config,
+      main,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
@@ -126,6 +139,34 @@ describe('Assets contracts', () => {
       expect(await rTokenAsset.price()).to.equal(await rToken.price())
       expect(await rTokenAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await rTokenAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+    })
+
+    it('Should not allow to initialize Assets twice', async () => {
+      await expect(
+        (rsrAsset as AavePricedAsset).init(
+          rsr.address,
+          bn(0),
+          compoundMock.address,
+          aaveMock.address
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      await expect(
+        (compAsset as CompoundPricedAsset).init(compToken.address, bn(0), compoundMock.address)
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      await expect(
+        (aaveAsset as AavePricedAsset).init(
+          aaveToken.address,
+          bn(0),
+          compoundMock.address,
+          aaveMock.address
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+
+      await expect(
+        (rTokenAsset as RTokenAsset).init(rToken.address, bn(0), main.address)
+      ).to.be.revertedWith('Initializable: contract is already initialized')
     })
   })
 

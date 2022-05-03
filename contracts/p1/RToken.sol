@@ -79,11 +79,11 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
     function init(
         IMain main_,
-        string memory name_,
-        string memory symbol_,
-        string memory constitutionURI_,
+        string calldata name_,
+        string calldata symbol_,
+        string calldata constitutionURI_,
         int192 issuanceRate_
-    ) public initializer {
+    ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
@@ -106,10 +106,6 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         main.assetRegistry().forceUpdates(); // no need to ensureBasket
         main.furnace().melt();
 
-        IBasketHandler bh = main.basketHandler();
-        require(bh.status() == CollateralStatus.SOUND, "collateral not sound");
-        (uint256 basketNonce, ) = bh.lastSet();
-
         // Refund issuances against previous baskets
         address issuer = _msgSender();
         refundOldBasketIssues(issuer);
@@ -119,7 +115,11 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             ? basketsNeeded.muluDivu(amtRToken, totalSupply()) // {BU * qRTok / qRTok}
             : shiftl_toFix(amtRToken, -int8(decimals())); // {qRTok / qRTok}
 
-        (address[] memory erc20s, uint256[] memory deposits) = bh.quote(amtBaskets, CEIL);
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        (address[] memory erc20s, uint256[] memory deposits) = main.basketHandler().quote(
+            amtBaskets,
+            CEIL
+        );
 
         IssueQueue storage queue = issueQueues[issuer];
         assert(queue.basketNonce == basketNonce || (queue.left == 0 && queue.right == 0));
@@ -129,7 +129,11 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         // Bypass queue entirely if the issuance can fit in this block
         if (vestingEnd.lte(toFix(block.number)) && queue.left == queue.right) {
-            for (uint256 i = 0; i < erc20s.length; i++) {
+            require(
+                main.basketHandler().status() == CollateralStatus.SOUND,
+                "collateral not sound"
+            );
+            for (uint256 i = 0; i < erc20s.length; ++i) {
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     issuer,
                     address(main.backingManager()),
@@ -149,7 +153,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         }
 
         // Accept collateral
-        for (uint256 i = 0; i < erc20s.length; i++) {
+        for (uint256 i = 0; i < erc20s.length; ++i) {
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
         }
 
@@ -207,9 +211,9 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     /// @custom:completion
     function vest(address account, uint256 endId) external notPaused {
         main.assetRegistry().forceUpdates();
-        main.furnace().melt();
-
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
+
+        main.furnace().melt();
         refundOldBasketIssues(account);
         vestUpTo(account, endId);
     }
@@ -238,12 +242,12 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         return right;
     }
 
-    /// TODO revisit
     /// Cancel some vesting issuance(s)
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
+    /// TODO confirm we DO NOT need notPaused here
     function cancel(uint256 endId, bool earliest) external {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
@@ -262,16 +266,20 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
-    /// TODO confirm `notPaused` is unnecessary with Matt
-    function redeem(uint256 amount) external {
+    /// TODO confirm we want to halt redemptions when paused
+    function redeem(uint256 amount) external notPaused {
         address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(redeemer) >= amount, "not enough RToken");
 
         // Call collective state keepers
-        main.assetRegistry().forceUpdates();
-        main.furnace().melt();
+        IBasketHandler bh = main.basketHandler();
+        bh.ensureBasket();
 
+        // Allow redemption during IFFY
+        require(bh.status() != CollateralStatus.DISABLED, "collateral default");
+
+        main.furnace().melt();
         int192 basketsNeeded_ = basketsNeeded; // gas optimization
 
         // {BU} = {BU} * {qRTok} / {qRTok}
@@ -279,10 +287,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         assert(baskets.lte(basketsNeeded_));
         emit Redemption(redeemer, amount, baskets);
 
-        (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
-            baskets,
-            FLOOR
-        );
+        (address[] memory erc20s, uint256[] memory amounts) = bh.quote(baskets, FLOOR);
 
         // {1} = {qRTok} / {qRTok}
         int192 prorate = toFix(amount).divu(totalSupply());
@@ -295,7 +300,8 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
 
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
-        for (uint256 i = 0; i < erc20s.length; i++) {
+        uint256 erc20length = erc20s.length;
+        for (uint256 i = 0; i < erc20length; ++i) {
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
 
             // {qTok} = {1} * {qTok}
@@ -389,9 +395,9 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
         uint256 amtRTokenToMint;
         int192 newBasketsNeeded;
         IssueItem storage rightItem = queue.items[endId - 1];
-
+        uint256 queueLength = queue.tokens.length;
         if (queue.left == 0) {
-            for (uint256 i = 0; i < queue.tokens.length; i++) {
+            for (uint256 i = 0; i < queueLength; ++i) {
                 uint256 amtDeposit = rightItem.deposits[i];
                 IERC20Upgradeable(queue.tokens[i]).safeTransfer(
                     address(main.backingManager()),
@@ -402,7 +408,7 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
             newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets);
         } else {
             IssueItem storage leftItem = queue.items[queue.left - 1];
-            for (uint256 i = 0; i < queue.tokens.length; i++) {
+            for (uint256 i = 0; i < queueLength; ++i) {
                 uint256 amtDeposit = rightItem.deposits[i] - leftItem.deposits[i];
                 IERC20Upgradeable(queue.tokens[i]).safeTransfer(
                     address(main.backingManager()),
