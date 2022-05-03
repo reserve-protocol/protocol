@@ -22,7 +22,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
 
-    function init(IMain main_, RevenueShare memory dist) public initializer {
+    function init(IMain main_, RevenueShare calldata dist) external initializer {
         __Component_init(main_);
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, dist.rsrDist));
@@ -76,7 +76,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     /// Returns the rsr + rToken shareTotals
     function totals() public view returns (uint256 rTokenTotal, uint256 rsrTotal) {
-        for (uint256 i = 0; i < destinations.length(); i++) {
+        uint256 length = destinations.length();
+        for (uint256 i = 0; i < length; ++i) {
             RevenueShare storage share = distribution[destinations.at(i)];
             rTokenTotal += share.rTokenDist;
             rsrTotal += share.rsrDist;

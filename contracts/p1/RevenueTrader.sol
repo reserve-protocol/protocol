@@ -22,7 +22,7 @@ contract RevenueTradingP1 is TradingP1, IRevenueTrader {
         IERC20 tokenToBuy_,
         int192 maxTradeSlippage_,
         int192 dustAmount_
-    ) public initializer {
+    ) external initializer {
         __Component_init(main_);
         __Trading_init(maxTradeSlippage_, dustAmount_);
         tokenToBuy = tokenToBuy_;
@@ -62,8 +62,8 @@ contract RevenueTradingP1 is TradingP1, IRevenueTrader {
         }
 
         // Don't open a second trade if there's already one running.
-        // TODO gas optimize
-        for (uint256 i = tradesStart; i < trades.length; i++) {
+        uint256 tradesLength = trades.length;
+        for (uint256 i = tradesStart; i < tradesLength; ++i) {
             if (trades[i].sell() == erc20) return;
         }
 
