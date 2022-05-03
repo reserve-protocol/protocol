@@ -338,6 +338,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           fp('0.125'),
           fp('0.125'),
         ]
+        await assetRegistry.forceUpdates()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -383,7 +384,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await compoundOracleInternal.setPrice(await token0.symbol(), bn('0.5e6'))
 
         // Mark default as probable
-        await collateral0.forceUpdates()
+        await assetRegistry.forceUpdates()
 
         // Check state - No changes
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
@@ -404,6 +405,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const newQuantities = [initialQuantities[1], bn('0')]
         const newRefAmounts = [basketsNeededAmts[1], fp('0.75')]
 
+        await assetRegistry.forceUpdates()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -449,6 +451,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           basketsNeededAmts[1],
           basketsNeededAmts[2],
         ]
+        await assetRegistry.forceUpdates()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -559,6 +562,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           basketsNeededAmts[3],
           fp('0.25'),
         ]
+        await assetRegistry.forceUpdates()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -857,13 +861,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Auction can be run now
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
+          .withArgs(token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // Token0 -> Token1 Auction
-        await expectTrade(backingManager, 0, {
+        await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -907,13 +911,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
+          .withArgs(token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // Token0 -> Token1 Auction
-        await expectTrade(backingManager, 0, {
+        await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -955,7 +959,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [0, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6)],
+            args: [token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6)],
             emitted: true,
           },
           { contract: backingManager, name: 'TradeStarted', emitted: false },
@@ -1011,13 +1015,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
+          .withArgs(token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // Token0 -> Token1 Auction
-        await expectTrade(backingManager, 0, {
+        await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1058,7 +1062,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
+            args: [token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
             emitted: true,
           },
           { contract: backingManager, name: 'TradeStarted', emitted: false },
@@ -1122,13 +1126,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
+          .withArgs(token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         let auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
         // Token0 -> Token1 Auction
-        await expectTrade(backingManager, 0, {
+        await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1173,19 +1177,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [0, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
+            args: [token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [
-              1,
-              rsr.address,
-              token1.address,
-              sellAmtRSR,
-              toBNDecimals(buyAmtBidRSR, 6).add(1),
-            ],
+            args: [rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6).add(1)],
             emitted: true,
           },
         ])
@@ -1193,7 +1191,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         auctionTimestamp = await getLatestBlockTimestamp()
 
         // RSR -> Token1 Auction
-        await expectTrade(backingManager, 1, {
+        await expectTrade(backingManager, {
           sell: rsr.address,
           buy: token1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1233,7 +1231,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [1, rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6)],
+            args: [rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6)],
             emitted: true,
           },
           {
@@ -1280,7 +1278,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
 
         // Running auctions will not trigger recapitalization until collateral defauls
-        await expect(facade.runAuctionsForAllTraders()).to.be.revertedWith('basket defaulted')
+        await expect(facade.runAuctionsForAllTraders()).to.be.revertedWith('basket not sound')
 
         // Mark default as probable
         await collateral0.forceUpdates()
@@ -1313,12 +1311,12 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(0, token0.address, backupToken1.address, sellAmt, bn('0'))
+          .withArgs(token0.address, backupToken1.address, sellAmt, bn('0'))
 
         const auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token0 -> Backup Token Auction
-        await expectTrade(backingManager, 0, {
+        await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1358,7 +1356,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [0, token0.address, backupToken1.address, sellAmt, minBuyAmt],
+            args: [token0.address, backupToken1.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -1431,13 +1429,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
 
         // Mark default as probable
-        await basketHandler.checkBasket()
+        await assetRegistry.forceUpdates()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
 
         // Advance time post collateral's default delay
         await advanceTime((await newCollateral0.delayUntilDefault()).toString())
 
         // Confirm default and trigger basket switch
+        await assetRegistry.forceUpdates()
         await basketHandler.checkBasket()
 
         // Check new state after basket switch
@@ -1454,12 +1453,12 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(0, token0.address, backupToken1.address, sellAmt, bn('0'))
+          .withArgs(token0.address, backupToken1.address, sellAmt, bn('0'))
 
         let auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token0 -> Backup Token Auction
-        await expectTrade(backingManager, 0, {
+        await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1496,20 +1495,20 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [0, token0.address, backupToken1.address, sellAmt, minBuyAmt],
+            args: [token0.address, backupToken1.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [1, token0.address, backupToken1.address, sellAmt, bn('0')],
+            args: [token0.address, backupToken1.address, sellAmt, bn('0')],
             emitted: true,
           },
         ])
 
         // Check new auction
         // Token0 -> Backup Token Auction
-        await expectTrade(backingManager, 1, {
+        await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -1552,13 +1551,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [1, token0.address, backupToken1.address, sellAmt, minBuyAmt],
+            args: [token0.address, backupToken1.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
         ])
@@ -1567,7 +1566,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // RSR -> Backup Token Auction
-        await expectTrade(backingManager, 2, {
+        await expectTrade(backingManager, {
           sell: rsr.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1605,7 +1604,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
           {
@@ -1681,7 +1680,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
 
         // Mark default as probable
-        await basketHandler.checkBasket()
+        await assetRegistry.forceUpdates()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
 
         // Advance time post collateral's default delay
@@ -1697,6 +1696,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const bkpTokenRefAmt: BigNumber = bn('0.25e18')
         const newRefAmounts = [bkpTokenRefAmt, bkpTokenRefAmt, bkpTokenRefAmt, bkpTokenRefAmt]
 
+        await assetRegistry.forceUpdates()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -1720,12 +1720,12 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(0, token0.address, backupToken1.address, sellAmt, bn('0'))
+          .withArgs(token0.address, backupToken1.address, sellAmt, bn('0'))
 
         let auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token0 -> Backup Token Auction
-        await expectTrade(backingManager, 0, {
+        await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1754,20 +1754,20 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [0, token0.address, backupToken1.address, sellAmt, minBuyAmt],
+            args: [token0.address, backupToken1.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [1, backupToken1.address, backupToken2.address, sellAmtBkp, minBuyAmtBkp],
+            args: [backupToken1.address, backupToken2.address, sellAmtBkp, minBuyAmtBkp],
             emitted: true,
           },
         ])
 
         // Check new auction
         // Backup Token 1 -> Backup Token 2 Auction
-        await expectTrade(backingManager, 1, {
+        await expectTrade(backingManager, {
           sell: backupToken1.address,
           buy: backupToken2.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -1802,20 +1802,20 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [1, backupToken1.address, backupToken2.address, sellAmtBkp, minBuyAmtBkp],
+            args: [backupToken1.address, backupToken2.address, sellAmtBkp, minBuyAmtBkp],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [2, backupToken1.address, backupToken3.address, sellAmtBkp, minBuyAmtBkp],
+            args: [backupToken1.address, backupToken3.address, sellAmtBkp, minBuyAmtBkp],
             emitted: true,
           },
         ])
 
         // Check new auction
         // Backup Token 1 -> Backup Token 3 Auction
-        await expectTrade(backingManager, 2, {
+        await expectTrade(backingManager, {
           sell: backupToken1.address,
           buy: backupToken3.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -1853,14 +1853,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [2, backupToken1.address, backupToken3.address, sellAmtBkp, minBuyAmtBkp],
+            args: [backupToken1.address, backupToken3.address, sellAmtBkp, minBuyAmtBkp],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [
-              3,
               backupToken1.address,
               backupToken4.address,
               sellAmtBkp1Remainder,
@@ -1872,7 +1871,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // Backup Token 1 -> Backup Token 4 Auction
-        await expectTrade(backingManager, 3, {
+        await expectTrade(backingManager, {
           sell: backupToken1.address,
           buy: backupToken4.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -1916,7 +1915,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [
-              3,
               backupToken1.address,
               backupToken4.address,
               sellAmtBkp1Remainder,
@@ -1927,7 +1925,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [4, rsr.address, backupToken4.address, sellAmtRSR, buyAmtBidRSR],
+            args: [rsr.address, backupToken4.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
         ])
@@ -1936,7 +1934,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // RSR -> Backup Token 4 Auction
-        await expectTrade(backingManager, 4, {
+        await expectTrade(backingManager, {
           sell: rsr.address,
           buy: backupToken4.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1974,7 +1972,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [4, rsr.address, backupToken4.address, sellAmtRSR, buyAmtBidRSR],
+            args: [rsr.address, backupToken4.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
           {
@@ -2048,13 +2046,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
 
         // Mark default as probable
-        await basketHandler.checkBasket()
+        await assetRegistry.forceUpdates()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
 
         // Advance time post collateral's default delay
         await advanceTime((await collateral0.delayUntilDefault()).toString())
 
         // Confirm default and trigger basket switch
+        await assetRegistry.forceUpdates()
         await basketHandler.checkBasket()
 
         // Running auctions will trigger recapitalization - All balance can be redeemed
@@ -2062,12 +2061,12 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders())
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(0, token0.address, backupToken1.address, sellAmt, bn('0'))
+          .withArgs(token0.address, backupToken1.address, sellAmt, bn('0'))
 
         let auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token0 -> Backup Token Auction
-        await expectTrade(backingManager, 0, {
+        await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2096,13 +2095,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [0, token0.address, backupToken1.address, sellAmt, minBuyAmt],
+            args: [token0.address, backupToken1.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [1, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
         ])
@@ -2111,7 +2110,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // RSR -> Backup Token Auction
-        await expectTrade(backingManager, 1, {
+        await expectTrade(backingManager, {
           sell: rsr.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2142,13 +2141,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [1, rsr.address, backupToken1.address, bn('0'), bn('0')],
+            args: [rsr.address, backupToken1.address, bn('0'), bn('0')],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
 
             emitted: true,
           },
@@ -2158,7 +2157,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // RSR -> Backup Token Auction
-        await expectTrade(backingManager, 2, {
+        await expectTrade(backingManager, {
           sell: rsr.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2185,7 +2184,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [2, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
           { contract: backingManager, name: 'TradeStarted', emitted: false },
@@ -2307,6 +2306,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         ]
 
         // Mark Default - Perform basket switch
+        await assetRegistry.forceUpdates()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -2336,7 +2336,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [0, token2.address, backupToken1.address, sellAmt2, bn('0')],
+            args: [token2.address, backupToken1.address, sellAmt2, bn('0')],
             emitted: true,
           },
         ])
@@ -2344,7 +2344,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         let auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token2 -> Backup Token 1 Auction
-        await expectTrade(backingManager, 0, {
+        await expectTrade(backingManager, {
           sell: token2.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2376,13 +2376,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [0, token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
+            args: [token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [1, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
         ])
@@ -2391,7 +2391,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // RSR -> Backup Token Auction
-        await expectTrade(backingManager, 1, {
+        await expectTrade(backingManager, {
           sell: rsr.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2441,7 +2441,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [1, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
           {
@@ -2562,6 +2562,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         ]
 
         // Mark Default - Perform basket switch
+        await assetRegistry.forceUpdates()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -2591,7 +2592,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [0, token2.address, backupToken1.address, sellAmt2, bn('0')],
+            args: [token2.address, backupToken1.address, sellAmt2, bn('0')],
             emitted: true,
           },
         ])
@@ -2599,7 +2600,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         let auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token2 -> Backup Token 1 Auction
-        await expectTrade(backingManager, 0, {
+        await expectTrade(backingManager, {
           sell: token2.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2632,13 +2633,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [0, token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
+            args: [token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [1, backupToken1.address, backupToken2.address, sellAmtBkp1, minBuyAmtBkp1],
+            args: [backupToken1.address, backupToken2.address, sellAmtBkp1, minBuyAmtBkp1],
             emitted: true,
           },
         ])
@@ -2647,7 +2648,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // Backup Token 1 -> Backup Token 2 Auction
-        await expectTrade(backingManager, 1, {
+        await expectTrade(backingManager, {
           sell: backupToken1.address,
           buy: backupToken2.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2705,13 +2706,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [1, backupToken1.address, backupToken2.address, sellAmtBkp1, minBuyAmtBkp1],
+            args: [backupToken1.address, backupToken2.address, sellAmtBkp1, minBuyAmtBkp1],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [2, rsr.address, backupToken2.address, sellAmtRSR, buyAmtBidRSR],
+            args: [rsr.address, backupToken2.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
         ])
@@ -2720,7 +2721,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // RSR -> Backup Token Auction
-        await expectTrade(backingManager, 2, {
+        await expectTrade(backingManager, {
           sell: rsr.address,
           buy: backupToken2.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2777,7 +2778,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [2, rsr.address, backupToken2.address, sellAmtRSR.sub(1000), buyAmtBidRSR],
+            args: [rsr.address, backupToken2.address, sellAmtRSR.sub(1000), buyAmtBidRSR],
             emitted: true,
           },
           {
@@ -2858,7 +2859,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await compoundOracleInternal.setPrice(await token0.symbol(), bn('0.8e6'))
 
         // Mark default as probable
-        await basketHandler.checkBasket()
+        await assetRegistry.forceUpdates()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
 
         // Advance time post delayUntilDefault
@@ -2902,7 +2903,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [0, token0.address, backupToken1.address, sellAmt0, bn('0')],
+            args: [token0.address, backupToken1.address, sellAmt0, bn('0')],
             emitted: true,
           },
         ])
@@ -2910,7 +2911,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         let auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token0 -> Backup Token 1 Auction
-        await expectTrade(backingManager, 0, {
+        await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2938,13 +2939,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [0, token0.address, backupToken1.address, sellAmt0, minBuyAmt0],
+            args: [token0.address, backupToken1.address, sellAmt0, minBuyAmt0],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [1, token2.address, backupToken1.address, sellAmt2, bn('0')],
+            args: [token2.address, backupToken1.address, sellAmt2, bn('0')],
             emitted: true,
           },
         ])
@@ -2953,7 +2954,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // Token2 -> Backup Token 1 Auction
-        await expectTrade(backingManager, 1, {
+        await expectTrade(backingManager, {
           sell: token2.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -3001,13 +3002,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [1, token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
+            args: [token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [2, token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), bn('0')],
+            args: [token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), bn('0')],
             emitted: true,
           },
         ])
@@ -3016,7 +3017,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // Token3 -> Backup Token 1 Auction
-        await expectTrade(backingManager, 2, {
+        await expectTrade(backingManager, {
           sell: token3.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -3078,13 +3079,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [2, token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), minBuyAmt3],
+            args: [token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), minBuyAmt3],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [3, token1.address, backupToken1.address, sellAmtRebalance, minBuyAmtRebalance],
+            args: [token1.address, backupToken1.address, sellAmtRebalance, minBuyAmtRebalance],
             emitted: true,
           },
         ])
@@ -3093,7 +3094,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // Token1 -> Backup Token 1 Auction
-        await expectTrade(backingManager, 3, {
+        await expectTrade(backingManager, {
           sell: token1.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -3145,7 +3146,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [3, token1.address, backupToken1.address, sellAmtRebalance, minBuyAmtRebalance],
+            args: [token1.address, backupToken1.address, sellAmtRebalance, minBuyAmtRebalance],
             emitted: true,
           },
           {
@@ -3226,7 +3227,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await compoundOracleInternal.setPrice(await token0.symbol(), bn('0.5e6'))
 
         // Mark default as probable
-        await basketHandler.checkBasket()
+        await assetRegistry.forceUpdates()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
 
         // Advance time post delayUntilDefault
@@ -3270,7 +3271,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [0, token0.address, backupToken1.address, sellAmt0, bn('0')],
+            args: [token0.address, backupToken1.address, sellAmt0, bn('0')],
             emitted: true,
           },
         ])
@@ -3278,7 +3279,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         let auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token0 -> Backup Token 1 Auction
-        await expectTrade(backingManager, 0, {
+        await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -3303,13 +3304,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [0, token0.address, backupToken1.address, sellAmt0, minBuyAmt0],
+            args: [token0.address, backupToken1.address, sellAmt0, minBuyAmt0],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [1, token2.address, backupToken2.address, sellAmt2, bn('0')],
+            args: [token2.address, backupToken2.address, sellAmt2, bn('0')],
 
             emitted: true,
           },
@@ -3319,7 +3320,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // Token2 -> Backup Token 2 Auction
-        await expectTrade(backingManager, 1, {
+        await expectTrade(backingManager, {
           sell: token2.address,
           buy: backupToken2.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -3368,13 +3369,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [1, token2.address, backupToken2.address, sellAmt2, minBuyAmt2],
+            args: [token2.address, backupToken2.address, sellAmt2, minBuyAmt2],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [2, token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), bn('0')],
+            args: [token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), bn('0')],
             emitted: true,
           },
         ])
@@ -3383,7 +3384,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // Token3 -> Backup Token 1 Auction
-        await expectTrade(backingManager, 2, {
+        await expectTrade(backingManager, {
           sell: token3.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -3447,13 +3448,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [2, token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), minBuyAmt3],
+            args: [token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), minBuyAmt3],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [3, token1.address, backupToken2.address, sellAmtRebalance, minBuyAmtRebalance],
+            args: [token1.address, backupToken2.address, sellAmtRebalance, minBuyAmtRebalance],
             emitted: true,
           },
         ])
@@ -3462,7 +3463,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // Token1 -> Backup Token 2 Auction
-        await expectTrade(backingManager, 3, {
+        await expectTrade(backingManager, {
           sell: token1.address,
           buy: backupToken2.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -3522,14 +3523,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [3, token1.address, backupToken2.address, sellAmtRebalance, minBuyAmtRebalance],
+            args: [token1.address, backupToken2.address, sellAmtRebalance, minBuyAmtRebalance],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [
-              4,
               backupToken1.address,
               backupToken2.address,
               sellAmtRebalanceBkp,
@@ -3543,7 +3543,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // Backup Token 1 ->  Backup Token 2 Auction
-        await expectTrade(backingManager, 4, {
+        await expectTrade(backingManager, {
           sell: backupToken1.address,
           buy: backupToken2.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -3605,7 +3605,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [
-              4,
               backupToken1.address,
               backupToken2.address,
               sellAmtRebalanceBkp,
@@ -3708,17 +3707,18 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       const bkpTokenRefAmt: BigNumber = bn('0.125e18')
 
       // Mark Default - Perform basket switch
-      await basketHandler.checkBasket()
+      await assetRegistry.forceUpdates()
+      await expect(basketHandler.checkBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Running auctions will trigger recapitalization - All balance will be redeemed
       const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
 
       // Run auctions - First Settle trades then Manage Funds
-      await snapshotGasCost(backingManager.settleTrades())
+      await snapshotGasCost(backingManager.settleTrade(token2.address))
       await snapshotGasCost(backingManager.manageFunds())
 
       // Another call should not create any new auctions if still ongoing
-      await snapshotGasCost(backingManager.settleTrades())
+      await snapshotGasCost(backingManager.settleTrade(token2.address))
       await snapshotGasCost(backingManager.manageFunds())
 
       // Perform Mock Bids for the new Token (addr1 has balance)
@@ -3741,7 +3741,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       const minBuyAmtBkp1: BigNumber = sellAmtBkp1 // No trade slippage
 
       // Run auctions - First Settle trades then Manage Funds
-      await snapshotGasCost(backingManager.settleTrades())
+      await snapshotGasCost(backingManager.settleTrade(token2.address))
       await snapshotGasCost(backingManager.manageFunds())
 
       // Perform Mock Bids for the new Token (addr1 has balance)
@@ -3762,7 +3762,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       const sellAmtRSR: BigNumber = buyAmtBidRSR // No trade slippage
 
       // Run auctions - First Settle trades then Manage Funds
-      await snapshotGasCost(backingManager.settleTrades())
+      await snapshotGasCost(backingManager.settleTrade(backupToken1.address))
       await snapshotGasCost(backingManager.manageFunds())
 
       //  Perform Mock Bids for RSR (addr1 has balance)
@@ -3779,7 +3779,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
       // End current auction
       // First Settle trades then Manage Funds
-      await snapshotGasCost(backingManager.settleTrades())
+      await snapshotGasCost(backingManager.settleTrade(rsr.address))
       await snapshotGasCost(backingManager.manageFunds())
     })
   })
