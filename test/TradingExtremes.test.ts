@@ -284,7 +284,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     }
   }
 
-  context.only('Revenue: appreciation', function () {
+  context('Revenue: appreciation', function () {
     // STORY
     //
     // There are N apppreciating collateral in the basket.
@@ -376,7 +376,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
     const numCases = cases.length.toString()
     cases.forEach((params, index) => {
-      if (index != 4) return
       it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
         await runScenario(
           params[0] as BigNumber,
@@ -539,6 +538,9 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         await facade.runAuctionsForAllTraders()
 
         for (const erc20 of erc20s) {
+          const tradeAddr = await backingManager.trades(erc20)
+          if (tradeAddr == ZERO_ADDRESS) continue
+
           const trade = <GnosisTrade>(
             await ethers.getContractAt('GnosisTrade', await backingManager.trades(erc20))
           )
@@ -567,7 +569,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       if (rTokenSupply.lt(bn('1e40'))) {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
       } else {
-        expect(await backingManager.tradesOpen()).to.equal(basketSize + 1) // it should have tried
+        expect(await backingManager.tradesOpen()).to.equal(1) // it should have tried
       }
     }
 

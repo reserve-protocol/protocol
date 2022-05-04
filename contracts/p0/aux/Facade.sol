@@ -31,6 +31,7 @@ contract FacadeP0 is IFacade {
     /// Relatively gas-inefficient, shouldn't be used in production. Use multicall instead
     /// @custom:action
     function runAuctionsForAllTraders() external {
+        main.poke();
         IBackingManager backingManager = main.backingManager();
         IRevenueTrader rsrTrader = main.rsrTrader();
         IRevenueTrader rTokenTrader = main.rTokenTrader();
