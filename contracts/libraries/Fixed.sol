@@ -98,73 +98,20 @@ function shiftl_toFix(
     return _safeWrapu(shifted);
 }
 
+function id(int192 x) pure returns(int192) {
+    return x;
+}
+
 /// Divide a uint by a int192. Fails if the result is outside int192's representable range.
-
-/** @dev This is about this simplest way to do this. It also Just Works in all cases where the
- * result fits in int192, which may be surprising. See docs/fixlib-reasoning.md in this repo for the
- * worked logic by which this case is correct, and also the principles by which you can reason that
- * all these other functions are similarly correct.
- */
-
 function divFix(uint256 x, int192 y) pure returns (int192) {
-    int256 _y = int256(y);
     /* If we didn't have to worry about overflow or precision loss, we'd just do:
-       return x * 1e36 / _y.
-       TODO OPTIMIZATION: compare gas costs of this implementation versus mulDiv256(x, 1e36, y)
-    */
+       return x * 1e36 / _y. */
     // If it's safe to do this operation the easy way, do it:
     if (x < uint256(type(int256).max / FIX_SCALE_SQ)) {
-        return _safeWrap(int256(x * FIX_SCALE_SQ_U) / _y);
+        return _safeWrap(int256(x * FIX_SCALE_SQ_U) / y);
+    } else {
+        return signOf(y) * _safeWrapu(mulDiv256(x, FIX_SCALE_SQ_U, abs(y)));
     }
-    /* If we're not in that safe range, there are still lots of situations where the output fits in
-     * a int192, but (x * 1e36) does not fit in a uint256. For instance, x = 2**255; _y = 2**190.
-     * For such cases, we've got to compute result = [x * 1e36 / _y] in a way that only
-     * leaves the bounds of a uint256 if the result won't fit in a int192.
-
-     * So, we'll do this, essentially, by long division. Note that 1e18 fits in 64 bits.
-     */
-
-    int256 sign = signOf(_y);
-    uint256 div = abs(_y); // div = abs(_y),
-    /* From starting conditions, we know that x in uint256, div in uint192, and 1e18 in uint64.
-
-       We can't directly compute x * 1e18, because that might overflow a uint256. Instead,
-       we'll... essentially do long division of x by _y, except that instead of "bringing" down a
-       single zero per long divison step, we'll "bring down" 18 at a time.
-    */
-
-    // Each step overflows only if the result would overflow. Justifications follow:
-
-    uint256 q0 = x / div; // x/div fits in uint256
-    uint256 part0 = q0 * FIX_SCALE_SQ_U; // part0 <= result, so fits in int192 if result does
-    uint256 r0 = x % div; // x%div < div fits in uint192, so r0 fits in uint192
-
-    uint256 q1 = (r0 * FIX_SCALE_U) / div; // r0 in uint192 & 1e18 in uint64, so r0*1e18 in uint256
-    uint256 part1 = q1 * FIX_SCALE_U; // part1 <= result, so fits in int192 if result does.
-    uint256 r1 = (r0 * FIX_SCALE_U) % div; // r0 % div in uint192, so r1*1e18 in uint256
-
-    uint256 q2 = (r1 * FIX_SCALE_U) / div; // q2 <= result so fits in int192 if result does
-
-    return _safeWrap(int256(part0 + part1 + q2) * sign);
-
-    /* Let N == 1e18 (and N^2 == 1e36). Let's see that the above long-form division is correct:
-
-       Claim: In arithmetic without overflow, q0*N^2 + q1*N + q2 = [x * 1e36 / div].
-
-       Proof:
-       (1)     x = q0*div + r0  with 0 <= r0 < div   (because q0 = [x/div] and r0 = x % div)
-       (2)  r0*N = q1*div + r1  with 0 <= r1 < div   (because q1 = [r0/div] and r1 = r0 % div)
-       (3)  r1*N = q2*div + r2  with 0 <= r2 < div   (because q2 = [r1/div], and r2 = r1 % div)
-
-       Multiply through (1) and (2) by factors of N as needed to get:
-       (4)  x*N^2 = q0*N^2 * div + r0*N^2
-       (5)  r0*N^2 = q1*N * div + r1*N
-
-       Substitute away equal terms r0*N^2 and r1*N across (3,4,5), and factor, to get:
-       (6)  x*N^2 = (q0*N^2 + q1*N + q2)*div + r2    with 0 <= r2 < div
-
-       This means that (q0*N^2 + q1*N + q2) = [x*N^2/div], QED.
-    */
 }
 
 function fixMin(int192 x, int192 y) pure returns (int192) {

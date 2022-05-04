@@ -171,9 +171,10 @@ describe('In FixLib,', () => {
             [0, -1, 0],
           ])
       for (const [x, y, result] of table) {
-        expect(await caller.divFix_(x, fp(y)), `divFix(${x}, ${y}) == ${result}`).to.equal(
-          fp(result)
-        )
+        const a: BigNumber = bn(x)
+        const b: BigNumber = fp(y)
+        const c: BigNumber = fp(result)
+        expect(await caller.divFix_(a, b), `divFix(${x}, ${y}) == ${result}`).to.equal(c)
       }
     })
 
@@ -1091,7 +1092,7 @@ describe('In FixLib,', () => {
 
   if (SLOW) fc.configureGlobal({ numRuns: 10_000 })
 
-  describe.only('muluDivu + muluDivuRnd', () => {
+  describe('muluDivu + muluDivuRnd', () => {
     it('muluDivu(0,0,1,*) = 0)', async () => {
       expect(await caller.muluDivuRnd(bn(0), bn(0), bn(1), FLOOR)).to.equal(bn(0))
       expect(await caller.muluDivuRnd(bn(0), bn(0), bn(1), CEIL)).to.equal(bn(0))
@@ -1144,7 +1145,7 @@ describe('In FixLib,', () => {
     })
   })
 
-  describe.only('mulDiv + mulDivRnd', () => {
+  describe('mulDiv + mulDivRnd', () => {
     it('mulDiv(0,0,*,*) = 0.0)', async () => {
       expect(await caller.mulDivRnd(bn(0), bn(0), fp(1), FLOOR)).to.equal(bn(0))
       expect(await caller.mulDivRnd(bn(0), bn(0), fp(1), CEIL)).to.equal(bn(0))
@@ -1200,7 +1201,7 @@ describe('In FixLib,', () => {
     })
   })
 
-  describe.only('mulDiv256 + mulDiv256Rnd', () => {
+  describe('mulDiv256 + mulDiv256Rnd', () => {
     it('mulDiv256(0,0,1,*) = 0', async () => {
       expect(await caller.mulDiv256Rnd_(bn(0), bn(0), bn(1), FLOOR)).to.equal(bn(0))
       expect(await caller.mulDiv256Rnd_(bn(0), bn(0), bn(1), ROUND)).to.equal(bn(0))
@@ -1251,7 +1252,7 @@ describe('In FixLib,', () => {
     })
   })
 
-  describe.only('fullMul', () => {
+  describe('fullMul', () => {
     it(`works for many values`, async () => {
       await fc.assert(
         fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), async (x, y) => {

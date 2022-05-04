@@ -15,9 +15,20 @@ contract FixedCallerMock {
     function shiftl_toFix_Rnd(uint256 x, int8 d, RoundingMode rnd) public pure returns (int192) {
         return shiftl_toFix(x, d, rnd);
     }
+
     function divFix_(uint256 x, int192 y) public pure returns (int192) {
         return divFix(x, y);
     }
+
+    int192 val;
+    function warmUp(int192 y) public {
+        val = y;
+    }
+    function id_for_gas(int192 y) public {
+        val = id(y);
+    }
+
+
     function fixMin_(int192 x, int192 y) public pure returns (int192) {
         return fixMin(x, y);
     }
@@ -149,4 +160,6 @@ contract FixedCallerMock {
     function fullMul_(uint256 x, uint256 y) public pure returns (uint256 l, uint256 h) {
         return fullMul(x, y);
     }
+
+
 }
