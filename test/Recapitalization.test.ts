@@ -3777,10 +3777,10 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       // Advance time till auction ended
       await advanceTime(config.auctionLength.add(100).toString())
 
+      expect(await backingManager.tradesOpen()).to.equal(1)
       // End current auction
-      // First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(rsr.address))
-      await snapshotGasCost(backingManager.manageFunds())
+      expect(await backingManager.tradesOpen()).to.equal(0)
     })
   })
 })
