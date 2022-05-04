@@ -3,12 +3,9 @@ import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { TestITrading, GnosisTrade } from '../../typechain'
 
-export const expectTrade = async (
-  trader: TestITrading,
-  index: number,
-  auctionInfo: Partial<ITradeInfo>
-) => {
-  const trade = await getTrade(trader, index)
+export const expectTrade = async (trader: TestITrading, auctionInfo: Partial<ITradeInfo>) => {
+  if (!auctionInfo.sell) throw new Error('Must provide sell token to find trade')
+  const trade = await getTrade(trader, auctionInfo.sell as string)
   expect(await trade.sell()).to.equal(auctionInfo.sell)
   expect(await trade.buy()).to.equal(auctionInfo.buy)
   expect(await trade.endTime()).to.equal(auctionInfo.endTime)
@@ -16,8 +13,8 @@ export const expectTrade = async (
 }
 
 // TODO use this in more places
-export const getTrade = async (trader: TestITrading, index: number): Promise<GnosisTrade> => {
-  const tradeAddr = await trader.trades(index)
+export const getTrade = async (trader: TestITrading, sellAddr: string): Promise<GnosisTrade> => {
+  const tradeAddr = await trader.trades(sellAddr)
   return await ethers.getContractAt('GnosisTrade', tradeAddr)
 }
 

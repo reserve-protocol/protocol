@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { FURNACE_DEST, STRSR_DEST, MAX_UINT256 } from '../common/constants'
+import { FURNACE_DEST, STRSR_DEST, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { bn, fp, shortString } from '../common/numbers'
 import {
   AaveLendingPoolMock,
@@ -237,23 +237,22 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   }
 
   const runRevenueAuctionsUntilCompletion = async () => {
+    const erc20s = await assetRegistry.erc20s()
     let didStuff = true
-    // Run auctions
-    while (didStuff) {
+    for (let i = 0; didStuff && i < 10; i++) {
       didStuff = false
-      // Close auctions
+      // Close any auctions and start new ones
       await facade.runAuctionsForAllTraders()
 
-      expect(await backingManager.numTrades()).to.equal(0)
+      expect(await backingManager.tradesOpen()).to.equal(0)
       const traders = [rsrTrader, rTokenTrader]
       for (const trader of traders) {
-        const lastClosedTrade = await trader.tradesStart()
-        const totalTrades = await trader.numTrades()
-        for (let i = lastClosedTrade; i.lt(totalTrades); i = i.add(1)) {
+        for (const erc20 of erc20s) {
+          const tradeAddr = await trader.trades(erc20)
+          if (tradeAddr == ZERO_ADDRESS) continue
+
           didStuff = true
-          const trade = <GnosisTrade>(
-            await ethers.getContractAt('GnosisTrade', await trader.trades(i))
-          )
+          const trade = <GnosisTrade>await ethers.getContractAt('GnosisTrade', tradeAddr)
           const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
           const auctionId = await trade.auctionId()
           const [, , buy, sellAmt, buyAmt] = await gnosis.auctions(auctionId)
@@ -285,7 +284,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     }
   }
 
-  context('Revenue: appreciation', function () {
+  context.only('Revenue: appreciation', function () {
     // STORY
     //
     // There are N apppreciating collateral in the basket.
@@ -377,6 +376,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
     const numCases = cases.length.toString()
     cases.forEach((params, index) => {
+      if (index != 4) return
       it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
         await runScenario(
           params[0] as BigNumber,
@@ -533,15 +533,14 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       // in a reasonable amount of time.
 
       // Run recap auctions
+      const erc20s = await assetRegistry.erc20s()
       for (let i = 0; i < basketSize + 1 && uncapitalized; i++) {
-        // Close auctions
+        // Close any open auctions and launch new ones
         await facade.runAuctionsForAllTraders()
 
-        const lastClosedTrade = await backingManager.tradesStart()
-        const totalTrades = await backingManager.numTrades()
-        for (let i = lastClosedTrade; i.lt(totalTrades); i = i.add(1)) {
+        for (const erc20 of erc20s) {
           const trade = <GnosisTrade>(
-            await ethers.getContractAt('GnosisTrade', await backingManager.trades(i))
+            await ethers.getContractAt('GnosisTrade', await backingManager.trades(erc20))
           )
           const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
           const auctionId = await trade.auctionId()
@@ -568,7 +567,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       if (rTokenSupply.lt(bn('1e40'))) {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
       } else {
-        expect(await backingManager.numTrades()).to.equal(basketSize + 1) // it should have tried
+        expect(await backingManager.tradesOpen()).to.equal(basketSize + 1) // it should have tried
       }
     }
 
@@ -641,6 +640,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         await primeBasket[i].setExchangeRate(fp('0.00001'))
       }
 
+      await assetRegistry.forceUpdates()
       await basketHandler.checkBasket()
       await runRecapitalizationAuctions(rTokenSupply, basketSize)
     }
