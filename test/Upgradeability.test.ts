@@ -229,7 +229,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['external-library-linking'], // TradingLib (external)
+          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib (external)
         }
       )
       await newBackingMgr.deployed()
@@ -311,11 +311,17 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - RevenueTrader', async () => {
       const newRevenueTrader: RevenueTraderP1 = <RevenueTraderP1>await upgrades.deployProxy(
         RevenueTraderFactory,
-        [main.address, rsr.address, config.maxTradeSlippage, config.dustAmount],
+        [
+          main.address,
+          rsr.address,
+          config.maxTradeSlippage,
+          config.dustAmount,
+          config.maxPriceLatency,
+        ],
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['external-library-linking'], // TradingLib
+          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
         }
       )
       await newRevenueTrader.deployed()
@@ -447,7 +453,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         backingManager.address,
         BackingMgrV2Factory,
         {
-          unsafeAllow: ['external-library-linking'], // TradingLib
+          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
         }
       )
 
@@ -576,7 +582,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         rsrTrader.address,
         RevTraderV2Factory,
         {
-          unsafeAllow: ['external-library-linking'], // TradingLib
+          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
         }
       )
 
@@ -584,7 +590,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         rTokenTrader.address,
         RevTraderV2Factory,
         {
-          unsafeAllow: ['external-library-linking'], // TradingLib
+          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
         }
       )
 
