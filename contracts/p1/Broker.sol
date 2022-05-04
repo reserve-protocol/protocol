@@ -42,10 +42,12 @@ contract BrokerP1 is ComponentP1, IBroker {
     /// @dev Requires setting an allowance in advance
     function openTrade(TradeRequest memory req) external returns (ITrade) {
         require(!disabled, "broker disabled");
+
+        address caller = _msgSender();
         require(
-            _msgSender() == address(main.backingManager()) ||
-                _msgSender() == address(main.rsrTrader()) ||
-                _msgSender() == address(main.rTokenTrader()),
+            caller == address(main.backingManager()) ||
+                caller == address(main.rsrTrader()) ||
+                caller == address(main.rTokenTrader()),
             "only traders"
         );
 
@@ -53,11 +55,11 @@ contract BrokerP1 is ComponentP1, IBroker {
         GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
         trades[address(trade)] = true;
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
-            _msgSender(),
+            caller,
             address(trade),
             req.sellAmount
         );
-        trade.init(this, _msgSender(), gnosis, auctionLength, req);
+        trade.init(this, caller, gnosis, auctionLength, req);
         return trade;
     }
 

@@ -55,9 +55,9 @@ library TradingLibP0 {
 
         // Do not overflow auction mechanism - buy side
         if (trade.minBuyAmount > GNOSIS_MAX_TOKENS) {
-            int192 downsize = toFix(GNOSIS_MAX_TOKENS).divu(trade.minBuyAmount);
-            trade.sellAmount = downsize.mulu(trade.sellAmount).toUint();
-            trade.minBuyAmount = downsize.mulu(trade.minBuyAmount).toUint();
+            int192 over = FIX_ONE.muluDivu(trade.minBuyAmount, GNOSIS_MAX_TOKENS);
+            trade.sellAmount = divFix(trade.sellAmount, over).toUint(FLOOR);
+            trade.minBuyAmount = divFix(trade.minBuyAmount, over).toUint(CEIL);
         }
         return (true, trade);
     }

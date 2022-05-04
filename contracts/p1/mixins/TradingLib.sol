@@ -50,7 +50,6 @@ library TradingLibP1 {
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         int192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(sell.price(), buy.price(), CEIL);
-
         trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20().decimals()), CEIL);
 
         // Do not overflow auction mechanism - buy side
@@ -59,7 +58,6 @@ library TradingLibP1 {
             trade.sellAmount = divFix(trade.sellAmount, over).toUint(FLOOR);
             trade.minBuyAmount = divFix(trade.minBuyAmount, over).toUint(CEIL);
         }
-
         return (true, trade);
     }
 

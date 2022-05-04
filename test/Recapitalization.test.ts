@@ -3718,7 +3718,9 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(backingManager.manageFunds())
 
       // Another call should not create any new auctions if still ongoing
-      await snapshotGasCost(backingManager.settleTrade(token2.address))
+      await expect(backingManager.settleTrade(token2.address)).to.be.revertedWith(
+        'cannot settle yet'
+      )
       await snapshotGasCost(backingManager.manageFunds())
 
       // Perform Mock Bids for the new Token (addr1 has balance)
