@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IBroker.sol";
@@ -29,8 +29,8 @@ contract GnosisTrade is ITrade {
 
     // === Pricing ===
     address public origin;
-    IERC20 public sell;
-    IERC20 public buy;
+    IERC20Metadata public sell;
+    IERC20Metadata public buy;
     uint256 public sellAmount; // {qTok}
     uint32 public endTime;
     int192 public worstCasePrice; // {buyTok/sellTok}
@@ -58,7 +58,10 @@ contract GnosisTrade is ITrade {
         buy = req.buy.erc20();
         sellAmount = sell.balanceOf(address(this));
 
-        worstCasePrice = shiftl_toFix(req.minBuyAmount, -18).div(shiftl_toFix(sellAmount, -18));
+        // {buyTok/sellTok}
+        worstCasePrice = shiftl_toFix(req.minBuyAmount, -int8(buy.decimals())).div(
+            shiftl_toFix(sellAmount, -int8(sell.decimals()))
+        );
 
         IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
         auctionId = gnosis.initiateAuction(
@@ -85,7 +88,6 @@ contract GnosisTrade is ITrade {
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
         require(msg.sender == origin, "only origin can settle");
         assert(status == TradeStatus.OPEN);
-        require(canSettle(), "cannot settle yet");
         status = TradeStatus.CLOSED;
 
         // Optionally process settlement of the auction in Gnosis
@@ -104,7 +106,11 @@ contract GnosisTrade is ITrade {
         // Check clearing prices
         if (sellBal < sellAmount) {
             soldAmt = sellAmount - sellBal;
-            int192 clearingPrice = toFix(boughtAmt).divu(soldAmt); // {buyTok/sellTok}
+
+            // {buyTok/sellTok}
+            int192 clearingPrice = shiftl_toFix(boughtAmt, -int8(buy.decimals())).div(
+                shiftl_toFix(soldAmt, -int8(sell.decimals()))
+            );
             if (clearingPrice.lt(worstCasePrice)) {
                 broker.reportViolation();
             }

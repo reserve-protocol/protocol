@@ -46,9 +46,13 @@ contract MockBackingManager is IBackingManager, ComponentMock {
     function manageFunds() external {}
 
     /// Settle any auctions that can be settled
-    function settleTrades() external virtual override {}
+    function settleTrade(IERC20) external virtual override {}
 
     function claimAndSweepRewards() external virtual override {}
+
+    function trades(IERC20) external view virtual override returns (ITrade) {
+        return ITrade(address(0));
+    }
 
     /// @return {%} The maximum trade slippage acceptable
     function maxTradeSlippage() external view virtual override returns (int192) {
@@ -97,8 +101,8 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
         IERC20[] calldata
     ) external {}
 
-    /// Try to ensure the current basket is valid, causing underlying updates
-    function ensureBasket() external {}
+    /// Check that the current basket is valid, causing underlying updates
+    function checkBasket() external {}
 
     /// Governance-controlled setter to cause a basket switch explicitly
     function switchBasket() external {
@@ -191,8 +195,8 @@ contract RTokenTestSystem is MainMock {
     }
 
     function poke() public virtual override {
-        basketHandler.ensureBasket(); // maaaaaaybe
-        backingManager.settleTrades(); // maaaaaybe?
+        assetRegistry.forceUpdates();
+        basketHandler.checkBasket(); // maaaaaaybe
         // sometimes tokens
     }
 }

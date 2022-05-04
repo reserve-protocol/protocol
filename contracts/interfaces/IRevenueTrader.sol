@@ -11,20 +11,27 @@ import "./ITrading.sol";
  *   of the RevenueTrader, 1 for RToken and 1 for RSR.
  */
 interface IRevenueTrader is IComponent, ITrading {
+    /// Emitted when maxPriceLatency is changed
+    /// @param oldVal {s} The old maxPriceLatency
+    /// @param newVal {s} The new maxPriceLatency
+    event MaxPriceLatencySet(uint32 indexed oldVal, uint32 indexed newVal);
+
     // Initialization
     function init(
         IMain main_,
         IERC20 tokenToBuy_,
         int192 maxTradeSlippage_,
-        int192 dustAmount_
+        int192 dustAmount_,
+        uint32 maxPriceLatency_
     ) external;
 
-    /// Run the central RevenueTrader loop; unpermissioned
+    /// Processes a single token; unpermissioned
+    /// @dev Intended to be used with multicall
     /// @custom:action
-    function manageFunds() external;
+    function processToken(IERC20 sell) external;
 }
 
 // solhint-disable-next-line no-empty-blocks
 interface TestIRevenueTrader is IRevenueTrader, TestITrading {
-
+    function setMaxPriceLatency(uint32 maxPriceLatency_) external;
 }

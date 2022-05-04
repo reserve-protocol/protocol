@@ -77,8 +77,8 @@ contract DeployerP0 is IDeployer {
             basketHandler: new BasketHandlerP0(),
             backingManager: new BackingManagerP0(),
             distributor: new DistributorP0(),
-            rsrTrader: new RevenueTradingP0(),
-            rTokenTrader: new RevenueTradingP0(),
+            rsrTrader: new RevenueTraderP0(),
+            rTokenTrader: new RevenueTraderP0(),
             furnace: new FurnaceP0(),
             broker: new BrokerP0()
         });
@@ -112,12 +112,19 @@ contract DeployerP0 is IDeployer {
         main.basketHandler().init(main);
 
         // Init Revenue Traders
-        main.rsrTrader().init(main, rsr, params.maxTradeSlippage, params.dustAmount);
+        main.rsrTrader().init(
+            main,
+            rsr,
+            params.maxTradeSlippage,
+            params.dustAmount,
+            params.maxPriceLatency
+        );
         main.rTokenTrader().init(
             main,
             IERC20(address(rToken)),
             params.maxTradeSlippage,
-            params.dustAmount
+            params.dustAmount,
+            params.maxPriceLatency
         );
 
         // Init Asset Registry

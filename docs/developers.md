@@ -289,20 +289,11 @@ The following are functions I'm thinking of as "actions":
 - rToken.issue()
 - rToken.cancel()
 - rToken.redeem()
-- {rsrTrader, rTokenTrader, backingManager}.manageFunds() (which launch new auctions)
+- {rsrTrader,rTokenTrader,backingManager}.settleTrade()
+- backingManager.manageFunds()
+- {rsrTrader,rTokenTrader}.processToken()
 
 The actions on stRSR and rToken are _User Actions_; the actions on the traders are _Collective Actions_ which may launch new auctions. All of these may cause economically significant state changes; the exact time and sequence in which these functions are called can cause substantial differences in the resulting state.
-
-## `ensureBasket`
-
-Annotation: `@custom:ensure-basket`
-
-`basketHandler.ensureBasket` is unavoidably in a function class by itself. It can launch auctions, change the contents of the basket, and change the entire state of the system relatively radically. Its checks _should_ happen frequently, and especially when Actions are being called.
-
-Moreover, the conditions it watches for should be continuously monitored by external keepers, and anytime `ensureBasket` might change the state of things, the function should be immediately (and permissionlessly!) called.
-
-- Every Action should first call `ensureBasket` (or possibly ensure that ensureBasket has been called in the current block)
-- When `ensureBasket` does not detect default, it should have no effect on the system state.
 
 ## Refreshers
 
@@ -310,9 +301,9 @@ Annotation: `@custom:refresher`
 
 The following are all refreshers:
 
+- assetRegistry.forceUpdates()
 - furnace.melt()
 - stRSR.payoutRewards()
-- {rsrTrader, rTokenTrader, backingManager}.settleTrades()
 
 Refreshers share a sort of time-dependent idempotency:
 
@@ -323,7 +314,7 @@ Why does this matter? In a strong sense, refreshers are always _safe_ to call. F
 
 - If an Action can lead to different results depending on whether or not a refresher is called just before, then the Action is currently incorrect. That Action can be made correct by first calling any such refresher when it's first called.
 
-We get this easily in P0 -- since we aren't worrying about gas optimization there, we just call every refresher at the start of every action. Main.poke() is around, in P0, to call every function that's always correct to call, which includes `ensureBasket` and all of the refreshers
+We get this easily in P0 -- since we aren't worrying about gas optimization there, we just call every refresher at the start of every action. Main.poke() is around, in P0, to call every function that's always correct to call, which includes `checkBasket` and all of the refreshers
 
 ## Completions
 
@@ -339,6 +330,10 @@ It's a little odd to think of them this way, but both stRSR.withdraw(acct, id) a
 - If rToken.vest(acct, x) is called arbitrarily many times in a row, with each x < id, and then rToken.vest(acct, id) is called at time t, the result is identical to if rToken.vest(acct, id) was just called once at time t. (Ditto for stRSR.withdraw)
 
 Both are similar to refreshers, in that it's always "safe" to call them on anyone's behalf. However, since there are aribtrarily many values of `acct` for which they might be called, it's impractical to call every instance of it at the start of every action, even in P0. In particular, if stRSR.seizeRSR() is called, it will seize RSR even from ongoing drafts that _could_ be withdrawn, but for which stRSR.withdraw() has not yet been called. (We could define this otherwise, but it'd cost a lot of gas.)
+
+## `checkBasket`
+
+`basketHandler.checkBasket` is unavoidably in a function class by itself. It examines the state of the basket and tries to change it, if it is found to be defaulted. It does _not_ forceUpdates, in order to support for gas-efficient separation.
 
 ## Others
 
@@ -432,3 +427,11 @@ Anticipated value: `1000e18` = $1,000
 The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply.
 
 Anticipated value: `0.00025e18` = 0.025% per block
+
+## `maxPriceLatency`
+
+{s}
+
+The max price latency is the maximum number of seconds that the RevenueTraders may allow to elapse without calling `forceUpdates`. If more time has elapsed, the RevenueTraders ought to force an update themselves.
+
+Only applies to the RevenueTraders.

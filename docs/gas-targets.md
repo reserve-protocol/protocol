@@ -39,12 +39,12 @@ This doc serves to classify the protocol functions and define acceptable gas tar
 - `swapRegistered` (Governance)
 
   - Baseline: [326698, 531997, 380595]
-  - Mainly depends on `basketHandler.ensureBasket`
+  - Mainly depends on `basketHandler.forceUpdates`
 
 - `unregister` (Governance)
 
   - Baseline: [264179, 698522, 433002]
-  - Mainly depends on `basketHandler.ensureBasket`
+  - Mainly depends on `basketHandler.forceUpdates`
 
 - `forceUpdates` (Market Makers) **Review**
   - Baseline: [207544] (when no action required - four assets)
@@ -71,16 +71,15 @@ This doc serves to classify the protocol functions and define acceptable gas tar
 
 ### BasketHandler
 
-- `ensureBasket` (Governance/Market Makers) **Review**
+- `checkBasket` (Market Makers) **Review**
 
-  - Baseline: [291598, 1114781, 615067]
-  - Aggregator of `assetRegistry.forceUpdates()` and `switchBasket`
+  - Baseline: TODO
 
 - `setPrimeBasket` (Governance) **Review**
 
   - Baseline: [57570, 570395, 257586]
 
-- `switchBasket` (Governance/Market Makers) **Review**
+- `switchBasket` (Governance) **Review**
   - Baseline [301208, 1263318, 672295]
 
 ### Broker and GnosisTrade
@@ -209,7 +208,7 @@ This doc serves to classify the protocol functions and define acceptable gas tar
   - DistributorP1 1669152
   - FurnaceP1 1630722
   - MainP1 2228797
-  - RevenueTradingP1 3332521
+  - RevenueTraderP1 3332521
   - RTokenP1 5826929
   - StRSRP1 4318488
   - TradingLibP1 1992264

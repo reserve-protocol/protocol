@@ -23,7 +23,6 @@ import {
   TestIBroker,
   TestIDistributor,
   TestIFurnace,
-  TestIMain,
   TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
@@ -80,7 +79,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
-  let main: TestIMain
   let facade: FacadeP0
   let assetRegistry: TestIAssetRegistry
   let backingManager: TestIBackingManager
@@ -109,7 +107,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       collateral,
       basket,
       config,
-      main,
       assetRegistry,
       backingManager,
       basketHandler,
@@ -279,13 +276,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -294,7 +291,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check auctions registered
         // COMP -> RSR Auction
-        await expectTrade(rsrTrader, 0, {
+        await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -302,7 +299,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // COMP -> RToken Auction
-        await expectTrade(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -334,13 +331,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -401,20 +398,20 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [0, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [aaveToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
 
         // Check auctions registered
         // AAVE -> RSR Auction
-        await expectTrade(rsrTrader, 0, {
+        await expectTrade(rsrTrader, {
           sell: aaveToken.address,
           buy: rsr.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -422,7 +419,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // AAVE -> RToken Auction
-        await expectTrade(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -454,13 +451,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [0, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [aaveToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -545,7 +542,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -559,7 +556,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check auction registered
         // COMP -> RSR Auction
-        await expectTrade(rsrTrader, 0, {
+        await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -600,13 +597,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [1, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -618,7 +615,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // COMP -> RSR Auction
-        await expectTrade(rsrTrader, 1, {
+        await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -645,7 +642,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [1, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -731,7 +728,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [0, aaveToken.address, rToken.address, sellAmt, minBuyAmt],
+            args: [aaveToken.address, rToken.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -745,7 +742,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check auction registered
         // AAVE -> RToken Auction
-        await expectTrade(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -776,13 +773,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [0, aaveToken.address, rToken.address, sellAmt, minBuyAmt],
+            args: [aaveToken.address, rToken.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder],
+            args: [aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder],
             emitted: true,
           },
 
@@ -795,7 +792,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check new auction
         // AAVE -> RToken Auction
-        await expectTrade(rTokenTrader, 1, {
+        await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
@@ -818,7 +815,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [1, aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder],
+            args: [aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder],
             emitted: true,
           },
           {
@@ -905,13 +902,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -920,7 +917,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check auctions registered
         // COMP -> RSR Auction
-        await expectTrade(rsrTrader, 0, {
+        await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -928,7 +925,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // COMP -> RToken Auction
-        await expectTrade(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -967,19 +964,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [1, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
+            args: [compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
             emitted: true,
           },
           {
@@ -1011,7 +1008,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [1, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
+            args: [compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
             emitted: true,
           },
           {
@@ -1170,13 +1167,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [0, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [aaveToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -1185,7 +1182,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check auctions registered
         // AAVE -> RSR Auction
-        await expectTrade(rsrTrader, 0, {
+        await expectTrade(rsrTrader, {
           sell: aaveToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1193,7 +1190,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // AAVE -> RToken Auction
-        await expectTrade(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1230,13 +1227,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [0, aaveToken.address, rsr.address, sellAmt, minBuyAmt.sub(10)],
+            args: [aaveToken.address, rsr.address, sellAmt, minBuyAmt.sub(10)],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [0, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken.sub(10)],
+            args: [aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken.sub(10)],
             emitted: true,
           },
           {
@@ -1293,97 +1290,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
 
         // Attempt to run auctions
-        await expectEvents(facade.runAuctionsForAllTraders(), [
-          {
-            contract: rsrTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-        ])
-
-        // Check funds - remain in traders
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
-        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(sellAmt)
-        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(sellAmtRToken)
-      })
-
-      it('Should try/catch errors when opening trade on Broker', async () => {
-        // Set an invalid Broker that reverts
-        const InvalidBrokerFactory: ContractFactory = await ethers.getContractFactory(
-          'InvalidBrokerMock'
+        await backingManager.manageFunds()
+        await expect(rsrTrader.processToken(aaveToken.address)).to.be.revertedWith(
+          'broker disabled'
         )
-        const invalidBroker: TestIBroker = <TestIBroker>await InvalidBrokerFactory.deploy()
-
-        // Set broker
-        await invalidBroker.init(main.address, gnosis.address, ZERO_ADDRESS, config.auctionLength)
-        await main.connect(owner).setBroker(invalidBroker.address)
-
-        rewardAmountAAVE = bn('0.5e18')
-
-        // AAVE Rewards
-        await token2.setRewards(backingManager.address, rewardAmountAAVE)
-
-        // Claim rewards
-        await expectEvents(facade.claimRewards(), [
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [compToken.address, bn(0)],
-            emitted: true,
-          },
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [aaveToken.address, rewardAmountAAVE],
-            emitted: true,
-          },
-        ])
-
-        // Check status of destinations and traders
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
-        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
-        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
-
-        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
-        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
-        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
-        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
-
-        // Attempt to run auctions - should catch exception
-        await expectEvents(facade.runAuctionsForAllTraders(), [
-          {
-            contract: rsrTrader,
-            name: 'TradeBlocked',
-            args: [aaveToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeBlocked',
-            args: [aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
-          },
-          {
-            contract: rsrTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-          {
-            contract: rsrTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-        ])
+        await expect(rTokenTrader.processToken(aaveToken.address)).to.be.revertedWith(
+          'broker disabled'
+        )
 
         // Check funds - remain in traders
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -1391,115 +1304,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
         expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(sellAmt)
         expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(sellAmtRToken)
-      })
-
-      it('Should try/catch errors when settling an auction', async () => {
-        // Set COMP tokens as reward
-        rewardAmountCOMP = bn('0.8e18')
-
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
-
-        // Collect revenue
-        // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
-        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
-
-        const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
-        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
-
-        await expectEvents(backingManager.claimAndSweepRewards(), [
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
-          },
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
-        ])
-
-        // Check status of destinations at this point
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-
-        await expectEvents(facade.runAuctionsForAllTraders(), [
-          {
-            contract: rsrTrader,
-            name: 'TradeStarted',
-            args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeStarted',
-            args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
-          },
-        ])
-
-        // Check funds in Market
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(rewardAmountCOMP)
-
-        // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
-
-        // Perform Mock Bids for RSR and RToken (addr1 has balance)
-        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
-        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
-        await gnosis.placeBid(0, {
-          bidder: addr1.address,
-          sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
-        })
-        await gnosis.placeBid(1, {
-          bidder: addr1.address,
-          sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken,
-        })
-
-        // Cause failure by arbitrary removing the RSR obtained from market
-        await rsr.connect(owner).burn(gnosis.address, minBuyAmt)
-
-        // Close auctions - Will revert but catch errors
-        await expectEvents(facade.runAuctionsForAllTraders(), [
-          {
-            contract: rsrTrader,
-            name: 'TradeSettlementBlocked',
-            args: [0],
-            emitted: true,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeSettled',
-            args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
-          },
-          {
-            contract: rsrTrader,
-            name: 'TradeSettled',
-            emitted: false,
-          },
-          {
-            contract: rsrTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-        ])
-
-        // Check balances - no changes on StRSR
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        // Furnace
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
       })
 
       it('Should not distribute other tokens beyond RSR/RToken', async () => {
@@ -1591,13 +1395,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -1606,7 +1410,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check auctions registered
         // COMP -> RSR Auction
-        await expectTrade(rsrTrader, 0, {
+        await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1614,7 +1418,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // COMP -> RToken Auction
-        await expectTrade(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, {
           sell: compToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1646,13 +1450,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [0, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [0, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -1856,13 +1660,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [0, token2.address, rsr.address, sellAmt, minBuyAmt],
+            args: [token2.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -1880,7 +1684,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check auctions registered
         // AToken -> RSR Auction
-        await expectTrade(rsrTrader, 0, {
+        await expectTrade(rsrTrader, {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1888,7 +1692,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // AToken -> RToken Auction
-        await expectTrade(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -1924,13 +1728,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [0, token2.address, rsr.address, sellAmt, minBuyAmt],
+            args: [token2.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -2000,13 +1804,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [0, token2.address, rsr.address, sellAmt, minBuyAmt],
+            args: [token2.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -2025,7 +1829,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check auctions registered
         // AToken -> RSR Auction
-        await expectTrade(rsrTrader, 0, {
+        await expectTrade(rsrTrader, {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2033,7 +1837,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // AToken -> RToken Auction
-        await expectTrade(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2072,13 +1876,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [0, token2.address, rsr.address, sellAmt, minBuyAmt],
+            args: [token2.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [0, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -2147,7 +1951,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [0, rToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [rToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
         ])
@@ -2169,7 +1973,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check auctions registered
         // RToken -> RSR Auction
-        await expectTrade(rsrTrader, 0, {
+        await expectTrade(rsrTrader, {
           sell: rToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2192,7 +1996,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [0, rToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [rToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -2278,14 +2082,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [0, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
+            args: [rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
             emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [
-              1,
               token2.address,
               rsr.address,
               sellAmtRSRFromCollateral,
@@ -2297,7 +2100,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [
-              0,
               token2.address,
               rToken.address,
               sellAmtRTokenFromCollateral,
@@ -2335,7 +2137,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check auctions registered
         // RToken -> RSR Auction
-        await expectTrade(rsrTrader, 0, {
+        await expectTrade(rsrTrader, {
           sell: rToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2343,7 +2145,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Collateral -> RSR Auction
-        await expectTrade(rsrTrader, 1, {
+        await expectTrade(rsrTrader, {
           sell: token2.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2351,7 +2153,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Collateral -> Rtoken Auction
-        await expectTrade(rTokenTrader, 0, {
+        await expectTrade(rTokenTrader, {
           sell: token2.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.auctionLength),
@@ -2389,14 +2191,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [0, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
+            args: [rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
             emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [
-              1,
               token2.address,
               rsr.address,
               sellAmtRSRFromCollateral,
@@ -2408,7 +2209,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [
-              0,
               token2.address,
               rToken.address,
               sellAmtRTokenFromCollateral,
@@ -2536,16 +2336,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       await backingManager.claimAndSweepRewards()
 
-      // Run auctions - Order: Settle trades, then Manage funds
-      // Settle trades
-      await backingManager.settleTrades()
-      await snapshotGasCost(rsrTrader.settleTrades())
-      await snapshotGasCost(rTokenTrader.settleTrades())
-
       // Manage Funds
       await backingManager.manageFunds()
-      await snapshotGasCost(rsrTrader.manageFunds())
-      await snapshotGasCost(rTokenTrader.manageFunds())
+      await snapshotGasCost(rsrTrader.processToken(compToken.address))
+      await snapshotGasCost(rTokenTrader.processToken(compToken.address))
 
       // Advance time till auctions ended
       await advanceTime(config.auctionLength.add(100).toString())
@@ -2571,14 +2365,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       // Run auctions - Order: Settle trades, then manage funds
       // Settle trades
-      await backingManager.settleTrades()
-      await snapshotGasCost(rsrTrader.settleTrades())
-      await snapshotGasCost(rTokenTrader.settleTrades())
+      await snapshotGasCost(rsrTrader.settleTrade(compToken.address))
+      await snapshotGasCost(rTokenTrader.settleTrade(compToken.address))
 
       // Manage Funds
-      await backingManager.manageFunds()
-      await snapshotGasCost(rsrTrader.manageFunds())
-      await snapshotGasCost(rTokenTrader.manageFunds())
+      await snapshotGasCost(rsrTrader.processToken(compToken.address))
+      await snapshotGasCost(rTokenTrader.processToken(compToken.address))
 
       // Run final auction until all funds are converted
       // Advance time till auction ended
@@ -2594,14 +2386,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       // Run auctions - Order: Settle trades, then Manage funds
       // Settle trades
-      await backingManager.settleTrades()
-      await snapshotGasCost(rsrTrader.settleTrades())
-      await snapshotGasCost(rTokenTrader.settleTrades())
-
-      // Manage Funds
-      await backingManager.manageFunds()
-      await snapshotGasCost(rsrTrader.manageFunds())
-      await snapshotGasCost(rTokenTrader.manageFunds())
+      await snapshotGasCost(rsrTrader.settleTrade(compToken.address))
+      await snapshotGasCost(rTokenTrader.settleTrade(compToken.address))
     })
   })
 })

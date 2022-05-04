@@ -16,25 +16,11 @@ interface ITrading is IRewardable {
     event DustAmountSet(int192 indexed oldVal, int192 indexed newVal);
 
     /// Emitted when a trade is started
-    /// @param index The index of the trade in the trades getter
     /// @param sell The token to sell
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the selling token
     /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
     event TradeStarted(
-        uint256 indexed index,
-        IERC20 indexed sell,
-        IERC20 indexed buy,
-        uint256 sellAmount,
-        uint256 minBuyAmount
-    );
-
-    /// Emitted when a trade is blocked due to an inability to trade
-    /// @param sell The token to sell
-    /// @param buy The token to buy
-    /// @param sellAmount {qSellTok} The quantity of the selling token
-    /// @param minBuyAmount {qBuyTok} The minimum quantity of the buying token to accept
-    event TradeBlocked(
         IERC20 indexed sell,
         IERC20 indexed buy,
         uint256 sellAmount,
@@ -42,32 +28,33 @@ interface ITrading is IRewardable {
     );
 
     /// Emitted after a trade ends
-    /// @param index The index of the trade in the trades getter
     /// @param sell The token to sell
     /// @param buy The token to buy
     /// @param sellAmount {qSellTok} The quantity of the token sold
     /// @param buyAmount {qBuyTok} The quantity of the token bought
     event TradeSettled(
-        uint256 indexed index,
         IERC20 indexed sell,
         IERC20 indexed buy,
         uint256 sellAmount,
         uint256 buyAmount
     );
 
-    /// Emitted after the settlement of a trade is blocked
-    /// @param index The index of the trade in the trades getter
-    event TradeSettlementBlocked(uint256 indexed index);
+    // /// Settle any auctions that can be settled
+    // /// @custom:refresher
+    // function settleTrades() external;
 
-    /// Settle any auctions that can be settled
+    /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:refresher
-    function settleTrades() external;
+    function settleTrade(IERC20 sell) external;
 
     /// @return {%} The maximum trade slippage acceptable
     function maxTradeSlippage() external view returns (int192);
 
     /// @return {UoA} The smallest amount of value worth trading
     function dustAmount() external view returns (int192);
+
+    /// @return The ongoing trade for a sell token, or the zero address
+    function trades(IERC20 sell) external view returns (ITrade);
 }
 
 interface TestITrading is ITrading {
@@ -75,11 +62,6 @@ interface TestITrading is ITrading {
 
     function setDustAmount(int192 val) external;
 
-    function hasOpenTrades() external view returns (bool);
-
-    function trades(uint256) external view returns (ITrade);
-
-    function numTrades() external view returns (uint256);
-
-    function tradesStart() external view returns (uint256);
+    /// @return The number of ongoing trades open
+    function tradesOpen() external view returns (uint32);
 }

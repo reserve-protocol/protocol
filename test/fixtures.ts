@@ -31,7 +31,7 @@ import {
   GnosisTrade,
   IBasketHandler,
   MainP1,
-  RevenueTradingP1,
+  RevenueTraderP1,
   RTokenAsset,
   RTokenP1,
   StaticATokenMock,
@@ -75,6 +75,7 @@ export interface IConfig {
   maxTradeSlippage: BigNumber
   dustAmount: BigNumber
   issuanceRate: BigNumber
+  maxPriceLatency: BigNumber
 }
 
 export interface IRevenueShare {
@@ -410,6 +411,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     maxTradeSlippage: fp('0.01'), // 1%
     dustAmount: fp('0.01'), // 0.01 UoA (USD)
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
+    maxPriceLatency: bn('604800'), // 1 week
   }
 
   // Deploy TradingLib external library
@@ -458,10 +460,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
 
     const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
-      'RevenueTradingP1',
+      'RevenueTraderP1',
       { libraries: { TradingLibP1: tradingLib.address } }
     )
-    const revTraderImpl: RevenueTradingP1 = <RevenueTradingP1>await RevTraderImplFactory.deploy()
+    const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
 
     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
     const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()

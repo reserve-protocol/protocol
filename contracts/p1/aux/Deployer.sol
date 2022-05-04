@@ -177,12 +177,19 @@ contract DeployerP1 is IDeployer {
         main.basketHandler().init(main);
 
         // Init Revenue Traders
-        main.rsrTrader().init(main, rsr, params.maxTradeSlippage, params.dustAmount);
+        main.rsrTrader().init(
+            main,
+            rsr,
+            params.maxTradeSlippage,
+            params.dustAmount,
+            params.maxPriceLatency
+        );
         main.rTokenTrader().init(
             main,
             IERC20(address(rToken)),
             params.maxTradeSlippage,
-            params.dustAmount
+            params.dustAmount,
+            params.maxPriceLatency
         );
 
         // Init Asset Registry

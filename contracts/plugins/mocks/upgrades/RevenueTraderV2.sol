@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/p1/RevenueTrader.sol";
 
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
-contract RevenueTradingP1V2 is RevenueTradingP1 {
+contract RevenueTraderP1V2 is RevenueTraderP1 {
     uint256 public newValue;
 
     function setNewValue(uint256 newValue_) external onlyOwner {

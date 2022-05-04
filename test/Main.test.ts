@@ -316,12 +316,24 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to reinitialize - RSR Trader
       await expect(
-        rsrTrader.init(main.address, rsr.address, config.maxTradeSlippage, config.dustAmount)
+        rsrTrader.init(
+          main.address,
+          rsr.address,
+          config.maxTradeSlippage,
+          config.dustAmount,
+          config.maxPriceLatency
+        )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - RToken Trader
       await expect(
-        rTokenTrader.init(main.address, rToken.address, config.maxTradeSlippage, config.dustAmount)
+        rTokenTrader.init(
+          main.address,
+          rToken.address,
+          config.maxTradeSlippage,
+          config.dustAmount,
+          config.maxPriceLatency
+        )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - Furnace
@@ -721,10 +733,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // This is mostly leftover from when we were just testing P0
 
       // By default functions can be run
-      await basketHandler.ensureBasket()
+      await assetRegistry.forceUpdates()
+      await basketHandler.checkBasket()
       await backingManager.manageFunds()
-      await rsrTrader.manageFunds()
-      await rTokenTrader.manageFunds()
+      await rsrTrader.processToken(token0.address)
+      await rTokenTrader.processToken(token0.address)
       await token0.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
@@ -736,8 +749,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to run functions again
       await expect(backingManager.manageFunds()).to.be.revertedWith('paused')
-      await expect(rsrTrader.manageFunds()).to.be.revertedWith('paused')
-      await expect(rTokenTrader.manageFunds()).to.be.revertedWith('paused')
+      await expect(rsrTrader.processToken(token0.address)).to.be.revertedWith('paused')
+      await expect(rTokenTrader.processToken(token0.address)).to.be.revertedWith('paused')
       await expect(rToken.connect(addr1).issue(fp('1e-6'))).to.be.revertedWith('paused')
       await expect(rToken.connect(addr1).redeem(fp('1e-6'))).to.be.revertedWith('paused')
     })

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /**
  * Simple generalized trading interface for all Trade contracts to obey
@@ -9,9 +9,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * Usage: if (canSettle()) settle()
  */
 interface ITrade {
-    function sell() external view returns (IERC20);
+    function sell() external view returns (IERC20Metadata);
 
-    function buy() external view returns (IERC20);
+    function buy() external view returns (IERC20Metadata);
 
     /// @return The timestamp at which the trade is projected to become settle-able
     function endTime() external view returns (uint32);

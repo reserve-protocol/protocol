@@ -341,11 +341,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.status()).to.equal(TradeStatus.OPEN)
       expect(await trade.canSettle()).to.equal(false)
 
-      // Attempt to settle from origin - Cannot settle yet
-      await whileImpersonating(backingManager.address, async (bmSigner) => {
-        await expect(trade.connect(bmSigner).settle()).to.be.revertedWith('cannot settle yet')
-      })
-
       // Advance time till trade can be settled
       await advanceTime(config.auctionLength.add(100).toString())
 
