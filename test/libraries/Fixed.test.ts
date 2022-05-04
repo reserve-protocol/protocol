@@ -3,6 +3,7 @@ import { ContractFactory, BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import fc from 'fast-check'
 
+import { SLOW } from '../fixtures'
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp, pow10, fpCeil, fpFloor, fpRound, div } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
@@ -1088,7 +1089,7 @@ describe('In FixLib,', () => {
   const INTMIN = -(2n ** 191n)
   const INTMAX = 2n ** 191n - 1n
 
-  fc.configureGlobal({ numRuns: 10_000 })
+  if (SLOW) fc.configureGlobal({ numRuns: 10_000 })
 
   describe.only('muluDivu + muluDivuRnd', () => {
     it('muluDivu(0,0,1,*) = 0)', async () => {

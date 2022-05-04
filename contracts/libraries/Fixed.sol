@@ -54,8 +54,8 @@ RoundingMode constant FLOOR = RoundingMode.FLOOR;
 RoundingMode constant ROUND = RoundingMode.ROUND;
 RoundingMode constant CEIL = RoundingMode.CEIL;
 
-/* @dev To understand the tedious-looking double conversions (e.g, uint256(uint192(foo))) herein:
-   Solidity 0.8.x only allows you to type-convert _one_ of type or size per conversion.
+/* @dev Solidity 0.8.x only allows you to change one of type or size per type conversion.
+   Thus, all the tedious-looking double conversions like uint256(uint192(foo))
    See: https://docs.soliditylang.org/en/v0.8.9/080-breaking-changes.html#new-restrictions
  */
 
@@ -114,7 +114,7 @@ function divFix(uint256 x, int192 y) pure returns (int192) {
     */
     // If it's safe to do this operation the easy way, do it:
     if (x < uint256(type(int256).max / FIX_SCALE_SQ)) {
-        return _safeWrap(int256(x * FIX_SCALE_SQ_U) / _y); // TODO: can I get a negative value when y is positive?
+        return _safeWrap(int256(x * FIX_SCALE_SQ_U) / _y);
     }
     /* If we're not in that safe range, there are still lots of situations where the output fits in
      * a int192, but (x * 1e36) does not fit in a uint256. For instance, x = 2**255; _y = 2**190.
@@ -168,11 +168,11 @@ function divFix(uint256 x, int192 y) pure returns (int192) {
 }
 
 function fixMin(int192 x, int192 y) pure returns (int192) {
-    return FixLib.lt(x, y) ? x : y;
+    return x < y ? x : y;
 }
 
 function fixMax(int192 x, int192 y) pure returns (int192) {
-    return FixLib.gt(x, y) ? x : y;
+    return x > y ? x : y;
 }
 
 function signOf(int256 x) pure returns (int8) {
@@ -331,7 +331,7 @@ library FixLib {
         uint256 y,
         RoundingMode rounding
     ) internal pure returns (int192) {
-        if (y > type(uint256).max / 2) return FIX_ZERO;
+        if (y > uint256(type(int256).max)) return FIX_ZERO;
         return _safeWrap(_divrnd(x, int256(y), rounding));
     }
 
@@ -341,6 +341,7 @@ library FixLib {
     /// Rounding: intermediate muls do nearest-value rounding. Anything else gets wierd quick.
     function powu(int192 x, uint256 y) internal pure returns (int192 result) {
         // The algorithm is exponentiation by squaring. See: https://w.wiki/4LjE
+        // TODO OPTIMIZATION: try inlining the muls
         result = FIX_ONE;
         if (eq(x, FIX_ONE)) return FIX_ONE;
         while (true) {
