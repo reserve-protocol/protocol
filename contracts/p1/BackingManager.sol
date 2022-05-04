@@ -6,8 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/p1/mixins/TradingLib.sol";
 import "contracts/p1/mixins/Trading.sol";
 import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -95,16 +93,16 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             ///                        Fallen Target
 
             // 1a
-            (bool doTrade, TradeRequest memory req) = nonRSRTrade(false);
+            (bool doTrade, TradeRequest memory req) = TradingLibP1.nonRSRTrade(false);
 
             if (!doTrade) {
                 // 1b
-                (doTrade, req) = rsrTrade();
+                (doTrade, req) = TradingLibP1.rsrTrade();
             }
 
             if (!doTrade) {
                 // 2
-                (doTrade, req) = nonRSRTrade(true);
+                (doTrade, req) = TradingLibP1.nonRSRTrade(true);
             }
 
             if (doTrade) {
@@ -180,80 +178,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 }
             }
         }
-    }
-
-    /// Prepare asset-for-collateral trade
-    /// @param useFallenTarget When true, trade towards a reduced BU target based on holdings
-    /// @return doTrade If the trade request should be performed
-    /// @return req The prepared trade request
-    function nonRSRTrade(bool useFallenTarget)
-        private
-        view
-        returns (bool doTrade, TradeRequest memory req)
-    {
-        (
-            IAsset surplus,
-            ICollateral deficit,
-            int192 surplusAmount,
-            int192 deficitAmount
-        ) = TradingLibP1.largestSurplusAndDeficit(useFallenTarget);
-
-        if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
-
-        // Of primary concern here is whether we can trust the prices for the assets
-        // we are selling. If we cannot, then we should ignore `maxTradeSlippage`.
-
-        if (
-            surplus.isCollateral() &&
-            main.assetRegistry().toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
-        ) {
-            (doTrade, req) = TradingLibP1.prepareTradeSell(surplus, deficit, surplusAmount);
-            req.minBuyAmount = 0;
-        } else {
-            (doTrade, req) = TradingLibP1.prepareTradeToCoverDeficit(
-                surplus,
-                deficit,
-                surplusAmount,
-                deficitAmount
-            );
-        }
-
-        if (req.sellAmount == 0) return (false, req);
-
-        return (doTrade, req);
-    }
-
-    /// Prepare a trade with seized RSR to buy for missing collateral
-    /// @return doTrade If the trade request should be performed
-    /// @return req The prepared trade request
-    function rsrTrade() private returns (bool doTrade, TradeRequest memory req) {
-        IERC20 rsr = main.rsr();
-        require(main.assetRegistry().isRegistered(rsr), "rsr unregistered");
-
-        IStRSR stRSR = main.stRSR();
-        IAsset rsrAsset = main.assetRegistry().toAsset(rsr);
-
-        (, ICollateral deficit, , int192 deficitAmount) = TradingLibP1.largestSurplusAndDeficit(
-            false
-        );
-        if (address(deficit) == address(0)) return (false, req);
-
-        (doTrade, req) = TradingLibP1.prepareTradeToCoverDeficit(
-            rsrAsset,
-            deficit,
-            rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR))),
-            deficitAmount
-        );
-
-        if (doTrade) {
-            uint256 rsrBal = rsrAsset.bal(address(this)).shiftl_toUint(
-                int8(IERC20Metadata(address(rsr)).decimals())
-            );
-            if (req.sellAmount > rsrBal) {
-                stRSR.seizeRSR(req.sellAmount - rsrBal);
-            }
-        }
-        return (doTrade, req);
     }
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting

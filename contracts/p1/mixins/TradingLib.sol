@@ -85,7 +85,7 @@ library TradingLibP1 {
     /// @return sellAmount {sellTok} Surplus amount (whole tokens)
     /// @return buyAmount {buyTok} Deficit amount (whole tokens)
     function largestSurplusAndDeficit(bool useFallenTarget)
-        external
+        public
         view
         returns (
             IAsset surplus,
@@ -174,6 +174,78 @@ library TradingLibP1 {
         }
     }
 
+    /// Prepare a trade with seized RSR to buy for missing collateral
+    /// @return doTrade If the trade request should be performed
+    /// @return req The prepared trade request
+    function rsrTrade() external returns (bool doTrade, TradeRequest memory req) {
+        IERC20 rsr_ = rsr();
+        require(assetRegistry().isRegistered(rsr_), "rsr unregistered");
+
+        IStRSR stRSR_ = stRSR();
+        IAsset rsrAsset = assetRegistry().toAsset(rsr_);
+
+        (, ICollateral deficit, , int192 deficitAmount) = largestSurplusAndDeficit(false);
+        if (address(deficit) == address(0)) return (false, req);
+
+        (doTrade, req) = prepareTradeToCoverDeficit(
+            rsrAsset,
+            deficit,
+            rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR_))),
+            deficitAmount
+        );
+
+        if (doTrade) {
+            uint256 rsrBal = rsrAsset.bal(address(this)).shiftl_toUint(
+                int8(IERC20Metadata(address(rsr_)).decimals())
+            );
+            if (req.sellAmount > rsrBal) {
+                stRSR_.seizeRSR(req.sellAmount - rsrBal);
+            }
+        }
+        return (doTrade, req);
+    }
+
+    /// Prepare asset-for-collateral trade
+    /// @param useFallenTarget When true, trade towards a reduced BU target based on holdings
+    /// @return doTrade If the trade request should be performed
+    /// @return req The prepared trade request
+    function nonRSRTrade(bool useFallenTarget)
+        external
+        view
+        returns (bool doTrade, TradeRequest memory req)
+    {
+        (
+            IAsset surplus,
+            ICollateral deficit,
+            int192 surplusAmount,
+            int192 deficitAmount
+        ) = largestSurplusAndDeficit(useFallenTarget);
+
+        if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
+
+        // Of primary concern here is whether we can trust the prices for the assets
+        // we are selling. If we cannot, then we should ignore `maxTradeSlippage`.
+
+        if (
+            surplus.isCollateral() &&
+            assetRegistry().toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
+        ) {
+            (doTrade, req) = prepareTradeSell(surplus, deficit, surplusAmount);
+            req.minBuyAmount = 0;
+        } else {
+            (doTrade, req) = prepareTradeToCoverDeficit(
+                surplus,
+                deficit,
+                surplusAmount,
+                deficitAmount
+            );
+        }
+
+        if (req.sellAmount == 0) return (false, req);
+
+        return (doTrade, req);
+    }
+
     // === Getters ===
 
     /// @return {%}
@@ -205,5 +277,9 @@ library TradingLibP1 {
     /// @return The RSR associated with this RToken
     function rsr() private view returns (IERC20) {
         return ITrading(address(this)).main().rsr();
+    }
+
+    function stRSR() private view returns (IStRSR) {
+        return ITrading(address(this)).main().stRSR();
     }
 }
