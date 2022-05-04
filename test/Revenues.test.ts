@@ -23,7 +23,6 @@ import {
   TestIBroker,
   TestIDistributor,
   TestIFurnace,
-  TestIMain,
   TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
@@ -80,7 +79,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
-  let main: TestIMain
   let facade: FacadeP0
   let assetRegistry: TestIAssetRegistry
   let backingManager: TestIBackingManager
@@ -109,7 +107,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       collateral,
       basket,
       config,
-      main,
       assetRegistry,
       backingManager,
       basketHandler,
