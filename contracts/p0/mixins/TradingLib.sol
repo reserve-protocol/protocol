@@ -8,6 +8,9 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/ITrading.sol";
 import "contracts/libraries/Fixed.sol";
 
+// Gnosis: uint96 ~= 7e28
+uint256 constant GNOSIS_MAX_TOKENS = 7e28;
+
 /**
  * @title TradingLibP0
  * @notice An informal extension of the Trading mixin that provides trade preparation views
@@ -40,16 +43,22 @@ library TradingLibP0 {
         // Do not consider 1 qTok a viable sell amount
         if (trade.sellAmount <= 1) return (false, trade);
 
-        // Do not overflow auction mechanism
-        // Gnosis: uint96 ~= 7e28
-        if (trade.sellAmount > 7e28) {
-            trade.sellAmount = 7e28;
+        // Do not overflow auction mechanism - sell side
+        if (trade.sellAmount > GNOSIS_MAX_TOKENS) {
+            trade.sellAmount = GNOSIS_MAX_TOKENS;
             s = shiftl_toFix(trade.sellAmount, -int8(sell.erc20().decimals()));
         }
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         int192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(sell.price(), buy.price(), CEIL);
         trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20().decimals()), CEIL);
+
+        // Do not overflow auction mechanism - buy side
+        if (trade.minBuyAmount > GNOSIS_MAX_TOKENS) {
+            int192 downsize = toFix(GNOSIS_MAX_TOKENS).divu(trade.minBuyAmount);
+            trade.sellAmount = downsize.mulu(trade.sellAmount).toUint();
+            trade.minBuyAmount = downsize.mulu(trade.minBuyAmount).toUint();
+        }
         return (true, trade);
     }
 
