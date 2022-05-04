@@ -38,7 +38,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// @dev Requires setting an allowance in advance
     function openTrade(TradeRequest memory req) external returns (ITrade) {
         require(!disabled, "broker disabled");
-        assert(req.minBuyAmount > 0 && req.sellAmount > 0);
+        assert(req.sellAmount > 0);
 
         require(
             _msgSender() == address(main.backingManager()) ||
