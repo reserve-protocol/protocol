@@ -61,14 +61,19 @@ RoundingMode constant CEIL = RoundingMode.CEIL;
 
 /// Explicitly convert an int256 to an int192. Revert if the input is out of bounds.
 function _safeWrap(int256 x) pure returns (int192) {
-    if (x < type(int192).min || type(int192).max < x) revert IntOutOfBounds();
+    if (x < int256(type(int192).min) || int256(type(int192).max) < x) revert IntOutOfBounds();
     return int192(x);
+}
+
+/// Explicitly convert a uint256 to an int192. Revert if the input is out of bounds.
+function _safeWrapu(uint256 x) pure returns (int192) {
+    if (x > uint256(uint192(type(int192).max))) revert UIntOutOfBounds();
+    return int192(int256(x));
 }
 
 /// Convert a uint to its int192 representation. Fails if x is outside int192's representable range.
 function toFix(uint256 x) pure returns (int192) {
-    if (uint192(FIX_MAX_INT) < x) revert UIntOutOfBounds();
-    return int192(uint192(x)) * FIX_SCALE;
+    return _safeWrapu(x * FIX_SCALE_U);
 }
 
 /// Convert a uint to its fixed-point representation after left-shifting its value `shiftLeft`
@@ -90,7 +95,7 @@ function shiftl_toFix(
     uint256 coeff = 10**abs(shiftLeft);
     uint256 shifted = (shiftLeft >= 0) ? x * coeff : _divrnd(x, coeff, rounding);
 
-    return _safeWrap(int256(shifted));
+    return _safeWrapu(shifted);
 }
 
 /// Divide a uint by a int192. Fails if the result is outside int192's representable range.
@@ -109,7 +114,7 @@ function divFix(uint256 x, int192 y) pure returns (int192) {
     */
     // If it's safe to do this operation the easy way, do it:
     if (x < uint256(type(int256).max / FIX_SCALE_SQ)) {
-        return _safeWrap(int256(x * FIX_SCALE_SQ_U) / _y);
+        return _safeWrap(int256(x * FIX_SCALE_SQ_U) / _y); // TODO: can I get a negative value when y is positive?
     }
     /* If we're not in that safe range, there are still lots of situations where the output fits in
      * a int192, but (x * 1e36) does not fit in a uint256. For instance, x = 2**255; _y = 2**190.
@@ -468,7 +473,8 @@ library FixLib {
         uint256 z,
         RoundingMode rounding
     ) internal pure returns (int192) {
-        return _safeWrap(signOf(x) * int256(mulDiv256(abs(x), y, z, rounding)));
+        // bug: if abs(x) * y is in [2^255, 2^256),
+        return int192(signOf(x)) * _safeWrapu(mulDiv256(abs(x), y, z, rounding));
     }
 
     /// A chained .mul + .div on Fixes that avoids intermediate overflow
@@ -489,12 +495,12 @@ library FixLib {
         int192 z,
         RoundingMode rounding
     ) internal pure returns (int192) {
-        int256 sign = ((x < 0) != (y < 0) != (z < 0)) ? int256(-1) : int256(1);
+        int192 sign = ((x < 0) != (y < 0) != (z < 0)) ? int192(-1) : int192(1);
         // i.e, sign == signOf(x) * signOf(y) * signOf(z)
         // i.e, sign is -1 iff ((x<0) xor (y<0) xor (z<0)) is true
         // i.e, sign is -1 iff an odd number of (x<0), (y<0), (z<0) are true
 
-        return _safeWrap(sign * int256(mulDiv256(abs(x), abs(y), abs(z), rounding)));
+        return sign * _safeWrapu(mulDiv256(abs(x), abs(y), abs(z), rounding));
     }
 }
 
