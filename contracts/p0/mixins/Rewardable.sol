@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "contracts/p0/mixins/Component.sol";
@@ -12,13 +13,13 @@ import "contracts/interfaces/IRewardable.sol";
  * @title Rewardable
  * @notice A mix-in that makes a contract able to claim rewards
  */
-abstract contract RewardableP0 is ComponentP0, IRewardable {
+abstract contract RewardableP0 is ReentrancyGuard, ComponentP0, IRewardable {
     using Address for address;
     using SafeERC20 for IERC20;
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    function claimAndSweepRewards() external {
+    function claimAndSweepRewards() external nonReentrant {
         // Call state keepers before collective actions
         main.poke();
 

@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "contracts/interfaces/IMain.sol";
@@ -21,8 +22,8 @@ library RewardableLibP1 {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    function claimAndSweepRewards() external {
-        IAssetRegistry reg = assetRegistry();
+    function claimAndSweepRewards() external nonReentrant {
+        IAssetRegistry reg = main.assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();
         IERC20[] memory rewardTokens = new IERC20[](erc20s.length);
         uint256 numRewardTokens = 0;
@@ -69,12 +70,12 @@ library RewardableLibP1 {
         }
     }
 
-          /// @return The AssetRegistry
+    /// @return The AssetRegistry
     function assetRegistry() private view returns (IAssetRegistry) {
         return IRewardable(address(this)).main().assetRegistry();
     }
 
-      /// @return The BackingManager
+    /// @return The BackingManager
     function backingManager() private view returns (IBackingManager) {
         return IRewardable(address(this)).main().backingManager();
     }
