@@ -99,7 +99,7 @@ function shiftl_toFix(
     return _safeWrapu(shifted);
 }
 
-function id(int192 x) pure returns(int192) {
+function id(int192 x) pure returns (int192) {
     return x;
 }
 
@@ -283,7 +283,8 @@ library FixLib {
         return _safeWrap(_divrnd(x, int256(y), rounding));
     }
 
-    uint64 constant FIX_HALF = uint64(FIX_SCALE)/2;
+    uint64 constant FIX_HALF = uint64(FIX_SCALE) / 2;
+
     /// Raise this int192 to a nonnegative integer power.
     /// Presumes that powu(0.0, 0) = 1
     /// @dev The gas cost is O(lg(y)). We can maybe do better but it will get very fiddly indeed.
@@ -297,14 +298,13 @@ library FixLib {
 
         uint256 result = FIX_SCALE_U;
         while (true) {
-            if (y & 1 == 1) result = (result * x + FIX_HALF)/FIX_SCALE_U;
+            if (y & 1 == 1) result = (result * x + FIX_HALF) / FIX_SCALE_U;
             if (y <= 1) break;
             y = y >> 1;
-            x = (x * x + FIX_HALF)/FIX_SCALE_U;
+            x = (x * x + FIX_HALF) / FIX_SCALE_U;
         }
         return isNegative ? -_safeWrapu(result) : _safeWrapu(result);
     }
-
 
     /// Comparison operators...
     function lt(int192 x, int192 y) internal pure returns (bool) {
