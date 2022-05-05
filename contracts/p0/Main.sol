@@ -46,7 +46,7 @@ contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
         setRToken(components.rToken);
         rsr = rsr_;
 
-        emit Initialized();
+        emit MainInitialized();
     }
 
     // === Registered Contracts ===
