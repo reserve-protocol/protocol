@@ -12,7 +12,7 @@ import "contracts/libraries/Fixed.sol";
 uint256 constant GNOSIS_MAX_TOKENS = 7e28;
 
 /**
- * @title TradingLibP0
+ * @title TradingLibP1
  * @notice An informal extension of the Trading mixin that provides trade preparation views
  * @dev The caller must implement the ITrading interface!
  */
