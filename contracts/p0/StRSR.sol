@@ -275,7 +275,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         int192 initialExchangeRate = exchangeRate();
 
-        uint256 numPeriods = (block.timestamp - payoutLastPaid) / rewardPeriod;
+        uint32 numPeriods = (uint32(block.timestamp) - uint32(payoutLastPaid)) /
+            uint32(rewardPeriod);
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
