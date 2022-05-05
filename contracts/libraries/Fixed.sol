@@ -103,10 +103,10 @@ function id(int192 x) pure returns(int192) {
     return x;
 }
 
-/// Divide a uint by a int192. Fails if the result is outside int192's representable range.
+/// Divide a uint by a int192. Fails if the result is outside int192's representable range
+/// (May also fail if the result is MIN_INT192; not fixing this for optimization's sake.)
 function divFix(uint256 x, int192 y) pure returns (int192) {
-    /* If we didn't have to worry about overflow or precision loss, we'd just do:
-       return x * 1e36 / _y. */
+    // If we didn't have to worry about overflow, we'd just do `return x * 1e36 / _y`
     // If it's safe to do this operation the easy way, do it:
     if (x < uint256(type(int256).max / FIX_SCALE_SQ)) {
         return _safeWrap(int256(x * FIX_SCALE_SQ_U) / y);

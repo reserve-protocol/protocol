@@ -178,7 +178,7 @@ describe('In FixLib,', () => {
       }
     })
 
-    it('works for extreme results', async () => {
+    describe('works for extreme results', () => {
       // For cases that exercise the complicated path, we need:
       // 5.8e40 <= x < 5.8e76, fp(-3.14e39) <= y, result <= fp(3.14e39)
       const table = [
@@ -186,14 +186,16 @@ describe('In FixLib,', () => {
         [MAX_FIX_INT.sub(51), fp(1), fp(MAX_FIX_INT.sub(51))],
         [MAX_FIX_INT.mul(173), fp(173), fp(MAX_FIX_INT)],
         [MAX_INT192, fp('1e18'), MAX_INT192],
-        [neg(MIN_INT192), fp('-1e18'), MIN_INT192],
+        [MAX_INT192, fp('-1e18'), neg(MAX_INT192)],
         [bn('8e60'), fp('2e30'), fp('4e30')],
         [bn('5e75'), fp('2.5e39'), fp('2e36')],
         [bn('8e60'), fp('-2e30'), fp('-4e30')],
         [bn('5e75'), fp('-2.5e39'), fp('-2e36')],
       ]
       for (const [x, y, result] of table) {
-        expect(await caller.divFix_(x, y), `divFix(${x}, ${y}) == ${result}`).to.equal(result)
+        it(`divFix(${x}, ${y}) == ${result}`, async () => {
+          expect(await caller.divFix_(x, y)).to.equal(result)
+        })
       }
     })
 
