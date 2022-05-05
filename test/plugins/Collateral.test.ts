@@ -9,7 +9,6 @@ import {
   AaveOracleMock,
   AavePricedFiatCollateral,
   ATokenFiatCollateral,
-  BackingManagerP0,
   CompoundOracleMock,
   CompoundPricedFiatCollateral,
   ComptrollerMock,
@@ -17,8 +16,9 @@ import {
   CTokenMock,
   ERC20Mock,
   FacadeP0,
-  TestIRToken,
   StaticATokenMock,
+  TestIBackingManager,
+  TestIRToken,
   USDCMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
@@ -61,7 +61,7 @@ describe('Collateral contracts', () => {
   let config: IConfig
 
   // Main
-  let backingManager: BackingManagerP0
+  let backingManager: TestIBackingManager
 
   // Facade
   let facade: FacadeP0
