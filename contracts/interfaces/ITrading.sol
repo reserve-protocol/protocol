@@ -39,10 +39,6 @@ interface ITrading is IRewardable {
         uint256 buyAmount
     );
 
-    // /// Settle any auctions that can be settled
-    // /// @custom:refresher
-    // function settleTrades() external;
-
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:refresher
     function settleTrade(IERC20 sell) external;
