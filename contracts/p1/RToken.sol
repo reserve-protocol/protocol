@@ -110,6 +110,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
         main.assetRegistry().forceUpdates(); // no need to checkBasket
         main.furnace().melt();
 
+        // TODO should we check that status is not disabled? probably...
+
         // Refund issuances against previous baskets
         address issuer = _msgSender();
         refundOldBasketIssues(issuer);
