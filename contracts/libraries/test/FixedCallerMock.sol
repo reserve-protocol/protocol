@@ -19,16 +19,6 @@ contract FixedCallerMock {
     function divFix_(uint256 x, int192 y) public pure returns (int192) {
         return divFix(x, y);
     }
-
-    int192 val;
-    function warmUp(int192 y) public {
-        val = y;
-    }
-    function id_for_gas(int192 y) public {
-        val = id(y);
-    }
-
-
     function fixMin_(int192 x, int192 y) public pure returns (int192) {
         return fixMin(x, y);
     }
@@ -92,7 +82,7 @@ contract FixedCallerMock {
     function divuRnd(int192 x, uint256 y, RoundingMode rnd) public pure returns (int192) {
         return FixLib.divu(x, y, rnd);
     }
-    function powu(int192 x, uint256 y) public pure returns (int192) {
+    function powu(int192 x, uint32 y) public pure returns (int192) {
         return FixLib.powu(x, y);
     }
     function lt(int192 x, int192 y) public pure returns (bool) {

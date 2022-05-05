@@ -7,18 +7,18 @@ contract FixProps {
     using FixLib for int192;
 
     int192 public base = FIX_ONE;
-    uint256 public a = 1;
-    uint256 public b = 1;
+    uint32 public a = 1;
+    uint32 public b = 1;
 
     function setBase(int192 base_) external {
         base = base_ % 1e18;
     }
 
-    function setA(uint128 a_) external {
+    function setA(uint32 a_) external {
         a = a_;
     }
 
-    function setB(uint128 b_) external {
+    function setB(uint32 b_) external {
         b = b_;
     }
 

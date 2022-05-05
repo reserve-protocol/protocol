@@ -5,7 +5,7 @@ import fc from 'fast-check'
 
 import { SLOW } from '../fixtures'
 import { BN_SCALE_FACTOR } from '../../common/constants'
-import { bn, fp, pow10, fpCeil, fpFloor, fpRound, div } from '../../common/numbers'
+import { bn, fp, pow10, fpCeil, fpFloor, fpRound, div, shortString } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'
 
 enum RoundingMode {
@@ -837,7 +837,7 @@ describe('In FixLib,', () => {
     })
   })
   describe('powu', () => {
-    it('correctly exponentiates inside its range', async () => {
+    describe('correctly exponentiates inside its range', () => {
       // prettier-ignore
       const table = [
         [fp(1.0), bn(1), fp(1.0)],
@@ -847,8 +847,8 @@ describe('In FixLib,', () => {
         [fp(2), bn(64), fp('18446744073709551616')],
         [fp(1.5), bn(7), fp(17.0859375)],
         [fp(-1), bn(2), fp(1)],
-        [fp(-1), MAX_UINT192, fp(-1)],
-        [fp(-1), MAX_UINT192.sub(1), fp(1)],
+        [fp(-1), bn(2).pow(32).sub(1), fp(-1)],
+        [fp(-1), bn(2).pow(32).sub(2), fp(1)],
         [fp(1.1), bn(4), fp('1.4641')],
         [fp(1.1), bn(5), fp('1.61051')],
         [fp(0.23), bn(3), fp('0.012167')],
@@ -859,26 +859,31 @@ describe('In FixLib,', () => {
       ]
 
       for (const [a, b, c] of table) {
-        expect(await caller.powu(a, b), `powu(${a}, ${b})`).to.equal(c)
+        it(`powu(${shortString(a)}, ${shortString(b)}) == ${shortString(c)}`, async () => {
+          expect(await caller.powu(a, b)).to.equal(c)
+        })
       }
     })
-    it('correctly exponentiates at the extremes of its range', async () => {
+
+    describe('correctly exponentiates at the extremes of its range', () => {
       const table = [
         [MAX_INT192, bn(1), MAX_INT192],
         [MIN_INT192, bn(1), MIN_INT192],
         [MIN_INT192, bn(0), fp(1)],
         [fp(0), bn(0), fp(1.0)],
         [fp(987.0), bn(0), fp(1.0)],
-        [fp(1.0), bn(2).pow(256).sub(1), fp(1.0)],
-        [fp(-1.0), bn(2).pow(256).sub(1), fp(-1.0)],
+        [fp(1.0), bn(2).pow(32).sub(1), fp(1.0)],
+        [fp(-1.0), bn(2).pow(32).sub(1), fp(-1.0)],
         [fp(2), bn(131), fp(bn(2).pow(131))],
       ]
 
       for (const [a, b, c] of table) {
-        expect(await caller.powu(a, b), `powu(${a}, ${b})`).to.equal(c)
+        it(`powu(${shortString(a)}, ${shortString(b)}) == ${shortString(c)}`, async () => {
+          expect(await caller.powu(a, b)).to.equal(c)
+        })
       }
     })
-    it('fails outside its range', async () => {
+    describe('fails outside its range', () => {
       const table = [
         [fp(10), bn(40)],
         [fp(-10), bn(40)],
@@ -892,7 +897,9 @@ describe('In FixLib,', () => {
       ]
 
       for (const [a, b] of table) {
-        await expect(caller.powu(a, b), `powu(${a}, ${b})`).to.be.reverted
+        it(`powu(${shortString(a)}, ${shortString(b)}) reverts}`, async () => {
+          await expect(caller.powu(a, b)).to.be.reverted
+        })
       }
     })
   })
@@ -1089,8 +1096,6 @@ describe('In FixLib,', () => {
   const WORD = 2n ** 256n
   const INTMIN = -(2n ** 191n)
   const INTMAX = 2n ** 191n - 1n
-
-  if (SLOW) fc.configureGlobal({ numRuns: 10_000 })
 
   describe('muluDivu + muluDivuRnd', () => {
     it('muluDivu(0,0,1,*) = 0)', async () => {

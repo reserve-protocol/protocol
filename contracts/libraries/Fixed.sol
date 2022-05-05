@@ -26,6 +26,7 @@ error UIntOutOfBounds();
 // value n/FIX_SCALE.
 int64 constant FIX_SCALE = 1e18;
 uint64 constant FIX_SCALE_U = uint64(FIX_SCALE);
+
 // FIX_SCALE Squared:
 int128 constant FIX_SCALE_SQ = 1e36;
 uint128 constant FIX_SCALE_SQ_U = uint128(FIX_SCALE_SQ);
@@ -282,22 +283,28 @@ library FixLib {
         return _safeWrap(_divrnd(x, int256(y), rounding));
     }
 
+    uint64 constant FIX_HALF = uint64(FIX_SCALE)/2;
     /// Raise this int192 to a nonnegative integer power.
     /// Presumes that powu(0.0, 0) = 1
     /// @dev The gas cost is O(lg(y)). We can maybe do better but it will get very fiddly indeed.
     /// Rounding: intermediate muls do nearest-value rounding. Anything else gets wierd quick.
-    function powu(int192 x, uint256 y) internal pure returns (int192 result) {
+    function powu(int192 x_, uint32 y) internal pure returns (int192) {
         // The algorithm is exponentiation by squaring. See: https://w.wiki/4LjE
-        // TODO OPTIMIZATION: try inlining the muls
-        result = FIX_ONE;
-        if (eq(x, FIX_ONE)) return FIX_ONE;
+        if (y == 1) return x_;
+        if (x_ == FIX_ONE || y == 0) return FIX_ONE;
+        bool isNegative = (x_ < 0 && y & 1 == 1);
+        uint256 x = x_ < 0 ? uint192(-x_) : uint192(x_);
+
+        uint256 result = FIX_SCALE_U;
         while (true) {
-            if (y & 1 == 1) result = mul(result, x);
-            if (y <= 1) return result;
+            if (y & 1 == 1) result = (result * x + FIX_HALF)/FIX_SCALE_U;
+            if (y <= 1) break;
             y = y >> 1;
-            x = mul(x, x, ROUND);
+            x = (x * x + FIX_HALF)/FIX_SCALE_U;
         }
+        return isNegative ? -_safeWrapu(result) : _safeWrapu(result);
     }
+
 
     /// Comparison operators...
     function lt(int192 x, int192 y) internal pure returns (bool) {
