@@ -15,7 +15,7 @@ contract MainMock is MainP0 {
 
     function init(Components memory, IERC20) public virtual override(MainP0) initializer {
         __Pausable_init();
-        emit Initialized();
+        emit MainInitialized();
     }
 
     event TestError(string message);

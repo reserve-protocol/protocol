@@ -50,7 +50,7 @@ contract MainP1 is Initializable, ContextUpgradeable, Pausable, UUPSUpgradeable,
         setRToken(components.rToken);
         rsr = rsr_;
 
-        emit Initialized();
+        emit MainInitialized();
     }
 
     // === Registered Contracts ===

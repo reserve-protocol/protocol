@@ -120,9 +120,9 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     it('Deployment does not accept empty period', async () => {
       const newConfig = JSON.parse(JSON.stringify(config))
       newConfig.rewardPeriod = bn('0')
-      furnace = <TestIFurnace>await deployNewFurnace()
+      const newFurnace: TestIFurnace = <TestIFurnace>await deployNewFurnace()
       await expect(
-        furnace.init(main.address, newConfig.rewardPeriod, newConfig.rewardRatio)
+        newFurnace.init(main.address, newConfig.rewardPeriod, newConfig.rewardRatio)
       ).to.be.revertedWith('period cannot be zero')
     })
   })
@@ -361,24 +361,30 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Extreme Bounds', () => {
-    const applyParameters = async (period: BigNumber, ratio: BigNumber, bal: BigNumber) => {
+    const applyParameters = async (
+      period: BigNumber,
+      ratio: BigNumber,
+      bal: BigNumber
+    ): Promise<TestIFurnace> => {
       // Deploy fixture
       ;({ main, rToken, backingManager } = await loadFixture(defaultFixture))
 
       const newConfig = JSON.parse(JSON.stringify(config))
       newConfig.rewardPeriod = period
       newConfig.rewardRatio = ratio
-      furnace = <TestIFurnace>await deployNewFurnace()
+      const newFurnace: TestIFurnace = <TestIFurnace>await deployNewFurnace()
 
-      await main.connect(owner).setFurnace(furnace.address)
+      await main.connect(owner).setFurnace(newFurnace.address)
 
       // Issue and send tokens to furnace
       if (bal.gt(bn('0'))) {
         await whileImpersonating(backingManager.address, async (bmSigner) => {
-          await rToken.connect(bmSigner).mint(furnace.address, bal)
+          await rToken.connect(bmSigner).mint(newFurnace.address, bal)
         })
       }
-      await furnace.init(main.address, newConfig.rewardPeriod, newConfig.rewardRatio)
+      await newFurnace.init(main.address, newConfig.rewardPeriod, newConfig.rewardRatio)
+
+      return newFurnace
     }
 
     it('Should not revert at extremes', async () => {
@@ -396,15 +402,15 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
         const ratio = args[1]
         const bal = args[2]
 
-        await applyParameters(period, ratio, bal)
+        const newFurnace: TestIFurnace = <TestIFurnace>await applyParameters(period, ratio, bal)
 
         // Should melt after 1 period
         await advanceTime(period.add(1).toString())
-        await furnace.melt()
+        await newFurnace.melt()
 
         // Should melt after 1000 periods
         await advanceTime(period.mul(1000).add(1).toString())
-        await furnace.melt()
+        await newFurnace.melt()
       }
     })
   })

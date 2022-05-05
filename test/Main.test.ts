@@ -386,7 +386,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
       const newMain: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
 
-      expectInIndirectReceipt(receipt, newMain.interface, 'Initialized')
+      expectInIndirectReceipt(receipt, newMain.interface, 'MainInitialized')
       expectInIndirectReceipt(receipt, newMain.interface, 'AssetRegistrySet', {
         oldVal: ZERO_ADDRESS,
         newVal: await newMain.assetRegistry(),

@@ -137,7 +137,7 @@ interface IMain is IPausable {
 
     // === Initialization/ownership ===
 
-    event Initialized();
+    event MainInitialized();
 
     function init(Components memory components, IERC20 rsr_) external;
 
