@@ -32,6 +32,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
 
     /// Performs any melting that has vested since last call.
     function melt() external {
+        // nonReentrant not required: rToken.melt terminates within main's security domain
         if (uint32(block.timestamp) < uint64(lastPayout) + period) return;
 
         // # of whole periods that have passed since lastPayout

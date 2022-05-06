@@ -273,26 +273,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.totalSupply()).to.equal(bn(0))
     })
 
-    it('Should not redeem RTokens if paused', async function () {
-      const issueAmount: BigNumber = bn('10e18')
-
-      // Issue
-      await token0.connect(addr1).approve(rToken.address, issueAmount)
-      await token1.connect(addr1).approve(rToken.address, issueAmount)
-      await token2.connect(addr1).approve(rToken.address, issueAmount)
-      await token3.connect(addr1).approve(rToken.address, issueAmount)
-      await rToken.connect(addr1).issue(issueAmount)
-
-      // Pause Main
-      await main.connect(owner).pause()
-
-      // Try to redeem
-      await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('paused')
-
-      // Check values
-      expect(await rToken.totalSupply()).to.equal(issueAmount)
-    })
-
     it('Should not issue RTokens if amount is zero', async function () {
       const zero: BigNumber = bn('0')
 
@@ -1076,6 +1056,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           'collateral default'
         )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
+      })
+
+      it('Should redeem if paused', async function () {
+        // Pause Main
+        await main.connect(owner).pause()
+
+        // Try to redeem
+        await rToken.connect(addr1).redeem(issueAmount)
+
+        // Check values
+        expect(await rToken.totalSupply()).to.equal(0)
       })
     })
   })

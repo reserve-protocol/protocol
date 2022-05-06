@@ -1,15 +1,20 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "contracts/interfaces/IMain.sol";
 
 /**
  * Abstract superclass for system contracts registered in Main
  */
-abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradeable, IComponent {
+abstract contract ComponentP1 is
+    ContextUpgradeable,
+    ReentrancyGuardUpgradeable,
+    UUPSUpgradeable,
+    IComponent
+{
     IMain public main;
 
     /// @custom:oz-upgrades-unsafe-allow constructor

@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "contracts/plugins/trading/GnosisTrade.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
@@ -12,7 +11,7 @@ import "contracts/interfaces/ITrade.sol";
 import "contracts/p0/mixins/Component.sol";
 
 /// A simple core contract that deploys disposable trading contracts for Traders
-contract BrokerP0 is ReentrancyGuard, ComponentP0, IBroker {
+contract BrokerP0 is ComponentP0, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20Metadata;
 
@@ -37,7 +36,7 @@ contract BrokerP0 is ReentrancyGuard, ComponentP0, IBroker {
 
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
-    function openTrade(TradeRequest memory req) external nonReentrant returns (ITrade) {
+    function openTrade(TradeRequest memory req) external returns (ITrade) {
         require(!disabled, "broker disabled");
         assert(req.sellAmount > 0);
 

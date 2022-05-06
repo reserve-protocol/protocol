@@ -111,6 +111,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     /// @param rsrAmount {qRSR}
     /// @custom:action
     function stake(uint256 rsrAmount) external notPaused {
+        // nonReentrant not required: no calls in this function
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
@@ -123,6 +124,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     /// @param stakeAmount {qStRSR}
     /// @custom:action
     function unstake(uint256 stakeAmount) external notPaused {
+        // nonReentrant not required: no external calls in this function
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
@@ -134,7 +136,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
     /// @custom:completion
-    function withdraw(address account, uint256 endId) external notPaused {
+    function withdraw(address account, uint256 endId) external notPaused nonReentrant {
         main.assetRegistry().forceUpdates();
 
         IBasketHandler bh = main.basketHandler();
@@ -152,7 +154,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     /// @param rsrAmount {qRSR}
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR might be smaller than rsrAmount if we're out of RSR.
-    function seizeRSR(uint256 rsrAmount) external {
+    function seizeRSR(uint256 rsrAmount) external nonReentrant {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initialExchangeRate = exchangeRate();
@@ -204,6 +206,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     /// @dev do this by effecting stakeRSR and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
     function payoutRewards() public {
+        // nonReentrant not required: no external calls in this function
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         int192 initialExchangeRate = exchangeRate();
 
@@ -466,6 +469,7 @@ contract StRSRP1 is IStRSR, ComponentP1, EIP712Upgradeable {
     // ==== end Internal Functions ====
 
     // === ERC20Permit ====
+    // nonReentrant not required: no external calls
 
     // From OZ 4.4 release at commit 6bd6b76
 
